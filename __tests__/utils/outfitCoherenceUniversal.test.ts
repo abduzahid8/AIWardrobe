@@ -28,6 +28,48 @@ describe('universal outfit coherence vetoes (all styles × occasions)', () => {
     expect(reason).toBe('sneakers never pair with tailored trousers');
   });
 
+  it('veto: formal shoes with athletic bottoms (register clash, any style)', () => {
+    const reason = rejectOutfitIncoherence(
+      [
+        item('Navy wool overcoat', 'outerwear'),
+        item('Cream knit polo', 'top'),
+        item('Athletic training track pants', 'bottom'),
+        item('Brown derby shoes', 'shoes'),
+      ],
+      'casual',
+      'casual',
+    );
+    expect(reason).toBe('formal_footwear_with_athletic_bottom');
+  });
+
+  it('veto: tailored layer over gym-wear base (register clash, any style)', () => {
+    const reason = rejectOutfitIncoherence(
+      [
+        item('Navy unstructured blazer', 'outerwear'),
+        item('Performance training t-shirt', 'top'),
+        item('Navy chinos', 'bottom'),
+        item('Driving moccasins with rubber nubs', 'shoes'),
+      ],
+      'semi_classic',
+      'casual',
+    );
+    expect(reason).toBe('tailored_layer_over_athletic_base');
+  });
+
+  it('veto: athletic outerwear over a formal base (register clash, any style)', () => {
+    const reason = rejectOutfitIncoherence(
+      [
+        item('Athletic training jacket', 'outerwear'),
+        item('White oxford shirt', 'top'),
+        item('Grey wool dress trousers', 'bottom'),
+        item('Brown penny loafers', 'shoes'),
+      ],
+      'old_money',
+      'casual',
+    );
+    expect(reason).toBe('athletic_outerwear_over_formal_base');
+  });
+
   it('veto: hybrid cupsole derbies with flannel pants (no sneaker word in name)', () => {
     const reason = rejectOutfitIncoherence(
       [

@@ -1,7 +1,8 @@
 import { outfitChoices } from '../../../backend/supabase/functions/_shared/outfitChoices';
 import { isDressGarment, isNonOutfitItem, fourSlotOutfitReason } from '../../../backend/supabase/functions/_shared/outfitStructure';
 import { assessOutfitQuality, rejectForStyleOccasion, rejectForClimate, detectSlotMismatch } from './occasionRules';
-import { recentStylingPenalty } from '../../../src/domain/outfitVisualSignature';
+import { buildOutfitFingerprint, visualSimilarity } from '../../../src/domain/outfitDiversity';
+import { recentLookSimilarity, recentStylingPenalty } from '../../../src/domain/outfitVisualSignature';
 import { canonicalizeMacroCategory, getMacroCategory } from '../../../src/utils/categoryMapper';
 
 export interface AlternativeItem {
@@ -49,10 +50,45 @@ export function closestAvailableOutfits(
   // Recently shown semantic looks rank lower so the fallback surfaces a
   // fresher alternative first. Hard validity (penalty) still dominates.
   const recent = options.recentLookSignatures ?? [];
-  return choices.map(choice => ({ ...choice,
-    penalty: penalty(choice.items),
-    quality: Math.max(0, assessOutfitQuality(choice.items, options.style, options.occasion, options.weather, options.anchorId).score - recentStylingPenalty(choice.items, recent)),
-  })).sort((a, b) => a.penalty - b.penalty || b.quality - a.quality).slice(0, options.limit ?? 3);
+  const ranked = choices.map(choice => {
+    const items = choice.items as AlternativeItem[];
+    return { ...choice,
+      penalty: penalty(choice.items),
+      quality: Math.max(0, assessOutfitQuality(items, options.style, options.occasion, options.weather, options.anchorId).score - recentStylingPenalty(items, recent)),
+      fingerprint: buildOutfitFingerprint(items),
+      recency: recentLookSimilarity(items, recent),
+    };
+  }).sort((a, b) => a.penalty - b.penalty || b.quality - a.quality);
+  const limit = options.limit ?? 3;
+  // Greedy MMR over the validity-ranked list: the best look is always
+  // first; each next pick maximizes quality minus resemblance to already
+  // picked looks and recently shown looks. Looks more than one quality
+  // band below the best only fill the deck when nothing closer exists,
+  // so a weak-but-novel look can never outrank a strong one.
+  const MMR_BAND = 0.12;
+  const MMR_LAMBDA = 0.5;
+  const picked: typeof ranked = [];
+  const remaining = [...ranked];
+  const bestQuality = remaining.length ? remaining[0].quality : 0;
+  while (picked.length < limit && remaining.length > 0) {
+    let eligible = remaining.filter((c) => c.quality >= bestQuality - MMR_BAND);
+    if (eligible.length === 0) eligible = remaining;
+    let bestIdx = 0;
+    let bestVal = -Infinity;
+    for (const candidate of eligible) {
+      let maxSim = candidate.recency;
+      for (const kept of picked) {
+        maxSim = Math.max(maxSim, visualSimilarity(candidate.fingerprint, kept.fingerprint));
+      }
+      const value = candidate.quality - MMR_LAMBDA * maxSim;
+      if (value > bestVal) {
+        bestVal = value;
+        bestIdx = remaining.indexOf(candidate);
+      }
+    }
+    picked.push(...remaining.splice(bestIdx, 1));
+  }
+  return picked;
 }
 
 /** Backwards-compatible wardrobe-only entry point. */

@@ -33,7 +33,7 @@ import { buildCatalogSimilarityKey, spreadSimilarCatalogItems } from '../utils/s
 import { assembleDiverseDeck, productIdentityKeys } from '../../features/outfit-generator/utils/outfitDiversity';
 import { parseBudgetFromText, budgetCandidatesFromText, budgetInCurrency, outfitShopSpend, itemShopPrice, isShopPricedItem, type ParsedBudget } from '../utils/outfitBudget';
 import { getRecentShownIds, getRecentShownProductKeys, getRecentShownLookSignatures, recordShownOutfits } from './recentOutfitIds';
-import { recentStylingPenalty } from '../domain/outfitVisualSignature';
+import { recentLookSimilarity, recentStylingPenalty } from '../domain/outfitVisualSignature';
 import useWardrobeStore from '../../store/wardrobeStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1291,6 +1291,7 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
             candidates: collectedCandidates,
             itemsOf: (items) => items,
             qualityOf: (parts) => Math.max(0, assessOutfitQuality(parts, style, `${occ} ${params.prompt || ''}`, params.weather, params.anchorItemId,params.preferences).score - recentStylingPenalty(parts, params.recentLookSignatures ?? [])),
+            recencyOf: (parts) => recentLookSimilarity(parts, params.recentLookSignatures ?? []),
             keysOf: (item: any) => productIdentityKeys(item),
             usedKeys: new Set<string>(),
             target: limit,

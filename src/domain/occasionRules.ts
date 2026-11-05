@@ -20,7 +20,7 @@ import {garmentContextReason} from './garmentContext.ts';
 import {normalizeGarmentText} from './garmentText.ts';
 export {normalizeGarmentText} from './garmentText.ts';
 import {stylingContext,type StylingPreferences} from './stylingContext.ts';
-import {outfitCoherence} from './outfitCoherence.ts';
+import {outfitCoherence, wholeOutfitRegisterClash} from './outfitCoherence.ts';
 
 export function isWorkoutOccasion(value?: string | null): boolean {
     return /\b(gym|workout|fitness|training|sport|sports)\b|трениров|спортзал|фитнес/i.test(value || '');
@@ -649,6 +649,20 @@ export function rejectOutfitIncoherence(
         )
     ) {
         return 'accessory prop never fills a garment slot';
+    }
+
+    // Whole-outfit register clashes (tailored layering over gym-wear, gym
+    // outerwear over a formal base, formal shoes with athletic bottoms) fail
+    // the coherence judge — veto them at generation time too so candidate
+    // assembly never ships a look the judge rejects. Placed after the
+    // structural vetoes above so those keep their established reason strings.
+    // Single source: wholeOutfitRegisterClash.
+    const registerClash = wholeOutfitRegisterClash(
+        items,
+        stylingContext({ style, occasion: occasionId }),
+    );
+    if (registerClash) {
+        return registerClash;
     }
 
     if (!formal && !classic) return null;

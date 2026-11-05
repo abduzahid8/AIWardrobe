@@ -111,9 +111,24 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
       /\b(grip|chunky|traction|tread)\b/.test(text));
   const structured =
     subtype === 'blazer' || subtype === 'tailored-trouser' || subtype === 'dress-shirt';
+  // A single marketing word ("dress", "formal") is not proof on its own
+  // when the rest of the name contradicts it. Dress-loafer status requires
+  // either a construction cue (structured last, Blake stitching, welt,
+  // leather outsole, calfskin, polished apron, saddle, or a named loafer
+  // construction such as penny/tassel/horsebit — cf. occasionRules: these
+  // go with suits) or leather — itself genuine dress-shoe construction
+  // evidence — plus a dress/formal claim with no casual counter-evidence
+  // (suede, canvas, boat, moccasin…).
   const dressLoafer =
     subtype === 'loafer' &&
-    /\b(dress|formal|structured|blake|leather outsoles?|leather soles?)\b/.test(text);
+    (/\b(structured|blake|welt|calfskin|polished|apron|saddle|penny|tassel|horsebit|leather\s+out?soles?)\b/.test(
+      text
+    ) ||
+      (/\bleather\b/.test(text) &&
+        /\b(dress|formal)\b/.test(text) &&
+        !/\b(suede|canvas|fabric|knit|sneaker|sport|sports|casual|boat|moccasin|driver)\b/.test(
+          text
+        )));
   const formality = athletic
     ? 'athletic'
     : [

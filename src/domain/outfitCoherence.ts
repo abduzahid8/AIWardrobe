@@ -1,6 +1,8 @@
 import { garmentContextReason, scoreGarmentForContext } from './garmentContext.ts';
 import { describeGarment, type GarmentEvidence } from './garmentDescriptor.ts';
 import { layerCompatibility } from './layerCompatibility.ts';
+import { scoreColorHarmony } from './colorHarmony.ts';
+import { colorFamilyOf, colorTokensOf } from './outfitDiversity.ts';
 import type { StylingContext } from './stylingContext.ts';
 export interface OutfitCoherence {
   valid: boolean;
@@ -17,6 +19,47 @@ export interface OutfitCoherence {
     style: number;
   };
 }
+/** Hard whole-outfit register clashes: tailored layering over gym-wear, gym
+ * outerwear over formal bases, formal shoes with athletic bottoms. These fail
+ * the look in every context. Single source shared by the coherence judge
+ * below and the generation gate (rejectOutfitIncoherence) so the generator
+ * never assembles a look the judge rejects. */
+const LAYER_REGISTER_CLASH = new Set([
+  'tailored_layer_over_athletic_base',
+  'hood_under_tailored_blazer',
+  'bulky_base_under_tailored_blazer',
+  'athletic_outerwear_over_formal_base',
+]);
+
+export function wholeOutfitRegisterClash(
+  items: GarmentEvidence[],
+  context: StylingContext
+): string | null {
+  if (!items || items.length === 0) return null;
+  const descriptors = items.map(describeGarment);
+  const evidenceFor = (slot: string) => {
+    const index = descriptors.findIndex((d) => d.slot === slot);
+    return index >= 0 ? items[index] : undefined;
+  };
+  const top = evidenceFor('top'),
+    layer = evidenceFor('outerwear'),
+    bottomIndex = descriptors.findIndex((d) => d.slot === 'bottom'),
+    shoeIndex = descriptors.findIndex((d) => d.slot === 'shoes');
+  if (top && layer) {
+    const pair = layerCompatibility(top, layer, context);
+    const hit = pair.reasons.find((reason) => LAYER_REGISTER_CLASH.has(reason));
+    if (hit) return hit;
+  }
+  if (bottomIndex >= 0 && shoeIndex >= 0) {
+    if (
+      descriptors[bottomIndex].athletic &&
+      descriptors[shoeIndex].formality === 'formal'
+    )
+      return 'formal_footwear_with_athletic_bottom';
+  }
+  return null;
+}
+
 /** Scores relationships; hard authority (source/budget/ownership) stays with existing gates. */
 export function outfitCoherence(
   items: GarmentEvidence[],
@@ -82,6 +125,22 @@ export function outfitCoherence(
       dimensions.proportion = 0.45;
       evidence.push('wide_hem_over_delicate_driver');
     }
+    // Formal shoes with athletic bottoms are unwearable in any context —
+    // a register clash, not a style preference. Resolved through the shared
+    // helper (layer clashes already arrive via pair.reasons above).
+    const clash = wholeOutfitRegisterClash(items, context);
+    if (clash === 'formal_footwear_with_athletic_bottom') reasons.push(clash);
+    // A technical runner under a tailored layer clashes even in smart
+    // casual. Minimal sneakers are exempt: they are the refined-casual
+    // exception, not gym wear.
+    if (
+      shoe.subtype === 'sport-sneaker' &&
+      bySlot('outerwear') &&
+      ['blazer', 'coat'].includes(bySlot('outerwear')!.subtype)
+    ) {
+      dimensions.footwear = Math.min(dimensions.footwear, 0.4);
+      evidence.push('sport_sneaker_with_tailored_layer');
+    }
   }
   const volumes = descriptors.filter((d) => d.volume === 'wide').length;
   if (volumes >= 3) {
@@ -94,24 +153,21 @@ export function outfitCoherence(
     dimensions.texture = 0.4;
     evidence.push('heavy_and_airy_texture_contrast');
   }
-  const colors = new Set(descriptors.map((d) => d.color).filter((c) => c !== 'unknown'));
-  if (colors.size > 0) dimensions.palette = 0.9;
-  const accents = [...colors].filter(
-    (c) =>
-      ![
-        'white',
-        'black',
-        'grey',
-        'gray',
-        'navy',
-        'brown',
-        'beige',
-        'earth',
-        'neutral',
-        'cream',
-      ].includes(c)
+  // Whole-outfit color relationships (tonal, contrast, accent balance).
+  // Deliberately SOFT: the harmony score moves ranking through this
+  // dimension, but palette reasons never fail the look — hard rejections
+  // stay with the occasion/dress-code judges.
+  const harmony = scoreColorHarmony(
+    items.map((item, index) => ({
+      colors: colorTokensOf(item),
+      colorFamily: colorFamilyOf(item),
+      pattern: descriptors[index] ? descriptors[index].pattern : 'unknown',
+    }))
   );
-  if (colors.size >= 4 && accents.length >= 3) dimensions.palette = 0.55;
+  dimensions.palette = harmony.score;
+  for (const reason of harmony.reasons) evidence.push(`palette_${reason}`);
+  evidence.push(...harmony.evidence);
+  const colors = new Set(descriptors.map((d) => d.color).filter((c) => c !== 'unknown'));
   if (context.style === 'minimalist') {
     const noisy = descriptors.filter((d) => /graphic|logo|floral|camo/.test(d.pattern)).length;
     const patternUnknown = descriptors.some((d) => d.pattern === 'unknown');

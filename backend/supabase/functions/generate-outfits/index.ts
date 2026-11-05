@@ -1,5 +1,5 @@
 import {garmentContextReason,scoreGarmentForContext} from '../../../../src/domain/garmentContext.ts'
-import {recentStylingPenalty} from '../../../../src/domain/outfitVisualSignature.ts'
+import {recentLookSimilarity, recentStylingPenalty} from '../../../../src/domain/outfitVisualSignature.ts'
 import { validatedQuartets } from '../../../../src/domain/validatedQuartets.ts'
 import { stylingContext } from '../../../../src/domain/stylingContext.ts'
 import type { CatalogCandidateRpcRequest } from '../../../../src/domain/catalogCandidates.ts'
@@ -2807,6 +2807,7 @@ serve(async (req: Request) => {
             choices = assembleDiverseDeck({
                 candidates: choices, itemsOf: choice => choice.items,
                 qualityOf: choice => Math.max(0,assessOutfitQuality(choice.items,styleKey,`${occasion} ${prompt}`,weather,anchorItemId,preferences).score-recentStylingPenalty(choice.items,body.recentLookSignatures)),
+                recencyOf: choice => recentLookSimilarity(choice.items, body.recentLookSignatures ?? []),
                 keysOf: item => productIdentityKeys(item), poolItems: wardrobeItems, usedKeys: new Set<string>(),
                 anchorKeys: anchor ? new Set(productIdentityKeys(anchor)) : undefined,
                 anchorSlot: anchor ? diversitySlotOf(anchor) : null,
@@ -3083,6 +3084,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 candidates: finalOutfits,
                 itemsOf: (o: any) => o.items || [],
                 qualityOf: (o: any) => Math.max(0,assessOutfitQuality(o.items,styleKey,`${occasion} ${prompt}`,weather,anchorItemId,preferences).score-recentStylingPenalty(o.items,body.recentLookSignatures)),
+                recencyOf: (o: any) => recentLookSimilarity(o.items, body.recentLookSignatures ?? []),
                 keysOf: (item: any) => productIdentityKeys(item),
                 anchorKeys: anchorIdentityKeys.size > 0 ? anchorIdentityKeys : undefined,
                 anchorSlot: anchorForDiversity ? diversitySlotOf(anchorForDiversity) : null,

@@ -506,6 +506,20 @@ export function variantTokensOf(item: any): string[] {
 
 // ── Colour ──────────────────────────────────────────────────────────────
 
+/**
+ * Photography-studio phrases carry no garment-color evidence ("white
+ * background", "on model", "flat lay"). Stripped before color tokenizing
+ * so studio notes are never proof of a garment color. Name and color
+ * fields pass through untouched — only the description-adjacent studio
+ * vocabulary is removed, and none of the stripped words is itself a
+ * color token.
+ */
+const STUDIO_PHRASE_RE = /\b(white|plain|light|light[\s-]grey|light[\s-]gray|grey|gray)\s+background\b|\bstudio(\s+shot)?\b|\bon[\s-]?model\b|\bghost\s+mannequin\b|\bflat[\s-]?lay\b/gi;
+export function garmentColorBlob(item: any): string {
+    const blob = `${text(item?.color)} ${text(item?.name)} ${text(item?.description)}`.toLowerCase();
+    return blob.replace(STUDIO_PHRASE_RE, ' ').replace(/\s+/g, ' ').trim();
+}
+
 const COLOR_TOKENS: Array<[RegExp, string, string]> = [
     // [pattern, canonical token, coarse family]
     [/\b(navy|midnight|ink)\b/, 'navy', 'cool-dark'],
@@ -531,7 +545,7 @@ const COLOR_TOKENS: Array<[RegExp, string, string]> = [
 
 /** Canonical colour tokens of an item (colour field + name). */
 export function colorTokensOf(item: any): string[] {
-    const blob = `${text(item?.color)} ${text(item?.name)} ${text(item?.description)}`.toLowerCase();
+    const blob = garmentColorBlob(item);
     const tokens: string[] = [];
     for (const [pattern, token] of COLOR_TOKENS) {
         if (tokens.includes(token)) continue;
@@ -542,7 +556,7 @@ export function colorTokensOf(item: any): string[] {
 
 /** Coarse colour family of an item (dark / light / mid / earth / warm / cool). */
 export function colorFamilyOf(item: any): string {
-    const blob = `${text(item?.color)} ${text(item?.name)} ${text(item?.description)}`.toLowerCase();
+    const blob = garmentColorBlob(item);
     for (const [pattern, , family] of COLOR_TOKENS) {
         if (pattern.test(blob)) return family;
     }
@@ -1509,6 +1523,8 @@ export interface DiverseDeckCandidate<O> {
     outfit: O;
     fingerprint: OutfitFingerprint;
     quality: number;
+    /** Resemblance to recently shown looks, 0 (fresh) .. 1 (same idea). */
+    recency: number;
     source: 'edge' | 'fill';
     index: number;
 }
@@ -1541,6 +1557,22 @@ export interface AssembleDiverseDeckOptions<O> {
     itemsOf: (outfit: O) => any[];
     /** Quality of a look in 0..1 (match score / confidence). */
     qualityOf?: (outfit: O) => number;
+    /**
+     * Resemblance of a look to recently shown looks, 0 (fresh) .. 1 (same
+     * styling idea). Feeds the MMR variety term alongside in-deck
+     * similarity; never vetoes. Defaults to 0 (no history).
+     */
+    recencyOf?: (outfit: O) => number;
+    /**
+     * MMR quality band: the deck score buckets the quality sum at this
+     * granularity, so combinations within one band compete on diversity
+     * while larger gaps decide on quality. Default MMR_QUALITY_BAND.
+     */
+    qualityBand?: number;
+    /** Weight of in-deck visual repetition. Default MMR_SIMILARITY_WEIGHT. */
+    similarityWeight?: number;
+    /** Weight of recent-show resemblance. Default MMR_RECENCY_WEIGHT. */
+    recencyWeight?: number;
     /** Integer priority among already validated decks, e.g. unused physical products. */
     priorityOfDeck?: (outfits: O[]) => number | readonly number[];
     /** Product identity keys of an item (id / normalized name / image). */
@@ -1656,6 +1688,25 @@ interface PairProductReuse {
 const QUALITY_BUCKET = 0.05;
 /** Weight applied to the bucketed quality sum so it dominates the tie-breaker. */
 const QUALITY_WEIGHT = 1000;
+/**
+ * MMR quality band. Candidate looks whose quality falls within one band of
+ * the best candidate are stylistically equivalent for selection purposes —
+ * the diversity term (not score noise) decides among them. Differences
+ * larger than the band still dominate: correctness first, novelty second.
+ */
+export const MMR_QUALITY_BAND = 0.12;
+/**
+ * Weight of in-deck visual repetition in the variety term. A deck of three
+ * pairwise-identical looks loses ~1.0 — more than one quality band, far
+ * less than a genuine quality gap.
+ */
+export const MMR_SIMILARITY_WEIGHT = 1.0;
+/**
+ * Weight of resemblance to recently shown looks. A look identical to a
+ * recent deck loses ~0.5: enough to demote near-repeats inside the quality
+ * band, never enough to promote a weak look over a strong one.
+ */
+export const MMR_RECENCY_WEIGHT = 0.5;
 
 /**
  * assembleDiverseDeck — the deck-level product-uniqueness gate.
@@ -1690,13 +1741,16 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
     const debug = opts.debug;
 
     const pool: DiverseDeckCandidate<O>[] = [];
+    const clamp01 = (value: unknown, fallback: number): number =>
+        typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
     const pushCandidate = (outfit: O, source: 'edge' | 'fill'): DiverseDeckCandidate<O> => {
         const items = opts.itemsOf(outfit) || [];
         const quality = opts.qualityOf ? opts.qualityOf(outfit) : 0.9;
         const candidate: DiverseDeckCandidate<O> = {
             outfit,
             fingerprint: buildOutfitFingerprint(items),
-            quality: Number.isFinite(quality) ? Math.max(0, Math.min(1, quality)) : 0.9,
+            quality: clamp01(quality, 0.9),
+            recency: opts.recencyOf ? clamp01(opts.recencyOf(outfit), 0) : 0,
             source,
             index: pool.length,
         };
@@ -1909,17 +1963,26 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
     };
 
     /**
-     * Soft deck score. Product uniqueness is enforced by hard filtering, so
-     * this score only decides WHICH valid combination to show.
+     * Soft deck score: quality-aware maximal-marginal-relevance over the
+     * valid combination. Product uniqueness is enforced by hard filtering,
+     * so this score only decides WHICH valid combination to show.
      *
-     * Quality DOMINATES: the quality sum is bucketed and scaled so any real
-     * quality difference outweighs the entire variety term. Variety only
-     * breaks ties between combinations of equivalent quality.
+     * Quality DOMINATES across bands: the quality sum is bucketed so any
+     * real quality gap (more than one MMR band) outweighs the entire
+     * variety term. Inside one band the looks are stylistically
+     * equivalent, and the variety term decides: distinct archetypes win,
+     * in-deck visual repetition loses, and resemblance to recently shown
+     * looks loses. Recency is a first-class term here rather than a
+     * sub-bucket subtraction, so it actually moves selection instead of
+     * being absorbed by the bucket.
      */
+    const qualityBand = opts.qualityBand ?? MMR_QUALITY_BAND;
+    const similarityWeight = opts.similarityWeight ?? MMR_SIMILARITY_WEIGHT;
+    const recencyWeight = opts.recencyWeight ?? MMR_RECENCY_WEIGHT;
     const deckScore = (indices: number[]): number => {
         const members = indices.map((index) => pool[index]);
         const qualitySum = members.reduce((sum, member) => sum + member.quality, 0);
-        const qualityBucket = Math.round(qualitySum / QUALITY_BUCKET) * QUALITY_BUCKET;
+        const qualityBucket = Math.round(qualitySum / qualityBand) * qualityBand;
         const archetypes = new Set(members.map((member) => member.fingerprint.archetype));
         const bonus = DIVERSITY_BONUS_PER_ARCHETYPE * 0.35 * (archetypes.size - 1);
         let similarityPenalty = 0;
@@ -1931,7 +1994,10 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
             }
         }
         const meanSimilarity = pairs > 0 ? similarityPenalty / pairs : 0;
-        const variety = bonus - DIVERSITY_SIMILARITY_PENALTY * 0.5 * meanSimilarity;
+        const meanRecency = members.length > 0
+            ? members.reduce((sum, member) => sum + member.recency, 0) / members.length
+            : 0;
+        const variety = bonus - similarityWeight * 0.5 * meanSimilarity - recencyWeight * meanRecency;
         const priority = opts.priorityOfDeck?.(members.map(member => member.outfit)) ?? 0;
         return (typeof priority === 'number' && Number.isFinite(priority) ? Math.max(0, Math.floor(priority)) : 0) * (target * QUALITY_WEIGHT + 10)
             + qualityBucket * QUALITY_WEIGHT + variety;

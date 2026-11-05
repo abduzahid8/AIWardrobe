@@ -1,4 +1,5 @@
 import { describeGarment, type GarmentEvidence } from './garmentDescriptor.ts';
+import { normalizeGarmentText } from './garmentText.ts';
 import type { StylingContext } from './stylingContext.ts';
 export interface LayerCompatibility {
   valid: boolean;
@@ -26,6 +27,36 @@ export function layerCompatibility(
     reasons.push('formal_requires_dress_base');
   if (context.dressCode === 'athletic' && b.structured)
     reasons.push('structured_layer_restricts_workout');
+  // A tailored layer cannot physically go over gym-wear or a hood: the
+  // shoulders collapse and the hood lumps at the neckline.
+  const topText = normalizeGarmentText(
+    [top.name, top.type, top.description].filter(Boolean).join(' ')
+  );
+  if (b.structured && a.athletic) reasons.push('tailored_layer_over_athletic_base');
+  if (b.subtype === 'blazer' && /\bhood/.test(topText))
+    reasons.push('hood_under_tailored_blazer');
+  // A bulky knit under a tailored blazer reads stuffed unless the base is
+  // provably slim. Unknown thickness is NOT proof of incompatibility: it
+  // only soft-penalizes, and provably wide non-slim bases hard-fail.
+  if (
+    b.subtype === 'blazer' &&
+    a.volume !== 'slim' &&
+    (a.bulk === 'heavy' || (a.subtype === 'sweater' && a.volume === 'wide'))
+  )
+    reasons.push('bulky_base_under_tailored_blazer');
+  if (
+    b.subtype === 'blazer' &&
+    a.subtype === 'sweater' &&
+    a.bulk === 'unknown' &&
+    a.volume === 'unknown'
+  ) {
+    score -= 0.1;
+    evidence.push('unverified_knit_bulk_under_blazer');
+  }
+  // A formal base with sporty outerwear is a register clash even outside
+  // strict formal dress codes.
+  if (a.formality === 'formal' && b.athletic)
+    reasons.push('athletic_outerwear_over_formal_base');
   if (a.bulk === 'light' && b.closure === 'openable') {
     score += 0.15;
     evidence.push('light_base_under_openable_layer');
@@ -36,6 +67,16 @@ export function layerCompatibility(
   ) {
     score += 0.1;
     evidence.push('base_and_outer_layer_roles');
+  }
+  // Fine knitwear is an explicitly legitimate blazer base — differentiated
+  // from bulky knits by the bulk evidence above, never by stereotype.
+  if (a.subtype === 'fine-knit' && b.subtype === 'blazer') {
+    score += 0.1;
+    evidence.push('fine_knit_under_blazer');
+  }
+  if (a.bulk === 'heavy' && b.bulk === 'light' && !b.structured) {
+    score -= 0.1;
+    evidence.push('heavy_base_under_light_unstructured_layer');
   }
   if (a.length === 'long' && b.length === 'cropped') {
     score -= 0.15;

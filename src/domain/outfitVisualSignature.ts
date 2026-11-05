@@ -13,7 +13,13 @@ export function outfitVisualSignature(items: GarmentEvidence[]): string {
       .join('|')
   );
 }
-export function recentStylingPenalty(
+/**
+ * Maximum token-overlap similarity (0..1) between a look and the bounded
+ * recent-show history. Pure description: 1.0 means "same styling idea",
+ * 0.0 means nothing comparable was shown. Unknown-heavy looks score 0 —
+ * absence of evidence is not similarity.
+ */
+export function recentLookSimilarity(
   items: GarmentEvidence[],
   recent: readonly string[] = []
 ): number {
@@ -36,7 +42,14 @@ export function recentStylingPenalty(
         }
     }
     const similarity = known >= 8 ? equal / known : 0;
-    maximum = Math.max(maximum, similarity >= 0.8 ? (similarity - 0.8) * 0.15 : 0);
+    maximum = Math.max(maximum, similarity);
   }
   return maximum;
+}
+export function recentStylingPenalty(
+  items: GarmentEvidence[],
+  recent: readonly string[] = []
+): number {
+  const similarity = recentLookSimilarity(items, recent);
+  return similarity >= 0.8 ? (similarity - 0.8) * 0.15 : 0;
 }
