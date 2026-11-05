@@ -176,8 +176,16 @@ function decksFor(scope: string) {
 }
 export async function getRotationHistory(scope:string) {
     const state=decksFor(scope);await state.ready;
-    const shoes=decksFor(`shoes:${scope.split('|')[0]}`);await shoes.ready;
-    return {recentLookSignatures:state.decks.flatMap(d=>d.lookSignatures||[]).filter(s=>typeof s==='string'&&s.startsWith('sq1:')&&s.length<=1000).slice(-36),previousDeckProductKeys:[...(state.decks.at(-1)?.productKeys||[])],olderRecentProductKeys:[...new Set(state.decks.slice(0,-1).flatMap(d=>d.productKeys))],rotationDecks:state.decks.map(d=>({...d,productKeys:[...d.productKeys]})),
+    const owner=scope.split('|')[0];
+    const products=decksFor(`products:${owner}`);await products.ready;
+    const shoes=decksFor(`shoes:${owner}`);await shoes.ready;
+    // Older clients persisted an account window but only kept deck boundaries
+    // per occasion. Carry that evidence forward without copying another user.
+    const legacy=await getRecentShownProductKeys(owner);
+    const decks=products.decks.length ? products.decks : state.decks;
+    const previous=[...(decks.at(-1)?.productKeys||[])],previousSet=new Set(previous);
+    const semanticDecks=[...new Map([...state.decks,...decks].map(deck=>[deck.requestId,deck])).values()].slice(-12);
+    return {recentLookSignatures:semanticDecks.flatMap(d=>d.lookSignatures||[]).filter(s=>typeof s==='string'&&s.startsWith('sq1:')&&s.length<=1000).slice(-36),previousDeckProductKeys:previous,olderRecentProductKeys:[...new Set([...legacy,...decks.slice(0,-1).flatMap(d=>d.productKeys)])].filter(key=>!previousSet.has(key)).slice(-(450-previous.length)),rotationDecks:decks.map(d=>({...d,productKeys:[...d.productKeys]})),
         ...(shoes.decks.length ? {previousShoeProductKeys:[...shoes.decks.at(-1)!.productKeys],
             recentShoeProductKeys:[...new Set(shoes.decks.flatMap(d=>d.productKeys))],
             shoeRotationDecks:shoes.decks.map(d=>({...d,productKeys:[...d.productKeys]}))} : {})};
@@ -192,8 +200,15 @@ export async function recordDisplayedDeck(outfits:unknown,scope:string,requestId
     state.decks=[...state.decks,{requestId,productKeys,lookSignatures}].slice(-12);
     const snapshot=JSON.stringify(state.decks);
     state.writes=state.writes.then(()=>AsyncStorage.setItem(`stylistRotationDecks::${scope}`,snapshot)).catch(()=>undefined);
-    // Shoes rotate across styles and occasions, while clothing keeps the
-    // semantic scope above. Keep accounts isolated and persist only footwear.
+    // All physical products rotate across occasions and styles. Context still
+    // identifies the request; it must not reset the displayed-product window.
+    const productScope=`products:${scope.split('|')[0]}`,products=decksFor(productScope);await products.ready;
+    if(!products.decks.some(d=>d.requestId===requestId)) {
+        products.decks=[...products.decks,{requestId,productKeys,lookSignatures}].slice(-12);
+        const productSnapshot=JSON.stringify(products.decks);
+        products.writes=products.writes.then(()=>AsyncStorage.setItem(`stylistRotationDecks::${productScope}`,productSnapshot)).catch(()=>undefined);
+    }
+    // Keep the explicit footwear schedule for compatible older Edge versions.
     const shoeScope=`shoes:${scope.split('|')[0]}`,shoes=decksFor(shoeScope);await shoes.ready;
     const shoeKeys=[...new Set<string>(outfits.flatMap(o=>Array.isArray(o?.items)?o.items.filter((item:any)=>diversitySlotOf(item)==='shoes').flatMap(productIdentityKeys):[]))];
     if(shoeKeys.length && !shoes.decks.some(d=>d.requestId===requestId)) {
@@ -203,5 +218,5 @@ export async function recordDisplayedDeck(outfits:unknown,scope:string,requestId
     }
     // Normal restarts must see the displayed deck on disk. Bound storage
     // faults so an already visible success can still unlock Generate.
-    await withRequestDeadline(() => Promise.all([state.writes, shoes.writes]), 1500).catch(() => undefined);
+    await withRequestDeadline(() => Promise.all([state.writes, products.writes, shoes.writes]), 1500).catch(() => undefined);
 }
