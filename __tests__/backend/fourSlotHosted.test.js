@@ -194,9 +194,9 @@ test('three different style selections consume different physical shoes using sh
  }
 });
 
-test('three date outfits retain the owned jersey trousers through the final quality gate',async()=>{
+test('three date outfits retain owned jersey trousers with compatible smart loafers',async()=>{
  const anchor={id:'owned-jersey',name:'3D jersey knit trousers',type:'pants',macroCategory:'bottom',isWardrobe:true,imageUrl:'https://example.invalid/jersey.jpg'};
- const rows=[anchor,...richItems.filter(i=>i.macroCategory!=='bottom')];
+ const rows=[anchor,...richItems.filter(i=>i.macroCategory!=='bottom').map(i=>i.macroCategory==='shoes'?{...i,name:'Suede smart loafers '+i.id}:i)];
  const {handler}=load([],null,null,null,null,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id});
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
  const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);

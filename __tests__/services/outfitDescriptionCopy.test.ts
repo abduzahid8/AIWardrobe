@@ -62,7 +62,9 @@ describe('outfit description copy', () => {
             limit: 1,
         });
         expect(outfits.length).toBeGreaterThan(0);
-        expect(outfits[0].description).toBe('A complete look with a top, layer, trousers and shoes.');
+        expect(outfits[0].description).toContain('shop shirt');
+        expect(outfits[0].description).toContain('shop blazer');
+        expect(outfits[0].stylingTips).not.toContain(outfits[0].description);
     });
 
     it('business_casual maps to its display label', () => {
@@ -73,7 +75,9 @@ describe('outfit description copy', () => {
             limit: 1,
         });
         expect(outfits.length).toBeGreaterThan(0);
-        expect(outfits[0].description).toBe('A complete look with a top, layer, trousers and shoes.');
+        expect(outfits[0].description).toContain('shop shirt');
+        expect(outfits[0].description).toContain('shop blazer');
+        expect(outfits[0].stylingTips).not.toContain(outfits[0].description);
     });
 
     it('wardrobe deck uses the same label rules', () => {
@@ -85,6 +89,8 @@ describe('outfit description copy', () => {
             limit: 1,
         });
         expect(outfits.length).toBeGreaterThan(0);
-        expect(outfits[0].description).toBe('A complete look with a top, layer, trousers and shoes.');
+        expect(outfits[0].description).toContain('shop shirt');
+        expect(outfits[0].description).toContain('shop blazer');
+        expect(outfits[0].stylingTips).not.toContain(outfits[0].description);
     });
 });

@@ -176,3 +176,20 @@ test('a known missing RPC is cached for its project, without retrying on the nex
  for(let i=0;i<2;i++)expect(await api.fetchShopItemsForAllSlotsEdge({supabaseUrl:'https://capability-fixture.invalid',rpc,from:()=>q},['bottom'],'casual',1)).toHaveLength(1);
  expect(rpc).toHaveBeenCalledTimes(1);
 });
+
+test('the 40-item pool reserves ranked practical companions ahead of catalog arrival order',()=>{
+ const early=Array.from({length:45},(_,i)=>priced('early-'+i,'outerwear',100,'Wool formal blazer '+i));
+ const practical=['top','outerwear','bottom','shoes'].flatMap(slot=>Array.from({length:6},(_,i)=>priced('practical-'+slot+'-'+i,slot,100,slot+' practical '+i)));
+ const result=api.retainBudgetFloorCandidates([...early,...practical],[...practical,...early],()=>0,()=>true,undefined,6);
+ expect(result.length).toBeLessThanOrEqual(40);
+ for(const slot of ['top','outerwear','bottom','shoes'])expect(result.filter(item=>item.macroCategory===slot).length).toBeGreaterThanOrEqual(6);
+ for(const item of practical.slice(-6))expect(result.map(row=>row.id)).toContain(item.id);
+});
+test('catalog retrieval favors walking evidence over dress footwear for Classic Travel within the same cap',async()=>{
+ const data=[{id:'dress',name:'Black leather Oxford shoes',category:'shoes',garment_type:'shoes',image_url:'https://example.invalid/dress.jpg'},
+ {id:'walking',name:'Flexible cushioned leather loafers',category:'shoes',garment_type:'shoes',image_url:'https://example.invalid/walking.jpg'}];
+ const q={};for(const method of ['select','eq','limit','or','order','gt','abortSignal'])q[method]=()=>q;
+ q.then=resolve=>Promise.resolve({data,error:null}).then(resolve);
+ const rows=await api.fetchShopItemsForAllSlotsEdge({from:()=>q},['shoes'],'classic',1,undefined,()=>true,undefined,undefined,'Travel');
+ expect(rows.map(row=>row.id)).toEqual(['shop_walking']);
+});

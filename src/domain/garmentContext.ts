@@ -122,8 +122,19 @@ export function scoreGarmentForContext(item: GarmentEvidence, context: StylingCo
     ].includes(d.subtype)
       ? 0.9
       : 0.6;
-    if (/travel/.test(context.occasion) && ['oxford', 'monk', 'blazer'].includes(d.subtype))
-      score -= 0.2;
+
+  }
+  // Travel is an activity, independent of the requested aesthetic. Do not
+  // claim all leather shoes are comfortable: rank only supported features.
+  const travel = /\b(travel|trip|sightseeing)\b/.test(`${context.occasion} ${context.request}`);
+  const businessTravel = /\b(business|meeting|conference)\b/.test(context.request);
+  if (travel && !businessTravel) {
+    if (['oxford', 'monk', 'blazer'].includes(d.subtype)) score -= 0.3;
+    if (d.evening) score = 0.05;
+    if (d.bulk === 'heavy' && (!context.weather || (context.weather.temp ?? 15) > 12)) score -= 0.2;
+    if (['cardigan', 'overshirt', 'chino', 'minimal-sneaker'].includes(d.subtype)) score += 0.2;
+    const text = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
+    if (d.slot === 'shoes' && /\b(cushioned|flexible|walking|padded insole|comfort)\b/.test(text)) score += 0.2;
   }
   const profile = STYLING_PROFILES[context.style];
   if (profile) {

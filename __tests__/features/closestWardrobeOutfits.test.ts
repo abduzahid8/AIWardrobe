@@ -5,16 +5,14 @@ import { outfitVisualSignature } from '../../src/domain/outfitVisualSignature';
 const item = (id: string, macroCategory: string, name: string) => ({ id, macroCategory, name, imageUrl: `https://test/${id}.png`, isWardrobe: true });
 const pool = [item('jacket', 'outerwear', 'Denim jacket'), item('shirt', 'top', 'White T-shirt'), item('pants', 'bottom', 'Blue jeans'), item('shoes', 'shoes', 'White sneakers')];
 
-test.each(pool)('thin wardrobe retains the selected $macroCategory despite formal preferences', anchor => {
+test.each(pool)('a selected $macroCategory never waives an incompatible Formal request', anchor => {
   const looks = closestWardrobeOutfits(pool, { anchorId: anchor.id, style: 'old_money', occasion: 'formal' });
-  expect(looks).toHaveLength(1);
-  expect(looks[0].items.map(item => item.id)).toContain(anchor.id);
-  expect(outfitStructureReason(looks[0].items, true)).toBeNull();
+  expect(looks).toEqual([]);
 });
 
-test('closer style matches rank ahead of alternatives', () => {
+test('a tailored bottom cannot make a denim jacket and tee suitable for Work', () => {
   const looks = closestWardrobeOutfits([...pool, item('trousers', 'bottom', 'Navy tailored trousers')], { style: 'old_money', occasion: 'work' });
-  expect(looks[0].items.some(item => item.id === 'trousers')).toBe(true);
+  expect(looks).toEqual([]);
 });
 
 test('missing inventory never fabricates a garment or uses shop clothing', () => {
@@ -31,7 +29,7 @@ const shopPool = pool.map(item => ({ ...item, isWardrobe: false, isShopItem: tru
 
 test.each(pool)('shop alternatives preserve an owned $macroCategory anchor without other wardrobe pieces', anchor => {
   const looks = closestAvailableOutfits([anchor, ...shopPool, item('unrelated-owned', 'shoes', 'Black oxford shoes')], {
-    source: 'shop', anchorId: anchor.id, style: 'minimalist', occasion: 'work',
+    source: 'shop', anchorId: anchor.id, style: 'minimalist', occasion: 'everyday',
   });
   expect(looks.length).toBeGreaterThan(0);
   for (const look of looks) {
@@ -44,7 +42,7 @@ test.each(pool)('shop alternatives preserve an owned $macroCategory anchor witho
 test('shop fallback rejects over-budget proposals before choosing alternatives', () => {
   const cheapShoes = { ...shopPool[3], id: 'cheap-shoes', price: 10 };
   const looks = closestAvailableOutfits([...shopPool, cheapShoes], {
-    source: 'shop', style: 'minimalist', occasion: 'work',
+    source: 'shop', style: 'minimalist', occasion: 'everyday',
     accepts: parts => parts.reduce((total, item) => total + (item.price || 0), 0) <= 310,
   });
   expect(looks).toHaveLength(1);

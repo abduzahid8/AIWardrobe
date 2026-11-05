@@ -1,4 +1,5 @@
-import {stylingExplanationKeys} from '../src/domain/stylingExplanation';
+import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
+import {stylingCopyParts} from '../src/services/stylingCopy';
 import {stylingContext} from '../src/domain/stylingContext';
 import { BetaFeedbackButton } from '../components/BetaFeedbackButton';
 import { stylistCalendarItems } from '../features/calendar/outfitSlots';
@@ -32,7 +33,7 @@ import { useShopCatalog } from '../hooks/useShopCatalog';
 import { fillMissingSlots, catalogRepository, type OutfitSlotId } from '../src/services/shoppingService';
 import { recordShownOutfits, rotationScope, generationRequestId, getRotationHistory, recordDisplayedDeck } from '../src/services/recentOutfitIds';
 import { mergeShopSlices, collapseSimilarByName, collapseDuplicateProductImages, isTrustedProductImage, isBrandCatalogImage, productImageKey, preferMappedMacro, hasUsableProductName, inferCatalogColor, normalizeCatalogNameKey, garmentVarietyFamily, inferShopRowMacro } from '../src/utils/shopCatalogOrder';
-import { passesStyleJudge, styleJudgeReason, rejectForStyleOccasion, rejectForClimate, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
+import { passesStyleJudge, rejectForStyleOccasion, rejectForClimate, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
 import LiquidGlass2026Theme, { SpatialElevation } from '../constants/LiquidGlass2026Theme';
 import * as Location from 'expo-location';
 import Config from '../src/config/env';
@@ -53,7 +54,7 @@ import {
     productIdentityKeys,
     type DiversitySlot,
 } from '../features/outfit-generator/utils/outfitDiversity';
-import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, repairEdgeItems, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
+import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
 import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, formatMoney, budgetCandidatesFromText, resolveShopQuote, withOutfitBudget } from '../src/utils/outfitBudget';
 import { getShopDestination } from '../src/utils/shopDestination';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
@@ -545,7 +546,7 @@ const AIOutfitGenerator = () => {
   // ── Post-trial soft gate: page stays open, Generate → Paywall ──
   // free.aiOutfits = 0 → consumeOrPaywall denies + navigates to Paywall.
   // Trial-active (effectiveTier premium) and paid users pass through.
-  const { consumeOrPaywall } = useSubscriptionGate();
+  const { requireFeature, consumeOrPaywall } = useSubscriptionGate();
   const [currentSource, setCurrentSource] = useState(route.params?.source || 'wardrobe');
   // Anchor item passed from MyClosetScreen — when set, every generated outfit
   // must include this item locked into its slot.
@@ -997,6 +998,7 @@ const AIOutfitGenerator = () => {
       return {
         id: it.id || it.imageUrl || it.name,
         name: it.name || it.type || 'Item',
+        description: it.description, material: it.material, pattern: it.pattern,
         image,
         imageUrl,
         type: it.type || it.category || 'top',
@@ -1314,7 +1316,7 @@ const AIOutfitGenerator = () => {
       setLoading(true);
       setError('');
       let ok = false;
-      try { ok = await consumeOrPaywall('aiOutfits'); } catch { ok = false; }
+      try { ok = requireFeature('aiOutfits'); } catch { ok = false; }
       if (!current() || !ok) return;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       if (styleOverride) setSelectedStyle(styleOverride);
@@ -1467,6 +1469,8 @@ const AIOutfitGenerator = () => {
         color: item.color || 'neutral',
         brand: item.brand || '',
         description: item.description || item.name || '',
+        material: item.material, pattern: item.pattern,
+        shopUrl: item.shopUrl || item.sourceUrl || item.source_url,
         imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
         isShopItem: true,
         price: typeof item.price === 'number' ? item.price : undefined,
@@ -1680,8 +1684,8 @@ const AIOutfitGenerator = () => {
 
         const slotDeckUsed = new Set<string>();
         const wrapLook = (outfit: any, items: any[], idx: number): GeneratedOutfit => {
-          const explanation=stylingExplanationKeys(items,stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather})).map(key=>t(key)).join(' ');
-          const description=explanation;
+          const copy = stylingCopyParts(items, stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather}));
+          const description = copy.description;
           const judgeOk = passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences);
           const baseScore: number = outfit.qualityAssessment?.score ?? outfit.confidence ?? outfit.matchScore ?? 0.9;
           return {
@@ -1691,36 +1695,21 @@ const AIOutfitGenerator = () => {
             items,
             mainImage: items[0]?.image || items[0]?.imageUrl || outfit.mainImage || '',
             matchScore: judgeOk ? baseScore : Math.min(baseScore, 0.69),
-            stylingTips: explanation,
+            stylingTips: copy.tips.join(' '),
             weather: resolvedWeather,
           };
         };
-        const cleanedOutfits = data.outfits.map((outfit: any, i: number) => {
-          const repaired = repairEdgeItems(outfit.items || []);
-          const filled = repaired;
-          return wrapLook(outfit, filled, i);
-        }).filter((outfit: GeneratedOutfit) =>
-          isFourSlotLook(outfit.items),
-        );
-
-        // Taste judge: drop cards carrying pieces rejected for this style ×
-        // occasion. Never restore rejected looks to pad the deck — fill
-        // missing cards from the pool instead.
-        const judged = cleanedOutfits.filter((outfit: GeneratedOutfit) =>
-          passesStyleJudge(outfit.items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences),
-        );
-        if (__DEV__ && judged.length !== cleanedOutfits.length) {
-          readinessLogger.debug(String(`[AIOutfitmaker] style judge: kept ${judged.length}/${cleanedOutfits.length} for ${styleToUse}/${occasionToUse}`), []);
-          cleanedOutfits.forEach((o: GeneratedOutfit, i: number) => {
-            if (!judged.includes(o)) {
-              readinessLogger.debug(String(`[AIOutfitmaker] style judge: drop edge #${i} reason="${styleJudgeReason(o.items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather) || '?'}" items (${(o.items as any[]).map((x: any) => String(x.name || '?').slice(0, 24)).join(' | ')})`), []);
-            }
-          });
-        }
-        // Keep EVERY validated look: the diversity gate below picks the best
-        // COMBINATION of 3, so trimming to 3 here would throw away exactly
-        // the alternatives the stylist needs.
-        const judgedOutfits = judged;
+        const prepared = prepareStylistResponse(data.outfits, alternativeItems, {
+          anchorId: baseItemId, style: styleToUse, occasion: `${occasionToUse} ${effectivePrompt || promptText || ''}`,
+          weather: resolvedWeather, source: effectiveSource, accepts: fitsCap,
+          preferences: useStylePreferenceStore.getState().preferences,
+          recentLookSignatures: history.recentLookSignatures,
+        });
+        const cleanedOutfits = prepared.cleaned;
+        const recovered = prepared.recovered.map((look, index) =>
+          wrapLook({id: `recovered_${tapNonce}_${index}`, matchScore: look.quality}, look.items, index));
+        const judgedOutfits = [...prepared.accepted.map((look, index) => wrapLook(look, look.items, index)), ...recovered];
+        if (__DEV__ && Object.keys(prepared.rejections).length) readinessLogger.debug('[AIOutfitmaker] response validation', [prepared.rejections]);
 
         let withinBudget = shopBudget
           ? judgedOutfits.filter((outfit: GeneratedOutfit) => fitsCap(outfit.items as any[]))
@@ -1880,7 +1869,7 @@ const AIOutfitGenerator = () => {
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`), []);
 
         if (finalOutfits.length === 0) {
-          throw new Error('No complete outfits returned from AI');
+          throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing');
         }
 
         if (!isCurrentGeneration()) return;
@@ -1893,14 +1882,17 @@ const AIOutfitGenerator = () => {
           const previousKeys = new Set(history.previousDeckProductKeys);
           const previousShoeKeys = new Set(history.previousShoeProductKeys ?? history.previousDeckProductKeys);
           const previousDeckOverlapBySlot = Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,
-            shownOutfits.flatMap(o=>o.items as any[]).filter(item=>item.macroCategory===slot && String(item.id)!==String(baseItemId||'')
+            shownOutfits.filter(o => !recovered.some(r => r.id === o.id)).flatMap(o=>o.items as any[]).filter(item=>item.macroCategory===slot && String(item.id)!==String(baseItemId||'')
               && productIdentityKeys(item).some(key=>(slot==='shoes'?previousShoeKeys:previousKeys).has(key))).length]));
+          // Edge overlap describes its original looks. A locally recomposed
+          // quartet has different products and is outside that audit.
           // Repair may adjust labels, but must never reintroduce a product
           // that the authoritative backend deck successfully avoided.
           for (const [slot,count] of Object.entries(previousDeckOverlapBySlot)) {
             if (count > Number(data.previousDeckOverlapBySlot?.[slot] ?? 0)) throw new Error('client_rotation_overlap');
           }
 
+          if (!await consumeOrPaywall('aiOutfits', {cancelSignal}) || !isCurrentGeneration()) return;
           setOutfits(
             shownOutfits
               .map((o) => {
@@ -1913,7 +1905,11 @@ const AIOutfitGenerator = () => {
                   : { ...o, description: baseDescription };
               }),
           );
-          await recordDisplayedDeck(shownOutfits, scope, requestId);
+          // History persistence must not turn already rendered success into
+          // an error (or charge a use for a screen cleared by a cache failure).
+          try { await recordDisplayedDeck(shownOutfits, scope, requestId); }
+          catch { console.warn('[AIOutfitmaker] Could not persist displayed outfit history'); }
+          if (!isCurrentGeneration()) return;
           recordShownOutfits(shownOutfits, recencyScope);
           rememberShownIds(shownOutfits);
           setLoading(false);
@@ -1936,13 +1932,15 @@ const AIOutfitGenerator = () => {
           anchorId: baseItemId, style: styleToUse, occasion: `${occasionToUse} ${promptText}`, weather: resolvedWeather,
           source: effectiveSource, accepts: fitsCap,
           recentLookSignatures: fallbackHistory?.recentLookSignatures,
+          preferences: useStylePreferenceStore.getState().preferences,
         });
         if (alternatives.length) {
+          if (!await consumeOrPaywall('aiOutfits', {cancelSignal}) || !isCurrentGeneration()) return;
           setOutfits(alternatives.map((look, index) => ({
             id: `closest_${tapNonce}_${index}`, items: look.items,
             mainImage: look.items[0]?.image || '', matchScore: Math.min(0.69, look.quality),
-            description: t(effectiveSource === 'shop' ? 'outfitMaker.closestShopAlternative' : 'outfitMaker.closestAlternative'),
-            stylingTips: t('outfitMaker.closestAlternativeTip'),
+            description: stylingCopyParts(look.items, stylingContext({style:styleToUse,occasion:occasionToUse,request:promptText,weather:resolvedWeather})).description,
+            stylingTips: stylingCopyParts(look.items, stylingContext({style:styleToUse,occasion:occasionToUse,request:promptText,weather:resolvedWeather})).tips.join(' '),
             weather: typeof resolvedWeather?.temp === 'number' ? { temp: resolvedWeather.temp, condition: resolvedWeather.condition || '' } : undefined,
           })));
           setError('');
@@ -1950,11 +1948,13 @@ const AIOutfitGenerator = () => {
           return;
         }
       }
-      console.warn('[AIOutfitmaker] No outfit available', { source: effectiveSource, messageKey: err instanceof OutfitGenerationFailure ? err.translationKey : 'outfitMaker.generateFailed' });
+      const failure = noMatch && !(err instanceof OutfitGenerationFailure)
+        ? new OutfitGenerationFailure('outfitMaker.noMatchingClothing') : err;
+      console.warn('[AIOutfitmaker] No outfit available', { source: effectiveSource, messageKey: failure instanceof OutfitGenerationFailure ? failure.translationKey : 'outfitMaker.generateFailed' });
       if (isMounted.current) {
         setOutfits([]);
         setLoading(false);
-        setError(t(err instanceof OutfitGenerationFailure ? err.translationKey : 'outfitMaker.generateFailed', {
+        setError(t(failure instanceof OutfitGenerationFailure ? failure.translationKey : 'outfitMaker.generateFailed', {
           defaultValue: 'Could not create an outfit right now. Please try again.',
         }));
       }

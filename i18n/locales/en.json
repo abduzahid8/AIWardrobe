@@ -701,6 +701,11 @@
   },
   "outfitMaker": {
     "qualityExplanation": {
+      "garmentSummary": "{{top}} with {{outerwear}}, {{bottom}} and {{shoes}}.",
+      "formalStructure": "A shirt and structured blazer keep the look appropriate for a formal occasion.",
+      "travelLayer": "The openable layer can be removed during the journey and added outdoors.",
+      "adaptableLayer": "With the weather unknown, adjust the removable layer as conditions change.",
+      "fitCheck": "Check that the outer layer fits comfortably over the base without pulling.",
       "lightBase": "A lightweight base sits under an openable layer.",
       "tailoredFootwear": "Dress footwear follows the tailored trouser silhouette.",
       "restrainedPalette": "The restrained palette supports the minimalist style.",

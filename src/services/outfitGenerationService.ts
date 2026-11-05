@@ -1,4 +1,4 @@
-import {stylingCopy} from './stylingCopy';
+import {stylingCopyParts} from './stylingCopy';
 import { validatedQuartets } from '../domain/validatedQuartets';
 import { stylingContext } from '../domain/stylingContext';
 import { budgetFxContext, fitsBudgetAmount, type BudgetFxContext } from '../domain/budgetFx';
@@ -279,7 +279,7 @@ export async function generateOutfitsFromDB(
             .filter((o: any) => o && !fourSlotOutfitReason(o.items, data.layered !== false))
             .map((o: any) => mapRawOutfit(o, params))
             .filter((o: GeneratedOutfit) => [...(params.selectedItemIds||[]),...(params.anchorItemId?[params.anchorItemId]:[])].every(id=>o.items.some(item=>item.id===id)) && (params.sourceMode!=='wardrobe'||o.items.every(item=>!isShopClothingItem(item))) && (params.sourceMode!=='catalog'||o.items.every(isShopClothingItem)) && passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather,params.anchorItemId,params.preferences));
-        if (!outfits.length) return { success: false, outfits: [], error: 'no_valid_outfits_for_request' };
+        if (!outfits.length) return { success: false, outfits: [], error: 'no_valid_outfits_for_request', errorTranslationKey: 'outfitMaker.noMatchingClothing' };
         if (params.recordShown !== false) recordShownOutfits(outfits, recencyScope);
         return { success: true, outfits, source: data.source ?? 'ai', layered: Boolean(data.layered) };
 
@@ -457,7 +457,7 @@ export async function generateOutfitsLocally(
         // from it (the local path uses shuffle, so exclusion is belt-and-braces).
         recordShownOutfits(outfits);
 
-        return outfits.length ? { success: true, outfits, source: 'local' } : { success: false, outfits: [], error: 'no_valid_outfits_for_request', source: 'local' };
+        return outfits.length ? { success: true, outfits, source: 'local' } : { success: false, outfits: [], error: 'no_valid_outfits_for_request', errorTranslationKey: 'outfitMaker.noMatchingClothing', source: 'local' };
     } catch (err: any) {
         return { success: false, outfits: [], error: err.message, source: 'local' };
     }
@@ -1197,13 +1197,13 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
         if (fourSlotOutfitReason(normalizedOutfitItems, layered)) return;
         outfits.push({
             id: `local_${tag}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-            description: stylingCopy(normalizedOutfitItems,contextForCopy()).join(' '),
+            description: stylingCopyParts(normalizedOutfitItems,contextForCopy()).description,
             style,
             occasion: occ,
             confidence: assessOutfitQuality(normalizedOutfitItems,style,occ,params.weather,params.anchorItemId,params.preferences).score,
             matchScore: assessOutfitQuality(normalizedOutfitItems,style,occ,params.weather,params.anchorItemId,params.preferences).score,
             items: normalizedOutfitItems,
-            stylingTips: stylingCopy(normalizedOutfitItems,contextForCopy()),
+            stylingTips: stylingCopyParts(normalizedOutfitItems,contextForCopy()).tips,
         });
     };
 
@@ -1371,13 +1371,13 @@ export function buildLocalOutfits(items: LocalClothingItem[], params: GenerateOu
             }
             outfits.push({
                 id: `local_0_${Date.now()}`,
-                description: stylingCopy(normalizedOutfitItems,contextForCopy()).join(' '),
+                description: stylingCopyParts(normalizedOutfitItems,contextForCopy()).description,
                 style,
                 occasion: occ,
                 confidence: 0.75,
                 matchScore: 0.75,
                 items: normalizedOutfitItems,
-                stylingTips: stylingCopy(normalizedOutfitItems,contextForCopy()),
+                stylingTips: stylingCopyParts(normalizedOutfitItems,contextForCopy()).tips,
             });
         }
     }
@@ -1460,12 +1460,12 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
 
     return {
         id: o.id || `outfit_${Date.now()}_${Math.random()}`,
-        description: stylingCopy(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).join(' '),
+        description: stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).description,
         style: o.style || params.stylePreferences || 'Casual',
         occasion: o.occasion || params.occasion || 'Everyday',
         confidence: assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score,
         matchScore: assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score,
         items: normalizedItems,
-        stylingTips: stylingCopy(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})),
+        stylingTips: stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).tips,
     };
 }

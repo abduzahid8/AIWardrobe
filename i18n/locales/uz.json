@@ -716,6 +716,11 @@
   },
   "outfitMaker": {
     "qualityExplanation": {
+      "garmentSummary": "{{top}}, {{outerwear}}, {{bottom}} va {{shoes}} uyg‘unligi.",
+      "formalStructure": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi.",
+      "travelLayer": "Safar davomida ustki qatlamni yechib, tashqarida yana kiyish mumkin.",
+      "adaptableLayer": "Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang.",
+      "fitCheck": "Ustki qatlam ichki kiyim ustidan tortishmasdan, qulay turishini tekshiring.",
       "lightBase": "Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi.",
       "tailoredFootwear": "Klassik poyabzal bichimli shim siluetini to‘ldiradi.",
       "restrainedPalette": "Vazmin ranglar minimalistik uslubni qo‘llab-quvvatlaydi.",

@@ -309,7 +309,9 @@ function retainBudgetFloorCandidates(
     const representatives = Array.from(cheapest.values(), row => row.item)
     const representedIds = new Set(representatives.map(item => String(item.id)))
     const slotCounts = new Map(Array.from(cheapest.keys(), slot => [slot, 1]))
-    for (const item of source) {
+    // The cheapest floor is mandatory; remaining per-slot choices follow
+    // the context-aware ranking, not the catalog's arrival order.
+    for (const item of [...ranked, ...source]) {
         if (!eligible(item) || representedIds.has(String(item.id))) continue
         const slot = isDressGarment(item) ? 'dress' : String(item.macroCategory || '').toLowerCase()
         if (!cheapest.has(slot) || (slotCounts.get(slot) || 0) >= perSlotChoices) continue
@@ -1264,9 +1266,9 @@ async function fetchShopItemsForAllSlotsEdge(
             const pageScored = data
                 .map((row: any) => ({
                     row,
-                    score: scoreGarmentForContext({...row,macroCategory:slot},stylingContext({style,occasion:requestIntent}))*0.25 + scoreItemForStyleEdge(
+                    score: scoreGarmentForContext({...row,macroCategory:slot},stylingContext({style,occasion:requestIntent}))*0.6 + 0.4*styleInference.scoreItemForStyle(
                         { name: row.name, description: row.description, brand: row.brand, color: inferShopColor(row), type: row.garment_type, category: row.category, macroCategory: slot },
-                        styleKey,
+                        styleInference.normalizeStyleId(styleKey),
                     ),
                 }))
                 .filter(({ row }: { row: any }) => {
@@ -2582,6 +2584,15 @@ serve(async (req: Request) => {
             const budgetSource = wardrobeItems
             const rankEligible = (item: any) => eligibleCandidate(item) && (String(item.id) === String(anchorItemId || '') || tasteEligible(item))
             wardrobeItems = rankItemsForStyleEdge(wardrobeItems, styleKey, { minKeep: 16, dropThreshold: -2, perCategoryFloor: 6, eligibility: rankEligible })
+            // Keep style and activity on comparable scales: Classic + Travel
+            // should not rank every cashmere blazer above a practical layer.
+            const compareRankedCandidates = (a: any, b: any) => {
+                const score = (item: any) => 0.6 * scoreGarmentForContext(item, qualityContext)
+                    + 0.4 * styleInference.scoreItemForStyle(item, styleInference.normalizeStyleId(styleKey));
+                return (rotationTarget ? compareRotationOrder(deckPriority([b]), deckPriority([a])) : 0)
+                    || score(b) - score(a);
+            }
+            wardrobeItems.sort(compareRankedCandidates)
             wardrobeItems = collapseBySimEdge(wardrobeItems, (i: any) => canonicalProductKey(i))
             if (parsedBudget) {
                 wardrobeItems = retainBudgetFloorCandidates(budgetSource, wardrobeItems,
@@ -2594,7 +2605,7 @@ serve(async (req: Request) => {
             // admitted shoes into six (or restore only the favorite rows).
             if (rotationTarget) {
                 const shoes: any[] = []
-                for (const item of budgetSource.filter((item:any)=>item.macroCategory==='shoes' && rankEligible(item))) {
+                for (const item of budgetSource.filter((item:any)=>item.macroCategory==='shoes' && rankEligible(item)).sort(compareRankedCandidates)) {
                     if (countDistinctProducts([...shoes,item]) > shoes.length) shoes.push(item)
                     if (shoes.length >= 12) break
                 }

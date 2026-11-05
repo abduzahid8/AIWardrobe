@@ -1,20 +1,23 @@
-import { outfitChoices } from '../../../backend/supabase/functions/_shared/outfitChoices';
-import { isDressGarment, isNonOutfitItem, fourSlotOutfitReason } from '../../../backend/supabase/functions/_shared/outfitStructure';
-import { assessOutfitQuality, rejectForStyleOccasion, rejectForClimate, detectSlotMismatch } from './occasionRules';
+import { validatedQuartets } from '../../../src/domain/validatedQuartets';
+import { stylingContext } from '../../../src/domain/stylingContext';
+import { isNonOutfitItem, fourSlotOutfitReason } from '../../../backend/supabase/functions/_shared/outfitStructure';
+import { assessOutfitQuality, rejectForStyleOccasion, rejectForClimate, detectSlotMismatch, passesStyleJudge } from './occasionRules';
 import { buildOutfitFingerprint, visualSimilarity } from '../../../src/domain/outfitDiversity';
 import { recentLookSimilarity, recentStylingPenalty } from '../../../src/domain/outfitVisualSignature';
+import type { StylingPreferences } from '../../../src/domain/stylingContext';
 import { canonicalizeMacroCategory, getMacroCategory } from '../../../src/utils/categoryMapper';
 
 export interface AlternativeItem {
   id: string; name?: string; type?: string; category?: string; macroCategory?: string;
   image?: string; imageUrl?: string; isWardrobe?: boolean; isShopItem?: boolean;
   color?: string; brand?: string; price?: number; currency?: string; shopUrl?: string;
+  description?: string; material?: string | string[]; pattern?: string;
 }
 
 /** Rank imperfect matches while retaining source, anchor, budget and real garment slots. */
 export function closestAvailableOutfits(
   input: AlternativeItem[],
-  options: { anchorId?: string; style: string; occasion: string; weather?: { temp?: number | null; condition?: string | null }; limit?: number; source?: 'wardrobe' | 'shop'; accepts?: (items: AlternativeItem[]) => boolean; recentLookSignatures?: string[] },
+  options: { anchorId?: string; style: string; occasion: string; weather?: { temp?: number | null; condition?: string | null }; limit?: number; source?: 'wardrobe' | 'shop'; accepts?: (items: AlternativeItem[]) => boolean; recentLookSignatures?: string[]; preferences?: StylingPreferences },
 ) {
   const seen = new Set<string>();
   const pool = input.filter(item => {
@@ -36,14 +39,20 @@ export function closestAvailableOutfits(
       isShopItem: options.source === 'shop' && item.isShopItem === true && item.isWardrobe !== true };
   });
   const required = options.anchorId ? [options.anchorId] : [];
-  const layered = true;
   const itemPenalty = (item: typeof pool[number]) =>
     (rejectForStyleOccasion(item, options.style, options.occasion) ? 2 : 0)
     + (rejectForClimate(item, options.weather) ? 1 : 0);
+  // Shortfalls must not be filled with garments the request cannot wear.
+  const eligiblePool = pool.filter(item => !rejectForStyleOccasion(item, item.id === options.anchorId ? 'casual' : options.style, options.occasion)
+    && !rejectForClimate(item, options.weather));
   // Put the best candidates in each slot first before the bounded search.
-  pool.sort((a, b) => itemPenalty(a) - itemPenalty(b));
-  const choices = outfitChoices(pool, layered, parts => !fourSlotOutfitReason(parts)
-    && (!options.accepts || options.accepts(parts)), isDressGarment, required, 128, 12000, 1);
+  eligiblePool.sort((a, b) => itemPenalty(a) - itemPenalty(b));
+  const choices = validatedQuartets(eligiblePool, stylingContext({style: options.style, occasion: options.occasion,
+    weather: options.weather, anchorId: options.anchorId, preferences: options.preferences}),
+    parts => !fourSlotOutfitReason(parts)
+      && passesStyleJudge(parts, options.style, options.occasion, options.weather, options.anchorId, options.preferences)
+      && (!options.accepts || options.accepts(parts)),
+    {requiredIds: required, maximum: 64, searchLimit: 6000});
   const penalty = (parts: typeof pool) => parts.reduce((sum, item) => sum
     + (rejectForStyleOccasion(item, options.style, options.occasion) ? 2 : 0)
     + (rejectForClimate(item, options.weather) ? 1 : 0), 0);

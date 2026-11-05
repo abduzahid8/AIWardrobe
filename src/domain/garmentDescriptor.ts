@@ -35,8 +35,10 @@ export interface GarmentDescriptor {
 }
 /** Text classifications are derived evidence, never authoritative catalog writes. */
 export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
+  const materialText = typeof item.material === 'string' ? item.material
+    : Array.isArray(item.material) ? item.material.filter(value => typeof value === 'string').join(' ') : '';
   const text = normalizeGarmentText(
-    [item.name, item.type, item.description].filter(Boolean).join(' ')
+    [item.name, item.type, item.description, materialText].filter(Boolean).join(' ')
   );
   const slot = String(item.macroCategory || item.category || 'unknown');
   const rules: Array<[string, RegExp]> =
@@ -73,6 +75,9 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
               'tailored-trouser',
               /\b(tailored|suit|tuxedo|dress|formal|pleated|darted|pinstriped|flannel|smart)\b/,
             ],
+            // Knit construction alone does not prove sports detailing. Keep it
+            // distinct from tailoring unless the catalog explicitly says tailored.
+            ['knit-trouser', /\b(interlock|jersey|knitted|knit)\b/],
             ['trouser', /\b(trousers?|pants?|slacks?)\b/],
           ]
         : slot === 'outerwear'
@@ -84,7 +89,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
               ['cardigan', /\bcardigans?\b/],
               ['overshirt', /\b(overshirts?|shackets?)\b/],
               ['hoodie', /\bhoodies?\b/],
-              ['coat', /\b(coats?|trench|parka|puffer)\b/],
+              ['coat', /\b(coats?|peacoats?|overcoats?|trench|parka|puffer)\b/],
               ['bomber', /\bbomber\b/],
               ['pullover', /\b(sweaters?|pullovers?|jumpers?|knitwear)\b/],
               ['jacket', /\b(jackets?|trucker)\b/],

@@ -50,12 +50,29 @@ export function wholeOutfitRegisterClash(
     const hit = pair.reasons.find((reason) => LAYER_REGISTER_CLASH.has(reason));
     if (hit) return hit;
   }
+  const refined = ['semi_classic', 'classic', 'old_money', 'business_casual'].includes(context.style)
+    || context.dressCode === 'smart' || context.dressCode === 'formal';
+  if (refined && top && layer) {
+    const a = describeGarment(top), b = describeGarment(layer);
+    if (a.subtype === 'field-shirt' && b.subtype === 'blazer')
+      return 'utility_base_with_tailored_blazer';
+  }
+  if (refined && bottomIndex >= 0) {
+    const outer = descriptors.find(d => d.slot === 'outerwear');
+    const outerText = layer ? `${layer.name || ''} ${layer.description || ''}`.toLowerCase() : '';
+    if (outer?.bulk === 'heavy' && /\bbiker\b/.test(outerText)
+      && descriptors[bottomIndex].structured)
+      return 'bulky_biker_with_refined_tailoring';
+  }
   if (bottomIndex >= 0 && shoeIndex >= 0) {
     if (
       descriptors[bottomIndex].athletic &&
       descriptors[shoeIndex].formality === 'formal'
     )
       return 'formal_footwear_with_athletic_bottom';
+    if (descriptors[bottomIndex].subtype === 'knit-trouser'
+      && descriptors[shoeIndex].formality === 'formal')
+      return 'dress_footwear_with_unstructured_knit_bottom';
   }
   return null;
 }
@@ -125,11 +142,6 @@ export function outfitCoherence(
       dimensions.proportion = 0.45;
       evidence.push('wide_hem_over_delicate_driver');
     }
-    // Formal shoes with athletic bottoms are unwearable in any context —
-    // a register clash, not a style preference. Resolved through the shared
-    // helper (layer clashes already arrive via pair.reasons above).
-    const clash = wholeOutfitRegisterClash(items, context);
-    if (clash === 'formal_footwear_with_athletic_bottom') reasons.push(clash);
     // A technical runner under a tailored layer clashes even in smart
     // casual. Minimal sneakers are exempt: they are the refined-casual
     // exception, not gym wear.
@@ -203,6 +215,8 @@ export function outfitCoherence(
       items.reduce((sum, item) => sum + scoreGarmentForContext(item, context), 0) /
         Math.max(1, items.length)) /
     2;
+  const registerClash = wholeOutfitRegisterClash(items, context);
+  if (registerClash) reasons.push(registerClash);
   const valid = !reasons.length;
   return {
     valid,
