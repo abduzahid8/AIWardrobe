@@ -744,6 +744,7 @@
     "noOutfitsError": "Could not generate outfits. Add more items to your wardrobe for better suggestions.",
     "budgetTooLow": "Available clothing cannot form a complete outfit within this budget. Increase your budget or use items you own.",
     "noItemsWithinBudget": "No available clothing items fit this budget. Increase your budget or use items you own.",
+    "formalInventoryShortfall": "The checked clothing cannot form three complete Formal outfits. Each needs a shirt, structured blazer, tailored trousers and dress shoes. Try more suitable inventory or another occasion.",
     "noMatchingClothing": "No clothing matches your selections. Try adjusting your selections.",
     "aiCurated": "AI curated",
     "invalidBudget": "The budget amount or currency is invalid. Check your budget and try again.",

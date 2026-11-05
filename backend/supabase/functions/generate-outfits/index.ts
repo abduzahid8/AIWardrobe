@@ -27,6 +27,11 @@ const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+const GENERATION_VERSION = 'stylist-runtime-repair-v2';
+// Public catalog pages only; account history and eligibility are never cached.
+const catalogPages = new Map<string, {at:number; rows:any[]}>();
+const CATALOG_PAGE_TTL = 5 * 60 * 1000;
+const MAX_LEGACY_PAGES_PER_SLOT = 6;
 
 // Team Collaboration is always 100% shop — no wardrobe anchor.
 // Matches by style (`business_casual`) OR occasion label (`Team Collaboration`).
@@ -1251,12 +1256,25 @@ async function fetchShopItemsForAllSlotsEdge(
             } else if (slotFilter) q = q.or(slotFilter)
             if (cursor && !nativeBudget) q = q.gt('id', cursor)
             }
-            const { data, error } = await Promise.race([q, deadline])
+            const pageKey: string | undefined = !useDiscovery && capabilityScope ? JSON.stringify([capabilityScope,slot,
+                budgetFx?.snapshot.id,nativeBudget,cursor,cursorCost,nativePage,styleKey==='sport',
+                /black[ -]?tie|блэк[ -]?тай|смокинг/i.test(requestIntent)]) : undefined;
+            const cachedPage: {at:number; rows:any[]} | undefined = pageKey ? catalogPages.get(pageKey) : undefined;
+            const cacheHit: boolean = !!cachedPage && Date.now()-cachedPage.at<CATALOG_PAGE_TTL;
+            const pageResponse: {data:any[] | null; error:any} = cacheHit && cachedPage
+                ? {data:cachedPage.rows,error:null}
+                : await Promise.race([q, deadline]);
+            const data: any[] | null = pageResponse.data;
+            const error: any = pageResponse.error;
+            if (pageKey && !cacheHit && !error && Array.isArray(data)) {
+                if(catalogPages.size>=64)catalogPages.delete(catalogPages.keys().next().value!);
+                catalogPages.set(pageKey,{at:Date.now(),rows:data});
+            }
             if (useDiscovery && error && ['PGRST202', '42883'].includes(error.code)) {
                 useDiscovery = false
                 discoveryAvailable = false
                 if(capabilityScope){discoveryRPCUnavailableUntil.set(capabilityScope,Date.now()+60000);if(discoveryRPCUnavailableUntil.size>8)discoveryRPCUnavailableUntil.delete(discoveryRPCUnavailableUntil.keys().next().value!)}
-                console.info('catalog_retrieval', { strategy: 'degraded-full-scan', slot })
+                console.info('catalog_retrieval', { strategy: 'bounded-keyset-cache', slot })
                 continue
             }
             if (controller.signal.aborted || error || !Array.isArray(data)) throw new CatalogLookupError()
@@ -1316,14 +1334,21 @@ async function fetchShopItemsForAllSlotsEdge(
                     // Drop overlap before the authoritative fallback scan.
                     useDiscovery = false
                     scored = []
-                    console.info('catalog_retrieval', { strategy: 'degraded-full-scan', slot, reason: 'candidate_pressure' })
+                    console.info('catalog_retrieval', { strategy: 'bounded-keyset-cache', slot, reason: 'candidate_pressure' })
                 }
                 continue
             }
-            // Rank the entire eligible catalog before choosing representatives.
-            // An early page having enough products says nothing about better
-            // matches on later pages (or products imported more recently).
             if (data.length < 100) break
+            // Missing discovery RPC must not download the relation on each tap.
+            // Reserves span several pages; warm requests reuse public raw pages.
+            const distinctFresh = countDistinctProducts(scored.filter(entry=>!excluded(entry.row)).map(entry=>rowIdentity(entry.row)));
+            if (nativePage+1 >= MAX_LEGACY_PAGES_PER_SLOT || (nativePage>=2 && distinctFresh>=perSlot
+                && (!acceptsLayeredTop || slot!=='top' || matchedTops().length>=recycleTarget))) {
+                console.info('catalog_retrieval',{strategy:'bounded-keyset-cache',slot,pages:nativePage+1,distinctFresh,exhaustive:false});
+                // A bounded scan cannot establish global exhaustion.
+                if(recycleTarget && distinctFresh<recycleTarget)throw new CatalogLookupError();
+                break;
+            }
             const next = data[data.length - 1]?.id
             if (typeof next !== 'string' || !next || next === cursor) throw new CatalogLookupError()
             cursor = next
@@ -2596,21 +2621,13 @@ serve(async (req: Request) => {
             wardrobeItems = collapseBySimEdge(wardrobeItems, (i: any) => canonicalProductKey(i))
             if (parsedBudget) {
                 wardrobeItems = retainBudgetFloorCandidates(budgetSource, wardrobeItems,
-                    item => shopPriceOf(item, parsedBudget!.currency, parsedBudget!.fx), rankEligible, anchorPreRank, 6)
+                    item => shopPriceOf(item, parsedBudget!.currency, parsedBudget!.fx), rankEligible, anchorPreRank, 10)
             } else {
                 // A global trim must not discard an entire required slot.
-                wardrobeItems = retainBudgetFloorCandidates(budgetSource, wardrobeItems, () => 0, rankEligible, anchorPreRank, 6)
+                wardrobeItems = retainBudgetFloorCandidates([...budgetSource].sort(compareRankedCandidates), wardrobeItems, () => 0, rankEligible, anchorPreRank, 10)
             }
-            // A six-representative style trim must not silently turn seven
-            // admitted shoes into six (or restore only the favorite rows).
-            if (rotationTarget) {
-                const shoes: any[] = []
-                for (const item of budgetSource.filter((item:any)=>item.macroCategory==='shoes' && rankEligible(item)).sort(compareRankedCandidates)) {
-                    if (countDistinctProducts([...shoes,item]) > shoes.length) shoes.push(item)
-                    if (shoes.length >= 12) break
-                }
-                wardrobeItems = [...shoes,...wardrobeItems.filter((item:any)=>item.macroCategory!=='shoes')]
-            }
+            // Keep the 40-item prompt balanced: up to ten representatives
+            // in each slot. Prepending shoes here truncated other slots again.
             wardrobeItems = wardrobeItems.slice(0, 40)
             if (anchorPreRank && !wardrobeItems.some((i: any) => String(i.id) === String(anchorItemId))) {
                 console.log(`[anchor] Re-adding locked item ${anchorItemId} after rank trim`)
@@ -3192,7 +3209,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
 
         finalOutfits = finalOutfits.map((outfit:any)=>({...outfit, qualityAssessment: assessOutfitQuality(outfit.items,styleKey,`${occasion} ${prompt}`,weather,anchorItemId)}))
         const previousDeckOverlapBySlot = Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,finalOutfits.flatMap((outfit:any)=>outfit.items).filter((item:any)=>item.macroCategory===slot && String(item.id)!==String(anchorItemId||'') && wasRecentlyShown(item,slot==='shoes'?previousShoeSet:previousSet)).length]))
-        return new Response(JSON.stringify({ success: true, shoeRotationAudit, generationRequestId: body.generationRequestId, rotationScope: body.rotationScope, previousDeckOverlapBySlot, outfits: finalOutfits, source: generationSource, layered, provider: aiProviderUsed, providerAttempts: providerTrace, diversity: diversityCapacity, rotation: rotation ? {recycledSlots: rotation.recycledSlots, freshProducts: freshProductCount(finalOutfits.flatMap((outfit: any) => outfit.items), excludeSet, anchorItemId)} : undefined, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {
+        return new Response(JSON.stringify({ success: true, generationVersion: GENERATION_VERSION, shoeRotationAudit, generationRequestId: body.generationRequestId, rotationScope: body.rotationScope, previousDeckOverlapBySlot, outfits: finalOutfits, source: generationSource, layered, provider: aiProviderUsed, providerAttempts: providerTrace, diversity: diversityCapacity, rotation: rotation ? {recycledSlots: rotation.recycledSlots, freshProducts: freshProductCount(finalOutfits.flatMap((outfit: any) => outfit.items), excludeSet, anchorItemId)} : undefined, budgetReference: requestFx ? {id: requestFx.snapshot.id, asOf: requestFx.snapshot.asOf, source: 'CBU'} : undefined }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
 

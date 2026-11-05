@@ -2,10 +2,12 @@ import { validatedQuartets } from '../../../src/domain/validatedQuartets';
 import { stylingContext } from '../../../src/domain/stylingContext';
 import { isNonOutfitItem, fourSlotOutfitReason } from '../../../backend/supabase/functions/_shared/outfitStructure';
 import { assessOutfitQuality, rejectForStyleOccasion, rejectForClimate, detectSlotMismatch, passesStyleJudge } from './occasionRules';
-import { buildOutfitFingerprint, visualSimilarity } from '../../../src/domain/outfitDiversity';
+import { buildOutfitFingerprint } from '../../../src/domain/outfitDiversity';
 import { recentLookSimilarity, recentStylingPenalty } from '../../../src/domain/outfitVisualSignature';
 import type { StylingPreferences } from '../../../src/domain/stylingContext';
 import { canonicalizeMacroCategory, getMacroCategory } from '../../../src/utils/categoryMapper';
+import {displayedRotation, rotationPool, type DisplayedRotationHistory} from '../../../src/domain/outfitRotation';
+import {assembleDiverseDeck, productIdentityKeys, diversitySlotOf} from '../../../src/domain/outfitDiversity';
 
 export interface AlternativeItem {
   id: string; name?: string; type?: string; category?: string; macroCategory?: string;
@@ -17,7 +19,7 @@ export interface AlternativeItem {
 /** Rank imperfect matches while retaining source, anchor, budget and real garment slots. */
 export function closestAvailableOutfits(
   input: AlternativeItem[],
-  options: { anchorId?: string; style: string; occasion: string; weather?: { temp?: number | null; condition?: string | null }; limit?: number; source?: 'wardrobe' | 'shop'; accepts?: (items: AlternativeItem[]) => boolean; recentLookSignatures?: string[]; preferences?: StylingPreferences },
+  options: { anchorId?: string; style: string; occasion: string; weather?: { temp?: number | null; condition?: string | null }; limit?: number; source?: 'wardrobe' | 'shop'; accepts?: (items: AlternativeItem[]) => boolean; recentLookSignatures?: string[]; preferences?: StylingPreferences; history?: DisplayedRotationHistory; reserve?: boolean },
 ) {
   const seen = new Set<string>();
   const pool = input.filter(item => {
@@ -47,7 +49,9 @@ export function closestAvailableOutfits(
     && !rejectForClimate(item, options.weather));
   // Put the best candidates in each slot first before the bounded search.
   eligiblePool.sort((a, b) => itemPenalty(a) - itemPenalty(b));
-  const choices = validatedQuartets(eligiblePool, stylingContext({style: options.style, occasion: options.occasion,
+  const rotation = displayedRotation(options.history, options.anchorId);
+  const rotatedPool = rotationPool(eligiblePool, rotation.recent, 3, new Set(required)).items;
+  const choices = validatedQuartets(rotatedPool, stylingContext({style: options.style, occasion: options.occasion,
     weather: options.weather, anchorId: options.anchorId, preferences: options.preferences}),
     parts => !fourSlotOutfitReason(parts)
       && passesStyleJudge(parts, options.style, options.occasion, options.weather, options.anchorId, options.preferences)
@@ -69,35 +73,18 @@ export function closestAvailableOutfits(
     };
   }).sort((a, b) => a.penalty - b.penalty || b.quality - a.quality);
   const limit = options.limit ?? 3;
-  // Greedy MMR over the validity-ranked list: the best look is always
-  // first; each next pick maximizes quality minus resemblance to already
-  // picked looks and recently shown looks. Looks more than one quality
-  // band below the best only fill the deck when nothing closer exists,
-  // so a weak-but-novel look can never outrank a strong one.
-  const MMR_BAND = 0.12;
-  const MMR_LAMBDA = 0.5;
-  const picked: typeof ranked = [];
-  const remaining = [...ranked];
-  const bestQuality = remaining.length ? remaining[0].quality : 0;
-  while (picked.length < limit && remaining.length > 0) {
-    let eligible = remaining.filter((c) => c.quality >= bestQuality - MMR_BAND);
-    if (eligible.length === 0) eligible = remaining;
-    let bestIdx = 0;
-    let bestVal = -Infinity;
-    for (const candidate of eligible) {
-      let maxSim = candidate.recency;
-      for (const kept of picked) {
-        maxSim = Math.max(maxSim, visualSimilarity(candidate.fingerprint, kept.fingerprint));
-      }
-      const value = candidate.quality - MMR_LAMBDA * maxSim;
-      if (value > bestVal) {
-        bestVal = value;
-        bestIdx = remaining.indexOf(candidate);
-      }
-    }
-    picked.push(...remaining.splice(bestIdx, 1));
-  }
-  return picked;
+  // Recovery supplies a reserve to the screen's deck search. A displayed
+  // fallback uses that same physical-product deck gate, never a loose MMR list.
+  if (options.reserve) return ranked.slice(0, limit);
+  const anchor = rotatedPool.find(item => item.id === options.anchorId);
+  return assembleDiverseDeck({candidates: ranked, itemsOf: look => look.items,
+    qualityOf: look => look.quality, recencyOf: look => look.recency,
+    priorityOfDeck: deck => rotation.priority(deck.flatMap(look => look.items)),
+    target: Math.min(3, limit), usedKeys: new Set(), poolItems: rotatedPool,
+    anchorKeys: anchor ? new Set(productIdentityKeys(anchor)) : undefined,
+    anchorSlot: anchor ? diversitySlotOf(anchor) : undefined,
+  }).deck;
+
 }
 
 /** Backwards-compatible wardrobe-only entry point. */

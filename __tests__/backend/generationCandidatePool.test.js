@@ -86,6 +86,13 @@ test('budget reserves preserve the locked anchor and treat owned garments as zer
  expect(result.map(i=>i.id)).toEqual(['anchor','owned']);
 });
 
+test('ten-per-slot reserves keep forty candidates balanced without enlarging the provider prompt',()=>{
+ const source=['top','outerwear','bottom','shoes'].flatMap(slot=>Array.from({length:12},(_,i)=>priced(`${slot}-${i}`,slot,10+i)));
+ const result=api.retainBudgetFloorCandidates(source,source,item=>item.price,()=>true,undefined,10);
+ expect(result).toHaveLength(40);
+ for(const slot of ['top','outerwear','bottom','shoes'])expect(result.filter(item=>item.macroCategory===slot)).toHaveLength(10);
+});
+
 const budgetContext={snapshot:{uzsPerUnit:{UZS:1,USD:12000,EUR:13000,GBP:15000}}};
 test('budget discovery carries exact database cost text through a later-page cursor',async()=>{
  const cost='123456.123456789012345678901';

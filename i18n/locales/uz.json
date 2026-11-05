@@ -776,6 +776,7 @@
     "noOutfitsError": "Liboslar yaratib bo'lmadi. Yaxshi takliflar uchun shkafingizga ko'proq narsa qo'shing.",
     "budgetTooLow": "Mavjud kiyimlardan bu byudjetga mos to‘liq obraz tuzib bo‘lmaydi. Byudjetni oshiring yoki o‘zingizdagi kiyimlardan foydalaning.",
     "noItemsWithinBudget": "Bu byudjetga mos kiyim topilmadi. Byudjetni oshiring yoki o‘zingizdagi kiyimlardan foydalaning.",
+    "formalInventoryShortfall": "Tekshirilgan kiyimlardan uchta to‘liq rasmiy obraz tuzilmadi. Har biriga ko‘ylak, shaklli pidjak, bichimli shim va klassik poyabzal kerak. Mos kiyimlar qo‘shing yoki boshqa tadbirni tanlang.",
     "noMatchingClothing": "Tanlovlaringizga mos kiyim topilmadi. Tanlovlarni o‘zgartirib ko‘ring.",
     "aiCurated": "AI tanlagan",
     "invalidBudget": "Byudjet miqdori yoki valyutasi noto‘g‘ri. Byudjetni tekshirib, qayta urinib ko‘ring.",

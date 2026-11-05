@@ -106,6 +106,12 @@ export function scoreGarmentForContext(item: GarmentEvidence, context: StylingCo
       ? 0.9
       : 0.45;
     if (d.rugged) score = 0.1;
+    // Work's tailoring and clean knit layers should lead the shortlist.
+    // Casual leather/denim jackets remain available for other occasions.
+    if (/\b(work|office|business)\b/.test(context.occasion) && d.slot === 'outerwear') {
+      if (['blazer', 'cardigan'].includes(d.subtype)) score = 1;
+      if (/\b(biker|trucker|racer|denim)\b/.test(normalizeGarmentText(`${item.name || ''} ${item.description || ''}`))) score = 0.15;
+    }
   } else {
     score = [
       'overshirt',

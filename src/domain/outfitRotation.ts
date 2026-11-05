@@ -1,5 +1,20 @@
 import {countDistinctProducts, diversitySlotOf, productIdentityKeys, type DiversitySlot} from './outfitDiversity.ts';
 
+export interface DisplayedRotationHistory {
+    previousDeckProductKeys: string[];
+    olderRecentProductKeys: string[];
+    rotationDecks: {productKeys: string[]}[];
+    previousShoeProductKeys?: string[];
+    recentShoeProductKeys?: string[];
+    shoeRotationDecks?: {productKeys: string[]}[];
+}
+export function displayedRotation(history?: DisplayedRotationHistory, anchorId?: string) {
+    const recent = new Set([...(history?.previousDeckProductKeys || []), ...(history?.olderRecentProductKeys || []), ...(history?.recentShoeProductKeys || [])]);
+    const previous = new Set(history?.previousDeckProductKeys || []);
+    return {recent, priority: createShoeRotationPriority(recent, previous, history?.rotationDecks || [], anchorId,
+        history?.shoeRotationDecks ? {previous: new Set(history.previousShoeProductKeys || []), decks: history.shoeRotationDecks} : undefined)};
+}
+
 /** A shared id, normalized name OR normalized photo is the same physical product. */
 export function wasRecentlyShown(item: any, history: ReadonlySet<string>): boolean {
     const id = String(item?.id || '');

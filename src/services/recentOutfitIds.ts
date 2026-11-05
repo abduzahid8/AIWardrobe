@@ -14,6 +14,7 @@ import {outfitVisualSignature} from '../domain/outfitVisualSignature';
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {withRequestDeadline} from '../lib/requestDeadline';
 import { productIdentityKeys, diversitySlotOf } from '../domain/outfitDiversity';
 
 const MAX_RECENT_IDS = 150;
@@ -200,4 +201,7 @@ export async function recordDisplayedDeck(outfits:unknown,scope:string,requestId
         const shoeSnapshot=JSON.stringify(shoes.decks);
         shoes.writes=shoes.writes.then(()=>AsyncStorage.setItem(`stylistRotationDecks::${shoeScope}`,shoeSnapshot)).catch(()=>undefined);
     }
+    // Normal restarts must see the displayed deck on disk. Bound storage
+    // faults so an already visible success can still unlock Generate.
+    await withRequestDeadline(() => Promise.all([state.writes, shoes.writes]), 1500).catch(() => undefined);
 }

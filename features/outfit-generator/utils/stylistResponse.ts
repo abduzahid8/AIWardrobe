@@ -2,7 +2,7 @@ import { repairEdgeItems, isFourSlotLook } from './normalizeSlots';
 import { passesStyleJudge, styleJudgeReason } from './occasionRules';
 import { closestAvailableOutfits, type AlternativeItem } from './closestWardrobeOutfits';
 
-type Options = Parameters<typeof closestAvailableOutfits>[1] & {source: 'wardrobe' | 'shop'};
+type Options = Parameters<typeof closestAvailableOutfits>[1] & {source: 'wardrobe' | 'shop'; includeReserve?: boolean};
 interface EdgeLook {
   id?: string; items: AlternativeItem[]; confidence?: number; matchScore?: number;
   qualityAssessment?: {score: number};
@@ -31,8 +31,8 @@ export function prepareStylistResponse(proposals: EdgeLook[], inventory: Alterna
     if (options.accepts && !options.accepts(look.items)) { reject('budget'); return false; }
     return true;
   });
-  const recovered = accepted.length < 3 ? closestAvailableOutfits([
+  const recovered = accepted.length < 3 || options.includeReserve ? closestAvailableOutfits([
     ...cleaned.flatMap(look => look.items), ...inventory,
-  ], {...options, limit: 12}) : [];
+  ], {...options, limit: 64, reserve: true}) : [];
   return {cleaned, accepted, recovered, rejections};
 }

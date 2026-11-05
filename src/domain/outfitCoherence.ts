@@ -63,6 +63,10 @@ export function wholeOutfitRegisterClash(
     if (outer?.bulk === 'heavy' && /\bbiker\b/.test(outerText)
       && descriptors[bottomIndex].structured)
       return 'bulky_biker_with_refined_tailoring';
+    if (/\b(work|office|business)\b/.test(context.occasion)
+      && /\b(biker|trucker|racer)\b/.test(outerText)
+      && shoeIndex >= 0 && descriptors[shoeIndex].formality === 'formal')
+      return 'workwear_jacket_with_office_dress_footwear';
   }
   if (bottomIndex >= 0 && shoeIndex >= 0) {
     if (

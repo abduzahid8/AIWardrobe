@@ -70,3 +70,23 @@ test('a recently shown semantic look scores below its fresh quality without brea
   expect(same!.quality).toBeLessThan(base[0].quality);
   for (const look of reranked) expect(outfitStructureReason(look.items, true)).toBeNull();
 });
+
+test('fallback forms three disjoint looks and excludes the displayed deck on the next request', () => {
+  const colors = ['White','Blue','Black','Beige','Green','Grey'];
+  const inventory = colors.flatMap((color,index) => [
+    item(`top-${index}`, 'top', `${color} cotton T-shirt`),
+    item(`layer-${index}`, 'outerwear', `${color} cotton overshirt`),
+    item(`bottom-${index}`, 'bottom', `${color} cotton chinos`),
+    item(`shoe-${index}`, 'shoes', `${color} minimal leather sneakers`),
+  ]);
+  const first = closestWardrobeOutfits(inventory, {style:'casual', occasion:'casual'});
+  expect(first).toHaveLength(3);
+  const ids = first.flatMap(look => look.items.map(item => item.id));
+  expect(new Set(ids).size).toBe(12);
+  const productKeys = ids.map(id => `id:${id}`);
+  const second = closestWardrobeOutfits(inventory, {style:'casual', occasion:'casual', history:{
+    previousDeckProductKeys:productKeys, olderRecentProductKeys:[], rotationDecks:[{productKeys}],
+  }});
+  expect(second).toHaveLength(3);
+  expect(second.flatMap(look => look.items).some(item => ids.includes(item.id))).toBe(false);
+});

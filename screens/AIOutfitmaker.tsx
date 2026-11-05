@@ -1,4 +1,8 @@
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
+import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
+import {displayedRotation} from '../src/domain/outfitRotation';
+import {outfitCoherence} from '../src/domain/outfitCoherence';
+import {recentLookSimilarity} from '../src/domain/outfitVisualSignature';
 import {stylingCopyParts} from '../src/services/stylingCopy';
 import {stylingContext} from '../src/domain/stylingContext';
 import { BetaFeedbackButton } from '../components/BetaFeedbackButton';
@@ -693,11 +697,13 @@ const AIOutfitGenerator = () => {
   // what breaks the "same linen pants + penny loafers every tap" loop.
   // In-memory ref = instant effect on the very next tap; AsyncStorage = the
   // memory survives app restarts. Capped so the pool can never starve.
-  const RECENT_SHOWN_KEY = 'aiRecentShownItemIds';
+  const rotationOwner = useAuthStore(state => state.session?.user.id || state.user?.id);
+  const RECENT_SHOWN_KEY = rotationOwner ? `aiRecentShownItemIds::${rotationOwner}` : undefined;
   const RECENT_SHOWN_CAP = 240;
   const recentShownIds = React.useRef<Set<string>>(new Set());
   const rememberShownIds = React.useCallback((outfits: Array<{ items?: Array<{ id?: string; name?: string; image?: string; imageUrl?: string }> }>) => {
     try {
+      if (!RECENT_SHOWN_KEY || authEvents.getUserId() !== rotationOwner) return;
       for (const o of outfits || []) {
         for (const it of o.items || []) {
           if (it?.id) recentShownIds.current.add(String(it.id));
@@ -718,33 +724,46 @@ const AIOutfitGenerator = () => {
     } catch (_) {
       // Recency is best-effort — never break generation.
     }
-  }, []);
+  }, [RECENT_SHOWN_KEY, rotationOwner]);
 
   useEffect(() => {
+    let active = true;
+    recentShownIds.current = new Set();
+    if (!RECENT_SHOWN_KEY) return;
     AsyncStorage.getItem(RECENT_SHOWN_KEY)
       .then((raw) => {
-        if (!raw || !isMounted.current) return;
+        if (!raw || !isMounted.current || !active) return;
         try {
           const ids = JSON.parse(raw);
-          if (Array.isArray(ids)) recentShownIds.current = new Set(ids.map(String).slice(0, RECENT_SHOWN_CAP));
+          if (Array.isArray(ids)) recentShownIds.current = new Set([...ids.map(String).slice(-RECENT_SHOWN_CAP), ...recentShownIds.current]);
         } catch (_) {
           // Corrupt cache — start fresh.
         }
       })
       .catch(() => {});
-  }, []);
+    return () => { active = false; };
+  }, [RECENT_SHOWN_KEY]);
 
   // A per-request seed discovers across slots without a guessed catalog count.
   // Classic/style/budget eligibility remains in the existing request pipeline.
-  const fetchRandomShopSlice = async (opts?: {preferClassicBand?: boolean; salt?: number}): Promise<Array<ReturnType<typeof mapShopCatalogRow>>> => {
+  const fetchRandomShopSlice = async (opts?: {preferClassicBand?: boolean; salt?: number; occasion?: string}): Promise<Array<ReturnType<typeof mapShopCatalogRow>>> => {
     try {
       const pages = await Promise.all((['top','bottom','shoes','outerwear'] as const).map(slot =>
         loadOutfitCandidates({slot,breadth:200,seed:String(opts?.salt ?? Date.now())})));
       const broad=pages.flatMap(page=>page.rows).map(catalogRowToItem);
+      // Small indexed/searchable reserves complement broad discovery. A
+      // generic window must not hide blazers for Work or sneakers for Travel.
+      const terms: {slot: 'top'|'outerwear'|'bottom'|'shoes'; search: string}[] = opts?.occasion === 'formal'
+        ? [{slot:'top',search:'shirt'}, {slot:'outerwear',search:'blazer'}, {slot:'bottom',search:'suit'}, {slot:'shoes',search:'oxford'}]
+        : opts?.occasion === 'work'
+          ? [{slot:'outerwear',search:'blazer'}, {slot:'outerwear',search:'cardigan'}]
+          : [{slot:'outerwear',search:'overshirt'}, {slot:'shoes',search:'sneaker'}];
+      const reserves = await Promise.all(terms.map(query => loadOutfitCandidates({...query, breadth:100, seed:String(opts?.salt ?? Date.now())})));
+      const contextual = reserves.flatMap(page => page.rows).map(catalogRowToItem);
       // Retain the bounded curated representatives the refined-style fallback
       // previously relied on, alongside broad discovery from every slot.
       const curated=opts?.preferClassicBand ? (await catalogRepository.search({query:'',limit:80,discovery:false})).items : [];
-      return mergeShopSlices(curated,broad).map(row=>mapShopCatalogRow(row))
+      return mergeShopSlices(contextual,mergeShopSlices(curated,broad)).map(row=>mapShopCatalogRow(row))
         .filter(item=>hasUsableProductName(item.name,item.id));
     } catch (err) {
       if (__DEV__) readinessLogger.debug('Catalog discovery unavailable; retaining loaded concrete candidates', [(err as Error)?.message]);
@@ -1339,6 +1358,8 @@ const AIOutfitGenerator = () => {
     let recencyScope = 'anonymous';
     // Rotation history for the catch-block closest-match fallback.
     let fallbackHistory: Awaited<ReturnType<typeof getRotationHistory>> | undefined;
+    let displayedScope: string | undefined;
+    let displayedRequestId: string | undefined;
     const promptText = String(promptRef.current || userPrompt || '');
     const commentIntent = parseStylistIntent(promptText);
     const useCommentIntent = commentEditedRef.current;
@@ -1488,7 +1509,7 @@ const AIOutfitGenerator = () => {
       // dedupe-by-id, so overlap with the live page is free.
       const classicOrWork = /old_money|classic|business_casual/.test(String(styleToUse || ''))
         || occasionToUse === 'work' || occasionToUse === 'date' || occasionToUse === 'formal';
-      const randomSlice = await fetchRandomShopSlice({ preferClassicBand: classicOrWork, salt: tapNonce });
+      const randomSlice = await fetchRandomShopSlice({ preferClassicBand: classicOrWork, salt: tapNonce, occasion:occasionToUse });
       const poolBase = collapseSimilarByName(mergeShopSlices(
         mergeShopSlices(liveShopMapped, stylistCatalog),
         randomSlice,
@@ -1626,12 +1647,18 @@ const AIOutfitGenerator = () => {
 
       const scope = rotationScope(recencyScope, effectiveSource, styleToUse, occasionToUse || 'Any');
       const requestId = generationRequestId();
+      displayedScope = scope;
+      displayedRequestId = requestId;
       // Hoisted for the catch-block fallback below: the closest-match
       // alternative must also prefer looks unlike recently shown ones.
       fallbackHistory = await getRotationHistory(scope);
       const history = fallbackHistory;
+      const rotation = displayedRotation(history, baseItemId);
+      if (__DEV__) console.info('[stylist-runtime] request', {clientRevision, requestId, endpoint: `${Config.supabase.url}/functions/v1/generate-outfits`, previousProducts: history.previousDeckProductKeys.filter(key => key.startsWith('id:')).length});
       const excludeProductKeys = [...new Set([...history.olderRecentProductKeys,...history.previousDeckProductKeys])];
-      const excludeItemIds: string[] = [];
+      // Older hosted functions also understand raw IDs. Never send an empty
+      // list while the persisted displayed-product window is populated.
+      const excludeItemIds = excludeProductKeys.filter(key => key.startsWith('id:')).map(key => key.slice(3)).slice(-150);
       if (!isCurrentGeneration() || !generationAccessToken) return;
       const EDGE_TIMEOUT_MS = 120000;
       const { data, error: invokeError } = await withRequestDeadline(async (signal) => requestWithInventoryRotation((rotationIds) => supabase.functions.invoke('generate-outfits', {
@@ -1666,7 +1693,7 @@ const AIOutfitGenerator = () => {
           deckSalt: tapNonce,
           // Recently-shown window → edge builds the candidate pool without
           // pieces the user just saw, so each tap surfaces new clothing.
-          excludeItemIds,
+          excludeItemIds: rotationIds,
           excludeProductKeys,
           rotationScope: scope,
           generationRequestId: requestId,
@@ -1675,6 +1702,7 @@ const AIOutfitGenerator = () => {
       }), excludeItemIds, signal), EDGE_TIMEOUT_MS, cancelSignal);
 
       if (!isCurrentGeneration()) return;
+      if (__DEV__) console.info('[stylist-runtime] response', {requestId, serverVersion: data?.generationVersion || 'legacy-unversioned', serverRequestId: data?.generationRequestId, code: data?.code});
       if (invokeError) throw await outfitGenerationFailure(data, invokeError);
 
       if (shopBudget?.fx && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
@@ -1687,7 +1715,8 @@ const AIOutfitGenerator = () => {
           const copy = stylingCopyParts(items, stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather}));
           const description = copy.description;
           const judgeOk = passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences);
-          const baseScore: number = outfit.qualityAssessment?.score ?? outfit.confidence ?? outfit.matchScore ?? 0.9;
+          // Hosted confidence is not a score from this client's occasion judge.
+          const baseScore = outfitCoherence(items, stylingContext({style:styleToUse, occasion:occasionToUse, request:effectivePrompt||promptText, weather:resolvedWeather})).score;
           return {
             ...outfit,
             id: outfit.id || `look_${tapNonce}_${idx}`,
@@ -1704,6 +1733,8 @@ const AIOutfitGenerator = () => {
           weather: resolvedWeather, source: effectiveSource, accepts: fitsCap,
           preferences: useStylePreferenceStore.getState().preferences,
           recentLookSignatures: history.recentLookSignatures,
+          history,
+          includeReserve: !data.generationVersion,
         });
         const cleanedOutfits = prepared.cleaned;
         const recovered = prepared.recovered.map((look, index) =>
@@ -1785,6 +1816,8 @@ const AIOutfitGenerator = () => {
           candidates: budgetedOutfits,
           itemsOf: (o) => o.items as any[],
           qualityOf: (o) => Number(o.matchScore ?? 0.9),
+          recencyOf: o => recentLookSimilarity(o.items, history.recentLookSignatures),
+          priorityOfDeck: deck => rotation.priority(deck.flatMap(look => look.items)),
           keysOf: productKeysOf,
           anchorKeys,
           anchorSlot,
@@ -1796,13 +1829,13 @@ const AIOutfitGenerator = () => {
           // The edge owns the valid pool and therefore the capacity verdict.
           // Re-deriving it from the truncated client pool would reject the
           // edge's legitimate forced repeat and cost the user cards.
-          capacity: edgeDiversityCapacity,
+          capacity: recovered.length ? undefined : edgeDiversityCapacity,
           usedKeys: slotDeckUsed,
           // The VALID pool (style / occasion / climate filtered) decides
           // whether the inventory is genuinely thin. A catalogue full of
           // alternatives must never fall back to three colourways of one
           // formula, so relaxation is gated on this assessment.
-          poolItems: payloadItems,
+          poolItems: [...budgetedOutfits.flatMap(look => look.items)],
           debug: __DEV__
             ? (message: string, data?: unknown) => readinessLogger.debug(String(`[stylist-diversity] ${message}`), data ? [data] : [])
             : undefined,
@@ -1878,18 +1911,18 @@ const AIOutfitGenerator = () => {
           const inCap = finalOutfits.filter((o) => fitsCap(o.items as any[]));
           const overCap = finalOutfits.filter((o) => !fitsCap(o.items as any[]));
           const shownOutfits = inCap.slice(0, 3);
-          if (shownOutfits.length === 0) throw new Error('incomplete_outfit_deck');
+          if (shownOutfits.length !== 3) throw new Error('incomplete_outfit_deck');
           const previousKeys = new Set(history.previousDeckProductKeys);
           const previousShoeKeys = new Set(history.previousShoeProductKeys ?? history.previousDeckProductKeys);
           const previousDeckOverlapBySlot = Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,
-            shownOutfits.filter(o => !recovered.some(r => r.id === o.id)).flatMap(o=>o.items as any[]).filter(item=>item.macroCategory===slot && String(item.id)!==String(baseItemId||'')
+            shownOutfits.flatMap(o=>o.items as any[]).filter(item=>item.macroCategory===slot && String(item.id)!==String(baseItemId||'')
               && productIdentityKeys(item).some(key=>(slot==='shoes'?previousShoeKeys:previousKeys).has(key))).length]));
           // Edge overlap describes its original looks. A locally recomposed
           // quartet has different products and is outside that audit.
           // Repair may adjust labels, but must never reintroduce a product
           // that the authoritative backend deck successfully avoided.
           for (const [slot,count] of Object.entries(previousDeckOverlapBySlot)) {
-            if (count > Number(data.previousDeckOverlapBySlot?.[slot] ?? 0)) throw new Error('client_rotation_overlap');
+            if (data.generationVersion && count > Number(data.previousDeckOverlapBySlot?.[slot] ?? 0)) throw new Error('client_rotation_overlap');
           }
 
           if (!await consumeOrPaywall('aiOutfits', {cancelSignal}) || !isCurrentGeneration()) return;
@@ -1912,6 +1945,7 @@ const AIOutfitGenerator = () => {
           if (!isCurrentGeneration()) return;
           recordShownOutfits(shownOutfits, recencyScope);
           rememberShownIds(shownOutfits);
+          if (__DEV__) console.info('[stylist-runtime] displayed', {clientRevision, requestId, style: styleToUse, occasion: occasionToUse, previousDeckOverlapBySlot, products: shownOutfits.map(look => look.items.map(item => ({id: item.id, name: item.name, slot: item.macroCategory}))), descriptions: shownOutfits.map(look => ({description: look.description, tips: look.stylingTips}))});
           setLoading(false);
         }
         return;
@@ -1932,17 +1966,27 @@ const AIOutfitGenerator = () => {
           anchorId: baseItemId, style: styleToUse, occasion: `${occasionToUse} ${promptText}`, weather: resolvedWeather,
           source: effectiveSource, accepts: fitsCap,
           recentLookSignatures: fallbackHistory?.recentLookSignatures,
+          history: fallbackHistory,
           preferences: useStylePreferenceStore.getState().preferences,
         });
-        if (alternatives.length) {
+        if (alternatives.length === 3) {
           if (!await consumeOrPaywall('aiOutfits', {cancelSignal}) || !isCurrentGeneration()) return;
-          setOutfits(alternatives.map((look, index) => ({
+          const shownOutfits = alternatives.map((look, index) => ({
             id: `closest_${tapNonce}_${index}`, items: look.items,
             mainImage: look.items[0]?.image || '', matchScore: Math.min(0.69, look.quality),
             description: stylingCopyParts(look.items, stylingContext({style:styleToUse,occasion:occasionToUse,request:promptText,weather:resolvedWeather})).description,
             stylingTips: stylingCopyParts(look.items, stylingContext({style:styleToUse,occasion:occasionToUse,request:promptText,weather:resolvedWeather})).tips.join(' '),
             weather: typeof resolvedWeather?.temp === 'number' ? { temp: resolvedWeather.temp, condition: resolvedWeather.condition || '' } : undefined,
-          })));
+          }));
+          setOutfits(shownOutfits);
+          if (displayedScope && displayedRequestId) {
+            try { await recordDisplayedDeck(shownOutfits, displayedScope, displayedRequestId); }
+            catch { console.warn('[AIOutfitmaker] Could not persist displayed outfit history'); }
+          }
+          if (!isCurrentGeneration()) return;
+          recordShownOutfits(shownOutfits, generationOwner);
+          rememberShownIds(shownOutfits);
+          if (__DEV__) console.info('[stylist-runtime] displayed-fallback', {clientRevision, requestId: displayedRequestId, style:styleToUse, occasion:occasionToUse, products:shownOutfits.map(look => look.items.map(item => ({id:item.id, name:item.name, slot:item.macroCategory})))});
           setError('');
           setLoading(false);
           return;
@@ -1950,11 +1994,13 @@ const AIOutfitGenerator = () => {
       }
       const failure = noMatch && !(err instanceof OutfitGenerationFailure)
         ? new OutfitGenerationFailure('outfitMaker.noMatchingClothing') : err;
+      const messageKey = noMatch && occasionToUse === 'formal' ? 'outfitMaker.formalInventoryShortfall'
+        : failure instanceof OutfitGenerationFailure ? failure.translationKey : 'outfitMaker.generateFailed';
       console.warn('[AIOutfitmaker] No outfit available', { source: effectiveSource, messageKey: failure instanceof OutfitGenerationFailure ? failure.translationKey : 'outfitMaker.generateFailed' });
       if (isMounted.current) {
         setOutfits([]);
         setLoading(false);
-        setError(t(failure instanceof OutfitGenerationFailure ? failure.translationKey : 'outfitMaker.generateFailed', {
+        setError(t(messageKey, {
           defaultValue: 'Could not create an outfit right now. Please try again.',
         }));
       }
@@ -1983,6 +2029,7 @@ const AIOutfitGenerator = () => {
             <View style={styles.headerRight} />
           </View>
 
+          <StylistRuntimeDiagnostic />
           {planningDate && (
             <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
               <View style={styles.planningBanner}>
@@ -2253,6 +2300,7 @@ const AIOutfitGenerator = () => {
           </View>
         </View>
 
+        <StylistRuntimeDiagnostic />
         {/* Hero — live summary of the look being built */}
         <View style={styles.heroBlock}>
           <ScaledText style={styles.heroTitle}>
