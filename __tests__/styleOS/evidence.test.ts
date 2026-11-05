@@ -25,6 +25,10 @@ const base = {
   entityType: 'color' as const,
   entityKey: 'color:navy',
   provenance: 'test',
+  // Anchor every fixture row to the frozen test clock. Production rejects
+  // future-dated evidence (observedAt > now + 1 day), so the createStyleEvidence
+  // wall-clock default would rot as real time moves past NOW.
+  observedAt: new Date(NOW).toISOString(),
 };
 
 test('positive and negative evidence carry opposite polarity with bounded weight', () => {
