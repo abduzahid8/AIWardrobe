@@ -385,10 +385,20 @@ export function rejectForStyleOccasion(
         return 'knit sweaters are not work outerwear';
     }
     if (CLASSIC_STYLES.has(style)) {
+        const casualActivity = normalizedContext.dressCode === 'casual' && /\b(casual|travel|trip)\b/.test(occasion);
+        // Classic is an aesthetic, not an evening dress code. Minimal leather
+        // sneakers may accompany casual/travel chinos and knitwear; the
+        // whole-look tailoring and dress-shirt gates below still apply.
+        const practicalClassicSneaker = casualActivity
+            && /\b(leather)\b/.test(blob) && /\b(sneakers?|trainers?)\b/.test(blob)
+            && !/\b(chunky|athletic|running|training|basketball|skate|mesh|logo|graphic)\b/.test(blob);
+        const practicalClassicLayer = casualActivity && slot === 'outerwear'
+            && /\b(overshirts?|shackets?)\b/.test(blob) && /\b(cotton|linen|lightweight|unlined)\b/.test(blob)
+            && !/\b(bulky|heavyweight|padded|cargo|military)\b/.test(blob);
         if (isShoeish(item, blob) && /\bchunky\b/.test(blob)) return 'chunky soles break classic discipline';
         if (SLEEPWEAR_RE.test(blob)) return 'sleepwear breaks classic discipline';
         if (isDrivingFootwear(item)) return 'driving moccasins never pair with classic tailoring';
-        if (isShoeish(item, blob) && FORMAL_SHOE_RE.test(blob)) {
+        if (isShoeish(item, blob) && FORMAL_SHOE_RE.test(blob) && !practicalClassicSneaker) {
             return 'boat/athletic shoes never pair with classic tailoring';
         }
         if (isShoeish(item, blob) && CLASSIC_UGLY_SHOE_COLOR_RE.test(blob)) {
@@ -398,7 +408,7 @@ export function rejectForStyleOccasion(
             return 'split-leather / gum-sole loafers never pair with classic tailoring';
         }
         if (MULE_RE.test(blob)) return 'mules never pair with classic tailoring';
-        if (isTopOrLayer && (CASUAL_LAYER_RE.test(blob) || ZIP_CASUAL_LAYER_RE.test(blob))) {
+        if (isTopOrLayer && (CASUAL_LAYER_RE.test(blob) || ZIP_CASUAL_LAYER_RE.test(blob)) && !practicalClassicLayer) {
             return 'casual outerwear breaks classic discipline';
         }
         if (isTopOrLayer && RELAXED_FIT_RE.test(blob)) return 'relaxed-fit fashion tops break classic proportions';

@@ -29,7 +29,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { withRequestDeadline } from '../src/lib/requestDeadline';
 import { OutfitGenerationFailure, outfitGenerationFailure } from '../src/services/outfitGenerationFailure';
-import { requestWithInventoryRotation } from '../src/services/stylistInventoryRequest';
 import { getCachedStylistCatalogInventory, loadStylistCatalogInventory } from '../src/services/stylistCatalogInventory';
 import { loadOutfitCandidates } from '../src/services/outfitCandidateProvider';
 import { catalogRowToItem } from '../src/services/catalogRepository';
@@ -1661,7 +1660,7 @@ const AIOutfitGenerator = () => {
       const excludeItemIds = excludeProductKeys.filter(key => key.startsWith('id:')).map(key => key.slice(3)).slice(-150);
       if (!isCurrentGeneration() || !generationAccessToken) return;
       const EDGE_TIMEOUT_MS = 120000;
-      const { data, error: invokeError } = await withRequestDeadline(async (signal) => requestWithInventoryRotation((rotationIds) => supabase.functions.invoke('generate-outfits', {
+      const { data, error: invokeError } = await withRequestDeadline((signal) => supabase.functions.invoke('generate-outfits', {
         signal,
         headers: {Authorization: `Bearer ${generationAccessToken}`},
         body: {
@@ -1693,13 +1692,13 @@ const AIOutfitGenerator = () => {
           deckSalt: tapNonce,
           // Recently-shown window → edge builds the candidate pool without
           // pieces the user just saw, so each tap surfaces new clothing.
-          excludeItemIds: rotationIds,
+          excludeItemIds,
           excludeProductKeys,
           rotationScope: scope,
           generationRequestId: requestId,
           ...history,
         },
-      }), excludeItemIds, signal), EDGE_TIMEOUT_MS, cancelSignal);
+      }), EDGE_TIMEOUT_MS, cancelSignal);
 
       if (!isCurrentGeneration()) return;
       if (__DEV__) console.info('[stylist-runtime] response', JSON.stringify({requestId, serverVersion: data?.generationVersion || 'legacy-unversioned', serverRequestId: data?.generationRequestId, code: data?.code}));

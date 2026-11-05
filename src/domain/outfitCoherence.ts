@@ -141,6 +141,16 @@ export function outfitCoherence(
       dimensions.footwear = 1;
       evidence.push('dress_footwear_with_tailored_bottom');
     }
+    if (context.dressCode === 'casual') {
+      if (['minimal-sneaker','sneaker'].includes(shoe.subtype) && ['chino','jeans','trouser'].includes(bottom.subtype)) {
+        dimensions.footwear = 1;
+        evidence.push('casual_footwear_with_casual_bottom');
+      }
+      if (['oxford','monk'].includes(shoe.subtype) && bySlot('outerwear')?.subtype !== 'blazer') {
+        dimensions.footwear = 0.45;
+        evidence.push('formal_footwear_overdresses_casual_layers');
+      }
+    }
     if (bottom.structured && shoe.rugged) dimensions.footwear = 0.15;
     if (bottom.volume === 'wide' && shoe.subtype === 'driver') {
       dimensions.proportion = 0.45;
