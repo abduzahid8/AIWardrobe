@@ -1654,7 +1654,7 @@ const AIOutfitGenerator = () => {
       fallbackHistory = await getRotationHistory(scope);
       const history = fallbackHistory;
       const rotation = displayedRotation(history, baseItemId);
-      if (__DEV__) console.info('[stylist-runtime] request', {clientRevision, requestId, endpoint: `${Config.supabase.url}/functions/v1/generate-outfits`, previousProducts: history.previousDeckProductKeys.filter(key => key.startsWith('id:')).length});
+      if (__DEV__) console.info('[stylist-runtime] request', JSON.stringify({clientRevision, requestId, endpoint: `${Config.supabase.url}/functions/v1/generate-outfits`, previousProducts: history.previousDeckProductKeys.filter(key => key.startsWith('id:')).length}));
       const excludeProductKeys = [...new Set([...history.olderRecentProductKeys,...history.previousDeckProductKeys])];
       // Older hosted functions also understand raw IDs. Never send an empty
       // list while the persisted displayed-product window is populated.
@@ -1702,7 +1702,7 @@ const AIOutfitGenerator = () => {
       }), excludeItemIds, signal), EDGE_TIMEOUT_MS, cancelSignal);
 
       if (!isCurrentGeneration()) return;
-      if (__DEV__) console.info('[stylist-runtime] response', {requestId, serverVersion: data?.generationVersion || 'legacy-unversioned', serverRequestId: data?.generationRequestId, code: data?.code});
+      if (__DEV__) console.info('[stylist-runtime] response', JSON.stringify({requestId, serverVersion: data?.generationVersion || 'legacy-unversioned', serverRequestId: data?.generationRequestId, code: data?.code}));
       if (invokeError) throw await outfitGenerationFailure(data, invokeError);
 
       if (shopBudget?.fx && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
@@ -1945,7 +1945,7 @@ const AIOutfitGenerator = () => {
           if (!isCurrentGeneration()) return;
           recordShownOutfits(shownOutfits, recencyScope);
           rememberShownIds(shownOutfits);
-          if (__DEV__) console.info('[stylist-runtime] displayed', {clientRevision, requestId, style: styleToUse, occasion: occasionToUse, previousDeckOverlapBySlot, products: shownOutfits.map(look => look.items.map(item => ({id: item.id, name: item.name, slot: item.macroCategory}))), descriptions: shownOutfits.map(look => ({description: look.description, tips: look.stylingTips}))});
+          if (__DEV__) console.info('[stylist-runtime] displayed', JSON.stringify({clientRevision, requestId, style: styleToUse, occasion: occasionToUse, previousDeckOverlapBySlot, products: shownOutfits.map(look => look.items.map(item => ({id: item.id, name: item.name, slot: item.macroCategory}))), descriptions: shownOutfits.map(look => ({description: look.description, tips: look.stylingTips}))}));
           setLoading(false);
         }
         return;
@@ -1986,7 +1986,7 @@ const AIOutfitGenerator = () => {
           if (!isCurrentGeneration()) return;
           recordShownOutfits(shownOutfits, generationOwner);
           rememberShownIds(shownOutfits);
-          if (__DEV__) console.info('[stylist-runtime] displayed-fallback', {clientRevision, requestId: displayedRequestId, style:styleToUse, occasion:occasionToUse, products:shownOutfits.map(look => look.items.map(item => ({id:item.id, name:item.name, slot:item.macroCategory})))});
+          if (__DEV__) console.info('[stylist-runtime] displayed-fallback', JSON.stringify({clientRevision, requestId: displayedRequestId, style:styleToUse, occasion:occasionToUse, products:shownOutfits.map(look => look.items.map(item => ({id:item.id, name:item.name, slot:item.macroCategory})))}));
           setError('');
           setLoading(false);
           return;
