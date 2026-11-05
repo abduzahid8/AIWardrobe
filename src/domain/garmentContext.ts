@@ -12,6 +12,14 @@ export function garmentContextReason(
   if (context.sourceMode === 'wardrobe' && shop) return 'source_requires_wardrobe';
   if (context.sourceMode === 'catalog' && !shop) return 'source_requires_catalog';
   const d = describeGarment(item);
+  if (context.dressCode === 'smart' && /\b(work|office|business)\b/.test(context.occasion)
+    && ['classic','old_money','semi_classic','business_casual'].includes(context.style) && d.slot === 'outerwear') {
+    const text = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
+    const cleanWovenJacket = d.subtype === 'jacket' && /\b(wool|linen)\b/.test(text)
+      && !/\b(biker|trucker|racer|denim|leather|suede|utility|military|athletic|running)\b/.test(text);
+    if (!['blazer','cardigan','coat'].includes(d.subtype) && !cleanWovenJacket)
+      return 'work_requires_smart_layer';
+  }
   const explicit =
     typeof item.color === 'string' && !/^(unknown|neutral)$/i.test(item.color)
       ? item.color

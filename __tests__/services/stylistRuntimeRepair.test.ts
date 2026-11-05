@@ -1,4 +1,4 @@
-import {scoreGarmentForContext} from '../../src/domain/garmentContext';
+import {scoreGarmentForContext, garmentContextReason} from '../../src/domain/garmentContext';
 import {stylingContext} from '../../src/domain/stylingContext';
 import {wholeOutfitRegisterClash} from '../../src/domain/outfitCoherence';
 import {rejectForStyleOccasion, passesStyleJudge, styleJudgeReason} from '../../src/domain/occasionRules';
@@ -15,6 +15,9 @@ test('Work ranks a tailored layer above a trucker without banning the trucker on
  expect(scoreGarmentForContext(jacket,casual)).toBeGreaterThan(scoreGarmentForContext(jacket,work));
  expect(wholeOutfitRegisterClash(look,work)).toBe('workwear_jacket_with_office_dress_footwear');
  expect(wholeOutfitRegisterClash(look,casual)).toBeNull();
+ expect(garmentContextReason(jacket,work)).toBe('work_requires_smart_layer');
+ expect(garmentContextReason(jacket,casual)).toBeNull();
+ expect(garmentContextReason(blazer,work)).toBeNull();
 });
 
 test('Classic casual/travel can use minimal leather sneakers while Work/Formal and tailoring remain strict',()=>{
