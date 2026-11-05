@@ -1,0 +1,29 @@
+{
+  "clientCommit": "033a21d41d3c",
+  "edgeVersion": 179,
+  "verifiedFinalClient": [
+    [
+      "classic",
+      "work"
+    ]
+  ],
+  "simulatorStatus": "Mac locked after explicit process restart; remaining final-build scenarios pending manual unlock",
+  "beforeUserMeasured": {
+    "placements": 48,
+    "distinctIds": 34,
+    "productIdsRepeatedAcrossRequests": 12
+  },
+  "previousSameContextWorkVerification": {
+    "clientCommit": "b66f76460d72",
+    "decks": 2,
+    "placements": 24,
+    "distinctNormalizedProductIds": 24,
+    "overlap": 0
+  },
+  "pendingFinalBuild": [
+    "Classic + Casual after restart",
+    "Classic + Travel",
+    "Classic + Formal",
+    "Casual + Formal"
+  ]
+}

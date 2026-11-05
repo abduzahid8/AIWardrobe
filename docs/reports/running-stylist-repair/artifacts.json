@@ -1,0 +1,17 @@
+{
+  "artifacts": [
+    {
+      "file": "aiwardrobe-stylist-033a21d-edge-source.tar.gz",
+      "sha256": "9cf5422650b9c96e47a438ca75da4c43647e7c35056a813c56c0da9ef9db3a0a"
+    },
+    {
+      "file": "aiwardrobe-hosted-v179-source.tar.gz",
+      "sha256": "25e33ee8415ad048a4b2513fd723d5d1812891639793a462c86ec5353d81bf21"
+    }
+  ],
+  "clientSourceCommit": "033a21d41d3c",
+  "productionModified": false,
+  "mainModified": false,
+  "automaticPullRequestCreated": false,
+  "sourceBase": "4ce20232385dd1b79bd010038bc3ff2addebac85"
+}
