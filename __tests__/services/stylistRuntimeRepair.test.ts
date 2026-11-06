@@ -30,3 +30,18 @@ test('Classic casual/travel can use minimal leather sneakers while Work/Formal a
  for(const occasion of ['work','formal'])expect(rejectForStyleOccasion(sneakers,'classic',occasion)).not.toBeNull();
  expect(passesStyleJudge([...casual.slice(0,2),look[2],sneakers],'classic','travel')).toBe(false);
 });
+
+test('Formal recovery rejects checked bases competing with patterned tailoring, without banning checks globally',()=>{
+ const checked={id:'base',name:'Gant X Yale Checked Poplin Shirt Crisp Blue',macroCategory:'top'};
+ const stripedLayer={id:'layer',name:'Striped Double-breasted Suit Blazer',macroCategory:'outerwear',color:'grey'};
+ const stripedBottom={id:'bottom',name:'Striped Regular Fit Suit Trousers',macroCategory:'bottom',color:'grey'};
+ const shoes={id:'shoes',name:'Black leather oxford shoes',macroCategory:'shoes'};
+ const parts=[checked,stripedLayer,stripedBottom,shoes];
+ for(const style of ['casual','classic']) {
+  expect(styleJudgeReason(parts,style,'formal')).toBe('formal_patterned_tailoring_requires_quiet_base');
+  expect(styleJudgeReason([{...checked,name:'White poplin shirt'},...parts.slice(1)],style,'formal')).toBeNull();
+ }
+ expect(wholeOutfitRegisterClash(parts,stylingContext({style:'casual',occasion:'casual'}))).toBeNull();
+ expect(wholeOutfitRegisterClash([checked,{...stripedLayer,name:'Wool suit blazer'},{...stripedBottom,name:'Wool pinstripe suit trousers'},shoes],stylingContext({style:'casual',occasion:'formal'}))).toBe('formal_patterned_tailoring_requires_quiet_base');
+ expect(styleJudgeReason([checked,{...stripedLayer,name:'Wool suit blazer'},{...stripedBottom,name:'Wool suit trousers'},shoes],'casual','formal')).toBeNull();
+});

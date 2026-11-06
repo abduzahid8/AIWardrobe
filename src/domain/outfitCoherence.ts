@@ -2,7 +2,7 @@ import { garmentContextReason, scoreGarmentForContext } from './garmentContext.t
 import { describeGarment, type GarmentEvidence } from './garmentDescriptor.ts';
 import { layerCompatibility } from './layerCompatibility.ts';
 import { scoreColorHarmony } from './colorHarmony.ts';
-import { colorFamilyOf, colorTokensOf } from './outfitDiversity.ts';
+import { colorFamilyOf, colorTokensOf, patternOf } from './outfitDiversity.ts';
 import type { StylingContext } from './stylingContext.ts';
 export interface OutfitCoherence {
   valid: boolean;
@@ -50,6 +50,13 @@ export function wholeOutfitRegisterClash(
     const hit = pair.reasons.find((reason) => LAYER_REGISTER_CLASH.has(reason));
     if (hit) return hit;
   }
+  // A Casual aesthetic cannot waive Formal coherence. A checked/striped
+  // base competes with patterned tailoring even when each item alone passes.
+  // Read positive catalog pattern evidence directly (including pinstripes).
+  const visiblePattern = (item: GarmentEvidence) => ['check','stripe','print'].includes(patternOf(item));
+  if (context.dressCode === 'formal' && top && visiblePattern(top)
+    && [layer, bottomIndex >= 0 ? items[bottomIndex] : undefined].some(item => item && visiblePattern(item)))
+    return 'formal_patterned_tailoring_requires_quiet_base';
   const refined = ['semi_classic', 'classic', 'old_money', 'business_casual'].includes(context.style)
     || context.dressCode === 'smart' || context.dressCode === 'formal';
   if (refined && top && layer) {
