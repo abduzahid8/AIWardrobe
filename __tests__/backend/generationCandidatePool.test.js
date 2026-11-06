@@ -31,6 +31,24 @@ test('a shop eligibility predicate applies before per-slot truncation',async()=>
  expect(await api.fetchShopItemsForAllSlotsEdge({from:()=>q},['bottom'],'casual',1,undefined,eligible)).toEqual([]);
 });
 
+test.each([
+ ['top','tops','upper_body','White long sleeve cotton shirt'],
+ ['bottom','bottoms','lower_body','Tailored wool trousers'],
+ ['outerwear','outerwear','outerwear','Navy wool blazer'],
+ ['shoes','shoes','shoes','Black leather Oxford shoes'],
+])('catalog-only %s eligibility receives the shop identity before filtering raw rows', async (slot,category,garment_type,name) => {
+ const row={id:`catalog-${slot}`,name,category,garment_type,image_url:`https://example.invalid/${slot}.jpg`};
+ const q={};for(const method of ['select','eq','limit','or','order','abortSignal'])q[method]=()=>q;
+ q.then=resolve=>Promise.resolve({data:[row],error:null}).then(resolve);
+ const context=judge.stylingContext({style:'classic',occasion:'work',sourceMode:'catalog'});
+ const eligible=jest.fn(item=>!judge.garmentContextReason(item,context)&&judge.isFourSlotCandidate(item)&&!judge.rejectForStyleOccasion(item,'classic','work'));
+ expect(judge.garmentContextReason({...row,macroCategory:slot},context)).toBe('source_requires_catalog');
+ const result=await api.fetchShopItemsForAllSlotsEdge({from:()=>q},[slot],'classic',1,undefined,eligible,undefined,undefined,'work');
+ expect(result.map(item=>item.id)).toEqual([`shop_catalog-${slot}`]);
+ expect(eligible).toHaveBeenCalledWith(expect.objectContaining({id:`shop_catalog-${slot}`,isShopItem:true,isWardrobe:false,macroCategory:slot}),expect.any(Array));
+ expect(judge.garmentContextReason(result[0],judge.stylingContext({sourceMode:'wardrobe'}))).toBe('source_requires_wardrobe');
+});
+
 test('an eligible catalog garment after the first100rows remains discoverable',async()=>{
  const invalid=Array.from({length:100},(_,i)=>({id:`bad-${String(i).padStart(3,'0')}`,name:'LINEN RELAXED FIT TROUSERS',category:'bottoms',garment_type:'lower_body',image_url:'https://example.invalid/pants.jpg'}));
  const valid={id:'valid-last',name:'Regular fit tailored cotton trousers',category:'bottoms',garment_type:'lower_body',image_url:'https://example.invalid/valid.jpg'};
@@ -99,7 +117,7 @@ test('budget discovery carries exact database cost text through a later-page cur
  const first=Array.from({length:100},(_,i)=>({id:`a${i}`,name:'Cotton trousers',category:'bottoms',garment_type:'lower_body',image_url:'https://example.invalid/pants.jpg',_budget_cost:cost,price:20,currency:'USD'}));
  const last={...first[0],id:'last',_budget_cost:'999999'};
  const calls=[];const client={rpc:(name,args)=>{calls.push({name,args});const q={abortSignal:()=>q,then:resolve=>Promise.resolve({data:args.p_after_id?[last]:first,error:null}).then(resolve)};return q;}};
- const result=await api.fetchShopItemsForAllSlotsEdge(client,['bottom'],'casual',1,undefined,item=>item.id==='last',budgetContext);
+ const result=await api.fetchShopItemsForAllSlotsEdge(client,['bottom'],'casual',1,undefined,item=>item.id==='shop_last',budgetContext);
  expect(result.map(item=>item.id)).toEqual(['shop_last']);
  expect(calls[1]).toEqual({name:'budget_catalog_candidates',args:expect.objectContaining({p_after_cost:cost,p_after_id:'a99',p_rates:budgetContext.snapshot.uzsPerUnit})});
 });
@@ -140,7 +158,7 @@ test('catalog discovery evaluates later pages even when the first page fills the
  let cursor;const visited=[];
  const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,order:()=>q,abortSignal:()=>q,gt:(_field,value)=>{cursor=value;return q;},then:resolve=>Promise.resolve({data:cursor?[last]:first,error:null}).then(resolve)};
  const result=await api.fetchShopItemsForAllSlotsEdge({from:()=>q},['bottom'],'casual',1,undefined,item=>{visited.push(item.id);return true;});
- expect(visited).toContain('late-product');
+ expect(visited).toContain('shop_late-product');
  expect(visited).toHaveLength(101);
  expect(result).toHaveLength(1);
 });
@@ -199,4 +217,15 @@ test('catalog retrieval favors walking evidence over dress footwear for Classic 
  q.then=resolve=>Promise.resolve({data,error:null}).then(resolve);
  const rows=await api.fetchShopItemsForAllSlotsEdge({from:()=>q},['shoes'],'classic',1,undefined,()=>true,undefined,undefined,'Travel');
  expect(rows.map(row=>row.id)).toEqual(['shop_walking']);
+});
+test('quality memo returns the cached verdict for identical candidate sets',()=>{
+ const items=[{id:'memo-shirt',name:'White cotton dress shirt',macroCategory:'top',color:'white'},{id:'memo-blazer',name:'Navy wool blazer',macroCategory:'outerwear',color:'navy'},{id:'memo-trouser',name:'Charcoal wool trousers',macroCategory:'bottom',color:'charcoal'},{id:'memo-shoe',name:'Black leather Oxford shoes',macroCategory:'shoes',color:'black'}];
+ const memo=judge.createQualityMemo();
+ const first=memo(items,'old_money','Formal',{temp:18},undefined,{locale:'en'});
+ const second=memo(items,'old_money','Formal',{temp:18},undefined,{locale:'en'});
+ expect(second).toBe(first);
+ const direct=judge.assessOutfitQuality(items,'old_money','Formal',{temp:18},undefined,{locale:'en'});
+ expect(first).toEqual(direct);
+ const otherStyle=memo(items,'casual','Casual',{temp:18},undefined,{locale:'en'});
+ expect(otherStyle).not.toBe(first);
 });

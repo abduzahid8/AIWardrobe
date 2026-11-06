@@ -155,3 +155,12 @@ it('the local last-chance fallback cannot bypass unknown-currency budget rejecti
 it.each([NaN, Infinity, -Infinity])('does not format an unknown spend %s as zero', amount => {
     expect(formatMoney(amount, 'USD')).toBe('—');
 });
+
+describe('placeholder budget is never a user-entered limit', () => {
+    // The prompt fields show an example amount (1 500 000 UZS) as placeholder
+    // copy. An untouched field submits empty text, which must never parse to
+    // a spending cap.
+    test.each(['', '   ', '\n\t '])('blank input %p yields no budget', (input) => {
+        expect(parseBudgetFromText(input)).toBeNull();
+    });
+});

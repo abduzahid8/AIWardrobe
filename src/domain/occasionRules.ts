@@ -1064,6 +1064,40 @@ export function assessOutfitQuality(items:JudgeableItem[],style?:string|null,occ
     return {dimensions,score,reasons:[...new Set(reasons)],evidence};
 }
 
+/**
+ * Per-request memo for full outfit-quality assessment. assessOutfitQuality is
+ * pure for a fixed argument tuple, but the same candidate sets are scored by
+ * the curated selector, the diversity gate, shoe reassignment and the final
+ * response map. Key on sorted item identities plus compact content and every
+ * argument that reaches the scorer, so identical sets never pay twice.
+ * Bounded (FIFO past MAX_MEMO_ENTRIES) and request-scoped: create one per
+ * request, never share across requests.
+ */
+export function createQualityMemo(maxEntries = 2000): (items: JudgeableItem[], style?: string | null, occasion?: string | null, weather?: ClimateWeather | null, lockedItemId?: string | null, preferences?: StylingPreferences) => OutfitQualityAssessment {
+    const cache = new Map<string, OutfitQualityAssessment>();
+    const signature = (item: JudgeableItem): string => {
+        const blob = `${item?.id ?? ''}~${(item as any)?.macroCategory ?? ''}~${item?.color ?? ''}~${(item as any)?.material ?? ''}~${(item as any)?.pattern ?? ''}~${item?.name ?? ''}`;
+        return blob.length > 160 ? blob.slice(0, 160) : blob;
+    };
+    const stable = (value: unknown): string => {
+        if (value === null || value === undefined) return '~';
+        if (typeof value !== 'object') return String(value);
+        try { return JSON.stringify(value); } catch { return '~'; }
+    };
+    return (items, style, occasion, weather, lockedItemId, preferences) => {
+        const key = `${(items || []).map(signature).sort().join('|')}@${stable(style)}@${stable(occasion)}@${stable(weather)}@${stable(lockedItemId)}@${stable(preferences)}`;
+        const hit = cache.get(key);
+        if (hit) return hit;
+        const verdict = assessOutfitQuality(items, style, occasion, weather, lockedItemId, preferences);
+        if (cache.size >= maxEntries) {
+            const oldest = cache.keys().next();
+            if (!oldest.done) cache.delete(oldest.value);
+        }
+        cache.set(key, verdict);
+        return verdict;
+    };
+}
+
 /** Preserve valid alternatives across garment families before bounded candidate trims. */
 export function spreadQualityFamilies<T>(items:T[],familyOf:(item:T)=>string):T[] {
     const families=new Map<string,T[]>();

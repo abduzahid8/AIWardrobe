@@ -93,6 +93,50 @@ export function wholeOutfitRegisterClash(
       && descriptors[shoeIndex].formality === 'formal')
       return 'dress_footwear_with_unstructured_knit_bottom';
   }
+  // Refined work consistency (classic / old_money / semi_classic + Work):
+  // each piece alone can clear its slot gate while the whole look reads
+  // vacation or gym. Reject the combination, never the garment globally —
+  // the same trainers serve Casual, the same resort layer serves Travel.
+  const refinedWork =
+    ['classic', 'old_money', 'semi_classic'].includes(context.style) &&
+    /\b(work|office|business)\b/.test(context.occasion);
+  if (refinedWork) {
+    const shoeDesc = shoeIndex >= 0 ? descriptors[shoeIndex] : undefined;
+    if (
+      shoeDesc &&
+      (shoeDesc.athletic ||
+        shoeDesc.formality === 'athletic' ||
+        ['sneaker', 'sport-sneaker', 'minimal-sneaker'].includes(shoeDesc.subtype))
+    )
+      return 'classic_work_requires_non_athletic_footwear';
+    if (bottomIndex >= 0 && descriptors[bottomIndex].athletic)
+      return 'classic_work_requires_non_athletic_bottom';
+    const vacationCue = (item: GarmentEvidence | undefined) =>
+      !!item &&
+      /\b(resort|vacation|holiday|seaside|beach|tropical|hawaiian|camp[ -]?collar)\b/i.test(
+        `${item.name || ''} ${item.description || ''}`,
+      );
+    if (vacationCue(layer) || (bottomIndex >= 0 && vacationCue(items[bottomIndex])))
+      return 'classic_work_rejects_vacation_pieces';
+  }
+  // Formal dress consistency (old_money / classic + Formal): a checked casual
+  // base or a leisure-cut layer each clears its individual formal gate, but
+  // together they read casual. Dress shirts stay plain; tailoring stays
+  // structured. Polo, suede, linen, cardigan and sneaker bans remain global
+  // no-ops — only this style + dressCode combination is constrained.
+  if (
+    context.dressCode === 'formal' &&
+    ['old_money', 'classic'].includes(context.style)
+  ) {
+    if (top && patternOf(top) === 'check')
+      return 'formal_checked_base_breaks_dress_shirt_line';
+    const layerText = layer ? `${layer.name || ''} ${layer.description || ''}`.toLowerCase() : '';
+    if (
+      layer &&
+      /\b(leisure|unstructured|casual|jersey|knit|sweatshirt|hooded|soft[ -]?shoulder)\b/.test(layerText)
+    )
+      return 'formal_leisure_layer_breaks_structured_tailoring';
+  }
   return null;
 }
 

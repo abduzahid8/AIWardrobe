@@ -1957,6 +1957,13 @@ const AIOutfitGenerator = () => {
     } catch (err: any) {
       if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
       if (!isCurrentGeneration()) return;
+      if (err instanceof OutfitGenerationFailure && err.requiresSubscription) {
+        setOutfits([]);
+        setLoading(false);
+        setError(t(err.translationKey));
+        navigation.navigate('Paywall');
+        return;
+      }
       const noMatch = err instanceof OutfitGenerationFailure
         ? ['outfitMaker.noMatchingClothing', 'outfitMaker.aiUnavailable'].includes(err.translationKey)
         : ['No complete outfits returned from AI', 'incomplete_outfit_deck', 'client_rotation_overlap'].includes(err?.message);

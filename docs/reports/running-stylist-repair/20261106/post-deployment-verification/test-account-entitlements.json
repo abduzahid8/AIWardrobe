@@ -1,0 +1,13 @@
+[
+  {
+    "label": "repository-e2e-1",
+    "signInStatus": 200,
+    "entitlementStatus": 200,
+    "entitlement": {
+      "tier": "free",
+      "expiry_date": null,
+      "trial_started_at": "2026-10-28T03:13:45.034665+00:00"
+    },
+    "eligible": false
+  }
+]

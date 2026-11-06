@@ -1,0 +1,92 @@
+{
+  "snapshotObservedAt": "2026-11-05T02:16:12.183Z",
+  "snapshotRows": 7020,
+  "requestCount": 4,
+  "requests": [
+    {
+      "slotFilter": "category.eq.tops,garment_type.eq.upper_body",
+      "rows": 100,
+      "first": "allsaints-usm001nc-162",
+      "last": "allsaints-usm047nf-1124",
+      "rawRowsAcceptedWithoutShopIdentity": 0,
+      "catalogRowsAccepted": 3
+    },
+    {
+      "slotFilter": "category.eq.tops,garment_type.eq.upper_body",
+      "rows": 100,
+      "first": "allsaints-usm047nf-451",
+      "last": "allsaints-usm089kb-10919",
+      "rawRowsAcceptedWithoutShopIdentity": 0,
+      "catalogRowsAccepted": 10
+    },
+    {
+      "slotFilter": "category.eq.tops,garment_type.eq.upper_body",
+      "rows": 100,
+      "first": "allsaints-usm089kb-4093",
+      "last": "armani_exchange-6dzmlf_zj4xz_1200",
+      "rawRowsAcceptedWithoutShopIdentity": 0,
+      "catalogRowsAccepted": 29
+    },
+    {
+      "slotFilter": "category.eq.tops,garment_type.eq.upper_body",
+      "rows": 100,
+      "first": "armani_exchange-8nzb99_znxxz_1583",
+      "last": "armani_exchange-xm002394_af19936_u0009",
+      "rawRowsAcceptedWithoutShopIdentity": 0,
+      "catalogRowsAccepted": 17
+    }
+  ],
+  "result": {
+    "ok": true,
+    "products": [
+      {
+        "id": "shop_arket-1264654001",
+        "name": "Relaxed Button-Down Shirt - Light Blue Stripe"
+      },
+      {
+        "id": "shop_allsaints-usm111sf-10175",
+        "name": "Duke Regular-Fit Striped Shirt"
+      },
+      {
+        "id": "shop_allsaints-usm168sf-4411",
+        "name": "Fade Polka-Dot Slim-Fit Shirt"
+      },
+      {
+        "id": "shop_allsaints-usm169sf-5",
+        "name": "Seraphim Slim-Fit Viscose Shirt"
+      },
+      {
+        "id": "shop_armani_exchange-8nzc49_znyxz_1510",
+        "name": "Regular fit shirt in ultra stretch fabric"
+      },
+      {
+        "id": "shop_armani_exchange-8nzc50_zncfz_1100",
+        "name": "Regular fit cotton shirt"
+      },
+      {
+        "id": "shop_armani_exchange-xm000339_af10192_u0009",
+        "name": "Long sleeve stretch cotton satin shirt Icon"
+      },
+      {
+        "id": "shop_armani_exchange-xm002110_af22640_ub101",
+        "name": "Casual Shirt in Cotton Twill with Delicate Texture"
+      },
+      {
+        "id": "shop_armani_exchange-xm002266_af22638_fb380",
+        "name": "Cotton shirt"
+      },
+      {
+        "id": "shop_armani_exchange-xm002291_af22716_f1146",
+        "name": "Fresh Cotton Shirt with Hidden Button Placket"
+      },
+      {
+        "id": "shop_allsaints-usm085kb-5",
+        "name": "Mode Merino Wool Long-Sleeve Polo Shirt"
+      },
+      {
+        "id": "shop_armani_exchange-xm002151_af22062_m1297",
+        "name": "Linen and cotton knitted polo shirt"
+      }
+    ]
+  }
+}

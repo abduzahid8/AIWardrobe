@@ -1,0 +1,36 @@
+{
+  "scope": "Designated E2E account; live requests; no direct database writes",
+  "checks": [
+    {
+      "name": "missing_auth",
+      "status": 401,
+      "latencyMs": 1171,
+      "error": "unauthorized",
+      "passed": true
+    },
+    {
+      "name": "invalid_bearer",
+      "status": 401,
+      "latencyMs": 1826,
+      "error": "unauthorized",
+      "passed": true
+    }
+  ],
+  "cases": [
+    {
+      "case": "work",
+      "status": 403,
+      "latencyMs": 3009,
+      "generationVersion": null,
+      "error": "feature_limit_reached",
+      "code": null,
+      "source": null,
+      "provider": null,
+      "providerAttempts": [],
+      "outfitCount": 0,
+      "failures": [],
+      "budget": null,
+      "limitation": "Designated account admission rejected; no end-to-end verification"
+    }
+  ]
+}

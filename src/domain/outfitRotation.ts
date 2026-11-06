@@ -143,6 +143,44 @@ export function assignRotatingShoes<O extends {items: any[]}>(
     }).filter((choice): choice is NonNullable<typeof choice> => choice !== null));
     const requireUnique = !anchor && countDistinctProducts(shoes) >= looks.length;
     let best: O[] = [], bestOrder: readonly number[] = [], bestQuality = -Infinity, minimum: number | null = null;
+    // CPU-safe bound for Edge execution: the exhaustive walk visits the full
+    // product of per-look choice counts. Beyond this bound a deterministic
+    // greedy pass (fewest choices first, best rotation order then quality,
+    // index order as the final tie-break) assigns the same hard-constrained
+    // shoes without the combinatorial blowup.
+    const MAX_SHOE_ASSIGNMENT_COMBINATIONS = 20000;
+    const totalCombinations = choices.reduce((product, list) => product * Math.max(1, list.length), 1);
+    const greedyAssign = (): void => {
+        const order = choices
+            .map((list, index) => ({ list, index }))
+            .sort((a, b) => a.list.length - b.list.length || a.index - b.index);
+        const picked: (O | null)[] = new Array(choices.length).fill(null);
+        const used = new Set<string>();
+        let pickedScore = 0;
+        for (const { list, index } of order) {
+            let winner: (typeof list)[number] | null = null;
+            for (const choice of list) {
+                if (requireUnique && choice.keys.some(key => used.has(key))) continue;
+                if (!winner) { winner = choice; continue; }
+                const byOrder = compareRotationOrder(
+                    priority([...picked.filter(Boolean).map(look => (look as O).items).flat(), ...choice.look.items]),
+                    priority([...picked.filter(Boolean).map(look => (look as O).items).flat(), ...winner.look.items]),
+                );
+                if (byOrder > 0 || (byOrder === 0 && choice.score > winner.score)) winner = choice;
+            }
+            if (!winner) { best = []; return; }
+            picked[index] = winner.look as O;
+            pickedScore += winner.score;
+            winner.keys.forEach(key => used.add(key));
+        }
+        best = picked as O[];
+        if (best.length) {
+            const finalOrder = priority(best.flatMap(look => look.items));
+            minimum = -finalOrder[0];
+            bestOrder = finalOrder;
+            bestQuality = pickedScore;
+        }
+    };
     const walk = (index: number, selected: O[], used: Set<string>, score: number) => {
         if (index === choices.length) {
             const order = priority(selected.flatMap(look => look.items));
@@ -156,6 +194,9 @@ export function assignRotatingShoes<O extends {items: any[]}>(
             walk(index + 1, [...selected, choice.look as O], new Set([...used, ...choice.keys]), score + choice.score);
         }
     };
-    if (looks.length) walk(0, [], new Set(), 0);
+    if (looks.length) {
+        if (totalCombinations > MAX_SHOE_ASSIGNMENT_COMBINATIONS) greedyAssign();
+        else walk(0, [], new Set(), 0);
+    }
     return {deck: best, feasibleMinimumOverlap: minimum};
 }

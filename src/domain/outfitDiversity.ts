@@ -2067,11 +2067,15 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         return true;
     };
 
-    const MAX_COMBINATIONS = 250000;
+    // CPU-safe bound for Edge execution. Exhaustive search stays exact for
+    // small pools; larger pools use the deterministic greedy fallback below,
+    // which tries every seed in index order so results stay reproducible.
+    const MAX_COMBINATIONS = 25000;
 
     const selectCombination = (size: number): number[] | null => {
         const n = pool.length;
         if (n < size || size < 1) return null;
+        const startedAt = Date.now();
         let best: number[] | null = null;
         const consider = (indices: number[]) => {
             if (!combinationAllowed(indices)) return;
@@ -2100,6 +2104,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                 }
             };
             walk(0);
+            if (debug) debug('SELECT_COMBINATION', { size, pool: n, exhaustive: true, ms: Date.now() - startedAt });
             return best;
         }
         // Greedy fallback for very large pools. Every candidate is tried as
@@ -2128,6 +2133,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
             }
         }
         if (bestSeed) consider(bestSeed);
+        if (debug) debug('SELECT_COMBINATION', { size, pool: n, exhaustive: false, ms: Date.now() - startedAt });
         return best;
     };
 

@@ -7,6 +7,8 @@ import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import Animated, {
@@ -280,7 +282,7 @@ interface ChatMessage {
 
 const OutfitAIScreen = () => {
     const { t } = useTranslation();
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     // Soft gate: page stays open — Send redirects to Paywall when trial expired.
     const { requireFeature } = useSubscriptionGate();
     const scrollViewRef = useRef<ScrollView>(null);
@@ -393,6 +395,9 @@ const OutfitAIScreen = () => {
                 isAI: true,
             };
             setMessages(prev => [...prev, aiMessage]);
+            if (error instanceof OutfitGenerationFailure && error.requiresSubscription) {
+                navigation.navigate('Paywall');
+            }
         }
 
         setIsLoading(false);

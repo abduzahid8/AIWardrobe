@@ -1,6 +1,7 @@
 import { withRequestDeadline } from '../lib/requestDeadline';
 
 const messages = {
+  feature_limit_reached: 'outfitMaker.subscriptionRequired',
   feature_disabled: 'outfitMaker.aiUnavailable',
   ai_generation_unavailable: 'outfitMaker.aiUnavailable',
   catalog_lookup_unavailable: 'outfitMaker.catalogUnavailable',
@@ -21,6 +22,10 @@ export class OutfitGenerationFailure extends Error {
   constructor(readonly translationKey: MessageKey = 'outfitMaker.generateFailed') {
     super('outfit_generation_failed');
     this.name = 'OutfitGenerationFailure';
+  }
+
+  get requiresSubscription(): boolean {
+    return this.translationKey === 'outfitMaker.subscriptionRequired';
   }
 }
 
