@@ -17,8 +17,8 @@ import {garmentContextReason} from './garmentContext.ts';
  */
 
 
-import {normalizeGarmentText} from './garmentText.ts';
-export {normalizeGarmentText} from './garmentText.ts';
+import {normalizeGarmentText, SHORT_SLEEVE_RE} from './garmentText.ts';
+export {normalizeGarmentText, SHORT_SLEEVE_RE} from './garmentText.ts';
 import {stylingContext,type StylingPreferences} from './stylingContext.ts';
 import {outfitCoherence, wholeOutfitRegisterClash} from './outfitCoherence.ts';
 
@@ -808,7 +808,6 @@ const SHOE_WORDS_RE = /\bshoes?|sneakers?|boots?|loafers?|sandals?|heels?|traine
 export const UNDERWEAR_RE = /\bboxers?|briefs?|underwears?|panties?|thongs?|lingerie|boxer[\s-]?shorts?|nightwear|pyjamas?|pajamas?\b/;
 export const ACCESSORY_PROP_RE = /\b(sunglasses?|eyewear|glasses|card[\s-]?holders?|wallets?|belts?|bags?|totes?|scar(?:f|ves)|hats?|caps?|beanies?|watch(?:es)?|jewelry|earrings?|necklaces?|ties?|neckties?|key[\s-]?rings?|keyrings?|towels?)\b|брелок|полотен/;
 // Adjective form is "short-sleeved" — `sleeves?` does not match it.
-export const SHORT_SLEEVE_RE = /\bshort[\s-]?sleeve(?:s|d)?\b/;
 export const STRIP_SHORT_SLEEVE_RE = /\bshort[\s-]?sleeve(?:s|d)?\b/gi;
 
 /** True for boxers/briefs/underwear — never valid as visible outfit pieces. */

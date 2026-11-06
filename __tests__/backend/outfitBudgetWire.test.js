@@ -26,6 +26,22 @@ function load(modelItems=['wardrobe-shirt','wardrobe-pants','wardrobe-shoes','wa
  return {handler,fetchMock,rateMock,loadRates,pinnedRates,catalogRpc,...validation};
 }
 const owned=[['wardrobe-shirt','top','White cotton shirt'],['wardrobe-pants','bottom','Navy tailored cotton trousers'],['wardrobe-shoes','shoes','Brown leather dress loafers'],['wardrobe-layer','outerwear','Beige linen blazer']].map(([id,macroCategory,name])=>({id,macroCategory,name,type:macroCategory,color:'neutral',isWardrobe:true,imageUrl:`https://example.invalid/${id}.jpg`,currency:'USD'}));
+test('without a budget the actual prompt orders equally suitable lower-priced catalog choices first',async()=>{
+ const rows=owned.flatMap(row=>[900,50].map((price,index)=>({...row,
+  id:`shop_${row.macroCategory}_${index}`,name:`${row.name} Series ${index===0?'A':'B'}`,
+  imageUrl:`https://example.invalid/${row.macroCategory}-${index}.jpg`,isShopItem:true,isWardrobe:false,price})));
+ const {handler,fetchMock}=load(rows.filter(row=>row.price===50).map(row=>row.id));
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},
+  body:JSON.stringify({stylePreferences:'classic',occasion:'Work',prompt:'Work',limit:1,
+   wardrobeItems:rows,useProvidedWardrobeOnly:true})}));
+ if(response.status!==200)throw new Error(await response.clone().text());
+ expect(response.status).toBe(200);
+ const messages=JSON.parse(fetchMock.mock.calls[0][1].body).messages;
+ const prompt=messages.map(message=>message.content).join('\n');
+ expect(prompt).not.toContain('HARD BUDGET');
+ for(const row of owned)expect(prompt.indexOf(`shop_${row.macroCategory}_1`)).toBeLessThan(prompt.indexOf(`shop_${row.macroCategory}_0`));
+ expect((await response.json()).budgetReference).toBeUndefined();
+});
 const request=(budget,wardrobeItems=owned)=>new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify({prompt:'Create one casual outfit. Budget under $1000.',stylePreferences:'casual',occasion:'Everyday',weather:{temp:20},limit:1,wardrobeItems,useProvidedWardrobeOnly:true,wardrobeOnly:!wardrobeItems.some(item=>item.isShopItem===true||String(item.id).startsWith('shop_')),preferences:{maxShopBudget:budget}})});
 test.each([250,0])('wire prompt preserves the selected %s USD cap despite larger prompt text',async amount=>{
  const {handler,fetchMock}=load();const response=await handler(request({amount,currency:'USD'}));

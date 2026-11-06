@@ -1,4 +1,4 @@
-import { garmentContextReason, scoreGarmentForContext } from './garmentContext.ts';
+import { garmentContextReason, scoreGarmentForContext, officeRefinementPenalty } from './garmentContext.ts';
 import { describeGarment, type GarmentEvidence } from './garmentDescriptor.ts';
 import { layerCompatibility } from './layerCompatibility.ts';
 import { scoreColorHarmony } from './colorHarmony.ts';
@@ -211,6 +211,10 @@ export function outfitCoherence(
       }
     }
     if (bottom.structured && shoe.rugged) dimensions.footwear = 0.15;
+    if (bottom.structured && shoe.casualSole && ['smart', 'formal'].includes(context.dressCode)) {
+      dimensions.footwear = Math.min(dimensions.footwear, 0.35);
+      evidence.push('casual_sole_breaks_tailored_footwear_line');
+    }
     if (bottom.volume === 'wide' && shoe.subtype === 'driver') {
       dimensions.proportion = 0.45;
       evidence.push('wide_hem_over_delicate_driver');
@@ -231,6 +235,20 @@ export function outfitCoherence(
   if (volumes >= 3) {
     dimensions.proportion = 0.5;
     evidence.push('multiple_high_volume_pieces');
+  }
+  const outer = bySlot('outerwear');
+  if (outer?.structured && bottom?.structured && ['smart', 'formal'].includes(context.dressCode)) {
+    if ((outer.volume === 'slim' && bottom.volume === 'wide') || (outer.volume === 'wide' && bottom.volume === 'slim')) {
+      dimensions.proportion = Math.min(dimensions.proportion, 0.45);
+      evidence.push('tailoring_volume_contrast');
+    } else if (outer.volume !== 'unknown' && outer.volume === bottom.volume && volumes < 3) {
+      dimensions.proportion = 0.9;
+      evidence.push('consistent_tailoring_volume');
+    }
+    if (outer.materials.some(material => ['wool', 'linen', 'cotton'].includes(material) && bottom.materials.includes(material))) {
+      dimensions.texture = 0.9;
+      evidence.push('compatible_tailoring_fabrics');
+    }
   }
   const heavy = descriptors.some((d) => d.bulk === 'heavy'),
     airy = descriptors.some((d) => d.materials.includes('linen'));
@@ -288,6 +306,17 @@ export function outfitCoherence(
       items.reduce((sum, item) => sum + scoreGarmentForContext(item, context), 0) /
         Math.max(1, items.length)) /
     2;
+  const officePenalty = items.reduce((total, item, i) => total + officeRefinementPenalty(item, context, descriptors[i]), 0);
+  if (officePenalty > 0) {
+    dimensions.style = Math.min(dimensions.style, Math.max(0.3, 1 - officePenalty));
+    evidence.push('casual_construction_weakens_office_refinement');
+  }
+  if (context.dressCode === 'smart' && /\b(work|office|business)\b/.test(context.occasion)
+    && top && layer && ['stripe', 'check', 'print'].includes(bySlot('top')!.pattern)
+    && ['stripe', 'check', 'print'].includes(outer!.pattern)) {
+    dimensions.palette = Math.min(dimensions.palette, 0.55);
+    evidence.push('competing_office_upper_patterns');
+  }
   const registerClash = wholeOutfitRegisterClash(items, context);
   if (registerClash) reasons.push(registerClash);
   const valid = !reasons.length;

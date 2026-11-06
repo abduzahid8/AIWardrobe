@@ -1,4 +1,4 @@
-import {garmentContextReason,scoreGarmentForContext} from '../../../../src/domain/garmentContext.ts'
+import {garmentContextReason,scoreGarmentForContext,compareUnbudgetedValue} from '../../../../src/domain/garmentContext.ts'
 import {recentLookSimilarity} from '../../../../src/domain/outfitVisualSignature.ts'
 import { validatedQuartets } from '../../../../src/domain/validatedQuartets.ts'
 import { stylingContext } from '../../../../src/domain/stylingContext.ts'
@@ -587,7 +587,7 @@ function buildSystemPrompt(limit: number, style: string, layered: boolean, prefe
         : `- PRIORITIZE USER-OWNED ITEMS. Items whose id starts with "shop_" are optional catalog suggestions; use them only to complete a missing/sparse slot or add necessary variety. Every outfit should contain owned pieces whenever any compatible owned pieces exist.`
     const budgetRule = budget
         ? `- HARD BUDGET ${budget.amount} ${budget.currency}: for EACH outfit, the sum of budgetCost values (converted to the budget currency) MUST be <= ${budget.amount}. Owned wardrobe items (source:user wardrobe) cost 0. Never pick a shop item whose budgetCost alone exceeds remaining budget. Prefer a cheaper shop substitute over dropping a required slot.`
-        : `- Shop items may include a price. If the user prompt names a budget, shop prices in each look MUST sum to that cap or less (owned = 0). Always cite prices for shop picks.`
+        : `- Shop items may include a price. If the user prompt names a budget, shop prices in each look MUST sum to that cap or less (owned = 0). Always cite prices for shop picks. Without an explicit budget, prefer lower verified prices among equally suitable alternatives in the same currency; do not assume a premium price improves styling and do not invent a budget ceiling.`
     // PRODUCT UNIQUENESS IS THE ONLY HARD DIVERSITY RULE.
     //
     // The provider's job is to return `limit` valid, high-quality looks
@@ -2635,7 +2635,8 @@ serve(async (req: Request) => {
                 const score = (item: any) => 0.6 * scoreGarmentForContext(item, qualityContext)
                     + 0.4 * styleInference.scoreItemForStyle(item, styleInference.normalizeStyleId(styleKey));
                 return (rotationTarget ? compareRotationOrder(deckPriority([b]), deckPriority([a])) : 0)
-                    || score(b) - score(a);
+                    || score(b) - score(a)
+                    || (!parsedBudget ? compareUnbudgetedValue(a, b) : 0);
             }
             wardrobeItems.sort(compareRankedCandidates)
             wardrobeItems = collapseBySimEdge(wardrobeItems, (i: any) => canonicalProductKey(i))

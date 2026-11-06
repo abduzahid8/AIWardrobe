@@ -1,3 +1,6 @@
+// Shared sleeve evidence; adjective and concatenated feed spellings included.
+export const SHORT_SLEEVE_RE = /\bshort[\s-]?sleeve(?:s|d)?\b/;
+
 /** Normalize multilingual catalog evidence before applying the same rules. */
 export function normalizeGarmentText(value: string): string {
   const aliases: Array<[RegExp, string]> = [

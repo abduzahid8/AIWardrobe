@@ -1,7 +1,7 @@
-import { normalizeGarmentText } from './garmentText.ts';
+import { normalizeGarmentText, SHORT_SLEEVE_RE } from './garmentText.ts';
 import { patternOf } from './outfitDiversity.ts';
 import { STYLING_PROFILES } from './stylingProfiles.ts';
-import { describeGarment, type GarmentEvidence } from './garmentDescriptor.ts';
+import { describeGarment, type GarmentEvidence, type GarmentDescriptor } from './garmentDescriptor.ts';
 import type { StylingContext } from './stylingContext.ts';
 /** Same hard dress/activity exclusions before pool caps and after construction. */
 export function garmentContextReason(
@@ -51,6 +51,9 @@ export function garmentContextReason(
     return 'excluded_pattern';
   if (context.dressCode === 'formal') {
     const baseText = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
+    // Keep the coherence/pool path consistent with the existing occasion gate.
+    if (d.slot === 'top' && SHORT_SLEEVE_RE.test(baseText))
+      return 'formal_requires_long_sleeve_dress_base';
     // Catalog "shirt" is too broad: a Henley has no dress collar, while
     // merino button-through knitwear needs explicit woven/dress evidence.
     if (d.slot === 'top' && (
@@ -72,7 +75,7 @@ export function garmentContextReason(
     if (
       d.slot === 'shoes' &&
       (!['oxford', 'derby', 'monk', 'dress-boot', 'chelsea', 'loafer'].includes(d.subtype) ||
-        d.rugged ||
+        d.rugged || d.casualSole ||
         (d.subtype === 'loafer' && d.formality !== 'formal') ||
         d.athletic || /\b(hybrids?|cup[ -]?soles?)\b/.test(baseText))
     )
@@ -92,6 +95,30 @@ export function garmentContextReason(
     if (d.slot === 'bottom' && d.structured) return 'workout_rejects_restrictive_tailoring';
   }
   return null;
+}
+
+/** Construction penalties only for Old Money office requests; unknown cues stay neutral. */
+export function officeRefinementPenalty(item: GarmentEvidence, context: StylingContext, d: GarmentDescriptor = describeGarment(item)): number {
+  if (context.style !== 'old_money' || context.dressCode !== 'smart'
+    || !/\b(work|office|business)\b/.test(context.occasion)) return 0;
+  const text = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
+  if (d.slot === 'shoes' && d.casualSole) return 0.35;
+  if (d.slot === 'outerwear' && (/\b(leisure|utility|flight|racer|bomber)\b/.test(text)
+    || (/\b(technical|nylon|shell)\b/.test(text) && /\b(zip|waterproof|windproof|performance)\b/.test(text)))) return 0.3;
+  if (d.slot === 'top' && d.pattern === 'stripe'
+    && /\b(rugby|rugger|sporty|athletic|jersey|bold|wide|contrast|block|candy)\b/.test(text)) return 0.25;
+  return 0;
+}
+
+/** Prefer the lower known price only when quality/recency are tied, within one slot and currency.
+ * Owned garments, unknown costs and mixed currencies are not price comparisons. No cap or FX is invented. */
+export function compareUnbudgetedValue(a: {price?: unknown; currency?: unknown; macroCategory?: unknown; isShopItem?: boolean; isWardrobe?: boolean}, b: typeof a): number {
+  if (!a.isShopItem || !b.isShopItem || a.isWardrobe === true || b.isWardrobe === true
+    || a.macroCategory !== b.macroCategory) return 0;
+  const currency = typeof a.currency === 'string' ? a.currency.trim().toUpperCase() : '';
+  if (!/^[A-Z]{3}$/.test(currency) || currency !== String(b.currency || '').trim().toUpperCase()) return 0;
+  const first = Number(a.price), second = Number(b.price);
+  return Number.isFinite(first) && first > 0 && Number.isFinite(second) && second > 0 ? first - second : 0;
 }
 
 /** Soft profile preference. Unknown evidence stays neutral; never a hard waiver. */
@@ -169,5 +196,5 @@ export function scoreGarmentForContext(item: GarmentEvidence, context: StylingCo
     score -= 0.08;
   if (!context.weather && d.bulk === 'heavy') score -= 0.1;
   if (d.bulk === 'light' && ['cardigan', 'blazer', 'overshirt'].includes(d.subtype)) score += 0.05;
-  return Math.max(0, Math.min(1, score));
+  return Math.max(0, Math.min(1, score - officeRefinementPenalty(item, context, d)));
 }

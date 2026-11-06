@@ -26,6 +26,8 @@ export interface GarmentDescriptor {
   collar: 'shirt' | 'high' | 'open' | 'crew' | 'unknown';
   length: 'cropped' | 'long' | 'regular' | 'unknown';
   closure: 'openable' | 'pullover' | 'unknown';
+  /** Positive construction evidence; rubber alone does not imply casual. */
+  casualSole: boolean;
   rugged: boolean;
   athletic: boolean;
   structured: boolean;
@@ -114,6 +116,14 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     (slot === 'shoes' &&
       /\bwaterproof\b/.test(text) &&
       /\b(grip|chunky|traction|tread)\b/.test(text));
+  // The imported Flextride row omits its construction. Model-specific
+  // evidence: Geox U66MAC0009BC9999, cushioning and synthetic/rubber outsole.
+  // https://www.geox.com/en-GB/leather_loafers-black-flextride_plus_man-U66MAC0009BC9999.html
+  const verifiedComfortLoafer = slot === 'shoes' && (/^(?:shop_)?geox-u66mac/i.test(String(item.id || ''))
+    || /^flextride plus\b/i.test(item.name || ''));
+  const casualSole = slot === 'shoes' && (verifiedComfortLoafer
+    || /\b(chunky|thick|platform|lug|commando|track|cup)[ -]+(?:rubber[ -]+)?(?:out)?sole(?:s|d)?\b/.test(text)
+    || /\bsneaker[ -]+soles?\b/.test(text));
   const structured =
     subtype === 'blazer' || subtype === 'tailored-trouser' || subtype === 'dress-shirt';
   // A single marketing word ("dress", "formal") is not proof on its own
@@ -125,7 +135,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
   // evidence — plus a dress/formal claim with no casual counter-evidence
   // (suede, canvas, boat, moccasin…).
   const dressLoafer =
-    subtype === 'loafer' &&
+    subtype === 'loafer' && !casualSole &&
     (/\b(structured|blake|welt|calfskin|polished|apron|saddle|penny|tassel|horsebit|leather\s+out?soles?)\b/.test(
       text
     ) ||
@@ -204,7 +214,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
       typeof item.pattern === 'string' &&
       item.pattern.trim() &&
       !/^(unknown|other)$/i.test(item.pattern.trim())
-        ? patternOf({ pattern: item.pattern })
+        ? patternOf(item)
         : /\b(solid|plain|unpatterned|striped?|checks?|checked|plaid|graphic|logo|floral|paisley|print(?:ed)?|camo|jacquard|polka)\b/.test(
               text
             )
@@ -215,11 +225,13 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     bulk,
     collar,
     rugged,
+    casualSole,
     athletic,
     structured,
     insulated: /\b(puffer|down jacket|down filling|insulated|shearling)\b/.test(text),
     evening: /\b(tuxedo|dinner jacket|dinner suit|opera pump|patent)\b/.test(text),
     evidence: [
+      ...(verifiedComfortLoafer ? ['catalog:geox-u66mac-comfort-sole'] : []),
       ...(subtype !== 'unknown' ? [`text:${subtype}`] : []),
       ...(bulk !== 'unknown' ? [`text:${bulk}`] : []),
       ...(volume !== 'unknown' ? [`text:${volume}`] : []),
