@@ -1610,6 +1610,8 @@ export interface AssembleDiverseDeckOptions<O> {
     usedKeys: Set<string>;
     /** Whole valid pool — used for the thin-inventory assessment. */
     poolItems?: any[];
+    /** Hard shared operation budget for Edge selection, including failed partial trials. */
+    maxSearchSteps?: number;
     /** Debug sink (development builds only). */
     debug?: (message: string, data?: unknown) => void;
 }
@@ -1760,11 +1762,16 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
 
     for (const candidate of opts.candidates || []) pushCandidate(candidate, 'edge');
 
-    const itemRefsFor = (candidate: DiverseDeckCandidate<O>): ItemProductRef[] =>
-        (opts.itemsOf(candidate.outfit) || []).map((item) => ({
-            keys: identityKeySets(item, opts.keysOf),
-            slot: diversitySlotOf(item),
-        }));
+    const refsCache = new Map<number, ItemProductRef[]>();
+    const strictKeysCache = new Map<number, string[][]>();
+    const itemRefsFor = (candidate: DiverseDeckCandidate<O>): ItemProductRef[] => {
+        let refs = refsCache.get(candidate.index);
+        if (!refs) {
+            refs = (opts.itemsOf(candidate.outfit) || []).map(item => ({keys: identityKeySets(item, opts.keysOf), slot: diversitySlotOf(item)}));
+            refsCache.set(candidate.index, refs);
+        }
+        return refs;
+    };
 
     /**
      * Slots that participate in the composition. An explicit `activeSlots`
@@ -1892,15 +1899,17 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
      * The locked anchor is ignored: it is SUPPOSED to appear in every look.
      */
     const looksCarrySameProducts = (a: DiverseDeckCandidate<O>, b: DiverseDeckCandidate<O>): boolean => {
-        const itemsOf = (candidate: DiverseDeckCandidate<O>) => (opts.itemsOf(candidate.outfit) || []).filter((item) => {
-            if (!opts.anchorKeys) return true;
-            return !identityKeySets(item, opts.keysOf).some((key) => opts.anchorKeys!.has(key));
-        });
-        const left = itemsOf(a);
-        const right = itemsOf(b);
-        if (left.length === 0 || left.length !== right.length) return false;
-        const leftKeys = left.map(strictIdentityOf);
-        const rightKeys = right.map(strictIdentityOf);
+        const keysOf = (candidate: DiverseDeckCandidate<O>) => {
+            let keys = strictKeysCache.get(candidate.index);
+            if (!keys) {
+                keys = (opts.itemsOf(candidate.outfit) || []).filter(item => !opts.anchorKeys
+                    || !identityKeySets(item, opts.keysOf).some(key => opts.anchorKeys!.has(key))).map(strictIdentityOf);
+                strictKeysCache.set(candidate.index, keys);
+            }
+            return keys;
+        };
+        const leftKeys = keysOf(a), rightKeys = keysOf(b);
+        if (leftKeys.length === 0 || leftKeys.length !== rightKeys.length) return false;
         const used = new Array(rightKeys.length).fill(false);
         const match = (index: number): boolean => {
             if (index === leftKeys.length) return true;
@@ -1979,7 +1988,21 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
     const qualityBand = opts.qualityBand ?? MMR_QUALITY_BAND;
     const similarityWeight = opts.similarityWeight ?? MMR_SIMILARITY_WEIGHT;
     const recencyWeight = opts.recencyWeight ?? MMR_RECENCY_WEIGHT;
+    const priorityCache = new Map<string, number | readonly number[]>();
+    const priorityFor = (indices: number[]) => {
+        const key = indices.join(':');
+        let priority = priorityCache.get(key);
+        if (priority === undefined) {
+            priority = opts.priorityOfDeck?.(indices.map(i => pool[i].outfit)) ?? 0;
+            priorityCache.set(key, priority);
+        }
+        return priority;
+    };
+    const scoreCache = new Map<string, number>();
     const deckScore = (indices: number[]): number => {
+        const key = indices.join(':');
+        const cached = scoreCache.get(key);
+        if (cached !== undefined) return cached;
         const members = indices.map((index) => pool[index]);
         const qualitySum = members.reduce((sum, member) => sum + member.quality, 0);
         const qualityBucket = Math.round(qualitySum / qualityBand) * qualityBand;
@@ -1998,16 +2021,18 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
             ? members.reduce((sum, member) => sum + member.recency, 0) / members.length
             : 0;
         const variety = bonus - similarityWeight * 0.5 * meanSimilarity - recencyWeight * meanRecency;
-        const priority = opts.priorityOfDeck?.(members.map(member => member.outfit)) ?? 0;
-        return (typeof priority === 'number' && Number.isFinite(priority) ? Math.max(0, Math.floor(priority)) : 0) * (target * QUALITY_WEIGHT + 10)
+        const priority = priorityFor(indices);
+        const score = (typeof priority === 'number' && Number.isFinite(priority) ? Math.max(0, Math.floor(priority)) : 0) * (target * QUALITY_WEIGHT + 10)
             + qualityBucket * QUALITY_WEIGHT + variety;
+        scoreCache.set(key, score);
+        return score;
     };
 
     // Optional ordered objectives are compared directly, never blended with
     // quality. Existing scalar callers retain their original scoring.
     const compareSelections = (a: number[], b: number[]): number => {
-        const first = opts.priorityOfDeck?.(a.map(i => pool[i].outfit));
-        const second = opts.priorityOfDeck?.(b.map(i => pool[i].outfit));
+        const first = priorityFor(a);
+        const second = priorityFor(b);
         if (Array.isArray(first) && Array.isArray(second)) {
             for (let i = 0; i < Math.max(first.length, second.length); i++) {
                 const delta = (first[i] || 0) - (second[i] || 0);
@@ -2071,6 +2096,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
     // small pools; larger pools use the deterministic greedy fallback below,
     // which tries every seed in index order so results stay reproducible.
     const MAX_COMBINATIONS = 25000;
+    let stepsLeft = Math.max(1, Math.floor(opts.maxSearchSteps ?? Number.MAX_SAFE_INTEGER));
 
     const selectCombination = (size: number): number[] | null => {
         const n = pool.length;
@@ -2078,7 +2104,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         const startedAt = Date.now();
         let best: number[] | null = null;
         const consider = (indices: number[]) => {
-            if (!combinationAllowed(indices)) return;
+            if (stepsLeft-- <= 0 || !combinationAllowed(indices)) return;
             if (!best || compareSelections(indices, best) > 0) {
                 best = indices;
             }
@@ -2090,14 +2116,14 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
             combinations = combinations * (n - i) / (i + 1);
             if (combinations > MAX_COMBINATIONS) break;
         }
-        if (combinations <= MAX_COMBINATIONS) {
+        if (combinations <= Math.min(MAX_COMBINATIONS, stepsLeft)) {
             const current: number[] = [];
             const walk = (start: number) => {
                 if (current.length === size) {
                     consider([...current]);
                     return;
                 }
-                for (let i = start; i < n; i++) {
+                for (let i = start; i < n && stepsLeft > 0; i++) {
                     current.push(i);
                     walk(i + 1);
                     current.pop();
@@ -2111,13 +2137,14 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         // the seed so one strong-but-conflicting look cannot starve the
         // deck (the greedy trap).
         let bestSeed: number[] | null = null;
-        for (let seed = 0; seed < n; seed++) {
+        for (let seed = 0; seed < n && stepsLeft > 0; seed++) {
             const chosen = [seed];
             let failed = false;
             while (chosen.length < size) {
                 let bestAdd = -1;
-                for (let i = 0; i < n; i++) {
+                for (let i = 0; i < n && stepsLeft > 0; i++) {
                     if (chosen.includes(i)) continue;
+                    stepsLeft--;
                     const trial = [...chosen, i];
                     if (!combinationAllowed(trial)) continue;
                     if (bestAdd < 0 || compareSelections(trial, [...chosen, bestAdd]) > 0) {
@@ -2132,7 +2159,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                 bestSeed = chosen;
             }
         }
-        if (bestSeed) consider(bestSeed);
+        if (bestSeed) best = bestSeed;
         if (debug) debug('SELECT_COMBINATION', { size, pool: n, exhaustive: false, ms: Date.now() - startedAt });
         return best;
     };

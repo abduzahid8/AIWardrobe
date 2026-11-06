@@ -93,3 +93,21 @@ test('shoe reassignment stays bounded and deterministic for a 30-shoe pool', () 
   expect(second.deck.map((l) => l.items.map((i) => i.id).join('|')))
     .toEqual(first.deck.map((l) => l.items.map((i) => i.id).join('|')));
 });
+
+test('the Edge operation budget caches identity and bounds ranking work', () => {
+  const pool = Array.from({length: 64}, (_, i) => candidate(i));
+  let identityCalls = 0, priorities = 0, scores = 0;
+  const run = () => deck.assembleDiverseDeck({
+    ...deckOptions(pool), maxSearchSteps: 512,
+    keysOf: item => {identityCalls++; return deck.productIdentityKeys(item);},
+    qualityOf: () => {scores++; return 0.9;},
+    priorityOfDeck: () => {priorities++; return [0];},
+  });
+  const selected = run();
+  expect(selected.deck).toHaveLength(3);
+  expect(scores).toBe(64);
+  expect(priorities).toBeLessThanOrEqual(1024);
+  expect(identityCalls).toBeLessThan(1200);
+  expect(selected.productDiversity.illegalProductReuseCount).toBe(0);
+  expect(run().deck.map(l => l.id)).toEqual(selected.deck.map(l => l.id));
+});

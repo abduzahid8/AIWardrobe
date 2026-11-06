@@ -9,11 +9,12 @@ export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
   items: T[],
   context: StylingContext,
   accepts: (items: T[]) => boolean,
-  options: { requiredIds?: string[]; maximum?: number; searchLimit?: number; perSlot?: number } = {}
+  options: { requiredIds?: string[]; maximum?: number; searchLimit?: number; perSlot?: number; reserveMultiplier?: number } = {}
 ): { id: string; items: T[] }[] {
   const required = options.requiredIds || [],
     maximum = options.maximum ?? 64,
     limit = options.searchLimit ?? 6000;
+  const reserveLimit = Math.min(256, maximum * Math.min(4, Math.max(1, options.reserveMultiplier ?? 4)));
   const perSlot = Math.min(32, Math.max(3, options.perSlot ?? 24));
   const slots = ['top', 'outerwear', 'bottom', 'shoes'];
   const pools = slots.map((slot) => {
@@ -54,6 +55,8 @@ export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
   );
   const result: { id: string; items: T[]; score: number; order: number }[] = [];
   const signatures = new Set<string>();
+  // Rows are immutable during this search: normalize identity once per row.
+  const identities = new Map(items.map(item => [item, productIdentityKeys(item)]));
   let examined = 0;
   // Visit all retained top/layer pairs before extending one pair repeatedly.
   for (let step = 0; step < pools[2].length * pools[3].length && examined < limit; step++) {
@@ -69,7 +72,7 @@ export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
       const keys = new Set<string>();
       let repeated = false;
       for (const part of parts) {
-        const own = productIdentityKeys(part);
+        const own = identities.get(part)!;
         if (own.some((k) => keys.has(k))) repeated = true;
         own.forEach((k) => keys.add(k));
       }
@@ -82,9 +85,9 @@ export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
       if (!quality.valid) continue;
       result.push({ id: '', items: parts, score: quality.score, order: result.length });
       // Bounded validated reserve; enough room for global physical-identity matching.
-      if (result.length >= Math.min(256, maximum * 4)) break;
+      if (result.length >= reserveLimit) break;
     }
-    if (result.length >= Math.min(256, maximum * 4)) break;
+    if (result.length >= reserveLimit) break;
   }
   // Reserve diverse physical alternatives before quality trim, keeping the
   // whole-look scorer as the order within each coverage round.

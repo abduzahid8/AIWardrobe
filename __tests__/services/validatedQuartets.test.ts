@@ -37,6 +37,17 @@ it('bounds hostile validator work and never fills missing shoes', () => {
     )
   ).toEqual([]);
 });
+it('stops the Edge reserve at its admitted size and caps rejected attempts', () => {
+  const accepts = jest.fn(() => true);
+  const result = validatedQuartets(pool, stylingContext({}), accepts,
+    {maximum: 3, reserveMultiplier: 1, searchLimit: 12});
+  expect(result).toHaveLength(3);
+  expect(accepts.mock.calls.length).toBe(3);
+  const rejects = jest.fn(() => false);
+  expect(validatedQuartets(pool, stylingContext({}), rejects,
+    {maximum: 24, reserveMultiplier: 1, searchLimit: 12})).toEqual([]);
+  expect(rejects.mock.calls.length).toBeLessThanOrEqual(12);
+});
 it('does not override caller budget/source validation', () => {
   const result = validatedQuartets(pool, stylingContext({}), (p) =>
     p.every((i) => !i.id.endsWith('-0'))
