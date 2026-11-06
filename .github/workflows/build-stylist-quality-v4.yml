@@ -1,0 +1,48 @@
+name: Build isolated stylist quality release
+on:
+  push:
+    branches:
+      - release/stylist-quality-v4-20261107
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated pinned bundler
+        run: npm install --prefix /tmp/stylist-esbuild --no-package-lock --no-save esbuild@0.28.2
+      - name: Build and verify baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          ESBUILD=/tmp/stylist-esbuild/node_modules/.bin/esbuild
+          BASE=203dfbf25885f17e197b4d50afab6780f22ba5db
+          CURRENT=$(git rev-parse HEAD)
+          mkdir -p /tmp/stylist
+          git switch --detach "$BASE"
+          "$ESBUILD" backend/supabase/functions/generate-outfits/index.ts --bundle --platform=neutral --format=esm --target=es2022 '--external:https://*' '--external:jsr:*' '--external:npm:*' --outfile=/tmp/stylist/baseline.ts
+          BASEHASH=$(sha256sum /tmp/stylist/baseline.ts | cut -d' ' -f1)
+          echo "Baseline bundle: $BASEHASH"
+          test "$BASEHASH" = 'd232008818f59220475d9f04da92bfc243077fdb2bc826dffc62ecce38401637'
+          git switch --detach "$CURRENT"
+          "$ESBUILD" backend/supabase/functions/generate-outfits/index.ts --bundle --platform=neutral --format=esm --target=es2022 '--external:https://*' '--external:jsr:*' '--external:npm:*' --outfile=/tmp/stylist/new.ts
+          test "$(wc -c </tmp/stylist/new.ts)" -gt 300000
+          grep -q 'stylist-runtime-repair-v3-cpu-bounded' /tmp/stylist/new.ts
+          git diff --quiet "$BASE" -- src/domain/outfitDiversity.ts src/domain/outfitRotation.ts src/domain/validatedQuartets.ts
+          mkdir -p docs/releases/stylist-quality-v4-20261107
+          cp /tmp/stylist/new.ts docs/releases/stylist-quality-v4-20261107/index.ts
+          sha256sum docs/releases/stylist-quality-v4-20261107/index.ts | cut -d' ' -f1 > docs/releases/stylist-quality-v4-20261107/bundle.sha256
+          printf '{"sourceCommit":"%s","baseBundleSha256":"%s","newBundleSha256":"%s","runtimeMarker":"stylist-runtime-repair-v3-cpu-bounded","esbuild":"0.28.2","status":"candidate-not-deployed"}\n' "$CURRENT" "$BASEHASH" "$(cat docs/releases/stylist-quality-v4-20261107/bundle.sha256)" > docs/releases/stylist-quality-v4-20261107/manifest.json
+          git add docs/releases/stylist-quality-v4-20261107/
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'build(stylist): verified quality v4 edge candidate'
+          git push origin HEAD:release/stylist-quality-v4-20261107
