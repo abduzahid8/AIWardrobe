@@ -7,7 +7,7 @@ judge.styleInference = require('../../src/domain/styleInference');
 const strip=s=>s.replace(/^import .*\n/gm,'').replace(/\bexport\s+/g,'');
 const source=['_shared/modelOutfitResponse.ts','generate-outfits/index.ts'].map(file=>strip(fs.readFileSync(path.join(root,file),'utf8'))).join('\n');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
-const api=new Function('serve','createClient','Deno',...Object.keys(judge),compiled+'\nreturn {inferAttrsEdge,scoreItemForStyleEdge,rankItemsForStyleEdge,requiredShopSupplementSlots,fetchShopItemsForAllSlotsEdge,retainBudgetFloorCandidates: typeof retainBudgetFloorCandidates === "function" ? retainBudgetFloorCandidates : undefined};')(()=>{},()=>{},{env:{get:()=>undefined}},...Object.values(judge));
+const api=new Function('serve','createClient','Deno',...Object.keys(judge),compiled+'\nreturn {inferAttrsEdge,scoreItemForStyleEdge,rankItemsForStyleEdge,requiredShopSupplementSlots,fetchShopItemsForAllSlotsEdge,shopCatalogEligibilityCandidate,retainBudgetFloorCandidates: typeof retainBudgetFloorCandidates === "function" ? retainBudgetFloorCandidates : undefined};')(()=>{},()=>{},{env:{get:()=>undefined}},...Object.values(judge));
 test('ranking floors cannot restore a garment rejected by the authoritative eligibility predicate',()=>{
  const items=[{id:'relaxed',name:'100% LINEN RELAXED FIT TROUSERS',macroCategory:'bottom'},
  {id:'regular',name:'100% WOOL REGULAR FIT SUIT TROUSERS',macroCategory:'bottom'},
@@ -23,6 +23,15 @@ test('six ineligible bottoms cannot make a supplemented wardrobe appear complete
  const items=['top','shoes','bottom'].flatMap(slot=>Array.from({length:6},(_,i)=>({id:slot+i,macroCategory:slot,name:slot==='bottom'?'LINEN RELAXED FIT TROUSERS':slot==='top'?'Cotton shirt':'Black leather derby shoes'})));
  const eligible=item=>!judge.rejectForStyleOccasion(item,'semi_classic','formal');
  expect(api.requiredShopSupplementSlots(items,['top','bottom','shoes'],1,[],eligible).slots).toEqual(['bottom']);
+});
+test('raw shop_catalog rows retain catalog identity during context validation',()=>{
+  const raw={id:'real-shirt',name:'Regular Fit Cotton Poplin Shirt',category:'tops',type:'upper_body',macroCategory:'top',imageUrl:'https://example.invalid/shirt.jpg'};
+  const catalogContext=judge.stylingContext({style:'classic',occasion:'work',sourceMode:'catalog'});
+  expect(judge.garmentContextReason(raw,catalogContext)).toBe('source_requires_catalog');
+  const tagged=api.shopCatalogEligibilityCandidate(raw);
+  expect(tagged).toEqual(expect.objectContaining({id:'shop_real-shirt',isShopItem:true,name:raw.name,macroCategory:'top'}));
+  expect(judge.garmentContextReason(tagged,catalogContext)).toBeNull();
+  expect(api.shopCatalogEligibilityCandidate(tagged).id).toBe(tagged.id);
 });
 test('a shop eligibility predicate applies before per-slot truncation',async()=>{
  const data=[{id:'relaxed',name:'LINEN RELAXED FIT TROUSERS',category:'bottoms',garment_type:'lower_body',image_url:'https://example.invalid/pants.jpg'}];
