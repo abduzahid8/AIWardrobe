@@ -1,0 +1,44 @@
+{
+  "context": "Development Fast Refresh after editing outfitCoherence.ts; before the explicit cold retry. Not an ordinary cold-launch failure or release test.",
+  "exception": {
+    "codes": "0x0000000000000001, 0x006636cbd2905b00",
+    "rawCodes": [
+      1,
+      28770696663423744
+    ],
+    "type": "EXC_BAD_ACCESS",
+    "signal": "SIGSEGV",
+    "subtype": "KERN_INVALID_ADDRESS at 0x006636cbd2905b00"
+  },
+  "termination": {
+    "flags": 0,
+    "code": 11,
+    "namespace": "SIGNAL",
+    "indicator": "Segmentation fault: 11",
+    "byProc": "exc handler",
+    "byPid": 23998
+  },
+  "faultingThread": "com.facebook.react.runtime.JavaScript",
+  "frames": [
+    {
+      "symbol": "objc_release",
+      "symbolLocation": 16
+    },
+    {
+      "symbol": "-[NSConcreteMapTable assign:key:value:isNew:]",
+      "symbolLocation": 204
+    },
+    {
+      "symbol": "-[NSConcreteMapTable setObject:forKey:]",
+      "symbolLocation": 108
+    },
+    {
+      "symbol": "-[EXPermissionsService registerRequesters:]",
+      "symbolLocation": 252
+    },
+    {
+      "symbol": "closure #1 in CalendarNextModule.definition()",
+      "symbolLocation": 508
+    }
+  ]
+}

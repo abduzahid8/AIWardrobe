@@ -1,0 +1,43 @@
+{
+  "beforeColdRestart": [
+    {
+      "deckCount": 4,
+      "latestRequestId": "mw4fg2v5-1",
+      "latestProductIds": [
+        "shop_allsaints-usm132sf-4938",
+        "reiss-h55185",
+        "md-uz-65426326",
+        "ecco-500164-01001",
+        "shop_allsaints-usm135pf-162",
+        "zara-uz-553306780",
+        "md-uz-67149011",
+        "shop_thursday-6865670045786",
+        "shop_allsaints-usm134sf-10186",
+        "zara-uz-565125505",
+        "md-uz-61733853",
+        "shop_thursday-8086847258714"
+      ]
+    }
+  ],
+  "afterColdRestart": [
+    {
+      "deckCount": 4,
+      "latestRequestId": "mw4fg2v5-1",
+      "latestProductIds": [
+        "shop_allsaints-usm132sf-4938",
+        "reiss-h55185",
+        "md-uz-65426326",
+        "ecco-500164-01001",
+        "shop_allsaints-usm135pf-162",
+        "zara-uz-553306780",
+        "md-uz-67149011",
+        "shop_thursday-6865670045786",
+        "shop_allsaints-usm134sf-10186",
+        "zara-uz-565125505",
+        "md-uz-61733853",
+        "shop_thursday-8086847258714"
+      ]
+    }
+  ],
+  "preserved": true
+}

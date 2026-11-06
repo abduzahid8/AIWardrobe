@@ -1,29 +1,265 @@
 {
-  "clientCommit": "033a21d41d3c",
-  "edgeVersion": 179,
+  "verifiedOn": "2026-11-06 Asia/Tashkent",
+  "status": "remaining_simulator_checks_completed",
+  "originalClientCommit": "033a21d41d3ce729f40f11367696afa0673da9c8",
+  "correctedClientCommit": "41ad036d3c8b9378895a1ae18c46122a8703cb26",
+  "metroPort": 8082,
+  "worktree": "/Users/v.zahid/AIWardrobe-running-repair",
+  "edgeLastVerifiedVersion": 179,
+  "hostedVersionRecheck": "Read-only CLI call timed out; no deployment requested. Responses remain legacy-unversioned.",
   "verifiedFinalClient": [
     [
       "classic",
       "work"
+    ],
+    [
+      "classic",
+      "casual"
+    ],
+    [
+      "classic",
+      "travel"
+    ],
+    [
+      "classic",
+      "formal"
+    ],
+    [
+      "casual",
+      "formal"
     ]
   ],
-  "simulatorStatus": "Mac locked after explicit process restart; remaining final-build scenarios pending manual unlock",
-  "beforeUserMeasured": {
-    "placements": 48,
-    "distinctIds": 34,
-    "productIdsRepeatedAcrossRequests": 12
+  "perRequestResults": [
+    {
+      "requestId": "mw4fg2v5-1",
+      "clientCommit": "033a21d41d3c",
+      "style": "classic",
+      "occasion": "work",
+      "outfitCount": 3,
+      "productIds": [
+        "allsaints-usm132sf-4938",
+        "reiss-h55185",
+        "md-uz-65426326",
+        "ecco-500164-01001",
+        "allsaints-usm135pf-162",
+        "zara-uz-553306780",
+        "md-uz-67149011",
+        "thursday-6865670045786",
+        "allsaints-usm134sf-10186",
+        "zara-uz-565125505",
+        "md-uz-61733853",
+        "thursday-8086847258714"
+      ],
+      "distinctProducts": 12,
+      "exactFourSlots": true,
+      "previousRequestOverlap": null,
+      "genericDuplicatedCopy": false,
+      "visualReview": "passed",
+      "copyReviewedOnScreen": true
+    },
+    {
+      "requestId": "mw4fi5c3-1",
+      "clientCommit": "033a21d41d3c",
+      "style": "classic",
+      "occasion": "work",
+      "outfitCount": 3,
+      "productIds": [
+        "aurelien-15368784511306",
+        "armani_exchange-xm003526_af28320_ub101",
+        "md-uz-65944897",
+        "geox-u65hyb00046c6009",
+        "armani_exchange-xm002265_af24533_u0009",
+        "zara-uz-574423510",
+        "md-uz-63985009",
+        "geox-u66cjc00047c6009",
+        "loro-piana-frm1681_f8ka",
+        "aurelien-15501547143498",
+        "zara-uz-579824936",
+        "ecco-523364-01001"
+      ],
+      "distinctProducts": 12,
+      "exactFourSlots": true,
+      "previousRequestOverlap": [],
+      "genericDuplicatedCopy": false,
+      "visualReview": "passed",
+      "copyReviewedOnScreen": true
+    },
+    {
+      "requestId": "mw4fjqn5-2",
+      "clientCommit": "033a21d41d3c",
+      "style": "classic",
+      "occasion": "casual",
+      "outfitCount": 3,
+      "productIds": [
+        "aurelien-15368784445770",
+        "loro-piana-frm1839_h687",
+        "zara-uz-545470288",
+        "zara-uz-549311970",
+        "arket-1318266001",
+        "aurelien-8413692133706",
+        "zara-uz-545461547",
+        "zara-uz-545422196",
+        "aurelien-15489794310474",
+        "aurelien-15200380191050",
+        "zara-uz-545485614",
+        "geox-u657kb00039c6001"
+      ],
+      "distinctProducts": 12,
+      "exactFourSlots": true,
+      "previousRequestOverlap": [],
+      "genericDuplicatedCopy": false,
+      "visualReview": "passed",
+      "copyReviewedOnScreen": true
+    },
+    {
+      "requestId": "mw4fl1wy-3",
+      "clientCommit": "033a21d41d3c",
+      "style": "classic",
+      "occasion": "travel",
+      "outfitCount": 3,
+      "productIds": [
+        "aurelien-15489794670922",
+        "aurelien-8413695934794",
+        "canali-pac00052034",
+        "zara-uz-550775793",
+        "aurelien-15489794703690",
+        "aurelien-10106347356490",
+        "c-and-a-2264380-3",
+        "zara-uz-576983279",
+        "loro-piana-frm1816_f8kl",
+        "zara-uz-562828481",
+        "canali-pac00049766",
+        "zara-uz-545426131"
+      ],
+      "distinctProducts": 12,
+      "exactFourSlots": true,
+      "previousRequestOverlap": [],
+      "genericDuplicatedCopy": false,
+      "visualReview": "passed",
+      "copyReviewedOnScreen": true
+    },
+    {
+      "requestId": "mw4fmi1g-4",
+      "clientCommit": "033a21d41d3c",
+      "style": "classic",
+      "occasion": "formal",
+      "outfitCount": 3,
+      "productIds": [
+        "aurelien-15489795490122",
+        "md-uz-63985006",
+        "hm-1252892004",
+        "ecco-525604-01482",
+        "armani_exchange-xm002109_af24533_ub101",
+        "reiss-770509",
+        "md-uz-61977996",
+        "geox-u66cjc00047c9999",
+        "aurelien-15368784380234",
+        "aurelien-10066008899914",
+        "zara-uz-547825957",
+        "geox-u66nze00043c9999"
+      ],
+      "distinctProducts": 12,
+      "exactFourSlots": true,
+      "previousRequestOverlap": [],
+      "genericDuplicatedCopy": false,
+      "visualReview": "passed",
+      "copyReviewedOnScreen": true
+    },
+    {
+      "requestId": "mw4ggni7-1",
+      "clientCommit": "41ad036d3c8b",
+      "style": "casual",
+      "occasion": "formal",
+      "outfitCount": 3,
+      "productIds": [
+        "reiss-f18205",
+        "emporio-armani-em004656_te11131_ub081",
+        "zara-uz-574423509",
+        "ecco-523364-01001",
+        "reiss-f18169",
+        "zara-uz-568748001",
+        "md-uz-63207618",
+        "geox-u65hyb00046c6009",
+        "selected-homme-16096901-brightwhite-1281804",
+        "emporio-armani-em007112_te19332_ub108",
+        "zara-uz-565132998",
+        "geox-u66cjc00047c6009"
+      ],
+      "distinctProducts": 12,
+      "exactFourSlots": true,
+      "previousRequestOverlap": [],
+      "genericDuplicatedCopy": false,
+      "visualReview": "passed",
+      "copyReviewedOnScreen": true
+    }
+  ],
+  "failedAttempts": [
+    {
+      "requestId": "mw4fnmzv-5",
+      "clientCommit": "033a21d41d3c",
+      "style": "casual",
+      "occasion": "formal",
+      "failure": "Competing checked bases and patterned tailoring"
+    },
+    {
+      "requestId": "mw4fv18p-1",
+      "clientCommit": "576f26199a53",
+      "style": "casual",
+      "occasion": "formal",
+      "failure": "Henley and unverified merino button-through admitted as generic Formal shirts"
+    },
+    {
+      "requestId": "mw4g2grc-1",
+      "clientCommit": "8aa1d08f2740",
+      "style": "casual",
+      "occasion": "formal",
+      "failure": "Pinstriped inflection, conflicting tailoring patterns and hybrid dress-shoe counterevidence missed"
+    },
+    {
+      "requestId": "mw4gbik0-1",
+      "clientCommit": "888a0562f05d",
+      "style": "casual",
+      "occasion": "formal",
+      "failure": "Explicit geometric pattern missing from Formal pattern evidence"
+    }
+  ],
+  "successfulOutfits": 18,
+  "successfulPlacements": 72,
+  "successfulDistinctNormalizedProductIds": 69,
+  "nonConsecutiveReusedProducts": {
+    "geox-u65hyb00046c6009": 2,
+    "geox-u66cjc00047c6009": 2,
+    "ecco-523364-01001": 2
   },
-  "previousSameContextWorkVerification": {
-    "clientCommit": "b66f76460d72",
-    "decks": 2,
+  "immediatePreviousRequestOverlap": [],
+  "workColdRestart": {
+    "storagePreserved": true,
+    "requestIds": [
+      "mw4fg2v5-1",
+      "mw4fi5c3-1"
+    ],
     "placements": 24,
-    "distinctNormalizedProductIds": 24,
-    "overlap": 0
+    "distinctProductIds": 24,
+    "repeatedProductIds": []
   },
-  "pendingFinalBuild": [
-    "Classic + Casual after restart",
-    "Classic + Travel",
-    "Classic + Formal",
-    "Casual + Formal"
-  ]
+  "fourClassicDecks": {
+    "placements": 48,
+    "distinctProductIds": 48
+  },
+  "ordinaryColdLaunchCrashesObserved": 0,
+  "developmentReloadCrashCaptured": true,
+  "localeVerifiedOnDevice": "uz",
+  "otherLocalesExercisedOnDevice": false,
+  "inventoryShortfallObserved": false,
+  "globalEligibleInventoryExhaustionProven": false,
+  "remainingScenarioFailures": [],
+  "remainingLimitations": [
+    "Three older footwear IDs were reused in the final Formal deck; this is older-item reuse, not consecutive-deck overlap. No catalog-wide exhaustion claim is made.",
+    "Development Fast Refresh native crash persists; it is separate from successful cold launches and is not release-failure evidence.",
+    "Hosted Edge rollout remains unexecuted and requires separate approval."
+  ],
+  "pendingFinalBuild": [],
+  "productionDeploymentPerformed": false,
+  "mainMerged": false,
+  "billingChanged": false
 }
