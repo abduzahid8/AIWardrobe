@@ -68,6 +68,7 @@ test('Formal recovery recognizes pinstriped tailoring, matching patterns and hyb
  expect(wholeOutfitRegisterClash([{...top,name:'White poplin shirt'},layer,bottom],formal)).toBe('formal_striped_layer_requires_matching_trousers');
  expect(wholeOutfitRegisterClash([{...top,name:'White poplin shirt'},{...layer,name:'Houndstooth Regular Fit Suit Blazer'},{...bottom,name:'Striped Suit Regular Fit Trousers'}],formal)).toBe('formal_tailoring_patterns_conflict');
  expect(wholeOutfitRegisterClash([{...top,name:'White poplin shirt'},{...layer,name:'Blazer with silk and chenille macro chevron'},{...bottom,name:'Pinstripe suit trousers'}],formal)).toBe('formal_tailoring_patterns_conflict');
+ expect(wholeOutfitRegisterClash([{...top,name:'Atelier Herringbone-Stripe Long-Sleeve Shirt'},{...layer,name:'Knit effect jersey blazer with geometric pattern Signature Capsule'},{...bottom,name:'Comfort Suit Trousers'}],formal)).toBe('formal_patterned_tailoring_requires_quiet_base');
  expect(garmentContextReason({name:'S Lite Hybrid Leather Derby Shoe - Black',macroCategory:'shoes'},formal)).toBe('formal_requires_dress_footwear');
  expect(garmentContextReason({name:'Black leather derby shoes',macroCategory:'shoes'},formal)).toBeNull();
 });

@@ -54,7 +54,7 @@ export function wholeOutfitRegisterClash(
   // base competes with patterned tailoring even when each item alone passes.
   // Read positive catalog pattern evidence directly (including pinstripes).
   const visiblePattern = (item: GarmentEvidence) => ['check','stripe','print'].includes(patternOf(item))
-    || /\bchevron\b/i.test(`${item.name || ''} ${item.description || ''} ${item.pattern || ''}`);
+    || /\b(chevron|geometric|paisley|jacquard|pattern(?:ed)?)\b/i.test(`${item.name || ''} ${item.description || ''} ${item.pattern || ''}`);
   if (context.dressCode === 'formal' && top && visiblePattern(top)
     && [layer, bottomIndex >= 0 ? items[bottomIndex] : undefined].some(item => item && visiblePattern(item)))
     return 'formal_patterned_tailoring_requires_quiet_base';
