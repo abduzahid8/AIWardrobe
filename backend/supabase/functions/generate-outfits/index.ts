@@ -131,6 +131,12 @@ function isShopRow(item: any): boolean {
     return Boolean(item.isShopItem) || String(item.id || '').startsWith('shop_')
 }
 
+/** Convert raw shop_catalog rows to the same catalog identity expected by shared styling guards. */
+function shopCatalogEligibilityCandidate(item: any): any {
+    const id = String(item?.id || '')
+    return { ...item, id: id.startsWith('shop_') ? id : `shop_${id}`, isShopItem: true }
+}
+
 function macroCategory(category: string, type: string, name?: string): string {
     // Explicit garment names override noisy feed slot labels, as English names do.
     const garmentName = String(name || '').toLowerCase()
@@ -2466,13 +2472,15 @@ serve(async (req: Request) => {
                 // garment. Otherwise a page of individually valid blazers can
                 // hide the cardigans needed by a piqué polo, leaving no deck.
                 const shopEligible = (item: any, discovered: any[] = []) => {
-                    if (!eligibleCandidate(item) || filterShopByPrefs([item], preferences).length !== 1
-                        || (lockedItem && rejectOutfitIncoherence([lockedItem, item], selectionStyle, `${occasion} ${prompt}`))) return false
+                    // Catalog rows have raw ids until selected; context guards require shop identity.
+                    const candidate = shopCatalogEligibilityCandidate(item)
+                    if (!eligibleCandidate(candidate) || filterShopByPrefs([candidate], preferences).length !== 1
+                        || (lockedItem && rejectOutfitIncoherence([lockedItem, candidate], selectionStyle, `${occasion} ${prompt}`))) return false
                     // Count compatible tops, not merely individually valid
                     // knits that cannot layer with any admitted outerwear.
                     const layers=[...wardrobeItems,...discovered].filter((layer:any)=>layer.macroCategory==='outerwear')
-                    return !lockedItem || item.macroCategory!=='top' || !layers.length || layers.some((layer:any)=>
-                        !rejectOutfitIncoherence([...(lockedItem.macroCategory==='outerwear' ? [] : [lockedItem]),layer,item],selectionStyle,`${occasion} ${prompt}`))
+                    return !lockedItem || candidate.macroCategory!=='top' || !layers.length || layers.some((layer:any)=>
+                        !rejectOutfitIncoherence([...(lockedItem.macroCategory==='outerwear' ? [] : [lockedItem]),layer,candidate],selectionStyle,`${occasion} ${prompt}`))
                 }
                 const discoverySlots=lockedItem ? [...missingSlots].sort((a,b)=>Number(b==='outerwear')-Number(a==='outerwear')) : missingSlots
                 const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, discoverySlots, selectionStyle, targetChoicesPerSlot, excludeSet, shopEligible, parsedBudget ? requestFx : undefined, parsedBudget && !requestFx ? parsedBudget : undefined, `${occasion} ${prompt}`, rotationTarget, deckPriority,
