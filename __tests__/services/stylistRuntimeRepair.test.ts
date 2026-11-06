@@ -45,3 +45,14 @@ test('Formal recovery rejects checked bases competing with patterned tailoring, 
  expect(wholeOutfitRegisterClash([checked,{...stripedLayer,name:'Wool suit blazer'},{...stripedBottom,name:'Wool pinstripe suit trousers'},shoes],stylingContext({style:'casual',occasion:'formal'}))).toBe('formal_patterned_tailoring_requires_quiet_base');
  expect(styleJudgeReason([checked,{...stripedLayer,name:'Wool suit blazer'},{...stripedBottom,name:'Wool suit trousers'},shoes],'casual','formal')).toBeNull();
 });
+
+test('Formal bases reject the selected Henley and unverified merino button-through shirts',()=>{
+ for(const name of ['Slim-Fit Cotton Henley Shirt','Merino Wool Button-Through Shirt in Soft Grey Mouline']) {
+  const base={id:'base',name,macroCategory:'top'};
+  for(const style of ['casual','classic']) {
+   expect(garmentContextReason(base,stylingContext({style,occasion:'formal'}))).toBe('formal_requires_dress_base');
+   expect(garmentContextReason(base,stylingContext({style,occasion:'casual'}))).toBeNull();
+  }
+ }
+ expect(garmentContextReason({name:'White cotton poplin dress shirt',macroCategory:'top'},stylingContext({style:'casual',occasion:'formal'}))).toBeNull();
+});

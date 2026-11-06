@@ -50,6 +50,15 @@ export function garmentContextReason(
   )
     return 'excluded_pattern';
   if (context.dressCode === 'formal') {
+    const baseText = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
+    // Catalog "shirt" is too broad: a Henley has no dress collar, while
+    // merino button-through knitwear needs explicit woven/dress evidence.
+    if (d.slot === 'top' && (
+      /\b(henley|grandad|collarless|camp[ -]collar|cuban[ -]collar)\b/.test(baseText)
+      || /\b(knit|knitted|jersey)\b/.test(baseText)
+      || (/\bmerino\b/.test(baseText) && /\bbutton[ -]through\b/.test(baseText)
+        && !/\b(woven|dress|formal|poplin|oxford)\b/.test(baseText))
+    )) return 'formal_requires_dress_base';
     if (
       ['top', 'outerwear', 'bottom'].includes(d.slot) &&
       /\b(corduroy|denim|fleece|sweatshirt)\b/i.test(`${item.name || ''} ${item.description || ''}`)
