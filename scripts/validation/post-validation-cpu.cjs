@@ -136,11 +136,34 @@ function fixture(occasion, anchored = false, mode = 'fresh') {
     });
     aiOutfits[1].items[0] = { ...aiOutfits[0].items[0] };
   }
+  if (mode === 'quality-floor' || mode === 'minimalist-floor') {
+    const row = (slot) =>
+      wardrobeItems.find((item) => item.macroCategory === slot && item.id.endsWith('-2'));
+    if (mode === 'quality-floor') {
+      if (anchored) row('shoes').name = 'Flextride Plus Leather Loafers - Black';
+      else {
+        row('top').name = 'Bold rugby striped cotton shirt';
+        row('outerwear').name = 'Technical leisure zip blazer';
+      }
+    } else {
+      wardrobeItems.forEach((item) => {
+        if (item.macroCategory === 'top')
+          item.name = item.name.replace('poplin dress shirt', 'T-shirt');
+        if (item.macroCategory === 'bottom')
+          item.name = item.name.replace('tailored wool trousers', 'straight denim jeans');
+        if (item.macroCategory === 'shoes')
+          item.name = item.name.replace('Oxford shoes', 'minimal leather sneakers');
+        item.description = item.name + '. Regular fit.';
+        if (item.macroCategory === 'bottom') item.material = 'cotton denim';
+      });
+      row('bottom').description = 'Shredded denim with large holes';
+    }
+  }
   const keys = wardrobeItems.filter((_, i) => i % 24 >= 20).map((i) => 'id:' + i.id);
   return {
     wardrobeItems,
     aiOutfits,
-    styleKey: 'old_money',
+    styleKey: mode === 'minimalist-floor' ? 'minimalist' : 'old_money',
     occasion,
     anchorItemId,
     preferences: { maxShopBudget: { amount: 250, currency: 'USD' } },
@@ -175,6 +198,9 @@ function fixture(occasion, anchored = false, mode = 'fresh') {
     ['Work', false, 'budget-pressure'],
     ['Formal', true, 'budget-pressure'],
     ['Work', false, 'rejected-reserve'],
+    ['Work', false, 'quality-floor'],
+    ['Work', true, 'quality-floor'],
+    ['Casual', false, 'minimalist-floor'],
   ];
   for (const [occasion, anchored, mode] of cases) {
     metrics = {};
@@ -231,6 +257,21 @@ function fixture(occasion, anchored = false, mode = 'fresh') {
       assert(look.items.every((i) => f.wardrobeItems.some((p) => p.id === i.id)));
       assert(look.items.reduce((n, i) => n + Number(i.price || 0), 0) <= 250);
       if (anchored) assert(look.items.some((i) => i.id === f.anchorItemId));
+    }
+    if (response.status === 200 && (mode === 'quality-floor' || mode === 'minimalist-floor')) {
+      const signature = (items) =>
+        items
+          .map((i) => i.id)
+          .sort()
+          .join('|');
+      const shown = data.outfits.map((look) => signature(look.items));
+      for (const good of f.aiOutfits.slice(0, 2))
+        assert(
+          shown.includes(signature(good.items)),
+          'good look must be preserved including shoes'
+        );
+      assert(!shown.includes(signature(f.aiOutfits[2].items)), 'weak look must be replaced');
+      assert(data.outfits.every((look) => look.qualityAssessment.acceptance.passed));
     }
     if (response.status === 200) {
       const selected = data.outfits.flatMap((l) => l.items.filter((i) => i.id !== f.anchorItemId));

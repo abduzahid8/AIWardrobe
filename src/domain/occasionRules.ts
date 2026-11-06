@@ -1,3 +1,4 @@
+import {outfitQualityFloor, type OutfitQualityFloor} from './outfitQualityFloor.ts';
 import {garmentContextReason} from './garmentContext.ts';
 /**
  * occasionRules — taste enforcement for the AI stylist.
@@ -969,6 +970,7 @@ export function humanizeProductName(raw: string | null | undefined): string {
 }
 
 export interface OutfitQualityAssessment {
+    acceptance: OutfitQualityFloor;
     dimensions: {styleFit:number;occasionFit:number;colorHarmony:number;materialHarmony:number;formalityFit:number;weatherFit:number};
     score:number;
     reasons:string[];
@@ -1060,7 +1062,7 @@ export function assessOutfitQuality(items:JudgeableItem[],style?:string|null,occ
     const connected=outfitCoherence(items.map(item=>({...item,id:item.id==null?undefined:String(item.id),name:item.name||undefined,type:item.type||undefined,description:item.description||undefined,macroCategory:item.macroCategory||undefined,color:item.color||undefined})),stylingContext({style,occasion,weather,anchorId:lockedItemId,preferences}));
     reasons.push(...connected.reasons);evidence.push(...connected.evidence);
     const score=(Object.values(dimensions).reduce((sum,n)=>sum+n,0)/6)*0.5+connected.score*0.5;
-    return {dimensions,score,reasons:[...new Set(reasons)],evidence};
+    return {dimensions,score,reasons:[...new Set(reasons)],evidence,acceptance:outfitQualityFloor(items,stylingContext({style,occasion,weather,anchorId:lockedItemId,preferences}),connected)};
 }
 
 /**
@@ -1074,10 +1076,9 @@ export function assessOutfitQuality(items:JudgeableItem[],style?:string|null,occ
  */
 export function createQualityMemo(maxEntries = 2000): (items: JudgeableItem[], style?: string | null, occasion?: string | null, weather?: ClimateWeather | null, lockedItemId?: string | null, preferences?: StylingPreferences) => OutfitQualityAssessment {
     const cache = new Map<string, OutfitQualityAssessment>();
-    const signature = (item: JudgeableItem): string => {
-        const blob = `${item?.id ?? ''}~${(item as any)?.macroCategory ?? ''}~${item?.color ?? ''}~${(item as any)?.material ?? ''}~${(item as any)?.pattern ?? ''}~${item?.name ?? ''}`;
-        return blob.length > 160 ? blob.slice(0, 160) : blob;
-    };
+    // Acceptance reads description/construction too. Never alias rows by a
+    // truncated id/name key when their evidence differs after enrichment.
+    const signature = (item: JudgeableItem): string => stable(item);
     const stable = (value: unknown): string => {
         if (value === null || value === undefined) return '~';
         if (typeof value !== 'object') return String(value);

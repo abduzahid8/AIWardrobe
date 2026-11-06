@@ -27,7 +27,7 @@ const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-const GENERATION_VERSION = 'stylist-runtime-repair-v3-cpu-bounded';
+const GENERATION_VERSION = 'stylist-runtime-repair-v3-quality-floor-20261107';
 // Public catalog pages only; account history and eligibility are never cached.
 const catalogPages = new Map<string, {at:number; rows:any[]}>();
 const CATALOG_PAGE_TTL = 5 * 60 * 1000;
@@ -2418,13 +2418,14 @@ serve(async (req: Request) => {
         // assessOutfitQuality is pure for a fixed argument tuple, so identical
         // sets are computed once per request. Request-scoped, never shared.
         const memoQuality = createQualityMemo();
-        const lookSignals = new WeakMap<object, {quality: number; recency: number}>();
+        const lookSignals = new WeakMap<object, {quality: number; recency: number; acceptable: boolean}>();
         const signalsFor = (look: any) => {
             let signals = lookSignals.get(look)
             if (!signals) {
                 const recency = recentLookSimilarity(look.items, body.recentLookSignatures ?? [])
                 const penalty = recency >= 0.8 ? (recency - 0.8) * 0.15 : 0
-                signals = {recency, quality: Math.max(0, memoQuality(look.items, styleKey, `${occasion} ${prompt}`, weather, anchorItemId, preferences).score - penalty)}
+                const assessment = memoQuality(look.items, styleKey, `${occasion} ${prompt}`, weather, anchorItemId, preferences)
+                signals = {recency, quality: Math.max(0, assessment.score - penalty), acceptable: assessment.acceptance.passed}
                 lookSignals.set(look, signals)
             }
             return signals
@@ -2852,14 +2853,19 @@ serve(async (req: Request) => {
             const styleVerdict=validateOutfitAgainstStyle(proposal, styleKey, itemMap, layered, preferences),compatibility=validateOutfitCompatibility(proposal, itemMap, styleKey)
             if (!styleVerdict.ok || !compatibility.ok) return rejectChoice(styleVerdict.reason || compatibility.reason || 'incompatible')
             if (isWorkishOccasion(`${occasion} ${prompt}`) && parts.some(item => isSwimBottomItem(item) || isDriverShoeItem(item))) return false
+            const acceptance = memoQuality(parts,styleKey,`${occasion} ${prompt}`,weather,anchorItemId,preferences).acceptance
+            if (!acceptance.passed) return rejectChoice(acceptance.reason || 'quality_floor')
             return true
         }
         // Keep one-product alternatives for the joint deck selector: pruning
         // them greedily can remove the only compatible third look.
         let completeChoiceCache: ReturnType<typeof outfitChoices<any>> | undefined
+        const protectedReserveKeys = new Set<string>()
+        const compatibleWithProtected = (parts: any[]) => !parts.some(item =>
+            productIdentityKeys(item).some(key => protectedReserveKeys.has(key)))
         // Anchored looks share one fixed garment. Use the choice enumerator's
         // normal shortlist size so joint selection stays within Edge CPU limits.
-        const completeChoices = () => completeChoiceCache ??= validatedQuartets(wardrobeItems, stylingContext({style:styleKey,occasion,request:prompt,weather,anchorId:anchorItemId,preferences,sourceMode:catalogOnly?'catalog':wardrobeOnly?'wardrobe':'mixed',budget:preferences?.maxShopBudget}), acceptsCompleteChoice, {requiredIds:requiredChoiceIds,maximum:24,searchLimit:384,perSlot:12,reserveMultiplier:1})
+        const completeChoices = () => completeChoiceCache ??= validatedQuartets(wardrobeItems, stylingContext({style:styleKey,occasion,request:prompt,weather,anchorId:anchorItemId,preferences,sourceMode:catalogOnly?'catalog':wardrobeOnly?'wardrobe':'mixed',budget:preferences?.maxShopBudget}), parts => compatibleWithProtected(parts) && acceptsCompleteChoice(parts), {requiredIds:requiredChoiceIds,maximum:24,searchLimit:384,perSlot:12,reserveMultiplier:1})
         async function generateCuratedChoices(): Promise<any[] | null> {
         let choices = completeChoices()
         if (!choices.length) return null
@@ -3111,6 +3117,11 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
             return !reason && complete && !repeats && budgetOk
         })
         const personalStylist = deckTarget === 3
+        // A complete provider deck can be hard-valid but visually weak. Gate
+        // raw compatibility before the fresh-deck shortcut, not recency-adjusted rank.
+        const qualityRejected = finalOutfits.filter((look: any) => !signalsFor(look).acceptable).length
+        finalOutfits = finalOutfits.filter((look: any) => signalsFor(look).acceptable)
+        let protectedProviderLooks: any[] = []
         // Provider compliance is not authority over the requested batch size.
         // ── 9c. Product-uniqueness deck gate ──────────────────────────────
         // Same formula is allowed; same actual product is not. Select the
@@ -3121,7 +3132,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
         // truncated view of the valid pool and must not re-derive "is this
         // slot genuinely thin?" from it.
         let diversityCapacity: { activeSlots: DiversitySlot[]; strictSlots: DiversitySlot[]; forcedRepeatSlots: DiversitySlot[] } | undefined
-        if (finalOutfits.length > 0) {
+        if (finalOutfits.length > 0 || (personalStylist && qualityRejected > 0)) {
             const anchorForDiversity = anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId)
                 ? wardrobeItems.find((i: any) => String(i.id) === String(anchorItemId))
                 : undefined
@@ -3155,7 +3166,10 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 // keep the remaining validated looks behind it so the client
                 // still has alternatives to choose from.
                 target: requestedDeckTarget,
-                priorityOfDeck: deck => deckPriority(deck.flatMap((outfit: any) => outfit.items)),
+                priorityOfDeck: deck => {
+                    const rotation = deckPriority(deck.flatMap((outfit: any) => outfit.items))
+                    return protectedProviderLooks.length ? [deck.filter(look => protectedProviderLooks.includes(look)).length, ...rotation] : rotation
+                },
                 maxSearchSteps: 512,
             })
             // A complete fresh provider deck needs no combinatorial expansion.
@@ -3166,11 +3180,22 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 look.items.some((item: any) => String(item.id) !== String(anchorItemId || '')
                     && (wasRecentlyShown(item, excludeSet) || wasRecentlyShown(item, previousSet))))
             if (personalStylist && needsReserve) {
+                if (qualityRejected > 0 && diverseDeck.deck.length < requestedDeckTarget) {
+                    protectedProviderLooks = [...diverseDeck.deck]
+                    for (const look of protectedProviderLooks) for (const item of look.items) {
+                        if (String(item.id) !== String(anchorItemId || '') && diverseDeck.inventory.strictSlots.includes(diversitySlotOf(item)!))
+                            productIdentityKeys(item).forEach(key => protectedReserveKeys.add(key))
+                    }
+                }
                 const signatures = new Set(finalOutfits.map((look: any) => look.items.map((item: any) => item.id).sort().join('|')))
-                const replacements = completeChoices().filter(choice => !signatures.has(choice.items.map(item => item.id).sort().join('|')))
+                const replacements = completeChoices().filter(choice => compatibleWithProtected(choice.items) && !signatures.has(choice.items.map(item => item.id).sort().join('|')))
                     .map(choice => ({items: choice.items, description: `${selectionStyle} outfit`, stylingTips: [], confidence: 0.8, curationRank: Number.MAX_SAFE_INTEGER}))
                 finalOutfits.push(...replacements)
                 diverseDeck = selectDeck(finalOutfits)
+                // The objective steers the bounded search; this check makes
+                // retention a requirement. Never trade away a good card to fill.
+                if (protectedProviderLooks.some(look => !diverseDeck.deck.includes(look)))
+                    return new Response(JSON.stringify({success:false,outfits:[],code:'quality_replacement_unavailable'}), {status:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
             }
             if (diverseDeck.deck.length > 0) {
                 const signatureOf = (o: any) => (o.items || []).map((it: any) => String(it.id)).sort().join('|')
@@ -3192,15 +3217,18 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 }
                 console.info('[stylist-selection]', {candidates: finalOutfits.length, selected: diverseDeck.deck.length,
                     reserveUsed: personalStylist && needsReserve, reason: diverseDeck.relaxReason || 'strict',
-                    illegalReuse: productDiversity.illegalProductReuseCount})
+                    illegalReuse: productDiversity.illegalProductReuseCount, qualityRejected})
             }
         }
         let shoeRotationAudit: any
         if (personalStylist && finalOutfits.length === 3) {
             const shoes = wardrobeItems.filter((item:any)=>item.macroCategory==='shoes' && eligibleCandidate(item))
             const candidateShoes = new Set(finalOutfits.flatMap((look:any)=>look.items.filter((item:any)=>item.macroCategory==='shoes').map((item:any)=>item.id)))
+            const clothingSignature = (parts: any[]) => parts.filter(item => item.macroCategory !== 'shoes').map(item => String(item.id)).sort().join('|')
+            const protectedShoes = new Map(protectedProviderLooks.map(look => [clothingSignature(look.items), String(look.items.find((item: any) => item.macroCategory === 'shoes')?.id)]))
             const assigned = assignRotatingShoes(finalOutfits, shoes,
-                parts=>requiredChoiceIds.every(id=>parts.some(item=>String(item.id)===id)) && acceptsCompleteChoice(parts),
+                parts=>(!protectedShoes.size || !protectedShoes.has(clothingSignature(parts)) || parts.some(item => item.macroCategory === 'shoes' && String(item.id) === protectedShoes.get(clothingSignature(parts))))
+                    && requiredChoiceIds.every(id=>parts.some(item=>String(item.id)===id)) && acceptsCompleteChoice(parts),
                 deckPriority, parts=>memoQuality(parts,styleKey,`${occasion} ${prompt}`,weather,anchorItemId,preferences).score,anchorItemId)
             if (assigned.deck.length === 3) finalOutfits = assigned.deck
             const selected = finalOutfits.flatMap((look:any)=>look.items.filter((item:any)=>item.macroCategory==='shoes'))
@@ -3220,8 +3248,12 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
             }
             // The bounded audit remains in the response; never log product/history arrays.
         }
+        // Defense after shoe substitution: every returned card still meets
+        // the same acceptance floor, with all hard validators unchanged.
+        if (finalOutfits.some((look: any) => !signalsFor(look).acceptable))
+            return new Response(JSON.stringify({success:false,outfits:[],code:'quality_replacement_unavailable'}), {status:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
         finalOutfits = finalOutfits.slice(0, limit)
-        if (personalStylist && finalOutfits.length !== 3) return new Response(JSON.stringify({success: false, outfits: [], code: 'incomplete_outfit_deck', error: 'Three complete, suitable outfits are required. Add more suitable clothing or adjust the request.',debug:{completeChoices:completeChoices().length,candidateSlots:Object.fromEntries(['top','outerwear','bottom','shoes'].map(slot=>[slot,wardrobeItems.filter((item:any)=>item.macroCategory===slot).length])),choiceRejections:Object.fromEntries(choiceRejections)}}), {status: 422, headers: {...corsHeaders, 'Content-Type': 'application/json'}})
+        if (personalStylist && finalOutfits.length !== 3) return new Response(JSON.stringify({success: false, outfits: [], code: qualityRejected > 0 ? 'quality_replacement_unavailable' : 'incomplete_outfit_deck', error: 'Three complete, suitable outfits are required. Add more suitable clothing or adjust the request.',debug:{completeChoices:completeChoices().length,candidateSlots:Object.fromEntries(['top','outerwear','bottom','shoes'].map(slot=>[slot,wardrobeItems.filter((item:any)=>item.macroCategory===slot).length])),choiceRejections:Object.fromEntries(choiceRejections)}}), {status: 422, headers: {...corsHeaders, 'Content-Type': 'application/json'}})
         if (!finalOutfits.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
 
         finalOutfits = finalOutfits.map((outfit:any)=>({...outfit, qualityAssessment: memoQuality(outfit.items,styleKey,`${occasion} ${prompt}`,weather,anchorItemId,preferences)}))

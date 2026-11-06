@@ -12,6 +12,8 @@ const messages = {
   no_items_within_budget: 'outfitMaker.noItemsWithinBudget',
   no_matching_clothing: 'outfitMaker.noMatchingClothing',
   incomplete_outfit_deck: 'outfitMaker.noMatchingClothing',
+  // Do not trigger the screen's looser closest-match recovery after a floor failure.
+  quality_replacement_unavailable: 'outfitMaker.generateFailed',
   shoe_rotation_unavailable: 'outfitMaker.noMatchingClothing',
   invalid_outfit_budget: 'outfitMaker.invalidBudget',
 } as const;
