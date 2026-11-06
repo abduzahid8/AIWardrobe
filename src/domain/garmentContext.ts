@@ -74,7 +74,7 @@ export function garmentContextReason(
       (!['oxford', 'derby', 'monk', 'dress-boot', 'chelsea', 'loafer'].includes(d.subtype) ||
         d.rugged ||
         (d.subtype === 'loafer' && d.formality !== 'formal') ||
-        d.athletic)
+        d.athletic || /\b(hybrids?|cup[ -]?soles?)\b/.test(baseText))
     )
       return 'formal_requires_dress_footwear';
   }

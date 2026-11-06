@@ -2,6 +2,7 @@ import {scoreGarmentForContext, garmentContextReason} from '../../src/domain/gar
 import {stylingContext} from '../../src/domain/stylingContext';
 import {wholeOutfitRegisterClash} from '../../src/domain/outfitCoherence';
 import {rejectForStyleOccasion, passesStyleJudge, styleJudgeReason} from '../../src/domain/occasionRules';
+import {patternOf} from '../../src/domain/outfitDiversity';
 
 const jacket={id:'jacket',name:'Leather trucker jacket',macroCategory:'outerwear'};
 const blazer={id:'blazer',name:'Unlined tailored blazer',macroCategory:'outerwear'};
@@ -55,4 +56,18 @@ test('Formal bases reject the selected Henley and unverified merino button-throu
   }
  }
  expect(garmentContextReason({name:'White cotton poplin dress shirt',macroCategory:'top'},stylingContext({style:'casual',occasion:'formal'}))).toBeNull();
+});
+
+test('Formal recovery recognizes pinstriped tailoring, matching patterns and hybrid footwear counterevidence',()=>{
+ const top={name:'Striped Brushed Oxford Shirt Dark Emerald',macroCategory:'top'};
+ const layer={name:'Pinstriped Suit Jacket Shadow Brown',macroCategory:'outerwear'};
+ const bottom={name:'Ivory Pleated Metropolitan Trousers',macroCategory:'bottom'};
+ const formal=stylingContext({style:'casual',occasion:'formal'});
+ expect(patternOf(layer)).toBe('stripe');
+ expect(wholeOutfitRegisterClash([top,layer,bottom],formal)).toBe('formal_patterned_tailoring_requires_quiet_base');
+ expect(wholeOutfitRegisterClash([{...top,name:'White poplin shirt'},layer,bottom],formal)).toBe('formal_striped_layer_requires_matching_trousers');
+ expect(wholeOutfitRegisterClash([{...top,name:'White poplin shirt'},{...layer,name:'Houndstooth Regular Fit Suit Blazer'},{...bottom,name:'Striped Suit Regular Fit Trousers'}],formal)).toBe('formal_tailoring_patterns_conflict');
+ expect(wholeOutfitRegisterClash([{...top,name:'White poplin shirt'},{...layer,name:'Blazer with silk and chenille macro chevron'},{...bottom,name:'Pinstripe suit trousers'}],formal)).toBe('formal_tailoring_patterns_conflict');
+ expect(garmentContextReason({name:'S Lite Hybrid Leather Derby Shoe - Black',macroCategory:'shoes'},formal)).toBe('formal_requires_dress_footwear');
+ expect(garmentContextReason({name:'Black leather derby shoes',macroCategory:'shoes'},formal)).toBeNull();
 });

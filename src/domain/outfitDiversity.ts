@@ -592,7 +592,7 @@ export function materialsOf(item: any): string[] {
 }
 
 const PATTERN_PATTERNS: Array<[RegExp, string]> = [
-    [/\b(stripe|striped|pinstripe|striped)\b/, 'stripe'],
+    [/\b(stripes?|striped|pinstripes?|pinstriped)\b/, 'stripe'],
     [/\b(check|checked|plaid|tartan|gingham|houndstooth|windowpane)\b/, 'check'],
     [/\b(herringbone|tweed|jacquard|textured|texture)\b/, 'texture'],
     [/\b(print|printed|graphic|floral|logo|camo|patterned)\b/, 'print'],

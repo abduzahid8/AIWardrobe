@@ -53,10 +53,18 @@ export function wholeOutfitRegisterClash(
   // A Casual aesthetic cannot waive Formal coherence. A checked/striped
   // base competes with patterned tailoring even when each item alone passes.
   // Read positive catalog pattern evidence directly (including pinstripes).
-  const visiblePattern = (item: GarmentEvidence) => ['check','stripe','print'].includes(patternOf(item));
+  const visiblePattern = (item: GarmentEvidence) => ['check','stripe','print'].includes(patternOf(item))
+    || /\bchevron\b/i.test(`${item.name || ''} ${item.description || ''} ${item.pattern || ''}`);
   if (context.dressCode === 'formal' && top && visiblePattern(top)
     && [layer, bottomIndex >= 0 ? items[bottomIndex] : undefined].some(item => item && visiblePattern(item)))
     return 'formal_patterned_tailoring_requires_quiet_base';
+  if (context.dressCode === 'formal' && layer && bottomIndex >= 0) {
+    const layerPattern = patternOf(layer), bottomPattern = patternOf(items[bottomIndex]);
+    if (visiblePattern(layer) && visiblePattern(items[bottomIndex]) && layerPattern !== bottomPattern)
+      return 'formal_tailoring_patterns_conflict';
+    if (layerPattern === 'stripe' && bottomPattern !== 'stripe')
+      return 'formal_striped_layer_requires_matching_trousers';
+  }
   const refined = ['semi_classic', 'classic', 'old_money', 'business_casual'].includes(context.style)
     || context.dressCode === 'smart' || context.dressCode === 'formal';
   if (refined && top && layer) {
