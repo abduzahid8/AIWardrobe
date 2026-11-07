@@ -1,3 +1,4 @@
+import { outfitStylingDistance } from './outfitVisualSignature.ts';
 import {productIdentityKeys, garmentNearDuplicateKey} from './outfitDiversity.ts';
 
 /** Enumerate bounded, diverse proposals. The caller supplies the full validator. */
@@ -105,7 +106,8 @@ export function curatedOutfitShortlist<T extends {id: string; items: any[]}>(
     const available = reserve.filter(row => !chosen.includes(row.look));
     if (!available.length) break;
     const novelty = (row: typeof available[number]) =>
-      row.products.filter(key => !products.has(key)).length / Math.max(1, row.products.length)
+      (chosen.length ? Math.min(...chosen.map(look=>outfitStylingDistance(row.look.items,look.items,requiredIds[0]))) * 2 : 0)
+      + row.products.filter(key => !products.has(key)).length / Math.max(1, row.products.length)
       + row.families.filter(key => !families.has(key)).length / Math.max(1, row.families.length);
     const bestQuality = Math.max(...available.map(row => row.quality));
     const comparable = available.filter(row => row.quality >= bestQuality - 0.08)

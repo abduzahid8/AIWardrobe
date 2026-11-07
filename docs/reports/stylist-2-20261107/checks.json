@@ -1,0 +1,55 @@
+{
+  "baseline": {
+    "version": 194,
+    "commit": "404c4b0acf87ae3b795af5ec65c9d81faa518a66",
+    "freshBundleEqualsDownloadedLiveSource": true
+  },
+  "verification": {
+    "releaseFocused": {
+      "suites": 5,
+      "passed": 45,
+      "failed": 0
+    },
+    "existingBudgetWire": {
+      "passed": 94,
+      "remainingStaleAssertionCorrectedAndPassed": true
+    },
+    "additionalExistingSuites": {
+      "coherenceAndVisualSignaturesWithNewCases": 19,
+      "quartets": 6,
+      "v193v194ChoicesAndPhysicalInvariants": 56
+    },
+    "deno": "passed, generate-outfits frozen lock",
+    "typescript": "passed, modified domain dependency graph and new tests",
+    "eslint": "passed, no errors; existing warnings",
+    "diffCheck": "passed"
+  },
+  "cpu": {
+    "baseline": {
+      "runs": 14,
+      "minMs": 84.528,
+      "maxMs": 273.626
+    },
+    "candidate": {
+      "runs": 14,
+      "minMs": 89.182,
+      "maxMs": 313.519
+    },
+    "allPass": true,
+    "limitMs": 500,
+    "scope": "one offline replay comparison, not production latency"
+  },
+  "unchanged": {
+    "catalogQueryAndPageLimits": true,
+    "providerCallAndRetryPolicy": true,
+    "constructionSearchLimits": true,
+    "authenticationAndQuotaSource": true,
+    "subscriptionChecks": true,
+    "budgetFxAndSourceGates": true,
+    "physicalIdentityAndRotation": true,
+    "requiredStructure": true
+  },
+  "noSchemaChanges": true,
+  "noPaidInference": true,
+  "visualAcceptance": "pending owner iOS Simulator QA"
+}

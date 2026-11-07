@@ -205,5 +205,12 @@ export function scoreGarmentForContext(item: GarmentEvidence, context: StylingCo
     score -= 0.08;
   if (!context.weather && d.bulk === 'heavy') score -= 0.1;
   if (d.bulk === 'light' && ['cardigan', 'blazer', 'overshirt'].includes(d.subtype)) score += 0.05;
+  const fit = context.preferences?.fitPreference?.toLowerCase() || '';
+  if (d.volume !== 'unknown' && fit) {
+    const wanted = /slim|fitted/.test(fit) ? 'slim' : /relaxed|loose|wide|oversized/.test(fit) ? 'wide' : /regular|straight/.test(fit) ? 'regular' : '';
+    if (wanted) score += wanted === d.volume ? 0.05 : -0.025;
+  }
+  // Explicit occasion tags can support a preference; missing tags are neutral.
+  if (Array.isArray(item.occasions) && item.occasions.some(value => typeof value === 'string' && value.toLowerCase().trim() === context.occasion)) score += 0.04;
   return Math.max(0, Math.min(1, score - officeRefinementPenalty(item, context, d)));
 }

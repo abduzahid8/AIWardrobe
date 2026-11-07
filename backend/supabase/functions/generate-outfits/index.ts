@@ -1,3 +1,7 @@
+import { stylingCandidateRepresentatives } from '../../../../src/domain/catalogCandidates.ts'
+import { describeGarment } from '../../../../src/domain/garmentDescriptor.ts'
+import { outfitStyleIntent } from '../../../../src/domain/stylingProfiles.ts'
+import { outfitStylingDistance } from '../../../../src/domain/outfitVisualSignature.ts'
 import {garmentContextReason,scoreGarmentForContext,compareUnbudgetedValue} from '../../../../src/domain/garmentContext.ts'
 import {recentLookSimilarity} from '../../../../src/domain/outfitVisualSignature.ts'
 import { validatedQuartets } from '../../../../src/domain/validatedQuartets.ts'
@@ -27,7 +31,7 @@ const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-const GENERATION_VERSION = 'stylist-whole-look-coherence-v193-20261107';
+const GENERATION_VERSION = 'stylist-2-intent-construction-20261107';
 // Public catalog pages only; account history and eligibility are never cached.
 const catalogPages = new Map<string, {at:number; rows:any[]}>();
 const CATALOG_PAGE_TTL = 5 * 60 * 1000;
@@ -299,7 +303,7 @@ function collapseBySimEdge<T>(items: T[], keyFn: (x: T) => string): T[] {
 // family collapse. This does not claim that unseen catalog rows were searched.
 function retainBudgetFloorCandidates(
     source: any[], ranked: any[], cost: (item: any) => number,
-    eligible: (item: any) => boolean, anchor?: any, perSlotChoices = 1, qualityOf: (item:any)=>number = ()=>0,
+    eligible: (item: any) => boolean, anchor?: any, perSlotChoices = 1, qualityOf: (item:any)=>number = ()=>0, context?: ReturnType<typeof stylingContext>,
 ): any[] {
     const cheapest = new Map<string, { item: any; cost: number }>()
     for (const item of source) {
@@ -316,7 +320,11 @@ function retainBudgetFloorCandidates(
     const slotCounts = new Map(Array.from(cheapest.keys(), slot => [slot, 1]))
     // The cheapest floor is mandatory; remaining per-slot choices follow
     // the context-aware ranking, not the catalog's arrival order.
-    for (const item of spreadSuitableProducts([...new Map([...ranked,...source].filter(eligible).map(item=>[String(item.id),item])).values()],item=>item,qualityOf,0.08)) {
+    const available = [...new Map([...ranked,...source].filter(eligible).map(item=>[String(item.id),item])).values()]
+    const ordered = context ? ['top','outerwear','bottom','shoes','dress'].flatMap(slot =>
+        stylingCandidateRepresentatives(available.filter(item => (isDressGarment(item) ? 'dress' : item.macroCategory) === slot),item=>item,qualityOf,context,perSlotChoices))
+        : spreadSuitableProducts(available,item=>item,qualityOf,0.08)
+    for (const item of ordered) {
         if (!eligible(item) || representedIds.has(String(item.id))) continue
         const slot = isDressGarment(item) ? 'dress' : String(item.macroCategory || '').toLowerCase()
         if (!cheapest.has(slot) || (slotCounts.get(slot) || 0) >= perSlotChoices) continue
@@ -1160,6 +1168,7 @@ async function fetchShopItemsForAllSlotsEdge(
     historyPriority?: (items:any[])=>readonly number[],
     acceptsLayeredTop?: (layer:any,top:any)=>boolean,
     generationSeed = crypto.randomUUID(),
+    context = stylingContext({style,occasion:requestIntent}),
 ): Promise<any[]> {
     const picks: any[] = []
     const styleKey = style.toLowerCase().replace(/[\s-]+/g, '_')
@@ -1284,7 +1293,7 @@ async function fetchShopItemsForAllSlotsEdge(
             const pageScored = data
                 .map((row: any) => ({
                     row,
-                    score: scoreGarmentForContext({...row,macroCategory:slot},stylingContext({style,occasion:requestIntent}))*0.6 + 0.4*styleInference.scoreItemForStyle(
+                    score: scoreGarmentForContext({...row,id:`shop_${row.id}`,isShopItem:true,macroCategory:slot},context)*0.6 + 0.4*styleInference.scoreItemForStyle(
                         { name: row.name, description: row.description, brand: row.brand, color: inferShopColor(row), type: row.garment_type, category: row.category, macroCategory: slot },
                         styleInference.normalizeStyleId(styleKey),
                     ),
@@ -1398,7 +1407,7 @@ async function fetchShopItemsForAllSlotsEdge(
             // Price floors stay available; the remaining bounded representatives
             // span suitable brands, colors and garment types before the slot cap.
             const freshCandidates = scored.filter(entry=>!excluded(entry.row));
-            const varied = spreadSuitableProducts(freshCandidates, entry=>({...entry.row,macroCategory:slot}), entry=>entry.score, 0.75);
+            const varied = stylingCandidateRepresentatives(freshCandidates, entry=>({...entry.row,macroCategory:slot,isShopItem:true}), entry=>entry.score, context, perSlot);
             const floors = budgetFx || nativeBudget ? freshCandidates.slice(0,1) : [];
             for (const { row } of [...floors,...matchedTops(),...varied]) {
                 if (added >= perSlot) break
@@ -2505,7 +2514,7 @@ serve(async (req: Request) => {
                 }
                 const discoverySlots=lockedItem ? [...missingSlots].sort((a,b)=>Number(b==='outerwear')-Number(a==='outerwear')) : missingSlots
                 const fetchedShopItems = await fetchShopItemsForAllSlotsEdge(svcClient, discoverySlots, selectionStyle, targetChoicesPerSlot, excludeSet, shopEligible, parsedBudget ? requestFx : undefined, parsedBudget && !requestFx ? parsedBudget : undefined, `${occasion} ${prompt}`, rotationTarget, deckPriority,
-                    lockedItem ? (layer,top)=>!rejectOutfitIncoherence([...(lockedItem.macroCategory==='outerwear' ? [] : [lockedItem]),layer,top],selectionStyle,`${occasion} ${prompt}`) : undefined, retrievalSeed)
+                    lockedItem ? (layer,top)=>!rejectOutfitIncoherence([...(lockedItem.macroCategory==='outerwear' ? [] : [lockedItem]),layer,top],selectionStyle,`${occasion} ${prompt}`) : undefined, retrievalSeed,qualityContext)
                 // Shop candidates must respect color/pattern prefs too — the
                 // wardrobe-side filter above ran before they were appended.
                 const shopItems = filterShopByPrefs(fetchedShopItems, preferences)
@@ -2651,10 +2660,10 @@ serve(async (req: Request) => {
             wardrobeItems = collapseBySimEdge(wardrobeItems, (i: any) => canonicalProductKey(i))
             if (parsedBudget) {
                 wardrobeItems = retainBudgetFloorCandidates(budgetSource, wardrobeItems,
-                    item => shopPriceOf(item, parsedBudget!.currency, parsedBudget!.fx), rankEligible, anchorPreRank, 10, item=>scoreGarmentForContext(item,qualityContext))
+                    item => shopPriceOf(item, parsedBudget!.currency, parsedBudget!.fx), rankEligible, anchorPreRank, 10, item=>scoreGarmentForContext(item,qualityContext),qualityContext)
             } else {
                 // A global trim must not discard an entire required slot.
-                wardrobeItems = retainBudgetFloorCandidates([...budgetSource].sort(compareRankedCandidates), wardrobeItems, () => 0, rankEligible, anchorPreRank, 10, item=>scoreGarmentForContext(item,qualityContext))
+                wardrobeItems = retainBudgetFloorCandidates([...budgetSource].sort(compareRankedCandidates), wardrobeItems, () => 0, rankEligible, anchorPreRank, 10, item=>scoreGarmentForContext(item,qualityContext),qualityContext)
             }
             // Keep the 40-item prompt balanced: up to ten representatives
             // in each slot. Prepending shoes here truncated other slots again.
@@ -2887,6 +2896,7 @@ serve(async (req: Request) => {
                 candidates: choices, itemsOf: choice => choice.items,
                 qualityOf: choice => signalsFor(choice).quality,
                 recencyOf: choice => signalsFor(choice).recency,
+                stylingDistance: (a,b) => outfitStylingDistance(a.items,b.items,anchorItemId),
                 keysOf: item => productIdentityKeys(item), poolItems: wardrobeItems, usedKeys: new Set<string>(),
                 anchorKeys: anchor ? new Set(productIdentityKeys(anchor)) : undefined,
                 anchorSlot: anchor ? diversitySlotOf(anchor) : null,
@@ -2909,8 +2919,8 @@ serve(async (req: Request) => {
 ${selectionTask} Judge full-outfit silhouette, footwear/hem compatibility, fabric weight, color harmony, occasion and the user's preferences. Brand repetition is not a quality defect. The options have already passed structural, style and budget validation. Never invent IDs or change the items inside a look. Select distinct look IDs. Return only JSON.`
         console.log(`[curation] options=${choices.length} required=${selectionCount}`)
         const choiceUser = JSON.stringify({requiredCount:selectionCount,request:prompt,occasion,weather,preferences:{favoriteColors:preferences?.favoriteColors,fitPreference:preferences?.fitPreference,styleGoals:preferences?.styleGoals},
-          products:wardrobeItems.filter((item:any)=>usedIds.has(item.id)).map((item:any)=>({id:item.id,name:item.name,description:String(item.description || '').slice(0,320),slot:item.macroCategory,color:item.color,material:item.material,pattern:item.pattern})),
-          looks:choices.map(choice=>({id:choice.id,items:choice.items.map(item=>item.id)}))})
+          products:wardrobeItems.filter((item:any)=>usedIds.has(item.id)).map((item:any)=>{const d=describeGarment(item);return {id:item.id,name:item.name,description:String(item.description || '').slice(0,160),slot:item.macroCategory,garment:{category:d.subtype,color:d.color,fit:d.volume,formality:d.formality,pattern:d.pattern,materials:d.materials,layering:d.closure,bulk:d.bulk,collar:d.collar,length:d.length,footwearPurpose:d.slot==='shoes' ? d.soleProfile : undefined}}}),
+          looks:choices.map(choice=>({id:choice.id,items:choice.items.map(item=>item.id),intent:outfitStyleIntent(choice.items.map(describeGarment),qualityContext).id}))})
         const choiceContract = rankCompleteSet
             ? '\nOUTPUT CONTRACT: {"rankedLookIds":["look001","look002"]}. Return every supplied look ID once, best first, in this flat string array. No outfit objects, descriptions, explanations, individual garment IDs or extra fields.'
             : '\nOUTPUT CONTRACT: {"outfits":[{"description":"brief styling explanation","items":[{"id":"look001"}]}]}. Each outfit selects exactly ONE supplied complete look ID. Do not return individual garment IDs.'
@@ -3165,6 +3175,7 @@ ${selectionTask} Judge full-outfit silhouette, footwear/hem compatibility, fabri
                 qualityOf: (o: any) => signalsFor(o).quality,
                 rankOf: useCuratedChoices ? (o: any) => o.curationRank : undefined,
                 recencyOf: (o: any) => signalsFor(o).recency,
+                stylingDistance: (a: any,b: any) => outfitStylingDistance(a.items,b.items,anchorItemId),
                 keysOf: (item: any) => productIdentityKeys(item),
                 anchorKeys: anchorIdentityKeys.size > 0 ? anchorIdentityKeys : undefined,
                 anchorSlot: anchorForDiversity ? diversitySlotOf(anchorForDiversity) : null,

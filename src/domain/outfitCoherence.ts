@@ -1,3 +1,4 @@
+import { outfitStyleIntent } from './stylingProfiles.ts';
 import { garmentContextReason, scoreGarmentForContext, officeRefinementPenalty } from './garmentContext.ts';
 import { describeGarment, competingUpperPatterns, type GarmentEvidence } from './garmentDescriptor.ts';
 import { layerCompatibility } from './layerCompatibility.ts';
@@ -316,42 +317,10 @@ export function outfitCoherence(
   dimensions.palette = harmony.score;
   for (const reason of harmony.reasons) evidence.push(`palette_${reason}`);
   evidence.push(...harmony.evidence);
-  const colors = new Set(descriptors.map((d) => d.color).filter((c) => c !== 'unknown'));
-  if (context.style === 'minimalist') {
-    const noisy = descriptors.filter((d) => /graphic|logo|floral|camo/.test(d.pattern)).length;
-    const patternUnknown = descriptors.some((d) => d.pattern === 'unknown');
-    dimensions.style = noisy ? 0.35 : patternUnknown ? 0.7 : 0.9;
-    if (colors.size <= 2 && colors.size > 0) {
-      dimensions.style = noisy ? 0.35 : patternUnknown ? 0.8 : 1;
-      evidence.push('restrained_minimalist_palette');
-    }
-  } else if (context.style === 'old_money') {
-    const classic = descriptors.filter((d) =>
-      [
-        'blazer',
-        'cardigan',
-        'polo',
-        'shirt',
-        'dress-shirt',
-        'chino',
-        'tailored-trouser',
-        'loafer',
-      ].includes(d.subtype)
-    ).length;
-    dimensions.style = 0.5 + classic * 0.125;
-  } else if (context.style === 'semi_classic')
-    dimensions.style = descriptors.filter((d) => d.structured && !d.relaxedTailoring).length >= 2 ? 0.95 : 0.65;
-  else if (context.style === 'casual')
-    dimensions.style = descriptors.some((d) =>
-      ['overshirt', 'jeans', 'sneaker', 'minimal-sneaker'].includes(d.subtype)
-    )
-      ? 0.95
-      : 0.7;
-  dimensions.style =
-    (dimensions.style +
-      items.reduce((sum, item) => sum + scoreGarmentForContext(item, context), 0) /
-        Math.max(1, items.length)) /
-    2;
+  const intent = outfitStyleIntent(descriptors, context);
+  dimensions.style = intent.score * 0.75 + 0.25 *
+    items.reduce((sum, item) => sum + scoreGarmentForContext(item, context), 0) / Math.max(1, items.length);
+  evidence.push(`style_intent:${intent.id}`);
   const officePenalty = items.reduce((total, item, i) => total + officeRefinementPenalty(item, context, descriptors[i]), 0);
   if (officePenalty > 0) {
     dimensions.style = Math.min(dimensions.style, Math.max(0.3, 1 - officePenalty));

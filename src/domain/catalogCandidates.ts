@@ -1,3 +1,7 @@
+import { describeGarment, type GarmentEvidence } from './garmentDescriptor.ts';
+import { formulaGarmentAffinity, stylingFormulas } from './stylingProfiles.ts';
+import type { StylingContext } from './stylingContext.ts';
+
 /** Neutral retrieval wire contract shared by mobile discovery and Edge.
  * These candidates are evidence, never authority to bypass outfit or FX gates.
  */
@@ -16,4 +20,39 @@ export interface CatalogCandidateRetrievalDiagnostics {
   pages: number;
   degraded: boolean;
   candidateCount: number;
+}
+
+/** Rank a fixed retrieved pool by usable styling roles, with a quality band
+ * preventing near-identical garments from consuming the shortlist. Floors,
+ * anchors and LRU are retained by callers; this function never admits rows. */
+export function stylingCandidateRepresentatives<T>(
+  rows: T[], itemOf: (row: T) => GarmentEvidence, scoreOf: (row: T) => number,
+  context: StylingContext, maximum = rows.length,
+): T[] {
+  const formulas = stylingFormulas(context);
+  const entries = rows.map((row, order) => {
+    const item = itemOf(row), d = describeGarment(item);
+    const known = (value: string) => !['unknown', 'neutral', ''].includes(value);
+    const facets = [d.subtype, d.color, d.volume, d.pattern, d.texture];
+    // Sparse descriptions are not proof of sameness.
+    const family = facets.filter(known).length >= 2 ? facets.join(':') : `sparse:${order}`;
+    return {row, order, d, family, score: scoreOf(row), owned: item.isShopItem !== true && !String(item.id || '').startsWith('shop_')};
+  }).sort((a, b) => b.score - a.score || a.order - b.order);
+  const selected: typeof entries = [], remaining = [...entries];
+  const families = new Map<string, number>();
+  while (remaining.length && selected.length < maximum) {
+    const best = remaining[0].score;
+    const f = formulas[selected.length % formulas.length];
+    const comparable = remaining.filter(entry => entry.score >= best - 0.08);
+    comparable.sort((a, b) => {
+      const value = (e: typeof a) => e.score + 0.06 * formulaGarmentAffinity(e.d, f)
+        - 0.07 * (families.get(e.family) || 0) + (context.sourceMode === 'mixed' && e.owned ? 0.025 : 0);
+      return value(b) - value(a) || a.order - b.order;
+    });
+    const chosen = comparable[0];
+    selected.push(chosen);
+    families.set(chosen.family, (families.get(chosen.family) || 0) + 1);
+    remaining.splice(remaining.indexOf(chosen), 1);
+  }
+  return selected.map(entry => entry.row);
 }

@@ -12,6 +12,12 @@ export interface GarmentEvidence {
   pattern?: string | null;
   material?: unknown;
   materials?: unknown;
+  fit?: string | null;
+  silhouette?: string | null;
+  formality?: string | null;
+  layering?: string | null;
+  footwearPurpose?: string | null;
+  occasions?: readonly string[] | null;
 }
 export interface GarmentDescriptor {
   slot: string;
@@ -54,8 +60,10 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
   const materialText = typeof item.material === 'string' ? item.material
     : Array.isArray(item.material) ? item.material.filter(value => typeof value === 'string').join(' ') : '';
   const text = normalizeGarmentText(
-    [item.name, item.type, item.description, materialText,
+    [item.name, item.type, (item.description || '').replace(/\b(?:plain|solid|unpatterned)\s+(?:white\s+)?background\b/gi, 'background'), materialText,
       Array.isArray(item.materials) ? item.materials.filter(value => typeof value === 'string').join(' ') : item.materials, item.pattern]
+      .filter(value => typeof value === 'string').join(' ')
+    + ' ' + [item.fit, item.silhouette, item.formality, item.layering, item.footwearPurpose]
       .filter(value => typeof value === 'string').join(' ')
   );
   const slot = String(item.macroCategory || item.category || 'unknown');
@@ -283,7 +291,11 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     subtype,
     length,
     closure,
-    color: colorFamilyOf(item),
+    color: (() => {
+      const explicit = typeof item.color === 'string' && !/^(unknown|neutral|other)$/i.test(item.color.trim()) ? item.color : '';
+      const family = colorFamilyOf(explicit ? {color: explicit} : {name: item.name});
+      return family === 'neutral' ? 'unknown' : family;
+    })(),
     materials: materialsOf(item),
     texture:
       /\b(knit|knitted|jersey|suede|denim|technical|wool|corduroy|smooth|ribbed|tweed)\b/.test(
@@ -317,6 +329,8 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     insulated: /\b(puffer|down jacket|down filling|insulated|shearling)\b/.test(text),
     evening: /\b(tuxedo|dinner jacket|dinner suit|opera pump|patent)\b/.test(text),
     evidence: [
+      ...(item.footwearPurpose ? [`catalog:footwear-purpose:${item.footwearPurpose}`] : []),
+      ...(Array.isArray(item.occasions) ? item.occasions.filter(value => typeof value === 'string') : []).map(value => `catalog:occasion:${value}`),
       ...(soleProfile !== 'unknown' ? [`sole:${soleProfile}`] : []),
       ...(fadedDenim ? ['surface:faded-denim'] : []),
       ...(paleDenim ? ['surface:pale-denim'] : []),
