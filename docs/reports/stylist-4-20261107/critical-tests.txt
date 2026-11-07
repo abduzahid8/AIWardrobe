@@ -1,0 +1,63 @@
+PASS __tests__/backend/budgetFx.test.js
+  ● Console
+
+    console.warn
+      [budget-rates] refresh_failed { stage: 'cache_read' }
+
+      at eval (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:136:21)
+      at Object.currentBudgetRates (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:148:16)
+
+    console.warn
+      [budget-rates] refresh_failed { stage: 'upstream_fetch' }
+
+      at eval (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:136:21)
+      at Object.currentBudgetRates (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:148:16)
+
+    console.warn
+      [budget-rates] refresh_failed { stage: 'upstream_body' }
+
+      at eval (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:136:21)
+      at Object.currentBudgetRates (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:148:16)
+
+    console.warn
+      [budget-rates] refresh_failed { stage: 'lease_claim' }
+
+      at eval (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:136:21)
+      at Object.currentBudgetRates (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:148:16)
+
+    console.warn
+      [budget-rates] refresh_failed { stage: 'upstream_fetch' }
+
+      at eval (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:136:21)
+      at Object.currentBudgetRates (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:148:16)
+
+    console.warn
+      [budget-rates] refresh_failed { stage: 'lease_claim' }
+
+      at eval (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:136:21)
+      at Object.currentBudgetRates (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:148:16)
+
+    console.warn
+      [budget-rates] refresh_failed { stage: 'fenced_publish' }
+
+      at eval (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:136:21)
+      at Object.currentBudgetRates (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:148:16)
+
+    console.warn
+      [budget-rates] refresh_failed { stage: 'lease_claim' }
+
+      at eval (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:136:21)
+      at Object.currentBudgetRates (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:148:16)
+
+PASS __tests__/backend/outfitGenerationRequest.test.js
+PASS __tests__/services/validatedQuartets.test.ts
+PASS __tests__/backend/nvidiaOutfitRequest.test.js
+PASS __tests__/services/stylist4.test.ts
+PASS __tests__/backend/outfitBudgetSelection.test.js
+PASS __tests__/services/outfitCoherence.test.ts
+
+Test Suites: 7 passed, 7 total
+Tests:       93 passed, 93 total
+Snapshots:   0 total
+Time:        1.105 s, estimated 3 s
+Ran all test suites matching /__tests__\/services\/stylist4.test.ts|__tests__\/services\/validatedQuartets.test.ts|__tests__\/services\/outfitCoherence.test.ts|__tests__\/backend\/budgetFx.test.js|__tests__\/backend\/outfitBudgetSelection.test.js|__tests__\/backend\/outfitGenerationRequest.test.js|__tests__\/backend\/nvidiaOutfitRequest.test.js/i.

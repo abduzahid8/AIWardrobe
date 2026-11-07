@@ -84,6 +84,8 @@ export interface GenerateOutfitsParams {
 }
 
 export interface GeneratedOutfitItem {
+    visualFashion?: import('../domain/visualFashion').VisualFashionProfile;
+    visualSourceHash?:string;
     id: string;
     type: string;
     macroCategory?: string;
@@ -105,6 +107,10 @@ export interface GeneratedOutfitItem {
 }
 
 export interface GeneratedOutfit {
+    concept?: {id:string;title:string;story:string;score?:number};
+    selectionSource?: string;
+    generationRequestId?:string;
+    engineVersion?:string;
     id: string;
     description: string;
     style: string;
@@ -263,7 +269,7 @@ export async function generateOutfitsFromDB(
             .filter((o: GeneratedOutfit) => [...(params.selectedItemIds||[]),...(params.anchorItemId?[params.anchorItemId]:[])].every(id=>o.items.some(item=>item.id===id)) && (params.sourceMode!=='wardrobe'||o.items.every(item=>!isShopClothingItem(item))) && (params.sourceMode!=='catalog'||o.items.every(isShopClothingItem)) && passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather,params.anchorItemId,params.preferences));
         if (!outfits.length || (data.outfits.length === 3 && outfits.length !== 3)) return { success: false, outfits: [], error: 'no_valid_outfits_for_request', errorTranslationKey: 'outfitMaker.noMatchingClothing' };
         if (params.recordShown !== false) recordShownOutfits(outfits, recencyScope);
-        return { success: true, outfits, source: data.source ?? 'ai', layered: Boolean(data.layered) };
+        return { success: true, outfits, source: data.source === 'ai' ? 'ai' : 'deterministic_fallback', layered: Boolean(data.layered) };
 
     } catch (err: any) {
         if (err?.message === 'generation_account_changed') {
@@ -1417,6 +1423,7 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
             color: item.color || item.primaryColor || item.primary_color || 'neutral',
             name: item.name || item.title || item.type || item.garmentType || 'Item',
             brand: item.brand || '',
+            visualFashion:item.visualFashion,visualSourceHash:item.visualSourceHash,
             description:item.description,material:typeof item.material==='string'?item.material:undefined,pattern:item.pattern,
             imageUrl: typeof resolvedImage === 'string' ? resolvedImage : '',
             image: resolvedImage,
@@ -1442,6 +1449,7 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
 
     return {
         id: o.id || `outfit_${Date.now()}_${Math.random()}`,
+        concept:o.concept,selectionSource:o.selectionSource,generationRequestId:o.generationRequestId,engineVersion:o.engineVersion,
         description: stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).description,
         style: o.style || params.stylePreferences || 'Casual',
         occasion: o.occasion || params.occasion || 'Everyday',
