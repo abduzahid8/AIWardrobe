@@ -34,3 +34,17 @@ test('known incompatible patterns/fabrics fail the office floor; quiet matching 
  expect(assessOutfitQuality(p,'old_money','Work').acceptance.passed).toBe(false);
  expect(assessOutfitQuality(look(),'classic','Formal').acceptance.passed).toBe(true);
 });
+
+test('the newly observed generic Armani utility shirt and seaside shirts cannot be Formal bases',()=>{
+ const p=look();p[0]={...p[0],id:'shop_armani_exchange-xm003247_af28657_ub101',name:'regular fit shirt in cotton poplin'};
+ expect(describeGarment(p[0]).utilityConstruction).toBe(true);
+ expect(assessOutfitQuality(p,'classic','Formal').acceptance.passed).toBe(false);
+ for(const name of ['Coral Linen Seaside Shirt','Sea Green Linen Seaside Shirt']){p[0]={...p[0],id:'seaside',name};expect(assessOutfitQuality(p,'classic','Formal').acceptance.passed).toBe(false);}
+ p[0]={...p[0],id:'dress',name:'White long-sleeve linen dress shirt'};
+ expect(assessOutfitQuality(p,'classic','Formal').acceptance.passed).toBe(true);
+});
+test('explicit summer linen tailoring cannot masquerade as a winter flannel suit',()=>{
+ const p=look();p[1].name='Double-breasted blazer in pure linen';p[2].name='Anthracite wool flannel regular-fit pants';
+ expect(assessOutfitQuality(p,'classic','Formal').acceptance.passed).toBe(false);
+ p[2].name='Lightweight tailored linen trousers';expect(assessOutfitQuality(p,'classic','Formal').acceptance.passed).toBe(true);
+});

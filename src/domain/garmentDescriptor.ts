@@ -129,7 +129,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
   // Source-backed construction missing from the imported studio captions.
   // AllSaints USM108SF: chest flap pockets (official Bond product details).
   const utilityConstruction = slot === 'top' && (subtype === 'field-shirt'
-    || /^(?:shop_)?allsaints-usm108sf-/i.test(String(item.id || ''))
+    || /^(?:shop_)?(?:allsaints-usm108sf-|armani_exchange-xm003247_)/i.test(String(item.id || ''))
     || /\b(?:chest[ -]+flap|(?:two|twin|double)[ -]+chest|cargo|bellows)[ -]+pockets?\b/.test(text));
   const technicalLeisure = slot === 'outerwear' && /\btechnical\b/.test(text)
     && /\b(leisure|shell|nylon|zip|windproof|track)\b/.test(text);

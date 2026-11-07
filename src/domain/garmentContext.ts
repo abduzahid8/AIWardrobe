@@ -51,6 +51,8 @@ export function garmentContextReason(
     return 'excluded_pattern';
   if (context.dressCode === 'formal') {
     const baseText = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
+    if (d.slot === 'top' && (d.utilityConstruction || /\b(seaside|resort|hawaiian)\b/.test(baseText)))
+      return 'formal_requires_dress_base';
     // Keep the coherence/pool path consistent with the existing occasion gate.
     if (d.slot === 'top' && SHORT_SLEEVE_RE.test(baseText))
       return 'formal_requires_long_sleeve_dress_base';

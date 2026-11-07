@@ -45,7 +45,9 @@ export function outfitQualityFloor(
       score = Math.min(score, 0.49); reason = 'utility_shirt_conflicts_with_office_tailoring';
     } else if (b?.technicalLeisure && trousers?.structured) {
       score = Math.min(score, 0.49); reason = 'technical_leisure_conflicts_with_refined_tailoring';
-    } else if (coherence.evidence.includes('heavy_and_airy_texture_contrast')) {
+    } else if ((layer && bottom && /\b(?:pure|100%)\s+linen\b/i.test(layer.name || '') && /\bflannel\b/i.test(`${bottom.name || ''} ${bottom.description || ''}`))
+      || (top && layer && /\blinen\b/i.test(top.name || '') && /\bvelvet\b/i.test(layer.name || ''))
+      || coherence.evidence.includes('heavy_and_airy_texture_contrast')) {
       score = Math.min(score, 0.49); reason = 'incompatible_heavy_and_airy_fabrics';
     } else if (a && b && ['stripe','check','print'].includes(a.pattern)
       && ['stripe','check','print'].includes(b.pattern) && a.pattern !== b.pattern) {
