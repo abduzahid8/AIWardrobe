@@ -5,6 +5,9 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000401',true);
 insert into public.stylist_look_feedback(request_id,look_id,concept_id,engine_version,rating)
 values('00000000-0000-4000-8000-000000000411','outfit_1','refined-ivy','stylist-4-test',1);
+-- Exercise the actual mobile request-key shape as well as old UUID callers.
+insert into public.stylist_look_feedback(request_id,look_id,concept_id,engine_version,rating)
+values('moi0kaaa-1','outfit_2','refined-ivy','stylist-4-test',1);
 do $$ begin
   if has_table_privilege(current_user,'public.catalog_visual_fashion','INSERT') or has_table_privilege(current_user,'public.catalog_image_embeddings','SELECT')
     or has_function_privilege(current_user,'public.catalog_stylist_candidates(text[],text,jsonb,integer,integer,text,numeric)','EXECUTE') then raise exception 'client privilege escalation';end if;

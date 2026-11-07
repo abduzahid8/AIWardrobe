@@ -1,4 +1,9 @@
 BEGIN
+SET
+ALTER TABLE
+ALTER TABLE
+COMMIT
+BEGIN
 INSERT 0 2
 SET
               set_config              
@@ -6,6 +11,7 @@ SET
  00000000-0000-4000-8000-000000000401
 (1 row)
 
+INSERT 0 1
 INSERT 0 1
 DO
               set_config              

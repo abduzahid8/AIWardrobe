@@ -34,7 +34,7 @@ function criticalSource(){
  return true;
 }
 async function main(){
- const mode=process.argv[2];assert(['prepare','prepare-update','migrate','deploy','verify','rollback','observe'].includes(mode));
+ const mode=process.argv[2];assert(['prepare','prepare-update','migrate','migrate-feedback','deploy','verify','rollback','observe'].includes(mode));
  fs.mkdirSync(report,{recursive:true});fs.mkdirSync(record,{recursive:true});cp.execFileSync('git',['merge-base','--is-ancestor',baseline,'HEAD'],{cwd:root});
  if(mode==='observe'){
  const sql="select timestamp,event_message from logs where source = 'function_logs' and (position(event_message, 'stylist_provider')>0 or position(event_message, 'stylist_request')>0) order by timestamp desc limit 100";
@@ -49,6 +49,16 @@ async function main(){
  }
  const manifest=JSON.parse(fs.readFileSync(path.join(record,'manifest.json')));
  const archive=path.join(record,'v197-source.tar.gz');assert.equal(hash(fs.readFileSync(archive)),manifest.rollbackSha256);assert.equal(hash(cp.execFileSync('tar',['-xOzf',archive,'index.ts'])),sourceHash);
+ if(mode==='migrate-feedback'){
+ const deployment=read('deployment.json'),live=(await list()).find(f=>f.slug==='generate-outfits');
+ assert.equal(live.version,deployment.version);assert.equal(live.ezbr_sha256,deployment.ezbr_sha256);assert.equal(hash(await source()),manifest.bundleSha256);
+ const file='backend/supabase/migrations/20261107233000_stylist_feedback_request_keys.sql',sql=fs.readFileSync(path.join(root,file),'utf8');
+ assert.equal(hash(sql),hash(cp.execFileSync('git',['show','HEAD:'+file],{cwd:root})),'commit compatibility migration first');
+ const before=(await query("select count(*)::int records from public.stylist_look_feedback"))[0].records;
+ await query(sql.replace('commit;',"insert into supabase_migrations.schema_migrations(version,name,statements) values('20261107233000','stylist_feedback_request_keys',array['Accept existing bounded mobile request keys without changing ownership']);\ncommit;"));
+ const after=(await query("select count(*)::int records from public.stylist_look_feedback"))[0].records;assert.equal(after,before);
+ save('feedback-migration.json',{version:'20261107233000',sha256:hash(sql),recordsPreserved:true,security:await security()});console.log('feedback request-key compatibility passed');return;
+ }
  if(mode==='prepare-update'){
  const previous=read('deployment.json'),live=(await list()).find(f=>f.slug==='generate-outfits');
  assert.equal(live.version,previous.version,'production version drift');assert.equal(live.ezbr_sha256,previous.ezbr_sha256,'production fingerprint drift');

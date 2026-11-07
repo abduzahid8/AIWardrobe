@@ -1,6 +1,14 @@
 {
   "result": [
     {
+      "event_message": "stylist_request {\n  status: 401,\n  stage: \"admission\",\n  code: \"unauthorized\",\n  syncMs: {},\n  waitMs: { admission: 1002.3894270000001 },\n  counts: { totalMs: 1002, unattributedMs: 0 }\n}\n",
+      "timestamp": "2026-11-07T19:18:17.094000"
+    },
+    {
+      "event_message": "stylist_request {\n  status: 401,\n  stage: \"admission\",\n  code: \"unauthorized\",\n  syncMs: {},\n  waitMs: { admission: 1.1794530000000023 },\n  counts: { totalMs: 3, unattributedMs: 2 }\n}\n",
+      "timestamp": "2026-11-07T19:18:15.926000"
+    },
+    {
       "event_message": "stylist_request {\n  status: 401,\n  stage: \"admission\",\n  code: \"unauthorized\",\n  syncMs: {},\n  waitMs: { admission: 937.116682 },\n  counts: { totalMs: 937, unattributedMs: 0 }\n}\n",
       "timestamp": "2026-11-07T19:12:24.344000"
     },
