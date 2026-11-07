@@ -1,9 +1,4 @@
 BEGIN
-SET
-ALTER TABLE
-ALTER TABLE
-COMMIT
-BEGIN
 INSERT 0 2
 SET
               set_config              

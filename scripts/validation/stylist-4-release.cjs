@@ -34,7 +34,7 @@ function criticalSource(){
  return true;
 }
 async function main(){
- const mode=process.argv[2];assert(['prepare','prepare-update','migrate','migrate-feedback','deploy','verify','rollback','observe'].includes(mode));
+ const mode=process.argv[2];assert(['prepare','prepare-update','migrate','migrate-feedback','probe-retrieval','migrate-retrieval','deploy','verify','rollback','observe'].includes(mode));
  fs.mkdirSync(report,{recursive:true});fs.mkdirSync(record,{recursive:true});cp.execFileSync('git',['merge-base','--is-ancestor',baseline,'HEAD'],{cwd:root});
  if(mode==='observe'){
  const sql="select timestamp,event_message from logs where source = 'function_logs' and (position(event_message, 'stylist_provider')>0 or position(event_message, 'stylist_request')>0) order by timestamp desc limit 100";
@@ -49,6 +49,40 @@ async function main(){
  }
  const manifest=JSON.parse(fs.readFileSync(path.join(record,'manifest.json')));
  const archive=path.join(record,'v197-source.tar.gz');assert.equal(hash(fs.readFileSync(archive)),manifest.rollbackSha256);assert.equal(hash(cp.execFileSync('tar',['-xOzf',archive,'index.ts'])),sourceHash);
+ if(mode==='probe-retrieval'||mode==='migrate-retrieval'){
+ const deployment=read('deployment.json'),live=(await list()).find(f=>f.slug==='generate-outfits');
+ assert.equal(live.version,deployment.version);assert.equal(live.ezbr_sha256,deployment.ezbr_sha256);assert.equal(hash(await source()),manifest.bundleSha256);
+ const file='backend/supabase/migrations/20261108003000_stylist_set_retrieval.sql',sql=fs.readFileSync(path.join(root,file),'utf8');
+ assert.equal(hash(sql),hash(cp.execFileSync('git',['show','HEAD:'+file],{cwd:root})),'commit retrieval migration first');
+ const signature='public.catalog_stylist_candidates(text[],text,jsonb,integer,integer,text,numeric)',candidate='catalog_stylist_candidates_candidate';
+ const prior=(await query('select pg_get_functiondef('+"'"+signature+"'"+'::regprocedure) definition'))[0].definition;
+ const backup=path.join(record,'v199-catalog-stylist-candidates.sql');
+ if(mode==='probe-retrieval'){
+ assert(!(await query("select to_regprocedure('public.catalog_stylist_candidates_candidate(text[],text,jsonb,integer,integer,text,numeric)') existing"))[0].existing,'candidate already exists');
+ fs.writeFileSync(backup,prior+'\n');
+ await query(sql.replaceAll('public.catalog_stylist_candidates(','public.'+candidate+'('));
+ const context={dressCode:'smart',concepts:[{id:'ivy',preferredSubtypes:['dress-shirt','shirt','blazer','cardigan','chino','tailored-trouser','loafer','derby']},{id:'texture',preferredSubtypes:['shirt','fine-knit','dress-shirt','blazer','coat','tailored-trouser','trouser','derby','loafer','monk']},{id:'knit',preferredSubtypes:['shirt','dress-shirt','polo','cardigan','overshirt','tailored-trouser','chino','loafer','chelsea']}]};
+ const call="public."+candidate+"(array['top','outerwear','bottom','shoes'],'stylist4-query-cost','"+JSON.stringify(context)+"',100,0,null,null)";
+ const explain=await query('explain (analyze,buffers,format json) select * from '+call);
+ const validation=(await query(`with results as(select row from ${call} row)
+ select jsonb_build_object('bounded',(select count(*)<=400 from results),
+ 'realProducts',not exists(select 1 from results r left join public.shop_catalog s on s.id=r.row->>'id' where s.id is null),
+ 'sourcePrices',not exists(select 1 from results r join public.shop_catalog s on s.id=r.row->>'id' where (r.row->>'price')::numeric<>s.price or r.row->>'currency'<>s.currency or r.row->>'image_url'<>s.image_url or r.row->>'source_url' is distinct from s.source_url),
+ 'footwear',not exists(select 1 from results where row->>'fashion_slot'='shoes' and row->>'garment_type' is distinct from 'shoes'),
+ 'private',not has_function_privilege('authenticated','public.catalog_stylist_candidates_candidate(text[],text,jsonb,integer,integer,text,numeric)','EXECUTE'),
+ 'invoker',not (select prosecdef from pg_proc where oid='public.catalog_stylist_candidates_candidate(text[],text,jsonb,integer,integer,text,numeric)'::regprocedure)
+ ) state`))[0].state;
+ assert(Object.values(validation).every(v=>v===true),'live candidate integrity failed');
+ const ms=explain[0]['QUERY PLAN'][0]['Execution Time'];assert(ms<1500,'candidate query still too slow');
+ save('retrieval-query-probe.json',{checkedAt:new Date().toISOString(),migrationSha256:hash(sql),backupSha256:hash(fs.readFileSync(backup)),executionMs:ms,plan:explain,validation});console.log(JSON.stringify({candidateExecutionMs:ms,validation}));return;
+ }
+ const probe=read('retrieval-query-probe.json');assert.equal(probe.migrationSha256,hash(sql));assert(Object.values(probe.validation).every(v=>v===true));
+ assert.equal(hash(fs.readFileSync(backup)),probe.backupSha256);assert.equal(prior.trim(),fs.readFileSync(backup,'utf8').trim(),'retrieval SQL drift');
+ await query(sql.replace('commit;',"insert into supabase_migrations.schema_migrations(version,name,statements) values('20261108003000','stylist_set_retrieval',array['Single bounded scan and narrow concept ranking; source checks retained']);\ncommit;"));
+ await query('drop function public.catalog_stylist_candidates_candidate(text[],text,jsonb,integer,integer,text,numeric)');
+ save('retrieval-migration.json',{version:'20261108003000',sha256:hash(sql),candidateExecutionMs:probe.executionMs,security:await security(),v197DiscoveryUnchanged:(await query("select pg_get_functiondef('public.catalog_discovery_candidates(text,text,text,text,integer,integer,text,numeric,jsonb)'::regprocedure) definition"))[0].definition===read('database-before.json').find(r=>r.kind==='candidate_definition').evidence});
+ assert(read('retrieval-migration.json').v197DiscoveryUnchanged);console.log('set-based retrieval activated with preserved v197 discovery');return;
+ }
  if(mode==='migrate-feedback'){
  const deployment=read('deployment.json'),live=(await list()).find(f=>f.slug==='generate-outfits');
  assert.equal(live.version,deployment.version);assert.equal(live.ezbr_sha256,deployment.ezbr_sha256);assert.equal(hash(await source()),manifest.bundleSha256);
@@ -56,6 +90,7 @@ async function main(){
  assert.equal(hash(sql),hash(cp.execFileSync('git',['show','HEAD:'+file],{cwd:root})),'commit compatibility migration first');
  const before=(await query("select count(*)::int records from public.stylist_look_feedback"))[0].records;
  await query(sql.replace('commit;',"insert into supabase_migrations.schema_migrations(version,name,statements) values('20261107233000','stylist_feedback_request_keys',array['Accept existing bounded mobile request keys without changing ownership']);\ncommit;"));
+ await query("notify pgrst,'reload schema'");
  const after=(await query("select count(*)::int records from public.stylist_look_feedback"))[0].records;assert.equal(after,before);
  save('feedback-migration.json',{version:'20261107233000',sha256:hash(sql),recordsPreserved:true,security:await security()});console.log('feedback request-key compatibility passed');return;
  }

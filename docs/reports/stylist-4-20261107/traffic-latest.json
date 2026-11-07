@@ -1,6 +1,30 @@
 {
   "result": [
     {
+      "event_message": "stylist_request {\n  status: 200,\n  stage: \"final_selection\",\n  code: undefined,\n  syncMs: {\n    catalog_filter: 5.940896000000066,\n    intelligence: 0.012776000003213994,\n    planning: 300.7831259999948,\n    selection: 0.39040400000521913,\n    response: 0.09844499999599066\n  },\n  waitMs: {\n    admission: 2303.6949779999995,\n    auth: 795.081766999996,\n    history: 885.4848679999996,\n    catalog: 3860.9649710000012,\n    provider: 951.5604220000023\n  },\n  counts: {\n    catalogRows: 284,\n    cachedDescriptors: 284,\n    visualDescriptors: 4,\n    top: 18,\n    outerwear: 18,\n    bottom: 3,\n    shoes: 1,\n    evaluations: 256,\n    proposals: 401,\n    valid: 211,\n    structure: 0,\n    budget: 0,\n    source: 0,\n    quality: 45,\n    budgetPruned: 0,\n    selected: 3,\n    totalMs: 9278,\n    unattributedMs: 174\n  }\n}\n",
+      "timestamp": "2026-11-07T19:23:51.931000"
+    },
+    {
+      "event_message": "stylist_provider {\n  source: \"ai\",\n  model: \"nvidia/nemotron-3.5-lightning-30b-a3b\",\n  status: [\n    {\n      provider: \"nvidia\",\n      model: \"nvidia/nemotron-3.5-lightning-30b-a3b\",\n      status: \"ok\",\n      expected: 12,\n      received: 12,\n      duplicates: 0,\n      unknown: 0,\n      finishReason: \"stop\"\n    }\n  ],\n  reason: \"ranked\",\n  shortlist: 12\n}\n",
+      "timestamp": "2026-11-07T19:23:51.929000"
+    },
+    {
+      "event_message": "stylist_request {\n  status: 200,\n  stage: \"final_selection\",\n  code: undefined,\n  syncMs: {\n    catalog_filter: 8.011723000001439,\n    intelligence: 0.04988799999955518,\n    planning: 308.9081930000011,\n    selection: 0.16933799999969779,\n    response: 0.14610499999980675\n  },\n  waitMs: {\n    admission: 3024.237047,\n    auth: 952.238167,\n    history: 848.5849330000001,\n    catalog: 6884.183012999999,\n    provider: 1448.806106\n  },\n  counts: {\n    catalogRows: 282,\n    cachedDescriptors: 282,\n    visualDescriptors: 1,\n    top: 18,\n    outerwear: 18,\n    bottom: 3,\n    shoes: 1,\n    evaluations: 256,\n    proposals: 377,\n    valid: 197,\n    structure: 0,\n    budget: 0,\n    source: 0,\n    quality: 59,\n    budgetPruned: 0,\n    selected: 3,\n    totalMs: 13700,\n    unattributedMs: 225\n  }\n}\n",
+      "timestamp": "2026-11-07T19:23:24.791000"
+    },
+    {
+      "event_message": "stylist_provider {\n  source: \"ai\",\n  model: \"nvidia/nemotron-3.5-lightning-30b-a3b\",\n  status: [\n    {\n      provider: \"nvidia\",\n      model: \"nvidia/nemotron-3.5-lightning-30b-a3b\",\n      status: \"ok\",\n      expected: 12,\n      received: 12,\n      duplicates: 0,\n      unknown: 0,\n      finishReason: \"stop\"\n    }\n  ],\n  reason: \"ranked\",\n  shortlist: 12\n}\n",
+      "timestamp": "2026-11-07T19:23:24.790000"
+    },
+    {
+      "event_message": "stylist_request {\n  status: 401,\n  stage: \"admission\",\n  code: \"unauthorized\",\n  syncMs: {},\n  waitMs: { admission: 882.184232 },\n  counts: { totalMs: 882, unattributedMs: 0 }\n}\n",
+      "timestamp": "2026-11-07T19:22:25.407000"
+    },
+    {
+      "event_message": "stylist_request {\n  status: 401,\n  stage: \"admission\",\n  code: \"unauthorized\",\n  syncMs: {},\n  waitMs: { admission: 1.957529000000008 },\n  counts: { totalMs: 4, unattributedMs: 2 }\n}\n",
+      "timestamp": "2026-11-07T19:22:24.369000"
+    },
+    {
       "event_message": "stylist_request {\n  status: 401,\n  stage: \"admission\",\n  code: \"unauthorized\",\n  syncMs: {},\n  waitMs: { admission: 1002.3894270000001 },\n  counts: { totalMs: 1002, unattributedMs: 0 }\n}\n",
       "timestamp": "2026-11-07T19:18:17.094000"
     },

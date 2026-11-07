@@ -39,10 +39,12 @@ Deployment requires exact v197 source/fingerprint, committed and pushed bundle i
 
 ## Owner simulator QA
 
-Run `npm run start -- --port 8083` from `/Users/v.zahid/AIWardrobe-stylist-4` and point the Simulator development client at that Metro server. Dependencies and the ignored local environment are available in this worktree. Then then check Classic / Work, Old Money / Work, Semi-Classic / Date night and Casual / Travel. Inspect all three complete looks, concept/palette/proportion differences, authentic product thumbnails, formal versus sporty construction, prices and links. Regenerate once to inspect physical-product/shoe rotation. Check an anchor, a tight explicit currency budget, both feedback buttons and the fallback label when ranking fails. App UI changes require this client build; the Edge deployment alone does not update an installed app.
+Run `npm run start -- --port 8083` from `/Users/v.zahid/AIWardrobe-stylist-4` and point the Simulator development client at that Metro server. Dependencies and the ignored local environment are available in this worktree. Then check Classic / Work, Old Money / Work, Semi-Classic / Date night and Casual / Travel. Inspect all three complete looks, concept/palette/proportion differences, authentic product thumbnails, formal versus sporty construction, prices and links. Regenerate once to inspect physical-product/shoe rotation. Check an anchor, a tight explicit currency budget, both feedback buttons and the fallback label when ranking fails. App UI changes require this client build; the Edge deployment alone does not update an installed app.
 
 ## Primary implementation references
 
 [NVIDIA Nemotron 3.5 JSON mode and thinking controls](https://docs.nvidia.com/nim/large-language-models/2.0.10/get-started/advanced/get-started-nemotron-3.5-lightning.html), [Google SigLIP2 model](https://huggingface.co/google/siglip2-base-patch16-224), [Supabase unified ClickHouse logs](https://supabase.com/docs/guides/observability/advanced-log-filtering).
 
 Initial rollout: v198 ACTIVE, exact pushed source verified, OPTIONS 200 and missing/invalid credentials 401. Production ranking and total authenticated request timing remain unverified pending real traffic. The palette representation correction is ACTIVE as v199, with the deployed bundle SHA matching the pushed source commit `14bdf90a704e3dfd64fc1b9683d1dd194049794f`.
+
+Feedback compatibility is applied in production. A focused live check under the existing E2E account inserted a real mobile-format request key, updated the same private rating, verified other-owner rows remained hidden, and deleted the fixture. All five checks passed; no outfit generation or inference was invoked. See `feedback-migration.json` and `feedback-live.json`.

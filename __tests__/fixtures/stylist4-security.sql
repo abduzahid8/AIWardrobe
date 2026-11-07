@@ -26,6 +26,11 @@ end $$;
 reset role;
 set local role service_role;
 do $$ begin
+  begin perform public.catalog_stylist_candidates(array['top'],'test','{"budget":"bad","currency":"USD"}');raise exception 'invalid budget accepted';
+    exception when invalid_parameter_value then null;end;
+  begin perform public.catalog_stylist_candidates(array['top'],'test','{"rates":{"UZS":1}}');raise exception 'invalid FX accepted';
+    exception when invalid_parameter_value then null;end;
+  if exists(select 1 from public.catalog_stylist_candidates(array['shoes'],'test','{}',100,0,'USD',0)) then raise exception 'zero price cap bypass';end if;
   begin perform public.catalog_stylist_candidates(array['invalid'],'test');raise exception 'invalid slot accepted';
     exception when invalid_parameter_value then null;end;
   begin perform public.catalog_stylist_candidates(array['top'],'test','{}',100,200);raise exception 'unbounded offset accepted';
