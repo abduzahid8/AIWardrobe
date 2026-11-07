@@ -8,8 +8,19 @@ export interface LayerCompatibility {
   evidence: string[];
   confidence: 'low' | 'medium' | 'high';
 }
+const pairMemo = new WeakMap<StylingContext, WeakMap<object, WeakMap<object, LayerCompatibility>>>();
+export function layerCompatibility(top: GarmentEvidence, layer: GarmentEvidence, context: StylingContext): LayerCompatibility {
+  if (!Object.isFrozen(top) || !Object.isFrozen(layer)) return evaluateLayer(top,layer,context);
+  let tops=pairMemo.get(context);
+  if(!tops){tops=new WeakMap();pairMemo.set(context,tops);}
+  let layers=tops.get(top);
+  if(!layers){layers=new WeakMap();tops.set(top,layers);}
+  let result=layers.get(layer);
+  if(!result){result=evaluateLayer(top,layer,context);layers.set(layer,result);}
+  return result;
+}
 /** Directional: the second garment must plausibly fit OVER the first. */
-export function layerCompatibility(
+function evaluateLayer(
   top: GarmentEvidence,
   layer: GarmentEvidence,
   context: StylingContext

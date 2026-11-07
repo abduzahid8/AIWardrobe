@@ -611,6 +611,7 @@ export function rejectOutfitIncoherence(
     items: JudgeableItem[] | null | undefined,
     styleId: string | null | undefined,
     occasionId: string | undefined | null,
+    requestContext?:ReturnType<typeof stylingContext>,
 ): string | null {
     if (!items || items.length === 0) return null;
     const style = isWorkoutOccasion(occasionId) ? 'sport' : String(styleId || '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -672,7 +673,7 @@ export function rejectOutfitIncoherence(
     // Single source: wholeOutfitRegisterClash.
     const registerClash = wholeOutfitRegisterClash(
         items,
-        stylingContext({ style, occasion: occasionId }),
+        requestContext || stylingContext({ style, occasion: occasionId }),
     );
     if (registerClash) {
         return registerClash;
@@ -906,6 +907,8 @@ export function styleJudgeReason(
     weather?: ClimateWeather | null,
     lockedItemId?: string | null,
     preferences?:StylingPreferences,
+    assessment?: OutfitQualityAssessment,
+    requestContext?:ReturnType<typeof stylingContext>,
 ): string | null {
     if (!items || items.length === 0) return 'empty outfit';
     const activity = activityReason(items, occasionId || '');
@@ -924,8 +927,8 @@ export function styleJudgeReason(
     }
     const oc = rejectOutfitClimate(items, weather);
     if (oc !== null) return `outfit climate: ${oc}`;
-    return rejectOutfitIncoherence(items, styleId, occasionId)
-        || assessOutfitQuality(items,styleId,occasionId,weather,lockedItemId,preferences).reasons[0] || null;
+    return rejectOutfitIncoherence(items, styleId, occasionId,requestContext)
+        || (assessment || assessOutfitQuality(items,styleId,occasionId,weather,lockedItemId,preferences)).reasons[0] || null;
 }
 
 /** True when the outfit survives the judge (every item unrejected). */
@@ -1020,7 +1023,7 @@ function qualityColor(item:JudgeableItem):string {
     return groups.find(([,pattern])=>pattern.test(explicit))?.[0] || groups.find(([,pattern])=>pattern.test(text))?.[0]||'unknown';
 }
 /** Six equally reported dimensions. Missing evidence stays neutral, not invented. */
-export function assessOutfitQuality(items:JudgeableItem[],style?:string|null,occasion?:string|null,weather?:ClimateWeather|null,lockedItemId?:string|null,preferences?:StylingPreferences):OutfitQualityAssessment {
+export function assessOutfitQuality(items:JudgeableItem[],style?:string|null,occasion?:string|null,weather?:ClimateWeather|null,lockedItemId?:string|null,preferences?:StylingPreferences, requestContext?:ReturnType<typeof stylingContext>):OutfitQualityAssessment {
     const dimensions={styleFit:1,occasionFit:1,colorHarmony:1,materialHarmony:1,formalityFit:1,weatherFit:1};
     const reasons:string[]=[],evidence:string[]=[];
     const relevant=isOldMoneyDate(style,occasion);
@@ -1065,10 +1068,11 @@ export function assessOutfitQuality(items:JudgeableItem[],style?:string|null,occ
         const layerText=layer?blobOf(layer):'';
         if(/\b(leather|suede)\b/.test(layerText)&&!reasons.length){dimensions.styleFit=Math.min(dimensions.styleFit,0.75);evidence.push('understated leather layer: smart evening rather than classic tailoring');}
     }
-    const connected=outfitCoherence(items.map(item=>({...item,id:item.id==null?undefined:String(item.id),name:item.name||undefined,type:item.type||undefined,description:item.description||undefined,macroCategory:item.macroCategory||undefined,color:item.color||undefined})),stylingContext({style,occasion,weather,anchorId:lockedItemId,preferences}));
+    const context=requestContext || stylingContext({style,occasion,weather,anchorId:lockedItemId,preferences});
+    const connected=outfitCoherence(items as Parameters<typeof outfitCoherence>[0],context);
     reasons.push(...connected.reasons);evidence.push(...connected.evidence);
     const score=(Object.values(dimensions).reduce((sum,n)=>sum+n,0)/6)*0.5+connected.score*0.5;
-    return {dimensions,score,reasons:[...new Set(reasons)],evidence,acceptance:outfitQualityFloor(items,stylingContext({style,occasion,weather,anchorId:lockedItemId,preferences}),connected)};
+    return {dimensions,score,reasons:[...new Set(reasons)],evidence,acceptance:outfitQualityFloor(items,context,connected)};
 }
 
 /**
