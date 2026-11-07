@@ -807,7 +807,7 @@ export function isOxfordFootwearName(name:string):boolean {
 }
 const OUTER_WORDS_RE = /\b(?:jackets?|coats?|blazers?|hoodies?|cardigans?|sweaters?|pullovers?|puffers?|bombers?|vests?|outerwears?|trenchs?|peacoats?|sweatshirts?|knitwears?|jumpers?|fleece|overshirts?|shackets?|total[\s-]?look)\b/;
 const BOTTOM_WORDS_RE = /\bpants?|trousers?|jeans?|bottoms?|shorts|bermudas?|skirts?|chinos?|slacks?|joggers?|jogging|trunks?|swim/;
-const SHOE_WORDS_RE = /\bshoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|derbies|moccasins?|drivers?|mules?|clogs?|espadrilles?\b|кроссовки|кеды|туфли|ботинки|лоферы|сапоги|мокасины|сандалии/;
+const SHOE_WORDS_RE = /\b(?:shoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derbys?|derbies|moccasins?|drivers?|mules?|clogs?|espadrilles?)\b|кроссовки|кеды|туфли|ботинки|лоферы|сапоги|мокасины|сандалии/;
 // Underwear must never surface as visible daywear in any slot.
 export const UNDERWEAR_RE = /\bboxers?|briefs?|underwears?|panties?|thongs?|lingerie|boxer[\s-]?shorts?|nightwear|pyjamas?|pajamas?\b/;
 export const ACCESSORY_PROP_RE = /\b(sunglasses?|eyewear|glasses|card[\s-]?holders?|wallets?|belts?|bags?|totes?|scar(?:f|ves)|hats?|caps?|beanies?|watch(?:es)?|jewelry|earrings?|necklaces?|ties?|neckties?|key[\s-]?rings?|keyrings?|towels?)\b|брелок|полотен/;
@@ -863,13 +863,17 @@ export function detectSlotMismatch(
     // would self-confirm it (a 'bottoms'-typed T-shirt must still read top).
     const blob = String(name || '').toLowerCase();
     const blobSansSleeves = blob.replace(STRIP_SHORT_SLEEVE_RE, ' ');
-    const oxfordFootwear = isOxfordFootwearName(blob);
-    const hasTop = TOP_WORDS_RE.test(blob) && !oxfordFootwear;
+    // 'Oxford' alone is ambiguous: a named Oxford fabric shirt is not a shoe
+    // unless the shop source already says footwear or the name explicitly
+    // contains an unambiguous footwear term.
+    const explicitFootwear = SHOE_WORDS_RE.test(blob);
+    const oxfordFootwear = isOxfordFootwearName(blob) && claimed === 'shoes';
+    const hasTop = TOP_WORDS_RE.test(blob) && !explicitFootwear;
     const hasOuter = OUTER_WORDS_RE.test(blob);
     // Strip "short-sleeved" first: `\bshorts?` / `\bshorts` otherwise
     // treat shirts as bottoms (screenshot: black short-sleeved shirt as PANTS).
     const hasBottom = BOTTOM_WORDS_RE.test(blobSansSleeves);
-    const hasShoe = SHOE_WORDS_RE.test(blob) || oxfordFootwear;
+    const hasShoe = explicitFootwear || oxfordFootwear;
     // Short-sleeve knits/shirts are base tops, never layers or pants.
     // "Wool-blend short-sleeve knit sweater" used to fall through to
     // outerwear because OUTER_WORDS includes "sweater".
