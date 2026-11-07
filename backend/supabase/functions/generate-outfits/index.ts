@@ -1177,6 +1177,8 @@ async function fetchShopItemsForAllSlotsEdge(
                 const filterStart=performance.now()
                 if(trace)trace.counts.catalogRows=(trace.counts.catalogRows||0)+data.length
                 for(const row of data) {
+                    // A cached style guess cannot override the catalog's authoritative footwear type.
+                    if(slot==='shoes' && row.garment_type!=='shoes') continue
                     const {fashion_intelligence:record,...source}=row
                     const item={...source,id:`shop_${row.id}`,isShopItem:true,isWardrobe:false,
                         macroCategory:row.fashion_slot || slot,type:row.garment_type||slot,
@@ -2089,6 +2091,8 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         const evaluate=(parts:any[])=>{
             const fail=(kind:keyof typeof gateCounts)=>{gateCounts[kind]++;return {valid:false,score:0}}
             if(fourSlotOutfitReason(parts,true) || requiredChoiceIds.some(id=>!parts.some(item=>item.id===id)))return fail('structure')
+            if(parts.some(item=>item.macroCategory==='shoes' && isShopRow(item)
+                && !['shoes','footwear'].includes(String(item.type||'').toLowerCase())))return fail('structure')
             if(parts.some(item=>!itemMap.has(item.id)||wornItemIds.has(item.id)))return fail('source')
             if((shopOnly&&parts.some(item=>!isShopRow(item))) || (wardrobeOnly&&parts.some(isShopRow))
                 || (!shopOnly&&hasOwnedCandidates&&parts.every(isShopRow)))return fail('source')
@@ -2134,6 +2138,15 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
                 ranks=new Map(ids.map((id,index)=>[id,index]));generationSource='ai'
             } else trace.counts.providerErrors=1
         } else trace.counts.providerErrors=1
+        // Privacy-safe provider diagnostics: never log keys, prompts, products or response bodies.
+        console.info('stylist_provider',{
+            source:generationSource,model:nvidiaModel,
+            status:providerTrace.map(({provider,model,status})=>({provider,model,status})),
+            reason:generationSource==='ai'?'ranked'
+                :!nvidiaKey?'missing_key'
+                :providerTrace.some(attempt=>attempt.status==='ok')?'rank_contract_mismatch':'provider_request_failed',
+            shortlist:plan.candidates.length,
+        })
         trace.stage='final_selection'
         const selected=trace.sync('selection',()=>plan.select(ranks))
         // The feasible seed survives a missing, malformed or failed rank call.
@@ -2179,13 +2192,15 @@ serve(async(req:Request)=>{
   }};
   let response=await generateOutfitsHandler(req,trace);
   if(req.method!=='OPTIONS') {
+    let failureCode:string|undefined;
     if(response.status>=400) {
       let body:any;try{body=await response.json();}catch{body={success:false,outfits:[]};}
       const known=typeof body.code==='string'?body.code:typeof body.error==='string'&&/^[a-z_]+$/.test(body.error)?body.error:'generation_failed';
+      failureCode=known;
       body={...body,error:known,code:known,stage:body.stage||trace.stage};
       response=new Response(JSON.stringify(body),{status:response.status,headers:response.headers});
     }
-    console.info('stylist_request',{status:response.status,stage:trace.stage,syncMs:trace.syncMs,waitMs:trace.waitMs,counts:trace.counts});
+    console.info('stylist_request',{status:response.status,stage:trace.stage,code:failureCode,syncMs:trace.syncMs,waitMs:trace.waitMs,counts:trace.counts});
   }
   return response;
 });
