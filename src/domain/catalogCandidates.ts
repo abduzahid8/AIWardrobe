@@ -1,3 +1,4 @@
+import { productIdentityKeys } from './outfitDiversity.ts';
 import { describeGarment, type GarmentEvidence } from './garmentDescriptor.ts';
 import { formulaGarmentAffinity, stylingFormulas } from './stylingProfiles.ts';
 import type { StylingContext } from './stylingContext.ts';
@@ -36,9 +37,16 @@ export function stylingCandidateRepresentatives<T>(
     const facets = [d.subtype, d.color, d.volume, d.pattern, d.texture];
     // Sparse descriptions are not proof of sameness.
     const family = facets.filter(known).length >= 2 ? facets.join(':') : `sparse:${order}`;
-    return {row, order, d, family, score: scoreOf(row), owned: item.isShopItem !== true && !String(item.id || '').startsWith('shop_')};
+    return {row, order, d, family, keys: productIdentityKeys(item), score: scoreOf(row), owned: item.isShopItem !== true && !String(item.id || '').startsWith('shop_')};
   }).sort((a, b) => b.score - a.score || a.order - b.order);
-  const selected: typeof entries = [], remaining = [...entries];
+  // Alias listings are one physical product, irrespective of styling facets.
+  // Collapse before the representative cap so duplicate rows cannot starve it.
+  const physical = new Set<string>();
+  const selected: typeof entries = [], remaining = entries.filter(entry => {
+    if (entry.keys.some(key=>physical.has(key))) return false;
+    entry.keys.forEach(key=>physical.add(key));
+    return true;
+  });
   const families = new Map<string, number>();
   while (remaining.length && selected.length < maximum) {
     const best = remaining[0].score;

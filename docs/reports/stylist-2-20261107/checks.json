@@ -22,7 +22,13 @@
     "deno": "passed, generate-outfits frozen lock",
     "typescript": "passed, modified domain dependency graph and new tests",
     "eslint": "passed, no errors; existing warnings",
-    "diffCheck": "passed"
+    "diffCheck": "passed",
+    "finalIntegrity": {
+      "suites": 4,
+      "passed": 15,
+      "failed": 0,
+      "includes": "alias representative coverage, formula-aligned construction, actual handler, budgeted curated selection"
+    }
   },
   "cpu": {
     "baseline": {
@@ -32,8 +38,8 @@
     },
     "candidate": {
       "runs": 14,
-      "minMs": 89.182,
-      "maxMs": 313.519
+      "minMs": 85.609,
+      "maxMs": 324.321
     },
     "allPass": true,
     "limitMs": 500,

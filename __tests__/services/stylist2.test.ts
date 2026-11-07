@@ -27,12 +27,16 @@ test('different style identities prefer their complete relationships',()=>{
     .toBeGreaterThan(outfitStyleIntent(descriptors(tailored),stylingContext({style:'casual'})).score);
 });
 test('retrieved representatives spread styling evidence without buying weak candidates',()=>{
-  const rows = Array.from({length:12},(_,i)=>({id:`${i}`,macroCategory:'outerwear',name:'Navy regular wool blazer',quality:0.9}));
+  const rows = Array.from({length:12},(_,i)=>({id:`${i}`,macroCategory:'outerwear',name:`Navy regular wool blazer model ${i}`,quality:0.9}));
   rows.push({id:'knit',macroCategory:'outerwear',name:'Beige fine knit cardigan',quality:0.88},
     {id:'weak',macroCategory:'outerwear',name:'Green casual bomber',quality:0.3});
   const picks = stylingCandidateRepresentatives(rows,i=>i,i=>i.quality,stylingContext({style:'old_money'}),4);
   expect(picks.some(p=>p.id==='knit')).toBe(true);
   expect(picks.some(p=>p.id==='weak')).toBe(false);
+  const aliases = rows.slice(0,6).map((row,i)=>({...row,id:`alias-${i}`,imageUrl:'https://test.invalid/same-product.jpg'}));
+  const distinct = stylingCandidateRepresentatives([...aliases,...rows.slice(6)],i=>i,i=>i.quality,stylingContext({style:'old_money'}),4);
+  expect(distinct.filter(row=>row.id.startsWith('alias-'))).toHaveLength(1);
+  expect(distinct).toHaveLength(4);
 });
 test('unknown and studio background metadata earn no fabricated visual evidence',()=>{
   const d = describeGarment({name:'Shirt',description:'Product photo on a white background'});

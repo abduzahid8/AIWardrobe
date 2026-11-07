@@ -317,6 +317,7 @@ function retainBudgetFloorCandidates(
     }
     const representatives = Array.from(cheapest.values(), row => row.item)
     const representedIds = new Set(representatives.map(item => String(item.id)))
+    const representedProducts = new Set(representatives.flatMap(item=>productIdentityKeys(item)))
     const slotCounts = new Map(Array.from(cheapest.keys(), slot => [slot, 1]))
     // The cheapest floor is mandatory; remaining per-slot choices follow
     // the context-aware ranking, not the catalog's arrival order.
@@ -325,10 +326,10 @@ function retainBudgetFloorCandidates(
         stylingCandidateRepresentatives(available.filter(item => (isDressGarment(item) ? 'dress' : item.macroCategory) === slot),item=>item,qualityOf,context,perSlotChoices))
         : spreadSuitableProducts(available,item=>item,qualityOf,0.08)
     for (const item of ordered) {
-        if (!eligible(item) || representedIds.has(String(item.id))) continue
+        if (!eligible(item) || representedIds.has(String(item.id)) || productIdentityKeys(item).some(key=>representedProducts.has(key))) continue
         const slot = isDressGarment(item) ? 'dress' : String(item.macroCategory || '').toLowerCase()
         if (!cheapest.has(slot) || (slotCounts.get(slot) || 0) >= perSlotChoices) continue
-        representedIds.add(String(item.id)); slotCounts.set(slot, (slotCounts.get(slot) || 0) + 1)
+        representedIds.add(String(item.id)); productIdentityKeys(item).forEach(key=>representedProducts.add(key)); slotCounts.set(slot, (slotCounts.get(slot) || 0) + 1)
         representatives.push(item)
     }
     const combined = [...(anchor ? [anchor] : []), ...representatives, ...ranked]

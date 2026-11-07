@@ -60,15 +60,16 @@ export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
     return affinity(b) - affinity(a) || a.ordinal - b.ordinal;
   }));
   const beam: typeof pairs = [], usedPairs = new Set<typeof pairs[number]>();
+  const beamIntent = new Map<typeof pairs[number], number>();
   for (let i = 0; i < generic.length && beam.length < 96; i++) {
-    for (const list of [...beams, generic]) {
+    for (const [intent,list] of [...beams, generic].entries()) {
       const pair = list[i];
-      if (pair && !usedPairs.has(pair)) {beam.push(pair); usedPairs.add(pair);}
+      if (pair && !usedPairs.has(pair)) {beam.push(pair); usedPairs.add(pair); beamIntent.set(pair,intent);}
       if (beam.length >= 96) break;
     }
   }
-  const extensions = formulas.map(f => [pools[2],pools[3]].map(pool => [...pool].sort((a,b) =>
-    formulaGarmentAffinity(descriptors.get(b)!,f) - formulaGarmentAffinity(descriptors.get(a)!,f))));
+  const extensions = [...formulas.map(f => [pools[2],pools[3]].map(pool => [...pool].sort((a,b) =>
+    formulaGarmentAffinity(descriptors.get(b)!,f) - formulaGarmentAffinity(descriptors.get(a)!,f)))), [pools[2],pools[3]]];
   const result: { id: string; items: T[]; score: number; order: number }[] = [];
   const signatures = new Set<string>();
   // Rows are immutable during this search: normalize identity once per row.
@@ -78,7 +79,7 @@ export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
   for (let step = 0; step < pools[2].length * pools[3].length && examined < limit; step++) {
     for (let p = 0; p < beam.length && examined < limit; p++) {
       examined++;
-      const [bottoms, shoes] = extensions[p % extensions.length];
+      const [bottoms, shoes] = extensions[beamIntent.get(beam[p])!];
       const parts = [
         ...beam[p].items,
         bottoms[(step + p) % bottoms.length],
