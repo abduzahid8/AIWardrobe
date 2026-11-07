@@ -91,6 +91,5 @@ begin
   from diversified d
   order by (price_floor=1) desc,relevance desc,role_rank,md5(id||p_seed),id
   limit p_limit offset p_offset;
-end; $function$
-
+end; $function$;
 notify pgrst, 'reload schema';
