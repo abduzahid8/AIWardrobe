@@ -57,5 +57,16 @@
     "caution": "single local CPU comparison, not production latency measurement"
   },
   "visualAcceptance": "pending owner iOS Simulator QA",
-  "noLiveAuthenticatedInference": true
+  "noLiveAuthenticatedInference": true,
+  "deployment": {
+    "version": 194,
+    "status": "ACTIVE",
+    "sourceCommit": "9fc9366070ecbd59f3ca54770398f8905c9b23f7",
+    "sourceIntegrityVerified": true,
+    "OPTIONS": 200,
+    "unauthenticatedPOST": 401,
+    "invalidTokenPOST": 401,
+    "otherFunctionsUnchanged": true,
+    "pullRequest": "https://github.com/abduzahid8/AIWardrobe/pull/3"
+  }
 }

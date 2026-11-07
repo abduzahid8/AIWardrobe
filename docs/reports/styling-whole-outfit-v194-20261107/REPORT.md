@@ -84,3 +84,9 @@ metadata can still omit visible construction details; only the verified trouser
 ID receives an override. Narrower compatibility gates can return 422 when the
 bounded pool cannot supply three coherent independent outfits. No authenticated
 production inference or paid visual generation was run for this release.
+
+Deployment verified: generate-outfits v194 ACTIVE from implementation commit
+`9fc9366070ecbd59f3ca54770398f8905c9b23f7`; downloaded original source SHA-256
+`afa771ffa85780f5c45490dc0e2b8d17943fa8bb90d989defe1fa19795e00dfe`.
+OPTIONS 200, absent/invalid auth POST 401, other functions unchanged.
+Review: [PR #3](https://github.com/abduzahid8/AIWardrobe/pull/3), stacked on PR #2.

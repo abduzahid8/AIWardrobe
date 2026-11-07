@@ -1,0 +1,9 @@
+{
+  "slug": "generate-outfits",
+  "version": 194,
+  "status": "ACTIVE",
+  "verify_jwt": false,
+  "ezbr_sha256": "d33c2854bd2b7622108abb7eeb98d4cec95207735c44d111df38728ee09709f6",
+  "sourceCommit": "9fc9366070ecbd59f3ca54770398f8905c9b23f7",
+  "branch": "codex/styling-whole-outfit-v194-20261107"
+}
