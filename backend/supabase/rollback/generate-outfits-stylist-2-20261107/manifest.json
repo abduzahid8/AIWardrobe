@@ -1,6 +1,6 @@
 {
   "function": "generate-outfits",
-  "preparedFromCommit": "404c4b0acf87ae3b795af5ec65c9d81faa518a66",
+  "preparedFromCommit": "9752b1e611f69d1c5427e6f7910cb4c3fed637f4",
   "branch": "codex/stylist-2-20261107",
   "baseline": {
     "slug": "generate-outfits",
@@ -15,7 +15,8 @@
   "bundleBytes": 400471,
   "authSourceUnchanged": true,
   "rateLimitSourceUnchanged": true,
-  "rollbackArchiveSha256": "79c9b017fc78c5a768d9ae057b68c87111dbe3896eee4eb1f0df5699809bbbfe",
+  "criticalFunctionBodiesUnchanged": true,
+  "rollbackArchiveSha256": "0d70f51e95cc428ed88e478cd9f94b7fd7f9decf3419fd68d569060f0c2c5f5d",
   "inputs": [
     {
       "path": "src/domain/garmentText.ts",
