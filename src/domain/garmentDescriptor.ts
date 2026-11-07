@@ -28,6 +28,8 @@ export interface GarmentDescriptor {
   closure: 'openable' | 'pullover' | 'unknown';
   /** Positive construction evidence; rubber alone does not imply casual. */
   casualSole: boolean;
+  utilityConstruction: boolean;
+  technicalLeisure: boolean;
   rugged: boolean;
   athletic: boolean;
   structured: boolean;
@@ -68,7 +70,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
         ? [
             [
               'athletic-trouser',
-              /\b(joggers?|track[ -]?(pants?|trousers?)|training|sweatpants?|drawstring|athletic|sports? pants?)\b/,
+              /\b(joggers?|track[ -]?(pants?|trousers?)|training|sweatpants?|draw[ -]?strings?|athletic|sports? pants?)\b/,
             ],
             ['cargo', /\bcargo\b/],
             ['jeans', /\bjeans|denim\b/],
@@ -119,11 +121,18 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
   // The imported Flextride row omits its construction. Model-specific
   // evidence: Geox U66MAC0009BC9999, cushioning and synthetic/rubber outsole.
   // https://www.geox.com/en-GB/leather_loafers-black-flextride_plus_man-U66MAC0009BC9999.html
-  const verifiedComfortLoafer = slot === 'shoes' && (/^(?:shop_)?geox-u66mac/i.test(String(item.id || ''))
-    || /^flextride plus\b/i.test(item.name || ''));
+  const verifiedComfortLoafer = slot === 'shoes' && (/^(?:shop_)?geox-(?:u66mac|u44q6d|u56q6a)/i.test(String(item.id || ''))
+    || /^(?:flextride plus|moner w 2fit)\b/i.test(item.name || ''));
   const casualSole = slot === 'shoes' && (verifiedComfortLoafer
     || /\b(chunky|thick|platform|lug|commando|track|cup)[ -]+(?:rubber[ -]+)?(?:out)?sole(?:s|d)?\b/.test(text)
     || /\bsneaker[ -]+soles?\b/.test(text));
+  // Source-backed construction missing from the imported studio captions.
+  // AllSaints USM108SF: chest flap pockets (official Bond product details).
+  const utilityConstruction = slot === 'top' && (subtype === 'field-shirt'
+    || /^(?:shop_)?allsaints-usm108sf-/i.test(String(item.id || ''))
+    || /\b(?:chest[ -]+flap|(?:two|twin|double)[ -]+chest|cargo|bellows)[ -]+pockets?\b/.test(text));
+  const technicalLeisure = slot === 'outerwear' && /\btechnical\b/.test(text)
+    && /\b(leisure|shell|nylon|zip|windproof|track)\b/.test(text);
   const structured =
     subtype === 'blazer' || subtype === 'tailored-trouser' || subtype === 'dress-shirt';
   // A single marketing word ("dress", "formal") is not proof on its own
@@ -226,12 +235,16 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     collar,
     rugged,
     casualSole,
+    utilityConstruction,
+    technicalLeisure,
     athletic,
     structured,
     insulated: /\b(puffer|down jacket|down filling|insulated|shearling)\b/.test(text),
     evening: /\b(tuxedo|dinner jacket|dinner suit|opera pump|patent)\b/.test(text),
     evidence: [
-      ...(verifiedComfortLoafer ? ['catalog:geox-u66mac-comfort-sole'] : []),
+      ...(utilityConstruction ? ['construction:utility-pockets'] : []),
+      ...(technicalLeisure ? ['construction:technical-leisure'] : []),
+      ...(verifiedComfortLoafer ? ['catalog:verified-comfort-sole'] : []),
       ...(subtype !== 'unknown' ? [`text:${subtype}`] : []),
       ...(bulk !== 'unknown' ? [`text:${bulk}`] : []),
       ...(volume !== 'unknown' ? [`text:${volume}`] : []),

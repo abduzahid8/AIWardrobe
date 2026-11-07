@@ -47,7 +47,7 @@ test('the real imported Flextride row uses verified model evidence without mutat
   const shoe=Object.freeze({...row,macroCategory:'shoes',isShopItem:true});
   const before=JSON.stringify(shoe);
   expect(describeGarment(shoe).casualSole).toBe(true);
-  expect(describeGarment(shoe).evidence).toContain('catalog:geox-u66mac-comfort-sole');
+  expect(describeGarment(shoe).evidence).toContain('catalog:verified-comfort-sole');
   expect(garmentContextReason(shoe,work)).toBeNull();
   expect(garmentContextReason(shoe,formal)).toBe('formal_requires_dress_footwear');
   expect(scoreGarmentForContext(look()[3],work)).toBeGreaterThan(scoreGarmentForContext(shoe,work));

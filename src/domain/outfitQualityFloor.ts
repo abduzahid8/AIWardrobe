@@ -35,6 +35,23 @@ export function outfitQualityFloor(
     score = Math.min(score, 0.49);
     reason = 'weak_refined_occasion_compatibility';
   }
+  if (refinedWork || formal) {
+    const top = items.find(item => item.macroCategory === 'top');
+    const layer = items.find(item => item.macroCategory === 'outerwear');
+    const bottom = items.find(item => item.macroCategory === 'bottom');
+    const a = top ? describeGarment(top) : undefined, b = layer ? describeGarment(layer) : undefined;
+    const trousers = bottom ? describeGarment(bottom) : undefined;
+    if (a?.utilityConstruction && b?.subtype === 'blazer') {
+      score = Math.min(score, 0.49); reason = 'utility_shirt_conflicts_with_office_tailoring';
+    } else if (b?.technicalLeisure && trousers?.structured) {
+      score = Math.min(score, 0.49); reason = 'technical_leisure_conflicts_with_refined_tailoring';
+    } else if (coherence.evidence.includes('heavy_and_airy_texture_contrast')) {
+      score = Math.min(score, 0.49); reason = 'incompatible_heavy_and_airy_fabrics';
+    } else if (a && b && ['stripe','check','print'].includes(a.pattern)
+      && ['stripe','check','print'].includes(b.pattern) && a.pattern !== b.pattern) {
+      score = Math.min(score, 0.49); reason = 'competing_patterns_in_office_tailoring';
+    }
+  }
   if (minimalistCasual) {
     const layer = items.find((item) => item.macroCategory === 'outerwear');
     const bottom = items.find((item) => item.macroCategory === 'bottom');
