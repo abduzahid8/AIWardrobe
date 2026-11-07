@@ -1,6 +1,6 @@
 {
   "function": "generate-outfits",
-  "preparedFromCommit": "9752b1e611f69d1c5427e6f7910cb4c3fed637f4",
+  "preparedFromCommit": "9f5a9b513e07fa324cca44f11377e13087b1663d",
   "branch": "codex/stylist-2-20261107",
   "baseline": {
     "slug": "generate-outfits",
@@ -11,20 +11,20 @@
     "sourceCommit": "404c4b0acf87ae3b795af5ec65c9d81faa518a66",
     "sourceSha256": "afa771ffa85780f5c45490dc0e2b8d17943fa8bb90d989defe1fa19795e00dfe"
   },
-  "bundleSha256": "e837886cddb3fde25be4b0f56a84c005cc6edd1eb92ec0b1550e3b0df6b8616f",
-  "bundleBytes": 400471,
+  "bundleSha256": "820bbdf336d7d48cebc0e7415618fc437618a644cabc1e97d2014ee86bb15552",
+  "bundleBytes": 401093,
   "authSourceUnchanged": true,
   "rateLimitSourceUnchanged": true,
   "criticalFunctionBodiesUnchanged": true,
-  "rollbackArchiveSha256": "0d70f51e95cc428ed88e478cd9f94b7fd7f9decf3419fd68d569060f0c2c5f5d",
+  "rollbackArchiveSha256": "ec1494e274e6ce1c19f62f0f8182fc350539bd884e31280137baee1a52f15a56",
   "inputs": [
-    {
-      "path": "src/domain/garmentText.ts",
-      "sha256": "5cd123b4e0b9561ca652a4e56682f00463a18dc96e8b4ea6319a05c563be4b4d"
-    },
     {
       "path": "src/domain/outfitDiversity.ts",
       "sha256": "89573a26e7843e99c6ef0be3d3777a2306bffdf0a51b95f5ca0cb06a9e87bb27"
+    },
+    {
+      "path": "src/domain/garmentText.ts",
+      "sha256": "5cd123b4e0b9561ca652a4e56682f00463a18dc96e8b4ea6319a05c563be4b4d"
     },
     {
       "path": "src/domain/garmentDescriptor.ts",
@@ -36,7 +36,7 @@
     },
     {
       "path": "src/domain/catalogCandidates.ts",
-      "sha256": "8e7f07c540bd3794b6ce4d21fa0c107dc4a59772b4cd0d92430d6960f1f167b0"
+      "sha256": "0c06797786700edb4dfbc806bc8ae2f90fd395202edcff8cf9dbabff89702b11"
     },
     {
       "path": "src/domain/outfitVisualSignature.ts",
@@ -76,7 +76,7 @@
     },
     {
       "path": "src/domain/validatedQuartets.ts",
-      "sha256": "25cfa65ade0e878030b12361fbd350387844d6b290175aaec85fd0a9d8720d1e"
+      "sha256": "323283e9a7cfd0e77d5e5db66431a89d821f01dd175b8c3e0306443711637cf9"
     },
     {
       "path": "src/domain/outfitChoices.ts",
@@ -172,7 +172,7 @@
     },
     {
       "path": "backend/supabase/functions/generate-outfits/index.ts",
-      "sha256": "538852ab444c0d5fecddd13c699529f0bc873f390ae657b1a5a6cad3a3181d85"
+      "sha256": "cdb3ace9ae1f85669b2111dae8cfa5096efeabbb55eeaef1ada30df38f19b89f"
     }
   ]
 }
