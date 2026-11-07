@@ -55,8 +55,19 @@ export interface GarmentDescriptor {
   insulated: boolean;
   evidence: string[];
 }
+/** Only explicitly prepared immutable request rows are cached. Mutable caller
+ * objects never receive stale descriptors, and owned rows live only as weak keys. */
+const preparedDescriptors = new WeakMap<object, GarmentDescriptor>();
+export function prepareGarment<T extends GarmentEvidence>(item: T, descriptor?: GarmentDescriptor): T {
+  const snapshot = Object.freeze({...item});
+  preparedDescriptors.set(snapshot, descriptor || describeGarment(snapshot));
+  return snapshot;
+}
+
 /** Text classifications are derived evidence, never authoritative catalog writes. */
 export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
+  const prepared = preparedDescriptors.get(item);
+  if (prepared) return prepared;
   const materialText = typeof item.material === 'string' ? item.material
     : Array.isArray(item.material) ? item.material.filter(value => typeof value === 'string').join(' ') : '';
   const text = normalizeGarmentText(
@@ -355,4 +366,25 @@ export function competingUpperPatterns(a: GarmentDescriptor, b: GarmentDescripto
   if (!motif(a) || !motif(b)) return false;
   if (a.patternProminence === 'subtle' && b.patternProminence === 'subtle') return false;
   return a.patternProminence === 'prominent' || b.patternProminence === 'prominent' || a.pattern !== b.pattern;
+}
+
+
+export const FASHION_INTELLIGENCE_VERSION = 1;
+export interface FashionIntelligence {
+  version: number;
+  descriptor: GarmentDescriptor;
+  confidence: Record<string, 'metadata' | 'derived' | 'unknown'>;
+  climate: {weight: GarmentDescriptor['bulk']; insulated: boolean; temperature: null};
+  enrichment: 'metadata-only';
+}
+export function fashionIntelligence(item: GarmentEvidence): FashionIntelligence {
+  const descriptor = describeGarment(item);
+  const confidence: FashionIntelligence['confidence'] = {};
+  for (const key of ['subtype','color','volume','texture','pattern','formality','bulk','soleProfile'] as const)
+    confidence[key] = descriptor[key] === 'unknown' ? 'unknown' : 'derived';
+  if (item.color && descriptor.color !== 'unknown') confidence.color = 'metadata';
+  if (item.fit && descriptor.volume !== 'unknown') confidence.volume = 'metadata';
+  if (item.pattern && descriptor.pattern !== 'unknown') confidence.pattern = 'metadata';
+  return {version: FASHION_INTELLIGENCE_VERSION, descriptor, confidence,
+    climate: {weight: descriptor.bulk, insulated: descriptor.insulated, temperature: null}, enrichment:'metadata-only'};
 }

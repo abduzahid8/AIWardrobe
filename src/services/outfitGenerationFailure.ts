@@ -12,6 +12,11 @@ const messages = {
   no_items_within_budget: 'outfitMaker.noItemsWithinBudget',
   no_matching_clothing: 'outfitMaker.noMatchingClothing',
   incomplete_outfit_deck: 'outfitMaker.noMatchingClothing',
+  insufficient_candidates: 'outfitMaker.noMatchingClothing',
+  outfit_quality_rejected: 'outfitMaker.noMatchingClothing',
+  incomplete_outfit_selection: 'outfitMaker.noMatchingClothing',
+  planning_cpu_risk: 'outfitMaker.generateFailed',
+  generation_failed: 'outfitMaker.generateFailed',
   // Do not trigger the screen's looser closest-match recovery after a floor failure.
   quality_replacement_unavailable: 'outfitMaker.generateFailed',
   shoe_rotation_unavailable: 'outfitMaker.noMatchingClothing',
@@ -21,7 +26,7 @@ type MessageKey = typeof messages[keyof typeof messages] | 'outfitMaker.generate
   | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut' | 'outfitMaker.connectionFailed';
 
 export class OutfitGenerationFailure extends Error {
-  constructor(readonly translationKey: MessageKey = 'outfitMaker.generateFailed') {
+  constructor(readonly translationKey: MessageKey = 'outfitMaker.generateFailed', readonly code?:string, readonly stage?:string) {
     super('outfit_generation_failed');
     this.name = 'OutfitGenerationFailure';
   }
@@ -56,10 +61,15 @@ function reportUnmappedFailure(error: unknown, phase: 'transport' | 'http_body' 
   });
 }
 
+function safeFailureField(payload:unknown,key:string):string|undefined {
+  const value=(payload as Record<string,unknown>|null)?.[key];
+  return typeof value==='string'&&/^[a-z_]{1,64}$/.test(value)?value:undefined;
+}
+
 /** Decode only known server codes; never display raw provider/server messages. */
 export async function outfitGenerationFailure(data: unknown, error?: unknown): Promise<OutfitGenerationFailure> {
   const direct = messageFrom(data);
-  if (direct) return new OutfitGenerationFailure(direct);
+  if (direct) return new OutfitGenerationFailure(direct, safeFailureField(data,'code'),safeFailureField(data,'stage'));
   const context = (error as { context?: Response } | null)?.context;
   if (context && typeof context.clone === 'function') {
     try {
@@ -68,7 +78,7 @@ export async function outfitGenerationFailure(data: unknown, error?: unknown): P
       const payload = await withRequestDeadline(() => context.clone().json(), 1500);
       const message = messageFrom(payload, context.status);
       if (!message) reportUnmappedFailure(error, 'http_body');
-      return new OutfitGenerationFailure(message);
+      return new OutfitGenerationFailure(message,safeFailureField(payload,'code'),safeFailureField(payload,'stage'));
     } catch { reportUnmappedFailure(error, 'http_decode'); return new OutfitGenerationFailure(); }
   }
   reportUnmappedFailure(error, 'transport');

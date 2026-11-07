@@ -119,6 +119,8 @@ export interface GenerateOutfitsResult {
     success: boolean;
     outfits: GeneratedOutfit[];
     error?: string;
+    code?: string;
+    stage?: string;
     errorTranslationKey?: OutfitGenerationFailure['translationKey'];
     source?: 'ai' | 'local' | 'deterministic_fallback';
     /** Whether the backend applied the 4-slot layered schema. */
@@ -222,32 +224,12 @@ export async function generateOutfitsFromDB(
             body: ignoreHistory ? { ...body, excludeItemIds: [], excludeProductKeys: [] } : body,
         });
 
-        let { data, error } = await wait(invokeOnce());
+        const { data, error } = await wait(invokeOnce());
         if (cancelled) throw new Error('generation_account_changed');
-        // One retry for transient provider/transport failures (observed
-        // 503s and lost connections); 4xx and generic errors are not retried.
-        if (error || data?.error === 'ai_generation_unavailable') {
-            const status = (error as any)?.context?.status ?? (data?.error === 'ai_generation_unavailable' ? 503 : 0);
-            const isFetchFailure = (error as any)?.name === 'FunctionsFetchError' || /fetch|network|connection/i.test(String((error as any)?.message || ''));
-            if (status >= 500 || isFetchFailure) {
-                console.warn('[outfitGenerationService] Retrying generate-outfits once after transient failure');
-                ({ data, error } = await wait(invokeOnce()));
-                if (cancelled) throw new Error('generation_account_changed');
-            }
-        }
-
-        // A scarce slot (often shoes) can be entirely consumed by recent
-        // history. Reuse seen products only after the server confirms no
-        // match; retain all source, style, weather, and quality constraints.
-        let retriedWithoutHistory = false;
-        if (error && params.allowRecentFallback && (excludeItemIds.length > 0 || excludeProductKeys.length > 0) &&
-            (error as any)?.context?.status === 422 &&
-            (await outfitGenerationFailure(data, error)).translationKey === 'outfitMaker.noMatchingClothing') {
-            if (cancelled) throw new Error('generation_account_changed');
-            retriedWithoutHistory = true;
-            ({ data, error } = await wait(invokeOnce(true)));
-            if (cancelled) throw new Error('generation_account_changed');
-        }
+        // Generation is a single server plan and at most one NVIDIA call.
+        // Automatic transport/history retries could duplicate paid work or
+        // discard the planner's rotation decision. Surface a stable failure.
+        const retriedWithoutHistory = false;
 
         if (error) {
             const failure = await outfitGenerationFailure(data, error);
@@ -267,7 +249,7 @@ export async function generateOutfitsFromDB(
                         : params.weather.temp < 26 ? 'mild' : 'hot',
                 } : {}),
             });
-            return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: failure.translationKey };
+            return { success: false, outfits: [], error: 'stylist_generation_failed', code:failure.code,stage:failure.stage,errorTranslationKey: failure.translationKey };
         }
 
         if (data?.source === 'local' || !data?.success || !Array.isArray(data?.outfits) || data.outfits.length === 0) {
@@ -279,7 +261,7 @@ export async function generateOutfitsFromDB(
             .filter((o: any) => o && !fourSlotOutfitReason(o.items, data.layered !== false))
             .map((o: any) => mapRawOutfit(o, params))
             .filter((o: GeneratedOutfit) => [...(params.selectedItemIds||[]),...(params.anchorItemId?[params.anchorItemId]:[])].every(id=>o.items.some(item=>item.id===id)) && (params.sourceMode!=='wardrobe'||o.items.every(item=>!isShopClothingItem(item))) && (params.sourceMode!=='catalog'||o.items.every(isShopClothingItem)) && passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather,params.anchorItemId,params.preferences));
-        if (!outfits.length) return { success: false, outfits: [], error: 'no_valid_outfits_for_request', errorTranslationKey: 'outfitMaker.noMatchingClothing' };
+        if (!outfits.length || (data.outfits.length === 3 && outfits.length !== 3)) return { success: false, outfits: [], error: 'no_valid_outfits_for_request', errorTranslationKey: 'outfitMaker.noMatchingClothing' };
         if (params.recordShown !== false) recordShownOutfits(outfits, recencyScope);
         return { success: true, outfits, source: data.source ?? 'ai', layered: Boolean(data.layered) };
 

@@ -332,6 +332,20 @@ export function outfitCoherence(
     dimensions.palette = Math.min(dimensions.palette, 0.55);
     evidence.push('competing_office_upper_patterns');
   }
+  // Evaluate the outfit's pattern hierarchy and dress register as a whole.
+  // One accent and smart-casual bridges remain supported; uncertainty is neutral.
+  const motifs=descriptors.filter(d=>['stripe','check','print','graphic'].includes(d.pattern));
+  if(motifs.length>1 && new Set(motifs.map(d=>d.pattern)).size>1
+    && motifs.some(d=>d.patternProminence==='prominent')) {
+    dimensions.palette=Math.min(dimensions.palette,0.45);
+    evidence.push('competing_outfit_motifs');
+  }
+  const upper=descriptors.filter(d=>['top','outerwear'].includes(d.slot));
+  if(context.dressCode!=='athletic' && upper.length===2 && upper.every(d=>d.formality==='casual')
+    && bottom?.formality==='formal' && shoe?.formality==='formal') {
+    dimensions.footwear=Math.min(dimensions.footwear,0.45);
+    evidence.push('upper_and_lower_registers_lack_styling_bridge');
+  }
   const registerClash = wholeOutfitRegisterClash(items, context);
   if (registerClash) reasons.push(registerClash);
   const valid = !reasons.length;

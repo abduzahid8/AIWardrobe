@@ -15,6 +15,7 @@ export interface CatalogCandidateRpcRequest {
   p_offset: number;
   p_currency: string | null;
   p_max_price: number | null;
+  p_context?: Record<string, unknown>;
 }
 export interface CatalogCandidateRetrievalDiagnostics {
   seed: string;

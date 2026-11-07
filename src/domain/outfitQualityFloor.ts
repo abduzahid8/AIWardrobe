@@ -53,7 +53,7 @@ export function outfitQualityFloor(
       || (top && layer && /\blinen\b/i.test(top.name || '') && /\bvelvet\b/i.test(layer.name || ''))
       || coherence.evidence.includes('heavy_and_airy_texture_contrast')) {
       score = Math.min(score, 0.49); reason = 'incompatible_heavy_and_airy_fabrics';
-    } else if (coherence.evidence.includes('competing_upper_patterns')) {
+    } else if ((coherence.evidence.includes('competing_upper_patterns') || coherence.evidence.includes('competing_outfit_motifs'))) {
       score = Math.min(score, 0.49); reason = 'competing_patterns_in_office_tailoring';
     }
   }
@@ -116,7 +116,7 @@ export function outfitQualityFloor(
       reject('sporting_register_underdresses_date_night');
     // Quiet fabrics may carry one patterned/accent piece; avoid competing
     // upper motifs without imposing monochrome or a universal pattern ban.
-    if (coherence.evidence.includes('competing_upper_patterns'))
+    if ((coherence.evidence.includes('competing_upper_patterns') || coherence.evidence.includes('competing_outfit_motifs')))
       reject('competing_patterns_undermine_date_night');
     if (coherence.evidence.includes('heavy_and_airy_texture_contrast'))
       reject('incompatible_date_night_fabric_weights');
