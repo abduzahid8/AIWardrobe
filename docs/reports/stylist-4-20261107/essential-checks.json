@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-11-07T18:59:54.358Z",
+  "checkedAt": "2026-11-07T19:15:43.905Z",
   "passed": true,
-  "bundleSha256": "ffbf25356cfbec1ed23d273c5502016ab5ac0b7dba3dbe643dce71a53055219c",
+  "bundleSha256": "205cf14073d71465b79edb6f226e13f86f47bd31cc0a8c7e953a37a1213db521",
   "scope": "Focused critical gates, no inference or production performance claim",
   "checks": [
     {

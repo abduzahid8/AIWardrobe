@@ -1,6 +1,14 @@
 {
   "result": [
     {
+      "event_message": "stylist_request {\n  status: 401,\n  stage: \"admission\",\n  code: \"unauthorized\",\n  syncMs: {},\n  waitMs: { admission: 937.116682 },\n  counts: { totalMs: 937, unattributedMs: 0 }\n}\n",
+      "timestamp": "2026-11-07T19:12:24.344000"
+    },
+    {
+      "event_message": "stylist_request {\n  status: 401,\n  stage: \"admission\",\n  code: \"unauthorized\",\n  syncMs: {},\n  waitMs: { admission: 0.6698590000000024 },\n  counts: { totalMs: 1, unattributedMs: 0 }\n}\n",
+      "timestamp": "2026-11-07T19:12:23.240000"
+    },
+    {
       "event_message": "stylist_request {\n  status: 200,\n  stage: \"final_selection\",\n  code: undefined,\n  syncMs: {\n    catalog_filter: 57.58200399999805,\n    intelligence: 14.84405599999991,\n    planning: 274.13870099999986,\n    selection: 0.1357349999998405,\n    response: 0.11042499999894062\n  },\n  waitMs: { catalog: 5701.122332000001, provider: 1130.379542999999 },\n  counts: {\n    catalogRows: 500,\n    cachedDescriptors: 500,\n    top: 10,\n    outerwear: 10,\n    bottom: 10,\n    shoes: 10,\n    evaluations: 256,\n    proposals: 1006,\n    valid: 176,\n    structure: 0,\n    budget: 0,\n    source: 0,\n    quality: 80,\n    budgetPruned: 0,\n    selected: 3\n  }\n}\n",
       "timestamp": "2026-11-07T18:35:49.891000"
     },

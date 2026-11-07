@@ -49,15 +49,15 @@ PASS __tests__/backend/budgetFx.test.js
       at eval (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:136:21)
       at Object.currentBudgetRates (eval at cacheSetup (__tests__/backend/budgetFx.test.js:37:15), <anonymous>:148:16)
 
-PASS __tests__/backend/outfitGenerationRequest.test.js
 PASS __tests__/services/validatedQuartets.test.ts
 PASS __tests__/backend/nvidiaOutfitRequest.test.js
-PASS __tests__/services/stylist4.test.ts
-PASS __tests__/backend/outfitBudgetSelection.test.js
+PASS __tests__/backend/outfitGenerationRequest.test.js
 PASS __tests__/services/outfitCoherence.test.ts
+PASS __tests__/backend/outfitBudgetSelection.test.js
+PASS __tests__/services/stylist4.test.ts
 
 Test Suites: 7 passed, 7 total
-Tests:       93 passed, 93 total
+Tests:       94 passed, 94 total
 Snapshots:   0 total
-Time:        1.105 s, estimated 3 s
+Time:        1.154 s
 Ran all test suites matching /__tests__\/services\/stylist4.test.ts|__tests__\/services\/validatedQuartets.test.ts|__tests__\/services\/outfitCoherence.test.ts|__tests__\/backend\/budgetFx.test.js|__tests__\/backend\/outfitBudgetSelection.test.js|__tests__\/backend\/outfitGenerationRequest.test.js|__tests__\/backend\/nvidiaOutfitRequest.test.js/i.

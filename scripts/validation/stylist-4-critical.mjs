@@ -8,13 +8,17 @@ const require=createRequire(import.meta.url),root=new URL('../../',import.meta.u
 const source=fs.readFileSync(root+'backend/supabase/functions/generate-outfits/index.ts','utf8')
  .replace(/^import \{ serve \} from .*$/m,'const serve=()=>{};')
  .replace(/^import \{ createClient \} from .*$/m,'const createClient=()=>{throw Error("network forbidden")};')
- + '\nexport {createOutfitPlan,stylingContext,prepareGarment,assessOutfitQuality,styleJudgeReason,fourSlotOutfitReason,validateOutfitAgainstStyle,validateOutfitCompatibility,garmentContextReason,visualAdmissionReason,detectSlotMismatch,isFourSlotCandidate,isNonOutfitItem,rejectForStyleOccasion,rejectForClimate,rejectForRequestIntent,rejectForActivity};';
+ + '\nexport {createOutfitPlan,stylingContext,prepareGarment,assessOutfitQuality,styleJudgeReason,fourSlotOutfitReason,validateOutfitAgainstStyle,validateOutfitCompatibility,garmentContextReason,visualAdmissionReason,detectSlotMismatch,applyVisualFashion,inferShopColor,isFourSlotCandidate,isNonOutfitItem,rejectForStyleOccasion,rejectForClimate,rejectForRequestIntent,rejectForActivity};';
 const b=await esbuild.build({stdin:{loader:'ts',contents:source,resolveDir:root+'backend/supabase/functions/generate-outfits',sourcefile:'critical.ts'},bundle:true,format:'cjs',platform:'node',target:'node22',write:false});
 const module={exports:{}};new Function('module','exports','require','Deno',b.outputFiles[0].text)(module,module.exports,name=>name.startsWith('https:')?{createClient:()=>{throw Error('network forbidden')}}:require(name),{env:{get:()=>undefined}});
 const api=module.exports;
 const rows=JSON.parse(fs.readFileSync(process.argv[2]||'/tmp/stylist4-catalog-before.json'));
-const items=rows.map(r=>api.prepareGarment({...r,id:'shop_'+r.id,isShopItem:true,isWardrobe:false,macroCategory:r.fashion_slot,type:r.garment_type,
- imageUrl:r.image_url,color:r.fashion_intelligence?.descriptor?.color,visualFashion:r.visual_fashion||undefined,visualSourceHash:r.visual_source_hash||undefined}));
+const items=rows.map(r=>{
+ const item={...r,id:'shop_'+r.id,isShopItem:true,isWardrobe:false,macroCategory:r.fashion_slot,type:r.garment_type,
+   imageUrl:r.image_url,color:api.inferShopColor(r),visualFashion:r.visual_fashion||undefined,visualSourceHash:r.visual_source_hash||undefined};
+ const cached=r.fashion_intelligence?.version===1&&r.fashion_intelligence.descriptor?.slot===r.fashion_slot?r.fashion_intelligence.descriptor:undefined;
+ return api.prepareGarment(item,cached?api.applyVisualFashion(cached,item):undefined);
+});
 const results=[];
 for(const [style,occasion] of [['classic','Work'],['old_money','Work'],['semi_classic','Date night'],['casual','Travel']]){
  const context=api.stylingContext({style,occasion,sourceMode:'catalog'});

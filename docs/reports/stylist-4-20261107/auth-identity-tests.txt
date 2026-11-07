@@ -38,8 +38,8 @@
         budgetPruned: 0,
         providerErrors: 1,
         selected: 1,
-        totalMs: 41,
-        unattributedMs: 35
+        totalMs: 43,
+        unattributedMs: 37
       }
     }
 
@@ -64,7 +64,7 @@
       code: 'unauthorized',
       syncMs: {},
       waitMs: { admission: 0, auth: 0 },
-      counts: { totalMs: 1, unattributedMs: 1 }
+      counts: { totalMs: 0, unattributedMs: 0 }
     }
 
       at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:26:19), <anonymous>:2207:17)
@@ -76,16 +76,16 @@
       code: 'unauthorized',
       syncMs: {},
       waitMs: { admission: 0, auth: 0 },
-      counts: { totalMs: 1, unattributedMs: 1 }
+      counts: { totalMs: 0, unattributedMs: 0 }
     }
 
       at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:26:19), <anonymous>:2207:17)
 
-PASS __tests__/backend/outfitBudgetWire.test.js (6.925 s)
-  ✓ returned product attributes come only from the selected authoritative rows (1874 ms)
-  ✓ provided clothing cannot bypass user authentication with undefined (1640 ms)
-  ✓ provided clothing cannot bypass user authentication with Bearer fixture-anon (1608 ms)
-  ✓ provided clothing cannot bypass user authentication with Bearer invalid-token (1591 ms)
+PASS __tests__/backend/outfitBudgetWire.test.js (7.461 s)
+  ✓ returned product attributes come only from the selected authoritative rows (1973 ms)
+  ✓ provided clothing cannot bypass user authentication with undefined (1788 ms)
+  ✓ provided clothing cannot bypass user authentication with Bearer fixture-anon (1760 ms)
+  ✓ provided clothing cannot bypass user authentication with Bearer invalid-token (1729 ms)
   ○ skipped without a budget the actual prompt orders equally suitable lower-priced catalog choices first
   ○ skipped wire prompt preserves the selected 250 USD cap despite larger prompt text
   ○ skipped wire prompt preserves the selected 0 USD cap despite larger prompt text
@@ -181,5 +181,5 @@ PASS __tests__/backend/outfitBudgetWire.test.js (6.925 s)
 Test Suites: 1 passed, 1 total
 Tests:       91 skipped, 4 passed, 95 total
 Snapshots:   0 total
-Time:        6.988 s, estimated 7 s
+Time:        7.522 s
 Ran all test suites matching /__tests__\/backend\/outfitBudgetWire.test.js/i with tests matching "provided clothing cannot bypass|returned product attributes come".

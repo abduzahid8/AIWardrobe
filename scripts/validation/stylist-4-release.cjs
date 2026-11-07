@@ -34,7 +34,7 @@ function criticalSource(){
  return true;
 }
 async function main(){
- const mode=process.argv[2];assert(['prepare','migrate','deploy','verify','rollback','observe'].includes(mode));
+ const mode=process.argv[2];assert(['prepare','prepare-update','migrate','deploy','verify','rollback','observe'].includes(mode));
  fs.mkdirSync(report,{recursive:true});fs.mkdirSync(record,{recursive:true});cp.execFileSync('git',['merge-base','--is-ancestor',baseline,'HEAD'],{cwd:root});
  if(mode==='observe'){
  const sql="select timestamp,event_message from logs where source = 'function_logs' and (position(event_message, 'stylist_provider')>0 or position(event_message, 'stylist_request')>0) order by timestamp desc limit 100";
@@ -49,6 +49,15 @@ async function main(){
  }
  const manifest=JSON.parse(fs.readFileSync(path.join(record,'manifest.json')));
  const archive=path.join(record,'v197-source.tar.gz');assert.equal(hash(fs.readFileSync(archive)),manifest.rollbackSha256);assert.equal(hash(cp.execFileSync('tar',['-xOzf',archive,'index.ts'])),sourceHash);
+ if(mode==='prepare-update'){
+ const previous=read('deployment.json'),live=(await list()).find(f=>f.slug==='generate-outfits');
+ assert.equal(live.version,previous.version,'production version drift');assert.equal(live.ezbr_sha256,previous.ezbr_sha256,'production fingerprint drift');
+ assert.equal(live.status,'ACTIVE');assert.equal(live.verify_jwt,manifest.baseline.verify_jwt);assert.equal(hash(await source()),manifest.bundleSha256,'deployed candidate source drift');
+ criticalSource();await security();const b=await build();
+ const next={...manifest,releaseFrom:{...summary(live),sourceSha256:manifest.bundleSha256},bundleSha256:hash(b.outputFiles[0].contents),
+ inputs:Object.keys(b.metafile.inputs).map(p=>({path:p,sha256:hash(fs.readFileSync(path.join(root,p)))}))};
+ fs.writeFileSync(path.join(record,'manifest.json'),JSON.stringify(next,null,2)+'\n');console.log(JSON.stringify({preparedUpdate:true,from:live.version,bundleSha256:next.bundleSha256,rollback:197}));return;
+ }
  if(mode==='migrate'){
  await baselineLive();assert.equal(hash(fs.readFileSync(path.join(root,migration))),manifest.migrationSha256);
  assert.equal(hash(cp.execFileSync('git',['show','HEAD:'+migration],{cwd:root})),manifest.migrationSha256,'commit migration first');
@@ -58,14 +67,15 @@ async function main(){
  await query(sql);save('migration.json',{appliedAt:new Date().toISOString(),version:'20261107230000',sha256:manifest.migrationSha256,security:await security(),v197SqlUnchanged:true});console.log('additive migration passed');return;
  }
  if(mode==='rollback'){
- const deployment=read('deployment.json'),live=(await list()).find(f=>f.slug==='generate-outfits');assert.equal(live.version,deployment.version);assert.equal(live.ezbr_sha256,deployment.ezbr_sha256);assert.equal(hash(await source()),manifest.bundleSha256);
+ const deployment=read('deployment.json'),live=(await list()).find(f=>f.slug==='generate-outfits');assert.equal(live.version,deployment.version);assert.equal(live.ezbr_sha256,deployment.ezbr_sha256);assert.equal(hash(await source()),manifest.releaseFrom?.version===deployment.version?manifest.releaseFrom.sourceSha256:manifest.bundleSha256);
  const original=cp.execFileSync('tar',['-xOzf',archive,'index.ts']);const form=new FormData();form.append('metadata',JSON.stringify({name:'generate-outfits',entrypoint_path:'index.ts',verify_jwt:manifest.baseline.verify_jwt}));form.append('file',new Blob([original],{type:'application/typescript'}),'index.ts');const deployed=await(await api('/functions/deploy?slug=generate-outfits',{method:'POST',body:form})).json();assert.equal(hash(await source()),sourceHash);save('rollback-verification.json',{...summary(deployed),restoresVersion:197,sourceSha256:sourceHash,health:await health()});console.log('restored exact v197 code');return;
  }
  const b=await build();assert.equal(hash(b.outputFiles[0].contents),manifest.bundleSha256,'bundle drift');
  for(const input of manifest.inputs){assert.equal(hash(fs.readFileSync(path.join(root,input.path))),input.sha256,'input drift '+input.path);assert.equal(hash(cp.execFileSync('git',['show','HEAD:'+input.path],{cwd:root})),input.sha256,'uncommitted input '+input.path);}
  const securityState=await security();criticalSource();
  if(mode==='deploy'){
- await baselineLive();const branch=git('branch','--show-current'),head=git('rev-parse','HEAD');assert.equal(git('ls-remote','--heads','origin',branch).split(/\s/)[0],head,'push source first');
+ if(manifest.releaseFrom){const live=(await list()).find(f=>f.slug==='generate-outfits');assert.equal(live.version,manifest.releaseFrom.version);assert.equal(live.ezbr_sha256,manifest.releaseFrom.ezbr_sha256);assert.equal(live.status,'ACTIVE');assert.equal(hash(await source()),manifest.releaseFrom.sourceSha256);}else await baselineLive();
+ const branch=git('branch','--show-current'),head=git('rev-parse','HEAD');assert.equal(git('ls-remote','--heads','origin',branch).split(/\s/)[0],head,'push source first');
  const checks=read('essential-checks.json');assert(checks.passed===true && checks.bundleSha256===manifest.bundleSha256,'essential checks missing or stale');
  const form=new FormData();form.append('metadata',JSON.stringify({name:'generate-outfits',entrypoint_path:'index.ts',verify_jwt:manifest.baseline.verify_jwt}));form.append('file',new Blob([b.outputFiles[0].contents],{type:'application/typescript'}),'index.ts');const deployed=await(await api('/functions/deploy?slug=generate-outfits',{method:'POST',body:form})).json();save('deployment.json',{...summary(deployed),sourceCommit:head,branch});
  }

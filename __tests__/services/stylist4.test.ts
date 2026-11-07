@@ -5,7 +5,7 @@ import {
   currentVisual,
   type VisualFashionProfile,
 } from '../../src/domain/visualFashion';
-import { outfitConcepts } from '../../src/domain/outfitConcepts';
+import { conceptGarmentAffinity, outfitConcepts } from '../../src/domain/outfitConcepts';
 import { stylingContext } from '../../src/domain/stylingContext';
 import { createOutfitPlan } from '../../src/domain/validatedQuartets';
 import { productIdentityKeys } from '../../src/domain/outfitDiversity';
@@ -203,5 +203,15 @@ it('maintains physical uniqueness, anchors and caller budget validation with a b
         expect(keys.has(key)).toBe(false);
         keys.add(key);
       }
+  }
+});
+
+it('uses cached color families and visual hues in concept palette scoring', () => {
+  const base = describeGarment({ name: 'Navy cotton shirt', macroCategory: 'top' });
+  const concept = outfitConcepts(stylingContext({ style: 'old_money', occasion: 'work' }))[0];
+  for (const d of [base, { ...base, color: 'navy' }]) {
+    expect(conceptGarmentAffinity(d, { ...concept, palette: ['navy'] })).toBeGreaterThan(
+      conceptGarmentAffinity(d, { ...concept, palette: ['pink'] })
+    );
   }
 });

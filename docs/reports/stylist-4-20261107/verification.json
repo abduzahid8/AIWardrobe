@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-11-07T19:12:21.374Z",
+  "slug": "generate-outfits",
+  "version": 198,
+  "status": "ACTIVE",
+  "verify_jwt": false,
+  "ezbr_sha256": "a1d55eb4a5f26af8fe1d5f39aaa23a78966aa4b4c510e07b28bcba274696a57d",
+  "sourceCommit": "5ea3b0541bb807c8f1bff29b3fec4d23da4edbf8",
+  "sourceSha256": "ffbf25356cfbec1ed23d273c5502016ab5ac0b7dba3dbe643dce71a53055219c",
+  "security": {
+    "rls": true,
+    "invoker": true,
+    "serviceOnly": true,
+    "footwearGuard": true,
+    "readOnlyVisual": true,
+    "feedbackPolicies": true,
+    "privateEmbeddings": true
+  },
+  "exactV197RollbackVerified": true,
+  "health": [
+    {
+      "method": "OPTIONS",
+      "auth": "absent",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "auth": "absent",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "auth": "invalid",
+      "status": 401
+    }
+  ],
+  "noSyntheticInference": true
+}

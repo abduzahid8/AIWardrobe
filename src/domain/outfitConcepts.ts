@@ -1,3 +1,4 @@
+import { colorFamilyOf } from './outfitDiversity.ts';
 import {
   describeGarment,
   type GarmentDescriptor,
@@ -216,7 +217,12 @@ export function outfitConcepts(context: StylingContext): readonly OutfitConcept[
   }));
 }
 export function conceptGarmentAffinity(d: GarmentDescriptor, c: OutfitConcept): number {
-  const palette = d.color === 'unknown' ? 0.5 : c.palette.includes(d.color) ? 1 : 0.3;
+  const palette =
+    !c.palette.length || d.color === 'unknown'
+      ? 0.5
+      : c.palette.some((color) => color === d.color || colorFamilyOf({ color }) === d.color)
+        ? 1
+        : 0.3;
   const texture = d.texture === 'unknown' ? 0.5 : c.textures.includes(d.texture) ? 1 : 0.4;
   const register = d.formality === 'unknown' ? 0.5 : c.register.includes(d.formality) ? 1 : 0.2;
   const proportion =
