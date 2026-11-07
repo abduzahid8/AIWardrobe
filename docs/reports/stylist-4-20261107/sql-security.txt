@@ -1,0 +1,27 @@
+BEGIN
+INSERT 0 2
+SET
+              set_config              
+--------------------------------------
+ 00000000-0000-4000-8000-000000000401
+(1 row)
+
+INSERT 0 1
+DO
+              set_config              
+--------------------------------------
+ 00000000-0000-4000-8000-000000000402
+(1 row)
+
+DO
+RESET
+SET
+DO
+RESET
+DO
+                                             result                                              
+-------------------------------------------------------------------------------------------------
+ PASS: feedback ownership, private embeddings, read-only visual cache, bounded invoker retrieval
+(1 row)
+
+ROLLBACK

@@ -1,0 +1,185 @@
+  console.info
+    stylist_provider {
+      source: 'deterministic_fallback',
+      model: 'meta/llama-3.2-11b-vision-instruct',
+      status: [
+        {
+          provider: 'nvidia',
+          model: 'meta/llama-3.2-11b-vision-instruct',
+          status: 'invalid_schema',
+          finishReason: 'unknown'
+        }
+      ],
+      reason: 'invalid_schema',
+      shortlist: 1
+    }
+
+      at generateOutfitsHandler (eval at load (__tests__/backend/outfitBudgetWire.test.js:26:19), <anonymous>:2130:17)
+
+  console.info
+    stylist_request {
+      status: 200,
+      stage: 'final_selection',
+      code: undefined,
+      syncMs: { intelligence: 0, planning: 5, selection: 0, response: 0 },
+      waitMs: { admission: 0, auth: 0, history: 0, provider: 1 },
+      counts: {
+        top: 1,
+        outerwear: 1,
+        bottom: 1,
+        shoes: 1,
+        evaluations: 1,
+        proposals: 4,
+        valid: 1,
+        structure: 0,
+        budget: 0,
+        source: 0,
+        quality: 0,
+        budgetPruned: 0,
+        providerErrors: 1,
+        selected: 1,
+        totalMs: 41,
+        unattributedMs: 35
+      }
+    }
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:26:19), <anonymous>:2207:17)
+
+  console.info
+    stylist_request {
+      status: 401,
+      stage: 'admission',
+      code: 'unauthorized',
+      syncMs: {},
+      waitMs: { admission: 0 },
+      counts: { totalMs: 1, unattributedMs: 1 }
+    }
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:26:19), <anonymous>:2207:17)
+
+  console.info
+    stylist_request {
+      status: 401,
+      stage: 'admission',
+      code: 'unauthorized',
+      syncMs: {},
+      waitMs: { admission: 0, auth: 0 },
+      counts: { totalMs: 1, unattributedMs: 1 }
+    }
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:26:19), <anonymous>:2207:17)
+
+  console.info
+    stylist_request {
+      status: 401,
+      stage: 'admission',
+      code: 'unauthorized',
+      syncMs: {},
+      waitMs: { admission: 0, auth: 0 },
+      counts: { totalMs: 1, unattributedMs: 1 }
+    }
+
+      at eval (eval at load (__tests__/backend/outfitBudgetWire.test.js:26:19), <anonymous>:2207:17)
+
+PASS __tests__/backend/outfitBudgetWire.test.js (6.925 s)
+  ✓ returned product attributes come only from the selected authoritative rows (1874 ms)
+  ✓ provided clothing cannot bypass user authentication with undefined (1640 ms)
+  ✓ provided clothing cannot bypass user authentication with Bearer fixture-anon (1608 ms)
+  ✓ provided clothing cannot bypass user authentication with Bearer invalid-token (1591 ms)
+  ○ skipped without a budget the actual prompt orders equally suitable lower-priced catalog choices first
+  ○ skipped wire prompt preserves the selected 250 USD cap despite larger prompt text
+  ○ skipped wire prompt preserves the selected 0 USD cap despite larger prompt text
+  ○ skipped malformed explicit budget is rejected before any provider request
+  ○ skipped an impossible shopping budget reports insufficient budget, not an empty wardrobe
+  ○ skipped an actually empty pool is distinguished from budget filtering
+  ○ skipped multiple text currencies are compared by value rather than their raw numbers
+  ○ skipped the server does not return a minimalist look that the shared app style judge rejects
+  ○ skipped an anchor substitution cannot turn a valid budgeted selection into an over-budget response
+  ○ skipped a complete pool whose cheapest possible look exceeds the cap is rejected before NVIDIA
+  ○ skipped unknown required pricing reports unavailable prices without claiming the budget is too low
+  ○ skipped a dress cannot bypass the required shirt and pants categories
+  ○ skipped an Auth outage fails closed without being reported as invalid credentials
+  ○ skipped rate denial is returned before paid provider work
+  ○ skipped generation admission requires the server paid entitlement check
+  ○ skipped mixed-currency infeasibility is measured before a provider request
+  ○ skipped an entirely unpriced pool (undefined) returns a pricing error before paid provider work
+  ○ skipped an entirely unpriced pool (null) returns a pricing error before paid provider work
+  ○ skipped an entirely unpriced pool (0) returns a pricing error before paid provider work
+  ○ skipped an entirely unpriced pool (-1) returns a pricing error before paid provider work
+  ○ skipped optional unpriced shop candidates do not block an available owned outfit
+  ○ skipped an unpriced locked item reports unavailable pricing even when another outfit is possible
+  ○ skipped published EUR direction cannot admit a 100 EUR shop piece under a 100 USD cap
+  ○ skipped a forged client rate snapshot cannot override the server reference
+  ○ skipped the server pins a trusted snapshot ID and acknowledges it in successful output
+  ○ skipped an unknown snapshot ID fails before provider work
+  ○ skipped an owned same-currency budget does not depend on a reference-rate request
+  ○ skipped GET cannot trigger metered generation
+  ○ skipped DELETE cannot trigger metered generation
+  ○ skipped PUT cannot trigger metered generation
+  ○ skipped a required EUR piece over the USD cap is rejected before provider work even with free remaining slots
+  ○ skipped outerwear cannot replace the mandatory base-top slot during budget feasibility checks
+  ○ skipped an owned base-top alternative prevents a false budget rejection
+  ○ skipped a disliked cheap tee cannot make the required-slot budget look feasible
+  ○ skipped correction explains the actual authoritative combination rejection instead of trusting model metadata
+  ○ skipped a correction that fixes the named combination error can return a validated complete outfit
+  ○ skipped paid accounts use the selected NVIDIA provider without Gemini routing
+  ○ skipped keeps the explicit old-money footwear ban for Brown loafers with tie laces
+  ○ skipped keeps the explicit old-money footwear ban for Brown driving moccasins
+  ○ skipped model color cannot conceal an authoritative user-preference exclusion
+  ○ skipped model pattern cannot conceal an authoritative user-preference exclusion
+  ○ skipped fabricated model metadata cannot reject otherwise allowed canonical items
+  ○ skipped workout intent uses athletic guidance even when the saved style is old money
+  ○ skipped cold workout prompts require a warm performance layer without prescribing dress clothing
+  ○ skipped workout guidance still rejects dress shoes instead of relaxing activity requirements
+  ○ skipped missing an eligible athletic slot is rejected before provider work
+  ○ skipped catalog activity filtering runs before per-slot trimming
+  ○ skipped workout prompts exclude ineligible extra items while retaining a complete valid pool
+  ○ skipped an activity-ineligible locked anchor is rejected rather than silently replaced
+  ○ skipped rejects malformed or excessive request fields before provider work: {"limit":100000}
+  ○ skipped rejects malformed or excessive request fields before provider work: {"limit":"3"}
+  ○ skipped rejects malformed or excessive request fields before provider work: {"limit":0}
+  ○ skipped rejects malformed or excessive request fields before provider work: {"prompt":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
+  ○ skipped rejects malformed or excessive request fields before provider work: {"selectedItemIds":["item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item","item"]}
+  ○ skipped rejects malformed or excessive request fields before provider work: {"preferences":{"avoidColors":"red"}}
+  ○ skipped rejects malformed or excessive request fields before provider work: {"wardrobeItems":"not-an-array"}
+  ○ skipped formal candidate ranking cannot show the provider a known-ineligible extra garment
+  ○ skipped an incompatible formal anchorItemId is rejected before provider work
+  ○ skipped an incompatible formal selectedItemIds is rejected before provider work
+  ○ skipped a formal pool lacking an eligible bottom is rejected before provider work
+  ○ skipped eligibility rejects dress-and-shoes as an incomplete four-category pool
+  ○ skipped a coat and dress still cannot replace a shirt and pants
+  ○ skipped six unsuitable owned bottoms no longer suppress a valid shop supplement
+  ○ skipped server response never exceeds the requested 1 outfit count
+  ○ skipped server response never exceeds the requested 2 outfit count
+  ○ skipped catalog lookup failure is reported as unavailable before provider work
+  ○ skipped ranking and similarity collapse preserve an affordable complete look from the provided pool
+  ○ skipped catalog discovery applies avoidColors before page completion and per-slot selection
+  ○ skipped catalog discovery applies dislikedPatterns before page completion and per-slot selection
+  ○ skipped a later cheaper catalog bottom is discovered before an affordable budget is rejected
+  ○ skipped six provided shop choices cannot suppress discovery of an affordable catalog alternative
+  ○ skipped a dress-loafer proposal missing a top enters correction before final validation
+  ○ skipped repeated structurally invalid provider choices never return a malformed outfit
+  ○ skipped an unparseable provider response gets one bounded format correction
+  ○ skipped format and quality correction together cannot exceed two provider requests
+  ○ skipped two unparseable responses fall back to a validated deck without inventing an outfit
+  ○ skipped rate-limited provider requests do not trigger a format correction
+  ○ skipped primary and format-correction requests both describe the required climate layer
+  ○ skipped curated mode returns only AI-selected, fully validated whole looks
+  ○ skipped curated mode rejects unknown provider output and returns independently validated options
+  ○ skipped curated mode rejects partial provider output and returns independently validated options
+  ○ skipped curated mode rejects duplicate provider output and returns independently validated options
+  ○ skipped curated mode rejects timeout provider output and returns independently validated options
+  ○ skipped curated mode never offers a combination over the selected shopping budget
+  ○ skipped enrichment cannot return a Russian-named sweater in the base shirt slot
+  ○ skipped capacity is assessed against the displayed three-card target even when AI returns two looks
+  ○ skipped multi-card curation jointly selects a compatible deck before bounded AI ranking
+  ○ skipped an exchange-rate outage still permits a verified native-currency deck
+  ○ skipped recently worn clothing cannot return through generation or fallback
+  ○ skipped worn clothing becomes eligible after five other worn outfits
+  ○ skipped explicit wardrobe-only input cannot leak a catalog component through provider output
+
+Test Suites: 1 passed, 1 total
+Tests:       91 skipped, 4 passed, 95 total
+Snapshots:   0 total
+Time:        6.988 s, estimated 7 s
+Ran all test suites matching /__tests__\/backend\/outfitBudgetWire.test.js/i with tests matching "provided clothing cannot bypass|returned product attributes come".

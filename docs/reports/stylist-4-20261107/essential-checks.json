@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-11-07T18:59:54.358Z",
+  "passed": true,
+  "bundleSha256": "ffbf25356cfbec1ed23d273c5502016ab5ac0b7dba3dbe643dce71a53055219c",
+  "scope": "Focused critical gates, no inference or production performance claim",
+  "checks": [
+    {
+      "name": "edge-compilation",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "app-compilation",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "critical-tests",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "auth-identity-tests",
+      "passed": true,
+      "status": 0
+    },
+    {
+      "name": "sql-security",
+      "passed": true,
+      "status": 0
+    }
+  ]
+}

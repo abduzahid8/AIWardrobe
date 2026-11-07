@@ -1,4 +1,4 @@
-import { outfitStyleIntent } from './stylingProfiles.ts';
+import { lookConcept } from './outfitConcepts.ts';
 import { garmentContextReason, scoreGarmentForContext, officeRefinementPenalty } from './garmentContext.ts';
 import { describeGarment, competingUpperPatterns, type GarmentEvidence } from './garmentDescriptor.ts';
 import { layerCompatibility } from './layerCompatibility.ts';
@@ -309,18 +309,18 @@ export function outfitCoherence(
   // stay with the occasion/dress-code judges.
   const harmony = scoreColorHarmony(
     items.map((item, index) => ({
-      colors: colorTokensOf(item),
-      colorFamily: colorFamilyOf(item),
+      colors: descriptors[index]?.evidence.some(e=>e.startsWith('image:color:')) ? [descriptors[index].color] : colorTokensOf(item),
+      colorFamily: descriptors[index]?.evidence.some(e=>e.startsWith('image:color:')) ? colorFamilyOf({color:descriptors[index].color}) : colorFamilyOf(item),
       pattern: descriptors[index] ? descriptors[index].pattern : 'unknown',
     }))
   );
   dimensions.palette = harmony.score;
   for (const reason of harmony.reasons) evidence.push(`palette_${reason}`);
   evidence.push(...harmony.evidence);
-  const intent = outfitStyleIntent(descriptors, context);
+  const intent = lookConcept(items, context);
   dimensions.style = intent.score * 0.75 + 0.25 *
     items.reduce((sum, item) => sum + scoreGarmentForContext(item, context), 0) / Math.max(1, items.length);
-  evidence.push(`style_intent:${intent.id}`);
+  evidence.push(`style_intent:${intent.concept.id}`);
   const officePenalty = items.reduce((total, item, i) => total + officeRefinementPenalty(item, context, descriptors[i]), 0);
   if (officePenalty > 0) {
     dimensions.style = Math.min(dimensions.style, Math.max(0.3, 1 - officePenalty));

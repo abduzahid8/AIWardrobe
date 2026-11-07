@@ -21,6 +21,8 @@ export interface StylingContext {
   budget?: { amount: number; currency?: string; fx?: BudgetFxContext };
   preferences?: StylingPreferences;
   uncertainty: string[];
+  /** Private aggregate concept preferences; soft and bounded, never admission. */
+  conceptFeedback?: Readonly<Record<string,number>>;
 }
 export function isDateNightOccasion(occasion?: string | null): boolean {
   return /\bdate\b|свидан/i.test(String(occasion || '').replace(/[_-]+/g, ' '));

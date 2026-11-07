@@ -145,3 +145,6 @@ api_server.log
 .maestro/verify-shots/
 .maestro/scenarios/artifacts/
 report.xml
+
+# Local offline catalog image enrichment environment
+/.visual-venv/

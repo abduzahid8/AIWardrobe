@@ -1,0 +1,172 @@
+{
+  "measuredAt": "2026-11-07T19:02:41.580Z",
+  "scope": "local Node kernel, bounded real catalog, weather unknown, no production CPU or visual QA claim",
+  "classificationChecks": 5,
+  "providerCalls": 0,
+  "results": [
+    {
+      "style": "classic",
+      "occasion": "Work",
+      "wallMs": 79,
+      "cpuMs": 112,
+      "counts": {
+        "top": 24,
+        "outerwear": 20,
+        "bottom": 24,
+        "shoes": 24
+      },
+      "evaluations": 256,
+      "proposals": 262,
+      "rejected": 101,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 155,
+      "conceptCounts": {
+        "precise-office": 49,
+        "classic-separates": 93,
+        "textured-tailoring": 13
+      },
+      "exploredCompletely": false,
+      "syncMs": 78.733916,
+      "concepts": [
+        {
+          "id": "precise-office",
+          "fit": 0.8247500000000001
+        },
+        {
+          "id": "textured-tailoring",
+          "fit": 0.8359999999999999
+        },
+        {
+          "id": "classic-separates",
+          "fit": 0.83375
+        }
+      ],
+      "completeLooks": 3
+    },
+    {
+      "style": "old_money",
+      "occasion": "Work",
+      "wallMs": 67,
+      "cpuMs": 90,
+      "counts": {
+        "top": 24,
+        "outerwear": 20,
+        "bottom": 24,
+        "shoes": 24
+      },
+      "evaluations": 256,
+      "proposals": 278,
+      "rejected": 93,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 163,
+      "conceptCounts": {
+        "refined-ivy": 114,
+        "textured-tailoring": 49,
+        "smart-knit-layering": 0
+      },
+      "exploredCompletely": false,
+      "syncMs": 66.798541,
+      "concepts": [
+        {
+          "id": "textured-tailoring",
+          "fit": 0.8425
+        },
+        {
+          "id": "textured-tailoring",
+          "fit": 0.79225
+        },
+        {
+          "id": "refined-ivy",
+          "fit": 0.7817500000000001
+        }
+      ],
+      "completeLooks": 3
+    },
+    {
+      "style": "semi_classic",
+      "occasion": "Date night",
+      "wallMs": 49,
+      "cpuMs": 63,
+      "counts": {
+        "top": 24,
+        "outerwear": 24,
+        "bottom": 24,
+        "shoes": 24
+      },
+      "evaluations": 256,
+      "proposals": 256,
+      "rejected": 40,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 216,
+      "conceptCounts": {
+        "tonal-evening": 19,
+        "soft-evening-texture": 42,
+        "modern-evening": 155
+      },
+      "exploredCompletely": false,
+      "syncMs": 49.484207999999995,
+      "concepts": [
+        {
+          "id": "modern-evening",
+          "fit": 0.8007500000000001
+        },
+        {
+          "id": "tonal-evening",
+          "fit": 0.7765
+        },
+        {
+          "id": "soft-evening-texture",
+          "fit": 0.78
+        }
+      ],
+      "completeLooks": 3
+    },
+    {
+      "style": "casual",
+      "occasion": "Travel",
+      "wallMs": 47,
+      "cpuMs": 64,
+      "counts": {
+        "top": 24,
+        "outerwear": 24,
+        "bottom": 24,
+        "shoes": 24
+      },
+      "evaluations": 256,
+      "proposals": 262,
+      "rejected": 0,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 256,
+      "conceptCounts": {
+        "easy-transit": 14,
+        "soft-utility": 18,
+        "relaxed-knit": 224
+      },
+      "exploredCompletely": false,
+      "syncMs": 47.258500000000026,
+      "concepts": [
+        {
+          "id": "easy-transit",
+          "fit": 0.8194999999999999
+        },
+        {
+          "id": "relaxed-knit",
+          "fit": 0.8494999999999999
+        },
+        {
+          "id": "relaxed-knit",
+          "fit": 0.8407499999999999
+        }
+      ],
+      "completeLooks": 3
+    }
+  ]
+}
