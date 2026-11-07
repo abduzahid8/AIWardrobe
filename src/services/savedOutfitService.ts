@@ -1,3 +1,4 @@
+import {savedQuartetReason} from './savedOutfitContract';
 import { supabase } from '../../lib/supabase';
 import { authEvents } from '../../store/authEvents';
 import { parseCalendarDate } from '../utils/calendarDate';
@@ -5,14 +6,14 @@ import { prepareWardrobeItemMedia } from './wardrobeItemMedia';
 
 export interface SavedOutfitInput {
   id: string;
-  items: Array<{ id: string; type?: string; image?: string; imageUrl?: string; name?: string }>;
+  items: Array<{ id: string; type?: string; category?: string; macroCategory?: string; image?: string; imageUrl?: string; name?: string }>;
   date: string;
   occasion: string;
   caption?: string;
 }
 
 export async function saveCloudOutfit(input: SavedOutfitInput): Promise<SavedOutfitInput['items']> {
-  if (!input.items.length || !parseCalendarDate(input.date)) throw new Error('Invalid saved outfit');
+  if (savedQuartetReason(input.items) || !parseCalendarDate(input.date)) throw new Error('Invalid saved outfit');
   const snapshot = { ...input, items: input.items.map(item => ({ ...item })) };
   const revision = authEvents.getRevision();
   const { data, error: sessionError } = await supabase.auth.getSession();

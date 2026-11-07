@@ -1,17 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, AppState, type AppStateStatus, Easing, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AccessibilityInfo, Animated, AppState, type AppStateStatus, Easing, StyleSheet, useWindowDimensions } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { onAppReady } from '../lib/appReady';
-import { Image } from './MediaImage';
+import { recordStartupVisible } from '../lib/startupTiming';
+import { Image } from 'react-native';
 
 
 // Brand splash look — must stay visually identical to the native splash
 // (iOS SplashScreen.storyboard + Android splash_background.xml) so the
 // handoff between native splash and this overlay is seamless.
-const BRAND_BACKGROUND = '#ADD8E6';
+const BRAND_BACKGROUND = '#C4DCFB';
 const LOGO_BOX_RATIO = 0.56; // logo box width as a fraction of screen width
-const HIDE_DELAY_MS = 100; // beat after the first frame so the handoff is seamless
-const OPEN_FADE_MS = 420;
+const OPEN_FADE_MS = 160;
 const CLOSE_FADE_MS = 240;
 const EXIT_SCALE = 1.04; // barely-there "breath" as the app reveals itself
 
@@ -31,9 +31,14 @@ const SplashTransition: React.FC = () => {
   const opacity = useRef(new Animated.Value(1)).current;
   const scale = useRef(new Animated.Value(1)).current;
   const [isVisible, setIsVisible] = useState(true);
+  const [logoLoaded, setLogoLoaded] = useState(false);
+  const [overlayLaidOut, setOverlayLaidOut] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(true);
+  const logoPulse = useRef(new Animated.Value(0)).current;
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const handOffStarted = useRef(false);
   const fadedInForBackground = useRef(false);
+  const startupRecorded = useRef(false);
 
   const fadeOut = useCallback(
     (duration: number) => {
@@ -51,30 +56,60 @@ const SplashTransition: React.FC = () => {
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
-        if (finished) setIsVisible(false);
+        if (finished) {
+          setIsVisible(false);
+          if (!startupRecorded.current) {
+            startupRecorded.current = true;
+            recordStartupVisible();
+          }
+        }
       });
     },
     [opacity, scale]
   );
 
-  // App open: once RootNavigator signals readiness, keep the branded
-  // overlay up for a beat (covering the first real frame), hide the native
-  // splash underneath it, then dissolve into the app.
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const unsubscribe = onAppReady(() => {
-      if (handOffStarted.current) return;
-      handOffStarted.current = true;
-      timer = setTimeout(() => {
-        SplashScreen.hideAsync().catch(() => undefined);
-        fadeOut(OPEN_FADE_MS);
-      }, HIDE_DELAY_MS);
+    let active = true;
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => { if (active) setReduceMotion(enabled); })
+      .catch(() => undefined);
+    return () => { active = false; subscription.remove(); };
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible || reduceMotion) {
+      logoPulse.setValue(0);
+      return;
+    }
+    const animation = Animated.loop(Animated.sequence([
+      Animated.timing(logoPulse, {
+        toValue: 1, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: true,
+      }),
+      Animated.timing(logoPulse, {
+        toValue: 0, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: true,
+      }),
+    ]));
+    animation.start();
+    return () => { animation.stop(); logoPulse.setValue(0); };
+  }, [isVisible, logoPulse, reduceMotion]);
+
+  // Reveal the animated overlay as soon as its logo is painted. Keep it
+  // visible while initialization runs, without adding an artificial delay.
+  useEffect(() => {
+    if (!logoLoaded || !overlayLaidOut) return;
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    SplashScreen.hideAsync().catch(() => undefined).then(() => {
+      if (cancelled) return;
+      unsubscribe = onAppReady(() => {
+        if (handOffStarted.current) return;
+        handOffStarted.current = true;
+        fadeOut(reduceMotion ? 0 : OPEN_FADE_MS);
+      });
     });
-    return () => {
-      unsubscribe();
-      if (timer) clearTimeout(timer);
-    };
-  }, [fadeOut]);
+    return () => { cancelled = true; unsubscribe?.(); };
+  }, [fadeOut, logoLoaded, overlayLaidOut, reduceMotion]);
 
   // App close / reopen: subtle branded fade on backgrounding, dissolve
   // again when the app returns to the foreground. iOS walks
@@ -100,11 +135,11 @@ const SplashTransition: React.FC = () => {
         }).start();
       } else if (next === 'active' && fadedInForBackground.current) {
         fadedInForBackground.current = false;
-        fadeOut(OPEN_FADE_MS);
+        fadeOut(reduceMotion ? 0 : OPEN_FADE_MS);
       }
     });
     return () => subscription.remove();
-  }, [fadeOut, opacity, scale]);
+  }, [fadeOut, opacity, scale, reduceMotion]);
 
   if (!isVisible) return null;
 
@@ -112,6 +147,7 @@ const SplashTransition: React.FC = () => {
 
   return (
     <Animated.View
+      onLayout={() => setOverlayLaidOut(true)}
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
@@ -120,14 +156,20 @@ const SplashTransition: React.FC = () => {
         { backgroundColor: BRAND_BACKGROUND, opacity, transform: [{ scale }] },
       ]}
     >
-      <View style={[styles.logoBox, { width: boxSize, height: boxSize }]}>
+      <Animated.View style={[styles.logoBox, {
+        width: boxSize, height: boxSize,
+        transform: [{ scale: logoPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }],
+      }]}>
         <Image
           source={require('../../assets/splash-logo.png')}
           style={styles.logo}
+          onLoad={() => setLogoLoaded(true)}
+          onError={() => setLogoLoaded(true)}
+          fadeDuration={0}
           resizeMode="contain"
           accessible={false}
         />
-      </View>
+      </Animated.View>
     </Animated.View>
   );
 };

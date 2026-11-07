@@ -7,11 +7,13 @@ const base = process.env.EXPO_PUBLIC_SUPABASE_URL, anon = process.env.EXPO_PUBLI
 const service = process.env.SUPABASE_SERVICE_KEY;
 const durationSec = Number(process.env.WEAR_LOAD_DURATION_SEC || 120);
 if (![30,120].includes(durationSec)) throw new Error('Only 30-second diagnostic or 120-second capacity runs supported');
-const expectedLogs = durationSec;
+const rps = Number(process.env.WEAR_LOAD_RPS || 40);
+if (![2,40].includes(rps) || (rps === 2 && durationSec !== 120)) throw new Error('Unsupported bounded write rate');
+const expectedLogs = rps === 2 ? 6 : durationSec;
 const instrumented = process.env.WEAR_LOAD_INSTRUMENTED === '1';
 if (!base || !anon || !service) throw new Error('Fixture setup credential required');
 const admin = { apikey: service, Authorization: `Bearer ${service}`, 'Content-Type': 'application/json' };
-const users = [], report = { measuredAt: new Date().toISOString(), scope: `20 disposable owners; 40 wear-log upserts/second for ${durationSec} seconds; paired retries; excludes AI/uploads/native`, verification: [], cleanup: [] };
+const users = [], report = { measuredAt: new Date().toISOString(), scope: `20 disposable owners; ${rps} wear-log upserts/second for ${durationSec} seconds; paired retries; excludes AI/uploads/native`, verification: [], cleanup: [] };
 const controller = new AbortController(); process.once('SIGINT', () => controller.abort());
 const emit = value => process.stdout.write(JSON.stringify(value)+'\n');
 async function call(path, headers, method = 'GET', body) {
@@ -37,7 +39,7 @@ try {
     if (!inserted.ok) throw new Error('FixtureInsertError');
     if ((index + 1) % 5 === 0) emit({ stage: 'fixture_setup', ready: index + 1 });
   }
-  report.load = await runWearWrites({ baseUrl: base, apiKey: anon, users, rps: 40, durationSec,
+  report.load = await runWearWrites({ baseUrl: base, apiKey: anon, users, rps, durationSec,
     signal: controller.signal, onProgress: value => emit({ stage: 'write_progress', ...value }) });
   if (!report.load.passed) process.exitCode = 1;
   for (const user of users) {
@@ -70,7 +72,7 @@ finally {
   report.passed = Boolean(report.load?.passed) && report.verification.length === 20 && report.verification.every(value => value.passed)
     && report.cleanup.length === 20 && report.cleanup.every(value => value.deleted) && !report.failure;
   if (!report.passed) process.exitCode = 1;
-  const filename = durationSec === 30 ? 'production-wear-load-diagnostic.json'
+  const filename = rps === 2 ? 'oct28-wear-load-2rps.json' : durationSec === 30 ? 'production-wear-load-diagnostic.json'
     : instrumented ? 'production-wear-load-instrumented.json' : 'production-wear-load.json';
   await writeFile(new URL(`../../docs/reports/readiness-evidence/${filename}`, import.meta.url), JSON.stringify(report, null, 2)+'\n');
   emit(report);

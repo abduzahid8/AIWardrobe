@@ -24,8 +24,8 @@ const GenerateOutfitButton: React.FC<GenerateOutfitButtonProps> = ({
   onPress,
   accessibilityLabel,
 }) => {
-  const handlePress = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const handlePress = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     onPress(item);
   };
 

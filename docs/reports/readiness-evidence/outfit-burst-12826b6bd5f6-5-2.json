@@ -1,0 +1,102 @@
+{
+  "measuredAt": "2026-10-28T18:07:06.793Z",
+  "scope": "One real hosted Old Money/Work shopping request, no weather or entered budget, limit 1. Controlled catalog pool; not exact screenshot account or capacity proof.",
+  "checks": [
+    {
+      "name": "all_three_catalog_slots_available",
+      "passed": true
+    },
+    {
+      "name": "usable_outfits_returned",
+      "passed": true
+    },
+    {
+      "name": "every_outfit_passes_structure_and_style",
+      "passed": true
+    },
+    {
+      "name": "every_item_matches_authoritative_active_catalog",
+      "passed": true
+    }
+  ],
+  "requestedLimit": 1,
+  "requireFullDeck": false,
+  "fixtureUserId": "257971cf-a433-41b4-a929-f50bc394052e",
+  "candidateCount": 31,
+  "response": {
+    "status": 200,
+    "latencyMs": 10333,
+    "code": null,
+    "error": null,
+    "source": "ai",
+    "diversity": {
+      "activeSlots": [
+        "outerwear",
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "strictSlots": [
+        "outerwear",
+        "top",
+        "bottom",
+        "shoes"
+      ],
+      "forcedRepeatSlots": []
+    },
+    "provider": "nvidia:nvidia/nemotron-3.5-lightning-30b-a3b",
+    "providerAttempts": [
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "status": "ok"
+      }
+    ],
+    "outfitCount": 1
+  },
+  "supplementedIds": [
+    "armani_exchange-xm002298_af22715_uc001"
+  ],
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_allsaints-usm020ka-5",
+          "name": "Aubrey Short-Sleeve Ramskull Polo",
+          "macroCategory": "top",
+          "price": 149,
+          "currency": "USD"
+        },
+        {
+          "id": "shop_allsaints-usm049lf-5",
+          "name": "Tilson Leather Peacoat",
+          "macroCategory": "outerwear",
+          "price": 829,
+          "currency": "USD"
+        },
+        {
+          "id": "shop_armani_exchange-xm002298_af22715_uc001",
+          "name": "Oxford Lyocell Trousers",
+          "macroCategory": "bottom",
+          "price": 190,
+          "currency": "USD"
+        },
+        {
+          "id": "shop_thursday-7887606677594",
+          "name": "Statesman | Brandy",
+          "macroCategory": "shoes",
+          "price": 180,
+          "currency": "USD"
+        }
+      ],
+      "structureReason": null,
+      "styleReason": null
+    }
+  ],
+  "exactRequestedReturned": true,
+  "cleanup": {
+    "sessionsRevoked": true,
+    "ownerDeleted": true
+  },
+  "passed": true
+}

@@ -1,8 +1,9 @@
+import { canonicalizeMacroCategory, getMacroCategory } from './categoryMapper';
 import type { Outfit } from '../types/domain';
 import type { OutfitCollageItem } from '../../components/ui/OutfitCollagePreview';
 
 type ImageItem = { id?: string; imageUrl?: string; category?: string; name?: string };
-type ShopItem = { id: string; imageUrl?: string; name?: string };
+type ShopItem = { id: string; imageUrl?: string; name?: string; category?: string; macroCategory?: string; garmentType?: string };
 
 const isValidImage = (v: unknown): v is string =>
   typeof v === 'string' && v.length > 0 &&
@@ -49,13 +50,6 @@ export function resolveOutfitCollageItems(
   wardrobeItems: ImageItem[] = [],
   shopItems: ShopItem[] = [],
 ): OutfitCollageItem[] {
-  if (Array.isArray(outfit.snapshotItems) && outfit.snapshotItems.length > 0) {
-    return outfit.snapshotItems
-      .filter((s) => isValidImage(s.image))
-      .slice(0, 4)
-      .map((s) => ({ id: s.id, image: s.image, category: s.category, name: s.name }));
-  }
-
   return resolveOutfitCollageItemsWithMaps(
     outfit,
     new Map(wardrobeItems.map((i) => [String(i.id), i])),
@@ -74,32 +68,21 @@ export function resolveOutfitCollageItemsWithMaps(
   wardrobeMap: Map<string, ImageItem>,
   shopMap: Map<string, ShopItem>,
 ): OutfitCollageItem[] {
-  if (Array.isArray(outfit.snapshotItems) && outfit.snapshotItems.length > 0) {
-    return outfit.snapshotItems
-      .filter((s) => isValidImage(s.image))
-      .slice(0, 4)
-      .map((s) => ({ id: s.id, image: s.image, category: s.category, name: s.name }));
-  }
-
-  const resolved: OutfitCollageItem[] = [];
-  for (const rawId of outfit.itemIds) {
-    const id = String(rawId);
-    const w = wardrobeMap.get(id);
-    if (w?.imageUrl && isValidImage(w.imageUrl)) {
-      resolved.push({ id, image: w.imageUrl, category: w.category, name: w.name });
-      continue;
-    }
-    const s = shopMap.get(id) ?? getStaticFallbackMap().get(id);
-    if (s?.imageUrl && isValidImage(s.imageUrl)) {
-      resolved.push({ id, image: s.imageUrl, category: undefined, name: s.name });
-      continue;
-    }
-    if (isValidImage(rawId)) {
-      resolved.push({ id, image: rawId });
-    }
-    if (resolved.length >= 4) break;
-  }
-  return resolved.slice(0, 4);
+  const snapshots = new Map((outfit.snapshotItems || []).map(item => [String(item.id), item]));
+  const ids = [...new Set([...outfit.itemIds.map(String), ...snapshots.keys()])].slice(0, 4);
+  return ids.map(id => {
+    const snapshot = snapshots.get(id);
+    const wardrobe = wardrobeMap.get(id);
+    const shop = !wardrobe ? shopMap.get(id) : undefined;
+    const fallback = !isValidImage(snapshot?.image) && !wardrobe && !shop ? getStaticFallbackMap().get(id) : undefined;
+    const source = wardrobe || shop || fallback;
+    const image = [snapshot?.image, source?.imageUrl, id].find(isValidImage) || '';
+    const name = snapshot?.name || source?.name;
+    const rawCategory = snapshot?.category || wardrobe?.category || shop?.macroCategory || shop?.category || shop?.garmentType;
+    const canonical = canonicalizeMacroCategory(rawCategory);
+    const category = canonical !== 'other' ? canonical : getMacroCategory(rawCategory || '', name);
+    return { id, image, name, category };
+  });
 }
 
 export type PieceTarget =

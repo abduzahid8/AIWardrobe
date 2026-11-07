@@ -43,6 +43,18 @@ jobs:
       - name: Unit tests
         run: npm test -- --coverage --ci --reporters=default
 
+      - name: Platform quality gates (Phase 5)
+        run: npx jest __tests__/platform --ci --reporters=default
+
+      - name: Growth quality gates (Phase 6)
+        run: npx jest __tests__/growth --ci --reporters=default
+
+      - name: Launch quality gates (Phase 7)
+        run: npx jest __tests__/launch --ci --reporters=default
+
+      - name: Secret scan (Phase 7)
+        run: node scripts/security/secret-scan.mjs
+
       - name: Asset encoding regression tests
         run: npm run test:asset-formats
 

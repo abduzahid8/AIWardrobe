@@ -80,7 +80,7 @@ client — as a follow-up, separate from this file-organization pass.
 ## Flagged, not touched — a real-looking API key in a tracked template file
 
 `.env.example` (tracked in git) has a live-looking value on its last line —
-`GEMINI_API_KEY=AIzaSyDw1si0_iDALhLHvh7CNOgD0f_pBRr15-0` — sitting directly
+`GEMINI_API_KEY=[REDACTED_GOOGLE_KEY]` — sitting directly
 under a comment block titled "PROVIDER TOKENS — DO NOT PUT HERE" that
 explains these belong in Supabase `app_config`, not here. This looks like
 a real key accidentally committed into what's supposed to be a safe,

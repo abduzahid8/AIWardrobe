@@ -1,0 +1,9 @@
+PASS __tests__/services/iapService.test.ts
+PASS __tests__/services/catalogDiscovery.test.ts
+PASS __tests__/launch/launch.test.ts
+PASS __tests__/services/catalogRepository.test.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       37 passed, 37 total
+Snapshots:   0 total
+Time:        0.462 s, estimated 1 s

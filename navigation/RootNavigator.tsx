@@ -1,30 +1,38 @@
 import React, { useEffect, useState, useMemo, Suspense } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
+import { scheduleScreenPreloads } from "./screenPreload";
+import { scheduleIdleTask } from '../src/lib/scheduleIdleTask';
+import { useNetworkRecovery } from "../hooks/useNetworkRecovery";
 
 // Eager: only the auth shell + tab host needed for first frame.
 // Everything else is lazy so the startup JS bundle stays small and
 // cold start doesn't evaluate camera/video/AI/photo-picker native modules
 // until the user actually navigates there (fixes 4/10 freeze on launch).
-import SignInScreen from "../screens/SignInScreen";
-import SignUpScreen from "../screens/SignUpScreen";
-import TabNavigator from "../navigation/TabNavigator";
-import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
-import ResetPasswordScreen from "../screens/ResetPasswordScreen";
-import AuthCallbackScreen from "../screens/AuthCallbackScreen";
-import LanguageSelectionScreen from "../screens/LanguageSelectionScreen";
+const getSignInScreen = () => require("../screens/SignInScreen").default;
+const getSignUpScreen = () => require("../screens/SignUpScreen").default;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const getTabNavigator = () => require("./TabNavigator").default;
+const getForgotPasswordScreen = () => require("../screens/ForgotPasswordScreen").default;
+const getResetPasswordScreen = () => require("../screens/ResetPasswordScreen").default;
+const getAuthCallbackScreen = () => require("../screens/AuthCallbackScreen").default;
+const getLanguageSelectionScreen = () => require("../screens/LanguageSelectionScreen").default;
 
-// Lazy screen helper — Suspense with blank fallback (navigator already
-// shows the previous screen during the split-second load).
+// Share imports with idle preloading and show progress on an early first visit.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const lazyScreen = (loader: () => Promise<{ default: React.ComponentType<any> }>) => {
-  const LazyComp = React.lazy(loader);
+  let pending: ReturnType<typeof loader> | undefined;
+  const preload = () => {
+    if (!pending) pending = loader().catch(error => { pending = undefined; throw error; });
+    return pending;
+  };
+  const LazyComp = React.lazy(preload);
   const Wrapped = (props: Record<string, unknown>) => (
-    <Suspense fallback={<View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />}>
+    <Suspense fallback={<View style={{ flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}><ActivityIndicator accessibilityRole="progressbar" /></View>}>
       <LazyComp {...(props as object)} />
     </Suspense>
   );
-  return Wrapped;
+  return Object.assign(Wrapped, { preload });
 };
 
 const AIOutfitmaker = lazyScreen(() => import("../screens/AIOutfitmaker"));
@@ -45,9 +53,10 @@ const PromoCodeScreen = lazyScreen(() => import("../screens/PromoCodeScreen"));
 const AdminPanelScreen = lazyScreen(() => import("../screens/AdminPanelScreen"));
 const GuideScreen = lazyScreen(() => import("../screens/GuideScreen"));
 const StyleQuizScreen = lazyScreen(() => import("../screens/StyleQuizScreen"));
+const PurchaseIntelligenceScreen = lazyScreen(() => import("../screens/PurchaseIntelligenceScreen"));
 const BodyProfileScreen = lazyScreen(() => import("../screens/BodyProfileScreen"));
-import useAuthStore, { cleanupAuthSubscription } from "../store/auth";
-import useSubscriptionStore from "../store/subscriptionStore";
+import useAuthStore, { cleanupAuthSubscription, identifyRestoredPurchases } from "../store/auth";
+import useSubscriptionStore, { recoverSubscriptionAfterNetworkChange } from "../store/subscriptionStore";
 import useDailyUsageStore from "../store/dailyUsageStore";
 import useWardrobeStore from "../store/wardrobeStore";
 import { addNotificationListeners } from "../src/services/notificationService";
@@ -75,6 +84,12 @@ const RootNavigator = () => {
   const [isAppReady, setIsAppReady] = useState(false);
   const initializeSubscription = useSubscriptionStore((s) => s.initializeSubscription);
   const verifySubscriptionFromServer = useSubscriptionStore((s) => s.verifySubscriptionFromServer);
+  useNetworkRecovery(() => {
+    const auth = useAuthStore.getState();
+    if (!auth.isAuthenticated || !auth.session?.user?.id) return;
+    void auth.fetchUser();
+    void recoverSubscriptionAfterNetworkChange();
+  });
   const hydratePromoCodeStore = usePromoCodeStore((s) => s.hydrate);
   const hydratePromoCodeStoreSync = () => {
     usePromoCodeStore.getState().syncWithServer?.().catch(() => {});
@@ -107,85 +122,31 @@ const RootNavigator = () => {
     const initialize = async () => {
       try {
       perfMark('app:init');
-      // 0. Language first — local AsyncStorage read only (<50ms). Must
-      // resolve before routing so the first-run language gate is correct.
-      // bootstrapStores() also calls this; the store guards double-hydration.
-      await useLanguageStore.getState().initializeLanguage().catch((err) =>
-        console.warn('[RootNavigator] initializeLanguage failed', err),
-      );
-      // 1. Auth must happen first — every other service wants to know who
-      // the user is before initializing (for user-scoped analytics, IAP, etc.)
-      // Hard 5-second timeout so the app never stays frozen on the splash if
-      // Supabase's getSession() hangs (e.g. first cold-start on slow networks).
-      const { initializeAuth } = useAuthStore.getState();
-      await Promise.race([
-        initializeAuth(),
-        new Promise<void>((_, reject) =>
-          setTimeout(() => reject(new Error('initializeAuth timed out after 5000ms')), 5000)
+      // Language and auth are independent; preserve both routing gates while
+      // performing their local reads concurrently. Auth cleanup still completes
+      // before any account-scoped hydration starts.
+      await Promise.all([
+        useLanguageStore.getState().initializeLanguage().catch((err) =>
+          console.warn('[RootNavigator] initializeLanguage failed', err),
         ),
-      ]).catch((err) => {
-        console.warn('[RootNavigator] initializeAuth timeout or error — forcing isInitialized', err);
-        // Ensure isInitialized is always set so the app can render
-        useAuthStore.setState({ isInitialized: true, loading: false });
-      });
+        (async () => {
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          try {
+            await Promise.race([
+              useAuthStore.getState().initializeAuth(),
+              new Promise<never>((_, reject) => {
+                timer = setTimeout(() => reject(new Error('initializeAuth timed out after 5000ms')), 5000);
+              }),
+            ]);
+          } catch (err) {
+            console.warn('[RootNavigator] initializeAuth timeout or error — forcing isInitialized', err);
+            useAuthStore.setState({ isInitialized: true, loading: false });
+          } finally {
+            if (timer !== undefined) clearTimeout(timer);
+          }
+        })(),
+      ]);
       perfMeasure('app:init');
-
-      // 2. Analytics is synchronous — start it immediately so early events
-      // (like "app_opened") land in the queue.
-      analyticsService.initialize();
-
-      // 3. Everything else is independent of each other and of the render
-      // path. Run them in parallel and never block the UI on them.
-      // Individual failures are swallowed so one slow service can't
-      // block the others.
-      //
-      // rehydrateFromCloud is included here so wardrobe data fetching
-      // starts immediately after auth resolves, in parallel with the other
-      // services, instead of waiting for all five to finish first
-      // (fixes Defect 1.3 — was previously called sequentially after this block).
-      const { isAuthenticated: authStatus, user: currentUser } = useAuthStore.getState();
-      // Start background services AFTER the first frame so they never
-      // compete with splash-hide + initial render for JS thread / network.
-      // Previously notificationService (native permission dialogs + push
-      // token network call), RevenueCat configure, and wardrobe cloud sync
-      // all fired in the same tick as auth resolution — the thundering herd
-      // that stalled cold start. Now:
-      //  - wardrobe rehydrate starts immediately (longest pole, outfits need it)
-      //  - notifications + IAP init are deferred ~1s to idle
-      //  - promo/subscription server reconciliation runs after app-ready
-      const deferToIdle = (fn: () => void, ms = 1000) => {
-        if (typeof (global as any).requestIdleCallback === 'function') {
-          (global as any).requestIdleCallback(fn, { timeout: ms + 2000 });
-        } else {
-          setTimeout(fn, ms);
-        }
-      };
-      deferToIdle(() => {
-        notificationService.initialize().catch((err) =>
-          console.warn('[RootNavigator] notificationService failed', err),
-        );
-      });
-      deferToIdle(() => {
-        iapService.initialize().catch((err) =>
-          console.warn('[RootNavigator] iapService failed', err),
-        );
-      }, 1500);
-      if (authStatus && currentUser?.id) {
-        useWardrobeStore.getState().rehydrateFromCloud(false)
-          .catch((err) => {
-            if (__DEV__) console.warn('[RootNavigator] rehydrateFromCloud failed', err);
-          });
-      }
-
-      // initializeSubscription is NOT included in the race below — when there's
-      // no locally-cached trial date it deliberately awaits a server round trip
-      // (see subscriptionStore.ts) to avoid flashing an incorrect "trial expired"
-      // screen, so its runtime isn't bounded by a fast local-storage budget. It
-      // keeps `isPending` true in the store until it resolves, which is what
-      // actually protects the UI, so app-ready doesn't need to wait for it too.
-      initializeSubscription().catch((err) =>
-        console.warn('[RootNavigator] initializeSubscription failed', err),
-      );
 
       // We only await fast local AsyncStorage hydrations (daily usage, promo codes).
       // Both are local-only now (<50ms typical) — promo server reconciliation
@@ -211,22 +172,6 @@ const RootNavigator = () => {
         console.error('[RootNavigator] Initialization timeout or error — forcing app ready', err);
       });
 
-      // 4. Identify the user once services are ready. Verification against
-      // the server is fire-and-forget — the UI doesn't need to block on it.
-      // Deferred to idle so it never competes with first render.
-      if (authStatus && currentUser?.id) {
-        analyticsService.setUserId(currentUser.id);
-        deferToIdle(() => {
-          iapService.identify(currentUser.id).catch(() => {});
-          verifySubscriptionFromServer().catch((err) =>
-            console.warn('[RootNavigator] verifySubscriptionFromServer failed', err),
-          );
-          hydratePromoCodeStoreSync();
-        }, 2000);
-      } else {
-        // Logged-out: still reconcile promo cache in background (cheap, local-first).
-        deferToIdle(() => hydratePromoCodeStoreSync(), 2000);
-      }
 
       } catch (fatalErr) {
         // If auth or any unguarded step throws, we still need to let the
@@ -276,10 +221,42 @@ const RootNavigator = () => {
 
   useEffect(() => {
     if (isAppReady && isInitialized && isLanguageInitialized) {
-      // Signal that the first real frame is ready. SplashTransition takes it
-      // from here: it hides the native splash and dissolves the branded
-      // overlay into the app (see src/components/SplashTransition.tsx).
-      markAppReady();
+      const cancelIdleTasks: Array<() => void> = [];
+      const backgroundTimer = setTimeout(() => {
+        analyticsService.initialize();
+        const { isAuthenticated: authStatus, user: currentUser } = useAuthStore.getState();
+        const deferToIdle = (fn: () => void, ms = 1000) => {
+          cancelIdleTasks.push(scheduleIdleTask(fn, ms));
+        };
+        deferToIdle(() => {
+          notificationService.initialize().catch(err =>
+            console.warn('[RootNavigator] notificationService failed', err));
+        });
+        deferToIdle(() => {
+          iapService.initialize().catch(err =>
+            console.warn('[RootNavigator] iapService failed', err));
+        }, 1500);
+        if (authStatus && currentUser?.id) {
+          useWardrobeStore.getState().rehydrateFromCloud(false).catch(err => {
+            if (__DEV__) console.warn('[RootNavigator] rehydrateFromCloud failed', err);
+          });
+        }
+        // Subscription features remain pending until reconciliation completes.
+        initializeSubscription().catch(err =>
+          console.warn('[RootNavigator] initializeSubscription failed', err));
+        if (authStatus && currentUser?.id) {
+          analyticsService.setUserId(currentUser.id);
+          deferToIdle(() => {
+            if (useAuthStore.getState().user?.id !== currentUser.id) return;
+            identifyRestoredPurchases(currentUser.id).catch(() => {});
+            verifySubscriptionFromServer().catch(err =>
+              console.warn('[RootNavigator] verifySubscriptionFromServer failed', err));
+            hydratePromoCodeStoreSync();
+          }, 2500);
+        } else {
+          deferToIdle(() => hydratePromoCodeStoreSync(), 2000);
+        }
+      }, 250);
 
       // Warm non-Home tab caches (Inspo catalog/capsules/hero, Closet + Inspo
       // images) on idle so the first visit to each tab finds warm caches
@@ -292,10 +269,24 @@ const RootNavigator = () => {
       }, 2500);
 
       return () => {
+        cancelIdleTasks.forEach(cancel => cancel());
+        clearTimeout(backgroundTimer);
         clearTimeout(prewarmTimer);
       };
     }
   }, [isAppReady, isInitialized, isLanguageInitialized]);
+
+  useEffect(() => {
+    if (!isAppReady || !isAuthenticated || !hasCompletedOnboarding) return;
+    // Share one idle queue to avoid overlapping tab and feature evaluations.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { tabScreenPreloaders } = require('./TabNavigator');
+    return scheduleScreenPreloads([
+      ...tabScreenPreloaders, AIOutfitmaker.preload, OutfitCalendarScreen.preload,
+      ClothingDetailScreen.preload, GuideScreen.preload, PaywallScreen.preload,
+      WardrobeVideoScreen.preload, CameraScreen.preload,
+    ], 4000);
+  }, [isAppReady, isAuthenticated, hasCompletedOnboarding]);
 
   if (!isInitialized || !isAppReady || !isLanguageInitialized) {
     // Keep the splash screen visible and render nothing while initializing.
@@ -318,6 +309,7 @@ const RootNavigator = () => {
     : 'LanguageSelection';
 
   return (
+    <View style={{ flex: 1 }} onLayout={markAppReady}>
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
@@ -354,7 +346,8 @@ const RootNavigator = () => {
           />
         ) : (
           <>
-            <Stack.Screen name="Main" component={TabNavigator} />
+            <Stack.Screen name="Main" getComponent={getTabNavigator} />
+            <Stack.Screen name="PurchaseIntelligence" component={PurchaseIntelligenceScreen} />
 
             {/* Main tab navigation with Home, Add, and Profile */}
             {/* <Stack.Screen name="Home" component={TabNavigator} /> */}
@@ -499,24 +492,24 @@ const RootNavigator = () => {
           */}
           <Stack.Screen
             name="LanguageSelection"
-            component={LanguageSelectionScreen}
+            getComponent={getLanguageSelectionScreen}
             options={{ ...LiquidPresets.fade, gestureEnabled: false }}
           />
           <Stack.Screen
             name="SignIn"
-            component={SignInScreen}
+            getComponent={getSignInScreen}
             // Fade visuals, but swipe-back must stay ON so the
             // language chooser underneath remains natively reachable.
             options={{ ...LiquidPresets.fade, gestureEnabled: true, gestureDirection: 'horizontal' }}
           />
           <Stack.Screen
             name="SignUp"
-            component={SignUpScreen}
+            getComponent={getSignUpScreen}
             options={{ ...LiquidPresets.slide }}
           />
           <Stack.Screen
             name="ForgotPassword"
-            component={ForgotPasswordScreen}
+            getComponent={getForgotPasswordScreen}
             options={{ ...LiquidPresets.slide }}
           />
         </>
@@ -530,15 +523,16 @@ const RootNavigator = () => {
       */}
       <Stack.Screen
         name="ResetPassword"
-        component={ResetPasswordScreen}
+        getComponent={getResetPasswordScreen}
         options={{ ...LiquidPresets.slide }}
       />
       <Stack.Screen
         name="AuthCallback"
-        component={AuthCallbackScreen}
+        getComponent={getAuthCallbackScreen}
         options={{ ...LiquidPresets.fade }}
       />
     </Stack.Navigator>
+    </View>
   );
 };
 

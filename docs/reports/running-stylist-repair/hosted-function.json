@@ -1,0 +1,13 @@
+{
+  "created_at": 1774491523714,
+  "entrypoint_path": "file:///tmp/user_fn_fyqpifmrsftsfqibhwhy_f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a_179/source/supabase/functions/generate-outfits/index.ts",
+  "ezbr_sha256": "7249e5b3d639789bee75c0117de382286d19acf656fbd12e37c47e82879967db",
+  "id": "f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a",
+  "import_map": false,
+  "name": "generate-outfits",
+  "slug": "generate-outfits",
+  "status": "ACTIVE",
+  "updated_at": 1793372818229,
+  "verify_jwt": false,
+  "version": 179
+}

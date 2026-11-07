@@ -2,7 +2,7 @@
   "expo": {
     "name": "AIWardrobe",
     "slug": "wardrobe-app",
-    "version": "3.0.0",
+    "version": "3.0.2",
     "assetBundlePatterns": [
       "assets/icon.png",
       "assets/splash-icon.png",
@@ -30,7 +30,7 @@
     },
     "scheme": "com.aiwardrobe",
     "ios": {
-      "buildNumber": "62",
+      "buildNumber": "65",
       "supportsTablet": true,
       "bundleIdentifier": "com.aiwardrobe",
       "infoPlist": {
@@ -41,15 +41,14 @@
         "NSLocationWhenInUseUsageDescription": "Your current location is used once per session to fetch local weather so AIWardrobe can suggest weather-appropriate outfits. Location is not stored or shared.",
         "NSMicrophoneUsageDescription": "AIWardrobe uses the microphone only while recording a wardrobe video you choose to capture.",
         "NSMotionUsageDescription": "AIWardrobe uses motion activity to improve location accuracy when fetching local weather for outfit suggestions. Motion data stays on your device and is never stored or shared.",
-        "NSFaceIDUsageDescription": "AIWardrobe uses Face ID only if you enable biometric authentication to protect access to your wardrobe data.",
-        "NSUserTrackingUsageDescription": "Your data is used to deliver personalized ads and measure their effectiveness."
+        "NSFaceIDUsageDescription": "AIWardrobe uses Face ID only if you enable biometric authentication to protect access to your wardrobe data."
       }
     },
     "android": {
-      "versionCode": 61,
+      "versionCode": 63,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ADD8E6"
+        "backgroundColor": "#C4DCFB"
       },
       "package": "com.aiwardrobe",
       "permissions": [
@@ -60,6 +59,7 @@
         "ACCESS_FINE_LOCATION"
       ],
       "intentFilters": [
+        {"action":"SEND","category":["DEFAULT"],"data":[{"mimeType":"text/plain"}]},
         {
           "action": "VIEW",
           "autoVerify": true,
@@ -80,7 +80,7 @@
       "favicon": "./assets/icon.png",
       "bundler": "metro",
       "output": "single",
-      "backgroundColor": "#ADD8E6"
+      "backgroundColor": "#C4DCFB"
     },
     "plugins": [
       "expo-asset",
@@ -91,7 +91,6 @@
       "expo-updates",
       "expo-splash-screen",
       "expo-notifications",
-      "expo-tracking-transparency",
       "expo-web-browser",
       "@react-native-community/datetimepicker",
       "expo-image",

@@ -9,6 +9,14 @@ import type { GarmentPhysicalProfile } from './garment';
 
 export interface ShopCatalogItem {
     id: string;
+    /** Provenance retained for identity; external IDs alone never imply a family. */
+    source?: string;
+    externalId?: string;
+    /** Trusted model/group metadata only; never inferred by trimming a SKU. */
+    sourceProductGroupId?: string;
+    modelReference?: string;
+    colorName?: string;
+    category?: string;
     brand: string;
     name: string;
     price: number;

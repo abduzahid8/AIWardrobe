@@ -1,0 +1,2517 @@
+{
+  "scope": "deterministic named garment fixtures; no visual human score or live inference",
+  "reports": [
+    {
+      "id": "busy-plaid-paisley",
+      "items": [
+        {
+          "id": "busy-plaid-paisley-0",
+          "name": "Medium-contrast checked cotton shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "busy-plaid-paisley-1",
+          "name": "Large busy paisley jacquard cardigan",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "busy-plaid-paisley-2",
+          "name": "Cream corduroy trousers",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "busy-plaid-paisley-3",
+          "name": "Black polished Derby shoes",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": false,
+      "accepted": false,
+      "rejection": "competing_patterns_undermine_date_night",
+      "eligiblePoolSize": 4,
+      "signals": [
+        "base_and_outer_layer_roles",
+        "competing_upper_patterns",
+        "palette_clashing_prints_break_harmony",
+        "restrained_palette_no_loud_accents",
+        "balanced_light_dark_contrast",
+        "monochromatic_discipline",
+        "uncertain_palette_insufficient_color_evidence"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "neutral",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "check",
+          "patternProminence": "prominent",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "pattern:prominent",
+            "text:shirt"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "cardigan",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "neutral",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "print",
+          "patternProminence": "prominent",
+          "formality": "smart",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "pattern:prominent",
+            "text:cardigan"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "trouser",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "light",
+          "materials": [
+            "corduroy"
+          ],
+          "texture": "textured",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:trouser"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "derby",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "dark",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:derby"
+          ]
+        }
+      ],
+      "score": 0.8675669642857143,
+      "durationMs": 15.357458000000008
+    },
+    {
+      "id": "competing-large-checks",
+      "items": [
+        {
+          "id": "competing-large-checks-0",
+          "name": "Bold large plaid shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "competing-large-checks-1",
+          "name": "Large high-contrast checked cardigan",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "competing-large-checks-2",
+          "name": "Cream cotton chinos",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "competing-large-checks-3",
+          "name": "Black leather penny loafers",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": false,
+      "accepted": false,
+      "rejection": "competing_patterns_undermine_date_night",
+      "eligiblePoolSize": 4,
+      "signals": [
+        "base_and_outer_layer_roles",
+        "competing_upper_patterns",
+        "restrained_palette_no_loud_accents",
+        "balanced_light_dark_contrast",
+        "monochromatic_discipline",
+        "uncertain_palette_insufficient_color_evidence"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "neutral",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "check",
+          "patternProminence": "prominent",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "pattern:prominent",
+            "text:shirt"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "cardigan",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "neutral",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "check",
+          "patternProminence": "prominent",
+          "formality": "smart",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "pattern:prominent",
+            "text:cardigan"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "chino",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "light",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "smart",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:chino"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "loafer",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "dark",
+          "materials": [
+            "leather"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:loafer"
+          ]
+        }
+      ],
+      "score": 0.8758035714285715,
+      "durationMs": 2.061000000000007
+    },
+    {
+      "id": "washed-double-denim-oxford",
+      "items": [
+        {
+          "id": "washed-double-denim-oxford-0",
+          "name": "Blue denim shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "washed-double-denim-oxford-1",
+          "name": "Navy tailored wool blazer",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "washed-double-denim-oxford-2",
+          "name": "Washed light-blue slim jeans",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "washed-double-denim-oxford-3",
+          "name": "Brown polished Oxford shoes",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": false,
+      "accepted": false,
+      "rejection": "pale_double_denim_conflicts_with_tailoring_and_dress_footwear",
+      "eligiblePoolSize": 4,
+      "signals": [
+        "base_and_outer_layer_roles",
+        "single_accent_blue_on_neutral_base",
+        "tonal_palette_single_chromatic_story",
+        "classic_neutral_pairing"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "cool-mid",
+          "materials": [
+            "denim"
+          ],
+          "texture": "denim",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:shirt"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "blazer",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "cool-dark",
+          "materials": [
+            "wool"
+          ],
+          "texture": "textured",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:blazer"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "jeans",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "cool-mid",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "slim",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": true,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "surface:pale-denim",
+            "text:jeans",
+            "text:slim"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "oxford",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "earth",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:oxford"
+          ]
+        }
+      ],
+      "score": 0.8878348214285715,
+      "durationMs": 2.3138329999999883
+    },
+    {
+      "id": "pale-double-denim-oxford",
+      "items": [
+        {
+          "id": "pale-double-denim-oxford-0",
+          "name": "Blue denim shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "pale-double-denim-oxford-1",
+          "name": "Navy tailored wool blazer",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "pale-double-denim-oxford-2",
+          "name": "Light blue slim jeans",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "pale-double-denim-oxford-3",
+          "name": "Brown polished Oxford shoes",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": false,
+      "accepted": false,
+      "rejection": "pale_double_denim_conflicts_with_tailoring_and_dress_footwear",
+      "eligiblePoolSize": 4,
+      "signals": [
+        "base_and_outer_layer_roles",
+        "palette_overloaded_accent_combination",
+        "balanced_light_dark_contrast",
+        "classic_neutral_pairing"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "cool-mid",
+          "materials": [
+            "denim"
+          ],
+          "texture": "denim",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:shirt"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "blazer",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "cool-dark",
+          "materials": [
+            "wool"
+          ],
+          "texture": "textured",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:blazer"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "jeans",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "light",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "slim",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": true,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "surface:pale-denim",
+            "text:jeans",
+            "text:slim"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "oxford",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "earth",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:oxford"
+          ]
+        }
+      ],
+      "score": 0.8699776785714286,
+      "durationMs": 1.3800830000000133
+    },
+    {
+      "id": "airy-heavy-winter",
+      "items": [
+        {
+          "id": "airy-heavy-winter-0",
+          "name": "Lightweight linen popover shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "airy-heavy-winter-1",
+          "name": "Heavyweight winter wool-cashmere blazer",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "airy-heavy-winter-2",
+          "name": "Cream corduroy trousers",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "airy-heavy-winter-3",
+          "name": "Brown leather penny loafers",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": false,
+      "accepted": false,
+      "rejection": "incompatible_date_night_fabric_weights",
+      "eligiblePoolSize": 4,
+      "signals": [
+        "light_base_under_openable_layer",
+        "base_and_outer_layer_roles",
+        "heavy_and_airy_texture_contrast",
+        "restrained_palette_no_loud_accents",
+        "balanced_light_dark_contrast",
+        "monochromatic_discipline",
+        "uncertain_palette_insufficient_color_evidence"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "neutral",
+          "materials": [
+            "linen"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "light",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:shirt",
+            "text:light"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "blazer",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "neutral",
+          "materials": [
+            "cashmere",
+            "wool"
+          ],
+          "texture": "textured",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "heavy",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:blazer",
+            "text:heavy"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "trouser",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "light",
+          "materials": [
+            "corduroy"
+          ],
+          "texture": "textured",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:trouser"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "loafer",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "earth",
+          "materials": [
+            "leather"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:loafer"
+          ]
+        }
+      ],
+      "score": 0.8541741071428571,
+      "durationMs": 1.1011249999999961
+    },
+    {
+      "id": "quiet-pattern-mix",
+      "items": [
+        {
+          "id": "quiet-pattern-mix-0",
+          "name": "Fine subtle striped poplin shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "quiet-pattern-mix-1",
+          "name": "Subtle small windowpane wool blazer",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "quiet-pattern-mix-2",
+          "name": "Charcoal tailored trousers",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "quiet-pattern-mix-3",
+          "name": "Brown leather penny loafers",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": true,
+      "accepted": true,
+      "rejection": null,
+      "eligiblePoolSize": 4,
+      "signals": [
+        "light_base_under_openable_layer",
+        "base_and_outer_layer_roles",
+        "dress_footwear_with_tailored_bottom",
+        "restrained_palette_no_loud_accents",
+        "monochromatic_discipline",
+        "uncertain_palette_insufficient_color_evidence"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "dress-shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "neutral",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "stripe",
+          "patternProminence": "subtle",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "light",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "pattern:subtle",
+            "text:dress-shirt",
+            "text:light"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "blazer",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "neutral",
+          "materials": [
+            "wool"
+          ],
+          "texture": "textured",
+          "pattern": "check",
+          "patternProminence": "subtle",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "pattern:subtle",
+            "text:blazer"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "tailored-trouser",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "dark",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:tailored-trouser"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "loafer",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "earth",
+          "materials": [
+            "leather"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:loafer"
+          ]
+        }
+      ],
+      "score": 0.9234821428571429,
+      "durationMs": 1.1543340000000057
+    },
+    {
+      "id": "tonal-jacquard-texture",
+      "items": [
+        {
+          "id": "tonal-jacquard-texture-0",
+          "name": "Fine subtle striped cotton shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "tonal-jacquard-texture-1",
+          "name": "Tonal textured jacquard cardigan",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "tonal-jacquard-texture-2",
+          "name": "Navy cotton chinos",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "tonal-jacquard-texture-3",
+          "name": "Brown leather penny loafers",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": true,
+      "accepted": true,
+      "rejection": null,
+      "eligiblePoolSize": 4,
+      "signals": [
+        "light_base_under_openable_layer",
+        "base_and_outer_layer_roles",
+        "restrained_palette_no_loud_accents",
+        "classic_neutral_pairing",
+        "uncertain_palette_insufficient_color_evidence"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "neutral",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "stripe",
+          "patternProminence": "subtle",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "light",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "pattern:subtle",
+            "text:shirt",
+            "text:light"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "cardigan",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "neutral",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "texture",
+          "patternProminence": "unknown",
+          "formality": "smart",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:cardigan"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "chino",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "cool-dark",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "smart",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:chino"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "loafer",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "earth",
+          "materials": [
+            "leather"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:loafer"
+          ]
+        }
+      ],
+      "score": 0.8865178571428571,
+      "durationMs": 1.1917919999999924
+    },
+    {
+      "id": "single-paisley-accent",
+      "items": [
+        {
+          "id": "single-paisley-accent-0",
+          "name": "Plain white poplin shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "single-paisley-accent-1",
+          "name": "Paisley jacquard cardigan",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "single-paisley-accent-2",
+          "name": "Navy cotton chinos",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "single-paisley-accent-3",
+          "name": "Brown leather penny loafers",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": true,
+      "accepted": true,
+      "rejection": null,
+      "eligiblePoolSize": 4,
+      "signals": [
+        "light_base_under_openable_layer",
+        "base_and_outer_layer_roles",
+        "restrained_palette_no_loud_accents",
+        "balanced_light_dark_contrast",
+        "classic_neutral_pairing"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "dress-shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "light",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "solid",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "light",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:dress-shirt",
+            "text:light"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "cardigan",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "neutral",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "print",
+          "patternProminence": "unknown",
+          "formality": "smart",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:cardigan"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "chino",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "cool-dark",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "smart",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:chino"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "loafer",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "earth",
+          "materials": [
+            "leather"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:loafer"
+          ]
+        }
+      ],
+      "score": 0.9008035714285714,
+      "durationMs": 1.3887919999999951
+    },
+    {
+      "id": "clean-smart-denim",
+      "items": [
+        {
+          "id": "clean-smart-denim-0",
+          "name": "White cotton shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "clean-smart-denim-1",
+          "name": "Unstructured navy cotton blazer",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "clean-smart-denim-2",
+          "name": "Dark clean straight denim jeans",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "clean-smart-denim-3",
+          "name": "Brown suede loafers",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": true,
+      "accepted": true,
+      "rejection": null,
+      "eligiblePoolSize": 4,
+      "signals": [
+        "base_and_outer_layer_roles",
+        "restrained_palette_no_loud_accents",
+        "balanced_light_dark_contrast",
+        "classic_neutral_pairing"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "light",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:shirt"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "blazer",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "cool-dark",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:blazer"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "jeans",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "neutral",
+          "materials": [
+            "denim"
+          ],
+          "texture": "denim",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "regular",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:jeans",
+            "text:regular"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "loafer",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "earth",
+          "materials": [
+            "suede"
+          ],
+          "texture": "suede",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "smart",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:loafer"
+          ]
+        }
+      ],
+      "score": 0.8818526785714286,
+      "durationMs": 0.502915999999999
+    },
+    {
+      "id": "dark-denim-shirt-tailoring",
+      "items": [
+        {
+          "id": "dark-denim-shirt-tailoring-0",
+          "name": "Dark clean denim shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "dark-denim-shirt-tailoring-1",
+          "name": "Unstructured navy cotton blazer",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "dark-denim-shirt-tailoring-2",
+          "name": "Grey tailored cotton trousers",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "dark-denim-shirt-tailoring-3",
+          "name": "Brown suede loafers",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": true,
+      "accepted": true,
+      "rejection": null,
+      "eligiblePoolSize": 4,
+      "signals": [
+        "base_and_outer_layer_roles",
+        "dress_footwear_with_tailored_bottom",
+        "compatible_tailoring_fabrics",
+        "restrained_palette_no_loud_accents",
+        "balanced_light_dark_contrast",
+        "classic_neutral_pairing"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "neutral",
+          "materials": [
+            "denim"
+          ],
+          "texture": "denim",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:shirt"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "blazer",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "cool-dark",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:blazer"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "tailored-trouser",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "mid",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:tailored-trouser"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "loafer",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "earth",
+          "materials": [
+            "suede"
+          ],
+          "texture": "suede",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "smart",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:loafer"
+          ]
+        }
+      ],
+      "score": 0.9413392857142857,
+      "durationMs": 0.45079199999997854
+    },
+    {
+      "id": "linen-medium-wool-unknown-weather",
+      "items": [
+        {
+          "id": "linen-medium-wool-unknown-weather-0",
+          "name": "Linen popover shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "linen-medium-wool-unknown-weather-1",
+          "name": "Regular wool-cashmere cardigan",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "linen-medium-wool-unknown-weather-2",
+          "name": "Cream corduroy trousers",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "linen-medium-wool-unknown-weather-3",
+          "name": "Brown leather penny loafers",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": true,
+      "accepted": true,
+      "rejection": null,
+      "eligiblePoolSize": 4,
+      "signals": [
+        "light_base_under_openable_layer",
+        "base_and_outer_layer_roles",
+        "restrained_palette_no_loud_accents",
+        "balanced_light_dark_contrast",
+        "monochromatic_discipline",
+        "uncertain_palette_insufficient_color_evidence"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "neutral",
+          "materials": [
+            "linen"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "light",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:shirt",
+            "text:light"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "cardigan",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "neutral",
+          "materials": [
+            "cashmere",
+            "wool"
+          ],
+          "texture": "textured",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "smart",
+          "volume": "regular",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:cardigan",
+            "text:regular"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "trouser",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "light",
+          "materials": [
+            "corduroy"
+          ],
+          "texture": "textured",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:trouser"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "loafer",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "earth",
+          "materials": [
+            "leather"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:loafer"
+          ]
+        }
+      ],
+      "score": 0.8758705357142857,
+      "durationMs": 0.9588329999999985
+    },
+    {
+      "id": "refined-neutral",
+      "items": [
+        {
+          "id": "refined-neutral-0",
+          "name": "White poplin shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "refined-neutral-1",
+          "name": "Navy wool blazer",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "refined-neutral-2",
+          "name": "Grey tailored wool trousers",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "refined-neutral-3",
+          "name": "Black leather Oxford shoes with slim rubber soles",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": true,
+      "accepted": true,
+      "rejection": null,
+      "eligiblePoolSize": 4,
+      "signals": [
+        "light_base_under_openable_layer",
+        "base_and_outer_layer_roles",
+        "dress_footwear_with_tailored_bottom",
+        "compatible_tailoring_fabrics",
+        "restrained_palette_no_loud_accents",
+        "balanced_light_dark_contrast",
+        "monochromatic_discipline",
+        "classic_neutral_pairing"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "dress-shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "light",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "light",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:dress-shirt",
+            "text:light"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "blazer",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "cool-dark",
+          "materials": [
+            "wool"
+          ],
+          "texture": "textured",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:blazer"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "tailored-trouser",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "mid",
+          "materials": [
+            "wool"
+          ],
+          "texture": "textured",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": true,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:tailored-trouser"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "oxford",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "dark",
+          "materials": [
+            "leather"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "formal",
+          "volume": "slim",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "dress",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "sole:dress",
+            "text:oxford",
+            "text:slim"
+          ]
+        }
+      ],
+      "score": 0.9580357142857143,
+      "durationMs": 0.6805830000000128
+    },
+    {
+      "id": "casual-travel",
+      "items": [
+        {
+          "id": "casual-travel-0",
+          "name": "Black plain cotton T-shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "casual-travel-1",
+          "name": "Olive cotton casual jacket",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "casual-travel-2",
+          "name": "Grey straight jeans",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "casual-travel-3",
+          "name": "Black casual leather sneakers",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": true,
+      "accepted": true,
+      "rejection": null,
+      "eligiblePoolSize": 4,
+      "signals": [
+        "base_and_outer_layer_roles",
+        "casual_footwear_with_casual_bottom",
+        "single_accent_green_on_neutral_base",
+        "tonal_palette_single_chromatic_story",
+        "balanced_light_dark_contrast",
+        "monochromatic_discipline"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "t-shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "dark",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "solid",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:t-shirt"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "jacket",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "earth",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:jacket"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "jeans",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "mid",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "regular",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:jeans",
+            "text:regular"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "minimal-sneaker",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "dark",
+          "materials": [
+            "leather"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": true,
+          "soleProfile": "sneaker",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "sole:sneaker",
+            "text:minimal-sneaker"
+          ]
+        }
+      ],
+      "score": 0.935044642857143,
+      "durationMs": 1.2938749999999857
+    },
+    {
+      "id": "graphic-denim-casual",
+      "items": [
+        {
+          "id": "graphic-denim-casual-0",
+          "name": "Graphic cotton T-shirt",
+          "macroCategory": "top"
+        },
+        {
+          "id": "graphic-denim-casual-1",
+          "name": "Blue denim jacket",
+          "macroCategory": "outerwear"
+        },
+        {
+          "id": "graphic-denim-casual-2",
+          "name": "Black straight jeans",
+          "macroCategory": "bottom"
+        },
+        {
+          "id": "graphic-denim-casual-3",
+          "name": "Black casual leather sneakers",
+          "macroCategory": "shoes"
+        }
+      ],
+      "expectedAcceptance": true,
+      "accepted": true,
+      "rejection": null,
+      "eligiblePoolSize": 4,
+      "signals": [
+        "base_and_outer_layer_roles",
+        "casual_footwear_with_casual_bottom",
+        "single_accent_blue_on_neutral_base",
+        "tonal_palette_single_chromatic_story",
+        "monochromatic_discipline"
+      ],
+      "reasons": [],
+      "unknownContext": [
+        "weather_unknown"
+      ],
+      "descriptors": [
+        {
+          "slot": "top",
+          "subtype": "t-shirt",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "neutral",
+          "materials": [
+            "cotton"
+          ],
+          "texture": "unknown",
+          "pattern": "print",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "shirt",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": true,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "pattern:loud-branding",
+            "text:t-shirt"
+          ]
+        },
+        {
+          "slot": "outerwear",
+          "subtype": "jacket",
+          "length": "unknown",
+          "closure": "openable",
+          "color": "cool-mid",
+          "materials": [
+            "denim"
+          ],
+          "texture": "denim",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:jacket"
+          ]
+        },
+        {
+          "slot": "bottom",
+          "subtype": "jeans",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "dark",
+          "materials": [],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "regular",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": false,
+          "soleProfile": "unknown",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "text:jeans",
+            "text:regular"
+          ]
+        },
+        {
+          "slot": "shoes",
+          "subtype": "minimal-sneaker",
+          "length": "unknown",
+          "closure": "unknown",
+          "color": "dark",
+          "materials": [
+            "leather"
+          ],
+          "texture": "unknown",
+          "pattern": "unknown",
+          "patternProminence": "unknown",
+          "formality": "casual",
+          "volume": "unknown",
+          "bulk": "unknown",
+          "collar": "unknown",
+          "rugged": false,
+          "casualSole": true,
+          "soleProfile": "sneaker",
+          "fadedDenim": false,
+          "paleDenim": false,
+          "loudBranding": false,
+          "sportyZip": false,
+          "utilityConstruction": false,
+          "technicalLeisure": false,
+          "athletic": false,
+          "structured": false,
+          "insulated": false,
+          "evening": false,
+          "evidence": [
+            "sole:sneaker",
+            "text:minimal-sneaker"
+          ]
+        }
+      ],
+      "score": 0.9337053571428572,
+      "durationMs": 0.33929200000000037
+    }
+  ],
+  "deck": {
+    "candidateCount": 7,
+    "selected": [
+      "refined-neutral",
+      "dark-denim-shirt-tailoring",
+      "quiet-pattern-mix"
+    ],
+    "selectedCount": 3,
+    "duplicateIdentityKeyCount": 0,
+    "productDiversity": {
+      "nonAnchorProductReuseCount": 0,
+      "repeatedProductKeys": [],
+      "repeatedCanonicalKeys": [],
+      "repeatedProducts": [],
+      "illegalProductReuseCount": 0,
+      "forcedRepeatProducts": [],
+      "anchorRepeatProducts": [],
+      "anchorLookCount": 0,
+      "anchorRepetitionCount": 0,
+      "lookProductKeys": [
+        [
+          "n:white poplin shirt",
+          "n:navy wool blazer",
+          "n:grey tailored wool trousers",
+          "n:black leather oxford shoes with slim rubber soles"
+        ],
+        [
+          "n:dark clean denim shirt",
+          "n:unstructured navy cotton blazer",
+          "n:grey tailored cotton trousers",
+          "n:brown suede loafers"
+        ],
+        [
+          "n:fine subtle striped poplin shirt",
+          "n:subtle small windowpane wool blazer",
+          "n:charcoal tailored trousers",
+          "n:brown leather penny loafers"
+        ]
+      ]
+    }
+  },
+  "durationMs": 39.36379199999999
+}

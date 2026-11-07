@@ -1,0 +1,20 @@
+{"project_ref":"fyqpifmrsftsfqibhwhy","functions":["generate-outfits"],"dashboard_url":"https://supabase.com/dashboard/project/fyqpifmrsftsfqibhwhy/functions","message":"Deployed Functions.","target":{"kind":"linked","project_ref":"fyqpifmrsftsfqibhwhy","project_name":"abduzahid8's Project","environment":"production"}}
+
+Target: project abduzahid8's Project (fyqpifmrsftsfqibhwhy) · production
+Confirmed by --yes: Deploy 1 Function on project abduzahid8's Project (fyqpifmrsftsfqibhwhy) · production
+Uploading asset (generate-outfits): supabase/functions/generate-outfits/index.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/occasionRules.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitComposition.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitRotation.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitDiversity.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitStructure.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/rateLimit.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/modelOutfitResponse.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitBudgetFeedback.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitBudgetSelection.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitBudgetFeasibility.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/budgetFxCache.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/budgetFx.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitBudgetText.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitGenerationRequest.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitChoices.ts

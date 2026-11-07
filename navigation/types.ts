@@ -86,12 +86,13 @@ export type RootStackParamList = {
     Guide: undefined;
     /** Body-fit profile (Month 1 of body-fit plan). Editable in Profile tab. */
     BodyProfile: undefined;
+    PurchaseIntelligence: {candidate?:import('../src/types/shop').ShopCatalogItem;candidateId?:string;input?:string;inputRevision?:number;intent?:'check'|'find'|'complete'|'budget'|'save'|'upgrade';outfitIds?:string[]} | undefined;
 };
 
 export type TabParamList = {
     Home: undefined;
     Closet: undefined;
     AI: undefined;
-    Inspo: { focusShopItemId?: string; focusShopItemName?: string } | undefined;
+    Inspo: { focusShopItemId?: string; focusShopItemName?: string; openShop?: boolean } | undefined;
     Profile: undefined;
 };

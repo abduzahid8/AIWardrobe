@@ -1,0 +1,136 @@
+TAP version 13
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+ok 1 - node_modules/appium-xcuitest-driver/node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+  ---
+  duration_ms: 5.846709
+  type: 'test'
+  ...
+# Subtest: node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+ok 2 - node_modules/proxy-addr: malformed mapped subnet cannot trust a public spoofing client
+  ---
+  duration_ms: 2.692167
+  type: 'test'
+  ...
+# Subtest: node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+ok 3 - node_modules/shell-quote: newline operators and post-comment tokens reject without execution
+  ---
+  duration_ms: 2.276041
+  type: 'test'
+  ...
+# Subtest: node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+ok 4 - node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+  ---
+  duration_ms: 215.862458
+  type: 'test'
+  ...
+# Subtest: node_modules/@appium/support: ordinary ZIP extraction still works
+ok 5 - node_modules/@appium/support: ordinary ZIP extraction still works
+  ---
+  duration_ms: 25.085958
+  type: 'test'
+  ...
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+ok 6 - node_modules/appium-xcuitest-driver/node_modules/@appium/support: ZIP symlinks cannot escape extraction root
+  ---
+  duration_ms: 181.392
+  type: 'test'
+  ...
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/@appium/support: ordinary ZIP extraction still works
+ok 7 - node_modules/appium-xcuitest-driver/node_modules/@appium/support: ordinary ZIP extraction still works
+  ---
+  duration_ms: 24.396292
+  type: 'test'
+  ...
+# Subtest: advisory checks found the expected dependency families
+ok 8 - advisory checks found the expected dependency families
+  ---
+  duration_ms: 0.546208
+  type: 'test'
+  ...
+# Subtest: node_modules/fast-uri: percent-encoded hostname case cannot evade canonical comparison
+ok 9 - node_modules/fast-uri: percent-encoded hostname case cannot evade canonical comparison
+  ---
+  duration_ms: 3.226458
+  type: 'test'
+  ...
+# Subtest: node_modules/ip-address: address families cannot cross subnet allowlists
+ok 10 - node_modules/ip-address: address families cannot cross subnet allowlists
+  ---
+  duration_ms: 4.672875
+  type: 'test'
+  ...
+# Subtest: node_modules/ip-address: oversized invalid IPv6 input is rejected within a bounded process
+ok 11 - node_modules/ip-address: oversized invalid IPv6 input is rejected within a bounded process
+  ---
+  duration_ms: 21.337292
+  type: 'test'
+  ...
+# Subtest: node_modules/serialize-javascript: regexp metadata cannot inject evaluated code
+ok 12 - node_modules/serialize-javascript: regexp metadata cannot inject evaluated code
+  ---
+  duration_ms: 2.144375
+  type: 'test'
+  ...
+# Subtest: node_modules/serialize-javascript: date metadata cannot inject evaluated code
+ok 13 - node_modules/serialize-javascript: date metadata cannot inject evaluated code
+  ---
+  duration_ms: 0.115917
+  type: 'test'
+  ...
+# Subtest: node_modules/serialize-javascript: ordinary dates, regexps and functions retain compatibility
+ok 14 - node_modules/serialize-javascript: ordinary dates, regexps and functions retain compatibility
+  ---
+  duration_ms: 0.931917
+  type: 'test'
+  ...
+# Subtest: Mocha serial and parallel modes retain test-runner compatibility
+ok 15 - Mocha serial and parallel modes retain test-runner compatibility
+  ---
+  duration_ms: 215.643375
+  type: 'test'
+  ...
+# Subtest: node_modules/fast-uri: encoded schemes cannot become executable or bypass URL equality
+ok 16 - node_modules/fast-uri: encoded schemes cannot become executable or bypass URL equality
+  ---
+  duration_ms: 0.464417
+  type: 'test'
+  ...
+# Subtest: node_modules/serialize-javascript: terminal closing-script text cannot escape an inline script
+ok 17 - node_modules/serialize-javascript: terminal closing-script text cannot escape an inline script
+  ---
+  duration_ms: 0.199375
+  type: 'test'
+  ...
+# Subtest: node_modules/appium-xcuitest-driver/node_modules/follow-redirects: redirect targets cannot receive array-form credential headers
+ok 18 - node_modules/appium-xcuitest-driver/node_modules/follow-redirects: redirect targets cannot receive array-form credential headers
+  ---
+  duration_ms: 11.082916
+  type: 'test'
+  ...
+# Subtest: node_modules/follow-redirects: redirect targets cannot receive array-form credential headers
+ok 19 - node_modules/follow-redirects: redirect targets cannot receive array-form credential headers
+  ---
+  duration_ms: 2.426458
+  type: 'test'
+  ...
+# Subtest: node_modules/cheerio/node_modules/undici: excessive content encodings cannot crash the caller process
+ok 20 - node_modules/cheerio/node_modules/undici: excessive content encodings cannot crash the caller process
+  ---
+  duration_ms: 231.707958
+  type: 'test'
+  ...
+# Subtest: node_modules/undici: excessive content encodings cannot crash the caller process
+ok 21 - node_modules/undici: excessive content encodings cannot crash the caller process
+  ---
+  duration_ms: 235.267
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1237.456916

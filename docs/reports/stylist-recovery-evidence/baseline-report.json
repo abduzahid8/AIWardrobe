@@ -1,0 +1,34 @@
+{
+  "branch": "stylist-four-slot-recovery",
+  "commit": "7c219a3d310e22b36bee0095082db98999f2fc7f",
+  "checkout": "/Users/v.zahid/AIWardrobe",
+  "metro": {
+    "port": 8082,
+    "pid": 85850,
+    "expo_go_connected": true
+  },
+  "edge": {
+    "slug": "generate-outfits",
+    "version": 149,
+    "status": "ACTIVE",
+    "project_ref": "fyqpifmrsftsfqibhwhy"
+  },
+  "backups": [
+    "backup-stylist-head-206d49f",
+    "backup-stylist-2467dba"
+  ],
+  "real_app": {
+    "generation_succeeds": false,
+    "cards_displayed": 0,
+    "items_per_card": [],
+    "outerwear_in_every_card": null,
+    "obvious_bad_outfit": null,
+    "http_status": 422,
+    "code": "no_matching_clothing",
+    "missingSlots": [
+      "shoes"
+    ]
+  },
+  "baseline_restored": true,
+  "source_changes": false
+}

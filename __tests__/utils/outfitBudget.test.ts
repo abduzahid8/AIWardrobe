@@ -80,9 +80,9 @@ function shopPiece(slot: 'outerwear' | 'top' | 'bottom' | 'shoes', name: string,
     return {
         id: `shop_${slot}_${idCounter}`,
         userId: 'u1',
-        imageUrl: 'https://example.com/x.jpg',
+        imageUrl: `https://example.com/budget-${idCounter}.jpg`,
         category: slot as any,
-        subCategory: slot === 'top' ? 'polo' : slot === 'bottom' ? 'trousers' : 'loafers',
+        subCategory: slot === 'top' ? 'polo' : slot === 'bottom' ? 'trousers' : slot === 'outerwear' ? 'jacket' : 'loafers',
         primaryColor: 'navy',
         colorHex: '#1e3a8a',
         pattern: 'solid',
@@ -154,4 +154,13 @@ it('the local last-chance fallback cannot bypass unknown-currency budget rejecti
 
 it.each([NaN, Infinity, -Infinity])('does not format an unknown spend %s as zero', amount => {
     expect(formatMoney(amount, 'USD')).toBe('—');
+});
+
+describe('placeholder budget is never a user-entered limit', () => {
+    // The prompt fields show an example amount (1 500 000 UZS) as placeholder
+    // copy. An untouched field submits empty text, which must never parse to
+    // a spending cap.
+    test.each(['', '   ', '\n\t '])('blank input %p yields no budget', (input) => {
+        expect(parseBudgetFromText(input)).toBeNull();
+    });
 });

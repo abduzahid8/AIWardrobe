@@ -1,0 +1,1019 @@
+{
+  "capturedAt": "2026-10-29T16:49:10.604Z",
+  "request": {
+    "source": "shop",
+    "style": "old_money",
+    "occasion": "date",
+    "weather": null,
+    "budget": null,
+    "anchor": null
+  },
+  "catalogRows": 59,
+  "physicalShoes": 50,
+  "admittedPhysicalShoes": 7,
+  "rows": [
+    {
+      "id": "shop_allsaints-usm060ef-5",
+      "name": "Regular-Fit Bootcut Jeans",
+      "brand": "AllSaints",
+      "physicalKeys": [
+        "id:shop_allsaints-usm060ef-5",
+        "n:regular fit bootcut jeans",
+        "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm060ef-5.json"
+      ],
+      "imageUrl": "https://media.i.allsaints.com/image/list/fn_select:jq:first%28.%5B%5D%7Cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5B%5D%3B%20.external_id%20%3D%3D%20%22sfcc-gallery-position%22%20and%20.value%20%3D%3D%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/USM060EF-5.json?_i=AG",
+      "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model",
+      "preliminaryReason": "Slot metadata/name resolves to bottom",
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": false,
+      "rejectionReason": "Slot metadata/name resolves to bottom"
+    },
+    {
+      "id": "shop_allsaints-usm060tf-5",
+      "name": "Vini Slim Bootcut Leather Pants",
+      "brand": "AllSaints",
+      "physicalKeys": [
+        "id:shop_allsaints-usm060tf-5",
+        "n:vini slim bootcut leather pants",
+        "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm060tf-5.json"
+      ],
+      "imageUrl": "https://media.i.allsaints.com/image/list/fn_select:jq:first%28.%5B%5D%7Cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5B%5D%3B%20.external_id%20%3D%3D%20%22sfcc-gallery-position%22%20and%20.value%20%3D%3D%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/USM060TF-5.json?_i=AG",
+      "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model",
+      "preliminaryReason": "Slot metadata/name resolves to bottom",
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": false,
+      "rejectionReason": "Slot metadata/name resolves to bottom"
+    },
+    {
+      "id": "shop_allsaints-usm084ef-437",
+      "name": "Regular-Fit Bootcut Jeans",
+      "brand": "AllSaints",
+      "physicalKeys": [
+        "id:shop_allsaints-usm084ef-437",
+        "n:regular fit bootcut jeans",
+        "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm084ef-437.json"
+      ],
+      "imageUrl": "https://media.i.allsaints.com/image/list/fn_select:jq:first%28.%5B%5D%7Cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5B%5D%3B%20.external_id%20%3D%3D%20%22sfcc-gallery-position%22%20and%20.value%20%3D%3D%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/USM084EF-437.json?_i=AG",
+      "description": "AllSaints men’s clothing · official product gallery image on a plain light background, no model",
+      "preliminaryReason": "Slot metadata/name resolves to bottom",
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": false,
+      "rejectionReason": "Slot metadata/name resolves to bottom"
+    },
+    {
+      "id": "shop_md-uz-62899795",
+      "name": "Leather espadrilles",
+      "brand": "Massimo Dutti",
+      "physicalKeys": [
+        "id:shop_md-uz-62899795",
+        "n:leather espadrilles",
+        "i:static.massimodutti.net/assets/public/2c5f/5ce7/0fb9449baa2c/d0fcb81d07e9/12921750407-o1/12921750407-o1.jpg"
+      ],
+      "imageUrl": "https://static.massimodutti.net/assets/public/2c5f/5ce7/0fb9449baa2c/d0fcb81d07e9/12921750407-o1/12921750407-o1.jpg",
+      "description": "Massimo Dutti Uzbekistan · tops · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_md-uz-62899796",
+      "name": "Split suede leather espadrille with piece",
+      "brand": "Massimo Dutti",
+      "physicalKeys": [
+        "id:shop_md-uz-62899796",
+        "n:split suede leather espadrille with piece",
+        "i:static.massimodutti.net/assets/public/bc50/a05b/70544b0fb32b/4c36021cdc1a/12906750107-o1/12906750107-o1.jpg"
+      ],
+      "imageUrl": "https://static.massimodutti.net/assets/public/bc50/a05b/70544b0fb32b/4c36021cdc1a/12906750107-o1/12906750107-o1.jpg",
+      "description": "Massimo Dutti Uzbekistan · tops · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_thursday-15407719448666",
+      "name": "Era | Cloud",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-15407719448666",
+        "n:era cloud",
+        "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-era-cloud-081826-3.4.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-Men-Era-Cloud-081826-3.4.jpg?v=1791390650",
+      "description": "era leather sneaker cloud color White material Leather. Product Features White Nappa Leather With Off-White Details Luxe Suede Accents Buttery Soft Leather Interior Lining Shock-Absorbent Performance Footbeds Padded Tongue & Collar for Added Support Dual Density Rubber Outsoles for Comfort & Traction Handcrafted With Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_thursday-15456871514202",
+      "name": "Duke | Black Coffee",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-15456871514202",
+        "n:duke black coffee",
+        "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-duke-blackcoffee-101426-3.4.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-Men-Duke-BlackCoffee-101426-3.4.jpg?v=1793043387",
+      "description": "duke chelsea boot black coffee color Black material Leather pf-style Chelsea sole Rubber style Chelsea style Plain Toe. Product Features Black Coffee Hand-Finished Full-Grain Leather Goodyear Welt Construction for Longevity Fully Lined Supple Glove Leather Interior Poron® Antimicrobial Shock Absorbing Insoles Cork-Bed Midsoles that Form to Your Feet Flexible Elastic Goring Durable Studded Rubber Outsoles Handcrafted with Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": true,
+      "rejectionReason": null
+    },
+    {
+      "id": "shop_thursday-253390159881",
+      "name": "Executive | Black",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-253390159881",
+        "n:executive black",
+        "i:cdn.shopify.com/s/files/1/0419/1525/products/1024x1024-men-executive-black-061821-3.4.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/products/1024x1024-Men-Executive-Black-061821-3.4.jpg?v=1624034468",
+      "description": "dress shoe executive black leather color Black material Leather oxford search_term pf-style Lace-Up sole Hybrid style Cap Toe style Lace-Up. Product Features Black Full-Grain Leather Goodyear Welt Construction for Longevity Fully Lined Supple Glove Leather Interior Poron® Antimicrobial Shock Absorbing Insoles Premium Flat Waxed Cotton Laces Cork-Bed Midsoles that Form to Your Feet Premium Leather Outsoles Handcrafted with Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": true,
+      "rejectionReason": null
+    },
+    {
+      "id": "shop_thursday-6794356228186",
+      "name": "Renegade | Black",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-6794356228186",
+        "n:renegade black",
+        "i:cdn.shopify.com/s/files/1/0419/1525/products/1024x1024-men-renegade-black-081922-3.4.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/products/1024x1024-Men-Renegade-Black-081922-3.4.jpg?v=1663604774",
+      "description": "renegade derby shoe black leather color Black derby search_term material Leather pf-style Blucher sole Rubber style Lace-Up style Plain Toe. Product Features Black Soft Semi-Patent Leather Storm Welt Construction for Longevity StormKing® Durable Anti-Slip Rubber Outsoles Fully Lined Supple Glove Leather Interior Poron® Antimicrobial Shock Absorbing Insoles Long-Lasting Kevlar® Blend Laces Cork-Bed Midsoles that Form to Your Feet Handcrafted with Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": "rugged lug footwear conflicts with refined evening clothing",
+      "styleReason": "rugged lug footwear conflicts with refined evening clothing",
+      "admitted": false,
+      "rejectionReason": "rugged lug footwear conflicts with refined evening clothing"
+    },
+    {
+      "id": "shop_thursday-6859648467034",
+      "name": "Chairman | Black",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-6859648467034",
+        "n:chairman black",
+        "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-chairman-black-051323-3.4.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-Men-Chairman-Black-051323-3.4.jpg?v=1685967834",
+      "description": "dress shoe chairman black leather color Black material Leather oxford search_term pf-style Lace-Up. Product Features Black Full-Grain Leather Blake Stitch Construction for Longevity Fully Lined Supple Glove Leather Interior Comfortable Shock Absorbing Insoles Premium Flat Waxed Cotton Laces Premium Leather Outsoles Handcrafted with Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": true,
+      "rejectionReason": null
+    },
+    {
+      "id": "shop_thursday-6865670045786",
+      "name": "Lincoln | Black",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-6865670045786",
+        "n:lincoln black",
+        "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-lincoln-black-012124-3.4_606b5f85-613a-4eca-84b5-2230382e1055.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-Men-Lincoln-Black-012124-3.4_606b5f85-613a-4eca-84b5-2230382e1055.jpg?v=1743791200",
+      "description": "lincoln penny loafer black leather color Black material Leather pf-style Loafer style Loafer. Product Features Black Full-Grain Leather Hand-Stitched Moccasin Toe Blake Stitch Construction for Longevity Fully Lined Supple Glove Leather Interior Comfortable Shock Absorbing Insoles Premium Leather Outsoles Handcrafted With Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": true,
+      "rejectionReason": null
+    },
+    {
+      "id": "shop_thursday-7719429898330",
+      "name": "Journeyman | Black",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-7719429898330",
+        "n:journeyman black",
+        "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-journeyman-black-122225-3.4.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-Men-Journeyman-Black-122225-3.4.jpg?v=1767645756",
+      "description": "journeyman wholecut chelsea boot black color Black material Leather pf-style Lace-Up sole Rubber style Chelsea. Product Features Black Hand-Finished Full-Grain Leather Wholecut Upper Made From a Single Piece of Leather 270° Goodyear Welt Construction Vachetta Leather Insoles Form to Your Feet with Wear Leather Shank, Heel Counter, and Toe Box Reinforcement Knight™ Anti-Slip Durable Rubber Outsoles Dual Leather Pull Tabs Fully Lined Supple Glove Leather Interior Flexible Elastic Goring Handcrafted With Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": true,
+      "rejectionReason": null
+    },
+    {
+      "id": "shop_thursday-7824210231386",
+      "name": "Era | Navy",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-7824210231386",
+        "n:era navy",
+        "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-era-whitenavy-030426-3.4.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-Men-Era-WhiteNavy-030426-3.4.jpg?v=1776096061",
+      "description": "era leather sneaker navy color White material Leather. Product Features White Nappa Leather With Navy Details Luxe Suede Accents Buttery Soft Leather Interior Lining Shock-Absorbent Performance Footbeds Padded Tongue & Collar for Added Support Dual Density Rubber Outsoles for Comfort & Traction Handcrafted With Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_thursday-7887606677594",
+      "name": "Statesman | Brandy",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-7887606677594",
+        "n:statesman brandy",
+        "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-statesman-brandy-060226-3.4_e7725f2f-0121-4de1-92de-29b526a64c39.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-Men-Statesman-Brandy-060226-3.4_e7725f2f-0121-4de1-92de-29b526a64c39.jpg?v=1786386812",
+      "description": "statesman derby shoe brandy leather color Brown material Leather sole Rubber style Lace-Up style Plain Toe. Product Features Brandy Hand-Finished Full-Grain Leather Storm Welt Construction for Longevity StormKing® Durable Rubber Lug Outsoles Fully Lined Supple Glove Leather Interior Poron® Antimicrobial Shock Absorbing Insoles Long-Lasting Kevlar® Blend Laces Cork-Bed Midsoles that Form to Your Feet Handcrafted with Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": "rugged lug footwear conflicts with refined evening clothing",
+      "styleReason": "rugged lug footwear conflicts with refined evening clothing",
+      "admitted": false,
+      "rejectionReason": "rugged lug footwear conflicts with refined evening clothing"
+    },
+    {
+      "id": "shop_thursday-8086847258714",
+      "name": "Saint | Cognac",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-8086847258714",
+        "n:saint cognac",
+        "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-saint-cognac-070226-3.4.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-Men-Saint-Cognac-070226-3.4.jpg?v=1787679725",
+      "description": "saint double monk dress shoe cognac color Brown material Leather pf-style Double Monk sole Hybrid style Double Monk. Product Features Hand-Finished Full-Grain Leather Blake Stitch Construction for Longevity Fully Lined Supple Glove Leather Interior Double Buckle Monk Strap Comfortable Shock Absorbing Insoles Premium Leather Outsoles Handcrafted with Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": true,
+      "rejectionReason": null
+    },
+    {
+      "id": "shop_thursday-8128950501466",
+      "name": "Lincoln | Dark Brown",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-8128950501466",
+        "n:lincoln dark brown",
+        "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-lincoln-darkbrown-061726-3.4.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-Men-Lincoln-DarkBrown-061726-3.4.jpg?v=1788365978",
+      "description": "lincoln penny loafer dark brown color Brown material Leather pf-style Loafer style Loafer. Product Features Dark Brown Full-Grain Leather Hand-Stitched Moccasin Toe Blake Stitch Construction for Longevity Fully Lined Supple Glove Leather Interior Comfortable Shock Absorbing Insoles Premium Leather Outsoles Handcrafted With Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": true,
+      "rejectionReason": null
+    },
+    {
+      "id": "shop_thursday-8140117377114",
+      "name": "President StormKing® | Bull Brown",
+      "brand": "Thursday Boot Co.",
+      "physicalKeys": [
+        "id:shop_thursday-8140117377114",
+        "n:president stormking bull brown",
+        "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-president-stormking-bullbrown-071026-3.4.jpg"
+      ],
+      "imageUrl": "https://cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-Men-President-StormKing-BullBrown-071026-3.4.jpg?v=1788972834",
+      "description": "president lace up boot bull brown stormking color Brown material Rugged pf-style Lace-Up sole Rubber style Lace-Up style Plain Toe. Product Features Bull Brown Rugged & Resilient Leather Goodyear Welt Construction for Longevity StormKing® Durable Rubber Lug Outsoles Fully Lined Supple Glove Leather Interior Hardwearing Steel Shanks Poron® Antimicrobial Shock Absorbing Insoles Long-Lasting Kevlar® Blend Laces Custom Developed Reinforced Eyelets Cork-Bed Midsoles that Form to Your Feet Handcrafted With Integrity",
+      "preliminaryReason": null,
+      "refinedDateReason": "rugged lug footwear conflicts with refined evening clothing",
+      "styleReason": "rugged lug footwear conflicts with refined evening clothing",
+      "admitted": false,
+      "rejectionReason": "rugged lug footwear conflicts with refined evening clothing"
+    },
+    {
+      "id": "shop_zara-uz-545422164",
+      "name": "RETRO STYLE TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545422164",
+        "n:retro style trainers",
+        "i:static.zara.net/assets/public/54b3/9933/420f4795afb8/a4b6d29dc008/12214820800-f1/12214820800-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/54b3/9933/420f4795afb8/a4b6d29dc008/12214820800-f1/12214820800-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · White · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545422170",
+      "name": "TRAINERS WITH HEEL DETAIL",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545422170",
+        "n:trainers with heel detail",
+        "i:static.zara.net/assets/public/1497/67b3/abeb4fffbdb3/04407298a179/12249820001-f1/12249820001-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/1497/67b3/abeb4fffbdb3/04407298a179/12249820001-f1/12249820001-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · White · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545422196",
+      "name": "LEATHER TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545422196",
+        "n:leather trainers",
+        "i:static.zara.net/assets/public/1982/3866/705d485eadaf/305e76fa2dad/12209820131-f1/12209820131-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/1982/3866/705d485eadaf/305e76fa2dad/12209820131-f1/12209820131-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Grey · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545422214",
+      "name": "MONOCHROME CHUNKY TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545422214",
+        "n:monochrome chunky trainers",
+        "i:static.zara.net/assets/public/624c/ac6d/c7b241a9976e/19d53f9ddd70/12201820800-f1/12201820800-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/624c/ac6d/c7b241a9976e/19d53f9ddd70/12201820800-f1/12201820800-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · White · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545423068",
+      "name": "CASUAL TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545423068",
+        "n:casual trainers",
+        "i:static.zara.net/assets/public/5d66/031d/51204f7997bb/cae889bdf712/12346820500-f1/12346820500-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/5d66/031d/51204f7997bb/cae889bdf712/12346820500-f1/12346820500-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Blue · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545426131",
+      "name": "RETRO LEATHER TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545426131",
+        "n:retro leather trainers",
+        "i:static.zara.net/assets/public/0d8f/b93b/b44a41fb915a/9f8f8353c13f/12301820600-f1/12301820600-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/0d8f/b93b/b44a41fb915a/9f8f8353c13f/12301820600-f1/12301820600-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Blue · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545436416",
+      "name": "BAREFOOT LEATHER TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545436416",
+        "n:barefoot leather trainers",
+        "i:static.zara.net/assets/public/ca17/5be5/513740d28ba9/f07a6d6f9078/12250820700-f1/12250820700-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/ca17/5be5/513740d28ba9/f07a6d6f9078/12250820700-f1/12250820700-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Grey · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545437444",
+      "name": "PADDED TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545437444",
+        "n:padded trainers",
+        "i:static.zara.net/assets/public/adc9/e3a7/edb34b5bbd92/c26d8b150b59/12208820800-f1/12208820800-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/adc9/e3a7/edb34b5bbd92/c26d8b150b59/12208820800-f1/12208820800-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Black · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545456761",
+      "name": "CASUAL LEATHER TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545456761",
+        "n:casual leather trainers",
+        "i:static.zara.net/assets/public/061d/b4a9/89064d4b8819/30cc963f5773/12349720107-f1/12349720107-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/061d/b4a9/89064d4b8819/30cc963f5773/12349720107-f1/12349720107-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Sand Brown · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545461640",
+      "name": "LEATHER COMBINATION ESPADRILLES",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545461640",
+        "n:leather combination espadrilles",
+        "i:static.zara.net/assets/public/ad15/3447/5b5f4e9d81e6/95b14ed7b5ac/12710820721-f1/12710820721-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/ad15/3447/5b5f4e9d81e6/95b14ed7b5ac/12710820721-f1/12710820721-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Multicoloured · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545465740",
+      "name": "CHUNKY TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545465740",
+        "n:chunky trainers",
+        "i:static.zara.net/assets/public/ccb8/f04e/71a740c681f1/5e324d361a62/12317820500-f1/12317820500-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/ccb8/f04e/71a740c681f1/5e324d361a62/12317820500-f1/12317820500-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Green · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545465742",
+      "name": "CHUNKY SOLE TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545465742",
+        "n:chunky sole trainers",
+        "i:static.zara.net/assets/public/44c4/d8c5/df544a9a8ade/628c0028ad69/12393820800-f1/12393820800-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/44c4/d8c5/df544a9a8ade/628c0028ad69/12393820800-f1/12393820800-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Black · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545479433",
+      "name": "BAREFOOT TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545479433",
+        "n:barefoot trainers",
+        "i:static.zara.net/assets/public/a2cd/deb7/2944402b8ac4/3d8fd53774c8/12394720700-f1/12394720700-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/a2cd/deb7/2944402b8ac4/3d8fd53774c8/12394720700-f1/12394720700-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Sand Brown · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545479492",
+      "name": "MINIMALIST TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545479492",
+        "n:minimalist trainers",
+        "i:static.zara.net/assets/public/10bc/7cd6/7f5441578a95/e4c5a312a2ae/12293820001-f1/12293820001-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/10bc/7cd6/7f5441578a95/e4c5a312a2ae/12293820001-f1/12293820001-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · 1-839 · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545479606",
+      "name": "SKATE TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545479606",
+        "n:skate trainers",
+        "i:static.zara.net/assets/public/55e5/7243/231948ce8f5a/b7e43a2e4168/12245821800-f1/12245821800-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/55e5/7243/231948ce8f5a/b7e43a2e4168/12245821800-f1/12245821800-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Multicoloured · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-545490695",
+      "name": "LOW-RISE BOOT-CUT JEANS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-545490695",
+        "n:low rise boot cut jeans",
+        "i:static.zara.net/assets/public/ed05/b95b/c8cb4fac87c6/fda746e258d7/00840282802-f1/00840282802-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/ed05/b95b/c8cb4fac87c6/fda746e258d7/00840282802-f1/00840282802-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · bottoms · Blue / Green · white-bg product shot",
+      "preliminaryReason": "Slot metadata/name resolves to bottom",
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": false,
+      "rejectionReason": "Slot metadata/name resolves to bottom"
+    },
+    {
+      "id": "shop_zara-uz-549311970",
+      "name": "LEATHER COMBINATION TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-549311970",
+        "n:leather combination trainers",
+        "i:static.zara.net/assets/public/3a21/425f/1a744e2aabf4/bc5a943d229e/12224820700-f1/12224820700-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/3a21/425f/1a744e2aabf4/bc5a943d229e/12224820700-f1/12224820700-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Brown · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-549311972",
+      "name": "CASUAL LEATHER DETAIL TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-549311972",
+        "n:casual leather detail trainers",
+        "i:static.zara.net/assets/public/e319/3af1/0a3648eaa883/5f959a1e3652/12338820800-f1/12338820800-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/e319/3af1/0a3648eaa883/5f959a1e3652/12338820800-f1/12338820800-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Black · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-550775793",
+      "name": "RETRO LEATHER DETAIL TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-550775793",
+        "n:retro leather detail trainers",
+        "i:static.zara.net/assets/public/c503/128b/c0dc4c6c90e1/cd433492b78e/12226821500-f1/12226821500-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/c503/128b/c0dc4c6c90e1/cd433492b78e/12226821500-f1/12226821500-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Green · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-554807825",
+      "name": "KNITTED ESPADRILLES",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-554807825",
+        "n:knitted espadrilles",
+        "i:static.zara.net/assets/public/eda7/c1fa/9b6b49b6869c/d4872bc488e4/12740720719-f1/12740720719-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/eda7/c1fa/9b6b49b6869c/d4872bc488e4/12740720719-f1/12740720719-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Ecru · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-554808166",
+      "name": "HEEL DETAIL TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-554808166",
+        "n:heel detail trainers",
+        "i:static.zara.net/assets/public/e44c/faef/7bf84b7bb223/57d1e2f2fa82/12248620032-f1/12248620032-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/e44c/faef/7bf84b7bb223/57d1e2f2fa82/12248620032-f1/12248620032-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Khaki Green · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-554808503",
+      "name": "RUNNING TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-554808503",
+        "n:running trainers",
+        "i:static.zara.net/assets/public/46a8/743f/09be4edabd26/be7ecac6a5b8/12352720202-f1/12352720202-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/46a8/743f/09be4edabd26/be7ecac6a5b8/12352720202-f1/12352720202-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Multicoloured · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-555113523",
+      "name": "COMBINED RETRO TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-555113523",
+        "n:combined retro trainers",
+        "i:static.zara.net/assets/public/4f65/d8f1/c0cf4fc0997d/6155b5fe8593/12294820001-f1/12294820001-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/4f65/d8f1/c0cf4fc0997d/6155b5fe8593/12294820001-f1/12294820001-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · White · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-557456590",
+      "name": "FABRIC ESPADRILLES",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-557456590",
+        "n:fabric espadrilles",
+        "i:static.zara.net/assets/public/0ce1/71aa/f456408982b2/eab09951ac06/12711720400-f1/12711720400-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/0ce1/71aa/f456408982b2/eab09951ac06/12711720400-f1/12711720400-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Blue · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-557850347",
+      "name": "CAPRA TRAIL ZERO RUNNING TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-557850347",
+        "n:capra trail zero running trainers",
+        "i:static.zara.net/assets/public/e197/4712/d461426ba674/410ad874eeec/12380820800-f1/12380820800-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/e197/4712/d461426ba674/410ad874eeec/12380820800-f1/12380820800-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Black · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-557850352",
+      "name": "GECKO TRAIN CROSS TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-557850352",
+        "n:gecko train cross trainers",
+        "i:static.zara.net/assets/public/8b5f/3d28/2eaa4a3fa3f5/49ce8ba3fc75/12320820800-f1/12320820800-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/8b5f/3d28/2eaa4a3fa3f5/49ce8ba3fc75/12320820800-f1/12320820800-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Black · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-558185354",
+      "name": "RETRO TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-558185354",
+        "n:retro trainers",
+        "i:static.zara.net/assets/public/84c1/29ec/b81f46c5859b/9beda685778b/12290820107-f1/12290820107-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/84c1/29ec/b81f46c5859b/9beda685778b/12290820107-f1/12290820107-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Sand Brown · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-560271677",
+      "name": "BOOT-CUT FIT JEANS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-560271677",
+        "n:boot cut fit jeans",
+        "i:static.zara.net/assets/public/8207/efe3/e45d4d03a00e/fbf324268186/05585369406-f1/05585369406-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/8207/efe3/e45d4d03a00e/fbf324268186/05585369406-f1/05585369406-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · bottoms · Light blue · white-bg product shot",
+      "preliminaryReason": "Slot metadata/name resolves to bottom",
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": false,
+      "rejectionReason": "Slot metadata/name resolves to bottom"
+    },
+    {
+      "id": "shop_zara-uz-561289604",
+      "name": "VINTAGE-EFFECT LOW-RISE BOOT-CUT JEANS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-561289604",
+        "n:vintage effect low rise boot cut jeans",
+        "i:static.zara.net/assets/public/d418/e324/a5f94186b9ab/949e922e967f/00840284811-f1/00840284811-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/d418/e324/a5f94186b9ab/949e922e967f/00840284811-f1/00840284811-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · bottoms · Light grey · white-bg product shot",
+      "preliminaryReason": "Slot metadata/name resolves to bottom",
+      "refinedDateReason": null,
+      "styleReason": null,
+      "admitted": false,
+      "rejectionReason": "Slot metadata/name resolves to bottom"
+    },
+    {
+      "id": "shop_zara-uz-563369275",
+      "name": "LACELESS TRAIL RUNNING TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-563369275",
+        "n:laceless trail running trainers",
+        "i:static.zara.net/assets/public/e98c/a12e/de2c4e50acd1/4501e4606718/12351820802-f1/12351820802-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/e98c/a12e/de2c4e50acd1/4501e4606718/12351820802-f1/12351820802-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Grey · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-569277598",
+      "name": "BASKET TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-569277598",
+        "n:basket trainers",
+        "i:static.zara.net/assets/public/d15a/8f3d/d073472cb050/4ef24f766902/12246820202-000-f1/12246820202-000-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/d15a/8f3d/d073472cb050/4ef24f766902/12246820202-000-f1/12246820202-000-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Multicoloured · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-576910913",
+      "name": "LEATHER ESPADRILLES",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-576910913",
+        "n:leather espadrilles",
+        "i:static.zara.net/assets/public/0f9f/08a8/75714d5384d3/d75852b8f30c/12760720107-f1/12760720107-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/0f9f/08a8/75714d5384d3/d75852b8f30c/12760720107-f1/12760720107-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Sand Brown · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-576910916",
+      "name": "BASKETBALL TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-576910916",
+        "n:basketball trainers",
+        "i:static.zara.net/assets/public/2b8a/fae0/f6bc4bab8244/360ffd451ffd/12248821202-f1/12248821202-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/2b8a/fae0/f6bc4bab8244/360ffd451ffd/12248821202-f1/12248821202-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Multicoloured · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-576983279",
+      "name": "COMBINED LEATHER TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-576983279",
+        "n:combined leather trainers",
+        "i:static.zara.net/assets/public/de23/b91a/282f4bd4b92d/56f71fece8f2/12247820700-f1/12247820700-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/de23/b91a/282f4bd4b92d/56f71fece8f2/12247820700-f1/12247820700-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Green · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-577613045",
+      "name": "TRAINING TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-577613045",
+        "n:training trainers",
+        "i:static.zara.net/assets/public/0411/f0a2/1a5d43a08b41/5b9f3de085b7/12381720802-f1/12381720802-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/0411/f0a2/1a5d43a08b41/5b9f3de085b7/12381720802-f1/12381720802-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Grey · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-577613080",
+      "name": "FABRIC TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-577613080",
+        "n:fabric trainers",
+        "i:static.zara.net/assets/public/afd3/5b0c/f5f34540b3bd/0c493631ff10/12205820400-f1/12205820400-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/afd3/5b0c/f5f34540b3bd/0c493631ff10/12205820400-f1/12205820400-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Multicoloured · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-580723151",
+      "name": "LEATHER COMBINATION TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-580723151",
+        "n:leather combination trainers",
+        "i:static.zara.net/assets/public/62df/8a6f/16f843dcbc2f/3e7981542cb6/12230820400-f1/12230820400-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/62df/8a6f/16f843dcbc2f/3e7981542cb6/12230820400-f1/12230820400-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Blue · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-582244377",
+      "name": "AARON LEVINE X ZARA LEATHER TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-582244377",
+        "n:aaron levine x zara leather trainers",
+        "i:static.zara.net/assets/public/0258/314a/bf39406ab33f/12e3dad3ef6a/12372820700-f1/12372820700-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/0258/314a/bf39406ab33f/12e3dad3ef6a/12372820700-f1/12372820700-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Brown · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-587323771",
+      "name": "CONTRAST BAREFOOT TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-587323771",
+        "n:contrast barefoot trainers",
+        "i:static.zara.net/assets/public/d94c/09e7/504942f79b98/ce51a72ac4f9/12313820500-f1/12313820500-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/d94c/09e7/504942f79b98/ce51a72ac4f9/12313820500-f1/12313820500-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Green · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-589405020",
+      "name": "TRAIL RUNNING TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-589405020",
+        "n:trail running trainers",
+        "i:static.zara.net/assets/public/4057/a957/f84d42a797ae/9be898d26f5b/12395720800-f1/12395720800-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/4057/a957/f84d42a797ae/9be898d26f5b/12395720800-f1/12395720800-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Black · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-589405021",
+      "name": "LACELESS RUNNING TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-589405021",
+        "n:laceless running trainers",
+        "i:static.zara.net/assets/public/ef8f/9a3d/996e4ded9329/3aad8c5af811/12355820102-f1/12355820102-f1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/ef8f/9a3d/996e4ded9329/3aad8c5af811/12355820102-f1/12355820102-f1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Beige · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    },
+    {
+      "id": "shop_zara-uz-590145002",
+      "name": "RETRO LEATHER TRAINERS",
+      "brand": "Zara",
+      "physicalKeys": [
+        "id:shop_zara-uz-590145002",
+        "n:retro leather trainers",
+        "i:static.zara.net/assets/public/ce0d/a927/2d1c45d79603/031855d2b5b8/12307821107-200-e1/12307821107-200-e1.jpg&w=1024"
+      ],
+      "imageUrl": "https://static.zara.net/assets/public/ce0d/a927/2d1c45d79603/031855d2b5b8/12307821107-200-e1/12307821107-200-e1.jpg&w=1024",
+      "description": "Zara Uzbekistan · tops · Sand Brown · white-bg product shot",
+      "preliminaryReason": null,
+      "refinedDateReason": null,
+      "styleReason": "beach/athletic shoes are not evening wear",
+      "admitted": false,
+      "rejectionReason": "beach/athletic shoes are not evening wear"
+    }
+  ]
+}

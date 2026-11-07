@@ -1,14 +1,15 @@
 import React from 'react';
 import {act,render} from '@testing-library/react-native';
 import {OutfitSwipeStack,type OutfitSwipeStackHandle,type SwipeStackCard} from '../../components/ui/OutfitSwipeStack';
-import {withTiming} from 'react-native-reanimated';
+import {withSpring,withTiming} from 'react-native-reanimated';
 jest.mock('react-native-reanimated',()=>{const React=require('react'),View=require('react-native').View;return{__esModule:true,default:{View},useSharedValue:(value:unknown)=>React.useRef({value}).current,useAnimatedStyle:(fn:()=>unknown)=>fn(),withSpring:jest.fn((value:unknown)=>value),withTiming:jest.fn((value:unknown,_config:unknown,finish?:(done:boolean)=>void)=>{finish?.(true);return value}),runOnJS:(fn:unknown)=>fn,interpolate:()=>0,Extrapolation:{CLAMP:'clamp'}}});
 jest.mock('react-native-gesture-handler',()=>({Gesture:{Pan:()=>{const gesture:any={};for(const key of ['enabled','activeOffsetX','failOffsetY','onUpdate','onEnd'])gesture[key]=()=>gesture;return gesture}},GestureDetector:({children}:any)=>children}));
 jest.mock('expo-haptics',()=>({impactAsync:jest.fn().mockResolvedValue(undefined),ImpactFeedbackStyle:{Medium:'medium',Light:'light'}}));
 jest.mock('@expo/vector-icons',()=>({Ionicons:()=>null}));
 jest.mock('react-i18next',()=>({useTranslation:()=>({t:(key:string)=>key})}));
 jest.mock('../../components/ui/ScaledText',()=>({ScaledText:require('react-native').Text}));
-jest.mock('../../components/ui/OutfitCollagePreview',()=>({OutfitCollagePreview:()=>null}));
+const mockCollageMount = jest.fn();
+jest.mock('../../components/ui/OutfitCollagePreview',()=>({OutfitCollagePreview:()=>{const React=require('react');React.useEffect(()=>{mockCollageMount();},[]);return null;}}));
 jest.mock('../../src/components/MediaImage',()=>({ExpoImage:{prefetch:jest.fn().mockResolvedValue(undefined)}}));
 const cards:SwipeStackCard[]=[{key:'a',caption:'Alpha',items:[]},{key:'b',caption:'Beta',items:[]}];
 function deferred(){let resolve!:(value:boolean)=>void;return{promise:new Promise<boolean>(done=>resolve=done),resolve:(value:boolean)=>resolve(value)}}
@@ -36,4 +37,27 @@ test('an approval for an obsolete card cannot act on its replacement',async()=>{
 test('an approval after unmount cannot animate or save',async()=>{
  const pending=deferred(),saved=jest.fn(),handle=React.createRef<OutfitSwipeStackHandle>();const gate=jest.fn((..._args:any[])=>pending.promise);const view=render(<OutfitSwipeStack ref={handle} cards={cards} activeIndex={0} beforeSwipe={gate} onSwipeLeft={saved} onSwipeRight={saved}/>);
  act(()=>{handle.current!.swipeRight()});view.unmount();expect(gate.mock.calls[0][2].aborted).toBe(true);await act(async()=>{pending.resolve(true);await Promise.resolve()});expect(saved).not.toHaveBeenCalled();expect(withTiming).not.toHaveBeenCalled();
+});
+
+
+test('keeps the next card image view mounted when it becomes the active card', async () => {
+ const gate=jest.fn().mockResolvedValue(true), saved=jest.fn(), handle=React.createRef<OutfitSwipeStackHandle>();
+ const view=render(<Harness gate={gate} saved={saved} handle={handle}/>);
+ expect(mockCollageMount).toHaveBeenCalledTimes(2);
+ await act(async()=>{handle.current!.swipeRight();await Promise.resolve()});
+ expect(view.getByTestId('swipe-card-b')).toBeTruthy();
+ expect(mockCollageMount).toHaveBeenCalledTimes(2);
+});
+
+
+test('acknowledges swipe direction while keeping the current card until approval', async () => {
+ const pending=deferred(), saved=jest.fn(), handle=React.createRef<OutfitSwipeStackHandle>();
+ const view=render(<Harness gate={()=>pending.promise} saved={saved} handle={handle}/>);
+ act(()=>handle.current!.swipeRight());
+ expect((withSpring as jest.Mock).mock.calls.some(call => typeof call[0] === 'number' && call[0] > 0)).toBe(true);
+ expect(view.getByTestId('swipe-card-a')).toBeTruthy();
+ expect(saved).not.toHaveBeenCalled();
+ await act(async()=>{pending.resolve(false);await Promise.resolve()});
+ expect(view.getByTestId('swipe-card-a')).toBeTruthy();
+ expect((withSpring as jest.Mock).mock.calls.some(call => call[0] === 0)).toBe(true);
 });

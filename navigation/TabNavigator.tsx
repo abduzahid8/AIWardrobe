@@ -12,14 +12,18 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { ScreenTransitionWrapper } from "../components/ScreenTransitionWrapper";
 import { perfTabSwitch, perfTabSwitchComplete } from "../src/utils/perf";
 
 // Original Screens
 import HomeScreen from "../screens/HomeScreen";
-import MyClosetScreen from "../screens/MyClosetScreen";
-import InspoScreen from "../screens/InspoScreen";
-import ProfileScreen from "../screens/ProfileScreen";
+// Defer module evaluation as well as mounting of secondary tabs.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const loadCloset = () => require('../screens/MyClosetScreen').default;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const loadInspo = () => require('../screens/InspoScreen').default;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const loadProfile = () => require('../screens/ProfileScreen').default;
+export const tabScreenPreloaders = [loadCloset, loadInspo, loadProfile];
 
 // Screen-level ErrorBoundary — isolates crashes to individual tabs
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
@@ -262,47 +266,26 @@ const LiquidParallaxTabBar = ({ state, descriptors, navigation, isAdmin }: any) 
 };
 
 // ── Stable wrapper factory — creates components ONCE ─────────────────
-const createAnimatedTabScreen = (Screen: React.ComponentType<any>, tabIndex: number) => {
+const createTabScreen = (load: () => React.ComponentType<any>, name: string) => {
   const Wrapped = (props: any) => {
-    const [isReady, setIsReady] = React.useState(false);
-
-    React.useEffect(() => {
-      // Defer heavy tab-screen mount past the tab-switch animation so the
-      // transition stays at 60fps. Plain setTimeout — InteractionManager is
-      // deprecated (startup warning) and runAfterInteractions fires at
-      // roughly the same point for this use case.
-      const timer = setTimeout(() => {
-        setIsReady(true);
-      }, 50);
-      return () => clearTimeout(timer);
-    }, []);
-
-    // Wrap in a View with the app background color so the placeholder shown
-    // during lazy first-mount is never a blank white void. Without this,
-    // switching to an unvisited tab shows a white flash for one render cycle
-    // before the screen's own background paints.
+    const Screen = load();
     return (
       <ErrorBoundary>
-        <ScreenTransitionWrapper preset="fade_slide_up">
-          <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-            {isReady ? (
-              <Screen {...props} />
-            ) : (
-              <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />
-            )}
-          </View>
-        </ScreenTransitionWrapper>
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+          <Screen {...props} />
+        </View>
       </ErrorBoundary>
     );
   };
-  Wrapped.displayName = `AnimatedTab(${tabIndex})`;
+  Wrapped.displayName = `Tab(${name})`;
   return Wrapped;
 };
 
-const AnimatedHomeScreen = createAnimatedTabScreen(HomeScreen, 0);
-const AnimatedClosetScreen = createAnimatedTabScreen(MyClosetScreen, 1);
-const AnimatedInspoScreen = createAnimatedTabScreen(InspoScreen, 2);
-const AnimatedProfileScreen = createAnimatedTabScreen(ProfileScreen, 3);
+// Stable component types preserve tab state; content is visible on focus.
+const AnimatedHomeScreen = createTabScreen(() => HomeScreen, 'Home');
+const AnimatedClosetScreen = createTabScreen(loadCloset, 'Closet');
+const AnimatedInspoScreen = createTabScreen(loadInspo, 'Inspo');
+const AnimatedProfileScreen = createTabScreen(loadProfile, 'Profile');
 
 // ── TabNavigator ─────────────────────────────────────────────────────
 const TabNavigator = () => {
@@ -373,22 +356,22 @@ const TabNavigator = () => {
       <Tab.Screen
         name="Home"
         component={AnimatedHomeScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.home'), tabBarTestID: 'homeTab' } as any}
+        options={{ title: t('tabs.home'), tabBarAccessibilityLabel: t('tabs.home'), tabBarButtonTestID: 'homeTab', tabBarTestID: 'homeTab' } as any}
       />
       <Tab.Screen
         name="Closet"
         component={AnimatedClosetScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.closet'), tabBarTestID: 'closetTab' } as any}
+        options={{ title: t('tabs.closet'), tabBarAccessibilityLabel: t('tabs.closet'), tabBarButtonTestID: 'closetTab', tabBarTestID: 'closetTab' } as any}
       />
       <Tab.Screen
         name="Inspo"
         component={AnimatedInspoScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.inspo'), tabBarTestID: 'inspoTab' } as any}
+        options={{ title: t('tabs.inspo'), tabBarAccessibilityLabel: t('tabs.inspo'), tabBarButtonTestID: 'inspoTab', tabBarTestID: 'inspoTab' } as any}
       />
       <Tab.Screen
         name="Profile"
         component={AnimatedProfileScreen}
-        options={{ tabBarAccessibilityLabel: t('tabs.profile'), tabBarTestID: 'profileTab' } as any}
+        options={{ title: t('tabs.profile'), tabBarAccessibilityLabel: t('tabs.profile'), tabBarButtonTestID: 'profileTab', tabBarTestID: 'profileTab' } as any}
       />
     </Tab.Navigator>
   );

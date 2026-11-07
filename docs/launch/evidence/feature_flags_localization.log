@@ -1,0 +1,3 @@
+PASS version/native-build consistency, beta locale key parity, conservative platform defaults, explicit pending migration order
+MANUAL REQUIRED full-app translation review, remote flag wiring/drills, screen-reader QA
+PASS server-only paused preparation template and explicit activation approval record

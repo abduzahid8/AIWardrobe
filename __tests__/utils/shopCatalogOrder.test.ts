@@ -148,3 +148,8 @@ describe('garmentVarietyFamily', () => {
       .not.toBe(garmentVarietyFamily({ macroCategory: 'shoes', name: 'Soft oiled leather loafers' }));
   });
 });
+test('the official AllSaints gallery selector is a product image even with a JSON suffix', () => {
+  const { isTrustedProductImage } = require('../../src/utils/shopCatalogOrder');
+  expect(isTrustedProductImage('https://media.i.allsaints.com/image/list/f_auto/USM095KB.json?_i=AG')).toBe(true);
+  expect(isTrustedProductImage('https://example.com/image/list/product.json')).toBe(false);
+});

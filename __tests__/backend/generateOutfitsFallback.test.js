@@ -4,11 +4,10 @@ const root = process.env.NVIDIA_REQUEST_SOURCE_ROOT || path.resolve(__dirname, '
 
 // The shared helpers the edge function imports.
 const shared = {};
-for (const file of ['_shared/occasionRules.ts', '_shared/outfitStructure.ts', '_shared/outfitDiversity.ts']) {
-    new Function('exports', ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
-        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-    }).outputText)(shared);
+for (const file of ['../../../src/domain/occasionRules.ts', '../../../src/domain/outfitStructure.ts', '../../../src/domain/outfitDiversity.ts']) {
+    Object.assign(shared, require(path.join(root,file)));
 }
+shared.styleInference = require('../../src/domain/styleInference');
 const strip = source => source.replace(/^import .*\n/gm, '').replace(/\bexport\s+/g, '');
 const source = ['_shared/modelOutfitResponse.ts', 'generate-outfits/index.ts']
     .map(file => strip(fs.readFileSync(path.join(root, file), 'utf8')))

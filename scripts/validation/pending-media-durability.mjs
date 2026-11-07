@@ -23,6 +23,7 @@ async function loadService(documents) {
     if(name==='../../lib/supabase')return {supabase:{}};
     if(name==='../../store/authEvents')return events;
     if(name==='../config/env')return {Config:{supabase:{url:'https://storage.test'}}};
+    if(name==='../lib/requestDeadline')return {withRequestDeadline: action => action(new AbortController().signal)};
     throw new Error('Unexpected media dependency');
   });
   const fs = {
@@ -108,7 +109,7 @@ if(process.argv[2]==='--restore'){
     await rm(picker,{recursive:true,force:true});await rename(join(root,'first'),join(root,'restored'));
     const {stdout}=await promisify(execFile)(process.execPath,[fileURLToPath(import.meta.url),'--restore',root],{timeout:30000});
     report.sourceJavaScriptSha256=codeSha256;report.restoration=JSON.parse(stdout);report.passed=true;
-  }catch(error){report.failure=error.name;process.exitCode=1;}
+  }catch(error){report.failure=error.name;if(process.env.PENDING_MEDIA_DEBUG==='1')console.error(error);process.exitCode=1;}
   finally{await rm(root,{recursive:true,force:true});report.temporaryFilesRemoved=true;
     await writeFile(new URL('../../docs/reports/readiness-evidence/pending-media-os-durability.json',import.meta.url),JSON.stringify(report,null,2)+'\n');
     process.stdout.write(JSON.stringify(report)+'\n');}

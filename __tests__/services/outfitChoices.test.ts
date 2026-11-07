@@ -50,3 +50,21 @@ test('compact rankings decode only complete-choice references and retain order',
  const choices=outfitChoices(items,false,()=>true,isDressGarment);
  expect(resolveOutfitChoices(parseRankedOutfitChoices('{"rankedLookIds":["invented"]}'),choices)).toBeNull();
 });
+
+test.each(['outerwear','top','bottom','shoes'])('locks %s before bounded search so irrelevant slot inventory cannot starve complements',slot=>{
+ const pool=['top','bottom','outerwear','shoes'].flatMap(macroCategory=>Array.from({length:20},(_,i)=>({id:`${macroCategory}-${i}`,name:macroCategory,macroCategory})));
+ const required=`${slot}-19`, accepts=jest.fn((_parts: typeof pool)=>true);
+ const choices=outfitChoices(pool,true,accepts,isDressGarment,[required],3,50,1);
+ expect(choices).toHaveLength(3);
+ expect(choices.every(c=>c.items.some(item=>item.id===required))).toBe(true);
+ expect(accepts.mock.calls.every(([parts])=>parts.some((item:any)=>item.id===required))).toBe(true);
+});
+
+test('an anchored shortlist reserves three physically disjoint companion sets before trimming',()=>{
+ const anchor={id:'owned-pants',name:'Jersey trousers',macroCategory:'bottom'};
+ const pool=[anchor,...['top','outerwear','shoes'].flatMap(slot=>Array.from({length:3},(_,i)=>({id:`${slot}-${i}`,name:`${slot} product ${i}`,macroCategory:slot})))];
+ const choices=outfitChoices(pool,true,()=>true,()=>false,[anchor.id],3,100,1);
+ expect(choices).toHaveLength(3);
+ const seen=new Set<string>();
+ for(const choice of choices)for(const item of choice.items.filter(item=>item.id!==anchor.id)) {expect(seen.has(item.id)).toBe(false);seen.add(item.id);}
+});

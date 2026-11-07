@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: review deduplicates exports and distinguishes absent usage evidence from zero
+ok 1 - review deduplicates exports and distinguishes absent usage evidence from zero
+  ---
+  duration_ms: 0.58625
+  type: 'test'
+  ...
+# Subtest: five reproducible synthetic personas cover required ranges and sparse evidence
+ok 2 - five reproducible synthetic personas cover required ranges and sparse evidence
+  ---
+  duration_ms: 0.897333
+  type: 'test'
+  ...
+# Subtest: a reverted correction remains reverted regardless of export file order
+ok 3 - a reverted correction remains reverted regardless of export file order
+  ---
+  duration_ms: 0.084792
+  type: 'test'
+  ...
+# Subtest: usage, measured timing and explicit value evidence are summarized without inventing missing denominators
+ok 4 - usage, measured timing and explicit value evidence are summarized without inventing missing denominators
+  ---
+  duration_ms: 0.286
+  type: 'test'
+  ...
+# Subtest: positive feedback with the default other reason is not counted as a failure or repeated complaint
+ok 5 - positive feedback with the default other reason is not counted as a failure or repeated complaint
+  ---
+  duration_ms: 0.074833
+  type: 'test'
+  ...
+# Subtest: p50 is the sample median for even timing samples rather than the upper middle sample
+ok 6 - p50 is the sample median for even timing samples rather than the upper middle sample
+  ---
+  duration_ms: 0.320458
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 36.050167

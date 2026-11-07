@@ -1,0 +1,179 @@
+{
+  "baseline": {
+    "version": 190,
+    "sourceCommit": "2ad92cf0",
+    "ezbrSha256": "4bd18f17fe59978aa9e4cbcfad893a3ab9a340f1b4c015630ffad49a221975dc",
+    "sourceSha256": "4ed1648b3e1c7707d801f5e5760afea86b068a2f7b9e9ad5ecaad85c369da2d2"
+  },
+  "function": "generate-outfits",
+  "generationVersion": "stylist-product-brand-visual-diversity-20261107",
+  "bundleSha256": "c96fcbde20e7e8a6919cbbe297202411b14f5b06edf1d6c21325b2392f9c011a",
+  "verifyJwt": false,
+  "authenticationUnchanged": true,
+  "checks": {
+    "focusedRegressionTests": 3,
+    "passed": 3,
+    "denoCheck": "passed",
+    "noLiveGenerationRequests": true
+  },
+  "bounds": {
+    "quartetTrials": 384,
+    "deckSearchSteps": 512,
+    "reserveCandidates": 24,
+    "reserveValidatedBeforeTrim": 48
+  },
+  "inputs": [
+    {
+      "path": "src/domain/garmentText.ts",
+      "sha256": "5cd123b4e0b9561ca652a4e56682f00463a18dc96e8b4ea6319a05c563be4b4d"
+    },
+    {
+      "path": "src/domain/outfitDiversity.ts",
+      "sha256": "ade57c9553f90d905f972aae46f4e24adda495fbca89d967af4f20400712eff7"
+    },
+    {
+      "path": "src/domain/stylingProfiles.ts",
+      "sha256": "7fbad495a471fa1730dcf24d15ec853d8b5fafbac648a5da89905e250ef87c70"
+    },
+    {
+      "path": "src/domain/garmentDescriptor.ts",
+      "sha256": "1f786f95fa284c34ff468d9b607f1a718eac1d1bf866a0a72ea919fb028c2893"
+    },
+    {
+      "path": "src/domain/outfitComposition.ts",
+      "sha256": "2122ecb8e0a65f5344af106fb9550f0af62ac7360c7dc621402add2d6d069e5d"
+    },
+    {
+      "path": "src/domain/styleInference.ts",
+      "sha256": "6968ff712f3c6f6783d056cf63e4bfa903a48de5272143782965683cd08e9a09"
+    },
+    {
+      "path": "src/domain/stylingContext.ts",
+      "sha256": "f74f7731c88090708a9ab270b3bcc2b1e3d459a2e0b631d18e343b95771a8865"
+    },
+    {
+      "path": "src/domain/garmentContext.ts",
+      "sha256": "d10437e8e820406dc4c9e6d299b49ed63f19e9fbf6a720bb548c7b118ec19cda"
+    },
+    {
+      "path": "src/domain/outfitVisualSignature.ts",
+      "sha256": "c1ff42404a280d2e9cae3a35ee2a88475c332560ed229f35eda80359a83e66dc"
+    },
+    {
+      "path": "src/domain/layerCompatibility.ts",
+      "sha256": "d04024131d5f047a2a0ee813b2e965dc55ad0cb7f8b8e53de37588953445b338"
+    },
+    {
+      "path": "src/domain/colorHarmony.ts",
+      "sha256": "0874f67f66773749a6dd90677e8b6ebfd35930131efcceb76b851e868850ca7d"
+    },
+    {
+      "path": "src/domain/outfitCoherence.ts",
+      "sha256": "498258f22169e59164c2341ac2874fd799473a37a70c4e2afa0ca53e83fd627e"
+    },
+    {
+      "path": "src/domain/validatedQuartets.ts",
+      "sha256": "b68132fb56d8cf3d4f0ecd270e709f8aec8057f4021c04a038fe5676083599f9"
+    },
+    {
+      "path": "src/domain/outfitChoices.ts",
+      "sha256": "b3dadac83978a8bebc938effdd3901c536a0450849f20a5912548d992d14cf8a"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitChoices.ts",
+      "sha256": "7be342c3823b711f70ed9613d1b2da79d3c4150932ebc7b0f6b15781f223341a"
+    },
+    {
+      "path": "src/domain/outfitGenerationRequest.ts",
+      "sha256": "48724b333e17c831140e45e26c692f995413a793710bbb843e0aefa07b1b019a"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitGenerationRequest.ts",
+      "sha256": "7153c595bf703ccbfdce846a0b42d4c5acedec006fb5a7f4d231f59e40ac7695"
+    },
+    {
+      "path": "src/domain/outfitBudgetText.ts",
+      "sha256": "cf0efe0f3e67ed2cd8e3794d28cd46b16b2567957113327f42bfd42c2a4935b3"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitBudgetText.ts",
+      "sha256": "dfbb29e4072f4bdb9e30fb8948e19613f54000179638f77588748f0e54e9006b"
+    },
+    {
+      "path": "src/domain/budgetFx.ts",
+      "sha256": "9c747666d797cadfad80cb5355dd360273f3384795af7a1f5bc05397bbff3854"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/budgetFx.ts",
+      "sha256": "5bac0d26699cd4684e22620ffc0322d8b144588ff0a2379c03de53a0254117a8"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/budgetFxCache.ts",
+      "sha256": "37cc9662853baaccb87ca068ad33fecf5209e66bbc5227f01bdac514836f0d5f"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitBudgetFeasibility.ts",
+      "sha256": "1f7fd099cfbbf584d7fa88bd4e08d4cabc0d6c70f30ec06a44e7761d77fb8d40"
+    },
+    {
+      "path": "src/domain/outfitBudgetSelection.ts",
+      "sha256": "ba676ebfe662c603d7e9836b8bd369e6e5a3bce067276549a811a9caed4e94f9"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitBudgetSelection.ts",
+      "sha256": "0ff65a5b06f11c03a3f2aefaee4c8a85dd52df0657ca2eed6dbc15685d373df3"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitBudgetFeedback.ts",
+      "sha256": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/modelOutfitResponse.ts",
+      "sha256": "8410cf49317dc0b75d8ce71abd94c61333ff7a661f77532ecce62cd890b44acd"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/rateLimit.ts",
+      "sha256": "3677a02bc709e963518c8f2042d9792d2a43bf6427deb4efed28ef554451daa3"
+    },
+    {
+      "path": "src/domain/outfitStructure.ts",
+      "sha256": "f7f8eaca4506b9d1801ccadce82f8ec738563a28a05f09ce5f4eb1a73f47df2d"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitStructure.ts",
+      "sha256": "807e89bf0aac98d758be4763d5527a2d001e6e12fff64e9eb3a9cc86f524f0d4"
+    },
+    {
+      "path": "src/domain/outfitQualityFloor.ts",
+      "sha256": "87a4f8d82cf49ffd0ae27198c64f231d32e38b1612b55dfa81d9b6cb2f7bbdce"
+    },
+    {
+      "path": "src/domain/occasionRules.ts",
+      "sha256": "993a52d9153044ce9457e66d11a8e43534c904881a27ca15b478eaf4f0fbc473"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/occasionRules.ts",
+      "sha256": "e2224b5f44b5507f65e939e2993a5669fda75e38a5f9c4b3056935bc79f7ec99"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitDiversity.ts",
+      "sha256": "1339423f9b86cb0033d214d37c67e123ea200f2aa79a499b9d1eadee514110c7"
+    },
+    {
+      "path": "src/domain/outfitRotation.ts",
+      "sha256": "e656f4fe6894819f773ce305a8a2204ed38c753bc15290dec8101e6ff6b42b35"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitRotation.ts",
+      "sha256": "1edafe0cf61e81748651a7330ab0136df5bb9640e1a7520fccf8b9bbf7d3ee1b"
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitComposition.ts",
+      "sha256": "aabe2de6b7dc101b5783fdbc322a068630a4d1e6cde49f9eb3563416601ae142"
+    },
+    {
+      "path": "backend/supabase/functions/generate-outfits/index.ts",
+      "sha256": "b1b54dcff92056f1236a43e64cd34ca06698a0f8c3e4b626991d8b19f250a24e"
+    }
+  ]
+}

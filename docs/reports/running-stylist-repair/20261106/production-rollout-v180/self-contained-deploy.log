@@ -1,0 +1,5 @@
+{"project_ref":"fyqpifmrsftsfqibhwhy","functions":["generate-outfits"],"dashboard_url":"https://supabase.com/dashboard/project/fyqpifmrsftsfqibhwhy/functions","message":"Deployed Functions.","target":{"kind":"linked","project_ref":"fyqpifmrsftsfqibhwhy","environment":"unverified"}}
+
+Target: project fyqpifmrsftsfqibhwhy
+Confirmed by --yes: Deploy 1 Function on project fyqpifmrsftsfqibhwhy
+Uploading asset (generate-outfits): supabase/functions/generate-outfits/index.ts

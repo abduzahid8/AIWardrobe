@@ -1,0 +1,34 @@
+WARNING: Final field parent in class maestro.cli.command.TestCommand has been mutated reflectively by class picocli.CommandLine$Model$FieldBinding in unnamed module @358c99f5 (file:/Users/v.zahid/.maestro/lib/picocli-4.6.3.jar)
+WARNING: Use --enable-final-field-mutation=ALL-UNNAMED to avoid a warning
+WARNING: Mutating final fields will be blocked in a future release unless final field mutation is enabled
+Running on AIWardrobe-Payments-20261027 - iOS 26.5 - BBE8D6A5-D0B5-4DE2-8808-EC5BBEB1B133
+ > Flow five-generations
+Launch app "host.exp.Exponent"... COMPLETED
+Open exp://127.0.0.1:8082... COMPLETED
+Assert that ".*(Добрый|Создать образ|Good morning|Good afternoon|Good evening|Create outfit).*" is visible... COMPLETED
+Tap on point (58%,92%)... COMPLETED
+Wait for animation to end within 3000 ms... COMPLETED
+Tap on ".*(Магазин|Shop).*"... COMPLETED
+Tap on ".*(Персональный стилист|Personal stylist).*"... COMPLETED
+Tap on ".*(New clothing|Новая одежда).*"... COMPLETED
+Run flow when ".*Old Money.*Date night.*" is not visible...
+Run flow when ".*Old Money.*Date night.*" is not visible... SKIPPED
+Assert that ".*Old Money.*Date night.*" is visible... COMPLETED
+Assert that ".*Generate outfit.*" is visible... COMPLETED
+Repeat 5 times...
+  Run ${output.generation = (output.generation || 0) + 1}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/v.zahid/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+  Assert that ".*Generate outfit.*" is visible... COMPLETED
+  Take screenshot ${"g" + output.generation + "-same-selection"}... COMPLETED
+  Tap on ".*Generate outfit.*"... COMPLETED
+  Assert that ".*(Ваши образы|Your Outfits).*" is visible... COMPLETED
+  Take screenshot ${"g" + output.generation + "-displayed-card1"}... COMPLETED
+  Scrolling DOWN until id: stylistResult-1 is visible with speed 40, visibility percentage 50%, timeout 20000 ms, with centering disabled... COMPLETED
+  Take screenshot ${"g" + output.generation + "-displayed-card2"}... COMPLETED
+  Scrolling DOWN until id: stylistResult-2 is visible with speed 40, visibility percentage 50%, timeout 20000 ms, with centering disabled... COMPLETED
+  Take screenshot ${"g" + output.generation + "-displayed-card3"}... COMPLETED
+  Tap on id: aiResultsBack... COMPLETED
+Repeat 5 times... COMPLETED

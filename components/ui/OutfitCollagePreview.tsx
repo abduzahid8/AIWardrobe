@@ -1,3 +1,4 @@
+import { canonicalizeMacroCategory, getMacroCategory } from '../../src/utils/categoryMapper';
 /**
  * Cover photo for a saved outfit: a small flat-lay cascade — full,
  * uncropped garment photos layered diagonally (top piece back, bottom
@@ -47,10 +48,11 @@ const CATEGORY_PRIORITY: Record<string, number> = {
 };
 
 function orderByWorn(items: OutfitCollageItem[]): OutfitCollageItem[] {
-    if (!items.some((i) => !!i.category)) return items;
-    return [...items].sort(
-        (a, b) => (CATEGORY_PRIORITY[a.category || 'other'] ?? 5) - (CATEGORY_PRIORITY[b.category || 'other'] ?? 5)
-    );
+    const priority = (item: OutfitCollageItem) => {
+        const macro = canonicalizeMacroCategory(item.category);
+        return CATEGORY_PRIORITY[macro === 'other' ? getMacroCategory(item.category || '', item.name) : macro] ?? 5;
+    };
+    return [...items].sort((a, b) => priority(a) - priority(b));
 }
 
 // Diagonal cascade slots, back piece to front. Percent-based so it scales
@@ -111,7 +113,8 @@ const Piece: React.FC<{
     style: StyleProp<ImageStyle>;
     zIndex: number;
     name?: string;
-}> = ({ src, style, zIndex, name }) => {
+    transition?: number;
+}> = ({ src, style, zIndex, name, transition = 180 }) => {
     const [failed, setFailed] = useState(false);
     // A remount (or a deck remap) hands this instance a new uri — a stale
     // failure flag must not blank out the new image.
@@ -136,7 +139,7 @@ const Piece: React.FC<{
             contentFit="contain"
             cachePolicy="memory-disk"
             recyclingKey={srcKey}
-            transition={180}
+            transition={transition}
             onError={() => setFailed(true)}
             accessibilityLabel={name || 'Outfit piece'}
         />
@@ -194,6 +197,7 @@ export const OutfitCollagePreview: React.FC<OutfitCollagePreviewProps> = ({
                             style={[styles.lookboardPiece, slots[index]]}
                             zIndex={index + 1}
                             name={item.name || item.category}
+                            transition={0}
                         />
                     ))}
                 </View>

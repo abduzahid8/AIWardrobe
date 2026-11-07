@@ -1,3 +1,4 @@
+import { resolveCalendarSlots } from '../features/calendar/outfitSlots';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
@@ -19,28 +20,12 @@ import {
 } from '../features/calendar/hooks/useOutfitCalendar';
 import { CalendarReadNotice } from '../features/calendar/components/CalendarReadNotice';
 import { OutfitLogForm } from '../features/calendar/components/OutfitLogForm';
-import { type OutfitItem, type WardrobeItem, matchesCategory } from '../features/calendar/types';
+import { type OutfitItem, type WardrobeItem } from '../features/calendar/types';
 import { shoppingService, type Product } from '../src/services/shoppingService';
 import { useTranslation } from 'react-i18next';
 
 const PAGE_PADDING = 20;
 const DAY_GAP = 12;
-
-// Layer (outerwear) keywords — checked BEFORE the generic top matcher in
-// `matchesCategory` so a blazer/jacket lands in the dedicated Layer slot
-// instead of hijacking the Top slot and pushing the real t-shirt into Extras.
-const LAYER_KEYWORDS = [
-    'jacket', 'blazer', 'coat', 'outerwear', 'vest',
-    'cardigan', 'hoodie', 'sweater', 'pullover',
-    'puffer', 'bomber', 'parka', 'windbreaker', 'overcoat',
-    'trench', 'peacoat', 'tuxedo',
-];
-
-const isLayerItem = (item: OutfitItem | null | undefined): boolean => {
-    if (!item) return false;
-    const blob = `${item.type || ''} ${item.name || ''}`.toLowerCase();
-    return LAYER_KEYWORDS.some((k) => blob.includes(k));
-};
 
 const formatReadableDate = (date: Date) =>
     date.toLocaleDateString('en-US', {
@@ -82,6 +67,7 @@ const OutfitCalendarScreen = () => {
         t('calendar.wed'), t('calendar.thu'), t('calendar.fri'), t('calendar.sat')
     ];
     const SLOT_META = [
+        { key: 'layer', label: t('calendar.layer'), shortLabel: 'L' },
         { key: 'top', label: t('calendar.top'), shortLabel: 'T' },
         { key: 'pants', label: t('calendar.bottom'), shortLabel: 'B' },
         { key: 'shoes', label: t('calendar.shoes'), shortLabel: 'S' },
@@ -167,39 +153,7 @@ const OutfitCalendarScreen = () => {
         ? OCCASIONS.find((occasion) => occasion.id === selectedLog.occasion) ?? null
         : null;
 
-    const selectedSlots = useMemo(() => {
-        if (!selectedLog) {
-            return {
-                layer: null,
-                top: null,
-                pants: null,
-                shoes: null,
-                extras: [] as OutfitItem[],
-            };
-        }
-
-        // Classify layer FIRST — `matchesCategory('jacket', 'top')` returns
-        // true for blazers/coats, so without this dedicated pass a blazer
-        // would occupy the Top slot and the real t-shirt would be pushed
-        // into Extras (see screenshot bug report).
-        const layer = selectedLog.items.find(isLayerItem) ?? null;
-        const top =
-            selectedLog.items.find(
-                (item) => item.id !== layer?.id && !isLayerItem(item) && matchesCategory(item.type, 'top'),
-            ) ?? null;
-        const pants = selectedLog.items.find((item) => matchesCategory(item.type, 'pants')) ?? null;
-        const shoes = selectedLog.items.find((item) => matchesCategory(item.type, 'shoes')) ?? null;
-
-        const usedIds = new Set([layer?.id, top?.id, pants?.id, shoes?.id].filter(Boolean));
-        const extras = selectedLog.items.filter((item) => !usedIds.has(item.id));
-
-        return { layer, top, pants, shoes, extras };
-    }, [selectedLog]);
-
-    // Show the Layer tile only when a layer was actually logged. Keeps the
-    // UI in lock-step with the "Top + Bottom + Shoes always; Layer only when
-    // needed" composition rule.
-    const showLayer = Boolean(selectedSlots.layer);
+    const selectedSlots = useMemo(() => resolveCalendarSlots(selectedLog?.items || []), [selectedLog]);
 
     const visibleDays = useMemo(() => {
         const count = Math.min(5, daysInMonth);
@@ -392,7 +346,7 @@ const OutfitCalendarScreen = () => {
                                     <View style={styles.miniSlotStack}>
                                         {SLOT_META.map((slot) =>
                                             renderMiniSlot(
-                                                day.log?.items.find((item) => matchesCategory(item.type, slot.key)) ?? null,
+                                                resolveCalendarSlots(day.log?.items || [])[slot.key],
                                                 slot.shortLabel,
                                                 day.isSelected,
                                                 slot.key
@@ -463,23 +417,19 @@ const OutfitCalendarScreen = () => {
 
                             <View style={styles.boardShell}>
                                 <View style={styles.previewGrid}>
+                                    {renderPreviewTile('calendar.layer', selectedSlots.layer)}
                                     {renderPreviewTile('calendar.top', selectedSlots.top)}
                                     {renderPreviewTile('calendar.bottom', selectedSlots.pants)}
-                                    {showLayer && renderPreviewTile('calendar.layer', selectedSlots.layer)}
                                     {renderPreviewTile('calendar.shoes', selectedSlots.shoes)}
                                 </View>
                             </View>
 
                             <View style={styles.pieceDock}>
+                                {renderDockItem('calendar.layer', selectedSlots.layer)}
+                                <View style={styles.pieceDockDivider} />
                                 {renderDockItem('calendar.top', selectedSlots.top)}
                                 <View style={styles.pieceDockDivider} />
                                 {renderDockItem('calendar.bottom', selectedSlots.pants)}
-                                {showLayer ? (
-                                    <>
-                                        <View style={styles.pieceDockDivider} />
-                                        {renderDockItem('calendar.layer', selectedSlots.layer)}
-                                    </>
-                                ) : null}
                                 <View style={styles.pieceDockDivider} />
                                 {renderDockItem('calendar.shoes', selectedSlots.shoes)}
                             </View>
@@ -894,8 +844,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         gap: 12,
     },
-    // 2-per-row grid. Cold outfits (4 tiles) render as 2×2; warm outfits
-    // (3 tiles) render as Top + Bottom on row 1 and Shoes + spacer on row 2.
+    // Four garment slots always use a 2×2 grid.
     previewGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',

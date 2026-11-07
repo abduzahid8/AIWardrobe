@@ -1,7 +1,7 @@
 /** @jest-environment node */
 const fs=require('fs'),path=require('path'),ts=require('typescript'),api={};
 const root=process.env.OUTFIT_REQUEST_SOURCE_ROOT||path.resolve(__dirname,'../../backend/supabase/functions');
-new Function('exports',ts.transpileModule(fs.readFileSync(path.join(root,'_shared/outfitGenerationRequest.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(api);
+Object.assign(api,require('../../backend/supabase/functions/_shared/outfitGenerationRequest'));
 const req=body=>new Request('https://example.invalid',{method:'POST',body:typeof body==='string'?body:JSON.stringify(body)});
 it.each([null,[],true,'not json'])('rejects non-object or malformed bodies: %j',async body=>{
  await expect(api.readOutfitGenerationRequest(req(body))).rejects.toMatchObject({status:400});
@@ -32,4 +32,8 @@ test('a stalled body settles by deadline even if source cancellation hangs',asyn
   const pending=api.readOutfitGenerationRequest(new Request('https://example.invalid',{method:'POST',body,duplex:'half'}));
   const rejected=expect(pending).rejects.toMatchObject({status:408});await jest.advanceTimersByTimeAsync(15000);await rejected;expect(jest.getTimerCount()).toBe(0);
  }finally{jest.useRealTimers();}
+});
+test('bounds normalized physical-product history independently from raw IDs',()=>{
+ const valid={excludeProductKeys:['n:brown leather loafers','i:cdn.test/shoes.jpg']};expect(api.validateOutfitGenerationRequest(valid)).toBe(valid);
+ for(const excludeProductKeys of [Array(451).fill('n:shoe'),['i:'+ 'x'.repeat(2048)],[{}]])expect(()=>api.validateOutfitGenerationRequest({excludeProductKeys})).toThrow('invalid_generation_request');
 });

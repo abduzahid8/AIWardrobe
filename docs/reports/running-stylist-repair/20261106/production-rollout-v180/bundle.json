@@ -1,0 +1,695 @@
+{
+  "evidence": {
+    "inputFiles": 37,
+    "sha256": "194e5c8f42ffb099bde0bb527062fe88a1b456c14ec89dd90fc3fcb5a3012826",
+    "bytes": 355059,
+    "externalImports": [
+      {
+        "path": "https://esm.sh/@supabase/supabase-js@2.45.4",
+        "kind": "import-statement",
+        "external": true
+      },
+      {
+        "path": "https://deno.land/std@0.168.0/http/server.ts",
+        "kind": "import-statement",
+        "external": true
+      },
+      {
+        "path": "https://esm.sh/@supabase/supabase-js@2",
+        "kind": "import-statement",
+        "external": true
+      }
+    ]
+  },
+  "metafile": {
+    "inputs": {
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentText.ts": {
+        "bytes": 1050,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts": {
+        "bytes": 98676,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/stylingProfiles.ts": {
+        "bytes": 1276,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentDescriptor.ts": {
+        "bytes": 8878,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentText.ts",
+            "kind": "import-statement",
+            "original": "./garmentText.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts",
+            "kind": "import-statement",
+            "original": "./outfitDiversity.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentContext.ts": {
+        "bytes": 7692,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentText.ts",
+            "kind": "import-statement",
+            "original": "./garmentText.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts",
+            "kind": "import-statement",
+            "original": "./outfitDiversity.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/stylingProfiles.ts",
+            "kind": "import-statement",
+            "original": "./stylingProfiles.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentDescriptor.ts",
+            "kind": "import-statement",
+            "original": "./garmentDescriptor.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitVisualSignature.ts": {
+        "bytes": 2037,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentDescriptor.ts",
+            "kind": "import-statement",
+            "original": "./garmentDescriptor.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/layerCompatibility.ts": {
+        "bytes": 4269,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentDescriptor.ts",
+            "kind": "import-statement",
+            "original": "./garmentDescriptor.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentText.ts",
+            "kind": "import-statement",
+            "original": "./garmentText.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/colorHarmony.ts": {
+        "bytes": 6124,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitCoherence.ts": {
+        "bytes": 10662,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentContext.ts",
+            "kind": "import-statement",
+            "original": "./garmentContext.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentDescriptor.ts",
+            "kind": "import-statement",
+            "original": "./garmentDescriptor.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/layerCompatibility.ts",
+            "kind": "import-statement",
+            "original": "./layerCompatibility.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/colorHarmony.ts",
+            "kind": "import-statement",
+            "original": "./colorHarmony.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts",
+            "kind": "import-statement",
+            "original": "./outfitDiversity.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/validatedQuartets.ts": {
+        "bytes": 4765,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentContext.ts",
+            "kind": "import-statement",
+            "original": "./garmentContext.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/layerCompatibility.ts",
+            "kind": "import-statement",
+            "original": "./layerCompatibility.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitCoherence.ts",
+            "kind": "import-statement",
+            "original": "./outfitCoherence.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts",
+            "kind": "import-statement",
+            "original": "./outfitDiversity.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitComposition.ts": {
+        "bytes": 1599,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/styleInference.ts": {
+        "bytes": 22552,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitComposition.ts",
+            "kind": "import-statement",
+            "original": "./outfitComposition.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/stylingContext.ts": {
+        "bytes": 2790,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/styleInference.ts",
+            "kind": "import-statement",
+            "original": "./styleInference.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitChoices.ts": {
+        "bytes": 4445,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts",
+            "kind": "import-statement",
+            "original": "./outfitDiversity.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitChoices.ts": {
+        "bytes": 131,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitChoices.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/outfitChoices.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitGenerationRequest.ts": {
+        "bytes": 4303,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitGenerationRequest.ts": {
+        "bytes": 1603,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitGenerationRequest.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/outfitGenerationRequest.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitGenerationRequest.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/outfitGenerationRequest.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitBudgetText.ts": {
+        "bytes": 3146,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetText.ts": {
+        "bytes": 134,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitBudgetText.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/outfitBudgetText.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/budgetFx.ts": {
+        "bytes": 5016,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/budgetFx.ts": {
+        "bytes": 126,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/budgetFx.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/budgetFx.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/budgetFxCache.ts": {
+        "bytes": 6190,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/budgetFx.ts",
+            "kind": "import-statement",
+            "original": "./budgetFx.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetFeasibility.ts": {
+        "bytes": 953,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitBudgetSelection.ts": {
+        "bytes": 1355,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetSelection.ts": {
+        "bytes": 139,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitBudgetSelection.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/outfitBudgetSelection.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetFeedback.ts": {
+        "bytes": 3384,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/modelOutfitResponse.ts": {
+        "bytes": 817,
+        "imports": [],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/rateLimit.ts": {
+        "bytes": 4600,
+        "imports": [
+          {
+            "path": "https://esm.sh/@supabase/supabase-js@2.45.4",
+            "kind": "import-statement",
+            "external": true
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitStructure.ts": {
+        "bytes": 6701,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts",
+            "kind": "import-statement",
+            "original": "./outfitDiversity.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitStructure.ts": {
+        "bytes": 133,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitStructure.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/outfitStructure.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/occasionRules.ts": {
+        "bytes": 65124,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentContext.ts",
+            "kind": "import-statement",
+            "original": "./garmentContext.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentText.ts",
+            "kind": "import-statement",
+            "original": "./garmentText.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentText.ts",
+            "kind": "import-statement",
+            "original": "./garmentText.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/stylingContext.ts",
+            "kind": "import-statement",
+            "original": "./stylingContext.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitCoherence.ts",
+            "kind": "import-statement",
+            "original": "./outfitCoherence.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/occasionRules.ts": {
+        "bytes": 131,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/occasionRules.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/occasionRules.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitDiversity.ts": {
+        "bytes": 133,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/outfitDiversity.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitRotation.ts": {
+        "bytes": 9256,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts",
+            "kind": "import-statement",
+            "original": "./outfitDiversity.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitRotation.ts": {
+        "bytes": 132,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitRotation.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/outfitRotation.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitComposition.ts": {
+        "bytes": 135,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitComposition.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/outfitComposition.ts"
+          }
+        ],
+        "format": "esm"
+      },
+      "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/generate-outfits/index.ts": {
+        "bytes": 221603,
+        "imports": [
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentContext.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/garmentContext.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitVisualSignature.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/outfitVisualSignature.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/validatedQuartets.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/validatedQuartets.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/stylingContext.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/stylingContext.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/styleInference.ts",
+            "kind": "import-statement",
+            "original": "../../../../src/domain/styleInference.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitChoices.ts",
+            "kind": "import-statement",
+            "original": "../_shared/outfitChoices.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitGenerationRequest.ts",
+            "kind": "import-statement",
+            "original": "../_shared/outfitGenerationRequest.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetText.ts",
+            "kind": "import-statement",
+            "original": "../_shared/outfitBudgetText.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/budgetFx.ts",
+            "kind": "import-statement",
+            "original": "../_shared/budgetFx.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/budgetFxCache.ts",
+            "kind": "import-statement",
+            "original": "../_shared/budgetFxCache.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetFeasibility.ts",
+            "kind": "import-statement",
+            "original": "../_shared/outfitBudgetFeasibility.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetSelection.ts",
+            "kind": "import-statement",
+            "original": "../_shared/outfitBudgetSelection.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetFeedback.ts",
+            "kind": "import-statement",
+            "original": "../_shared/outfitBudgetFeedback.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/modelOutfitResponse.ts",
+            "kind": "import-statement",
+            "original": "../_shared/modelOutfitResponse.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/rateLimit.ts",
+            "kind": "import-statement",
+            "original": "../_shared/rateLimit.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitStructure.ts",
+            "kind": "import-statement",
+            "original": "../_shared/outfitStructure.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/occasionRules.ts",
+            "kind": "import-statement",
+            "original": "../_shared/occasionRules.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitDiversity.ts",
+            "kind": "import-statement",
+            "original": "../_shared/outfitDiversity.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitRotation.ts",
+            "kind": "import-statement",
+            "original": "../_shared/outfitRotation.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitComposition.ts",
+            "kind": "import-statement",
+            "original": "../_shared/outfitComposition.ts"
+          },
+          {
+            "path": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/occasionRules.ts",
+            "kind": "import-statement",
+            "original": "../_shared/occasionRules.ts"
+          },
+          {
+            "path": "https://deno.land/std@0.168.0/http/server.ts",
+            "kind": "import-statement",
+            "external": true
+          },
+          {
+            "path": "https://esm.sh/@supabase/supabase-js@2",
+            "kind": "import-statement",
+            "external": true
+          }
+        ],
+        "format": "esm"
+      }
+    },
+    "outputs": {
+      "../../../var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/self-contained/backend/supabase/functions/generate-outfits/index.ts": {
+        "imports": [
+          {
+            "path": "https://esm.sh/@supabase/supabase-js@2.45.4",
+            "kind": "import-statement",
+            "external": true
+          },
+          {
+            "path": "https://deno.land/std@0.168.0/http/server.ts",
+            "kind": "import-statement",
+            "external": true
+          },
+          {
+            "path": "https://esm.sh/@supabase/supabase-js@2",
+            "kind": "import-statement",
+            "external": true
+          }
+        ],
+        "exports": [],
+        "entryPoint": "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/generate-outfits/index.ts",
+        "inputs": {
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentText.ts": {
+            "bytesInOutput": 924
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts": {
+            "bytesInOutput": 48288
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/stylingProfiles.ts": {
+            "bytesInOutput": 1012
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentDescriptor.ts": {
+            "bytesInOutput": 6141
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentContext.ts": {
+            "bytesInOutput": 6421
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitVisualSignature.ts": {
+            "bytesInOutput": 1382
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/layerCompatibility.ts": {
+            "bytesInOutput": 3012
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/colorHarmony.ts": {
+            "bytesInOutput": 3342
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitCoherence.ts": {
+            "bytesInOutput": 8461
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/validatedQuartets.ts": {
+            "bytesInOutput": 3516
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitComposition.ts": {
+            "bytesInOutput": 847
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/styleInference.ts": {
+            "bytesInOutput": 17515
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/stylingContext.ts": {
+            "bytesInOutput": 1452
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitChoices.ts": {
+            "bytesInOutput": 988
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitChoices.ts": {
+            "bytesInOutput": 0
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitGenerationRequest.ts": {
+            "bytesInOutput": 3893
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitGenerationRequest.ts": {
+            "bytesInOutput": 1327
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitBudgetText.ts": {
+            "bytesInOutput": 2406
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetText.ts": {
+            "bytesInOutput": 0
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/budgetFx.ts": {
+            "bytesInOutput": 3852
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/budgetFx.ts": {
+            "bytesInOutput": 0
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/budgetFxCache.ts": {
+            "bytesInOutput": 6273
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetFeasibility.ts": {
+            "bytesInOutput": 620
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitBudgetSelection.ts": {
+            "bytesInOutput": 1034
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetSelection.ts": {
+            "bytesInOutput": 0
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitBudgetFeedback.ts": {
+            "bytesInOutput": 3043
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/modelOutfitResponse.ts": {
+            "bytesInOutput": 602
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/rateLimit.ts": {
+            "bytesInOutput": 2933
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitStructure.ts": {
+            "bytesInOutput": 5254
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitStructure.ts": {
+            "bytesInOutput": 0
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/occasionRules.ts": {
+            "bytesInOutput": 42604
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/occasionRules.ts": {
+            "bytesInOutput": 0
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitDiversity.ts": {
+            "bytesInOutput": 0
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitRotation.ts": {
+            "bytesInOutput": 5546
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitRotation.ts": {
+            "bytesInOutput": 0
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/_shared/outfitComposition.ts": {
+            "bytesInOutput": 0
+          },
+          "../../../private/var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/backend/supabase/functions/generate-outfits/index.ts": {
+            "bytesInOutput": 168092
+          }
+        },
+        "bytes": 355059
+      }
+    }
+  }
+}

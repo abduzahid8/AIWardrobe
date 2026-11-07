@@ -1,0 +1,13 @@
+{
+  "scope": "read-only local discovery",
+  "onlineIosPhysicalDevices": 0,
+  "pairedIosPhysicalDevicesOffline": 1,
+  "attachedAndroidDevices": 0,
+  "bootedTaskSimulator": "iPhone 17 Pro / iOS 26.5",
+  "physicalQaStatus": "unavailable without an external-state change",
+  "discoveryCommands": [
+    "xcrun xctrace list devices",
+    "adb devices",
+    "xcrun simctl list devices booted"
+  ]
+}

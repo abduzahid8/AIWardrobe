@@ -124,6 +124,7 @@ const NATIVE_STORE_PURCHASE_PENDING = 'The App Store is still processing this pu
 
 class IAPService {
     private isInitialized = false;
+    private initializationPromise: Promise<void> | null = null;
     private isRevenueCatAvailable = false;
     /** Supabase user ID passed to RevenueCat via identify(). null = not yet identified. */
     private identifiedUserId: string | null = null;
@@ -164,6 +165,15 @@ class IAPService {
      */
     async initialize(): Promise<void> {
         if (this.isInitialized) return;
+        if (!this.initializationPromise) {
+            this.initializationPromise = this.configure().finally(() => {
+                this.initializationPromise = null;
+            });
+        }
+        return this.initializationPromise;
+    }
+
+    private async configure(): Promise<void> {
 
         const apiKey = Config.revenueCat.apiKey;
         const keyKind = !apiKey
@@ -440,7 +450,7 @@ class IAPService {
 
             // Confirm the receipt server-side before activating paid features.
             // A completed payment stays a completed payment if synchronization is pending.
-            const verified = await this.verifyServerSubscription();
+            const verified = await this.verifyServerSubscription(true);
             const tier = this.getTierByProductId(resolvedProductId);
             if (verified && tier !== 'free') analyticsService.trackSubscriptionPurchased(tier, ANALYTICS_PRICE_BY_TIER[tier]);
 
@@ -499,7 +509,7 @@ class IAPService {
             const restoration = await this.waitForNativeStoreOperation<any>(() => Purchases.restorePurchases());
             if (!restoration.completed) return { success: false, checkoutPending: true, error: NATIVE_STORE_PURCHASE_PENDING };
             const customerInfo = restoration.value;
-            const verified = await this.verifyServerSubscription();
+            const verified = await this.verifyServerSubscription(true);
             if (!verified && (Object.keys(customerInfo.entitlements?.active || {}).length > 0 || customerInfo.activeSubscriptions?.length > 0)) {
                 return { success: true, verificationPending: true };
             }
@@ -529,7 +539,7 @@ class IAPService {
      * Called on purchase, restore, and customer info updates.
      */
     private async syncSubscriptionStatus(_customerInfo: any): Promise<void> {
-        await this.verifyServerSubscription();
+        await this.verifyServerSubscription(true);
     }
 
     private async isCheckoutVerificationReady(owner: string): Promise<{ ready: true } | { ready: false; reason: string }> {
@@ -549,7 +559,15 @@ class IAPService {
         }
     }
 
-    async verifyServerSubscription(): Promise<boolean> {
+    async verifyServerSubscription(requireFresh = false): Promise<boolean> {
+        // Purchase/restore callbacks need a snapshot requested after the transaction.
+        // A shared check already in flight may still report the pre-purchase free tier.
+        if (requireFresh && this.serverSyncPromise) {
+            const revision = this.accountRevision;
+            const authRevision = authEvents.getRevision();
+            await this.serverSyncPromise;
+            if (revision !== this.accountRevision || authRevision !== authEvents.getRevision()) return false;
+        }
         if (this.serverSyncPromise) return this.serverSyncPromise;
         const revision = this.accountRevision;
         const authRevision = authEvents.getRevision();

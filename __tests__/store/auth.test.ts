@@ -87,7 +87,7 @@ jest.mock('expo-linking', () => ({
 
 // Import after mocks
 import { waitFor } from '@testing-library/react-native';
-import useAuthStore, { cleanupAuthSubscription, parseSupabaseUrl } from '../../store/auth';
+import useAuthStore, { cleanupAuthSubscription, identifyRestoredPurchases, parseSupabaseUrl } from '../../store/auth';
 import { authEvents } from '../../store/authEvents';
 import { completeSignOutIntent, beginSignOutIntent, SIGN_OUT_INTENT_KEY } from '../../src/lib/signOutIntent';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -439,6 +439,25 @@ describe('profile response account isolation', () => {
         expect(useAuthStore.getState().error).toBeNull();
     });
 
+    it('retains a signed-in profile and does not report a timeout as a crash', async () => {
+        const events = require('../../store/authEvents').authEvents; events.emitLogin('timeout-user');
+        const known = profile('timeout-user');
+        useAuthStore.setState({session: session('timeout-user') as any, user: known, isAuthenticated: true});
+        const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const warnLog = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        jest.useFakeTimers();
+        try {
+            mockFrom.mockReturnValueOnce(profileQuery(new Promise(() => {})));
+            const request = useAuthStore.getState().fetchUser();
+            await jest.advanceTimersByTimeAsync(15001);
+            await request;
+            expect(useAuthStore.getState().user).toEqual(known);
+            expect(useAuthStore.getState().isAuthenticated).toBe(true);
+            expect(errorLog).not.toHaveBeenCalled();
+            expect(warnLog).toHaveBeenCalled();
+        } finally { jest.useRealTimers(); errorLog.mockRestore(); warnLog.mockRestore(); }
+    });
+
     it('preserves a known profile when the refresh returns an error', async () => {
         const events = require('../../store/authEvents').authEvents; events.emitLogin('a');
         useAuthStore.setState({ session: session('a') as any, user: profile('a'), isAuthenticated: true });
@@ -468,11 +487,66 @@ describe('profile response account isolation', () => {
     });
 });
 
+test('session restore becomes ready without waiting for the purchase SDK', async () => {
+    jest.useFakeTimers();
+    try {
+        jest.mocked(iapService.identify).mockImplementation(() => new Promise(() => {}));
+        mockGetSession.mockResolvedValueOnce({ data: { session: { access_token: 'restored', user: { id: 'fast-restore', user_metadata: {} } } }, error: null });
+        const pending = useAuthStore.getState().initializeAuth();
+        await jest.advanceTimersByTimeAsync(1000);
+        expect(useAuthStore.getState()).toMatchObject({ isInitialized: true, isAuthenticated: true, loading: false });
+        expect(mockOnAuthStateChange).toHaveBeenCalledTimes(1);
+        expect(iapService.identify).not.toHaveBeenCalled();
+        await pending;
+    } finally {
+        jest.useRealTimers();
+    }
+});
+
 test('restored-session profile enrichment survives its own login event', async () => {
     mockGetSession.mockResolvedValueOnce({ data: { session: { access_token: 'restored', user: { id: 'restore-user', email: 'restore@example.invalid', user_metadata: {} } } }, error: null });
     mockFrom.mockReturnValueOnce({ select: () => ({ eq: () => ({ abortSignal() { return this; }, maybeSingle: async () => ({ data: { id: 'restore-user', email: 'restore@example.invalid', username: 'server-profile' }, error: null }) }) }) });
     await useAuthStore.getState().initializeAuth();
     await waitFor(() => expect(useAuthStore.getState().user?.username).toBe('server-profile'));
+});
+
+test('deferred purchase restore skips a superseded account and preserves identity ordering', async () => {
+    const session = { access_token: 'deferred', user: { id: 'deferred-owner', user_metadata: {} } };
+    mockGetSession.mockResolvedValueOnce({ data: { session }, error: null });
+    await useAuthStore.getState().initializeAuth();
+    let finish!: () => void;
+    jest.mocked(iapService.identify).mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+    const first = identifyRestoredPurchases('deferred-owner');
+    await waitFor(() => expect(typeof finish).toBe('function'));
+    const queued = identifyRestoredPurchases('deferred-owner');
+    // A newer SDK identity invalidates work queued for the previous account.
+    authEvents.emitLogout();
+    expect(iapService.identify).toHaveBeenCalledTimes(1);
+    finish();
+    await Promise.all([first, queued]);
+    expect(iapService.identify).toHaveBeenCalledTimes(1);
+});
+
+test('purchase restore deadline does not let logout race an unfinished native identity change', async () => {
+    jest.useFakeTimers();
+    try {
+        mockGetSession.mockResolvedValueOnce({ data: { session: { access_token: 'deferred', user: { id: 'ordered-owner', user_metadata: {} } } }, error: null });
+        await useAuthStore.getState().initializeAuth();
+        let finish!: () => void;
+        jest.mocked(iapService.identify).mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+        const identify = identifyRestoredPurchases('ordered-owner');
+        await jest.advanceTimersByTimeAsync(0);
+        const logout = useAuthStore.getState().logout();
+        await jest.advanceTimersByTimeAsync(8000);
+        await identify;
+        expect(mockSignOut).not.toHaveBeenCalled();
+        finish();
+        await logout;
+        expect(mockSignOut).toHaveBeenCalledTimes(1);
+        expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    } finally {
+        jest.useRealTimers();
+    }
 });
 
 test('an older same-account profile read cannot overwrite a newer refresh', async () => {
@@ -569,7 +643,7 @@ describe('startup session read isolation', () => {
         finish({ data: { session: session('old-restore') }, error: null });
         await Promise.all([pending, login]);
         expect(useAuthStore.getState().session?.user.id).toBe('new-login');
-        expect(require('../../src/services/iapService').iapService.identify.mock.calls.map((call: string[]) => call[0])).toEqual(['old-restore', 'new-login']);
+        expect(require('../../src/services/iapService').iapService.identify.mock.calls.map((call: string[]) => call[0])).toEqual(['new-login']);
         // A newer login still needs the SDK observer even if its startup result was stale.
         expect(mockOnAuthStateChange).toHaveBeenCalledTimes(1);
     });

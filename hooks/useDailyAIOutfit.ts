@@ -1,3 +1,4 @@
+import { useNetworkRecovery } from './useNetworkRecovery';
 import { recordShownOutfits } from '../src/services/recentOutfitIds';
 /** Daily decks are immutable validated server results, cached per account and occasion. */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -22,13 +23,13 @@ const MAX_WARMED_URIS = 400;
  * memory-disk cache at deck-set time — BEFORE the tiles mount. Previously
  * the top card's images only started downloading when its tiles mounted,
  * serializing network after render (≈0.5–1.5s of blank/pop-in tiles on
- * mobile data). Warming the first 2 cards (≤8 http URIs) overlaps download
+ * mobile data). Warming the first card (≤4 http URIs) overlaps download
  * with the render pass; the swipe stack's own lookahead warms the rest.
  * Content and quality are untouched — this only moves the same downloads
  * earlier. Never throws, never blocks, no-op when expo-image is unavailable
  * (e.g. jest).
  */
-function warmDeckImages(outfits: GeneratedOutfit[], cardCount = 2): void {
+function warmDeckImages(outfits: GeneratedOutfit[], cardCount = 1): void {
     try {
         const prefetch = (ExpoImage as unknown as { prefetch?: unknown })?.prefetch;
         if (typeof prefetch !== 'function') return;
@@ -102,10 +103,24 @@ function todayKey(): string {
 
 const selectUserId = (s: { user?: { id?: string } | null }) => s.user?.id;
 
+// Survives a Home section remount, but never crosses an account, occasion,
+// or calendar day. Persisted storage remains the source after an app restart.
+const sessionDecks = new Map<string, GeneratedOutfit[]>();
+export function clearDailyOutfitSessionCache(): void { sessionDecks.clear(); }
+const sessionKey = (userId: string, style: string, occasion: string, count: number) =>
+    `${dailyOutfitCacheKey(userId, style, occasion)}:${todayKey()}:${count}`;
+
+
 export function useDailyAIOutfit({ style, occasion, weather, variants = 3, enabled = true, allowGeneration = true }: UseDailyAIOutfitOptions): UseDailyAIOutfitResult {
     const userId = useAuthStore(selectUserId);
     const preferences = useStylePreferenceStore(state => state.preferences);
-    const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
+    const count = Math.min(15, Math.max(1, Math.floor(variants) || 3));
+    const initialKey = userId ? sessionKey(userId, style, occasion, count) : null;
+    const storedSessionDeck = initialKey ? sessionDecks.get(initialKey) : undefined;
+    const validSessionDeck = validatedDailyOutfits(storedSessionDeck, style, occasion, weather);
+    const initialSessionDeck = validSessionDeck.length === storedSessionDeck?.length
+        ? storedSessionDeck : validSessionDeck;
+    const [outfits, setOutfits] = useState<GeneratedOutfit[]>(() => initialSessionDeck ?? []);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const contextRef = useRef({ weather, preferences });
@@ -113,7 +128,11 @@ export function useDailyAIOutfit({ style, occasion, weather, variants = 3, enabl
     const epochRef = useRef(0);
     const mountedRef = useRef(false);
     const inFlightRef = useRef<Promise<void> | null>(null);
-    const count = Math.min(15, Math.max(1, Math.floor(variants) || 3));
+    const loadedKeyRef = useRef<string | null>(initialSessionDeck?.length ? initialKey : null);
+    const identityRef = useRef<string | null>(userId ? `${dailyOutfitCacheKey(userId, style, occasion)}:${count}` : null);
+    const recoveryPendingRef = useRef(false);
+    const weatherKey = weather ? `${weather.temp}:${weather.condition}` : 'unknown';
+    const weatherKeyRef = useRef(weatherKey);
 
     const run = useCallback((force: boolean): Promise<void> => {
         if (!enabled || !userId || !mountedRef.current) return Promise.resolve();
@@ -137,6 +156,9 @@ export function useDailyAIOutfit({ style, occasion, weather, variants = 3, enabl
                         // A smaller valid deck stays useful. Never fabricate more cards
                         // or repeatedly regenerate it just to fill a carousel quota.
                         if (cached.length) {
+                            loadedKeyRef.current = `${key}:${dateKey}:${count}`;
+                            if (sessionDecks.size >= 30) sessionDecks.clear();
+                            sessionDecks.set(loadedKeyRef.current, cached);
                             setOutfits(cached);
                             recordShownOutfits(cached, userId);
                             warmDeckImages(cached);
@@ -152,13 +174,16 @@ export function useDailyAIOutfit({ style, occasion, weather, variants = 3, enabl
                     return;
                 }
                 const result = await generateOutfitsFromDB({
-                    stylePreferences: style, occasion, limit: count, recordShown: false,
+                    stylePreferences: style, occasion, limit: count, recordShown: false, allowRecentFallback: true,
                     weather: context.weather ?? undefined, preferences: context.preferences,
                 });
                 if (!current()) return;
                 if (!result.success) throw new Error(result.errorTranslationKey || result.error || 'stylist_generation_failed');
                 const fresh = validatedDailyOutfits(result.outfits, style, occasion, context.weather).slice(0, count);
                 if (!fresh.length) throw new Error('no_valid_outfits_for_request');
+                loadedKeyRef.current = `${key}:${dateKey}:${count}`;
+                if (sessionDecks.size >= 30) sessionDecks.clear();
+                sessionDecks.set(loadedKeyRef.current, fresh);
                 setOutfits(fresh);
                 recordShownOutfits(fresh, userId);
                 warmDeckImages(fresh);
@@ -182,21 +207,63 @@ export function useDailyAIOutfit({ style, occasion, weather, variants = 3, enabl
 
     useEffect(() => {
         mountedRef.current = true;
-        epochRef.current++;
-        inFlightRef.current = null;
-        setOutfits([]);
-        setError(null);
-        setLoading(false);
-        void run(false);
         return () => {
             mountedRef.current = false;
             epochRef.current++;
             inFlightRef.current = null;
         };
-    }, [run]);
+    }, []);
+
+    useEffect(() => {
+        const identity = userId ? `${dailyOutfitCacheKey(userId, style, occasion)}:${count}` : null;
+        if (identityRef.current !== identity) {
+            identityRef.current = identity;
+            epochRef.current++;
+            inFlightRef.current = null;
+            recoveryPendingRef.current = false;
+            loadedKeyRef.current = null;
+            setOutfits([]);
+            setError(null);
+            setLoading(false);
+        }
+        // Do not abandon a request just because Home loses focus: it would
+        // keep running on the network while a second one starts on return.
+        if (enabled && userId && loadedKeyRef.current !== `${dailyOutfitCacheKey(userId, style, occasion)}:${todayKey()}:${count}`) {
+            void run(false);
+        }
+    }, [run, enabled, userId, style, occasion, count]);
+
+    useEffect(() => {
+        if (weatherKeyRef.current === weatherKey) return;
+        weatherKeyRef.current = weatherKey;
+        const valid = validatedDailyOutfits(outfits, style, occasion, weather);
+        if (valid.length === outfits.length && valid.length > 0 && !inFlightRef.current) return;
+        epochRef.current++;
+        inFlightRef.current = null;
+        loadedKeyRef.current = valid.length ? loadedKeyRef.current : null;
+        setOutfits(valid);
+        if (enabled && userId && !valid.length) void run(false);
+    }, [weatherKey, outfits, style, occasion, weather, enabled, userId, run]);
+
+    useNetworkRecovery(() => {
+        if (!enabled) return;
+        if (loading) {
+            // The network can recover before the failed request settles.
+            // Retry after it finishes instead of coalescing into that failure.
+            recoveryPendingRef.current = true;
+        } else if (error) {
+            void run(outfits.length > 0);
+        }
+    });
+    useEffect(() => {
+        if (!enabled || loading || !recoveryPendingRef.current) return;
+        recoveryPendingRef.current = false;
+        if (error) void run(outfits.length > 0);
+    }, [enabled, loading, error, outfits.length, run]);
 
     const regenerate = useCallback(() => run(true), [run]);
-    return { outfits, loading, error, regenerate };
+    const validOutfits = validatedDailyOutfits(outfits, style, occasion, weather);
+    return { outfits: validOutfits.length === outfits.length ? outfits : validOutfits, loading, error, regenerate };
 }
 
 export default useDailyAIOutfit;

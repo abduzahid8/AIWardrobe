@@ -1,0 +1,878 @@
+{
+  "source": "Final accepted displayed decks persisted by recordDisplayedDeck after client validation",
+  "capturedAt": "2026-10-29T17:40:34.741Z",
+  "poolSize": 7,
+  "checks": {
+    "fiveDisplayedDecks": true,
+    "threeCards": true,
+    "fourItems": true,
+    "scopeStable": true,
+    "uniqueRequestIds": true,
+    "minimumShoeOverlap": true,
+    "clothingRotation": true,
+    "allAdmissibleShoesUsed": true,
+    "fairLRU": true
+  },
+  "generations": [
+    {
+      "generation": 1,
+      "requestId": "mvttu1vr-1",
+      "scope": "db0a1cee-6161-45d8-a4c9-d6b195f791a1|shop|old_money|date",
+      "cards": 3,
+      "itemsPerCard": [
+        4,
+        4,
+        4
+      ],
+      "shoeIds": [
+        "shop_thursday-7719429898330",
+        "shop_thursday-8128950501466",
+        "shop_thursday-253390159881"
+      ],
+      "shoes": [
+        {
+          "id": "shop_thursday-7719429898330",
+          "keys": [
+            "id:shop_thursday-7719429898330",
+            "n:journeyman black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-journeyman-black-122225-3.4.jpg"
+          ],
+          "name": "Journeyman | Black"
+        },
+        {
+          "id": "shop_thursday-8128950501466",
+          "keys": [
+            "id:shop_thursday-8128950501466",
+            "n:lincoln dark brown",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-lincoln-darkbrown-061726-3.4.jpg"
+          ],
+          "name": "Lincoln | Dark Brown"
+        },
+        {
+          "id": "shop_thursday-253390159881",
+          "keys": [
+            "id:shop_thursday-253390159881",
+            "n:executive black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/products/1024x1024-men-executive-black-061821-3.4.jpg"
+          ],
+          "name": "Executive | Black"
+        }
+      ],
+      "clothingIds": [
+        "shop_armani_exchange-xm002265_af24533_u0009",
+        "shop_aurelien-6039884660916",
+        "shop_aurelien-10046869340490",
+        "shop_allsaints-usm111sf-10175",
+        "shop_allsaints-usm039ka-6936",
+        "shop_aurelien-10046869176650",
+        "shop_armani_exchange-xm002109_af24533_ub101",
+        "shop_aurelien-16011498881354",
+        "shop_aurelien-15230772904266"
+      ],
+      "clothingOverlap": [],
+      "previousShoeOverlap": 0,
+      "validPhysicalShoesAvailable": 7,
+      "theoreticalMinimum": 0,
+      "admittedShoes": [
+        {
+          "id": "shop_thursday-15456871514202",
+          "lastUse": 11,
+          "appearances": 5,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-253390159881",
+          "lastUse": 10,
+          "appearances": 6,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-6859648467034",
+          "lastUse": 11,
+          "appearances": 8,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-6865670045786",
+          "lastUse": 11,
+          "appearances": 3,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-7719429898330",
+          "lastUse": 9,
+          "appearances": 5,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-8086847258714",
+          "lastUse": 10,
+          "appearances": 7,
+          "inPrevious": false,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-8128950501466",
+          "lastUse": 10,
+          "appearances": 2,
+          "inPrevious": false,
+          "selected": true
+        }
+      ],
+      "fairness": {
+        "matchesUnconstrainedLRUOrder": true,
+        "selectedOrder": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "bestOrder": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "generation": 2,
+      "requestId": "mvttujgg-2",
+      "scope": "db0a1cee-6161-45d8-a4c9-d6b195f791a1|shop|old_money|date",
+      "cards": 3,
+      "itemsPerCard": [
+        4,
+        4,
+        4
+      ],
+      "shoeIds": [
+        "shop_thursday-8086847258714",
+        "shop_thursday-6865670045786",
+        "shop_thursday-15456871514202"
+      ],
+      "shoes": [
+        {
+          "id": "shop_thursday-8086847258714",
+          "keys": [
+            "id:shop_thursday-8086847258714",
+            "n:saint cognac",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-saint-cognac-070226-3.4.jpg"
+          ],
+          "name": "Saint | Cognac"
+        },
+        {
+          "id": "shop_thursday-6865670045786",
+          "keys": [
+            "id:shop_thursday-6865670045786",
+            "n:lincoln black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-lincoln-black-012124-3.4_606b5f85-613a-4eca-84b5-2230382e1055.jpg"
+          ],
+          "name": "Lincoln | Black"
+        },
+        {
+          "id": "shop_thursday-15456871514202",
+          "keys": [
+            "id:shop_thursday-15456871514202",
+            "n:duke black coffee",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-duke-blackcoffee-101426-3.4.jpg"
+          ],
+          "name": "Duke | Black Coffee"
+        }
+      ],
+      "clothingIds": [
+        "shop_aurelien-10119652016458",
+        "shop_allsaints-usm064kf-2153",
+        "shop_aurelien-15230772937034",
+        "shop_armani_exchange-xm002266_af22638_fb380",
+        "shop_allsaints-usm124kf-107",
+        "shop_aurelien-10046869373258",
+        "shop_allsaints-usm109sf-9688",
+        "shop_aurelien-15145824715082",
+        "shop_aurelien-9557695725898"
+      ],
+      "clothingOverlap": [],
+      "previousShoeOverlap": 0,
+      "validPhysicalShoesAvailable": 7,
+      "theoreticalMinimum": 0,
+      "admittedShoes": [
+        {
+          "id": "shop_thursday-15456871514202",
+          "lastUse": 10,
+          "appearances": 5,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-253390159881",
+          "lastUse": 11,
+          "appearances": 6,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-6859648467034",
+          "lastUse": 10,
+          "appearances": 7,
+          "inPrevious": false,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-6865670045786",
+          "lastUse": 10,
+          "appearances": 3,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-7719429898330",
+          "lastUse": 11,
+          "appearances": 6,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-8086847258714",
+          "lastUse": 9,
+          "appearances": 6,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-8128950501466",
+          "lastUse": 11,
+          "appearances": 3,
+          "inPrevious": true,
+          "selected": false
+        }
+      ],
+      "fairness": {
+        "matchesUnconstrainedLRUOrder": true,
+        "selectedOrder": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "bestOrder": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "generation": 3,
+      "requestId": "mvttv129-3",
+      "scope": "db0a1cee-6161-45d8-a4c9-d6b195f791a1|shop|old_money|date",
+      "cards": 3,
+      "itemsPerCard": [
+        4,
+        4,
+        4
+      ],
+      "shoeIds": [
+        "shop_thursday-6859648467034",
+        "shop_thursday-8128950501466",
+        "shop_thursday-7719429898330"
+      ],
+      "shoes": [
+        {
+          "id": "shop_thursday-6859648467034",
+          "keys": [
+            "id:shop_thursday-6859648467034",
+            "n:chairman black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-chairman-black-051323-3.4.jpg"
+          ],
+          "name": "Chairman | Black"
+        },
+        {
+          "id": "shop_thursday-8128950501466",
+          "keys": [
+            "id:shop_thursday-8128950501466",
+            "n:lincoln dark brown",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-lincoln-darkbrown-061726-3.4.jpg"
+          ],
+          "name": "Lincoln | Dark Brown"
+        },
+        {
+          "id": "shop_thursday-7719429898330",
+          "keys": [
+            "id:shop_thursday-7719429898330",
+            "n:journeyman black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-journeyman-black-122225-3.4.jpg"
+          ],
+          "name": "Journeyman | Black"
+        }
+      ],
+      "clothingIds": [
+        "shop_aurelien-10150890078538",
+        "shop_armani_exchange-xm002079_af22403_ub101",
+        "shop_aurelien-16011499929930",
+        "shop_allsaints-usm168sf-4411",
+        "shop_aurelien-4285293396057",
+        "shop_aurelien-15179534139722",
+        "shop_aurelien-10119652081994",
+        "shop_aurelien-6039887642804",
+        "shop_aurelien-10046869209418"
+      ],
+      "clothingOverlap": [],
+      "previousShoeOverlap": 0,
+      "validPhysicalShoesAvailable": 7,
+      "theoreticalMinimum": 0,
+      "admittedShoes": [
+        {
+          "id": "shop_thursday-15456871514202",
+          "lastUse": 11,
+          "appearances": 5,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-253390159881",
+          "lastUse": 10,
+          "appearances": 6,
+          "inPrevious": false,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-6859648467034",
+          "lastUse": 9,
+          "appearances": 6,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-6865670045786",
+          "lastUse": 11,
+          "appearances": 4,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-7719429898330",
+          "lastUse": 10,
+          "appearances": 5,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-8086847258714",
+          "lastUse": 11,
+          "appearances": 7,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-8128950501466",
+          "lastUse": 10,
+          "appearances": 3,
+          "inPrevious": false,
+          "selected": true
+        }
+      ],
+      "fairness": {
+        "matchesUnconstrainedLRUOrder": true,
+        "selectedOrder": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "bestOrder": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "generation": 4,
+      "requestId": "mvttvjqf-4",
+      "scope": "db0a1cee-6161-45d8-a4c9-d6b195f791a1|shop|old_money|date",
+      "cards": 3,
+      "itemsPerCard": [
+        4,
+        4,
+        4
+      ],
+      "shoeIds": [
+        "shop_thursday-253390159881",
+        "shop_thursday-6865670045786",
+        "shop_thursday-15456871514202"
+      ],
+      "shoes": [
+        {
+          "id": "shop_thursday-253390159881",
+          "keys": [
+            "id:shop_thursday-253390159881",
+            "n:executive black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/products/1024x1024-men-executive-black-061821-3.4.jpg"
+          ],
+          "name": "Executive | Black"
+        },
+        {
+          "id": "shop_thursday-6865670045786",
+          "keys": [
+            "id:shop_thursday-6865670045786",
+            "n:lincoln black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-lincoln-black-012124-3.4_606b5f85-613a-4eca-84b5-2230382e1055.jpg"
+          ],
+          "name": "Lincoln | Black"
+        },
+        {
+          "id": "shop_thursday-15456871514202",
+          "keys": [
+            "id:shop_thursday-15456871514202",
+            "n:duke black coffee",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-duke-blackcoffee-101426-3.4.jpg"
+          ],
+          "name": "Duke | Black Coffee"
+        }
+      ],
+      "clothingIds": [
+        "shop_aurelien-10119652147530",
+        "shop_allsaints-usm038ka-5",
+        "shop_aurelien-10046869242186",
+        "shop_aurelien-15489794703690",
+        "shop_allsaints-usm134of-162",
+        "shop_aurelien-15246859403594",
+        "shop_aurelien-15489794670922",
+        "shop_armani_exchange-8nzm5a_zm1yz_1116",
+        "shop_aurelien-10228846690634"
+      ],
+      "clothingOverlap": [],
+      "previousShoeOverlap": 0,
+      "validPhysicalShoesAvailable": 7,
+      "theoreticalMinimum": 0,
+      "admittedShoes": [
+        {
+          "id": "shop_thursday-15456871514202",
+          "lastUse": 10,
+          "appearances": 5,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-253390159881",
+          "lastUse": 9,
+          "appearances": 5,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-6859648467034",
+          "lastUse": 11,
+          "appearances": 6,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-6865670045786",
+          "lastUse": 10,
+          "appearances": 4,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-7719429898330",
+          "lastUse": 11,
+          "appearances": 6,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-8086847258714",
+          "lastUse": 10,
+          "appearances": 6,
+          "inPrevious": false,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-8128950501466",
+          "lastUse": 11,
+          "appearances": 4,
+          "inPrevious": true,
+          "selected": false
+        }
+      ],
+      "fairness": {
+        "matchesUnconstrainedLRUOrder": true,
+        "selectedOrder": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "bestOrder": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "generation": 5,
+      "requestId": "mvttvzy7-5",
+      "scope": "db0a1cee-6161-45d8-a4c9-d6b195f791a1|shop|old_money|date",
+      "cards": 3,
+      "itemsPerCard": [
+        4,
+        4,
+        4
+      ],
+      "shoeIds": [
+        "shop_thursday-8086847258714",
+        "shop_thursday-8128950501466",
+        "shop_thursday-6859648467034"
+      ],
+      "shoes": [
+        {
+          "id": "shop_thursday-8086847258714",
+          "keys": [
+            "id:shop_thursday-8086847258714",
+            "n:saint cognac",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-saint-cognac-070226-3.4.jpg"
+          ],
+          "name": "Saint | Cognac"
+        },
+        {
+          "id": "shop_thursday-8128950501466",
+          "keys": [
+            "id:shop_thursday-8128950501466",
+            "n:lincoln dark brown",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-lincoln-darkbrown-061726-3.4.jpg"
+          ],
+          "name": "Lincoln | Dark Brown"
+        },
+        {
+          "id": "shop_thursday-6859648467034",
+          "keys": [
+            "id:shop_thursday-6859648467034",
+            "n:chairman black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-chairman-black-051323-3.4.jpg"
+          ],
+          "name": "Chairman | Black"
+        }
+      ],
+      "clothingIds": [
+        "shop_allsaints-usm085kb-5",
+        "shop_armani_exchange-xm003364_af27251_u6125",
+        "shop_aurelien-15246859469130",
+        "shop_armani_exchange-xm002151_af22062_m1297",
+        "shop_aurelien-16011499307338",
+        "shop_allsaints-usm050tf-197",
+        "shop_allsaints-usm124sf-10175",
+        "shop_allsaints-usm093kf-3860",
+        "shop_aurelien-10147024240970"
+      ],
+      "clothingOverlap": [],
+      "previousShoeOverlap": 0,
+      "validPhysicalShoesAvailable": 7,
+      "theoreticalMinimum": 0,
+      "admittedShoes": [
+        {
+          "id": "shop_thursday-15456871514202",
+          "lastUse": 11,
+          "appearances": 5,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-253390159881",
+          "lastUse": 11,
+          "appearances": 6,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-6859648467034",
+          "lastUse": 10,
+          "appearances": 5,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-6865670045786",
+          "lastUse": 11,
+          "appearances": 5,
+          "inPrevious": true,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-7719429898330",
+          "lastUse": 10,
+          "appearances": 5,
+          "inPrevious": false,
+          "selected": false
+        },
+        {
+          "id": "shop_thursday-8086847258714",
+          "lastUse": 9,
+          "appearances": 6,
+          "inPrevious": false,
+          "selected": true
+        },
+        {
+          "id": "shop_thursday-8128950501466",
+          "lastUse": 10,
+          "appearances": 4,
+          "inPrevious": false,
+          "selected": true
+        }
+      ],
+      "fairness": {
+        "matchesUnconstrainedLRUOrder": true,
+        "selectedOrder": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "bestOrder": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

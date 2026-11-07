@@ -1,3 +1,4 @@
+import {savedQuartetReason} from '../../src/services/savedOutfitContract';
 /**
  * Wardrobe Outfits Slice — outfit management + disliked tracking
  */
@@ -28,24 +29,31 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
     dislikedOutfitKeys: [],
 
     addOutfit: (outfitInput) => {
+        const current=get();
+        const pieces=outfitInput.itemIds.map(id=>{
+            const snapshot=outfitInput.snapshotItems?.find(item=>item.id===id);
+            const owned=current.items.find(item=>item.id===id);
+            return {...owned,...snapshot,id};
+        });
+        if(savedQuartetReason(pieces))return '';
         let newId = '';
         set((state) => {
-            // For AI-generated outfits, allow up to 2 items per macro-category
-            // (layered outfits have base top + outerwear which may both
-            // share macro-category 'top'). For user-created outfits, keep the
-            // stricter 1-per-category rule.
-            const maxPerCategory = outfitInput.generatedBy === 'ai' ? 2 : 1;
+            // Saving an accepted AI look must preserve its exact product IDs.
+            // Reclassifying here can silently discard pieces with legacy categories.
+            const maxPerCategory = 1;
             const macroCounts = new Map<string, number>();
             const seenIds = new Set<string>();
             const validItemIds = outfitInput.itemIds.filter((id) => {
                 if (seenIds.has(id)) return false;
                 seenIds.add(id);
+                if (outfitInput.generatedBy === 'ai') return true;
                 const item = state.items.find((i) => i.id === id);
                 if (!item) {
                     // Unknown item — allow it but prevent exact duplicates
                     return true;
                 }
-                const macro = getMacroCategory(item.category);
+                const macro = getMacroCategory(item.category, item.subCategory);
+                if (macro === 'other') return true;
                 const count = macroCounts.get(macro) ?? 0;
                 if (count >= maxPerCategory) return false;
                 macroCounts.set(macro, count + 1);
@@ -106,6 +114,8 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
     },
 
     saveOutfit: (id, collectionCategory?: string, savedFrom?: Outfit['savedFrom']) => {
+        const current=get(),outfit=current.outfits.find(o=>o.id===id);
+        if(!outfit||savedQuartetReason(outfit.itemIds.map(itemId=>({...current.items.find(i=>i.id===itemId),...outfit.snapshotItems?.find(i=>i.id===itemId),id:itemId}))))return;
         set((state) => ({
             outfits: state.outfits.map((outfit) =>
                 outfit.id === id ? { ...outfit, saved: true, ...(collectionCategory ? { collectionCategory } : {}), ...(savedFrom ? { savedFrom } : {}) } : outfit

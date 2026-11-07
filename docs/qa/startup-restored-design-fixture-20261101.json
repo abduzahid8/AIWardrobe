@@ -1,0 +1,28 @@
+{
+  "scenario": "process-cold; current persisted session/language",
+  "runs": [
+    {
+      "durationMs": 472,
+      "budgetMs": 1000,
+      "passed": true,
+      "origin": "native-app-start",
+      "run": 1
+    },
+    {
+      "durationMs": 453,
+      "budgetMs": 1000,
+      "passed": true,
+      "origin": "native-app-start",
+      "run": 2
+    },
+    {
+      "durationMs": 465,
+      "budgetMs": 1000,
+      "passed": true,
+      "origin": "native-app-start",
+      "run": 3
+    }
+  ],
+  "maximumMs": 472,
+  "passed": true
+}

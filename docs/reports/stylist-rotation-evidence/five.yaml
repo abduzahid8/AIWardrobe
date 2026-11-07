@@ -1,0 +1,26 @@
+appId: host.exp.Exponent
+---
+- repeat:
+    times: 5
+    commands:
+      - assertVisible: ".*Generate outfit.*"
+      - takeScreenshot: same-selection
+      - tapOn: ".*Generate outfit.*"
+      - extendedWaitUntil:
+          visible: ".*(Ваши образы|Your Outfits).*"
+          timeout: 120000
+      - takeScreenshot: displayed-card1
+      - scrollUntilVisible:
+          element:
+            id: stylistResult-1
+          direction: DOWN
+          visibilityPercentage: 50
+      - takeScreenshot: displayed-card2
+      - scrollUntilVisible:
+          element:
+            id: stylistResult-2
+          direction: DOWN
+          visibilityPercentage: 50
+      - takeScreenshot: displayed-card3
+      - tapOn:
+          id: aiResultsBack

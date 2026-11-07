@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-11-07T13:42:15.200Z",
+  "slug": "generate-outfits",
+  "version": 193,
+  "status": "ACTIVE",
+  "verify_jwt": false,
+  "ezbr_sha256": "201bf3034d34340269048b3bae40c2e1d530bfc1ecb25d7d8568a2b099b8d1d9",
+  "sourceCommit": "141c83b9c7b3ff523a9d849a038f43b4acec6caf",
+  "branch": "codex/styling-quality-v193-20261107",
+  "sourceSha256": "05ab555c747f9b5b65f99da24fc2bcb99ca16b95f19675eb48b8842e1c46c2a7",
+  "deployedSourceMatchesCommittedInputs": true,
+  "authenticationUnchanged": true,
+  "rateLimitUnchanged": true,
+  "otherFunctionsUnchanged": true,
+  "rollback": {
+    "version": 192,
+    "sourceSha256": "6e126cc5944d41f5666cfcec9dca36bc57b62877acb87266408a886e9a603d39",
+    "path": "backend/supabase/rollback/generate-outfits-styling-v193-20261107"
+  },
+  "liveHealth": [
+    {
+      "method": "OPTIONS",
+      "status": 200,
+      "cors": "*"
+    },
+    {
+      "method": "POST",
+      "status": 401,
+      "cors": "*"
+    }
+  ],
+  "noAuthenticatedLiveGeneration": true,
+  "noUserDataOrSchemaChanges": true
+}
