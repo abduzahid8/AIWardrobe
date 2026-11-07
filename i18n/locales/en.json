@@ -774,7 +774,60 @@
     "formal": "Formal",
     "sport": "Sport",
     "date": "Date",
-    "travel": "Travel"
+    "travel": "Travel",
+    "aiRanked": "AI ranked",
+    "styledLook": "Styled look",
+    "feedbackPrompt": "Does this look work for you?",
+    "feedbackSaved": "Feedback saved",
+    "feedbackLike": "Like this look",
+    "feedbackDislike": "This look needs work",
+    "feedbackUnavailable": "Could not save feedback. Please try again.",
+    "concepts": {
+      "refined-ivy": {
+        "title": "Refined Ivy",
+        "story": "A crisp base, easy tailoring and grounded leather footwear."
+      },
+      "textured-tailoring": {
+        "title": "Textured tailoring",
+        "story": "Quiet color relationships give textured tailoring room to lead."
+      },
+      "smart-knit-layering": {
+        "title": "Smart knit layering",
+        "story": "A softer open layer keeps the proportions refined and approachable."
+      },
+      "precise-office": {
+        "title": "Precise office tailoring",
+        "story": "A clear shirt line and structured trousers carry the professional register."
+      },
+      "classic-separates": {
+        "title": "Classic separates",
+        "story": "Contrast between jacket and trousers gives traditional separates definition."
+      },
+      "tonal-evening": {
+        "title": "Tonal evening",
+        "story": "A darker tonal palette and clean lines make an understated evening look."
+      },
+      "soft-evening-texture": {
+        "title": "Soft evening texture",
+        "story": "Warm neutrals and tactile layers bring softness to a polished date look."
+      },
+      "modern-evening": {
+        "title": "Modern evening separates",
+        "story": "A simple base lets modern outerwear and a clean trouser line define the look."
+      },
+      "easy-transit": {
+        "title": "Easy transit",
+        "story": "Easy proportions, walkable footwear and an adaptable layer for travel."
+      },
+      "soft-utility": {
+        "title": "Soft utility",
+        "story": "Earth tones and practical construction keep the whole look grounded."
+      },
+      "relaxed-knit": {
+        "title": "Relaxed knit layers",
+        "story": "Soft knit texture balances relaxed trousers and comfortable footwear."
+      }
+    }
   },
   "paywall": {
     "verifyingPurchase": "Verifying your purchase",

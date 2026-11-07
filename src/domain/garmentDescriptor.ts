@@ -1,6 +1,11 @@
+import { applyVisualFashion, type VisualFashionProfile } from './visualFashion.ts';
 import { normalizeGarmentText } from './garmentText.ts';
 import { colorFamilyOf, materialsOf, patternOf, textureOf } from './outfitDiversity.ts';
 export interface GarmentEvidence {
+  visualFashion?: VisualFashionProfile;
+  visualSourceHash?: string;
+  imageUrl?: string | null;
+  image_url?: string | null;
   id?: string | number;
   name?: string | null;
   type?: string | null;
@@ -297,7 +302,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     : ['blazer', 'cardigan', 'overshirt', 'jacket', 'coat', 'bomber'].includes(subtype)
       ? 'openable'
       : 'unknown';
-  return {
+  return applyVisualFashion({
     slot,
     subtype,
     length,
@@ -356,7 +361,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
       ...(bulk !== 'unknown' ? [`text:${bulk}`] : []),
       ...(volume !== 'unknown' ? [`text:${volume}`] : []),
     ],
-  };
+  }, item);
 }
 
 /** Controlled subtle motifs may mix; competing large motifs cannot be

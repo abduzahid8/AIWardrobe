@@ -1,3 +1,4 @@
+import { recordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
 import {displayedRotation} from '../src/domain/outfitRotation';
@@ -91,6 +92,10 @@ interface OutfitItem {
 }
 
 interface GeneratedOutfit {
+  concept?: {id:string;title:string;story:string;score?:number};
+  selectionSource?: string;
+  generationRequestId?:string;
+  engineVersion?:string;
   id: string;
   mainImage: string;
   matchScore: number;
@@ -549,6 +554,16 @@ const AIOutfitGenerator = () => {
   // free.aiOutfits = 0 → consumeOrPaywall denies + navigates to Paywall.
   // Trial-active (effectiveTier premium) and paid users pass through.
   const { requireFeature, consumeOrPaywall } = useSubscriptionGate();
+  const [lookRatings,setLookRatings]=useState<Record<string,number>>({});
+  const [feedbackPending,setFeedbackPending]=useState<string|null>(null);
+  const submitLookFeedback=async(look:GeneratedOutfit,rating:-1|1)=>{
+    const key=`${look.generationRequestId}:${look.id}`;
+    if(feedbackPending)return;
+    setFeedbackPending(key);
+    try {await recordLookFeedback(look,rating);setLookRatings(previous=>({...previous,[key]:rating}));}
+    catch {Alert.alert(t('common.error'),t('outfitMaker.feedbackUnavailable'));}
+    finally {setFeedbackPending(null);}
+  };
   const [currentSource, setCurrentSource] = useState(route.params?.source || 'wardrobe');
   // Anchor item passed from MyClosetScreen — when set, every generated outfit
   // must include this item locked into its slot.
@@ -1711,12 +1726,14 @@ const AIOutfitGenerator = () => {
         const slotDeckUsed = new Set<string>();
         const wrapLook = (outfit: any, items: any[], idx: number): GeneratedOutfit => {
           const copy = stylingCopyParts(items, stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather}));
-          const description = copy.description;
+          const description = outfit.concept?.id ? String(t(`outfitMaker.concepts.${outfit.concept.id}.story`,{defaultValue:outfit.concept.story || copy.description})) : copy.description;
           const judgeOk = passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences);
           // Hosted confidence is not a score from this client's occasion judge.
           const baseScore = outfitCoherence(items, stylingContext({style:styleToUse, occasion:occasionToUse, request:effectivePrompt||promptText, weather:resolvedWeather})).score;
           return {
             ...outfit,
+            selectionSource:data.source==='ai'?'ai':'deterministic_fallback',
+            generationRequestId:data.generationRequestId,engineVersion:data.generationVersion,
             id: outfit.id || `look_${tapNonce}_${idx}`,
             description,
             items,
@@ -1733,7 +1750,7 @@ const AIOutfitGenerator = () => {
           recentLookSignatures: history.recentLookSignatures,
           history,
           includeReserve: !data.generationVersion,
-          immutablePlan: String(data.generationVersion || '').startsWith('stylist-3-'),
+          immutablePlan: /^stylist-[34]-/.test(String(data.generationVersion || '')),
         });
         const cleanedOutfits = prepared.cleaned;
         const recovered = prepared.recovered.map((look, index) =>
@@ -2006,7 +2023,7 @@ const AIOutfitGenerator = () => {
             <View style={styles.headerRight} />
           </View>
 
-          <StylistRuntimeDiagnostic />
+          {__DEV__ && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true' && <StylistRuntimeDiagnostic />}
           {planningDate && (
             <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
               <View style={styles.planningBanner}>
@@ -2044,10 +2061,13 @@ const AIOutfitGenerator = () => {
                     </View>
                   ) : <View />}
                   <LinearGradient colors={[D.accent, '#5B7CF9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.matchPill}>
-                    <ScaledText style={styles.matchPillText}>{t('outfitMaker.aiCurated')}</ScaledText>
+                    <ScaledText style={styles.matchPillText}>{outfit.selectionSource === 'ai' ? t('outfitMaker.aiRanked') : t('outfitMaker.styledLook')}</ScaledText>
                   </LinearGradient>
                 </View>
 
+                {outfit.concept && <ScaledText style={[styles.outfitDesc,{fontWeight:'700',fontSize:20,marginBottom:12}]}>
+                  {t(`outfitMaker.concepts.${outfit.concept.id}.title`,{defaultValue:outfit.concept.title})}
+                </ScaledText>}
                 <OutfitSlotGrid
                   items={outfit.items}
                   weather={outfit.weather}
@@ -2065,6 +2085,19 @@ const AIOutfitGenerator = () => {
                   </View>
                 </View>
 
+                {outfit.concept && outfit.generationRequestId && (
+                  <View style={{flexDirection:'row',alignItems:'center',gap:16,marginTop:12}}>
+                    <ScaledText>{lookRatings[`${outfit.generationRequestId}:${outfit.id}`] ? t('outfitMaker.feedbackSaved') : t('outfitMaker.feedbackPrompt')}</ScaledText>
+                    {([1,-1] as const).map(rating=>(
+                      <TouchableOpacity key={rating} accessibilityRole="button" accessibilityLabel={t(rating===1?'outfitMaker.feedbackLike':'outfitMaker.feedbackDislike')}
+                        disabled={feedbackPending!==null} onPress={()=>void submitLookFeedback(outfit,rating)}
+                        style={{padding:10,opacity:feedbackPending?0.5:1}}>
+                        <Ionicons name={rating===1?'thumbs-up-outline':'thumbs-down-outline'} size={22}
+                          color={lookRatings[`${outfit.generationRequestId}:${outfit.id}`]===rating?D.accent:D.textSecondary}/>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
                 <View style={styles.actionRow}>
                   <TouchableOpacity
                     activeOpacity={0.85}
@@ -2277,7 +2310,7 @@ const AIOutfitGenerator = () => {
           </View>
         </View>
 
-        <StylistRuntimeDiagnostic />
+        {__DEV__ && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true' && <StylistRuntimeDiagnostic />}
         {/* Hero — live summary of the look being built */}
         <View style={styles.heroBlock}>
           <ScaledText style={styles.heroTitle}>

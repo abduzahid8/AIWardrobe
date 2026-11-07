@@ -1,0 +1,32 @@
+{
+  "measuredAt": "2026-11-07T19:24:08.766Z",
+  "scope": "Dedicated existing E2E account; feedback only; no generation or inference",
+  "checks": [
+    {
+      "name": "mobile_key_insert",
+      "status": 201,
+      "passed": true
+    },
+    {
+      "name": "same_key_update",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "one_private_rating_updated",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "other_owner_hidden",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "fixture_cleaned",
+      "status": 204,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

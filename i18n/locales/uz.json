@@ -789,7 +789,60 @@
     "noAvailableShopLooks": "Bu shartlarga mos to‘liq do‘kon obrazlari mavjud emas.",
     "noAvailableWardrobeLooks": "Bu shartlar uchun garderobda to‘liq obrazga yetarli kiyim yo‘q. Garderobga kiyim qo‘shing.",
     "generateFailed": "Hozir obraz yaratib bo‘lmadi. Qayta urinib ko‘ring.",
-    "aiUnavailable": "Sun’iy intellekt obrazni yarata olmadi. Birozdan so‘ng qayta urinib ko‘ring."
+    "aiUnavailable": "Sun’iy intellekt obrazni yarata olmadi. Birozdan so‘ng qayta urinib ko‘ring.",
+    "aiRanked": "AI tanlovi",
+    "styledLook": "Tayyor obraz",
+    "feedbackPrompt": "Bu obraz sizga mosmi?",
+    "feedbackSaved": "Fikr saqlandi",
+    "feedbackLike": "Obraz yoqdi",
+    "feedbackDislike": "Obrazni yaxshilash kerak",
+    "feedbackUnavailable": "Fikr saqlanmadi. Qayta urinib ko‘ring.",
+    "concepts": {
+      "refined-ivy": {
+        "title": "Nafis Ivy",
+        "story": "Aniq ko‘ylak chizig‘i, yengil qatlamlar va vazmin charm poyabzal."
+      },
+      "textured-tailoring": {
+        "title": "Fakturali klassika",
+        "story": "Sokin ranglar kiyimning ifodali fakturasini ta’kidlaydi."
+      },
+      "smart-knit-layering": {
+        "title": "Nafis trikotaj qatlamlar",
+        "story": "Yumshoq ochiladigan qatlam nafis va yengil nisbatlarni saqlaydi."
+      },
+      "precise-office": {
+        "title": "Aniq ofis klassikasi",
+        "story": "Ko‘ylak va shaklli shim ishchan ko‘rinish yaratadi."
+      },
+      "classic-separates": {
+        "title": "Klassik uyg‘unlik",
+        "story": "Pidjak va shim kontrasti klassik uyg‘unlikka aniqlik beradi."
+      },
+      "tonal-evening": {
+        "title": "To‘q rangli oqshom",
+        "story": "To‘q uyg‘un ranglar va aniq chiziqlar vazmin oqshom obrazi uchun."
+      },
+      "soft-evening-texture": {
+        "title": "Yumshoq oqshom fakturalari",
+        "story": "Iliq neytral ranglar va yumshoq qatlamlar nafis uchrashuv uchun."
+      },
+      "modern-evening": {
+        "title": "Zamonaviy oqshom obrazi",
+        "story": "Oddiy asos, zamonaviy ustki qatlam va aniq shim chizig‘i."
+      },
+      "easy-transit": {
+        "title": "Yo‘lda qulaylik",
+        "story": "Erkin nisbatlar, qulay poyabzal va sayohatga mos qatlam."
+      },
+      "soft-utility": {
+        "title": "Amaliy kundalik obraz",
+        "story": "Tabiiy ranglar va amaliy detallar obrazni birlashtiradi."
+      },
+      "relaxed-knit": {
+        "title": "Erkin trikotaj qatlamlar",
+        "story": "Yumshoq trikotaj erkin shim va qulay poyabzalni muvozanatlashtiradi."
+      }
+    }
   },
   "paywall": {
     "verifyingPurchase": "Xarid tekshirilmoqda",

@@ -1,0 +1,36 @@
+{
+  "result": [
+    {
+      "event_message": "stylist_request {\n  status: 200,\n  stage: \"final_selection\",\n  code: undefined,\n  syncMs: {\n    catalog_filter: 58.80999499999871,\n    intelligence: 16.02129700000023,\n    planning: 318.2008420000002,\n    selection: 0.2755729999989853,\n    response: 0.11499500000172702\n  },\n  waitMs: { catalog: 3933.7501490000013, provider: 885.6158540000015 },\n  counts: {\n    catalogRows: 500,\n    cachedDescriptors: 500,\n    top: 10,\n    outerwear: 10,\n    bottom: 10,\n    shoes: 10,\n    evaluations: 256,\n    proposals: 1006,\n    valid: 151,\n    structure: 0,\n    budget: 0,\n    source: 0,\n    quality: 105,\n    budgetPruned: 0,\n    providerErrors: 1,\n    selected: 3\n  }\n}\n",
+      "timestamp": "2026-11-07T18:32:40.490000"
+    },
+    {
+      "event_message": "stylist_provider {\n  source: \"deterministic_fallback\",\n  model: \"nvidia/nemotron-3.5-lightning-30b-a3b\",\n  status: [\n    {\n      provider: \"nvidia\",\n      model: \"nvidia/nemotron-3.5-lightning-30b-a3b\",\n      status: \"ok\"\n    }\n  ],\n  reason: \"rank_contract_mismatch\",\n  shortlist: 9\n}\n",
+      "timestamp": "2026-11-07T18:32:40.488000"
+    },
+    {
+      "event_message": "stylist_request {\n  status: 200,\n  stage: \"final_selection\",\n  code: undefined,\n  syncMs: {\n    catalog_filter: 37.72632700000031,\n    intelligence: 15.457125000000815,\n    planning: 220.81820700000026,\n    selection: 0.22205700000085926,\n    response: 0.10410900000169931\n  },\n  waitMs: { catalog: 4106.706682, provider: 5271.193846 },\n  counts: {\n    catalogRows: 400,\n    cachedDescriptors: 400,\n    top: 10,\n    outerwear: 10,\n    bottom: 10,\n    shoes: 10,\n    evaluations: 256,\n    proposals: 380,\n    valid: 256,\n    structure: 0,\n    budget: 0,\n    source: 0,\n    quality: 0,\n    budgetPruned: 0,\n    providerErrors: 1,\n    selected: 3\n  }\n}\n",
+      "timestamp": "2026-11-07T18:31:02.053000"
+    },
+    {
+      "event_message": "stylist_provider {\n  source: \"deterministic_fallback\",\n  model: \"nvidia/nemotron-3.5-lightning-30b-a3b\",\n  status: [\n    {\n      provider: \"nvidia\",\n      model: \"nvidia/nemotron-3.5-lightning-30b-a3b\",\n      status: \"ok\"\n    }\n  ],\n  reason: \"rank_contract_mismatch\",\n  shortlist: 9\n}\n",
+      "timestamp": "2026-11-07T18:31:02.051000"
+    },
+    {
+      "event_message": "stylist_request {\n  status: 422,\n  stage: \"catalog_retrieval\",\n  syncMs: {},\n  waitMs: {},\n  counts: {}\n}\n",
+      "timestamp": "2026-11-07T17:49:56.223000"
+    },
+    {
+      "event_message": "stylist_request {\n  status: 200,\n  stage: \"final_selection\",\n  syncMs: {\n    catalog_filter: 40.20798300000024,\n    intelligence: 15.88237399999889,\n    planning: 229.90691499999957,\n    selection: 0.2163749999999709,\n    response: 0.12168100000053528\n  },\n  waitMs: { catalog: 3819.8902119999993, provider: 864.5293920000004 },\n  counts: {\n    catalogRows: 400,\n    cachedDescriptors: 400,\n    top: 10,\n    outerwear: 10,\n    bottom: 10,\n    shoes: 10,\n    evaluations: 247,\n    proposals: 4000,\n    valid: 247,\n    structure: 0,\n    budget: 0,\n    source: 0,\n    quality: 0,\n    budgetPruned: 0,\n    providerErrors: 1,\n    selected: 3\n  }\n}\n",
+      "timestamp": "2026-11-07T17:45:44.009000"
+    },
+    {
+      "event_message": "stylist_request {\n  status: 200,\n  stage: \"final_selection\",\n  syncMs: {\n    catalog_filter: 39.482685999999376,\n    intelligence: 14.740562999999383,\n    planning: 211.35899900000004,\n    selection: 0.1727439999995113,\n    response: 0.11745200000041223\n  },\n  waitMs: { catalog: 4748.566273, provider: 701.2581439999994 },\n  counts: {\n    catalogRows: 400,\n    cachedDescriptors: 400,\n    top: 10,\n    outerwear: 10,\n    bottom: 10,\n    shoes: 10,\n    evaluations: 256,\n    proposals: 529,\n    valid: 231,\n    structure: 0,\n    budget: 0,\n    source: 0,\n    quality: 25,\n    budgetPruned: 0,\n    providerErrors: 1,\n    selected: 3\n  }\n}\n",
+      "timestamp": "2026-11-07T17:44:59.378000"
+    },
+    {
+      "event_message": "stylist_request {\n  status: 200,\n  stage: \"final_selection\",\n  syncMs: {\n    catalog_filter: 44.45944199999849,\n    intelligence: 11.992319999999381,\n    planning: 104.67245100000036,\n    selection: 0.128895999998349,\n    response: 0.079583000000639\n  },\n  waitMs: { catalog: 4831.488858999998, provider: 712.820678 },\n  counts: {\n    catalogRows: 500,\n    cachedDescriptors: 500,\n    top: 10,\n    outerwear: 10,\n    bottom: 10,\n    shoes: 10,\n    evaluations: 100,\n    proposals: 4000,\n    valid: 49,\n    structure: 0,\n    budget: 0,\n    source: 0,\n    quality: 51,\n    budgetPruned: 0,\n    providerErrors: 1,\n    selected: 3\n  }\n}\n",
+      "timestamp": "2026-11-07T17:44:20.550000"
+    }
+  ]
+}
