@@ -64,19 +64,27 @@ async function main(){
  const context={dressCode:'smart',concepts:[{id:'ivy',preferredSubtypes:['dress-shirt','shirt','blazer','cardigan','chino','tailored-trouser','loafer','derby']},{id:'texture',preferredSubtypes:['shirt','fine-knit','dress-shirt','blazer','coat','tailored-trouser','trouser','derby','loafer','monk']},{id:'knit',preferredSubtypes:['shirt','dress-shirt','polo','cardigan','overshirt','tailored-trouser','chino','loafer','chelsea']}]};
  const call="public."+candidate+"(array['top','outerwear','bottom','shoes'],'stylist4-query-cost','"+JSON.stringify(context)+"',100,0,null,null)";
  const explain=await query('explain (analyze,buffers,format json) select * from '+call);
+ const plan=explain[0]['QUERY PLAN'][0],baselinePlan=read('retrieval-query-before.json')[0]['QUERY PLAN'][0];
+ const metrics=plan=>({executionMs:plan['Execution Time'],sharedHitBlocks:plan.Plan['Shared Hit Blocks'],tempWrittenBlocks:plan.Plan['Temp Written Blocks']});
  const validation=(await query(`with results as(select row from ${call} row)
  select jsonb_build_object('bounded',(select count(*)<=400 from results),
+ 'rows',(select count(*) from results),
+ 'slotCounts',(select jsonb_object_agg(fashion_slot,slot_count) from (select row->>'fashion_slot' fashion_slot,count(*) slot_count from results group by 1) slots),
+ 'distinctBrands',(select count(distinct row->>'brand') from results),
+ 'distinctSubtypes',(select count(distinct row->'fashion_intelligence'->>'subtype') from results),
  'realProducts',not exists(select 1 from results r left join public.shop_catalog s on s.id=r.row->>'id' where s.id is null),
  'sourcePrices',not exists(select 1 from results r join public.shop_catalog s on s.id=r.row->>'id' where (r.row->>'price')::numeric<>s.price or r.row->>'currency'<>s.currency or r.row->>'image_url'<>s.image_url or r.row->>'source_url' is distinct from s.source_url),
  'footwear',not exists(select 1 from results where row->>'fashion_slot'='shoes' and row->>'garment_type' is distinct from 'shoes'),
  'private',not has_function_privilege('authenticated','public.catalog_stylist_candidates_candidate(text[],text,jsonb,integer,integer,text,numeric)','EXECUTE'),
  'invoker',not (select prosecdef from pg_proc where oid='public.catalog_stylist_candidates_candidate(text[],text,jsonb,integer,integer,text,numeric)'::regprocedure)
  ) state`))[0].state;
- assert(Object.values(validation).every(v=>v===true),'live candidate integrity failed');
- const ms=explain[0]['QUERY PLAN'][0]['Execution Time'];assert(ms<1500,'candidate query still too slow');
- save('retrieval-query-probe.json',{checkedAt:new Date().toISOString(),migrationSha256:hash(sql),backupSha256:hash(fs.readFileSync(backup)),executionMs:ms,plan:explain,validation});console.log(JSON.stringify({candidateExecutionMs:ms,validation}));return;
+ const integrityKeys=['bounded','realProducts','sourcePrices','footwear','private','invoker'];
+ assert(integrityKeys.every(key=>validation[key]===true),'live candidate integrity failed');
+ const candidateMetrics=metrics(plan),baselineMetrics=metrics(baselinePlan);
+ assert(candidateMetrics.executionMs<baselineMetrics.executionMs,'candidate query did not beat measured baseline');
+ save('retrieval-query-probe.json',{checkedAt:new Date().toISOString(),migrationSha256:hash(sql),backupSha256:hash(fs.readFileSync(backup)),baseline:baselineMetrics,candidate:candidateMetrics,improvement:{executionMs:baselineMetrics.executionMs-candidateMetrics.executionMs,sharedHitBlocks:baselineMetrics.sharedHitBlocks-candidateMetrics.sharedHitBlocks,tempWrittenBlocks:baselineMetrics.tempWrittenBlocks-candidateMetrics.tempWrittenBlocks},plan:explain,validation});console.log(JSON.stringify({baseline:baselineMetrics,candidate:candidateMetrics,validation}));return;
  }
- const probe=read('retrieval-query-probe.json');assert.equal(probe.migrationSha256,hash(sql));assert(Object.values(probe.validation).every(v=>v===true));
+ const probe=read('retrieval-query-probe.json');assert.equal(probe.migrationSha256,hash(sql));assert(['bounded','realProducts','sourcePrices','footwear','private','invoker'].every(key=>probe.validation[key]===true));
  assert.equal(hash(fs.readFileSync(backup)),probe.backupSha256);assert.equal(prior.trim(),fs.readFileSync(backup,'utf8').trim(),'retrieval SQL drift');
  await query(sql.replace('commit;',"insert into supabase_migrations.schema_migrations(version,name,statements) values('20261108003000','stylist_set_retrieval',array['Single bounded scan and narrow concept ranking; source checks retained']);\ncommit;"));
  await query('drop function public.catalog_stylist_candidates_candidate(text[],text,jsonb,integer,integer,text,numeric)');

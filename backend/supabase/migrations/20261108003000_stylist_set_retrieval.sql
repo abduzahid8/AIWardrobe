@@ -99,7 +99,8 @@ begin
   left join public.catalog_garment_intelligence i on i.product_id=s.id and i.version=1
   left join public.catalog_visual_fashion v on v.product_id=s.id and v.version=1 and v.image_url=s.image_url
     and v.source_hash=md5(jsonb_build_array(s.name,s.description,s.brand,s.category,s.garment_type,s.image_url)::text)
-  where b.slot_number>p_offset and b.slot_number<=p_offset+p_limit;
+  where b.slot_number>p_offset and b.slot_number<=p_offset+p_limit
+  order by b.fashion_slot,b.slot_number;
 end; $$;
 revoke all on function public.catalog_stylist_candidates(text[],text,jsonb,integer,integer,text,numeric) from public,anon,authenticated;
 grant execute on function public.catalog_stylist_candidates(text[],text,jsonb,integer,integer,text,numeric) to service_role;
