@@ -28,6 +28,10 @@
       "passed": 15,
       "failed": 0,
       "includes": "alias representative coverage, formula-aligned construction, actual handler, budgeted curated selection"
+    },
+    "finalBudgetFloorsAndCurrencies": {
+      "passed": 3,
+      "failed": 0
     }
   },
   "cpu": {
@@ -57,5 +61,15 @@
   },
   "noSchemaChanges": true,
   "noPaidInference": true,
-  "visualAcceptance": "pending owner iOS Simulator QA"
+  "visualAcceptance": "pending owner iOS Simulator QA",
+  "deployment": {
+    "version": 195,
+    "status": "ACTIVE",
+    "sourceCommit": "7f331c2281cd1c81eb8a9092f902499be6a38b6a",
+    "deployedSourceMatchesCommittedInputs": true,
+    "authenticationHealthPassed": true,
+    "otherFunctionsUnchanged": true,
+    "rollbackVersion": 194,
+    "pullRequest": "https://github.com/abduzahid8/AIWardrobe/pull/5"
+  }
 }

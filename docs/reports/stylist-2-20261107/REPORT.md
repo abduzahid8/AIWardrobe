@@ -52,3 +52,11 @@ and probes OPTIONS/missing/invalid authorization. `rollback` restores v194
 only after checking the current release fingerprint and archive hash. Supply
 `SUPABASE_ACCESS_TOKEN` or `SUPABASE_ACCESS_TOKEN_FILE`; credentials are never
 written to release artifacts. Existing rollback releases are preserved.
+
+Deployment verified: `generate-outfits` v195 ACTIVE from pushed commit
+`7f331c2281cd1c81eb8a9092f902499be6a38b6a`. Downloaded original source SHA-256
+`820bbdf336d7d48cebc0e7415618fc437618a644cabc1e97d2014ee86bb15552`
+exactly matches the committed-input bundle. OPTIONS 200, absent/invalid auth
+POST 401, other Edge Functions unchanged. Exact v194 rollback is archived and
+hash-checked; production rollback was not invoked.
+Review: [PR #5](https://github.com/abduzahid8/AIWardrobe/pull/5), based on v194.
