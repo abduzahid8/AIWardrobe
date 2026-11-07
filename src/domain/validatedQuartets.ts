@@ -1,7 +1,7 @@
 import { garmentContextReason, scoreGarmentForContext } from './garmentContext.ts';
 import { layerCompatibility } from './layerCompatibility.ts';
 import { outfitCoherence } from './outfitCoherence.ts';
-import { productIdentityKeys } from './outfitDiversity.ts';
+import { productIdentityKeys, spreadSuitableProducts, brandKey, garmentNearDuplicateKey } from './outfitDiversity.ts';
 import type { GarmentEvidence } from './garmentDescriptor.ts';
 import type { StylingContext } from './stylingContext.ts';
 /** Bounded pair-first exploration. Caller keeps final budget/source/ownership authority. */
@@ -24,11 +24,8 @@ export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
       locked = all.filter((item) => required.includes(item.id));
     return locked.length
       ? locked
-      : all
-          .map((item, index) => ({ item, index, score: scoreGarmentForContext(item, context) }))
-          .sort((a, b) => b.score - a.score || a.index - b.index)
-          .slice(0, perSlot)
-          .map((entry) => entry.item);
+      : spreadSuitableProducts(all.map(item=>({item,score:scoreGarmentForContext(item,context)})), entry=>entry.item, entry=>entry.score)
+          .slice(0, perSlot).map(entry=>entry.item);
   });
   if (pools.some((pool) => !pool.length)) return [];
   const pairs: { items: T[]; score: number; ordinal: number }[] = [];
@@ -94,7 +91,9 @@ export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
   result.sort((a, b) => b.score - a.score || a.order - b.order);
   const reserve: typeof result = [],
     seen = new Set<string>();
-  for (const candidate of result) {
+  const ordered=spreadSuitableProducts(result, candidate=>({brand:candidate.items.filter(i=>!required.includes(i.id)).map(brandKey).join('/'),
+      name:''}),candidate=>candidate.score,0.08,candidate=>candidate.items.map(garmentNearDuplicateKey).join('/'));
+  for (const candidate of ordered) {
     const companions = candidate.items.filter((i) => !required.includes(i.id));
     if (companions.some((i) => !seen.has(i.id))) {
       reserve.push(candidate);

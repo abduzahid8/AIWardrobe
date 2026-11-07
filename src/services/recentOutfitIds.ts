@@ -58,7 +58,7 @@ function ensureHydrated(state: RecencyState, key: string): Promise<void> {
                 if (products) {
                     try {
                         const keys = JSON.parse(products);
-                        if (Array.isArray(keys)) state.productKeys = keys.filter((key: unknown) => typeof key === 'string' && /^(id:|n:|i:)/.test(key) && key.length <= 2048).slice(-MAX_RECENT_IDS * 3);
+                        if (Array.isArray(keys)) state.productKeys = keys.filter((key: unknown) => typeof key === 'string' && /^(id:|n:|i:|u:)/.test(key) && key.length <= 2048).slice(-MAX_RECENT_IDS * 3);
                     } catch { /* Ignore a corrupt optional identity cache. */ }
                 }
                 if (raw) {
@@ -126,12 +126,13 @@ export function recordShownOutfits(outfits: unknown, scope?: string): void {
                 const id = String((raw as { id?: unknown } | null)?.id ?? '').trim();
                 if (!isRealPoolId(id)) continue;
                 for (const key of productIdentityKeys(raw)) {
-                    if (key.length > 2048 || seenKeys.has(key)) continue;
+                    if (key.length > 2048) continue;
+                    if(seenKeys.has(key))state.productKeys=state.productKeys.filter(value=>value!==key);
                     seenKeys.add(key);
                     state.productKeys.push(key);
                     keysAdded = true;
                 }
-                if (seen.has(id)) continue;
+                if (seen.has(id)) state.recentIds=state.recentIds.filter(value=>value!==id);
                 seen.add(id);
                 state.recentIds.push(id);
                 added = true;
@@ -175,17 +176,18 @@ function decksFor(scope: string) {
     return state;
 }
 export async function getRotationHistory(scope:string) {
-    const state=decksFor(scope);await state.ready;
+    const state=decksFor(scope);await state.ready;await state.writes;
     const owner=scope.split('|')[0];
-    const products=decksFor(`products:${owner}`);await products.ready;
-    const shoes=decksFor(`shoes:${owner}`);await shoes.ready;
+    const products=decksFor(`products:${owner}`);await products.ready;await products.writes;
+    const shoes=decksFor(`shoes:${owner}`);await shoes.ready;await shoes.writes;
     // Older clients persisted an account window but only kept deck boundaries
     // per occasion. Carry that evidence forward without copying another user.
-    const legacy=await getRecentShownProductKeys(owner);
+    const [legacyKeys,legacyIds,legacyLooks]=await Promise.all([getRecentShownProductKeys(owner),getRecentShownIds(owner),getRecentShownLookSignatures(owner)]);
+    const legacy=[...legacyKeys,...legacyIds.map(id=>`id:${id}`)];
     const decks=products.decks.length ? products.decks : state.decks;
     const previous=[...(decks.at(-1)?.productKeys||[])],previousSet=new Set(previous);
     const semanticDecks=[...new Map([...state.decks,...decks].map(deck=>[deck.requestId,deck])).values()].slice(-12);
-    return {recentLookSignatures:semanticDecks.flatMap(d=>d.lookSignatures||[]).filter(s=>typeof s==='string'&&s.startsWith('sq1:')&&s.length<=1000).slice(-36),previousDeckProductKeys:previous,olderRecentProductKeys:[...new Set([...legacy,...decks.slice(0,-1).flatMap(d=>d.productKeys)])].filter(key=>!previousSet.has(key)).slice(-(450-previous.length)),rotationDecks:decks.map(d=>({...d,productKeys:[...d.productKeys]})),
+    return {recentLookSignatures:[...new Set([...legacyLooks,...semanticDecks.flatMap(d=>d.lookSignatures||[])])].filter(s=>typeof s==='string'&&s.startsWith('sq1:')&&s.length<=1000).slice(-36),previousDeckProductKeys:previous,olderRecentProductKeys:[...new Set([...legacy,...decks.slice(0,-1).flatMap(d=>d.productKeys)])].filter(key=>!previousSet.has(key)).slice(-(450-previous.length)),rotationDecks:decks.map(d=>({...d,productKeys:[...d.productKeys]})),
         ...(shoes.decks.length ? {previousShoeProductKeys:[...shoes.decks.at(-1)!.productKeys],
             recentShoeProductKeys:[...new Set(shoes.decks.flatMap(d=>d.productKeys))],
             shoeRotationDecks:shoes.decks.map(d=>({...d,productKeys:[...d.productKeys]}))} : {})};

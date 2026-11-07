@@ -16,7 +16,7 @@ import { normalizeModelOutfits } from '../_shared/modelOutfitResponse.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { isFourSlotCandidate, fourSlotOutfitReason, outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
 import { styleJudgeReason, assessOutfitQuality, createQualityMemo, spreadQualityFamilies, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForRequestIntent, rejectForActivity, rejectOutfitIncoherence, isDrivingFootwear } from '../_shared/occasionRules.ts'
-import { analyzeDeckProductDiversity, assembleDiverseDeck, canonicalProductKey, productIdentityKeys, garmentArchetypeToken, countDistinctProducts, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
+import { analyzeDeckProductDiversity, assembleDiverseDeck, normalizeProductHistory, spreadSuitableProducts, deckNeedsVarietyReserve, createDeckVarietyScorer, canonicalProductKey, productIdentityKeys, garmentArchetypeToken, countDistinctProducts, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
 import {wasRecentlyShown, rotationPool, freshProductCount, rotationDeckPriority, createRotationPriority, createShoeRotationPriority, compareRotationOrder, assignRotatingShoes} from '../_shared/outfitRotation.ts'
 import { needsLayering as needsLayeringShared, resolveStylistWeather } from '../_shared/outfitComposition.ts'
 import { detectSlotMismatch, isOxfordFootwearName } from '../_shared/occasionRules.ts'
@@ -27,7 +27,7 @@ const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-const GENERATION_VERSION = 'stylist-human-qa-register-20261107';
+const GENERATION_VERSION = 'stylist-product-brand-visual-diversity-20261107';
 // Public catalog pages only; account history and eligibility are never cached.
 const catalogPages = new Map<string, {at:number; rows:any[]}>();
 const CATALOG_PAGE_TTL = 5 * 60 * 1000;
@@ -299,7 +299,7 @@ function collapseBySimEdge<T>(items: T[], keyFn: (x: T) => string): T[] {
 // family collapse. This does not claim that unseen catalog rows were searched.
 function retainBudgetFloorCandidates(
     source: any[], ranked: any[], cost: (item: any) => number,
-    eligible: (item: any) => boolean, anchor?: any, perSlotChoices = 1,
+    eligible: (item: any) => boolean, anchor?: any, perSlotChoices = 1, qualityOf: (item:any)=>number = ()=>0,
 ): any[] {
     const cheapest = new Map<string, { item: any; cost: number }>()
     for (const item of source) {
@@ -316,7 +316,7 @@ function retainBudgetFloorCandidates(
     const slotCounts = new Map(Array.from(cheapest.keys(), slot => [slot, 1]))
     // The cheapest floor is mandatory; remaining per-slot choices follow
     // the context-aware ranking, not the catalog's arrival order.
-    for (const item of [...ranked, ...source]) {
+    for (const item of spreadSuitableProducts([...new Map([...ranked,...source].filter(eligible).map(item=>[String(item.id),item])).values()],item=>item,qualityOf,0.08)) {
         if (!eligible(item) || representedIds.has(String(item.id))) continue
         const slot = isDressGarment(item) ? 'dress' : String(item.macroCategory || '').toLowerCase()
         if (!cheapest.has(slot) || (slotCounts.get(slot) || 0) >= perSlotChoices) continue
@@ -1184,7 +1184,7 @@ async function fetchShopItemsForAllSlotsEdge(
             const value = (entry: any) => budgetFx ? (entry.row._budget_cost === null ? Infinity : Number(entry.row._budget_cost)) : Number(entry.row.price)
             return (budgetFx || nativeBudget ? value(a) - value(b) : 0) || b.score - a.score
         }
-        const rowIdentity = (row: any) => ({id: `shop_${row.id}`, name: row.name, imageUrl: row.image_url, macroCategory: slot})
+        const rowIdentity = (row: any) => ({...row,id: `shop_${row.id}`, imageUrl: row.image_url, shopUrl:row.source_url, macroCategory: slot})
         const excluded = (row: any) => Boolean(excludeSet && wasRecentlyShown(rowIdentity(row), excludeSet))
         // A full page of knits can all fit the same two layers. Reserve a
         // matching across distinct tops and layers before declaring discovery
@@ -1395,7 +1395,12 @@ async function fetchShopItemsForAllSlotsEdge(
                 added++
             }
             // Pass 1: skip items the user already saw (rotation window).
-            for (const { row } of [...matchedTops(),...scored]) {
+            // Price floors stay available; the remaining bounded representatives
+            // span suitable brands, colors and garment types before the slot cap.
+            const freshCandidates = scored.filter(entry=>!excluded(entry.row));
+            const varied = spreadSuitableProducts(freshCandidates, entry=>({...entry.row,macroCategory:slot}), entry=>entry.score, 0.75);
+            const floors = budgetFx || nativeBudget ? freshCandidates.slice(0,1) : [];
+            for (const { row } of [...floors,...matchedTops(),...varied]) {
                 if (added >= perSlot) break
                 if (!row || !row.image_url) continue
                 if (excluded(row)) continue
@@ -2211,7 +2216,7 @@ serve(async (req: Request) => {
 
     // Cap the window: 200 ids ≈ 15+ decks. Unbounded arrays would bloat
     // the request body and risk excluding so much that a slot starves.
-    const excludeSet: Set<string> = new Set(
+    const excludeSet: Set<string> = normalizeProductHistory(
         (Array.isArray(excludeItemIds) ? excludeItemIds : [])
             .slice(0, 200)
             .map((v: unknown) => String(v ?? '').trim())
@@ -2219,8 +2224,12 @@ serve(async (req: Request) => {
     )
     for (const key of [...excludeProductKeys,...previousDeckProductKeys,...olderRecentProductKeys]) excludeSet.add(key)
     for (const key of [...recentShoeProductKeys,...(previousShoeProductKeys || [])]) excludeSet.add(key)
-    const previousSet = new Set<string>(previousDeckProductKeys)
-    const previousShoeSet = new Set<string>(previousShoeProductKeys ?? previousDeckProductKeys)
+    // Reconstruct history when a caller sends deck boundaries but omits the
+    // flattened arrays. Never let that payload shape reset consecutive rotation.
+    for(const deck of rotationDecks)for(const key of deck.productKeys)excludeSet.add(key)
+    for(const key of normalizeProductHistory(excludeSet))excludeSet.add(key)
+    const previousSet = normalizeProductHistory(previousDeckProductKeys.length ? previousDeckProductKeys : rotationDecks.at(-1)?.productKeys || [])
+    const previousShoeSet = normalizeProductHistory(previousShoeProductKeys ?? previousSet)
     const deckPriority = createShoeRotationPriority(excludeSet,previousSet,rotationDecks,anchorItemId,
         shoeRotationDecks ? {previous:previousShoeSet,decks:shoeRotationDecks} : undefined)
     const rotationTarget = deckTarget === 3 ? 3 : 0
@@ -2423,9 +2432,8 @@ serve(async (req: Request) => {
             let signals = lookSignals.get(look)
             if (!signals) {
                 const recency = recentLookSimilarity(look.items, body.recentLookSignatures ?? [])
-                const penalty = recency >= 0.8 ? (recency - 0.8) * 0.15 : 0
                 const assessment = memoQuality(look.items, styleKey, `${occasion} ${prompt}`, weather, anchorItemId, preferences)
-                signals = {recency, quality: Math.max(0, assessment.score - penalty), acceptable: assessment.acceptance.passed}
+                signals = {recency, quality: assessment.score, acceptable: assessment.acceptance.passed}
                 lookSignals.set(look, signals)
             }
             return signals
@@ -2643,10 +2651,10 @@ serve(async (req: Request) => {
             wardrobeItems = collapseBySimEdge(wardrobeItems, (i: any) => canonicalProductKey(i))
             if (parsedBudget) {
                 wardrobeItems = retainBudgetFloorCandidates(budgetSource, wardrobeItems,
-                    item => shopPriceOf(item, parsedBudget!.currency, parsedBudget!.fx), rankEligible, anchorPreRank, 10)
+                    item => shopPriceOf(item, parsedBudget!.currency, parsedBudget!.fx), rankEligible, anchorPreRank, 10, item=>scoreGarmentForContext(item,qualityContext))
             } else {
                 // A global trim must not discard an entire required slot.
-                wardrobeItems = retainBudgetFloorCandidates([...budgetSource].sort(compareRankedCandidates), wardrobeItems, () => 0, rankEligible, anchorPreRank, 10)
+                wardrobeItems = retainBudgetFloorCandidates([...budgetSource].sort(compareRankedCandidates), wardrobeItems, () => 0, rankEligible, anchorPreRank, 10, item=>scoreGarmentForContext(item,qualityContext))
             }
             // Keep the 40-item prompt balanced: up to ten representatives
             // in each slot. Prepending shoes here truncated other slots again.
@@ -2865,7 +2873,7 @@ serve(async (req: Request) => {
             productIdentityKeys(item).some(key => protectedReserveKeys.has(key)))
         // Anchored looks share one fixed garment. Use the choice enumerator's
         // normal shortlist size so joint selection stays within Edge CPU limits.
-        const completeChoices = () => completeChoiceCache ??= validatedQuartets(wardrobeItems, stylingContext({style:styleKey,occasion,request:prompt,weather,anchorId:anchorItemId,preferences,sourceMode:catalogOnly?'catalog':wardrobeOnly?'wardrobe':'mixed',budget:preferences?.maxShopBudget}), parts => compatibleWithProtected(parts) && acceptsCompleteChoice(parts), {requiredIds:requiredChoiceIds,maximum:24,searchLimit:384,perSlot:12,reserveMultiplier:1})
+        const completeChoices = () => completeChoiceCache ??= validatedQuartets(wardrobeItems, stylingContext({style:styleKey,occasion,request:prompt,weather,anchorId:anchorItemId,preferences,sourceMode:catalogOnly?'catalog':wardrobeOnly?'wardrobe':'mixed',budget:preferences?.maxShopBudget}), parts => compatibleWithProtected(parts) && acceptsCompleteChoice(parts), {requiredIds:requiredChoiceIds,maximum:24,searchLimit:384,perSlot:12,reserveMultiplier:2})
         async function generateCuratedChoices(): Promise<any[] | null> {
         let choices = completeChoices()
         if (!choices.length) return null
@@ -3172,11 +3180,14 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 },
                 maxSearchSteps: 512,
             })
-            // A complete fresh provider deck needs no combinatorial expansion.
-            // If it conflicts or recycles products, search a bounded reserve;
-            // all replacements still pass acceptsCompleteChoice and the same gate.
+            // Completeness alone does not establish a good displayed deck.
+            // Compare the same bounded reserve for brand/formula concentration;
+            // every replacement still passes the complete compatibility gate.
             let diverseDeck = selectDeck(finalOutfits)
-            const needsReserve = diverseDeck.deck.length < requestedDeckTarget || diverseDeck.deck.some((look: any) =>
+            const needsReserve = diverseDeck.deck.length < requestedDeckTarget
+                || deckNeedsVarietyReserve(diverseDeck.deck.map(look=>look.items), anchorItemId)
+                || diverseDeck.deck.some((look:any)=>signalsFor(look).recency>=0.8)
+                || diverseDeck.deck.some((look: any) =>
                 look.items.some((item: any) => String(item.id) !== String(anchorItemId || '')
                     && (wasRecentlyShown(item, excludeSet) || wasRecentlyShown(item, previousSet))))
             if (personalStylist && needsReserve) {
@@ -3226,10 +3237,12 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
             const candidateShoes = new Set(finalOutfits.flatMap((look:any)=>look.items.filter((item:any)=>item.macroCategory==='shoes').map((item:any)=>item.id)))
             const clothingSignature = (parts: any[]) => parts.filter(item => item.macroCategory !== 'shoes').map(item => String(item.id)).sort().join('|')
             const protectedShoes = new Map(protectedProviderLooks.map(look => [clothingSignature(look.items), String(look.items.find((item: any) => item.macroCategory === 'shoes')?.id)]))
+            const scoreDeckVariety = createDeckVarietyScorer(anchorItemId)
             const assigned = assignRotatingShoes(finalOutfits, shoes,
                 parts=>(!protectedShoes.size || !protectedShoes.has(clothingSignature(parts)) || parts.some(item => item.macroCategory === 'shoes' && String(item.id) === protectedShoes.get(clothingSignature(parts))))
                     && requiredChoiceIds.every(id=>parts.some(item=>String(item.id)===id)) && acceptsCompleteChoice(parts),
-                deckPriority, parts=>memoQuality(parts,styleKey,`${occasion} ${prompt}`,weather,anchorItemId,preferences).score,anchorItemId)
+                deckPriority, parts=>memoQuality(parts,styleKey,`${occasion} ${prompt}`,weather,anchorItemId,preferences).score,anchorItemId,
+                deck=>-scoreDeckVariety(deck.map(look=>look.items)))
             if (assigned.deck.length === 3) finalOutfits = assigned.deck
             const selected = finalOutfits.flatMap((look:any)=>look.items.filter((item:any)=>item.macroCategory==='shoes'))
             const validPhysicalShoesAvailable = countDistinctProducts(shoes)

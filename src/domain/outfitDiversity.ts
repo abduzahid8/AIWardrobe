@@ -195,15 +195,42 @@ export function normalizeNameKey(name: unknown): string {
     return raw.replace(NON_ALPHANUMERIC, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/** Canonicalize known image transforms without discarding product/color path segments. */
 export function imageKey(item: any): string {
-    const raw = text(item?.imageUrl || item?.image).trim().toLowerCase();
+    const raw = text(item?.imageUrl || item?.image_url || item?.image).trim().toLowerCase();
     if (!raw) return '';
-    return raw
-        .split('#')[0]
-        .split('?')[0]
-        .replace(/^https?:\/\//, '')
-        .replace(/^\/\//, '')
-        .replace(/\/+$/, '');
+    return raw.split('#')[0].split('?')[0]
+        .replace(/^https?:\/\//, '').replace(/^\/\//, '').replace(/\/+$/, '')
+        .replace(/\/storage\/v1\/(?:render\/image|object)\/(?:public|sign|authenticated)\//, '/storage/v1/object/public/')
+        .replace(/\/cdn-cgi\/image\/[^/]+\//, '/')
+        .replace(/_(?:\d+x\d*|small|medium|large|grande|master)(?=\.[a-z]+$)/, '');
+}
+
+/** Old persisted aliases must be normalized just like today's candidate rows. */
+export function normalizeProductHistory(keys: Iterable<string>): Set<string> {
+    const result = new Set<string>();
+    for (const key of keys) {
+        result.add(key);
+        if (key.startsWith('i:')) result.add(`i:${imageKey({imageUrl:key.slice(2)})}`);
+        const id = key.startsWith('id:') ? key.slice(3) : !key.includes(':') ? key : '';
+        if (id) {
+            result.add(`id:${id}`);
+            if (id.startsWith('shop_')) result.add(`id:${id.slice(5)}`);
+            else result.add(`id:shop_${id}`);
+        }
+    }
+    return result;
+}
+
+function productUrlKey(item: any): string {
+    const raw = text(item?.shopUrl || item?.source_url || item?.productUrl);
+    try {
+        const url = new URL(raw);
+        if (!/^https?:$/.test(url.protocol) || url.pathname.split('/').filter(Boolean).length < 2) return '';
+        // Variants and tracking parameters do not create a new physical style.
+        const productId=['id','product_id','pid'].map(key=>url.searchParams.get(key)).find(Boolean);
+        return `u:${url.hostname.toLowerCase().replace(/^www\./,'')}${url.pathname.replace(/\/+$/,'')}${productId?'?id='+productId:''}`;
+    } catch { return ''; }
 }
 
 export interface ProductIdentity {
@@ -243,7 +270,7 @@ export function productIdentityOf(item: any): ProductIdentity {
     const image = imageKey(item);
     const imageKeyValue = image ? `i:${image}` : '';
     const canonicalKey = nameKey || imageKeyValue || idKey;
-    const keys = [idKey, nameKey, imageKeyValue].filter(Boolean);
+    const keys = [idKey, nameKey, imageKeyValue, productUrlKey(item)].filter(Boolean);
     return { idKey, nameKey, imageKey: imageKeyValue, canonicalKey, keys };
 }
 
@@ -1517,6 +1544,84 @@ export function assessInventoryDiversity(
     };
 }
 
+/** Brand spelling differences must not manufacture diversity. */
+export function brandKey(item: any): string {
+    const key = normalizeNameKey(item?.brand).replace(/\s+/g, '');
+    return /^(unknown|unbranded|na|none)$/.test(key) ? '' : key;
+}
+
+/** Soft lookalike identity: different SKUs/color variants can still look alike. */
+export function garmentNearDuplicateKey(item: any): string {
+    const family = garmentVisualFamily(item);
+    if (!family || family.endsWith(':other')) return '';
+    const blob = fullBlob(item);
+    const fit = /\b(wide|oversized|relaxed|baggy|boxy)\b/.test(blob) ? 'wide'
+        : /\b(slim|skinny|fitted)\b/.test(blob) ? 'slim' : 'regular';
+    return [family, colorFamilyOf(item), fit, textureOf(item), patternOf(item)].join('|');
+}
+
+/** Retain brands and garment types within comparable quality bands before trimming. */
+export function spreadSuitableProducts<T>(rows: T[], itemOf: (row:T)=>any, scoreOf: (row:T)=>number, band=0.08, varietyKeyOf?: (row:T)=>string): T[] {
+    const sorted = rows.map((row,index)=>({row,index,score:scoreOf(row)}))
+        .sort((a,b)=>b.score-a.score || a.index-b.index);
+    const result:T[] = [];
+    for (let start=0; start<sorted.length;) {
+        let end=start+1;
+        while(end<sorted.length && sorted[start].score-sorted[end].score<=band)end++;
+        const brands = new Map<string, Map<string,T[]>>();
+        for(const {row} of sorted.slice(start,end)) {
+            const item=itemOf(row), brand=brandKey(item), family=varietyKeyOf ? varietyKeyOf(row) : garmentNearDuplicateKey(item);
+            let families=brands.get(brand);if(!families){families=new Map();brands.set(brand,families);}
+            const group=families.get(family)||[];group.push(row);families.set(family,group);
+        }
+        const queues=[...brands.values()].map(families=>{
+            const groups=[...families.values()],queue:T[]=[],total=groups.reduce((n,g)=>n+g.length,0);
+            for(let i=0;queue.length<total;i++)
+                for(const group of groups)if(i<group.length)queue.push(group[i]);
+            return queue;
+        });
+        for(let i=0;result.length<end;i++)for(const queue of queues)if(i<queue.length)result.push(queue[i]);
+        start=end;
+    }
+    return result;
+}
+
+type VarietyEvidence = {slot:DiversitySlot|null;brand:string;near:string};
+function varietyEvidence(item:any):VarietyEvidence {
+    return {slot:diversitySlotOf(item),brand:brandKey(item),near:garmentNearDuplicateKey(item)};
+}
+function varietyPressure(looks:VarietyEvidence[][]):number {
+    const collisions=(values:string[])=>{const counts=new Map<string,number>();for(const v of values)if(v)counts.set(v,(counts.get(v)||0)+1);return [...counts.values()].reduce((n,c)=>n+c*(c-1)/2,0);};
+    const brands=looks.flatMap(items=>items.map(item=>item.brand)).filter(Boolean);
+    const global=brands.length>1 ? collisions(brands)/(brands.length*(brands.length-1)/2) : 0;
+    let slotBrands=0,near=0,pairs=0;
+    for(const slot of DIVERSITY_SLOTS) {
+        const items=looks.flatMap(items=>items.filter(item=>item.slot===slot));
+        pairs+=items.length*(items.length-1)/2;
+        slotBrands+=collisions(items.map(item=>item.brand));
+        near+=collisions(items.map(item=>item.near));
+    }
+    return 0.55*global+(pairs?(0.65*slotBrands+0.65*near)/pairs:0);
+}
+/** Request-local row cache also keeps final shoe assignment inexpensive. */
+export function createDeckVarietyScorer(anchorId?:string):(itemsByLook:any[][])=>number {
+    const cache=new WeakMap<object,VarietyEvidence>();
+    return looks=>varietyPressure(looks.map(items=>items.filter(item=>String(item.id)!==String(anchorId||'')).map(item=>{
+        let evidence=cache.get(item);if(!evidence){evidence=varietyEvidence(item);cache.set(item,evidence);}return evidence;
+    })));
+}
+export function deckVarietyPressure(itemsByLook:any[][],anchorId?:string):number {
+    return createDeckVarietyScorer(anchorId)(itemsByLook);
+}
+
+/** A complete deck can need reserve comparison despite passing every hard gate. */
+export function deckNeedsVarietyReserve(itemsByLook: any[][], anchorId?: string): boolean {
+    if(itemsByLook.length<2)return false;
+    if(deckVarietyPressure(itemsByLook,anchorId)>=0.45)return true;
+    const fingerprints=itemsByLook.map(buildOutfitFingerprint);
+    return fingerprints.some((a,i)=>fingerprints.slice(i+1).some(b=>visualSimilarity(a,b)>=0.72));
+}
+
 // ── Deck selection ──────────────────────────────────────────────────────
 
 export interface DiverseDeckCandidate<O> {
@@ -1696,7 +1801,7 @@ const QUALITY_WEIGHT = 1000;
  * the diversity term (not score noise) decides among them. Differences
  * larger than the band still dominate: correctness first, novelty second.
  */
-export const MMR_QUALITY_BAND = 0.12;
+export const MMR_QUALITY_BAND = 0.08;
 /**
  * Weight of in-deck visual repetition in the variety term. A deck of three
  * pairwise-identical looks loses ~1.0 — more than one quality band, far
@@ -1716,8 +1821,8 @@ export const MMR_RECENCY_WEIGHT = 0.5;
  * Priority order (hardest first):
  *   1. the caller's style / occasion validation (looks are already filtered)
  *   2. no non-anchor product may repeat across looks
- *   3. outfit quality
- *   4. soft styling variety (archetype / similarity scoring only)
+ *   3. rotation and comparable outfit quality
+ *   4. deck brand balance, visual difference and recent styling
  *
  * Same archetype is NOT a rejection. Three "blazer + shirt + trousers +
  * loafers" looks are valid when every actual product is different. Garment
@@ -1971,20 +2076,8 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         return result;
     };
 
-    /**
-     * Soft deck score: quality-aware maximal-marginal-relevance over the
-     * valid combination. Product uniqueness is enforced by hard filtering,
-     * so this score only decides WHICH valid combination to show.
-     *
-     * Quality DOMINATES across bands: the quality sum is bucketed so any
-     * real quality gap (more than one MMR band) outweighs the entire
-     * variety term. Inside one band the looks are stylistically
-     * equivalent, and the variety term decides: distinct archetypes win,
-     * in-deck visual repetition loses, and resemblance to recently shown
-     * looks loses. Recency is a first-class term here rather than a
-     * sub-bucket subtraction, so it actually moves selection instead of
-     * being absorbed by the bucket.
-     */
+    // All candidates have passed the caller's hard gates. Within a bounded
+    // quality margin, rank visual difference, brand balance and recent styling.
     const qualityBand = opts.qualityBand ?? MMR_QUALITY_BAND;
     const similarityWeight = opts.similarityWeight ?? MMR_SIMILARITY_WEIGHT;
     const recencyWeight = opts.recencyWeight ?? MMR_RECENCY_WEIGHT;
@@ -1998,6 +2091,14 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         }
         return priority;
     };
+    const varietyItems = pool.map(member => (opts.itemsOf(member.outfit)||[]).filter(item =>
+        !opts.anchorKeys || !identityKeySets(item,opts.keysOf).some(key=>opts.anchorKeys!.has(key))).map(varietyEvidence));
+    const pressureCache = new Map<string, number>();
+    const pressureFor = (indices:number[]) => {
+        const key=indices.join(':');const cached=pressureCache.get(key);if(cached!==undefined)return cached;
+        const pressure=varietyPressure(indices.map(i=>varietyItems[i]||[]));
+        pressureCache.set(key,pressure);return pressure;
+    };
     const scoreCache = new Map<string, number>();
     const deckScore = (indices: number[]): number => {
         const key = indices.join(':');
@@ -2005,7 +2106,8 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         if (cached !== undefined) return cached;
         const members = indices.map((index) => pool[index]);
         const qualitySum = members.reduce((sum, member) => sum + member.quality, 0);
-        const qualityBucket = Math.round(qualitySum / qualityBand) * qualityBand;
+        // Continuous quality avoids arbitrary rounding boundaries hiding diversity.
+        const qualityValue = qualitySum * 2;
         const archetypes = new Set(members.map((member) => member.fingerprint.archetype));
         const bonus = DIVERSITY_BONUS_PER_ARCHETYPE * 0.35 * (archetypes.size - 1);
         let similarityPenalty = 0;
@@ -2020,10 +2122,10 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         const meanRecency = members.length > 0
             ? members.reduce((sum, member) => sum + member.recency, 0) / members.length
             : 0;
-        const variety = bonus - similarityWeight * 0.5 * meanSimilarity - recencyWeight * meanRecency;
+        const variety = bonus - similarityWeight * 0.5 * meanSimilarity - recencyWeight * meanRecency - pressureFor(indices);
         const priority = priorityFor(indices);
         const score = (typeof priority === 'number' && Number.isFinite(priority) ? Math.max(0, Math.floor(priority)) : 0) * (target * QUALITY_WEIGHT + 10)
-            + qualityBucket * QUALITY_WEIGHT + variety;
+            + qualityValue + variety;
         scoreCache.set(key, score);
         return score;
     };
@@ -2039,6 +2141,13 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                 if (delta) return delta;
             }
         }
+        // A visibly weaker look cannot buy its place through brand or color novelty.
+        const qualities=(indices:number[])=>indices.map(i=>pool[i].quality).sort((x,y)=>y-x);
+        const qa=qualities(a),qb=qualities(b);
+        const gap=qa.reduce((n,q,i)=>n+q-(qb[i]||0),0);
+        if(Math.abs(gap)>qualityBand*Math.max(a.length,b.length))return gap;
+        const weakestGap=(qa.at(-1)||0)-(qb.at(-1)||0);
+        if(Math.abs(weakestGap)>qualityBand)return weakestGap;
         return deckScore(a) - deckScore(b);
     };
 
@@ -2214,6 +2323,8 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
                 continue;
             }
             const candidate = pushCandidate(fill, 'fill');
+            varietyItems.push((opts.itemsOf(fill)||[]).filter(item=>!opts.anchorKeys || !identityKeySets(item,opts.keysOf).some(key=>opts.anchorKeys!.has(key)))
+                .map(varietyEvidence));
             refreshInventory();
             if (debug) {
                 debug(`replacement selected: ${candidate.fingerprint.archetype}`, {

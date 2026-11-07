@@ -1,4 +1,4 @@
-import {countDistinctProducts, diversitySlotOf, productIdentityKeys, type DiversitySlot} from './outfitDiversity.ts';
+import {countDistinctProducts, diversitySlotOf, productIdentityKeys, normalizeProductHistory, type DiversitySlot} from './outfitDiversity.ts';
 
 export interface DisplayedRotationHistory {
     previousDeckProductKeys: string[];
@@ -18,7 +18,7 @@ export function displayedRotation(history?: DisplayedRotationHistory, anchorId?:
 /** A shared id, normalized name OR normalized photo is the same physical product. */
 export function wasRecentlyShown(item: any, history: ReadonlySet<string>): boolean {
     const id = String(item?.id || '');
-    return history.has(id) || history.has(id.replace(/^shop_/, ''))
+    return history.has(id) || history.has(id.replace(/^shop_/, '')) || history.has(`id:${id.replace(/^shop_/,'')}`) || history.has(`id:shop_${id.replace(/^shop_/,'')}`)
         || productIdentityKeys({...item, imageUrl: item?.imageUrl || item?.image_url || item?.image}).some(key => history.has(key));
 }
 
@@ -52,7 +52,7 @@ export function rotationDeckPriority(items:any[],history:ReadonlySet<string>,pre
     const fresh=freshProductCount(products,history);
     const previousCount=products.filter(item=>wasRecentlyShown(item,previous)).length;
     const age=products.reduce((sum,item)=>{
-        let last=-1;decks.forEach((deck,index)=>{if(wasRecentlyShown(item,new Set(deck.productKeys)))last=index;});
+        let last=-1;decks.forEach((deck,index)=>{if(wasRecentlyShown(item,normalizeProductHistory(deck.productKeys)))last=index;});
         return sum+(last<0?0:decks.length-last);
     },0);
     return fresh*100000 + (products.length-previousCount)*1000 + age;
@@ -60,7 +60,7 @@ export function rotationDeckPriority(items:any[],history:ReadonlySet<string>,pre
 
 /** Cache history classification once per physical row during a bounded deck search. */
 export function createRotationPriority(history:ReadonlySet<string>,previous:ReadonlySet<string>,decks:{productKeys:string[]}[],anchorId?:string) {
-    const deckSets=decks.map(deck=>new Set(deck.productKeys));
+    const deckSets=decks.map(deck=>normalizeProductHistory(deck.productKeys));
     const cache=new Map<string,{keys:string[];score:number}>();
     return (items:any[]):number=>{
         let total=0;const used=new Set<string>();
@@ -91,12 +91,12 @@ export function compareRotationOrder(a: readonly number[], b: readonly number[])
 /** Hard-quality-approved products only. Shoes cannot be pinned by a quality tie-break. */
 export function createShoeRotationPriority(history: ReadonlySet<string>, previous: ReadonlySet<string>, decks: {productKeys: string[]}[], anchorId?: string,
     shoeHistory?: {previous:ReadonlySet<string>; decks:{productKeys:string[]}[]}) {
-    const sets = decks.map(deck => new Set(deck.productKeys));
-    const shoeSets = shoeHistory?.decks.map(deck=>new Set(deck.productKeys)) || sets;
+    const sets = decks.map(deck => normalizeProductHistory(deck.productKeys));
+    const shoeSets = shoeHistory?.decks.map(deck=>normalizeProductHistory(deck.productKeys)) || sets;
     const legacy = createRotationPriority(history, previous, decks, anchorId);
-    const cache = new Map<string, {keys: string[]; previous: boolean; last: number; count: number}>();
+    const cache = new Map<string, {keys: string[]; previous: boolean; last: number; count: number; fresh:boolean}>();
     return (items: any[]): number[] => {
-        let shoeOverlap = 0, otherOverlap = 0;
+        let shoeOverlap = 0, otherOverlap = 0, freshClothing=0;
         const ages = Array(shoeSets.length + 1).fill(0), counts = Array(shoeSets.length + 1).fill(0);
         const used = new Set<string>(), clothing: any[] = [];
         for (const item of items) {
@@ -108,7 +108,7 @@ export function createShoeRotationPriority(history: ReadonlySet<string>, previou
             if (!entry) {
                 let last = -1, count = 0;
                 (isShoe ? shoeSets : sets).forEach((set, i) => { if (wasRecentlyShown(item, set)) {last = i; count++;} });
-                entry = {keys: productIdentityKeys(item), previous: wasRecentlyShown(item, isShoe ? shoeHistory?.previous || previous : previous), last, count};
+                entry = {keys: productIdentityKeys(item), previous: wasRecentlyShown(item, isShoe ? shoeHistory?.previous || previous : previous), last, count, fresh:!wasRecentlyShown(item,history)};
                 cache.set(cacheKey, entry);
             }
             if (entry.keys.some(key => used.has(key))) continue;
@@ -119,12 +119,13 @@ export function createShoeRotationPriority(history: ReadonlySet<string>, previou
                 counts[entry.count]++;
             } else {
                 otherOverlap += Number(entry.previous);
+                freshClothing+=Number(entry.fresh);
                 clothing.push(item);
             }
         }
         // Prefer the oldest last-use buckets, then the fewest appearances.
         // Explicit vector comparison avoids weights that quality can outweigh.
-        return [-shoeOverlap, -otherOverlap, ...ages, ...counts, legacy(clothing)];
+        return [-shoeOverlap, -otherOverlap, freshClothing, ...ages, ...counts, legacy(clothing)];
     };
 }
 
@@ -134,7 +135,7 @@ export function createShoeRotationPriority(history: ReadonlySet<string>, previou
 export function assignRotatingShoes<O extends {items: any[]}>(
     looks: O[], shoes: any[], accepts: (items: any[]) => boolean,
     priority: (items: any[]) => readonly number[], quality: (items: any[]) => number,
-    anchorId?: string,
+    anchorId?: string, varietyOfDeck: (deck:O[])=>number = ()=>0,
 ): {deck: O[]; feasibleMinimumOverlap: number | null} {
     const anchor = shoes.find(shoe => String(shoe.id) === anchorId);
     const choices = looks.map(look => (anchor ? [anchor] : shoes).map(shoe => {
@@ -166,7 +167,10 @@ export function assignRotatingShoes<O extends {items: any[]}>(
                     priority([...picked.filter(Boolean).map(look => (look as O).items).flat(), ...choice.look.items]),
                     priority([...picked.filter(Boolean).map(look => (look as O).items).flat(), ...winner.look.items]),
                 );
-                if (byOrder > 0 || (byOrder === 0 && choice.score > winner.score)) winner = choice;
+                const partial=picked.filter(Boolean) as O[];
+                const gap=choice.score-winner.score;
+                const betterQuality=Math.abs(gap)>0.08 ? gap>0 : comparableScore([...partial,choice.look as O],choice.score)>comparableScore([...partial,winner.look as O],winner.score);
+                if (byOrder > 0 || (byOrder === 0 && betterQuality)) winner = choice;
             }
             if (!winner) { best = []; return; }
             picked[index] = winner.look as O;
@@ -181,12 +185,16 @@ export function assignRotatingShoes<O extends {items: any[]}>(
             bestQuality = pickedScore;
         }
     };
+    const comparableScore=(deck:O[],score:number)=>score*2+varietyOfDeck(deck);
     const walk = (index: number, selected: O[], used: Set<string>, score: number) => {
         if (index === choices.length) {
             const order = priority(selected.flatMap(look => look.items));
             minimum = Math.min(minimum ?? Infinity, -order[0]);
             const comparison = best.length ? compareRotationOrder(order, bestOrder) : 1;
-            if (comparison > 0 || (comparison === 0 && score > bestQuality)) {best = [...selected]; bestOrder = order; bestQuality = score;}
+            const qualityGap=score-bestQuality;
+            const betterQuality=Math.abs(qualityGap)>0.08*selected.length ? qualityGap>0
+                : comparableScore(selected,score)>comparableScore(best,bestQuality);
+            if (comparison > 0 || (comparison === 0 && betterQuality)) {best = [...selected]; bestOrder = order; bestQuality = score;}
             return;
         }
         for (const choice of choices[index]) {

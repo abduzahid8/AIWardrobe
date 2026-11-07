@@ -30,18 +30,21 @@ export function recentLookSimilarity(
   for (const previous of recent.slice(-36)) {
     if (!previous.startsWith('sq1:')) continue;
     const other = previous.slice(4).split('|');
-    let equal = 0,
-      known = 0;
+    let equal = 0, weight = 0, known = 0;
+    // Formula, palette and fit carry more evidence than shared generic
+    // formality/length values. Keep the persisted sq1 format compatible.
+    const weights = [0, 0.35, 0.25, 0.20, 0.10, 0.03, 0.07];
     for (let i = 0; i < parts.length; i++) {
       const a = parts[i].split(':'),
         b = (other[i] || '').split(':');
       for (let j = 1; j < a.length; j++)
         if (a[j] !== 'unknown' && b[j] && b[j] !== 'unknown') {
           known++;
-          if (a[j] === b[j]) equal++;
+          weight += weights[j] || 0;
+          if (a[j] === b[j]) equal += weights[j] || 0;
         }
     }
-    const similarity = known >= 8 ? equal / known : 0;
+    const similarity = known >= 8 && weight > 0 ? equal / weight : 0;
     maximum = Math.max(maximum, similarity);
   }
   return maximum;
