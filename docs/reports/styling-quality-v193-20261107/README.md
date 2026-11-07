@@ -4,6 +4,15 @@
 `codex/styling-quality-v193-20261107`. Незакоммиченные изменения основного
 `AIWardrobe` не переносились и не изменялись.
 
+Релиз выполнен: generate-outfits **v193 ACTIVE**, source commit
+`141c83b9c7b3ff523a9d849a038f43b4acec6caf`, [PR #2](https://github.com/abduzahid8/AIWardrobe/pull/2).
+Проверено 2026-11-07 18:42:15 Asia/Tashkent: скачанный original source совпадает
+с committed inputs, SHA-256 `05ab555c747f9b5b65f99da24fc2bcb99ca16b95f19675eb48b8842e1c46c2a7`.
+EZBR fingerprint: `201bf3034d34340269048b3bae40c2e1d530bfc1ecb25d7d8568a2b099b8d1d9`.
+Auth, rateLimit, JWT config и остальные функции не изменились. Live OPTIONS=200,
+POST без авторизации=401. Аутентифицированная live generation и simulator QA
+не запускались; semantic smoke выполнен офлайн на настоящем handler.
+
 ## Проверенный источник
 
 `baseline.json`: live ACTIVE v192, `verify_jwt=false`, пересборка

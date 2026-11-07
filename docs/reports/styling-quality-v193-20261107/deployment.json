@@ -1,0 +1,9 @@
+{
+  "slug": "generate-outfits",
+  "version": 193,
+  "status": "ACTIVE",
+  "verify_jwt": false,
+  "ezbr_sha256": "201bf3034d34340269048b3bae40c2e1d530bfc1ecb25d7d8568a2b099b8d1d9",
+  "sourceCommit": "141c83b9c7b3ff523a9d849a038f43b4acec6caf",
+  "branch": "codex/styling-quality-v193-20261107"
+}
