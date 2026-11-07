@@ -1,0 +1,549 @@
+{
+  "scope": "actual post-provider handler replay; no remote calls; process CPU excludes module compilation",
+  "reports": [
+    {
+      "occasion": "Work",
+      "anchored": false,
+      "mode": "fresh",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 464.132,
+      "wallMs": 316.41812500000003,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 266,
+          "cpuMs": 111.55299999999991
+        },
+        "styleJudgeReason": {
+          "calls": 111,
+          "cpuMs": 116.403
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 46.803
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 112.499
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 229.67
+        }
+      }
+    },
+    {
+      "occasion": "Formal",
+      "anchored": false,
+      "mode": "fresh",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 376.433,
+      "wallMs": 278.13870799999995,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 266,
+          "cpuMs": 87.812
+        },
+        "styleJudgeReason": {
+          "calls": 111,
+          "cpuMs": 94.25200000000004
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 46.555
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 92.428
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 221.093
+        }
+      }
+    },
+    {
+      "occasion": "Work",
+      "anchored": true,
+      "mode": "fresh",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 357.601,
+      "wallMs": 255.73362499999985,
+      "status": 200,
+      "outfits": 3,
+      "logs": 2,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 264,
+          "cpuMs": 109.73000000000003
+        },
+        "styleJudgeReason": {
+          "calls": 108,
+          "cpuMs": 92.68200000000002
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 30.424
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 126.446
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 182.807
+        }
+      }
+    },
+    {
+      "occasion": "Formal",
+      "anchored": true,
+      "mode": "fresh",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 300.281,
+      "wallMs": 242.59637500000008,
+      "status": 200,
+      "outfits": 3,
+      "logs": 2,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 264,
+          "cpuMs": 77.41799999999998
+        },
+        "styleJudgeReason": {
+          "calls": 108,
+          "cpuMs": 89.44599999999997
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 24.552
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 83.742
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 180.29
+        }
+      }
+    },
+    {
+      "occasion": "Work",
+      "anchored": false,
+      "mode": "repair",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 278.449,
+      "wallMs": 247.213125,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 264,
+          "cpuMs": 80.90299999999999
+        },
+        "styleJudgeReason": {
+          "calls": 110,
+          "cpuMs": 71.157
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 19.154
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 84.381
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 160.93
+        }
+      }
+    },
+    {
+      "occasion": "Formal",
+      "anchored": true,
+      "mode": "repair",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 239.434,
+      "wallMs": 229.65437500000007,
+      "status": 200,
+      "outfits": 3,
+      "logs": 2,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 264,
+          "cpuMs": 64.69799999999995
+        },
+        "styleJudgeReason": {
+          "calls": 108,
+          "cpuMs": 70.74900000000002
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 18.355999999999998
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 77.928
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 128.929
+        }
+      }
+    },
+    {
+      "occasion": "Work",
+      "anchored": false,
+      "mode": "budget-pressure",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 186.355,
+      "wallMs": 153.66850000000022,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 60,
+          "cpuMs": 62.88899999999999
+        },
+        "styleJudgeReason": {
+          "calls": 25,
+          "cpuMs": 46.059
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 14.006
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 134.375
+        },
+        "expansion": {
+          "choices": 14,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 25.249
+        }
+      }
+    },
+    {
+      "occasion": "Formal",
+      "anchored": true,
+      "mode": "budget-pressure",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 147.022,
+      "wallMs": 138.01899999999978,
+      "status": 200,
+      "outfits": 3,
+      "logs": 2,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 66,
+          "cpuMs": 41.43800000000002
+        },
+        "styleJudgeReason": {
+          "calls": 24,
+          "cpuMs": 33.659
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 16.777
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 104.253
+        },
+        "expansion": {
+          "choices": 18,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 12.071
+        }
+      }
+    },
+    {
+      "occasion": "Work",
+      "anchored": false,
+      "mode": "rejected-reserve",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 432.36,
+      "wallMs": 404.6826249999999,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 408,
+          "cpuMs": 129.24699999999996
+        },
+        "styleJudgeReason": {
+          "calls": 254,
+          "cpuMs": 164.01399999999992
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 19.976
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 234.399
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {
+            "item \"Charcoal tailored wool trousers 3\" contains rejected keyword \"charcoal\" for style old_money": 16,
+            "item \"Charcoal tailored wool trousers 4\" contains rejected keyword \"charcoal\" for style old_money": 16,
+            "item \"Charcoal tailored wool trousers 5\" contains rejected keyword \"charcoal\" for style old_money": 16,
+            "item \"Charcoal tailored wool trousers 6\" contains rejected keyword \"charcoal\" for style old_money": 16,
+            "item \"Charcoal tailored wool trousers 7\" contains rejected keyword \"charcoal\" for style old_money": 16,
+            "item \"Charcoal tailored wool trousers 8\" contains rejected keyword \"charcoal\" for style old_money": 16,
+            "item \"Charcoal tailored wool trousers 9\" contains rejected keyword \"charcoal\" for style old_money": 16,
+            "item \"Charcoal tailored wool trousers 10\" contains rejected keyword \"charcoal\" for style old_money": 16,
+            "item \"Charcoal tailored wool trousers 11\" contains rejected keyword \"charcoal\" for style old_money": 16
+          }
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 165.913
+        }
+      }
+    },
+    {
+      "occasion": "Work",
+      "anchored": false,
+      "mode": "quality-floor",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 152.973,
+      "wallMs": 134.33754099999987,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 190,
+          "cpuMs": 56.30700000000003
+        },
+        "styleJudgeReason": {
+          "calls": 72,
+          "cpuMs": 41.881
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 31.503
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 82.824
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 26.595
+        }
+      }
+    },
+    {
+      "occasion": "Work",
+      "anchored": true,
+      "mode": "quality-floor",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 137.873,
+      "wallMs": 125.52070800000001,
+      "status": 200,
+      "outfits": 3,
+      "logs": 2,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 190,
+          "cpuMs": 57.00100000000005
+        },
+        "styleJudgeReason": {
+          "calls": 72,
+          "cpuMs": 45.52499999999998
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 21.227
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 78.362
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 21.431
+        }
+      }
+    },
+    {
+      "occasion": "Casual",
+      "anchored": false,
+      "mode": "minimalist-floor",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 138.452,
+      "wallMs": 112.66779199999974,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 200,
+          "cpuMs": 55.74200000000002
+        },
+        "styleJudgeReason": {
+          "calls": 77,
+          "cpuMs": 42.853000000000016
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 19.933999999999997
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 88.075
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {
+            "business_tailoring_with_severely_distressed_denim": 5
+          }
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 18.795
+        }
+      }
+    },
+    {
+      "occasion": "Date night",
+      "anchored": false,
+      "mode": "date-floor",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 123.645,
+      "wallMs": 114.35445800000025,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 190,
+          "cpuMs": 54.19000000000005
+        },
+        "styleJudgeReason": {
+          "calls": 72,
+          "cpuMs": 36.53699999999999
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 17.143
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 76.443
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 21.363
+        }
+      }
+    },
+    {
+      "occasion": "Date night",
+      "anchored": false,
+      "mode": "old-money-date",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 139.398,
+      "wallMs": 121.2110419999999,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 190,
+          "cpuMs": 52.66400000000002
+        },
+        "styleJudgeReason": {
+          "calls": 72,
+          "cpuMs": 45.538000000000004
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 16.954
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 85.433
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 26.002
+        }
+      }
+    }
+  ]
+}

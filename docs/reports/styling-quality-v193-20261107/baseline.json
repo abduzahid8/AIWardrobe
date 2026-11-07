@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-11-07T13:23:21.867Z",
+  "sourceCommit": "52a97e3f35957e8492c6d1200bc0dc1375b31388",
+  "live": {
+    "id": "f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a",
+    "slug": "generate-outfits",
+    "name": "generate-outfits",
+    "status": "ACTIVE",
+    "version": 192,
+    "created_at": 1774491523714,
+    "updated_at": 1794054675018,
+    "verify_jwt": false,
+    "import_map": false,
+    "entrypoint_path": "file:///tmp/user_fn_fyqpifmrsftsfqibhwhy_f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a_192/source/index.ts",
+    "ezbr_sha256": "07bd476dc1e698f6e4ea3a127efb06de8d677586a2aecbe9767f9511be4102af"
+  },
+  "sourceSha256": "6e126cc5944d41f5666cfcec9dca36bc57b62877acb87266408a886e9a603d39",
+  "rebuiltSha256": "6e126cc5944d41f5666cfcec9dca36bc57b62877acb87266408a886e9a603d39",
+  "byteIdentical": true,
+  "otherBranch": "release/stylist-quality-v4-20261107 diverges at d9d7ffc and removes v192 shortlist/quality checks"
+}

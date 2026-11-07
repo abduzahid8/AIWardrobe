@@ -20,6 +20,7 @@ export interface GarmentDescriptor {
   materials: string[];
   texture: string;
   pattern: string;
+  patternProminence: 'prominent' | 'subtle' | 'unknown';
   formality: 'athletic' | 'casual' | 'smart' | 'formal' | 'unknown';
   volume: 'slim' | 'regular' | 'wide' | 'unknown';
   bulk: 'light' | 'heavy' | 'unknown';
@@ -30,6 +31,7 @@ export interface GarmentDescriptor {
   casualSole: boolean;
   soleProfile: 'dress' | 'comfort' | 'sneaker' | 'rugged' | 'unknown';
   fadedDenim: boolean;
+  paleDenim: boolean;
   loudBranding: boolean;
   sportyZip: boolean;
   utilityConstruction: boolean;
@@ -158,6 +160,26 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     && (technicalLeisure || /\b(track|athletic|sports?|sweatshirt|fleece|contrast[ -]+(?:bands?|panels?))\b/.test(text));
   const fadedDenim = subtype === 'jeans'
     && /\b(faded|fading|bleached|heavily[ -]washed|acid[ -]wash(?:ed)?|stone[ -]wash(?:ed)?|light[ -]wash(?:ed)?|distressed|ripped|shredded|whisker(?:ed|ing)?)\b/.test(text);
+  // A pale colour is visible evidence of register, not proof of fading or
+  // distress. Keep it separate so clean light denim is still usable.
+  const paleDenim = subtype === 'jeans'
+    && /\b(light|pale|ice)[ -]blue\b/.test(`${text} ${String(item.color || '').toLowerCase()}`);
+  // Jacquard is a weave, not necessarily a busy motif. Only explicit motif
+  // evidence upgrades it; tonal jacquard and herringbone remain textures.
+  const pattern = /\b(paisley|floral|geometric|polka[ -]dots?|camo)\b/.test(text)
+    ? 'print'
+    : /\b(checks?|checked|plaid|gingham|houndstooth|windowpane|tartan)\b/.test(text)
+      ? 'check'
+      : /\b(solid|plain|unpatterned|stripes?|striped|pinstripes?|pinstriped|checks?|checked|plaid|graphics?|logos?|prints?|printed|jacquard|herringbone|tweed|textured)\b/.test(text)
+        || (typeof item.pattern === 'string' && !/^(unknown|other|\s*)$/i.test(item.pattern))
+        ? patternOf(item) : 'unknown';
+  const patterned = ['stripe', 'check', 'print'].includes(pattern);
+  const prominentMotif = /\b(busy|bold|large|oversized|high[ -]contrast|medium[ -]contrast|all[ -]over)(?:[ -]+(?:busy|bold|large|scale|geometric))?[ -]+(?:checks?|checked|plaid|tartan|stripes?|striped|paisley|floral|jacquard|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
+  const subtleMotif = /\b(subtle|tonal|micro|fine|small|low[ -]contrast)(?:[ -]+(?:fine|subtle|small|micro|scale))?[ -]+(?:checks?|checked|plaid|windowpane|houndstooth|stripes?|striped|pinstriped|paisley|floral|jacquard|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
+  const patternProminence = patterned && prominentMotif
+    ? 'prominent'
+    : patterned && subtleMotif
+      ? 'subtle' : 'unknown';
   const loudBranding = /\b(monograms?|graphics?|slogans?|lettering|all[ -]over[ -]+(?:logos?|branding)|repeat(?:ed|ing)?[ -]+logos?)\b/.test(text)
     || (/\blogos?\b/.test(text) && /\b(large|oversized|bold|printed|repeat(?:ed|ing)?|all[ -]over)\b/.test(text));
   const structured =
@@ -247,16 +269,8 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
       )
         ? textureOf(item)
         : 'unknown',
-    pattern:
-      typeof item.pattern === 'string' &&
-      item.pattern.trim() &&
-      !/^(unknown|other)$/i.test(item.pattern.trim())
-        ? patternOf(item)
-        : /\b(solid|plain|unpatterned|striped?|checks?|checked|plaid|graphic|logo|floral|paisley|print(?:ed)?|camo|jacquard|polka)\b/.test(
-              text
-            )
-          ? patternOf(item)
-          : 'unknown',
+    pattern,
+    patternProminence,
     formality,
     volume,
     bulk,
@@ -265,6 +279,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     casualSole,
     soleProfile,
     fadedDenim,
+    paleDenim,
     loudBranding,
     sportyZip,
     utilityConstruction,
@@ -276,6 +291,8 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     evidence: [
       ...(soleProfile !== 'unknown' ? [`sole:${soleProfile}`] : []),
       ...(fadedDenim ? ['surface:faded-denim'] : []),
+      ...(paleDenim ? ['surface:pale-denim'] : []),
+      ...(patternProminence !== 'unknown' ? [`pattern:${patternProminence}`] : []),
       ...(loudBranding ? ['pattern:loud-branding'] : []),
       ...(sportyZip ? ['construction:sporty-zip'] : []),
       ...(utilityConstruction ? ['construction:utility-pockets'] : []),
@@ -286,4 +303,13 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
       ...(volume !== 'unknown' ? [`text:${volume}`] : []),
     ],
   };
+}
+
+/** Controlled subtle motifs may mix; competing large motifs cannot be
+ * hidden by equal family labels or by calling a paisley jacquard a texture. */
+export function competingUpperPatterns(a: GarmentDescriptor, b: GarmentDescriptor): boolean {
+  const motif = (d: GarmentDescriptor) => ['stripe', 'check', 'print'].includes(d.pattern);
+  if (!motif(a) || !motif(b)) return false;
+  if (a.patternProminence === 'subtle' && b.patternProminence === 'subtle') return false;
+  return a.patternProminence === 'prominent' || b.patternProminence === 'prominent' || a.pattern !== b.pattern;
 }

@@ -91,7 +91,7 @@ export function layerCompatibility(
     evidence.push('bulky_base_under_pullover');
   }
   if (
-    (context.weather === null || (context.weather.temp != null && context.weather.temp > 22)) &&
+    context.weather?.temp != null && context.weather.temp > 22 &&
     b.bulk === 'heavy'
   ) {
     score -= 0.15;

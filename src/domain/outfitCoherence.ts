@@ -1,5 +1,5 @@
 import { garmentContextReason, scoreGarmentForContext, officeRefinementPenalty } from './garmentContext.ts';
-import { describeGarment, type GarmentEvidence } from './garmentDescriptor.ts';
+import { describeGarment, competingUpperPatterns, type GarmentEvidence } from './garmentDescriptor.ts';
 import { layerCompatibility } from './layerCompatibility.ts';
 import { scoreColorHarmony } from './colorHarmony.ts';
 import { colorFamilyOf, colorTokensOf, patternOf } from './outfitDiversity.ts';
@@ -237,6 +237,11 @@ export function outfitCoherence(
     evidence.push('multiple_high_volume_pieces');
   }
   const outer = bySlot('outerwear');
+  const base = bySlot('top');
+  if (base && outer && competingUpperPatterns(base, outer)) {
+    dimensions.palette = Math.min(dimensions.palette, 0.55);
+    evidence.push('competing_upper_patterns');
+  }
   if (outer?.structured && bottom?.structured && ['smart', 'formal'].includes(context.dressCode)) {
     if ((outer.volume === 'slim' && bottom.volume === 'wide') || (outer.volume === 'wide' && bottom.volume === 'slim')) {
       dimensions.proportion = Math.min(dimensions.proportion, 0.45);

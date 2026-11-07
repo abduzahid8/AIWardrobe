@@ -937,7 +937,11 @@ export function passesStyleJudge(
     lockedItemId?: string | null,
     preferences?:StylingPreferences,
 ): boolean {
-    return styleJudgeReason(items, styleId, occasionId, weather, lockedItemId,preferences) === null;
+    // Local fallback and suggestion paths use this combined gate. Keep the
+    // diagnostic hard judge separate: Edge repairs below-floor provider looks
+    // from its approved reserve without regenerating the already-good cards.
+    return styleJudgeReason(items, styleId, occasionId, weather, lockedItemId,preferences) === null
+        && assessOutfitQuality(items,styleId,occasionId,weather,lockedItemId,preferences).acceptance.passed;
 }
 
 const VIEW_PREFIX_RE = /^(front|side|back|close[\s-]?up|detail)\s+view\s+of\s+(?:(a|an|the)\s+)?/i;

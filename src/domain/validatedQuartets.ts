@@ -1,6 +1,7 @@
 import { garmentContextReason, scoreGarmentForContext } from './garmentContext.ts';
 import { layerCompatibility } from './layerCompatibility.ts';
 import { outfitCoherence } from './outfitCoherence.ts';
+import { outfitQualityFloor } from './outfitQualityFloor.ts';
 import { productIdentityKeys, spreadSuitableProducts, brandKey, garmentNearDuplicateKey } from './outfitDiversity.ts';
 import type { GarmentEvidence } from './garmentDescriptor.ts';
 import type { StylingContext } from './stylingContext.ts';
@@ -79,7 +80,7 @@ export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
       signatures.add(signature);
       if (!accepts(parts)) continue;
       const quality = outfitCoherence(parts, context);
-      if (!quality.valid) continue;
+      if (!quality.valid || !outfitQualityFloor(parts, context, quality).passed) continue;
       result.push({ id: '', items: parts, score: quality.score, order: result.length });
       // Bounded validated reserve; enough room for global physical-identity matching.
       if (result.length >= reserveLimit) break;
