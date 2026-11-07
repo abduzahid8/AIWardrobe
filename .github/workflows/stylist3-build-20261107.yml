@@ -1,0 +1,41 @@
+name: One-time Stylist 3.0 production bundle
+on:
+  push:
+    branches:
+      - release/stylist3-build-20261107
+permissions:
+  contents: write
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build exact edge bundle
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const esbuild=require('esbuild');
+          (async()=>{
+            const result=await esbuild.build({
+              absWorkingDir:process.cwd(),
+              entryPoints:['backend/supabase/functions/generate-outfits/index.ts'],
+              bundle:true,format:'esm',platform:'neutral',target:'es2022',
+              external:['https://*'],write:false,metafile:true,logLevel:'silent'
+            });
+            fs.mkdirSync('.stylist3-build',{recursive:true});
+            fs.writeFileSync('.stylist3-build/index.ts',result.outputFiles[0].contents);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          sha256sum .stylist3-build/index.ts | tee .stylist3-build/sha256.txt
+      - name: Push immutable build artifact to this temporary branch
+        run: |
+          git config user.name 'AIWardrobe release build'
+          git config user.email 'actions@users.noreply.github.com'
+          git add .stylist3-build/index.ts .stylist3-build/sha256.txt
+          git commit -m 'build: attach Stylist 3.0 reviewed Edge bundle'
+          git push
