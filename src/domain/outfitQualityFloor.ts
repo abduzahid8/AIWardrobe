@@ -23,7 +23,8 @@ export function outfitQualityFloor(
   const dateNight = isDateNightOccasion(context.occasion);
   const oldMoney = context.style === 'old_money';
   const minimalistCasual = context.style === 'minimalist' && context.dressCode === 'casual';
-  const minimum = formal || refinedWork || (oldMoney && dateNight) ? 0.75 : dateNight ? 0.7 : minimalistCasual ? 0.65 : 0;
+  const casualTravel = context.dressCode === 'casual' && /\b(travel|trip|sightseeing)\b/.test(`${context.occasion} ${context.request}`);
+  const minimum = formal || refinedWork || (oldMoney && dateNight) ? 0.75 : dateNight ? 0.7 : minimalistCasual ? 0.65 : casualTravel ? 0.6 : 0;
   const descriptors = items.map(describeGarment);
   const bySlot = (slot: string) => descriptors.find(d => d.slot === slot);
   let score = coherence.score;
@@ -59,6 +60,18 @@ export function outfitQualityFloor(
   const top = bySlot('top'), outer = bySlot('outerwear'), bottom = bySlot('bottom'), shoe = bySlot('shoes');
   const dressSilhouette = shoe && !shoe.casualSole && ['oxford', 'monk', 'dress-boot'].includes(shoe.subtype);
   const reject = (why: string) => { score = Math.min(score, 0.49); reason = why; };
+  if (coherence.evidence.includes('fluid_base_and_short_zip_layer_split_office_register'))
+    reject('casual_upper_construction_conflicts_with_office_dress_lower');
+  if (coherence.evidence.includes('graphic_volume_tailoring_and_vivid_shoes_lack_shared_register'))
+    reject('disconnected_graphic_tailoring_and_statement_footwear');
+  if (coherence.evidence.includes('performance_training_shoe_without_active_travel_intent'))
+    reject('training_footwear_conflicts_with_non_active_travel_look');
+  // Wash alone remains usable. Only a close cut, leisure denim layer AND
+  // a formal shoe last establish this specific date-night register clash.
+  if (dateNight && bottom?.washedDenim && bottom.volume === 'slim'
+    && outer?.relaxedTailoring && outer.materials.includes('denim')
+    && shoe && !shoe.casualSole && ['oxford', 'derby', 'monk', 'dress-boot'].includes(shoe.subtype))
+    reject('washed_slim_double_denim_conflicts_with_dress_footwear');
   if ((formal || context.dressCode === 'smart') && top?.materials.includes('denim')
     && bottom?.paleDenim && outer?.structured && dressSilhouette)
     reject('pale_double_denim_conflicts_with_tailoring_and_dress_footwear');

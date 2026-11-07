@@ -36,6 +36,12 @@ export interface GarmentDescriptor {
   sportyZip: boolean;
   utilityConstruction: boolean;
   technicalLeisure: boolean;
+  relaxedTailoring: boolean;
+  fluidFabric: boolean;
+  croppedZip: boolean;
+  washedDenim: boolean;
+  trainingFootwear: boolean;
+  vividFootwear: boolean;
   rugged: boolean;
   athletic: boolean;
   structured: boolean;
@@ -53,6 +59,11 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
       .filter(value => typeof value === 'string').join(' ')
   );
   const slot = String(item.macroCategory || item.category || 'unknown');
+  // This exact sparse catalog row omits its drawstring waist. Manufacturer:
+  // https://aurelien-online.com/products/beige-flannel-trousers
+  // Confirmed 2026-11-07; derived evidence only, never a catalog mutation.
+  const verifiedDrawstring = slot === 'bottom'
+    && /^(?:shop_)?aurelien-15179534139722$/i.test(String(item.id || ''));
   const rules: Array<[string, RegExp]> =
     slot === 'shoes'
       ? [
@@ -66,7 +77,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
           ['loafer', /\b(loafers?|penny|horsebit)\b/],
           ['chelsea', /\bchelsea\b/],
           ['dress-boot', /\b(dress|sleek|slim)[ -].*boots?\b/],
-          ['sport-sneaker', /\b(running|training|trail|performance|athletic)\b/],
+          ['sport-sneaker', /\b(running|training|cross[ -]?train(?:ers?|ing)|trail|performance|athletic)\b/],
           [
             'minimal-sneaker',
             /\b(minimal|plain|clean|low[ -]top|leather)\b.*\b(sneakers?|trainers?)\b/,
@@ -115,7 +126,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
               ['fine-knit', /\b(fine|lightweight|thin|gauge|merino)\b.*\b(knit|sweater|pullover)/],
               ['sweater', /\b(sweaters?|pullovers?|jumpers?)\b/],
             ];
-  const subtype = rules.find(([, r]) => r.test(text))?.[0] || 'unknown';
+  const subtype = verifiedDrawstring ? 'athletic-trouser' : rules.find(([, r]) => r.test(text))?.[0] || 'unknown';
   const athletic =
     /\b(athletic|training|track[ -]?pants?|joggers?|sweatpants?|workout|sportswear)\b/.test(text) ||
     subtype === 'sport-sneaker' ||
@@ -160,6 +171,17 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     && (technicalLeisure || /\b(track|athletic|sports?|sweatshirt|fleece|contrast[ -]+(?:bands?|panels?))\b/.test(text));
   const fadedDenim = subtype === 'jeans'
     && /\b(faded|fading|bleached|heavily[ -]washed|acid[ -]wash(?:ed)?|stone[ -]wash(?:ed)?|light[ -]wash(?:ed)?|distressed|ripped|shredded|whisker(?:ed|ing)?)\b/.test(text);
+  // Washed alone is not distress. Its relationship with a skinny cut and
+  // dress footwear is scored separately from visibly faded denim.
+  const washedDenim = subtype === 'jeans' && /\bwash(?:ed)?\b/.test(text);
+  const relaxedTailoring = subtype === 'blazer'
+    && /\b(denim|leisure|unstructured|unlined|jersey|knitted|soft[ -]shoulder)\b/.test(text);
+  const fluidFabric = /\b(tencel|lyocell|viscose|rayon)\b/.test(text);
+  const croppedZip = slot === 'outerwear' && subtype === 'jacket'
+    && /\b(short|cropped|crop)\b/.test(text) && /\b(zip|zipped|zippered)\b/.test(text);
+  const trainingFootwear = slot === 'shoes'
+    && /\b(training|cross[ -]?train(?:ers?|ing)|workout|weightlifting)\b/.test(text);
+  const vividFootwear = slot === 'shoes' && /\b(bright|neon|electric|vivid|fluorescent)\b/.test(text);
   // A pale colour is visible evidence of register, not proof of fading or
   // distress. Keep it separate so clean light denim is still usable.
   const paleDenim = subtype === 'jeans'
@@ -210,19 +232,19 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
           'derby',
           'monk',
           'dress-boot',
-          'blazer',
           'tailored-trouser',
           'dress-shirt',
         ].includes(subtype) || dressLoafer
       ? 'formal'
       : ['loafer', 'chelsea', 'chino', 'fine-knit', 'cardigan'].includes(subtype)
         ? 'smart'
+        : subtype === 'blazer' ? (relaxedTailoring ? 'smart' : 'formal')
         : subtype === 'unknown'
           ? 'unknown'
           : 'casual';
   const volume = /\b(slim|skinny|fitted|tight)\b/.test(text)
     ? 'slim'
-    : /\b(wide|oversized|baggy|boxy|relaxed)\b/.test(text)
+    : /\b(wide|oversized|baggy|boxy|relaxed|loose(?:[ -]fit)?)\b/.test(text)
       ? 'wide'
       : /\b(regular|straight)\b/.test(text)
         ? 'regular'
@@ -284,6 +306,12 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     sportyZip,
     utilityConstruction,
     technicalLeisure,
+    relaxedTailoring,
+    fluidFabric,
+    croppedZip,
+    washedDenim,
+    trainingFootwear,
+    vividFootwear,
     athletic,
     structured,
     insulated: /\b(puffer|down jacket|down filling|insulated|shearling)\b/.test(text),
@@ -298,6 +326,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
       ...(utilityConstruction ? ['construction:utility-pockets'] : []),
       ...(technicalLeisure ? ['construction:technical-leisure'] : []),
       ...(verifiedComfortLoafer ? ['catalog:verified-comfort-sole'] : []),
+      ...(verifiedDrawstring ? ['catalog:verified-drawstring'] : []),
       ...(subtype !== 'unknown' ? [`text:${subtype}`] : []),
       ...(bulk !== 'unknown' ? [`text:${bulk}`] : []),
       ...(volume !== 'unknown' ? [`text:${volume}`] : []),

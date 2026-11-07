@@ -1,0 +1,271 @@
+{
+  "scope": "actual post-provider handler replay; no remote calls; process CPU excludes module compilation",
+  "reports": [
+    {
+      "occasion": "Work",
+      "anchored": false,
+      "mode": "fresh",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 261.335,
+      "wallMs": 187.39945800000004,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 266,
+          "cpuMs": 75.75700000000002
+        },
+        "styleJudgeReason": {
+          "calls": 111,
+          "cpuMs": 57.144
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 19.744999999999997
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 69.452
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 126.981
+        }
+      }
+    },
+    {
+      "occasion": "Formal",
+      "anchored": false,
+      "mode": "fresh",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 204.031,
+      "wallMs": 138.19545800000003,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 266,
+          "cpuMs": 66.913
+        },
+        "styleJudgeReason": {
+          "calls": 111,
+          "cpuMs": 62.46700000000003
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 14.388
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 52.041
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 124.161
+        }
+      }
+    },
+    {
+      "occasion": "Work",
+      "anchored": true,
+      "mode": "fresh",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 197.744,
+      "wallMs": 139.68495900000005,
+      "status": 200,
+      "outfits": 3,
+      "logs": 2,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 264,
+          "cpuMs": 62.22799999999991
+        },
+        "styleJudgeReason": {
+          "calls": 108,
+          "cpuMs": 50.74099999999998
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 16.932
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 66.814
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 105.856
+        }
+      }
+    },
+    {
+      "occasion": "Formal",
+      "anchored": true,
+      "mode": "fresh",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 191.454,
+      "wallMs": 130.05783299999996,
+      "status": 200,
+      "outfits": 3,
+      "logs": 2,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 264,
+          "cpuMs": 45.36900000000001
+        },
+        "styleJudgeReason": {
+          "calls": 108,
+          "cpuMs": 39.657999999999994
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 15.095
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 48.139
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 122.887
+        }
+      }
+    },
+    {
+      "occasion": "Work",
+      "anchored": false,
+      "mode": "quality-floor",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 94.337,
+      "wallMs": 82.00274999999999,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 190,
+          "cpuMs": 41.39999999999998
+        },
+        "styleJudgeReason": {
+          "calls": 72,
+          "cpuMs": 32.06100000000001
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 13.719000000000001
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 56.907
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 17.709
+        }
+      }
+    },
+    {
+      "occasion": "Work",
+      "anchored": true,
+      "mode": "quality-floor",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 84.267,
+      "wallMs": 76.05620900000008,
+      "status": 200,
+      "outfits": 3,
+      "logs": 2,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 190,
+          "cpuMs": 38.571999999999974
+        },
+        "styleJudgeReason": {
+          "calls": 72,
+          "cpuMs": 25.945000000000004
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 12.29
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 50.94
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 15.077
+        }
+      }
+    },
+    {
+      "occasion": "Date night",
+      "anchored": false,
+      "mode": "date-floor",
+      "providerValidated": 3,
+      "pool": 96,
+      "cpuMs": 78.811,
+      "wallMs": 75.550209,
+      "status": 200,
+      "outfits": 3,
+      "logs": 1,
+      "stages": {
+        "outfitCoherence": {
+          "calls": 190,
+          "cpuMs": 34.153000000000006
+        },
+        "styleJudgeReason": {
+          "calls": 72,
+          "cpuMs": 22.021
+        },
+        "assembleDiverseDeck": {
+          "calls": 2,
+          "cpuMs": 13.088999999999999
+        },
+        "validatedQuartets": {
+          "calls": 1,
+          "cpuMs": 47.151
+        },
+        "expansion": {
+          "choices": 24,
+          "rejections": {}
+        },
+        "assignRotatingShoes": {
+          "calls": 1,
+          "cpuMs": 13.869
+        }
+      }
+    }
+  ]
+}

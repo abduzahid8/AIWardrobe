@@ -1,0 +1,61 @@
+{
+  "baseline": {
+    "version": 193,
+    "commit": "141c83b9c7b3ff523a9d849a038f43b4acec6caf",
+    "deployedSourceSha256": "05ab555c747f9b5b65f99da24fc2bcb99ca16b95f19675eb48b8842e1c46c2a7",
+    "freshBundleExactlyMatchesLiveOriginal": true
+  },
+  "tests": {
+    "baselineNewRegressions": {
+      "passed": 9,
+      "failed": 7,
+      "total": 16
+    },
+    "targeted": {
+      "passed": 46,
+      "failed": 0,
+      "suites": 5,
+      "commands": [
+        "node_modules/.bin/jest --runInBand --runTestsByPath __tests__/services/stylingV194.test.ts __tests__/services/stylingV193.test.ts __tests__/backend/stylingV193Hosted.test.js __tests__/backend/curatedSelectionQuality.test.js",
+        "node_modules/.bin/jest --runInBand --runTestsByPath __tests__/backend/stylingV194Hosted.test.js"
+      ]
+    },
+    "deno": "passed: generate-outfits only, frozen lockfile",
+    "typescript": "passed: four modified modules, their dependency graph, new service tests (--ignoreConfig, bundler resolution, skipLibCheck)",
+    "eslint": "passed: four modified modules and new service tests",
+    "diffCheck": "passed"
+  },
+  "safeguards": {
+    "runtimeInputs": 38,
+    "modifiedRuntimeInputs": 4,
+    "byteIdenticalRuntimeInputs": 34,
+    "unchanged": [
+      "Edge handler",
+      "occasionRules",
+      "validatedQuartets search limits",
+      "curated shortlist and provider call count",
+      "physical-product identity and diversity",
+      "rotation and shoe LRU objectives",
+      "four slots and three-card requirement",
+      "budget, currency and ownership",
+      "anchored-item enforcement",
+      "weather",
+      "authentication, quotas and subscription checks"
+    ],
+    "noSchemaChanges": true,
+    "noCatalogWrites": true,
+    "noAdditionalQueriesOrProviderRequests": true
+  },
+  "cpu": {
+    "offlinePostProviderReplay": 7,
+    "allPass": true,
+    "budgetMs": 500,
+    "candidateRangeMs": [
+      81.8,
+      261.845
+    ],
+    "caution": "single local CPU comparison, not production latency measurement"
+  },
+  "visualAcceptance": "pending owner iOS Simulator QA",
+  "noLiveAuthenticatedInference": true
+}

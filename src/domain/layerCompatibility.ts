@@ -86,6 +86,13 @@ export function layerCompatibility(
     score -= 0.2;
     evidence.push('competing_necklines');
   }
+  // The base may fit physically while its drape/volume weakens the jacket's
+  // shoulder line. Keep a plain regular tee with soft tailoring available.
+  if (b.subtype === 'blazer' && !b.relaxedTailoring && a.volume === 'wide'
+    && (a.loudBranding || a.fluidFabric)) {
+    score -= 0.25;
+    evidence.push('expressive_wide_base_under_structured_tailoring');
+  }
   if (a.bulk === 'heavy' && b.subtype === 'pullover') {
     score -= 0.3;
     evidence.push('bulky_base_under_pullover');

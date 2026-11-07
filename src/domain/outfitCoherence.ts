@@ -242,7 +242,7 @@ export function outfitCoherence(
     dimensions.palette = Math.min(dimensions.palette, 0.55);
     evidence.push('competing_upper_patterns');
   }
-  if (outer?.structured && bottom?.structured && ['smart', 'formal'].includes(context.dressCode)) {
+  if (outer?.structured && !outer.relaxedTailoring && bottom?.structured && ['smart', 'formal'].includes(context.dressCode)) {
     if ((outer.volume === 'slim' && bottom.volume === 'wide') || (outer.volume === 'wide' && bottom.volume === 'slim')) {
       dimensions.proportion = Math.min(dimensions.proportion, 0.45);
       evidence.push('tailoring_volume_contrast');
@@ -260,6 +260,47 @@ export function outfitCoherence(
   if (heavy && airy) {
     dimensions.texture = 0.4;
     evidence.push('heavy_and_airy_texture_contrast');
+  }
+  const dressShoe = shoe && !shoe.casualSole
+    && (shoe.formality === 'formal' || ['oxford', 'derby', 'monk', 'dress-boot'].includes(shoe.subtype));
+  // Several casual cues must agree before lowering a refined look. Tencel,
+  // denim tailoring and zip jackets remain legitimate on their own.
+  if (outer?.relaxedTailoring && bottom?.subtype === 'jeans' && dressShoe) {
+    dimensions.footwear = Math.min(dimensions.footwear, 0.5);
+    dimensions.texture = Math.min(dimensions.texture, base?.fluidFabric ? 0.45 : 0.6);
+    evidence.push('leisure_tailoring_and_denim_with_dress_footwear');
+  }
+  if (bottom?.subtype === 'jeans' && bottom.volume === 'wide'
+    && (dressShoe || (shoe?.subtype === 'loafer' && !shoe.casualSole))) {
+    dimensions.proportion = Math.min(dimensions.proportion, dressShoe ? 0.45 : 0.6);
+    dimensions.footwear = Math.min(dimensions.footwear, dressShoe ? 0.55 : 0.65);
+    evidence.push('wide_denim_hem_with_dress_footwear');
+  }
+  const refinedOffice = context.dressCode === 'smart'
+    && /\b(work|office|business)\b/.test(context.occasion)
+    && ['old_money', 'classic', 'semi_classic', 'business_casual'].includes(context.style);
+  const splitOfficeRegister = refinedOffice && base?.fluidFabric && outer?.croppedZip
+    && bottom?.structured && dressShoe;
+  if (splitOfficeRegister) {
+    dimensions.layer = Math.min(dimensions.layer, 0.45);
+    dimensions.footwear = Math.min(dimensions.footwear, 0.5);
+    evidence.push('fluid_base_and_short_zip_layer_split_office_register');
+  }
+  const disconnectedCasualTailoring = context.dressCode === 'casual'
+    && outer?.subtype === 'blazer' && !outer.relaxedTailoring
+    && base?.volume === 'wide' && base.loudBranding
+    && shoe?.vividFootwear && ['sneaker', 'minimal-sneaker'].includes(shoe.subtype);
+  if (disconnectedCasualTailoring) {
+    dimensions.layer = Math.min(dimensions.layer, 0.4);
+    dimensions.footwear = Math.min(dimensions.footwear, 0.45);
+    evidence.push('graphic_volume_tailoring_and_vivid_shoes_lack_shared_register');
+  }
+  const travel = /\b(travel|trip|sightseeing)\b/.test(`${context.occasion} ${context.request}`);
+  const activeIntent = /\b(gym|workout|training|fitness|cross[ -]?train(?:ing)?|hik(?:e|ing)|trek(?:king)?|trail|sport)\b/.test(`${context.occasion} ${context.request}`);
+  if (context.dressCode === 'casual' && travel && !activeIntent && shoe?.trainingFootwear
+    && bottom && !bottom.athletic && base && !base.athletic) {
+    dimensions.footwear = Math.min(dimensions.footwear, 0.4);
+    evidence.push('performance_training_shoe_without_active_travel_intent');
   }
   // Whole-outfit color relationships (tonal, contrast, accent balance).
   // Deliberately SOFT: the harmony score moves ranking through this
@@ -299,7 +340,7 @@ export function outfitCoherence(
     ).length;
     dimensions.style = 0.5 + classic * 0.125;
   } else if (context.style === 'semi_classic')
-    dimensions.style = descriptors.filter((d) => d.structured).length >= 2 ? 0.95 : 0.65;
+    dimensions.style = descriptors.filter((d) => d.structured && !d.relaxedTailoring).length >= 2 ? 0.95 : 0.65;
   else if (context.style === 'casual')
     dimensions.style = descriptors.some((d) =>
       ['overshirt', 'jeans', 'sneaker', 'minimal-sneaker'].includes(d.subtype)
