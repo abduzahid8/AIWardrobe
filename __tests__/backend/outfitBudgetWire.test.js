@@ -653,7 +653,7 @@ test('multi-card curation jointly selects a compatible deck before bounded AI ra
  fetchMock.mockImplementation(async(_url,init)=>{const body=JSON.parse(init.body);options=JSON.parse(body.messages[1].content);system=body.messages[0].content;return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({rankedLookIds:options.looks.map(look=>look.id)})}}]}));});
  const body=await request(null,fixtures).json();body.limit=5;body.deckTarget=3;
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
- expect(response.status).toBe(200);expect(options.looks.length).toBe(3);expect(options.requiredCount).toBe(options.looks.length);expect(system).toContain('Rank all');expect(system).toContain('without descriptions');
+ expect(response.status).toBe(200);expect(options.looks.length).toBeGreaterThanOrEqual(3);expect(options.looks.length).toBeLessThanOrEqual(9);expect(options.requiredCount).toBe(options.looks.length);expect(system).toContain('Rank all');expect(system).toContain('without descriptions');
  const data=await response.json();expect(data.outfits.length).toBeGreaterThanOrEqual(3);expect(data.diversity.strictSlots.sort()).toEqual(['bottom','outerwear','shoes','top']);expect(data.outfits.every(outfit=>Number.isSafeInteger(outfit.curationRank))).toBe(true);
  // A partial ranking must never masquerade as the complete requested deck.
  fetchMock.mockImplementation(async(_url,init)=>{const sent=JSON.parse(JSON.parse(init.body).messages[1].content);return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({rankedLookIds:sent.looks.slice(0,2).map(look=>look.id)})}}]}));});

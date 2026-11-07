@@ -1662,6 +1662,8 @@ export interface AssembleDiverseDeckOptions<O> {
     qualityOf?: (outfit: O) => number;
     /** Provider preference among comparably strong, hard-valid decks. Lower is better. */
     rankOf?: (outfit: O) => number | undefined;
+    /** Evidence-based change in styling choices, 0..1; unknowns earn no credit. */
+    stylingDistance?: (a: O, b: O) => number;
     /**
      * Resemblance of a look to recently shown looks, 0 (fresh) .. 1 (same
      * styling idea). Feeds the MMR variety term alongside in-deck
@@ -2099,6 +2101,18 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         const pressure=varietyPressure(indices.map(i=>varietyItems[i]||[]));
         pressureCache.set(key,pressure);return pressure;
     };
+    const semanticCache = new Map<string, number>();
+    const semanticVariety = (indices: number[]): number => {
+        if (!opts.stylingDistance || indices.length < 2) return 0;
+        let weakest = 1;
+        for (let i=0;i<indices.length;i++) for(let j=i+1;j<indices.length;j++) {
+            const key=[indices[i],indices[j]].sort((a,b)=>a-b).join(':');
+            let distance=semanticCache.get(key);
+            if(distance===undefined){distance=clamp01(opts.stylingDistance(pool[indices[i]].outfit,pool[indices[j]].outfit),0);semanticCache.set(key,distance);}
+            weakest=Math.min(weakest,distance);
+        }
+        return weakest;
+    };
     const ranks = pool.map(member => opts.rankOf?.(member.outfit));
     const scoreCache = new Map<string, number>();
     const deckScore = (indices: number[]): number => {
@@ -2149,6 +2163,12 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         if(Math.abs(gap)>qualityBand*Math.max(a.length,b.length))return gap;
         const weakestGap=(qa.at(-1)||0)-(qb.at(-1)||0);
         if(Math.abs(weakestGap)>qualityBand)return weakestGap;
+        // Within the quality band, one near-duplicate pair weakens the
+        // entire deck. Provider rank is a preference after meaningful variety.
+        if (opts.stylingDistance) {
+            const change = semanticVariety(a) - semanticVariety(b);
+            if (Math.abs(change) > 0.05) return change;
+        }
         if (opts.rankOf) {
             const rankSum = (indices: number[]) => indices.reduce((sum, i) => sum + (ranks[i] ?? 1000), 0);
             const preference = rankSum(b) - rankSum(a);
