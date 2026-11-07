@@ -20,7 +20,7 @@ import {garmentContextReason} from './garmentContext.ts';
 
 import {normalizeGarmentText, SHORT_SLEEVE_RE} from './garmentText.ts';
 export {normalizeGarmentText, SHORT_SLEEVE_RE} from './garmentText.ts';
-import {stylingContext,type StylingPreferences} from './stylingContext.ts';
+import {stylingContext,isDateNightOccasion,type StylingPreferences} from './stylingContext.ts';
 import {outfitCoherence, wholeOutfitRegisterClash} from './outfitCoherence.ts';
 
 export function isWorkoutOccasion(value?: string | null): boolean {
@@ -323,7 +323,8 @@ export function rejectForStyleOccasion(
     const normalizedContext=stylingContext({style:styleId,occasion:occasionId});
     const contextFailure=normalizedContext.dressCode==='smart'?null:garmentContextReason(item,normalizedContext);
     if(contextFailure)return contextFailure;
-    const formal = occasionFormality(occasionId) === 'formal';
+    const formal = occasionFormality(occasionId) === 'formal'
+        && (!isDateNightOccasion(occasionId) || stylingContext({occasion:occasionId}).dressCode === 'formal');
     const slot = String(item.macroCategory || '').toLowerCase();
     // Print rules judge garments, never shoes/accessories (a floral tie or
     // pocket square is dandy, not sloppy). Bottoms are judged for formal
@@ -613,7 +614,8 @@ export function rejectOutfitIncoherence(
 ): string | null {
     if (!items || items.length === 0) return null;
     const style = isWorkoutOccasion(occasionId) ? 'sport' : String(styleId || '').toLowerCase().replace(/[\s-]+/g, '_');
-    const formal = occasionFormality(occasionId) === 'formal';
+    const formal = occasionFormality(occasionId) === 'formal'
+        && (!isDateNightOccasion(occasionId) || stylingContext({occasion:occasionId}).dressCode === 'formal');
     const classic = CLASSIC_STYLES.has(style);
 
     const palette = outfitPaletteReason(items);

@@ -1,6 +1,6 @@
 import { describeGarment, type GarmentEvidence } from './garmentDescriptor.ts';
 import type { OutfitCoherence } from './outfitCoherence.ts';
-import type { StylingContext } from './stylingContext.ts';
+import { isDateNightOccasion, type StylingContext } from './stylingContext.ts';
 
 export interface OutfitQualityFloor {
   passed: boolean;
@@ -20,12 +20,16 @@ export function outfitQualityFloor(
     /\b(work|office|business)\b/.test(context.occasion) &&
     ['old_money', 'classic', 'semi_classic', 'business_casual'].includes(context.style);
   const formal = context.dressCode === 'formal';
+  const dateNight = isDateNightOccasion(context.occasion);
+  const oldMoney = context.style === 'old_money';
   const minimalistCasual = context.style === 'minimalist' && context.dressCode === 'casual';
-  const minimum = formal || refinedWork ? 0.75 : minimalistCasual ? 0.65 : 0;
+  const minimum = formal || refinedWork || (oldMoney && dateNight) ? 0.75 : dateNight ? 0.7 : minimalistCasual ? 0.65 : 0;
+  const descriptors = items.map(describeGarment);
+  const bySlot = (slot: string) => descriptors.find(d => d.slot === slot);
   let score = coherence.score;
   let reason: string | null = null;
   if (
-    (formal || refinedWork) &&
+    (formal || refinedWork || dateNight) &&
     Math.min(
       coherence.dimensions.layer,
       coherence.dimensions.footwear,
@@ -35,12 +39,11 @@ export function outfitQualityFloor(
     score = Math.min(score, 0.49);
     reason = 'weak_refined_occasion_compatibility';
   }
-  if (refinedWork || formal) {
+  if (refinedWork || formal || dateNight) {
     const top = items.find(item => item.macroCategory === 'top');
     const layer = items.find(item => item.macroCategory === 'outerwear');
     const bottom = items.find(item => item.macroCategory === 'bottom');
-    const a = top ? describeGarment(top) : undefined, b = layer ? describeGarment(layer) : undefined;
-    const trousers = bottom ? describeGarment(bottom) : undefined;
+    const a = bySlot('top'), b = bySlot('outerwear'), trousers = bySlot('bottom');
     if (a?.utilityConstruction && b?.subtype === 'blazer') {
       score = Math.min(score, 0.49); reason = 'utility_shirt_conflicts_with_office_tailoring';
     } else if (b?.technicalLeisure && trousers?.structured) {
@@ -53,6 +56,36 @@ export function outfitQualityFloor(
       && ['stripe','check','print'].includes(b.pattern) && a.pattern !== b.pattern) {
       score = Math.min(score, 0.49); reason = 'competing_patterns_in_office_tailoring';
     }
+  }
+  const top = bySlot('top'), outer = bySlot('outerwear'), bottom = bySlot('bottom'), shoe = bySlot('shoes');
+  const dressSilhouette = shoe && !shoe.casualSole && ['oxford', 'monk', 'dress-boot'].includes(shoe.subtype);
+  const reject = (why: string) => { score = Math.min(score, 0.49); reason = why; };
+  // A formal last and heavily casual surface cannot be rescued by three
+  // individually high scores. Dark clean denim with loafers remains valid.
+  if (dressSilhouette && bottom?.fadedDenim) reject('dress_footwear_conflicts_with_faded_denim');
+  if (dressSilhouette && outer?.technicalLeisure) reject('dress_footwear_conflicts_with_technical_layer');
+  if ((refinedWork || formal || (oldMoney && dateNight)) && shoe?.casualSole)
+    reject('casual_sole_conflicts_with_refined_occasion');
+  if (oldMoney) {
+    // Preserve the existing owned-anchor aesthetic exception. Relationships
+    // (footwear, fabric, layers) still apply to every item including anchors.
+    if (items.some((item, i) => String(item.id || '') !== context.anchorId && descriptors[i].loudBranding))
+      reject('loud_branding_conflicts_with_old_money');
+    if (bottom?.athletic || outer?.sportyZip) reject('sporting_construction_conflicts_with_old_money');
+  }
+  if (dateNight) {
+    if (bottom?.fadedDenim) reject('faded_denim_underdresses_date_night');
+    if (bottom?.athletic || bottom?.subtype === 'cargo' || outer?.sportyZip || outer?.subtype === 'hoodie'
+      || shoe?.athletic || shoe?.rugged || ['sport-sneaker','sandal','espadrille','driver'].includes(shoe?.subtype || ''))
+      reject('sporting_register_underdresses_date_night');
+    // Quiet fabrics may carry one patterned/accent piece; avoid competing
+    // upper motifs without imposing monochrome or a universal pattern ban.
+    if (top && outer && ['stripe','check','print'].includes(top.pattern)
+      && ['stripe','check','print'].includes(outer.pattern) && top.pattern !== outer.pattern)
+      reject('competing_patterns_undermine_date_night');
+    if (coherence.evidence.includes('heavy_and_airy_texture_contrast'))
+      reject('incompatible_date_night_fabric_weights');
+    if (coherence.dimensions.palette < 0.5) reject('uncoordinated_date_night_palette');
   }
   if (minimalistCasual) {
     const layer = items.find((item) => item.macroCategory === 'outerwear');
@@ -75,7 +108,7 @@ export function outfitQualityFloor(
       reason = 'business_tailoring_with_severely_distressed_denim';
     }
   }
-  const passed = coherence.valid && score >= minimum;
+  const passed = coherence.valid && reason === null && score >= minimum;
   return {
     passed,
     score,

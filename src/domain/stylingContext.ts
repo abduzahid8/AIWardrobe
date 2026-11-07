@@ -22,6 +22,9 @@ export interface StylingContext {
   preferences?: StylingPreferences;
   uncertainty: string[];
 }
+export function isDateNightOccasion(occasion?: string | null): boolean {
+  return /\bdate\b|свидан/i.test(String(occasion || '').replace(/[_-]+/g, ' '));
+}
 export function stylingContext(input: {
   style?: string | null;
   occasion?: string | null;
@@ -36,7 +39,7 @@ export function stylingContext(input: {
   const request = input.request || '';
   const athletic = /\b(workout|gym|training|fitness|sport)\b|трениров|спортзал/.test(occasion);
   const formal = /\bformal\b|black[ -]?tie|формаль|торжеств/.test(occasion);
-  const smart = /\b(work|office|date|business)\b|работ|свидан/.test(occasion);
+  const smart = /\b(work|office|business)\b|работ/.test(occasion) || isDateNightOccasion(occasion);
   const weather =
     input.weather && (Number.isFinite(input.weather.temp) || !!input.weather.condition)
       ? {

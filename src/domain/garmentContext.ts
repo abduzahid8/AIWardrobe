@@ -2,7 +2,7 @@ import { normalizeGarmentText, SHORT_SLEEVE_RE } from './garmentText.ts';
 import { patternOf } from './outfitDiversity.ts';
 import { STYLING_PROFILES } from './stylingProfiles.ts';
 import { describeGarment, type GarmentEvidence, type GarmentDescriptor } from './garmentDescriptor.ts';
-import type { StylingContext } from './stylingContext.ts';
+import { isDateNightOccasion, type StylingContext } from './stylingContext.ts';
 /** Same hard dress/activity exclusions before pool caps and after construction. */
 export function garmentContextReason(
   item: GarmentEvidence,
@@ -189,6 +189,13 @@ export function scoreGarmentForContext(item: GarmentEvidence, context: StylingCo
     const text = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
     if (d.slot === 'shoes' && /\b(cushioned|flexible|walking|padded insole|comfort)\b/.test(text)) score += 0.2;
   }
+  const dateNight = isDateNightOccasion(context.occasion);
+  if (dateNight) {
+    if (d.fadedDenim || d.sportyZip || d.technicalLeisure || d.athletic) score -= 0.35;
+    if (['fine-knit', 'polo', 'cardigan', 'chino', 'chelsea', 'loafer', 'minimal-sneaker'].includes(d.subtype)
+      && !d.casualSole && !d.loudBranding) score += 0.08;
+  }
+  if (context.style === 'old_money' && (d.loudBranding || d.sportyZip)) score -= 0.4;
   const profile = STYLING_PROFILES[context.style];
   if (profile) {
     score = score * 0.75 + (profile.preferred.includes(d.subtype) ? 1 : 0.4) * 0.25;

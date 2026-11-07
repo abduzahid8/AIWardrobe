@@ -159,11 +159,17 @@ function fixture(occasion, anchored = false, mode = 'fresh') {
       row('bottom').description = 'Shredded denim with large holes';
     }
   }
+  if (mode === 'date-floor') {
+    wardrobeItems.find(item => item.id === 'shop_1-2').name = 'Technical nylon zip jacket';
+  }
+  if (mode === 'old-money-date') {
+    wardrobeItems.find(item => item.id === 'shop_0-2').name = 'Fine cotton monogram polo';
+  }
   const keys = wardrobeItems.filter((_, i) => i % 24 >= 20).map((i) => 'id:' + i.id);
   return {
     wardrobeItems,
     aiOutfits,
-    styleKey: mode === 'minimalist-floor' ? 'minimalist' : 'old_money',
+    styleKey: mode === 'minimalist-floor' ? 'minimalist' : mode === 'date-floor' ? 'casual' : 'old_money',
     occasion,
     anchorItemId,
     preferences: { maxShopBudget: { amount: 250, currency: 'USD' } },
@@ -201,8 +207,11 @@ function fixture(occasion, anchored = false, mode = 'fresh') {
     ['Work', false, 'quality-floor'],
     ['Work', true, 'quality-floor'],
     ['Casual', false, 'minimalist-floor'],
+    ['Date night', false, 'date-floor'],
+    ['Date night', false, 'old-money-date'],
   ];
-  for (const [occasion, anchored, mode] of cases) {
+  const selectedCases = process.env.CPU_MODES ? cases.filter(([, , mode]) => process.env.CPU_MODES.split(',').includes(mode)) : cases;
+  for (const [occasion, anchored, mode] of selectedCases) {
     metrics = {};
     logs = 0;
     const f = fixture(occasion, anchored, mode);
@@ -258,7 +267,7 @@ function fixture(occasion, anchored = false, mode = 'fresh') {
       assert(look.items.reduce((n, i) => n + Number(i.price || 0), 0) <= 250);
       if (anchored) assert(look.items.some((i) => i.id === f.anchorItemId));
     }
-    if (response.status === 200 && (mode === 'quality-floor' || mode === 'minimalist-floor')) {
+    if (response.status === 200 && ['quality-floor', 'minimalist-floor', 'date-floor', 'old-money-date'].includes(mode)) {
       const signature = (items) =>
         items
           .map((i) => i.id)

@@ -28,6 +28,10 @@ export interface GarmentDescriptor {
   closure: 'openable' | 'pullover' | 'unknown';
   /** Positive construction evidence; rubber alone does not imply casual. */
   casualSole: boolean;
+  soleProfile: 'dress' | 'comfort' | 'sneaker' | 'rugged' | 'unknown';
+  fadedDenim: boolean;
+  loudBranding: boolean;
+  sportyZip: boolean;
   utilityConstruction: boolean;
   technicalLeisure: boolean;
   rugged: boolean;
@@ -42,7 +46,9 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
   const materialText = typeof item.material === 'string' ? item.material
     : Array.isArray(item.material) ? item.material.filter(value => typeof value === 'string').join(' ') : '';
   const text = normalizeGarmentText(
-    [item.name, item.type, item.description, materialText].filter(Boolean).join(' ')
+    [item.name, item.type, item.description, materialText,
+      Array.isArray(item.materials) ? item.materials.filter(value => typeof value === 'string').join(' ') : item.materials, item.pattern]
+      .filter(value => typeof value === 'string').join(' ')
   );
   const slot = String(item.macroCategory || item.category || 'unknown');
   const rules: Array<[string, RegExp]> =
@@ -121,18 +127,39 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
   // The imported Flextride row omits its construction. Model-specific
   // evidence: Geox U66MAC0009BC9999, cushioning and synthetic/rubber outsole.
   // https://www.geox.com/en-GB/leather_loafers-black-flextride_plus_man-U66MAC0009BC9999.html
-  const verifiedComfortLoafer = slot === 'shoes' && (/^(?:shop_)?geox-(?:u66mac|u44q6d|u56q6a)/i.test(String(item.id || ''))
+  // Exact Spherica leather rows additionally document a layered Zero Shock
+  // comfort sole. This is comfort evidence, never a sneaker classification:
+  // https://www.geox.com/en-GB/leather_dress_loafers-coffee-spherica_ec16_man-U65HYB00046C6009.html
+  // https://www.geox.com/en-US/leather_dress_loafers-black-spherica_ec1_b_man-U66CJC00047C9999.html
+  const verifiedComfortLoafer = slot === 'shoes' && (/^(?:shop_)?geox-(?:u66mac|u44q6d|u56q6a|u65hyb00046|u66cjc00047)/i.test(String(item.id || ''))
     || /^(?:flextride plus|moner w 2fit)\b/i.test(item.name || ''));
-  const casualSole = slot === 'shoes' && (verifiedComfortLoafer
-    || /\b(chunky|thick|platform|lug|commando|track|cup)[ -]+(?:rubber[ -]+)?(?:out)?sole(?:s|d)?\b/.test(text)
-    || /\bsneaker[ -]+soles?\b/.test(text));
-  // Source-backed construction missing from the imported studio captions.
-  // AllSaints USM108SF: chest flap pockets (official Bond product details).
+  // Silhouette outranks a marketing "dress" label. Cushioning/rubber alone
+  // never establishes a sneaker sole; a slim rubber dress sole stays dressy.
+  const sneakerSole = slot === 'shoes' && /\b(sneaker[ -]+(?:style[ -]+)?soles?|cup[ -]?soles?|hybrid[ -]+(?:oxfords?|derb(?:y|ies)|loafers?|dress shoes?)|(?:oxfords?|loafers?).{0,25}hybrid)\b/.test(text);
+  const comfortSole = slot === 'shoes' && (verifiedComfortLoafer
+    || /\b(chunky|thick|platform|lug|commando|track)[ -]+(?:rubber[ -]+)?(?:out)?sole(?:s|d)?\b/.test(text)
+    || /\b(?:crepe|gum|white|contrast)[ -]+(?:rubber[ -]+)?soles?\b/.test(text));
+  const soleProfile: GarmentDescriptor['soleProfile'] = slot !== 'shoes' ? 'unknown'
+    : sneakerSole || ['sport-sneaker', 'minimal-sneaker', 'sneaker'].includes(subtype) ? 'sneaker'
+    : rugged ? 'rugged' : comfortSole ? 'comfort'
+    : /\b(?:leather[ -]+(?:out)?soles?|(?:slim|thin|low[ -]profile)[ -]+(?:rubber[ -]+)?soles?|blake|goodyear|welted)\b/.test(text) ? 'dress' : 'unknown';
+  const casualSole = ['comfort', 'sneaker', 'rugged'].includes(soleProfile);
+  // A lone patch pocket is normal on an Oxford shirt. Paired/flapped utility
+  // pockets, including the verified Bond/Armani rows, are different evidence.
   const utilityConstruction = slot === 'top' && (subtype === 'field-shirt'
     || /^(?:shop_)?(?:allsaints-usm108sf-|armani_exchange-xm003247_)/i.test(String(item.id || ''))
-    || /\b(?:chest[ -]+flap|(?:two|twin|double)[ -]+chest|cargo|bellows)[ -]+pockets?\b/.test(text));
-  const technicalLeisure = slot === 'outerwear' && /\btechnical\b/.test(text)
-    && /\b(leisure|shell|nylon|zip|windproof|track)\b/.test(text);
+    || /\b(?:utility|cargo|bellows)[ -]+pockets?\b/.test(text)
+    || /\b(?:chest[ -]+flap|flap[ -]+chest|(?:two|twin|double)[ -]+(?:chest|front)(?:[ -]+flap)?)[ -]+pockets?\b/.test(text)
+    || ( /\bshort[ -]sleeve(?:d)?\b/.test(text) && /\b(?:two|twin|double)[ -]+patch[ -]+pockets?\b/.test(text)));
+  const technicalLeisure = slot === 'outerwear'
+    && ((/\btechnical\b/.test(text) && /\b(leisure|shell|nylon|zip(?:ped)?|windproof|track|jacket)\b/.test(text))
+      || (/\b(nylon|shell|windbreaker|track)\b/.test(text) && /\b(zip(?:ped)?|jacket|windproof)\b/.test(text)));
+  const sportyZip = slot === 'outerwear' && /\b(zip(?:ped)?|zip[ -]up|full[ -]zip)\b/.test(text)
+    && (technicalLeisure || /\b(track|athletic|sports?|sweatshirt|fleece|contrast[ -]+(?:bands?|panels?))\b/.test(text));
+  const fadedDenim = subtype === 'jeans'
+    && /\b(faded|fading|bleached|acid[ -]wash(?:ed)?|stone[ -]wash(?:ed)?|light[ -]wash(?:ed)?|distressed|ripped|shredded|whisker(?:ed|ing)?)\b/.test(text);
+  const loudBranding = /\b(monograms?|graphics?|slogans?|lettering|all[ -]over[ -]+(?:logos?|branding)|repeat(?:ed|ing)?[ -]+logos?)\b/.test(text)
+    || (/\blogos?\b/.test(text) && /\b(large|oversized|bold|printed|repeat(?:ed|ing)?|all[ -]over)\b/.test(text));
   const structured =
     subtype === 'blazer' || subtype === 'tailored-trouser' || subtype === 'dress-shirt';
   // A single marketing word ("dress", "formal") is not proof on its own
@@ -155,6 +182,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
         )));
   const formality = athletic
     ? 'athletic'
+    : casualSole || technicalLeisure || utilityConstruction ? 'casual'
     : [
           'oxford',
           'derby',
@@ -235,6 +263,10 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     collar,
     rugged,
     casualSole,
+    soleProfile,
+    fadedDenim,
+    loudBranding,
+    sportyZip,
     utilityConstruction,
     technicalLeisure,
     athletic,
@@ -242,6 +274,10 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     insulated: /\b(puffer|down jacket|down filling|insulated|shearling)\b/.test(text),
     evening: /\b(tuxedo|dinner jacket|dinner suit|opera pump|patent)\b/.test(text),
     evidence: [
+      ...(soleProfile !== 'unknown' ? [`sole:${soleProfile}`] : []),
+      ...(fadedDenim ? ['surface:faded-denim'] : []),
+      ...(loudBranding ? ['pattern:loud-branding'] : []),
+      ...(sportyZip ? ['construction:sporty-zip'] : []),
       ...(utilityConstruction ? ['construction:utility-pockets'] : []),
       ...(technicalLeisure ? ['construction:technical-leisure'] : []),
       ...(verifiedComfortLoafer ? ['catalog:verified-comfort-sole'] : []),

@@ -27,7 +27,7 @@ const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-const GENERATION_VERSION = 'stylist-runtime-repair-v3-final-quality-r2-20261107';
+const GENERATION_VERSION = 'stylist-human-qa-register-20261107';
 // Public catalog pages only; account history and eligibility are never cached.
 const catalogPages = new Map<string, {at:number; rows:any[]}>();
 const CATALOG_PAGE_TTL = 5 * 60 * 1000;

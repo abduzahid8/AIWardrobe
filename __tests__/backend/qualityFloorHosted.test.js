@@ -152,3 +152,33 @@ test('all weak provider looks can enter the same bounded reserve without keeping
     expect(f.provider.map(signature)).not.toContain(signature(look.items));
   }
 });
+
+test.each(['faded-denim', 'technical-layer', 'repeated-logo'])(
+  'date-night complete provider deck reroutes weak %s through bounded reserve', async mode => {
+    const f=scenario();
+    f.body.occasion='Date night';f.body.prompt='Date night';
+    f.body.stylePreferences=mode==='repeated-logo'?'old_money':'casual';
+    const row=(s,i)=>f.rows.find(r=>r.id===`shop_q-${s}-${i}`);
+    // Reset the office-only weak fixture; all three provider cards initially
+    // clear the old broad slot rules and have distinct physical identities.
+    row(0,2).name='White cotton poplin shirt model 2';
+    row(1,2).name='Navy structured wool blazer model 2';
+    if(mode==='faded-denim')row(2,2).name='Heavily faded straight denim jeans model 2';
+    if(mode==='technical-layer')row(1,2).name='Technical nylon zip jacket model 2';
+    if(mode==='repeated-logo')row(0,2).name='All-over monogram jacquard polo model 2';
+    const {handler}=load(f.provider);
+    const response=await send(handler,f.body),data=await response.json();
+    expect({status:response.status,data}).toMatchObject({status:200,data:{success:true}});
+    expect(data.outfits).toHaveLength(3);
+    preserved(data,f);
+  }
+);
+
+test('Casual date handler retains clean denim, suede and minimal trainers together',async()=>{
+ const f=scenario();f.body.stylePreferences='casual';f.body.occasion='Date night';f.body.prompt='Date night';
+ const names=['Plain fine cotton polo','Suede trucker jacket','Dark clean straight denim jeans','Minimal white leather sneakers'];
+ for(const item of f.rows)item.name=names[slots.indexOf(item.macroCategory)]+ ' model '+item.id.split('-').pop();
+ const {handler}=load(f.provider);const response=await send(handler,f.body),data=await response.json();
+ expect({status:response.status,data}).toMatchObject({status:200,data:{success:true}});
+ expect(data.outfits).toHaveLength(3);expect(data.outfits.every(o=>o.qualityAssessment.acceptance.passed)).toBe(true);
+});
