@@ -1,5 +1,10 @@
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
+// Stamp the source Metro actually serves, including uncommitted edits.
+const { execFileSync } = require('node:child_process');
+const sha = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], {cwd: __dirname, encoding: 'utf8'}).trim();
+const dirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], {cwd: __dirname, encoding: 'utf8'}).trim();
+process.env.EXPO_PUBLIC_CLIENT_REVISION = `${sha}${dirty ? '+dirty' : ''}`;
 
 const config = getDefaultConfig(__dirname);
 

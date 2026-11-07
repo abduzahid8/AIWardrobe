@@ -18,6 +18,11 @@ test('passes valid read paths and records distinct authenticated identities', as
   assert.equal(result.completed, 8);
   assert.equal(result.distinctAuthenticatedUsers, 2);
 });
+test('throughput does not exceed the nominal window when the last request finishes early', async () => {
+  const result = await runLoad({ ...settings, fetchImpl: validFetch });
+  assert.ok(result.achievedRps <= 40);
+  assert.equal(result.passed, true);
+});
 test('fails if HTTP 200 contains rows belonging to another user', async () => {
   const result = await runLoad({ ...settings, fetchImpl: async () => new Response(JSON.stringify([{ id: 'other-user', user_id: 'other-user' }])) });
   assert.equal(result.passed, false);
@@ -28,6 +33,15 @@ test('fails HTTP errors and never accepts rate limiting as successful capacity',
   assert.equal(result.passed, false);
   assert.equal(result.statuses[429], 8);
   assert.equal(result.errorRate, 1);
+});
+test('failure callback can stop scheduling the rest of the workload', async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const result = await runLoad({ ...settings, signal: controller.signal,
+    onFailure: () => controller.abort(), fetchImpl: async () => { calls++; return new Response('{}', { status: 429 }); } });
+  assert.equal(calls, 1);
+  assert.equal(result.aborted, true);
+  assert.equal(result.passed, false);
 });
 test('fails empty inventory and malformed success payloads', async () => {
   const result = await runLoad({ ...settings, fetchImpl: async url => new Response(url.pathname.endsWith('/shop_catalog') ? '[]' : '{}') });

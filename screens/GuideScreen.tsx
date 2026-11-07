@@ -1,57 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../lib/supabase';
+import { getCachedGuideContent, loadGuideContent, type GuideContent } from '../src/services/guideContent';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CachedImage } from '../components/ui/CachedImage';
-import { Image } from '../src/components/MediaImage';
+import { Ionicons } from '@expo/vector-icons';
+// Mannequin photo is not distributable (untracked, git-ignored); the
+// fallback illustration uses a bundled vector icon so clean clones bundle.
 
-
-interface GuideContent {
-  title: string;
-  subtitle: string;
-  cta_text: string;
-  cta_url: string | null;
-  hero_image_url: string | null;
-  background_color: string;
-}
 
 export default function GuideScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [content, setContent] = useState<GuideContent | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [content, setContent] = useState<GuideContent | null>(getCachedGuideContent);
 
   useEffect(() => {
-    fetchGuideContent();
+    let active = true;
+    // Render localized copy and the bundled illustration immediately.
+    void loadGuideContent().then(data => { if (active) setContent(data); }).catch(() => {});
+    return () => { active = false; };
   }, []);
-
-  const fetchGuideContent = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('guide_page')
-        .select('*')
-        .eq('is_active', true)
-        .single();
-
-      if (error) throw error;
-      setContent(data);
-    } catch (error) {
-      console.error('Error fetching guide content:', error);
-      // Fall back to i18n strings
-      setContent({
-        title: t('guide.title'),
-        subtitle: t('guide.subtitle'),
-        cta_text: t('guide.cta'),
-        cta_url: t('guide.ctaUrl'),
-        hero_image_url: null,
-        background_color: '#F5F5F5',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCTAPress = async () => {
     const url = content?.cta_url || t('guide.ctaUrl');
@@ -66,14 +35,6 @@ export default function GuideScreen() {
       }
     }
   };
-
-  if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: '#F5F5F5' }]}>
-        <ActivityIndicator size="large" color="#000" />
-      </View>
-    );
-  }
 
   const bgColor = content?.background_color || '#F5F5F5';
 
@@ -96,11 +57,7 @@ export default function GuideScreen() {
             <View style={styles.phoneScreen}>
               <View style={styles.mannequinContainer}>
                 {/* Placeholder for mannequin/drawing illustration */}
-                <Image
-                  source={require('../assets/images/mannequin_front.jpg')}
-                  style={styles.mannequinImage}
-                  resizeMode="contain"
-                />
+                <Ionicons name="shirt-outline" size={96} color="rgba(23,58,101,0.3)" />
                 <View style={styles.handOverlay}>
                   <ScaledText style={styles.handIcon}>✏️</ScaledText>
                 </View>

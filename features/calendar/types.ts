@@ -94,6 +94,8 @@ export interface OutfitItem {
     readonly image: string;
     readonly color?: string;
     readonly name?: string;
+    readonly macroCategory?: string;
+    readonly category?: string;
 }
 
 /**
@@ -108,7 +110,11 @@ export const validateOutfitItem = (raw: unknown): OutfitItem | null => {
         typeof (raw as any).image === 'string'
     ) {
         const r = raw as any;
-        return { id: r.id, type: r.type, image: r.image, color: r.color };
+        return { id: r.id, type: r.type, image: r.image, color: r.color,
+            ...(typeof r.name === 'string' ? { name: r.name } : {}),
+            ...(typeof r.macroCategory === 'string' ? { macroCategory: r.macroCategory } : {}),
+            ...(typeof r.category === 'string' ? { category: r.category } : {}),
+        };
     }
     return null;
 };

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "objectiveStatus": "not achieved; release acceptance incomplete",
+  "previousGoalTurn": "progress, not an unchanged-status restatement",
+  "recurringConditions": [
+    "RC-001: complete device/authenticated/billing validation unavailable",
+    "RC-002: target rollout/rollback/provider controls require explicit remote approval"
+  ],
+  "consecutiveGoalTurnsWithConditions": 3,
+  "recurrenceEvidence": [
+    "initial RC preparation ended blocked by required manual/remote evidence",
+    "native-validation continuation ended blocked by the same acceptance gates",
+    "current continuation added local paid-work controls; no devices/target approval or acceptance receipts arrived"
+  ],
+  "currentVerifiedFacts": {
+    "automatedPass": 15,
+    "automatedFail": 0,
+    "manualRequired": 6,
+    "onlineIosPhysicalDevices": 0,
+    "attachedAndroidDevices": 0,
+    "remoteApprovalGranted": false,
+    "sourceWorktreeSha256": "3df0c34ea3530b2edc13d60aa48811e116d8e02f2eb99b0599dba41f1ce974d6"
+  },
+  "whyFurtherWorkStops": "The user requires explicit approval for remote mutations and says to prepare and stop if a remote action is needed. Missing full physical-device/billing/target evidence cannot be replaced by additional synthetic or signed-out checks.",
+  "unblockInputs": [
+    "available required devices or reviewable completed device QA evidence and approved signing configuration",
+    "a named approved non-production target and explicit authorization for the specific pending remote/sandbox drill",
+    "credential-owner classification/rotation authorization if historical key material is genuine"
+  ]
+}

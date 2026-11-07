@@ -45,7 +45,7 @@ function clothing(
     return {
         id: `c${n}`,
         userId: 'u1',
-        imageUrl: 'https://example.com/x.jpg',
+        imageUrl: `https://example.com/x-${n}.jpg`,
         category: slot as any,
         subCategory: sub,
         primaryColor: color,
@@ -216,11 +216,9 @@ describe('stylist agent chaos', () => {
         }
     });
 
-    it('quickSuggest on empty wardrobe returns the empty-state suggestion, never throws', () => {
+    it('quickSuggest on empty wardrobe returns null rather than an invalid outfit', () => {
         const empty = quickSuggest([], []);
-        expect(empty).not.toBeNull();
-        expect(empty?.outfit.itemIds).toEqual([]);
-        expect(empty?.reasoning).toMatch(/closet/i);
+        expect(empty).toBeNull();
         const crumbs = [clothing('top', 'lone tee', 'white')];
         expect(() => generateVarietyOutfits(crumbs, [])).not.toThrow();
         expect(() => generateVarietyOutfits([], [])).not.toThrow();

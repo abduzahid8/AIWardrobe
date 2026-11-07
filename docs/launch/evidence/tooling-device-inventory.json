@@ -1,0 +1,56 @@
+{
+  "hostPlatform": "Darwin",
+  "architecture": "arm64",
+  "nativeQAExecuted": false,
+  "note": "Inventory only; no simulator app launched or native performance measured.",
+  "node": {
+    "exitCode": 0,
+    "output": "v22.23.2"
+  },
+  "postgres": {
+    "exitCode": 0,
+    "output": "psql (PostgreSQL) 16.15 (Homebrew)"
+  },
+  "deno": {
+    "exitCode": 0,
+    "output": "deno 2.9.8 (long term support, release, aarch64-apple-darwin)\nv8 15.0.245.2-rusty\ntypescript 6.0.3"
+  },
+  "iosDevices": {
+    "exitCode": 0,
+    "output": {
+      "devices": {
+        "com.apple.CoreSimulator.SimRuntime.iOS-27-0": [],
+        "com.apple.CoreSimulator.SimRuntime.iOS-26-5": [
+          {
+            "dataPath": "/Users/v.zahid/Library/Developer/CoreSimulator/Devices/BBE8D6A5-D0B5-4DE2-8808-EC5BBEB1B133/data",
+            "dataPathSize": 4669657088,
+            "logPath": "/Users/v.zahid/Library/Logs/CoreSimulator/BBE8D6A5-D0B5-4DE2-8808-EC5BBEB1B133",
+            "udid": "BBE8D6A5-D0B5-4DE2-8808-EC5BBEB1B133",
+            "lastUsedAt": "2026-11-01T10:35:18Z",
+            "isAvailable": true,
+            "logPathSize": 696320,
+            "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
+            "state": "Shutdown",
+            "name": "AIWardrobe-Payments-20261027"
+          },
+          {
+            "dataPath": "/Users/v.zahid/Library/Developer/CoreSimulator/Devices/8C228F33-A73B-4583-BEDA-B232D5ACA918/data",
+            "dataPathSize": 2478551040,
+            "logPath": "/Users/v.zahid/Library/Logs/CoreSimulator/8C228F33-A73B-4583-BEDA-B232D5ACA918",
+            "udid": "8C228F33-A73B-4583-BEDA-B232D5ACA918",
+            "lastUsedAt": "2026-11-01T05:59:18Z",
+            "isAvailable": true,
+            "logPathSize": 307200,
+            "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
+            "state": "Shutdown",
+            "name": "AIWardrobe-Startup-Benchmark"
+          }
+        ]
+      }
+    }
+  },
+  "androidDevices": {
+    "exitCode": 0,
+    "output": "List of devices attached"
+  }
+}

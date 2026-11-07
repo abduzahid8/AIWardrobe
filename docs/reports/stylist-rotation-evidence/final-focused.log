@@ -1,0 +1,8 @@
+PASS __tests__/backend/fourSlotHosted.test.js (7.156 s)
+PASS __tests__/services/recentOutfitIds.test.ts
+PASS __tests__/services/outfitRotation.test.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       31 passed, 31 total
+Snapshots:   0 total
+Time:        7.381 s

@@ -1,0 +1,6 @@
+device,build_type,scenario,status,scope,evidence
+iPhone 17 Pro simulator iOS 26.5,Release arm64,signed_out_offline_startup,PASS,actual App root with disabled services,offline-app-startup.json
+iPhone 17 Pro simulator iOS 26.5,Release arm64,language_selection_and_login_failure,PASS,signed out only; no account created,offline-app-ui.json
+iPhone 17 Pro simulator iOS 26.5,Release arm64,feedback_keyboard_review_undo_close,PASS,isolated real component; no share,native-feedback-ui.json
+iPhone 17 Pro simulator iOS 26.5,Release arm64,image_scroll_buycheck_deterministic_stress,PASS,raw local fixture; not production screens,native-isolated-stress.json
+iPhone 17 Pro simulator iOS 26.5,Release arm64,physical_memory_safety,MANUAL REQUIRED,high fixture RSS peak; no physical/leak conclusion,native-isolated-memory.json

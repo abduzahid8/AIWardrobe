@@ -67,6 +67,19 @@ jest.mock('../../src/services/crashReporting', () => ({
 }));
 
 describe('iapService purchase product resolution', () => {
+    it('shares native configuration between background startup and purchase identification', async () => {
+        let finish!: () => void;
+        mockConfigure.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+        const { iapService } = require('../../src/services/iapService');
+        const startup = iapService.initialize();
+        const identify = iapService.identify('user-1');
+        expect(mockConfigure).toHaveBeenCalledTimes(1);
+        expect(mockLogIn).not.toHaveBeenCalled();
+        finish();
+        await Promise.all([startup, identify]);
+        expect(mockAddCustomerInfoUpdateListener).toHaveBeenCalledTimes(1);
+        expect(mockLogIn).toHaveBeenCalledWith('user-1');
+    });
     afterEach(() => jest.useRealTimers());
     beforeEach(() => {
         jest.resetModules();
@@ -78,6 +91,21 @@ describe('iapService purchase product resolution', () => {
         mockAddCustomerInfoUpdateListener.mockImplementation(() => undefined);
         mockSetSubscription.mockResolvedValue(undefined);
         mockVerifySubscriptionFromServer.mockResolvedValue(undefined);
+    });
+
+    it('requests a fresh snapshot after a transaction when an older sync is pending', async () => {
+        const { iapService } = require('../../src/services/iapService');
+        let finish!: (value: unknown) => void;
+        mockSyncInvoke.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }))
+            .mockResolvedValueOnce({ data: { verified: true, tier: 'premium', expiryDate: '2030-01-01T00:00:00Z' }, error: null });
+        const old = iapService.verifyServerSubscription();
+        await Promise.resolve();
+        const afterPurchase = iapService.verifyServerSubscription(true);
+        finish({ data: { verified: true, tier: 'free', expiryDate: null }, error: null });
+        expect(await old).toBe(false);
+        expect(await afterPurchase).toBe(true);
+        expect(mockSyncInvoke).toHaveBeenCalledTimes(2);
+        expect(mockSetSubscription).toHaveBeenLastCalledWith('premium', '2030-01-01T00:00:00Z');
     });
 
     it('does not advertise mock subscription products in production when RevenueCat is unavailable', async () => {

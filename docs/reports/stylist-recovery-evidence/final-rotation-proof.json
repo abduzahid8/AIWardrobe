@@ -1,0 +1,487 @@
+{
+  "measuredAt": "2026-10-29T11:30:40.196Z",
+  "scenario": "Live catalog: casual, Everyday, 20C",
+  "generations": [
+    {
+      "generation": 1,
+      "status": 200,
+      "cards": 3,
+      "itemCounts": [
+        4,
+        4,
+        4
+      ],
+      "quality": [
+        {
+          "structure": null,
+          "quality": null
+        },
+        {
+          "structure": null,
+          "quality": null
+        },
+        {
+          "structure": null,
+          "quality": null
+        }
+      ],
+      "overlapsWithPrior": 0,
+      "rotation": {
+        "recycledSlots": [],
+        "freshProducts": 12
+      },
+      "withinDeckReuse": 0,
+      "products": [
+        {
+          "id": "shop_allsaints-usm125pf-4075",
+          "name": "Raphy Waffle-Knit Long-Sleeve Graphic T-Shirt",
+          "slot": "top",
+          "keys": [
+            "id:shop_allsaints-usm125pf-4075",
+            "n:raphy waffle knit long sleeve graphic t shirt",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm125pf-4075.json"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm083kf-10784",
+          "name": "Galactic Jacquard-Knit Alpaca-Blend Cardigan",
+          "slot": "outerwear",
+          "keys": [
+            "id:shop_allsaints-usm083kf-10784",
+            "n:galactic jacquard knit alpaca blend cardigan",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm083kf-10784.json"
+          ]
+        },
+        {
+          "id": "shop_armani_exchange-xm000049_af24466_mb001",
+          "name": "Slim Fit Denim Blue Comfort Jeans",
+          "slot": "bottom",
+          "keys": [
+            "id:shop_armani_exchange-xm000049_af24466_mb001",
+            "n:slim fit denim blue comfort jeans",
+            "i:assets-cf.armani.com/image/upload/v1781291205/xm000049_af24466_mb001_f_ss2026.jpg"
+          ]
+        },
+        {
+          "id": "shop_md-uz-62899796",
+          "name": "Split suede leather espadrille with piece",
+          "slot": "shoes",
+          "keys": [
+            "id:shop_md-uz-62899796",
+            "n:split suede leather espadrille with piece",
+            "i:static.massimodutti.net/assets/public/bc50/a05b/70544b0fb32b/4c36021cdc1a/12906750107-o1/12906750107-o1.jpg"
+          ]
+        },
+        {
+          "id": "shop_armani_exchange-6dzfhb_zjl4z_1897",
+          "name": "Organic Cotton Pique Polo with Logo Patch",
+          "slot": "top",
+          "keys": [
+            "id:shop_armani_exchange-6dzfhb_zjl4z_1897",
+            "n:organic cotton pique polo with logo patch",
+            "i:assets-cf.armani.com/image/upload/v1715160527/6dzfhb_zjl4z_1897_f_fw2024.jpg"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm054lf-10262",
+          "name": "Chaiyo Suede Trucker Jacket",
+          "slot": "outerwear",
+          "keys": [
+            "id:shop_allsaints-usm054lf-10262",
+            "n:chaiyo suede trucker jacket",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm054lf-10262.json"
+          ]
+        },
+        {
+          "id": "shop_armani_exchange-xm000049_af13364_mb125",
+          "name": "J13 slim fit jeans in cotton denim",
+          "slot": "bottom",
+          "keys": [
+            "id:shop_armani_exchange-xm000049_af13364_mb125",
+            "n:j13 slim fit jeans in cotton denim",
+            "i:assets-cf.armani.com/image/upload/v1744404529/xm000049_af13364_mb125_f_ss2025.jpg"
+          ]
+        },
+        {
+          "id": "shop_thursday-15407719448666",
+          "name": "Era | Cloud",
+          "slot": "shoes",
+          "keys": [
+            "id:shop_thursday-15407719448666",
+            "n:era cloud",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-era-cloud-081826-3.4.jpg"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm065sf-10131",
+          "name": "Gleason Slim-Fit Denim Shirt",
+          "slot": "top",
+          "keys": [
+            "id:shop_allsaints-usm065sf-10131",
+            "n:gleason slim fit denim shirt",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm065sf-10131.json"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm048kf-4411",
+          "name": "Wulf Merino Wool Henley Sweater",
+          "slot": "outerwear",
+          "keys": [
+            "id:shop_allsaints-usm048kf-4411",
+            "n:wulf merino wool henley sweater",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm048kf-4411.json"
+          ]
+        },
+        {
+          "id": "shop_armani_exchange-xm000070_af19899_mc002",
+          "name": "slim Jeans Black Wash in Stretch Denim",
+          "slot": "bottom",
+          "keys": [
+            "id:shop_armani_exchange-xm000070_af19899_mc002",
+            "n:slim jeans black wash in stretch denim",
+            "i:assets-cf.armani.com/image/upload/v1758566350/xm000070_af19899_mc002_f_ss2026.jpg"
+          ]
+        },
+        {
+          "id": "shop_thursday-6865670045786",
+          "name": "Lincoln | Black",
+          "slot": "shoes",
+          "keys": [
+            "id:shop_thursday-6865670045786",
+            "n:lincoln black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-lincoln-black-012124-3.4_606b5f85-613a-4eca-84b5-2230382e1055.jpg"
+          ]
+        }
+      ]
+    },
+    {
+      "generation": 2,
+      "status": 200,
+      "cards": 3,
+      "itemCounts": [
+        4,
+        4,
+        4
+      ],
+      "quality": [
+        {
+          "structure": null,
+          "quality": null
+        },
+        {
+          "structure": null,
+          "quality": null
+        },
+        {
+          "structure": null,
+          "quality": null
+        }
+      ],
+      "overlapsWithPrior": 0,
+      "rotation": {
+        "recycledSlots": [],
+        "freshProducts": 12
+      },
+      "withinDeckReuse": 0,
+      "products": [
+        {
+          "id": "shop_allsaints-usm048sg-10",
+          "name": "Archer Oversized Viscose Shirt",
+          "slot": "top",
+          "keys": [
+            "id:shop_allsaints-usm048sg-10",
+            "n:archer oversized viscose shirt",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm048sg-10.json"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm053kf-5",
+          "name": "Remus Distressed Crew-Neck Sweater",
+          "slot": "outerwear",
+          "keys": [
+            "id:shop_allsaints-usm053kf-5",
+            "n:remus distressed crew neck sweater",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm053kf-5.json"
+          ]
+        },
+        {
+          "id": "shop_armani_exchange-xm000070_af25870_mb010",
+          "name": "slim Jeans Denim Stretch Blue Classic Wash",
+          "slot": "bottom",
+          "keys": [
+            "id:shop_armani_exchange-xm000070_af25870_mb010",
+            "n:slim jeans denim stretch blue classic wash",
+            "i:assets-cf.armani.com/image/upload/v1777489677/xm000070_af25870_mb010_f_ss2026.jpg"
+          ]
+        },
+        {
+          "id": "shop_thursday-7824210231386",
+          "name": "Era | Navy",
+          "slot": "shoes",
+          "keys": [
+            "id:shop_thursday-7824210231386",
+            "n:era navy",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-era-whitenavy-030426-3.4.jpg"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm020jf-10728",
+          "name": "Raine Waffle-Knit Long-Sleeve T-Shirt",
+          "slot": "top",
+          "keys": [
+            "id:shop_allsaints-usm020jf-10728",
+            "n:raine waffle knit long sleeve t shirt",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm020jf-10728.json"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm061kf-3860",
+          "name": "Wulf Merino Wool Cardigan",
+          "slot": "outerwear",
+          "keys": [
+            "id:shop_allsaints-usm061kf-3860",
+            "n:wulf merino wool cardigan",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm061kf-3860.json"
+          ]
+        },
+        {
+          "id": "shop_armani_exchange-xm000049_af14265_mb001",
+          "name": "Comfort slim-fit cotton denim jeans with fading Essential",
+          "slot": "bottom",
+          "keys": [
+            "id:shop_armani_exchange-xm000049_af14265_mb001",
+            "n:comfort slim fit cotton denim jeans with fading essential",
+            "i:assets-cf.armani.com/image/upload/v1791473611/xm000049_af14265_mb001_f_ss2027.jpg"
+          ]
+        },
+        {
+          "id": "shop_thursday-253390159881",
+          "name": "Executive | Black",
+          "slot": "shoes",
+          "keys": [
+            "id:shop_thursday-253390159881",
+            "n:executive black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/products/1024x1024-men-executive-black-061821-3.4.jpg"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm108sf-2732",
+          "name": "Bond Regular-Fit Tencel Shirt ",
+          "slot": "top",
+          "keys": [
+            "id:shop_allsaints-usm108sf-2732",
+            "n:bond regular fit tencel shirt",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm108sf-2732.json"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm057kf-4075",
+          "name": "Parx Distressed Alpaca-Blend Sweater",
+          "slot": "outerwear",
+          "keys": [
+            "id:shop_allsaints-usm057kf-4075",
+            "n:parx distressed alpaca blend sweater",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm057kf-4075.json"
+          ]
+        },
+        {
+          "id": "shop_armani_exchange-xm000049_af22558_m8001",
+          "name": "Slim Fit Jeans Stretch Denim Grey Delicate Wash",
+          "slot": "bottom",
+          "keys": [
+            "id:shop_armani_exchange-xm000049_af22558_m8001",
+            "n:slim fit jeans stretch denim grey delicate wash",
+            "i:assets-cf.armani.com/image/upload/v1773920533/xm000049_af22558_m8001_f_ss2026.jpg"
+          ]
+        },
+        {
+          "id": "shop_md-uz-62899795",
+          "name": "Leather espadrilles",
+          "slot": "shoes",
+          "keys": [
+            "id:shop_md-uz-62899795",
+            "n:leather espadrilles",
+            "i:static.massimodutti.net/assets/public/2c5f/5ce7/0fb9449baa2c/d0fcb81d07e9/12921750407-o1/12921750407-o1.jpg"
+          ]
+        }
+      ]
+    },
+    {
+      "generation": 3,
+      "status": 200,
+      "cards": 3,
+      "itemCounts": [
+        4,
+        4,
+        4
+      ],
+      "quality": [
+        {
+          "structure": null,
+          "quality": null
+        },
+        {
+          "structure": null,
+          "quality": null
+        },
+        {
+          "structure": null,
+          "quality": null
+        }
+      ],
+      "overlapsWithPrior": 0,
+      "rotation": {
+        "recycledSlots": [],
+        "freshProducts": 12
+      },
+      "withinDeckReuse": 0,
+      "products": [
+        {
+          "id": "shop_allsaints-usm158sf-723",
+          "name": "Western Denim Shirt",
+          "slot": "top",
+          "keys": [
+            "id:shop_allsaints-usm158sf-723",
+            "n:western denim shirt",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm158sf-723.json"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm063kf-4009",
+          "name": "Liev Funnel-Neck Sweater",
+          "slot": "outerwear",
+          "keys": [
+            "id:shop_allsaints-usm063kf-4009",
+            "n:liev funnel neck sweater",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm063kf-4009.json"
+          ]
+        },
+        {
+          "id": "shop_armani_exchange-xm000049_af24012_mb001",
+          "name": "Slim Fit Stretch Denim Jeans in Classic Wash Blue",
+          "slot": "bottom",
+          "keys": [
+            "id:shop_armani_exchange-xm000049_af24012_mb001",
+            "n:slim fit stretch denim jeans in classic wash blue",
+            "i:assets-cf.armani.com/image/upload/v1758651519/xm000049_af24012_mb001_f_ss2026.jpg"
+          ]
+        },
+        {
+          "id": "shop_thursday-7887606677594",
+          "name": "Statesman | Brandy",
+          "slot": "shoes",
+          "keys": [
+            "id:shop_thursday-7887606677594",
+            "n:statesman brandy",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-statesman-brandy-060226-3.4_e7725f2f-0121-4de1-92de-29b526a64c39.jpg"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm112sf-2732",
+          "name": "Stow Oversized Shirt",
+          "slot": "top",
+          "keys": [
+            "id:shop_allsaints-usm112sf-2732",
+            "n:stow oversized shirt",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm112sf-2732.json"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm002kz-10657",
+          "name": "Mode Merino Wool Ramskull Sweater",
+          "slot": "outerwear",
+          "keys": [
+            "id:shop_allsaints-usm002kz-10657",
+            "n:mode merino wool ramskull sweater",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm002kz-10657.json"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm039tf-8834",
+          "name": "Tower Slim-Fit Cotton Chinos",
+          "slot": "bottom",
+          "keys": [
+            "id:shop_allsaints-usm039tf-8834",
+            "n:tower slim fit cotton chinos",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm039tf-8834.json"
+          ]
+        },
+        {
+          "id": "shop_thursday-8128950501466",
+          "name": "Lincoln | Dark Brown",
+          "slot": "shoes",
+          "keys": [
+            "id:shop_thursday-8128950501466",
+            "n:lincoln dark brown",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/01-1024x1024-men-lincoln-darkbrown-061726-3.4.jpg"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm159sf-2160",
+          "name": "Gleason Denim Shirt",
+          "slot": "top",
+          "keys": [
+            "id:shop_allsaints-usm159sf-2160",
+            "n:gleason denim shirt",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm159sf-2160.json"
+          ]
+        },
+        {
+          "id": "shop_allsaints-usm070kf-162",
+          "name": "Kit Acid-Washed Cotton Crew-Neck Sweater",
+          "slot": "outerwear",
+          "keys": [
+            "id:shop_allsaints-usm070kf-162",
+            "n:kit acid washed cotton crew neck sweater",
+            "i:media.i.allsaints.com/image/list/fn_select:jq:first%28.%5b%5d%7cif%20has%28%22metadata%22%29%20then%20select%28any%28.metadata%5b%5d%3b%20.external_id%20%3d%3d%20%22sfcc-gallery-position%22%20and%20.value%20%3d%3d%201%29%29%20else%20empty%20end%29/f_auto,q_auto,dpr_auto,w_960,h_1200,c_fit/usm070kf-162.json"
+          ]
+        },
+        {
+          "id": "shop_armani_exchange-xm000075_af24874_u0009",
+          "name": "Loose fit jeans in Cotton Bull Denim",
+          "slot": "bottom",
+          "keys": [
+            "id:shop_armani_exchange-xm000075_af24874_u0009",
+            "n:loose fit jeans in cotton bull denim",
+            "i:assets-cf.armani.com/image/upload/v1758566047/xm000075_af24874_u0009_f_ss2026.jpg"
+          ]
+        },
+        {
+          "id": "shop_thursday-6859648467034",
+          "name": "Chairman | Black",
+          "slot": "shoes",
+          "keys": [
+            "id:shop_thursday-6859648467034",
+            "n:chairman black",
+            "i:cdn.shopify.com/s/files/1/0419/1525/files/1024x1024-men-chairman-black-051323-3.4.jpg"
+          ]
+        }
+      ]
+    }
+  ],
+  "pairwise": [
+    {
+      "pair": [
+        1,
+        2
+      ],
+      "intersection": 0
+    },
+    {
+      "pair": [
+        1,
+        3
+      ],
+      "intersection": 0
+    },
+    {
+      "pair": [
+        2,
+        3
+      ],
+      "intersection": 0
+    }
+  ],
+  "distinctProducts": 36,
+  "distinctShoes": 9
+}

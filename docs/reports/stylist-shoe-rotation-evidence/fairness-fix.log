@@ -1,0 +1,7 @@
+PASS __tests__/backend/fourSlotHosted.test.js (18.624 s)
+PASS __tests__/services/shoeRotation.test.ts (6.244 s)
+
+Test Suites: 2 passed, 2 total
+Tests:       35 passed, 35 total
+Snapshots:   0 total
+Time:        25.021 s

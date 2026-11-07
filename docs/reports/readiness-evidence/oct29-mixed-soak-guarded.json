@@ -1,0 +1,477 @@
+{
+  "measuredAt": "2026-10-29T03:59:49.165Z",
+  "runId": "a9b14e10-17dc-4dbf-bb81-3fa04a7dbbdb",
+  "assumptions": {
+    "dau": 10000,
+    "sessionsPerDay": 2,
+    "requestsPerSession": 12,
+    "peakHourFraction": 0.2,
+    "headroom": 3,
+    "dailyRequests": 240000,
+    "peakRps": 13.333333333333334,
+    "targetRps": 40
+  },
+  "scope": "Production concurrent 32 app read RPS + 8 wear-log upsert RPS for 600 seconds; 20 temporary free owners, 20 garments/5 outfits each; excludes AI, image delivery, uploads, subscriptions and native",
+  "fixtureUsers": 20,
+  "wardrobeItemsPerUser": 20,
+  "savedOutfitsPerUser": 5,
+  "cleanup": [
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    }
+  ],
+  "fixtureUserIds": [
+    "07c63627-f831-431c-aa7d-f8d0b8108007",
+    "c8d2d548-4828-48a0-8c55-44cdce0602ef",
+    "6fd9ad25-d96f-4718-bbb3-1bb38050cee6",
+    "55d9b9bb-4985-4063-81bc-d0f8a18c49c4",
+    "a305c03e-ceca-498b-a6dc-7f66a6c3cf55",
+    "b0199b8e-3cf1-47a4-9b6b-b1d01f958de7",
+    "4932d10c-46de-4db1-8fe8-acb95b7b2d71",
+    "d43eb2b1-8b4e-4dfb-995a-9d3a215b3c7f",
+    "0005a6e2-e232-4067-a143-58872d5a5d9f",
+    "b822f205-6036-4d9e-9199-61e09926f4cc",
+    "74316cd2-d1f3-4aab-9364-f110a1ba6a7b",
+    "cb277a4b-a50a-4ae9-bb06-f7feac0b169e",
+    "5c218bd5-72e2-4d02-9ebd-ac5d03b02769",
+    "bbb3ec84-74a4-41b3-910c-0a496b7b676a",
+    "92dcd2ae-48b4-44ae-8c98-2dc714f4afb9",
+    "6621c9c1-3d1a-49d1-8530-953925d70f4f",
+    "4f7287ac-87d0-4790-82cd-a18abf7af57e",
+    "9250d36a-3549-4a04-bac0-c3711d18c4a2",
+    "6f3f5bed-edb3-4d60-b2d6-9aa4ceb62f91",
+    "645a4ab9-0fd3-4386-9bdf-e3d84c1a0271"
+  ],
+  "preflight": {
+    "completed": 4,
+    "failedRequests": 0,
+    "statuses": {
+      "200": 4
+    },
+    "failures": {},
+    "passed": true
+  },
+  "stopReason": "dropped",
+  "reads": {
+    "startedAt": "2026-10-29T04:00:32.655Z",
+    "completedAt": "2026-10-29T04:05:00.305Z",
+    "timingMs": {
+      "headers": {
+        "samples": 8364,
+        "p50": 388.0402499999909,
+        "p95": 1573.1754170000204,
+        "p99": 3184.580041999987
+      },
+      "body": {
+        "samples": 8364,
+        "p50": 0.5391669999808073,
+        "p95": 5.108792000013636,
+        "p99": 8.02100000000064
+      }
+    },
+    "scope": "read-only HTTP paths; excludes paid AI, uploads, writes, and native rendering",
+    "workload": "app",
+    "aborted": true,
+    "requestedRps": 32,
+    "durationSec": 600,
+    "elapsedSec": 267.649356792,
+    "scheduled": 19200,
+    "completed": 8564,
+    "dropped": 1,
+    "achievedRps": 14.273333333333333,
+    "distinctAuthenticatedUsers": 20,
+    "statuses": {
+      "200": 8364
+    },
+    "failures": {
+      "network_or_invalid_json": 200
+    },
+    "failureDetails": [
+      {
+        "route": "wardrobe",
+        "stage": "fetch",
+        "requestIndex": 8333,
+        "startedAt": "2026-10-29T04:04:53.064Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "outfits",
+        "stage": "fetch",
+        "requestIndex": 8334,
+        "startedAt": "2026-10-29T04:04:53.094Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "wardrobe",
+        "stage": "fetch",
+        "requestIndex": 8361,
+        "startedAt": "2026-10-29T04:04:53.938Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "outfits",
+        "stage": "fetch",
+        "requestIndex": 8362,
+        "startedAt": "2026-10-29T04:04:53.969Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "wardrobe",
+        "stage": "fetch",
+        "requestIndex": 8365,
+        "startedAt": "2026-10-29T04:04:54.061Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "outfits",
+        "stage": "fetch",
+        "requestIndex": 8366,
+        "startedAt": "2026-10-29T04:04:54.094Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "catalog",
+        "stage": "fetch",
+        "requestIndex": 8368,
+        "startedAt": "2026-10-29T04:04:54.156Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "wardrobe",
+        "stage": "fetch",
+        "requestIndex": 8369,
+        "startedAt": "2026-10-29T04:04:54.187Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "outfits",
+        "stage": "fetch",
+        "requestIndex": 8370,
+        "startedAt": "2026-10-29T04:04:54.219Z",
+        "errorType": "AbortError"
+      },
+      {
+        "route": "profile",
+        "stage": "fetch",
+        "requestIndex": 8371,
+        "startedAt": "2026-10-29T04:04:54.252Z",
+        "errorType": "AbortError"
+      }
+    ],
+    "failedRequests": 200,
+    "errorRate": 0.01046875,
+    "latencyMs": {
+      "p50": 389.6057080000028,
+      "p95": 1923.406541000004,
+      "p99": 4593.743000000017
+    },
+    "passed": false
+  },
+  "writes": {
+    "startedAt": "2026-10-29T04:00:32.656Z",
+    "completedAt": "2026-10-29T04:05:00.312Z",
+    "timingMs": {
+      "headers": {
+        "samples": 2090,
+        "p50": 392.1234589999949,
+        "p95": 1721.4252909999923,
+        "p99": 3228.9799579999526
+      },
+      "body": {
+        "samples": 2090,
+        "p50": 0.500292000011541,
+        "p95": 5.140125000005355,
+        "p99": 7.539209000009578
+      }
+    },
+    "planned": 4800,
+    "completed": 2141,
+    "failed": 51,
+    "dropped": 0,
+    "elapsedSec": 267.654428541,
+    "achievedRps": 3.5683333333333334,
+    "statuses": {
+      "200": 1040,
+      "201": 1050
+    },
+    "failures": {
+      "transport_or_decode": 51
+    },
+    "failureDetails": [
+      {
+        "requestIndex": 2090,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:04:53.907Z",
+        "errorType": "AbortError"
+      },
+      {
+        "requestIndex": 2091,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:04:54.031Z",
+        "errorType": "AbortError"
+      },
+      {
+        "requestIndex": 2092,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:04:54.157Z",
+        "errorType": "AbortError"
+      },
+      {
+        "requestIndex": 2093,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:04:54.281Z",
+        "errorType": "AbortError"
+      },
+      {
+        "requestIndex": 2094,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:04:54.409Z",
+        "errorType": "AbortError"
+      },
+      {
+        "requestIndex": 2095,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:04:54.532Z",
+        "errorType": "AbortError"
+      },
+      {
+        "requestIndex": 2096,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:04:54.657Z",
+        "errorType": "AbortError"
+      },
+      {
+        "requestIndex": 2097,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:04:54.782Z",
+        "errorType": "AbortError"
+      },
+      {
+        "requestIndex": 2098,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:04:54.908Z",
+        "errorType": "AbortError"
+      },
+      {
+        "requestIndex": 2099,
+        "stage": "fetch",
+        "startedAt": "2026-10-29T04:04:55.033Z",
+        "errorType": "AbortError"
+      }
+    ],
+    "latencyMs": {
+      "p50": 393.55387499998324,
+      "p95": 2057.1682080000173,
+      "p99": 4579.362957999983
+    },
+    "aborted": true,
+    "diagnostics": {
+      "errorTypes": {
+        "AbortError": 51
+      },
+      "tenSecondWindows": {
+        "0": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "1": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "2": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "3": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "4": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "5": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "6": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "7": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "8": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "9": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "10": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "11": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "12": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "13": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "14": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "15": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "16": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "17": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "18": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "19": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "20": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "21": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "22": {
+          "attempted": 81,
+          "failed": 0
+        },
+        "23": {
+          "attempted": 79,
+          "failed": 0
+        },
+        "24": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "25": {
+          "attempted": 80,
+          "failed": 0
+        },
+        "26": {
+          "attempted": 61,
+          "failed": 51
+        }
+      },
+      "maxScheduleLagMs": 14.006541000009747,
+      "wallElapsedMs": 267657,
+      "eventLoopDelayMs": {
+        "mean": 21.110295426948564,
+        "max": 33.193983
+      },
+      "upstreamHeaderSamples": 2090,
+      "upstreamHeaderMaxMs": 167,
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    },
+    "passed": false
+  },
+  "verification": [],
+  "passed": false
+}

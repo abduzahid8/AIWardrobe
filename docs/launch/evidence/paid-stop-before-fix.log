@@ -1,0 +1,69 @@
+FAIL __tests__/backend/rateLimit.test.js
+  ● server paid-work stop true denies before rate/quota writes
+
+    TypeError: Cannot read properties of null (reading 'status')
+
+      112 |   env.set('AIWARDROBE_PAID_WORK_DISABLED', value);
+      113 |   const result = await enforceRateLimit(request('Bearer jwt'), opts);
+    > 114 |   expect(result.status).toBe(503);
+          |                 ^
+      115 |   expect(await result.json()).toEqual({ error: 'feature_disabled' });
+      116 |   expect(result.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      117 |   expect(mockGetUser).toHaveBeenCalledWith('jwt');
+
+      at status (__tests__/backend/rateLimit.test.js:114:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● server paid-work stop  TRUE  denies before rate/quota writes
+
+    TypeError: Cannot read properties of null (reading 'status')
+
+      112 |   env.set('AIWARDROBE_PAID_WORK_DISABLED', value);
+      113 |   const result = await enforceRateLimit(request('Bearer jwt'), opts);
+    > 114 |   expect(result.status).toBe(503);
+          |                 ^
+      115 |   expect(await result.json()).toEqual({ error: 'feature_disabled' });
+      116 |   expect(result.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      117 |   expect(mockGetUser).toHaveBeenCalledWith('jwt');
+
+      at status (__tests__/backend/rateLimit.test.js:114:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● server paid-work stop yes denies before rate/quota writes
+
+    TypeError: Cannot read properties of null (reading 'status')
+
+      112 |   env.set('AIWARDROBE_PAID_WORK_DISABLED', value);
+      113 |   const result = await enforceRateLimit(request('Bearer jwt'), opts);
+    > 114 |   expect(result.status).toBe(503);
+          |                 ^
+      115 |   expect(await result.json()).toEqual({ error: 'feature_disabled' });
+      116 |   expect(result.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      117 |   expect(mockGetUser).toHaveBeenCalledWith('jwt');
+
+      at status (__tests__/backend/rateLimit.test.js:114:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● per-endpoint stop is selective and cannot be overridden by client headers
+
+    TypeError: Cannot read properties of null (reading 'status')
+
+      121 |   env.set('AIWARDROBE_DISABLED_PAID_FEATURES', ' try-on, ai-chat ');
+      122 |   const forged = new Request('https://example.test', {headers: {authorization:'Bearer jwt','x-enable-paid-work':'true'}});
+    > 123 |   expect((await enforceRateLimit(forged, {...opts,feature:'try-on'})).status).toBe(503);
+          |                                                                       ^
+      124 |   expect(mockRpc).not.toHaveBeenCalled();
+      125 |   expect(await enforceRateLimit(request('Bearer jwt'), {...opts,feature:'ai-process'})).toBeNull();
+      126 |   expect(mockRpc).toHaveBeenCalledWith('consume_edge_quota', {p_user:'user-1',p_endpoint:'ai-process'});
+
+      at Object.status (__tests__/backend/rateLimit.test.js:123:71)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 22 passed, 26 total
+Snapshots:   0 total
+Time:        0.795 s, estimated 1 s

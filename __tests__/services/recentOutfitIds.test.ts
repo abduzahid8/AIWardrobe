@@ -97,16 +97,69 @@ test('keeps exclusions and pending writes isolated between accounts', async () =
     expect(await mod.getRecentShownIds('signed-out')).toEqual([]);
 });
 
-test('preserves deck boundaries so the previous deck is distinct from older history', async () => {
-    const mod = loadModule();
-    const scope = 'user|shop|old_money|work';
-    mod.recordShownOutfits([outfit('a', 'b', 'c')], scope);
-    mod.recordShownOutfits([outfit('d', 'e', 'f')], scope);
-    mod.recordShownOutfits([outfit('g', 'h', 'i')], scope);
+test('records physical identity and rehydrates normalized names and images', async () => {
+    const mod=loadModule();
+    mod.recordShownOutfits([{items:[{id:'shoe-original',name:'Brown Leather Loafers',imageUrl:'https://cdn.test/loafers.jpg?width=200'}]}],'identity-user');
+    const keys=await mod.getRecentShownProductKeys('identity-user');
+    expect(keys).toEqual(expect.arrayContaining(['id:shoe-original','n:brown leather loafers','i:cdn.test/loafers.jpg']));
+    const saved=(AsyncStorage.setItem as jest.Mock).mock.calls.find(([key])=>key.endsWith('identity-user::products'))![1];
+    (AsyncStorage.getItem as jest.Mock).mockImplementation(async (key:string)=>key.endsWith('identity-user::products')?saved:null);
+    expect(await loadModule().getRecentShownProductKeys('identity-user')).toEqual(keys);
+    expect(await loadModule().getRecentShownProductKeys('another-user')).toEqual([]);
+});
 
-    await mod.getRecentShownIds(scope);
-    await expect(mod.getRotationHistory(scope)).resolves.toEqual({
-        previousDeckProductKeys: ['id:g', 'id:h', 'id:i'],
-        olderRecentProductKeys: ['id:a', 'id:b', 'id:c', 'id:d', 'id:e', 'id:f'],
-    });
+test('same choices keep one scope, distinct taps get unique IDs, and deck boundaries survive immediate reads',async()=>{
+ const mod=loadModule();const scope=mod.rotationScope('user','shop','Old Money','Date Night');
+ expect(scope).toBe(mod.rotationScope('user','new_clothing','old_money','date'));
+ const a=mod.generationRequestId(),b=mod.generationRequestId();expect(a).not.toBe(b);
+ await mod.recordDisplayedDeck([{items:[{id:'a',name:'First shirt'}]}],scope,a);
+ expect((await mod.getRotationHistory(scope)).previousDeckProductKeys).toContain('id:a');
+ await mod.recordDisplayedDeck([{items:[{id:'b',name:'Second shirt'}]}],scope,b);
+ const h=await mod.getRotationHistory(scope);expect(h.previousDeckProductKeys).toContain('id:b');expect(h.previousDeckProductKeys).not.toContain('id:a');expect(h.olderRecentProductKeys).toContain('id:a');
+ expect(h.rotationDecks).toHaveLength(2);
+});
+
+test('a pending persistence write cannot make the next request read stale deck history',async()=>{
+ (AsyncStorage.setItem as jest.Mock).mockImplementation(()=>new Promise(()=>{}));
+ const mod=loadModule(),scope=mod.rotationScope('race','shop','old_money','date');
+ await mod.recordDisplayedDeck([{items:[{id:'just-displayed',name:'Cotton shirt'}]}],scope,'tap-one');
+ const history=await mod.getRotationHistory(scope);
+ expect(history.previousDeckProductKeys).toContain('id:just-displayed');
+});
+
+test('all displayed products cross style and occasion changes without leaking between accounts',async()=>{
+ const mod=loadModule(),first=mod.rotationScope('cross-style','shop','old_money','date'),second=mod.rotationScope('cross-style','shop','minimalist','work');
+ const deck=[{items:[{id:'shirt-a',name:'White shirt',macroCategory:'top'},{id:'shoe-a',name:'Black leather loafers',macroCategory:'shoes',imageUrl:'https://catalog.test/loafer.jpg?size=200'}]}];
+ await mod.recordDisplayedDeck(deck,first,'first-style');
+ const history=await mod.getRotationHistory(second);
+ expect(history.previousDeckProductKeys).toContain('id:shirt-a');
+ expect(history.previousShoeProductKeys).toEqual(expect.arrayContaining(['id:shoe-a','n:black leather loafers','i:catalog.test/loafer.jpg']));
+ expect(history.recentShoeProductKeys).not.toContain('id:shirt-a');
+ expect((await mod.getRotationHistory(mod.rotationScope('other-user','shop','minimalist','work'))).recentShoeProductKeys).toBeUndefined();
+ const shoeWrite=(AsyncStorage.setItem as jest.Mock).mock.calls.find(([key])=>key==='stylistRotationDecks::shoes:cross-style');
+ expect(shoeWrite).toBeDefined();
+ const productWrite=(AsyncStorage.setItem as jest.Mock).mock.calls.find(([key])=>key==='stylistRotationDecks::products:cross-style');
+ (AsyncStorage.getItem as jest.Mock).mockImplementation(async(key:string)=>key===shoeWrite![0]?shoeWrite![1]:key===productWrite![0]?productWrite![1]:null);
+ const reloaded=await loadModule().getRotationHistory(second);
+ expect(reloaded.previousShoeProductKeys).toContain('id:shoe-a');
+ expect(reloaded.previousDeckProductKeys).toContain('id:shirt-a');
+});
+
+test('semantic look history is bounded, persists and remains account/context scoped',async()=>{
+ const mod=loadModule(),scope=mod.rotationScope('semantic-a','shop','minimalist','date');
+ const items=['White lightweight shirt','Navy fine cardigan','Grey tailored trousers','Brown leather loafers'].map((name,i)=>({name,id:String(i),macroCategory:['top','outerwear','bottom','shoes'][i]}));
+ for(let n=0;n<15;n++)await mod.recordDisplayedDeck([{items}],scope,`round-${n}`);
+ const history=await mod.getRotationHistory(scope);expect(history.recentLookSignatures).toHaveLength(12);
+ expect(history.recentLookSignatures[0]).toMatch(/^sq1:/);
+ expect((await mod.getRotationHistory(mod.rotationScope('semantic-b','shop','minimalist','date'))).recentLookSignatures).toEqual([]);
+ const written=(AsyncStorage.setItem as jest.Mock).mock.calls.filter(([key])=>key===`stylistRotationDecks::${scope}`).at(-1)!;
+ (AsyncStorage.getItem as jest.Mock).mockImplementation(async(key:string)=>key===written[0]?written[1]:null);
+ expect((await loadModule().getRotationHistory(scope)).recentLookSignatures).toEqual(history.recentLookSignatures);
+});
+test('displayed semantic recency shares the bounded account-scoped cache without leaking to another account',async()=>{
+ const mod=loadModule();const items=['Cotton shirt','Fine cardigan','Tailored trousers','Leather loafers'].map((name,i)=>({id:`s-${i}`,name,macroCategory:['top','outerwear','bottom','shoes'][i]}));
+ mod.recordShownOutfits(Array.from({length:40},()=>({items})),'semantic-owner');
+ const signatures=await mod.getRecentShownLookSignatures('semantic-owner');expect(signatures).toHaveLength(36);
+ expect(await mod.getRecentShownLookSignatures('other-owner')).toEqual([]);
+ expect(signatures.every(s=>s.startsWith('sq1:'))).toBe(true);
 });

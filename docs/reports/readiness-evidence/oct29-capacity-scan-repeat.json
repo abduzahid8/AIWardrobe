@@ -1,0 +1,131 @@
+{
+  "measuredAt": "2026-10-29T03:37:54.177Z",
+  "runId": "9f4f3dda-59de-49d4-9e09-03e22d6c9c30",
+  "scope": "Bounded live scan concurrency; same known photo, ordinary free users, expected primary category/color only",
+  "plannedStages": [
+    2,
+    5,
+    10
+  ],
+  "maxRequests": 17,
+  "stages": [
+    {
+      "concurrency": 2,
+      "maxActive": 2,
+      "elapsedMs": 35431,
+      "outcomes": [
+        {
+          "userIndex": 0,
+          "requestId": "01a185bc-a357-7657-8571-8c555be861c6",
+          "executionId": "40b195d2-65ed-441b-b807-934c5e846f0d",
+          "region": "eu-central-1",
+          "status": 200,
+          "latencyMs": 11726,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": true,
+          "category": "jacket",
+          "color": "beige",
+          "error": null
+        },
+        {
+          "userIndex": 1,
+          "requestId": "01a185bc-a494-70ee-b680-e52fd8e940fe",
+          "executionId": "b7bcb3fb-adbf-4825-85eb-404e84f3e945",
+          "region": "eu-central-1",
+          "status": 200,
+          "latencyMs": 35425,
+          "responseContractPassed": true,
+          "expectedPrimaryCategoryColorPassed": false,
+          "category": "jeans",
+          "color": "blue",
+          "error": null
+        }
+      ],
+      "responsePasses": 2,
+      "expectedCategoryColorPasses": 1,
+      "medianMs": 23575.5,
+      "maxMs": 35425,
+      "passed": false
+    }
+  ],
+  "cleanup": [
+    {
+      "id": "b48fd958-3808-4f8b-8adb-01a8a3cdbf12",
+      "sessionsRevoked": true,
+      "sessionCreated": true,
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "id": "17f8f031-ac48-48f5-a428-9b98a4b5dc91",
+      "sessionsRevoked": true,
+      "sessionCreated": true,
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "id": "03ff45e7-c67a-4ccf-a187-d2b0812cd20d",
+      "sessionsRevoked": true,
+      "sessionCreated": true,
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "id": "ece3f55b-ed2a-4c7c-8c93-cf227bfcfbcb",
+      "sessionsRevoked": true,
+      "sessionCreated": true,
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "id": "af20760e-ce8a-481f-b0fb-0cc987a38c13",
+      "sessionsRevoked": true,
+      "sessionCreated": true,
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "id": "4b76a82f-f742-41c2-a87f-7a63c1f2876f",
+      "sessionsRevoked": true,
+      "sessionCreated": true,
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "id": "51479906-476f-4bde-b3f9-82e7f9e383ee",
+      "sessionsRevoked": true,
+      "sessionCreated": true,
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "id": "07c924e1-6b50-43b4-970f-b48ff4c7d01a",
+      "sessionsRevoked": true,
+      "sessionCreated": true,
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "id": "3d5028e4-4d78-46ba-b6e6-c6da637bbbf1",
+      "sessionsRevoked": true,
+      "sessionCreated": true,
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "id": "07626e3f-8745-46cb-9db0-2cc2f5fb32ea",
+      "sessionsRevoked": true,
+      "sessionCreated": true,
+      "deleted": true,
+      "status": 200
+    }
+  ],
+  "fixture": {
+    "bytes": 666026,
+    "sha256": "2d47a0ac74bd074352bb446576e38d54ca5339ca3b8687cbc78812ca1f80a717",
+    "selection": "beige/cream torso shirt or jacket; exclude separate green draped layer"
+  },
+  "createdUsers": 10,
+  "stoppedEscalation": "A bounded stage failed; no higher stage started",
+  "completedAt": "2026-10-29T03:38:54.991Z"
+}

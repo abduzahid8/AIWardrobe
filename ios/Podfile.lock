@@ -124,8 +124,6 @@ PODS:
     - ExpoModulesCore
   - ExpoSplashScreen (57.0.10):
     - ExpoModulesCore
-  - ExpoTrackingTransparency (57.0.2):
-    - ExpoModulesCore
   - ExpoVideo (57.0.5):
     - ExpoModulesCore
   - ExpoVideoThumbnails (57.0.2):
@@ -2504,7 +2502,6 @@ DEPENDENCIES:
   - ExpoNotifications (from `../node_modules/expo-notifications/ios`)
   - ExpoSecureStore (from `../node_modules/expo-secure-store/ios`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
-  - ExpoTrackingTransparency (from `../node_modules/expo-tracking-transparency/ios`)
   - ExpoVideo (from `../node_modules/expo-video/ios`)
   - ExpoVideoThumbnails (from `../node_modules/expo-video-thumbnails/ios`)
   - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
@@ -2680,8 +2677,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-secure-store/ios"
   ExpoSplashScreen:
     :path: "../node_modules/expo-splash-screen/ios"
-  ExpoTrackingTransparency:
-    :path: "../node_modules/expo-tracking-transparency/ios"
   ExpoVideo:
     :path: "../node_modules/expo-video/ios"
   ExpoVideoThumbnails:
@@ -2902,7 +2897,6 @@ SPEC CHECKSUMS:
   ExpoNotifications: 27d5bd4b94ed7776a6e73636ef673488500c0a5b
   ExpoSecureStore: ff1fd5e073957417ba8f9dec0bebcbd55a60e747
   ExpoSplashScreen: 856060f5724dc4fca4d69a2d18a161e3baa37019
-  ExpoTrackingTransparency: 233f97aced6da78301e74e1d9cff2bc3763b40fe
   ExpoVideo: 31d5dc617d913808aeba05c3ab900712637b0e47
   ExpoVideoThumbnails: da5d471c170bf4110f681b6649524eace9c95b5b
   ExpoWebBrowser: a4d7c382116fbe33c1ec7f60293f02b7e97042e4

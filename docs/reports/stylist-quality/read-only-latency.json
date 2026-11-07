@@ -1,0 +1,22 @@
+{
+  "observedAt": "2026-11-05T02:40:55.089Z",
+  "probes": [
+    {
+      "name": "catalog-shoes-page",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 2745.7294589999997,
+      "rows": 100,
+      "errorCode": null
+    },
+    {
+      "name": "discovery-capability",
+      "method": "GET",
+      "status": 404,
+      "elapsedMs": 1218.554584,
+      "rows": 0,
+      "errorCode": "PGRST202"
+    }
+  ],
+  "scope": "Two read-only GETs with public credential. HTTP request latency, not outfit generation latency. No provider, quota or catalog mutation."
+}

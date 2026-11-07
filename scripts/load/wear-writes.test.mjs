@@ -28,6 +28,15 @@ test('an aborted workload cannot pass', async () => {
   const result = await runWearWrites({ ...options, signal: controller.signal });
   assert.equal(result.passed, false); assert.equal(result.completed, 0);
 });
+test('write failure callback stops scheduling further writes', async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const result = await runWearWrites({ ...options, signal: controller.signal, onFailure: () => controller.abort(),
+    fetchImpl: async () => { calls++; return new Response('{}', { status: 429 }); } });
+  assert.equal(calls, 1);
+  assert.equal(result.aborted, true);
+  assert.equal(result.passed, false);
+});
 
 test('dropped scheduled writes prevent capacity success', async () => {
   const result = await runWearWrites({ ...options, users: [{ ...users[0], logIds: Array.from({ length: 10 }, (_, i) => `log-${i}`) }],

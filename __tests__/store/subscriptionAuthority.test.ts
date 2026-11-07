@@ -61,3 +61,84 @@ test('logout invalidates a pending authoritative status response before it can r
   expect(s.getState().tier).toBe('free');
   expect(AsyncStorage.setItem).not.toHaveBeenCalledWith('subscription_tier', 'vip');
 });
+
+test('concurrent startup subscription checks share one authoritative request', async () => {
+  const s = store();
+  let finish: (value: unknown) => void = () => undefined;
+  mockReadStatus.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const first = s.getState().verifySubscriptionFromServer();
+  const second = s.getState().verifySubscriptionFromServer();
+  await Promise.resolve();
+  expect(mockReadStatus).toHaveBeenCalledTimes(1);
+  finish({ data: [{ tier: 'premium', expiry_date: null, trial_started_at: '2020-01-01T00:00:00Z' }], error: null });
+  await Promise.all([first, second]);
+  expect(s.getState().tier).toBe('premium');
+});
+
+test('a network outage retains the last verified tier and is not logged as a crash', async () => {
+  const s = store();
+  await s.getState().setSubscription('premium', '2030-01-01T00:00:00Z');
+  const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+  const warnings = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    mockReadStatus.mockResolvedValue({data:null,error:{message:'fetch failed: The network connection was lost'}});
+    await s.getState().verifySubscriptionFromServer();
+    expect(s.getState().tier).toBe('premium');
+    expect(errors).not.toHaveBeenCalled();
+    expect(warnings).toHaveBeenCalled();
+  } finally { errors.mockRestore(); warnings.mockRestore(); }
+});
+
+
+test('reconnect retries a failed in-flight subscription check after it settles', async () => {
+  const s = store();
+  let finish: (value: unknown) => void = () => undefined;
+  mockReadStatus.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }))
+    .mockResolvedValueOnce({data:[{tier:'premium',expiry_date:null,trial_started_at:'2020-01-01T00:00:00Z'}],error:null});
+  const initial = s.getState().verifySubscriptionFromServer();
+  await Promise.resolve();
+  const recovery = require('../../store/subscriptionStore').recoverSubscriptionAfterNetworkChange();
+  finish({data:null,error:{message:'network connection was lost'}});
+  await Promise.all([initial,recovery]);
+  expect(mockReadStatus).toHaveBeenCalledTimes(2);
+  expect(s.getState().tier).toBe('premium');
+});
+
+test('reconnect does not duplicate a successful in-flight subscription check', async () => {
+  const s = store();
+  let finish: (value: unknown) => void = () => undefined;
+  mockReadStatus.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  const initial = s.getState().verifySubscriptionFromServer();
+  await Promise.resolve();
+  const recovery = require('../../store/subscriptionStore').recoverSubscriptionAfterNetworkChange();
+  finish({data:[{tier:'premium',expiry_date:null,trial_started_at:'2020-01-01T00:00:00Z'}],error:null});
+  await Promise.all([initial,recovery]);
+  expect(mockReadStatus).toHaveBeenCalledTimes(1);
+});
+
+test('reconnect does not retry a pending subscription request after logout', async () => {
+  const s = store();
+  let finish: (value: unknown) => void = () => undefined;
+  mockReadStatus.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  const initial = s.getState().verifySubscriptionFromServer();
+  await Promise.resolve();
+  const recovery = require('../../store/subscriptionStore').recoverSubscriptionAfterNetworkChange();
+  require('../../store/authEvents').authEvents.emitLogout();
+  finish({data:null,error:{message:'network connection was lost'}});
+  await Promise.all([initial,recovery]);
+  expect(mockReadStatus).toHaveBeenCalledTimes(1);
+});
+
+test('a pre-purchase free snapshot cannot overwrite a newly verified paid plan', async () => {
+  const s = store();
+  let finish!: (value: unknown) => void;
+  mockReadStatus.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  const startup = s.getState().verifySubscriptionFromServer();
+  await Promise.resolve();
+  await s.getState().setSubscription('premium', '2030-01-01T00:00:00Z');
+  finish({data:[{tier:'free',expiry_date:null,trial_started_at:new Date().toISOString()}],error:null});
+  await startup;
+  expect(s.getState().tier).toBe('premium');
+  expect(s.getState().isTrialActive).toBe(false);
+  expect(AsyncStorage.setItem).not.toHaveBeenCalledWith('subscription_tier', 'free');
+});

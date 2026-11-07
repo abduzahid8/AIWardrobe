@@ -1,0 +1,19 @@
+appId: com.aiwardrobe
+---
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    point: "12%,94%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: video-tab-home
+- tapOn:
+    point: "37%,94%"
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: video-tab-closet
+- tapOn:
+    point: "87%,94%"
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: video-tab-profile

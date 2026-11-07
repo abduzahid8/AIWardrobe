@@ -7,6 +7,7 @@ import readinessLogger from '../utils/logger';
 import { supabase } from '../../lib/supabase';
 
 export interface ProcessingResult {
+  errorMessage?: string;
   failureKind?: 'network' | 'timeout' | 'provider';
   success: boolean;
   imageUrl: string;
@@ -68,6 +69,11 @@ async function invokeProcessingOperation(
 
     if (error) {
       console.error(`[ExternalAI] Edge Function error for ${operationName}:`, error);
+      // Supabase HTTP errors keep the server explanation in the response body.
+      if (error.context && typeof error.context.json === 'function') {
+        const details = await error.context.json().catch(() => null);
+        if (typeof details?.error === 'string') throw new Error(details.error);
+      }
       throw error;
     }
 
@@ -107,6 +113,7 @@ async function invokeProcessingOperation(
 
     return {
       success: false,
+      errorMessage: error?.message || 'AI processing failed',
       failureKind: /timeout|abort/i.test(error?.name || '') || /timeout/i.test(error?.message || '') ? 'timeout'
         : error?.name === 'FunctionsFetchError' || /network/i.test(error?.message || '') ? 'network' : 'provider',
       imageUrl: buildImageDataUrl(imageBase64),  // original photo is always preserved

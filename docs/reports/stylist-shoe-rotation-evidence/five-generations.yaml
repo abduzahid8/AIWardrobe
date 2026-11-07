@@ -1,0 +1,48 @@
+appId: host.exp.Exponent
+---
+- launchApp:
+    stopApp: true
+- openLink: "exp://127.0.0.1:8082"
+- extendedWaitUntil:
+    visible: ".*(Добрый|Создать образ|Good morning|Good afternoon|Good evening|Create outfit).*"
+    timeout: 30000
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: ".*(Магазин|Shop).*"
+- tapOn: ".*(Персональный стилист|Personal stylist).*"
+- tapOn: ".*(New clothing|Новая одежда).*"
+- runFlow:
+    when:
+      notVisible: ".*Old Money.*Date night.*"
+    commands:
+      - tapOn:
+          id: stylistOccasion-date
+- assertVisible: ".*Old Money.*Date night.*"
+- assertVisible: ".*Generate outfit.*"
+- repeat:
+    times: 5
+    commands:
+      - evalScript: ${output.generation = (output.generation || 0) + 1}
+      - assertVisible: ".*Generate outfit.*"
+      - takeScreenshot: ${"g" + output.generation + "-same-selection"}
+      - tapOn: ".*Generate outfit.*"
+      - extendedWaitUntil:
+          visible: ".*(Ваши образы|Your Outfits).*"
+          timeout: 120000
+      - takeScreenshot: ${"g" + output.generation + "-displayed-card1"}
+      - scrollUntilVisible:
+          element:
+            id: stylistResult-1
+          direction: DOWN
+          visibilityPercentage: 50
+      - takeScreenshot: ${"g" + output.generation + "-displayed-card2"}
+      - scrollUntilVisible:
+          element:
+            id: stylistResult-2
+          direction: DOWN
+          visibilityPercentage: 50
+      - takeScreenshot: ${"g" + output.generation + "-displayed-card3"}
+      - tapOn:
+          id: aiResultsBack

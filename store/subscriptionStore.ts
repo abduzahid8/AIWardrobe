@@ -3,6 +3,7 @@ import readinessLogger from '../src/utils/logger';
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from '../lib/supabase';
+import { withRequestDeadline } from '../src/lib/requestDeadline';
 
 // ─────────────────────────────────────────────────────────────
 // Storage keys (local cache — Supabase is source of truth for tier)
@@ -283,6 +284,11 @@ function deriveState(
     };
 }
 
+let pendingSubscriptionVerification: { revision: number; promise: Promise<void> } | null = null;
+let failedSubscriptionVerificationRevision: number | null = null;
+// A read started before a verified purchase must not overwrite that purchase.
+let subscriptionWriteRevision = 0;
+
 const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     tier: 'free',
     expiryDate: null,
@@ -303,18 +309,25 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     // ─────────────────────────────────────────────────────────
     // verifySubscriptionFromServer
     // ─────────────────────────────────────────────────────────
-    verifySubscriptionFromServer: async () => {
+    verifySubscriptionFromServer: () => {
         const revision = authEvents.getRevision();
+        const writeRevision = subscriptionWriteRevision;
+        const isCurrent = () => revision === authEvents.getRevision() && writeRevision === subscriptionWriteRevision;
+        if (pendingSubscriptionVerification?.revision === revision) return pendingSubscriptionVerification.promise;
+        const promise = (async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.user?.id) return;
 
             const userId = session.user.id;
             if (!authEvents.canApplyToUser(userId)) return;
-            const { data, error } = await supabase.rpc('get_subscription_status');
+            const { data, error } = await withRequestDeadline(signal => {
+                const query = supabase.rpc('get_subscription_status');
+                return typeof query.abortSignal === 'function' ? query.abortSignal(signal) : query;
+            });
             if (error || !Array.isArray(data) || data.length !== 1) throw error || new Error('Invalid subscription status response');
             const { data: latest } = await supabase.auth.getSession();
-            if (revision !== authEvents.getRevision() || latest.session?.user?.id !== userId) return;
+            if (!isCurrent() || latest.session?.user?.id !== userId) return;
             const status = data[0];
             if (!['free', 'lite', 'premium', 'vip'].includes(status.tier)) throw new Error('Invalid subscription tier');
             const resolvedTier = status.tier as SubscriptionTier;
@@ -324,28 +337,29 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
             }
             if (status.trial_started_at) {
                 await AsyncStorage.setItem(TRIAL_START_KEY, status.trial_started_at);
-                if (revision !== authEvents.getRevision()) return;
+                if (!isCurrent()) return;
                 set({ trialStartedAt: status.trial_started_at });
             } else if (resolvedTier === 'free') {
                 await get().initializeTrial(userId);
             }
-            if (revision !== authEvents.getRevision()) return;
+            if (!isCurrent()) return;
 
             // A successful authoritative read wins over cached entitlements,
             // including refunds and account transfers. Read errors preserve cache.
             await AsyncStorage.setItem(SUBSCRIPTION_KEY, resolvedTier);
-            if (revision !== authEvents.getRevision()) return;
+            if (!isCurrent()) return;
             if (resolvedExpiry) {
                 await AsyncStorage.setItem(SUBSCRIPTION_EXPIRY_KEY, resolvedExpiry);
-                if (revision !== authEvents.getRevision()) return;
+                if (!isCurrent()) return;
             } else {
                 await AsyncStorage.removeItem(SUBSCRIPTION_EXPIRY_KEY);
-                if (revision !== authEvents.getRevision()) return;
+                if (!isCurrent()) return;
             }
 
             // Use the trial date that was already set (either from local cache or
             // Supabase profile sync above). isPending is now resolved = false.
             const trialStartedAt = get().trialStartedAt;
+            failedSubscriptionVerificationRevision = null;
             set({
                 tier: resolvedTier,
                 expiryDate: resolvedExpiry,
@@ -353,12 +367,24 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
                 lastVerifiedAt: new Date().toISOString(),
             });
         } catch (error) {
-            if (revision !== authEvents.getRevision()) return;
-            console.error('Failed to verify subscription from server:', error);
+            if (!isCurrent()) return;
+            failedSubscriptionVerificationRevision = revision;
+            const details = error && typeof error === 'object' ? error as { name?: unknown; message?: unknown; details?: unknown } : {};
+            const networkFailure = details.name === 'RequestTimeoutError' || details.name === 'AbortError' ||
+                /network|fetch failed|failed to fetch|timed?\s*out|connection.*lost/i.test(`${details.message ?? ''} ${details.details ?? ''}`);
+            if (networkFailure) console.warn('[subscriptionStore] Network unavailable; retaining last verified subscription');
+            else console.error('Failed to verify subscription from server:', error);
             // On error, clear pending so the UI isn't stuck waiting forever
             const { tier, expiryDate, trialStartedAt } = get();
             set(deriveState(tier, expiryDate, trialStartedAt, false));
         }
+        })();
+        pendingSubscriptionVerification = { revision, promise };
+        const clearPending = () => {
+            if (pendingSubscriptionVerification?.promise === promise) pendingSubscriptionVerification = null;
+        };
+        void promise.then(clearPending, clearPending);
+        return promise;
     },
 
     // ─────────────────────────────────────────────────────────
@@ -484,6 +510,8 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     // ─────────────────────────────────────────────────────────
     setSubscription: async (tier: SubscriptionTier, expiryDate?: string | null, productId?: string) => {
         if (tier !== 'free' && !authEvents.canApplyToUser()) return;
+        subscriptionWriteRevision++;
+        pendingSubscriptionVerification = null;
         const revision = authEvents.getRevision();
         try {
             const expiry = expiryDate === undefined ? getDefaultExpiry(tier, productId) : expiryDate;
@@ -497,6 +525,7 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
             if (revision !== authEvents.getRevision()) return;
 
             const trialStartedAt = get().trialStartedAt;
+            failedSubscriptionVerificationRevision = null;
             set({
                 tier,
                 expiryDate: expiry,
@@ -525,6 +554,7 @@ const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
             await AsyncStorage.removeItem(SUBSCRIPTION_EXPIRY_KEY);
 
             const trialStartedAt = get().trialStartedAt;
+            failedSubscriptionVerificationRevision = null;
             set({
                 tier: 'free',
                 expiryDate: null,
@@ -569,6 +599,17 @@ function getDefaultExpiry(tier: SubscriptionTier, productId?: string): string {
         now.setMonth(now.getMonth() + 1);
     }
     return now.toISOString();
+}
+
+/** Retry a failed verification after reconnect, including one still in flight. */
+export async function recoverSubscriptionAfterNetworkChange(): Promise<void> {
+    const revision = authEvents.getRevision();
+    const pending = pendingSubscriptionVerification?.revision === revision ? pendingSubscriptionVerification.promise : null;
+    if (pending) {
+        await pending;
+        if (revision !== authEvents.getRevision() || failedSubscriptionVerificationRevision !== revision) return;
+    }
+    if (revision === authEvents.getRevision()) await useSubscriptionStore.getState().verifySubscriptionFromServer();
 }
 
 export { DAILY_USAGE_KEY, TRIAL_START_KEY };

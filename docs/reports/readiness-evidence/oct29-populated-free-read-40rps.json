@@ -1,0 +1,140 @@
+{
+  "measuredAt": "2026-10-29T03:42:50.476Z",
+  "scope": "Production: 20 temporary free users, 20 wardrobe items and 5 saved outfits each; read-only traffic after fixture setup; excludes AI, image delivery and uploads",
+  "fixtureUsers": 20,
+  "wardrobeItemsPerUser": 20,
+  "savedOutfitsPerUser": 5,
+  "cleanup": [
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    },
+    {
+      "temporaryUserDeleted": true,
+      "status": 200
+    }
+  ],
+  "preflight": {
+    "completed": 4,
+    "failedRequests": 0,
+    "statuses": {
+      "200": 4
+    },
+    "failures": {},
+    "passed": true
+  },
+  "load": {
+    "startedAt": "2026-10-29T03:43:31.783Z",
+    "completedAt": "2026-10-29T03:45:32.140Z",
+    "timingMs": {
+      "headers": {
+        "samples": 4800,
+        "p50": 392.80533399999695,
+        "p95": 462.700125000003,
+        "p99": 1050.3582089999982
+      },
+      "body": {
+        "samples": 4800,
+        "p50": 0.4319169999944279,
+        "p95": 5.259708000005048,
+        "p99": 7.870458999997936
+      }
+    },
+    "scope": "read-only HTTP paths; excludes paid AI, uploads, writes, and native rendering",
+    "workload": "app",
+    "aborted": false,
+    "requestedRps": 40,
+    "durationSec": 120,
+    "elapsedSec": 120.35925104200001,
+    "scheduled": 4800,
+    "completed": 4800,
+    "dropped": 0,
+    "achievedRps": 39.88060708623896,
+    "distinctAuthenticatedUsers": 20,
+    "statuses": {
+      "200": 4800
+    },
+    "failures": {},
+    "failureDetails": [],
+    "failedRequests": 0,
+    "errorRate": 0,
+    "latencyMs": {
+      "p50": 393.63808399999107,
+      "p95": 463.8377909999981,
+      "p99": 1051.167042000001
+    },
+    "passed": true
+  }
+}

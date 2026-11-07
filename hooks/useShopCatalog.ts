@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { loadCatalogDiscovery, catalogDiscoverySeed, discoverySlotForCategory } from '../src/services/catalogDiscovery';
+import { useNetworkRecovery } from './useNetworkRecovery';
 import { DeviceEventEmitter } from 'react-native';
 import { supabase } from '../lib/supabase';
 import type { ShopCatalogItem } from '../src/types/shop';
 import { spreadSimilarCatalogItems } from '../src/utils/shopCatalogOrder';
 import { createLogger } from '../src/utils/logger';
 import { getThumbnailUrl } from '../src/utils/imageUrl';
+import { hasProductOnlyCatalogProvenance } from '../src/utils/productOnlyCatalog';
 // Static catalogs are require()d lazily — the ~120KB data modules would
 // otherwise parse/evaluate on app startup (this hook is imported by the
 // eager Home tab). First actual seed use pays the cost, off the critical
@@ -32,7 +35,8 @@ interface CacheEntry {
 }
 const catalogCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-function cacheKey(source: string, cat: string, search = '') { return JSON.stringify([source, cat, search]); }
+function cacheKey(source: string, cat: string, search = '', discovery = false) { return JSON.stringify([source, cat, search, discovery]); }
+const discoverySeeds = new Map<string, string>();
 
 // ── In-flight request deduplication ──────────────────────────────────────────
 // When HomeScreen and InspoScreen both call useShopCatalog({ source: 'all' })
@@ -82,6 +86,8 @@ function isTimeoutOrNetworkError(err: any): boolean {
 }
 
 export interface UseShopCatalogOptions {
+    /** Balanced full-catalog discovery, with bounded pre-migration reads. */
+    discovery?: boolean;
     /** Matches UI chips: upper_body | lower_body | shoes | dresses | outfits (or legacy tops/bottoms maps to category). */
     category?: string;
     /** Limit catalog rows to a specific ingestion source. Defaults to all catalog sources. */
@@ -110,19 +116,19 @@ function dbRowToItem(row: Record<string, any>): ShopCatalogItem {
         price:       Number(row.price),
         currency:    row.currency ?? undefined,
         imageUrl:    getThumbnailUrl(row.image_url),
+        category:    row.category,
         garmentType: row.garment_type as ShopCatalogItem['garmentType'],
         description: row.description ?? '',
+        source:      row.source ?? undefined,
+        externalId:  row.external_id ?? undefined,
         sourceUrl:   row.source_url ?? '',
     };
 }
 
 /**
- * Instant local seed from the bundled catalog (~200 static items).
- * Lets Home/essentials/outfit decks render on the very first frame while
- * the Supabase query flies in the background — previously the screen showed
- * a skeleton until the network returned (500ms–2s on cold start).
- * Only applies when no source filter is set; a source-filtered query has no
- * static equivalent.
+ * Optional local seed from bundled catalog data, when present. Production
+ * builds may contain no bundled products, in which case the live query is
+ * required. Source-filtered queries have no static equivalent.
  */
 let staticSeedCache: ShopCatalogItem[] | null = null;
 function getStaticSeed(cat: string, activeSource: string): ShopCatalogItem[] {
@@ -154,7 +160,7 @@ function buildQuery(page: number, cat: string, activeSource: string, signal?: Ab
     const size = PAGE_SIZE;
     let q = supabase
         .from('shop_catalog')
-        .select('id, brand, name, price, currency, image_url, garment_type, description, source_url')
+        .select('id, brand, name, price, currency, image_url, garment_type, category, description, source, source_url, external_id')
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
         .order('id', { ascending: true })
@@ -208,8 +214,9 @@ async function loadCatalogPage(
     activeSource: string,
     append: boolean,
     search = '',
+    discovery = false,
 ): Promise<{ items: ShopCatalogItem[]; hasMore: boolean }> {
-    const key = cacheKey(activeSource, cat, search);
+    const key = cacheKey(activeSource, cat, search, discovery);
     const flightKey = append ? `${key}|p${page}` : key;
     const running = inflight.get(flightKey);
     if (running) return running;
@@ -228,7 +235,14 @@ async function loadCatalogPage(
             }
             const controller = new AbortController();
             try {
-                const result = await withTimeout(
+                if (discovery && (!append || !discoverySeeds.has(key))) {
+                    discoverySeeds.set(key, `${catalogDiscoverySeed()}:${Date.now()}`);
+                }
+                const discovered = discovery ? await loadCatalogDiscovery({
+                    slot: discoverySlotForCategory(cat), source: activeSource, search,
+                    page, limit: PAGE_SIZE, seed: discoverySeeds.get(key), refresh: !append,
+                }, controller.signal) : null;
+                const result = discovered ? {data:discovered.rows,error:null} : await withTimeout(
                     buildQuery(page, cat, activeSource, controller.signal, search),
                     FETCH_TIMEOUT_MS,
                     controller,
@@ -237,10 +251,16 @@ async function loadCatalogPage(
                 if (fetchError) {
                     throw new Error(fetchError.message ?? 'Unknown shop catalog error');
                 }
-                const mapped = (data ?? []).map(dbRowToItem);
+                const rawRows = data ?? [];
+                const mapped = rawRows
+                    .filter(hasProductOnlyCatalogProvenance)
+                    .map(dbRowToItem);
                 logger.debug('fetched page', { page, count: mapped.length, cat, activeSource });
                 const diversified = spreadSimilarCatalogItems(mapped, []) as ShopCatalogItem[];
-                const hasMore = mapped.length === PAGE_SIZE;
+                // Filtering is client-side until the product-only policy is
+                // materialized in the database, so pagination must reflect
+                // the raw page length rather than the visible row count.
+                const hasMore = discovered ? discovered.hasMore : rawRows.length === PAGE_SIZE;
                 if (!append) {
                     catalogCache.set(key, { items: diversified, hasMore, fetchedAt: Date.now() });
                 } else {
@@ -321,24 +341,31 @@ export function useShopCatalog({
     source = DEFAULT_SHOP_SOURCE,
     enabled = true,
     search: rawSearch = '',
+    discovery = false,
 }: UseShopCatalogOptions = {}): UseShopCatalogResult {
     const search = rawSearch.trim().toLowerCase();
     const searchRef = useRef(search);
     searchRef.current = search;
     const requestVersion = useRef(0);
-    const [items, setItems]           = useState<ShopCatalogItem[]>([]);
-    const [loading, setLoading]       = useState(true);
+    const [items, setItems]           = useState<ShopCatalogItem[]>(() =>
+        enabled ? catalogCache.get(cacheKey(source, category, search, discovery))?.items ?? [] : []);
+    const [loading, setLoading]       = useState(() =>
+        enabled && !catalogCache.has(cacheKey(source, category, search, discovery)));
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError]           = useState<string | null>(null);
-    const [hasMore, setHasMore]       = useState(true);
+    const [hasMore, setHasMore]       = useState(() =>
+        enabled && (catalogCache.get(cacheKey(source, category, search, discovery))?.hasMore ?? true));
     const pageRef                     = useRef(0);
     const categoryRef                 = useRef(category);
     const sourceRef                   = useRef(source);
     const enabledRef                  = useRef(enabled);
+    const pendingRequestRef           = useRef(false);
+    const recoveryPendingRef          = useRef(false);
 
     const fetchPage = useCallback(async (page: number, cat: string, activeSource: string, append: boolean, silent = false) => {
         const search = searchRef.current;
         const version = ++requestVersion.current;
+        pendingRequestRef.current = true;
         const current = () => version === requestVersion.current && search === searchRef.current && cat === categoryRef.current && activeSource === sourceRef.current && enabledRef.current;
         // silent=true: background refresh — don't show loading spinner (items still visible)
         if (!silent) {
@@ -347,11 +374,12 @@ export function useShopCatalog({
         }
         setError(null);
 
-        const key = cacheKey(activeSource, cat, search);
+        const key = cacheKey(activeSource, cat, search, discovery);
         try {
-            const result = await loadCatalogPage(page, cat, activeSource, append, search);
+            const result = await loadCatalogPage(page, cat, activeSource, append, search, discovery);
             if (!current()) return;
             pageRef.current = page;
+            recoveryPendingRef.current = false;
             setItems(append
                 ? (prev: ShopCatalogItem[]) => {
                     const prevIds = new Set(prev.map((i) => (i as any)?.id));
@@ -367,16 +395,18 @@ export function useShopCatalog({
             // Surface it so the UI can show an empty-state with a retry
             // instead of spinning forever.
             setError(err?.message ?? 'Unknown shop catalog error');
-            // Only clear items if we have nothing to show (no cache).
-            if (!append && !catalogCache.has(key)) setItems([]);
+            // The current query may have a bundled seed even when there is no
+            // live cache. Keep it visible on a failed background refresh.
+            // A new query clears or replaces its items before fetching.
             setHasMore(false);
         } finally {
             if (current()) {
-            setLoading(false);
-            setLoadingMore(false);
+                pendingRequestRef.current = false;
+                setLoading(false);
+                setLoadingMore(false);
             }
         }
-    }, []);
+    }, [discovery]);
 
     // Reset and reload when category or source changes
     useEffect(() => {
@@ -387,6 +417,8 @@ export function useShopCatalog({
         setError(null);
 
         requestVersion.current += 1;
+        pendingRequestRef.current = false;
+        recoveryPendingRef.current = false;
         setLoadingMore(false);
         if (!enabled) {
             setItems([]);
@@ -397,7 +429,7 @@ export function useShopCatalog({
         }
 
         // Seed from cache immediately — avoids blank screen on revisit
-        const key = cacheKey(source, category, search);
+        const key = cacheKey(source, category, search, discovery);
         const cached = catalogCache.get(key);
         if (cached) {
             setItems(cached.items);
@@ -408,10 +440,7 @@ export function useShopCatalog({
                 fetchPage(0, category, source, false, true);
             }
         } else {
-            // No cache — paint the bundled static seed instantly (no spinner),
-            // then refresh from Supabase silently in the background.
-            // Previously this showed a loading skeleton until the network
-            // returned, blocking essentials + outfit decks on cold start.
+            // Paint any bundled seed immediately, then refresh it in the background.
             const seed = search ? [] : getStaticSeed(category, source);
             if (seed.length > 0) {
                 setItems(seed);
@@ -426,7 +455,7 @@ export function useShopCatalog({
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [category, source, enabled, search]);
+    }, [category, source, enabled, search, discovery]);
 
     // Listen for cross-tab cache busting events
     useEffect(() => {
@@ -455,6 +484,17 @@ export function useShopCatalog({
         // Silent=true: keep existing items visible while fetching fresh data
         fetchPage(0, categoryRef.current, sourceRef.current, false, true);
     }, [fetchPage]);
+
+    useNetworkRecovery(() => {
+        if (!enabledRef.current) return;
+        if (pendingRequestRef.current) recoveryPendingRef.current = true;
+        else if (error) refresh();
+    });
+    useEffect(() => {
+        if (!enabled || !error || !recoveryPendingRef.current || pendingRequestRef.current) return;
+        recoveryPendingRef.current = false;
+        refresh();
+    }, [enabled, error, refresh]);
 
     return { items, loading, loadingMore, error, hasMore, loadMore, refresh };
 }

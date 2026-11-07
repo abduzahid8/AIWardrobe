@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "environment": "LOCAL PREPARATION ONLY",
+  "pendingSetBasis": "Six locally untracked 202611 migrations; hosted migration ledger has not been queried. Stop if target ledger/schema differs.",
+  "pendingMigrations": [
+    "20261102163044_shop_catalog_discovery.sql",
+    "20261102173109_purchase_intelligence.sql",
+    "20261103120000_phase3_style_os.sql",
+    "20261104120000_phase4_visual_os.sql",
+    "20261105120000_phase5_platform.sql",
+    "20261106120000_phase6_growth.sql"
+  ],
+  "edgeFunctions": [
+    "add-clothing-batch",
+    "ai-chat",
+    "ai-process",
+    "analytics",
+    "analyze-outfit",
+    "body-profiles",
+    "budget-rates",
+    "create-trip-plan",
+    "delete-account",
+    "generate-outfits",
+    "mannequin-tryon",
+    "redeem-promo",
+    "revenuecat-webhook",
+    "save-wardrobe-items",
+    "sync-subscription",
+    "try-on",
+    "weather"
+  ],
+  "featurePolicy": {
+    "coreWardrobe": "on",
+    "outfitGeneration": "on",
+    "buyCheckLocal": "on",
+    "fitFeedback": "on",
+    "familyVariantUI": "on",
+    "advancedPriceIntelligence": "off",
+    "advancedMultimodal": "off pending limited internal approval",
+    "vton": "off pending limited internal approval",
+    "autonomousStylist": "off",
+    "proactiveNotifications": "off",
+    "experimentalRanking": "off; shadow only after approval"
+  },
+  "remoteApprovalRequired": true,
+  "serverPaidWorkControls": {
+    "requiresExplicitApproval": true,
+    "preparationPosture": {
+      "AIWARDROBE_PAID_WORK_DISABLED": "true",
+      "AIWARDROBE_DISABLED_PAID_FEATURES": "try-on"
+    },
+    "coveredMeteredEdgeEntries": [
+      "ai-chat",
+      "ai-process",
+      "analyze-outfit",
+      "create-trip-plan",
+      "generate-outfits",
+      "try-on"
+    ],
+    "hostedValues": "UNVERIFIED; not changed"
+  }
+}

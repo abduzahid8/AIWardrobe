@@ -63,6 +63,11 @@ const files = {
   canali: 'shop_catalog_canali.json',
   selected_midrange_20261028: 'shop_catalog_selected_midrange_20261028.json',
   jack_midrange_20261028: 'shop_catalog_jack_midrange_20261028.json',
+  zara_new_2026: 'shop_catalog_zara_new_2026.json',
+  geox_shoes_20261030: 'shop_catalog_geox_shoes_20261030.json',
+  geox_shoes_20261030_more: 'shop_catalog_geox_shoes_20261030.json',
+  mango_current_20261030: 'shop_catalog_mango_20261030.json',
+  ecco_20261030: 'shop_catalog_ecco_20261030.json',
 };
 const brandKey = process.argv[2];
 if (!files[brandKey]) throw new Error('Choose one of: ' + Object.keys(files).join(', ') + '.');

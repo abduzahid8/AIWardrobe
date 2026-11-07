@@ -1,12 +1,12 @@
 {
-  "measuredAt": "2026-10-19T07:00:56.813Z",
+  "measuredAt": "2026-11-01T10:27:56.632Z",
   "scope": "One invalid-image check plus 3 valid-photo classifications; expected primary category/color only, not exhaustive visual accuracy or capacity",
   "checks": [
     {
       "name": "invalid_image_provider_failure_is_not_fabricated_success",
       "passed": true,
       "status": 503,
-      "latencyMs": 4391,
+      "latencyMs": 4940,
       "error": "ai_classification_unavailable"
     },
     {
@@ -18,7 +18,7 @@
       "name": "known_clothing_photo_returns_validated_classification_1",
       "passed": true,
       "status": 200,
-      "latencyMs": 29616,
+      "latencyMs": 7986,
       "classification": {
         "category": "jacket",
         "section": "outerwear",
@@ -29,7 +29,7 @@
           "material": null
         }
       },
-      "description": "A beige jacket with a green scarf.",
+      "description": "A light-colored jacket with flap pockets worn over a striped shirt.",
       "error": null
     },
     {
@@ -41,7 +41,7 @@
       "name": "known_clothing_photo_returns_validated_classification_2",
       "passed": true,
       "status": 200,
-      "latencyMs": 4504,
+      "latencyMs": 7032,
       "classification": {
         "category": "jacket",
         "section": "outerwear",
@@ -52,7 +52,7 @@
           "material": null
         }
       },
-      "description": "A beige jacket with a green scarf.",
+      "description": "A light-colored jacket worn over a black striped shirt, featuring flap pockets on the chest and a collar.",
       "error": null
     },
     {
@@ -64,7 +64,7 @@
       "name": "known_clothing_photo_returns_validated_classification_3",
       "passed": true,
       "status": 200,
-      "latencyMs": 5417,
+      "latencyMs": 7323,
       "classification": {
         "category": "jacket",
         "section": "outerwear",
@@ -75,7 +75,7 @@
           "material": null
         }
       },
-      "description": "A beige jacket with a green scarf.",
+      "description": "A light-colored jacket with flap pockets worn over a striped shirt.",
       "error": null
     }
   ],

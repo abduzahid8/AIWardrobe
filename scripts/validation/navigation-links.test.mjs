@@ -12,16 +12,27 @@ const { getStateFromPath } = await import(pathToFileURL(join(core, 'lib/module/g
 const { getPathFromState } = await import(pathToFileURL(join(core, 'lib/module/getPathFromState.js')));
 // Read the real app config rather than a second route map that can drift.
 const app = ts.createSourceFile('App.tsx', readFileSync(new URL('../../App.tsx', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-let initializer;
+let configInitializer;
 function visit(node) {
-  if (ts.isVariableDeclaration(node) && node.name.getText(app) === 'linking') initializer = node.initializer.getText(app);
+  if (ts.isVariableDeclaration(node) && node.name.getText(app) === 'linking' && ts.isObjectLiteralExpression(node.initializer)) {
+    const config = node.initializer.properties.find(property =>
+      ts.isPropertyAssignment(property) && property.name.getText(app) === 'config'
+    );
+    if (config) configInitializer = config.initializer.getText(app);
+  }
   ts.forEachChild(node, visit);
 }
 visit(app);
-assert.ok(initializer, 'App linking configuration exists');
-const { config } = Function('Linking', `return (${initializer})`)({ createURL: () => 'com.aiwardrobe://' });
+assert.ok(configInitializer, 'App linking route configuration exists');
+// The real route config may contain TypeScript callback annotations. Compile
+// the extracted object before evaluating it, just as the application build does.
+const compiledConfig=ts.transpileModule(`exports.config = (${configInitializer});`,{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText;
+const configExports={};
+Function('exports',compiledConfig)(configExports);
+const config=configExports.config;
 
-for (const [name, path] of Object.entries(config.screens)) {
+for (const [name, routeConfig] of Object.entries(config.screens)) {
+  const path=typeof routeConfig==='string'?routeConfig:routeConfig.path;
   test(`app route ${name} parses and roundtrips`, () => {
     const state = getStateFromPath(path, config);
     assert.equal(state.routes.at(-1).name, name);
@@ -44,4 +55,14 @@ test('malformed percent input is processed by the installed parser', { timeout: 
   const state = getStateFromPath(`auth/callback?value=${'%FF'.repeat(20000)}`, config);
   assert.equal(state.routes.at(-1).name, 'AuthCallback');
   assert.ok(performance.now() - start < 1000, '60 KB malformed value should finish within one second');
+});
+
+
+test('purchase share parameters keep exact product text and remain bounded',()=>{
+ const input='https://merchant.test/products/shirt?variant=blue%2Bwhite';
+ const state=getStateFromPath(`buy-check?input=${encodeURIComponent(input)}`,config);
+ assert.equal(state.routes.at(-1).name,'PurchaseIntelligence');
+ assert.equal(state.routes.at(-1).params.input,input);
+ const oversized=getStateFromPath(`buy-check?input=${'x'.repeat(5000)}`,config);
+ assert.equal(oversized.routes.at(-1).params.input.length,4096);
 });

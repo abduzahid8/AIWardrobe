@@ -7,6 +7,7 @@
  * interpolators. Direction is implied by `animation`; `gestureDirection`
  * keeps the swipe axis matching the animation axis.
  */
+import { Platform } from 'react-native';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 
 // ── Convenience screen option presets ───────────────────────────────
@@ -19,7 +20,7 @@ export const LiquidPresets: Record<
 > = {
   /** Default horizontal push (iOS edge-swipe / Android back included) */
   slide: {
-    animation: 'slide_from_right',
+    animation: Platform.OS === 'ios' ? 'default' : 'slide_from_right',
     gestureEnabled: true,
     gestureDirection: 'horizontal',
   },

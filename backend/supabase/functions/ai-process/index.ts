@@ -221,7 +221,9 @@ async function classifyClothingWithNvidia(nvidiaToken: string, imageDataUrl: str
       method: 'POST', signal: controller.signal,
       headers: { Authorization: `Bearer ${nvidiaToken}`, 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
-        model: 'meta/llama-3.2-11b-vision-instruct',
+        // The previous Llama 3.2 endpoint returns provider HTTP 404.
+        model: 'nvidia/nemotron-3.5-super-vl-120b-a12b',
+        chat_template_kwargs: { enable_thinking: false },
         messages: [
           { role: 'user', content: 'Classify a black casual leather belt. Return only the garment JSON object, without prose or Markdown.' },
           { role: 'assistant', content: '{"category":"belt","section":"accessories","style":"casual","color":"black","material":"leather","description":"A black leather belt."}' },

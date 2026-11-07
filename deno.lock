@@ -92,7 +92,6 @@
         "npm:expo-secure-store@~57.0.4",
         "npm:expo-splash-screen@~57.0.10",
         "npm:expo-status-bar@~57.0.1",
-        "npm:expo-tracking-transparency@~57.0.2",
         "npm:expo-updates@~57.0.26",
         "npm:expo-video-thumbnails@~57.0.2",
         "npm:expo-video@~57.0.5",

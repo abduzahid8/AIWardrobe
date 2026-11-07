@@ -56,9 +56,17 @@ describe('wardrobeStore outfits bounded growth', () => {
 
     const swipeCombo = (suffix = '') => ({
         userId: 'u1',
-        itemIds: [`top-1${suffix}`, `bottom-1${suffix}`, `shoes-1${suffix}`],
+        itemIds: [`top-1${suffix}`, `layer-1${suffix}`, `bottom-1${suffix}`, `shoes-1${suffix}`],
+        snapshotItems:['top','outerwear','bottom','shoes'].map((category,i)=>({id:`${['top','layer','bottom','shoes'][i]}-1${suffix}`,category,name:['Cotton shirt','Fine cardigan','Chino trousers','Leather loafers'][i],image:`https://fixture.invalid/${category}${suffix}.jpg`})),
         occasion: 'casual' as const,
         generatedBy: 'ai' as const,
+    });
+
+    it('preserves every accepted AI piece even when wardrobe categories are legacy or missing', () => {
+        const ids = ['layer', 'shirt', 'pants', 'shoes'];
+        useWardrobeStore.setState({ items: ids.map(id => ({ id, category: 'other', subCategory: '' })) as never });
+        useWardrobeStore.getState().addOutfit({ ...swipeCombo(), itemIds: ids,snapshotItems:swipeCombo().snapshotItems.map((item,i)=>({...item,id:ids[i]})) });
+        expect(useWardrobeStore.getState().outfits[0].itemIds).toEqual(ids);
     });
 
     it('does not duplicate an identical liked combo', () => {

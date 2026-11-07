@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "sourceWorktreeSha256": "3df0c34ea3530b2edc13d60aa48811e116d8e02f2eb99b0599dba41f1ce974d6",
+  "scope": "transpiled real shared admission plus real VTON handler, local SDK/database/provider substitutes",
+  "controls": {
+    "globalUnsetDefault": false,
+    "disabledEndpointsUnsetDefault": [],
+    "preparedActivation": {
+      "requiresExplicitApproval": true,
+      "preparationPosture": {
+        "AIWARDROBE_PAID_WORK_DISABLED": "true",
+        "AIWARDROBE_DISABLED_PAID_FEATURES": "try-on"
+      },
+      "coveredMeteredEdgeEntries": [
+        "ai-chat",
+        "ai-process",
+        "analyze-outfit",
+        "create-trip-plan",
+        "generate-outfits",
+        "try-on"
+      ],
+      "hostedValues": "UNVERIFIED; not changed"
+    },
+    "hostedValues": "UNVERIFIED; not changed"
+  },
+  "checks": [
+    "valid identity required while paused",
+    "global stop and malformed nonempty values deny paid work before counter/quota writes",
+    "per-endpoint stop selective and client header override ignored",
+    "configured VTON path: actual shared stop yields 503 before config/composition/provider calls",
+    "billing sync remains authenticated/rate-limited with no paid quota charge",
+    "clear stop permits exactly one counter and quota admission",
+    "all six metered Edge entries retain constant server-owned paid admission and early denial return",
+    "feature_disabled HTTP body maps to existing localized unavailable/closest-alternative path"
+  ],
+  "criticalTests": "33 suites / 239 tests PASS",
+  "fullRegression": "268 suites / 3004 tests PASS",
+  "deploymentPerformed": false,
+  "hostedDrillStatus": "MANUAL REQUIRED",
+  "inFlightRequests": "not cancelled by the new-admission stop"
+}

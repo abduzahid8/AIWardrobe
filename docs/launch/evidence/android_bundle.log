@@ -1,0 +1,30 @@
+Starting Metro Bundler
+
+Android Bundled 8909ms index.ts (1925 modules)
+
+› Assets (29):
+assets/images/basic_brown_loafers.png (180KB)
+assets/images/basic_brown_pants.png (347KB)
+assets/images/basic_cardigan.png (329KB)
+assets/images/basic_outfit_1.png (2.9MB)
+assets/images/basic_white_tshirt.png (58KB)
+assets/images/basic_zip_hoodie.png (347KB)
+assets/images/mannequin_front.jpg (15KB)
+assets/splash-logo.png (54KB)
+assets/videos/closet.mov (252KB)
+assets/videos/nux_men_o.mp4 (854KB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf (390KB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf (1.3MB)
+node_modules/@react-navigation/elements/lib/module/assets/back-icon-mask.png (653B)
+node_modules/@react-navigation/elements/lib/module/assets/back-icon.png (4 variations | 152B)
+node_modules/@react-navigation/elements/lib/module/assets/clear-icon.png (4 variations | 425B)
+node_modules/@react-navigation/elements/lib/module/assets/close-icon.png (4 variations | 235B)
+node_modules/@react-navigation/elements/lib/module/assets/search-icon.png (4 variations | 599B)
+
+› android bundles (1):
+_expo/static/js/android/index-a5d44e9e2440dc09723af95c84d85730.hbc (12MB)
+
+› Files (1):
+metadata.json (2KB)
+
+Exported: /tmp/aiwardrobe-rc-android-export

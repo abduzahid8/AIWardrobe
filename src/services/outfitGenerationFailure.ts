@@ -1,6 +1,8 @@
 import { withRequestDeadline } from '../lib/requestDeadline';
 
 const messages = {
+  feature_limit_reached: 'outfitMaker.subscriptionRequired',
+  feature_disabled: 'outfitMaker.aiUnavailable',
   ai_generation_unavailable: 'outfitMaker.aiUnavailable',
   catalog_lookup_unavailable: 'outfitMaker.catalogUnavailable',
   invalid_generation_request: 'outfitMaker.invalidRequest',
@@ -9,15 +11,23 @@ const messages = {
   no_outfit_within_budget: 'outfitMaker.budgetTooLow',
   no_items_within_budget: 'outfitMaker.noItemsWithinBudget',
   no_matching_clothing: 'outfitMaker.noMatchingClothing',
+  incomplete_outfit_deck: 'outfitMaker.noMatchingClothing',
+  // Do not trigger the screen's looser closest-match recovery after a floor failure.
+  quality_replacement_unavailable: 'outfitMaker.generateFailed',
+  shoe_rotation_unavailable: 'outfitMaker.noMatchingClothing',
   invalid_outfit_budget: 'outfitMaker.invalidBudget',
 } as const;
 type MessageKey = typeof messages[keyof typeof messages] | 'outfitMaker.generateFailed'
-  | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut';
+  | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut' | 'outfitMaker.connectionFailed';
 
 export class OutfitGenerationFailure extends Error {
   constructor(readonly translationKey: MessageKey = 'outfitMaker.generateFailed') {
     super('outfit_generation_failed');
     this.name = 'OutfitGenerationFailure';
+  }
+
+  get requiresSubscription(): boolean {
+    return this.translationKey === 'outfitMaker.subscriptionRequired';
   }
 }
 
@@ -64,5 +74,6 @@ export async function outfitGenerationFailure(data: unknown, error?: unknown): P
     } catch { reportUnmappedFailure(error, 'http_decode'); return new OutfitGenerationFailure(); }
   }
   reportUnmappedFailure(error, 'transport');
-  return new OutfitGenerationFailure();
+  const name = (error as { name?: unknown } | null)?.name;
+  return new OutfitGenerationFailure(name === 'FunctionsFetchError' || name === 'FunctionsRelayError' ? 'outfitMaker.connectionFailed' : undefined);
 }

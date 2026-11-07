@@ -28,6 +28,48 @@ describe('universal outfit coherence vetoes (all styles × occasions)', () => {
     expect(reason).toBe('sneakers never pair with tailored trousers');
   });
 
+  it('veto: formal shoes with athletic bottoms (register clash, any style)', () => {
+    const reason = rejectOutfitIncoherence(
+      [
+        item('Navy wool overcoat', 'outerwear'),
+        item('Cream knit polo', 'top'),
+        item('Athletic training track pants', 'bottom'),
+        item('Brown derby shoes', 'shoes'),
+      ],
+      'casual',
+      'casual',
+    );
+    expect(reason).toBe('formal_footwear_with_athletic_bottom');
+  });
+
+  it('veto: tailored layer over gym-wear base (register clash, any style)', () => {
+    const reason = rejectOutfitIncoherence(
+      [
+        item('Navy unstructured blazer', 'outerwear'),
+        item('Performance training t-shirt', 'top'),
+        item('Navy chinos', 'bottom'),
+        item('Driving moccasins with rubber nubs', 'shoes'),
+      ],
+      'semi_classic',
+      'casual',
+    );
+    expect(reason).toBe('tailored_layer_over_athletic_base');
+  });
+
+  it('veto: athletic outerwear over a formal base (register clash, any style)', () => {
+    const reason = rejectOutfitIncoherence(
+      [
+        item('Athletic training jacket', 'outerwear'),
+        item('White oxford shirt', 'top'),
+        item('Grey wool dress trousers', 'bottom'),
+        item('Brown penny loafers', 'shoes'),
+      ],
+      'old_money',
+      'casual',
+    );
+    expect(reason).toBe('athletic_outerwear_over_formal_base');
+  });
+
   it('veto: hybrid cupsole derbies with flannel pants (no sneaker word in name)', () => {
     const reason = rejectOutfitIncoherence(
       [
@@ -237,4 +279,48 @@ describe('sloppy bottoms rejected regardless of jogger phrasing', () => {
     expect(styleJudgeReason(items, 'old_money', 'work')).toContain('sloppy');
     expect(passesStyleJudge(items, 'old_money', 'work')).toBe(false);
   });
+});
+
+describe('four-slot quality gates', () => {
+  const base = [
+    item('Lightweight linen cardigan', 'outerwear', {color:'navy'}),
+    item('White cotton polo shirt', 'top', {color:'white'}),
+    item('Beige cotton chinos', 'bottom', {color:'beige'}),
+    item('Brown leather loafers', 'shoes', {color:'brown'}),
+  ];
+  it('allows an open lightweight cardigan over a base polo', () => {
+    expect(styleJudgeReason(base, 'casual', 'summer, no jacket', {temp:30})).toBeNull();
+  });
+  it('rejects three competing vivid hues, while allowing one accent with neutrals', () => {
+    const loud=base.map((p,i)=>({...p,color:['red','blue','yellow','brown'][i]}));
+    expect(styleJudgeReason(loud,'casual','casual')).toBe('too many competing vivid colors');
+    expect(styleJudgeReason(base.map((p,i)=>i===1?{...p,color:'red'}:p),'casual','casual')).toBeNull();
+  });
+  it('keeps weather and no-jacket restrictions when choosing the fourth item', () => {
+    const heavy=base.map((p,i)=>i===0?{...p,name:'Insulated down parka jacket'}:p);
+    expect(styleJudgeReason(heavy,'casual','summer',{temp:32})).toMatch(/warm/);
+    expect(styleJudgeReason(heavy,'casual','no jacket',{temp:18})).toMatch(/non-jacket/);
+  });
+});
+
+it.each(['Alpaca-blend cardigan','Merino wool cardigan','Chunky cashmere sweater','Padded cotton vest'])('rejects %s at 30C', name => {
+  const look=[item(name,'outerwear'),item('White cotton shirt','top'),item('Beige cotton chinos','bottom'),item('Leather loafers','shoes')];
+  expect(styleJudgeReason(look,'casual','summer',{temp:30})).toMatch(/light layer/);
+});
+it('rejects a leather peacoat even when no-jacket intent would allow a coat', () => {
+ const look=[item('Tilson Leather Peacoat','outerwear'),item('Cotton shirt','top'),item('Cotton chinos','bottom'),item('Leather shoes','shoes')];
+ expect(styleJudgeReason(look,'casual','summer, no jacket',{temp:30})).toMatch(/warm|lightweight/);
+});
+
+
+describe('automatic color harmony',()=>{
+ it.each([['red','green'],['blue','orange'],['yellow','purple']])('rejects saturated %s and %s across any slots',(a,b)=>{
+  expect(rejectOutfitIncoherence([item('Shirt','top',{color:a}),item('Coat','outerwear',{color:'grey'}),item('Trousers','bottom',{color:b})],'casual','casual')).toBe('competing saturated complementary colors');
+ });
+ it('retains muted complementary palettes',()=>{
+  expect(rejectOutfitIncoherence([item('Shirt','top',{color:'burgundy'}),item('Trousers','bottom',{color:'olive'})],'casual','casual')).toBeNull();
+ });
+ it('does not let neutral components hide multiple saturated hues',()=>{
+  expect(rejectOutfitIncoherence([item('Shirt','top',{color:'white/red'}),item('Trousers','bottom',{color:'blue'}),item('Coat','outerwear',{color:'yellow'})],'casual','casual')).toBe('too many competing vivid colors');
+ });
 });

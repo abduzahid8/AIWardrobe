@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "scope": "Explicit user journey inventory; passing unit suites is not installed end-to-end evidence",
+  "journeys": [
+    {
+      "tier": "A",
+      "id": "account_session_startup",
+      "name": "Account/session startup",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "required before beta",
+      "deviceEvidence": null,
+      "partialNativeEvidence": "Actual signed-out App root, first language choice, returning signed-out startup and failed offline login verified; successful/cached authenticated session untested"
+    },
+    {
+      "tier": "A",
+      "id": "add_clothing",
+      "name": "Add clothing",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "required before beta",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "A",
+      "id": "wardrobe_browsing",
+      "name": "Wardrobe browsing",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "required before beta",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "A",
+      "id": "generate_outfit",
+      "name": "Generate outfit",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "required before beta",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "A",
+      "id": "save_log_outfit",
+      "name": "Save/log outfit",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "required before beta",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "A",
+      "id": "style_fit_personalization",
+      "name": "Basic Style/Fit personalization",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "required before beta",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "A",
+      "id": "buycheck",
+      "name": "BuyCheck",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "required before beta",
+      "deviceEvidence": null,
+      "partialNativeEvidence": "25 actual BuyCheck hard-budget rejection calls in native synthetic fixture; full authenticated result screen manual"
+    },
+    {
+      "tier": "A",
+      "id": "family_variant_shopping",
+      "name": "Family/variant shopping",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "required before beta",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "A",
+      "id": "fallback_offline",
+      "name": "Fallback/offline behavior",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "required before beta",
+      "deviceEvidence": null,
+      "partialNativeEvidence": "Signed-out native login error/retry controls verified; cached authenticated wardrobe and reconnection remain untested"
+    },
+    {
+      "tier": "A",
+      "id": "subscription_recovery",
+      "name": "Subscription/entitlement recovery",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "required before beta",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "B",
+      "id": "recreate_look",
+      "name": "Recreate look",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "enable only after individual value/safety validation",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "B",
+      "id": "fit_dna",
+      "name": "Fit DNA",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "enable only after individual value/safety validation",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "B",
+      "id": "reference_garments",
+      "name": "Reference garments",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "enable only after individual value/safety validation",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "B",
+      "id": "find_better",
+      "name": "Find Better",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "enable only after individual value/safety validation",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "B",
+      "id": "same_look_less_money",
+      "name": "Same Look, Less Money",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "enable only after individual value/safety validation",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "B",
+      "id": "wardrobe_gain",
+      "name": "Maximum Wardrobe Gain",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "enable only after individual value/safety validation",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "B",
+      "id": "wardrobe_gaps",
+      "name": "Wardrobe gaps",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "enable only after individual value/safety validation",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "B",
+      "id": "weekly_plan",
+      "name": "Weekly plan",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "enable only after individual value/safety validation",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "B",
+      "id": "price_intelligence",
+      "name": "Evidence-backed price intelligence",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "enable only after individual value/safety validation",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "C",
+      "id": "advanced_multimodal",
+      "name": "Advanced multimodal",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "keep disabled/internal until approved",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "C",
+      "id": "autonomous_stylist",
+      "name": "Autonomous stylist",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "keep disabled/internal until approved",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "C",
+      "id": "deep_proactive",
+      "name": "Deep proactive recommendations",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "keep disabled/internal until approved",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "C",
+      "id": "price_watches",
+      "name": "Price watches",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "keep disabled/internal until approved",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "C",
+      "id": "advanced_vton",
+      "name": "Advanced VTON",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "keep disabled/internal until approved",
+      "deviceEvidence": null
+    },
+    {
+      "tier": "C",
+      "id": "experimental_visual_ranking",
+      "name": "Experimental visual ranking",
+      "installedJourneyStatus": "MANUAL REQUIRED",
+      "automatedEvidence": "Local unit/contract coverage only; see critical_tests.log and full_regressions.log",
+      "launchPolicy": "keep disabled/internal until approved",
+      "deviceEvidence": null
+    }
+  ]
+}

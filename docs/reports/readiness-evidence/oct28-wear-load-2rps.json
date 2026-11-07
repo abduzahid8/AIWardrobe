@@ -1,0 +1,312 @@
+{
+  "measuredAt": "2026-10-28T18:21:34.144Z",
+  "scope": "20 disposable owners; 2 wear-log upserts/second for 120 seconds; paired retries; excludes AI/uploads/native",
+  "verification": [
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    },
+    {
+      "expectedDistinctLogs": 6,
+      "actualLogs": 6,
+      "actualWearCount": 6,
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    },
+    {
+      "deleted": true,
+      "status": 200
+    }
+  ],
+  "load": {
+    "startedAt": "2026-10-28T18:22:07.956Z",
+    "completedAt": "2026-10-28T18:24:08.493Z",
+    "timingMs": {
+      "headers": {
+        "samples": 240,
+        "p50": 663.1193750000093,
+        "p95": 1815.6815829999978,
+        "p99": 2324.569000000003
+      },
+      "body": {
+        "samples": 240,
+        "p50": 0.8659580000094138,
+        "p95": 1.9404579999973066,
+        "p99": 3.161541000001307
+      }
+    },
+    "planned": 240,
+    "completed": 240,
+    "failed": 0,
+    "dropped": 0,
+    "elapsedSec": 120.53604108300001,
+    "achievedRps": 1.9911057128111433,
+    "statuses": {
+      "200": 120,
+      "201": 120
+    },
+    "failures": {},
+    "failureDetails": [],
+    "latencyMs": {
+      "p50": 663.9725840000028,
+      "p95": 1815.9082499999931,
+      "p99": 2325.5626669999983
+    },
+    "aborted": false,
+    "diagnostics": {
+      "errorTypes": {},
+      "tenSecondWindows": {
+        "0": {
+          "attempted": 20,
+          "failed": 0
+        },
+        "1": {
+          "attempted": 20,
+          "failed": 0
+        },
+        "2": {
+          "attempted": 21,
+          "failed": 0
+        },
+        "3": {
+          "attempted": 19,
+          "failed": 0
+        },
+        "4": {
+          "attempted": 20,
+          "failed": 0
+        },
+        "5": {
+          "attempted": 20,
+          "failed": 0
+        },
+        "6": {
+          "attempted": 20,
+          "failed": 0
+        },
+        "7": {
+          "attempted": 20,
+          "failed": 0
+        },
+        "8": {
+          "attempted": 20,
+          "failed": 0
+        },
+        "9": {
+          "attempted": 21,
+          "failed": 0
+        },
+        "10": {
+          "attempted": 19,
+          "failed": 0
+        },
+        "11": {
+          "attempted": 20,
+          "failed": 0
+        }
+      },
+      "maxScheduleLagMs": 13.919374999997672,
+      "wallElapsedMs": 120538,
+      "eventLoopDelayMs": {
+        "mean": 20.883649796880416,
+        "max": 33.685503
+      },
+      "upstreamHeaderSamples": 240,
+      "upstreamHeaderMaxMs": 313,
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    },
+    "passed": false
+  },
+  "passed": false
+}

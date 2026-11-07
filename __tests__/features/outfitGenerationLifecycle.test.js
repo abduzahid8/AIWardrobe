@@ -7,8 +7,8 @@ const names=['handleGeneratePress','cancelOutfitGeneration'];const declarations=
 function visit(node){if(ts.isVariableDeclaration(node)&&names.includes(node.name.text))declarations.push(`const ${node.getText(ast)};`);ts.forEachChild(node,visit);}visit(ast);
 const code=ts.transpileModule(declarations.join('\n'),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};
-function setup(){
- let owner='owner-a',revision=1;
+function setup(authenticated=true){
+ let owner=authenticated ? 'owner-a' : null,revision=1;
  const deps={authEvents:{getUserId:()=>owner,getRevision:()=>revision},generationRequest:{current:null},generationNonce:{current:0},isMounted:{current:true},setLoading:jest.fn(),setError:jest.fn(),setOutfits:jest.fn(),setSelectedStyle:jest.fn(),consumeOrPaywall:jest.fn(async()=>true),generateOutfits:jest.fn(async()=>{}),Haptics:{notificationAsync:jest.fn(async()=>{}),NotificationFeedbackType:{Success:'success'}},OutfitGenerationFailure:class extends Error{},t:key=>key};
  const api=Function(...Object.keys(deps),code+';return {handleGeneratePress,cancelOutfitGeneration};')(...Object.values(deps));
  return{...deps,...api,switchOwner:()=>{owner='owner-b';revision++;}};
@@ -39,4 +39,20 @@ test('an account switch during admission cannot start work for the new owner',as
 });
 test('unexpected generation failure unlocks retry and clears loading',async()=>{
  const s=setup();s.generateOutfits.mockRejectedValueOnce(new Error('failure'));await s.handleGeneratePress();expect(s.setError).toHaveBeenCalledWith('outfitMaker.generateFailed');expect(s.setLoading).toHaveBeenLastCalledWith(false);await s.handleGeneratePress();expect(s.generateOutfits).toHaveBeenCalledTimes(2);
+});
+
+test('signed-out requests cannot consume quota or start generation',async()=>{
+ const s=setup(false);await s.handleGeneratePress();expect(s.consumeOrPaywall).not.toHaveBeenCalled();expect(s.generateOutfits).not.toHaveBeenCalled();
+});
+
+test('a cancelled mapped provider failure cannot overwrite a retry',async()=>{
+ const s=setup(),pending=deferred();s.generateOutfits.mockReturnValueOnce(pending.promise);
+ const first=s.handleGeneratePress();await Promise.resolve();s.cancelOutfitGeneration();s.setError.mockClear();
+ const error=new s.OutfitGenerationFailure();error.translationKey='outfitMaker.noMatchingClothing';
+ pending.reject(error);await first;expect(s.setError).not.toHaveBeenCalled();
+});
+test('an active mapped provider failure shows localized error and clears loading',async()=>{
+ const s=setup(),error=new s.OutfitGenerationFailure();error.translationKey='outfitMaker.noMatchingClothing';
+ s.generateOutfits.mockRejectedValueOnce(error);await s.handleGeneratePress();
+ expect(s.setError).toHaveBeenCalledWith(error.translationKey);expect(s.setLoading).toHaveBeenLastCalledWith(false);
 });

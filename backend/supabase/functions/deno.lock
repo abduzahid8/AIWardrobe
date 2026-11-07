@@ -2,6 +2,7 @@
   "version": "5",
   "specifiers": {
     "jsr:@supabase/functions-js@*": "2.117.3",
+    "npm:@types/pngjs@6.0.5": "6.0.5",
     "npm:jpeg-js@0.4.4": "0.4.4",
     "npm:openai@^4.52.5": "4.104.0",
     "npm:pngjs@7.0.0": "7.0.0"
@@ -26,6 +27,12 @@
       "integrity": "sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg==",
       "dependencies": [
         "undici-types"
+      ]
+    },
+    "@types/pngjs@6.0.5": {
+      "integrity": "sha512-0k5eKfrA83JOZPppLtS2C7OUtyNAl2wKNxfyYl9Q5g9lPkgBl/9hNyAu6HuEH2J4XmIv2znEpkDd0SaZVxW6iQ==",
+      "dependencies": [
+        "@types/node"
       ]
     },
     "abort-controller@3.0.0": {
