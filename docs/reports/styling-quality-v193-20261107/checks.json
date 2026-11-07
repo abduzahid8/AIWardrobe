@@ -1,0 +1,55 @@
+{
+  "baselineCommit": "52a97e3f35957e8492c6d1200bc0dc1375b31388",
+  "baselineMandatory": {
+    "suites": 13,
+    "passed": 176,
+    "failed": 15,
+    "failure": "retired summary-copy expectation in adversarial tests"
+  },
+  "testFirst": {
+    "passed": 14,
+    "failed": 6,
+    "total": 20
+  },
+  "mandatory": {
+    "suites": 15,
+    "passed": 217,
+    "failed": 0
+  },
+  "extended": {
+    "suites": 21,
+    "passed": 468,
+    "failed": 6,
+    "allFailuresReproducedOnBaseline": true,
+    "baselineFailedChecks": [
+      "multi-card shortlist expected 3 received 9",
+      "snow/Work generic boots expected 200 received 503",
+      "partial 1-card deck expected 200 received 422",
+      "anchored discovery expected 200 received 422",
+      "Moner comfort sole geox-u44q6d00043c6009 with dress trousers expected true received false",
+      "Moner comfort sole geox-u56q6a00022c6372 with dress trousers expected true received false"
+    ]
+  },
+  "typecheck": {
+    "full": "failed with 1059 archived bundle diagnostics",
+    "baselineDiagnosticsIdentical": true,
+    "appWithoutArchivedDocs": "passed"
+  },
+  "deno": "passed",
+  "targetedLint": {
+    "errors": 0,
+    "existingWarnings": 5
+  },
+  "cpu": {
+    "cases": 14,
+    "allPassed": true,
+    "limitMs": 500
+  },
+  "visualQa": "named evidence fixtures only; no simulator or image validation",
+  "commands": {
+    "mandatory": "npx jest --runInBand --runTestsByPath __tests__/backend/curatedSelectionQuality.test.js __tests__/backend/qualityFloorHosted.test.js __tests__/backend/stylingV193Hosted.test.js __tests__/services/humanQaStyling.test.ts __tests__/services/outfitSelectionQuality.test.ts __tests__/services/outfitDeckRepetitionRegression.test.ts __tests__/services/shoeRotation.test.ts __tests__/services/outfitRotation.test.ts __tests__/services/outfitQuality.test.ts __tests__/services/fourSlotRequirement.test.ts __tests__/services/outfitDiversityInvariant.test.ts __tests__/services/outfitStructure.test.ts __tests__/services/stylistAgentAdversarial.test.ts __tests__/services/stylistStrictQuality.test.ts __tests__/services/stylingV193.test.ts",
+    "extended": "See README and baseline failure names; 21 suites spanning domain, preferences, ownership, budget, four-slot and request handling",
+    "appTypes": "npx tsc --noEmit -p /tmp/aiwardrobe-v193-tsconfig.json (extends project tsconfig; excludes backend/docs/node_modules/open-design/test, includes all other TS/TSX; explicit @types root)",
+    "deno": "/Users/v.zahid/.deno/bin/deno check --no-config --node-modules-dir=none --lock=backend/supabase/functions/deno.lock --frozen backend/supabase/functions/generate-outfits/index.ts"
+  }
+}

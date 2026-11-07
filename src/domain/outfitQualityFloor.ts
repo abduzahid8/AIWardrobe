@@ -52,14 +52,16 @@ export function outfitQualityFloor(
       || (top && layer && /\blinen\b/i.test(top.name || '') && /\bvelvet\b/i.test(layer.name || ''))
       || coherence.evidence.includes('heavy_and_airy_texture_contrast')) {
       score = Math.min(score, 0.49); reason = 'incompatible_heavy_and_airy_fabrics';
-    } else if (a && b && ['stripe','check','print'].includes(a.pattern)
-      && ['stripe','check','print'].includes(b.pattern) && a.pattern !== b.pattern) {
+    } else if (coherence.evidence.includes('competing_upper_patterns')) {
       score = Math.min(score, 0.49); reason = 'competing_patterns_in_office_tailoring';
     }
   }
   const top = bySlot('top'), outer = bySlot('outerwear'), bottom = bySlot('bottom'), shoe = bySlot('shoes');
   const dressSilhouette = shoe && !shoe.casualSole && ['oxford', 'monk', 'dress-boot'].includes(shoe.subtype);
   const reject = (why: string) => { score = Math.min(score, 0.49); reason = why; };
+  if ((formal || context.dressCode === 'smart') && top?.materials.includes('denim')
+    && bottom?.paleDenim && outer?.structured && dressSilhouette)
+    reject('pale_double_denim_conflicts_with_tailoring_and_dress_footwear');
   // Whole-look conflicts cannot be averaged away by three strong pieces.
   // Use positive construction evidence; keep chinos, technical travel sets,
   // summer linen drawstrings and slim rubber dress soles available.
@@ -101,8 +103,7 @@ export function outfitQualityFloor(
       reject('sporting_register_underdresses_date_night');
     // Quiet fabrics may carry one patterned/accent piece; avoid competing
     // upper motifs without imposing monochrome or a universal pattern ban.
-    if (top && outer && ['stripe','check','print'].includes(top.pattern)
-      && ['stripe','check','print'].includes(outer.pattern) && top.pattern !== outer.pattern)
+    if (coherence.evidence.includes('competing_upper_patterns'))
       reject('competing_patterns_undermine_date_night');
     if (coherence.evidence.includes('heavy_and_airy_texture_contrast'))
       reject('incompatible_date_night_fabric_weights');
