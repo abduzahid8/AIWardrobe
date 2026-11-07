@@ -97,7 +97,9 @@ test.each(['shop_geox-u65hyb00046c6009','shop_geox-u66cjc00047c9999'])(
  const p=look();p[3]={id,name:'Spherica leather dress loafers',macroCategory:'shoes'};
  expect(describeGarment(p[3]).soleProfile).toBe('comfort');
  expect(assessOutfitQuality(p,'old_money','Work').acceptance.passed).toBe(false);
- expect(assessOutfitQuality(p,'semi_classic','Casual').acceptance.passed).toBe(true);
+ expect(assessOutfitQuality(p,'semi_classic','Casual').acceptance.passed).toBe(false);
+ p[2]={id:'casual-chinos',name:'Cotton chinos',macroCategory:'bottom'};
+ expect(assessOutfitQuality(p,'semi_classic','Travel').acceptance.passed).toBe(true);
  expect(describeGarment({...p[3],id:'shop_geox-unverified',name:'Geox leather penny loafers with slim rubber sole'}).soleProfile).toBe('dress');
  });
 

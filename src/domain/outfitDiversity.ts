@@ -1560,14 +1560,15 @@ export function garmentNearDuplicateKey(item: any): string {
     return [family, colorFamilyOf(item), fit, textureOf(item), patternOf(item)].join('|');
 }
 
-/** Retain brands and garment types within comparable quality bands before trimming. */
-export function spreadSuitableProducts<T>(rows: T[], itemOf: (row:T)=>any, scoreOf: (row:T)=>number, band=0.08, varietyKeyOf?: (row:T)=>string): T[] {
+/** Retain brands/types only among equal-quality rows before trimming.
+ * _band remains for source compatibility; brand spreading never spends quality. */
+export function spreadSuitableProducts<T>(rows: T[], itemOf: (row:T)=>any, scoreOf: (row:T)=>number, _band=0.08, varietyKeyOf?: (row:T)=>string): T[] {
     const sorted = rows.map((row,index)=>({row,index,score:scoreOf(row)}))
         .sort((a,b)=>b.score-a.score || a.index-b.index);
     const result:T[] = [];
     for (let start=0; start<sorted.length;) {
         let end=start+1;
-        while(end<sorted.length && sorted[start].score-sorted[end].score<=band)end++;
+        while(end<sorted.length && sorted[start].score === sorted[end].score)end++;
         const brands = new Map<string, Map<string,T[]>>();
         for(const {row} of sorted.slice(start,end)) {
             const item=itemOf(row), brand=brandKey(item), family=varietyKeyOf ? varietyKeyOf(row) : garmentNearDuplicateKey(item);
@@ -1586,22 +1587,19 @@ export function spreadSuitableProducts<T>(rows: T[], itemOf: (row:T)=>any, score
     return result;
 }
 
-type VarietyEvidence = {slot:DiversitySlot|null;brand:string;near:string};
+type VarietyEvidence = {slot:DiversitySlot|null;near:string};
 function varietyEvidence(item:any):VarietyEvidence {
-    return {slot:diversitySlotOf(item),brand:brandKey(item),near:garmentNearDuplicateKey(item)};
+    return {slot:diversitySlotOf(item),near:garmentNearDuplicateKey(item)};
 }
 function varietyPressure(looks:VarietyEvidence[][]):number {
     const collisions=(values:string[])=>{const counts=new Map<string,number>();for(const v of values)if(v)counts.set(v,(counts.get(v)||0)+1);return [...counts.values()].reduce((n,c)=>n+c*(c-1)/2,0);};
-    const brands=looks.flatMap(items=>items.map(item=>item.brand)).filter(Boolean);
-    const global=brands.length>1 ? collisions(brands)/(brands.length*(brands.length-1)/2) : 0;
-    let slotBrands=0,near=0,pairs=0;
+    let near=0,pairs=0;
     for(const slot of DIVERSITY_SLOTS) {
         const items=looks.flatMap(items=>items.filter(item=>item.slot===slot));
         pairs+=items.length*(items.length-1)/2;
-        slotBrands+=collisions(items.map(item=>item.brand));
         near+=collisions(items.map(item=>item.near));
     }
-    return 0.55*global+(pairs?(0.65*slotBrands+0.65*near)/pairs:0);
+    return pairs ? 0.65*near/pairs : 0;
 }
 /** Request-local row cache also keeps final shoe assignment inexpensive. */
 export function createDeckVarietyScorer(anchorId?:string):(itemsByLook:any[][])=>number {
@@ -1662,6 +1660,8 @@ export interface AssembleDiverseDeckOptions<O> {
     itemsOf: (outfit: O) => any[];
     /** Quality of a look in 0..1 (match score / confidence). */
     qualityOf?: (outfit: O) => number;
+    /** Provider preference among comparably strong, hard-valid decks. Lower is better. */
+    rankOf?: (outfit: O) => number | undefined;
     /**
      * Resemblance of a look to recently shown looks, 0 (fresh) .. 1 (same
      * styling idea). Feeds the MMR variety term alongside in-deck
@@ -1822,7 +1822,7 @@ export const MMR_RECENCY_WEIGHT = 0.5;
  *   1. the caller's style / occasion validation (looks are already filtered)
  *   2. no non-anchor product may repeat across looks
  *   3. rotation and comparable outfit quality
- *   4. deck brand balance, visual difference and recent styling
+ *   4. visual difference and recent styling
  *
  * Same archetype is NOT a rejection. Three "blazer + shirt + trousers +
  * loafers" looks are valid when every actual product is different. Garment
@@ -2077,7 +2077,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
     };
 
     // All candidates have passed the caller's hard gates. Within a bounded
-    // quality margin, rank visual difference, brand balance and recent styling.
+    // quality margin, rank visual difference and recent styling.
     const qualityBand = opts.qualityBand ?? MMR_QUALITY_BAND;
     const similarityWeight = opts.similarityWeight ?? MMR_SIMILARITY_WEIGHT;
     const recencyWeight = opts.recencyWeight ?? MMR_RECENCY_WEIGHT;
@@ -2099,6 +2099,7 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         const pressure=varietyPressure(indices.map(i=>varietyItems[i]||[]));
         pressureCache.set(key,pressure);return pressure;
     };
+    const ranks = pool.map(member => opts.rankOf?.(member.outfit));
     const scoreCache = new Map<string, number>();
     const deckScore = (indices: number[]): number => {
         const key = indices.join(':');
@@ -2148,6 +2149,11 @@ export function assembleDiverseDeck<O>(opts: AssembleDiverseDeckOptions<O>): Ass
         if(Math.abs(gap)>qualityBand*Math.max(a.length,b.length))return gap;
         const weakestGap=(qa.at(-1)||0)-(qb.at(-1)||0);
         if(Math.abs(weakestGap)>qualityBand)return weakestGap;
+        if (opts.rankOf) {
+            const rankSum = (indices: number[]) => indices.reduce((sum, i) => sum + (ranks[i] ?? 1000), 0);
+            const preference = rankSum(b) - rankSum(a);
+            if (preference) return preference;
+        }
         return deckScore(a) - deckScore(b);
     };
 

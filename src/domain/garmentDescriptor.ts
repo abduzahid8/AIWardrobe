@@ -60,8 +60,8 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
           ['monk', /\bmonk/],
           ['espadrille', /\bespadrilles?\b/],
           ['sandal', /\b(sandals?|slides?|flip[ -]flops?)\b/],
-          ['loafer', /\b(loafers?|penny|horsebit)\b/],
           ['driver', /\b(driving|drivers?)\b/],
+          ['loafer', /\b(loafers?|penny|horsebit)\b/],
           ['chelsea', /\bchelsea\b/],
           ['dress-boot', /\b(dress|sleek|slim)[ -].*boots?\b/],
           ['sport-sneaker', /\b(running|training|trail|performance|athletic)\b/],
@@ -135,9 +135,9 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     || /^(?:flextride plus|moner w 2fit)\b/i.test(item.name || ''));
   // Silhouette outranks a marketing "dress" label. Cushioning/rubber alone
   // never establishes a sneaker sole; a slim rubber dress sole stays dressy.
-  const sneakerSole = slot === 'shoes' && /\b(sneaker[ -]+(?:style[ -]+)?soles?|cup[ -]?soles?|hybrid[ -]+(?:oxfords?|derb(?:y|ies)|loafers?|dress shoes?)|(?:oxfords?|loafers?).{0,25}hybrid)\b/.test(text);
+  const sneakerSole = slot === 'shoes' && /\b(sneaker[ -]+(?:style[ -]+)?soles?|cup[ -]?soles?|hybrid[ -]+(?:oxfords?|derb(?:y|ies)|loafers?|dress shoes?)|(?:oxfords?|derb(?:y|ies)|loafers?).{0,35}(?:sporty[ -]+)?hybrid)\b/.test(text);
   const comfortSole = slot === 'shoes' && (verifiedComfortLoafer
-    || /\b(chunky|thick|platform|lug|commando|track)[ -]+(?:rubber[ -]+)?(?:out)?sole(?:s|d)?\b/.test(text)
+    || /\b(chunky|thick|platform|lug|commando|track)[ -]+(?:(?:rubber|comfort|cushioned|eva|foam)[ -]+)?(?:out)?sole(?:s|d)?\b/.test(text)
     || /\b(?:crepe|gum|white|contrast)[ -]+(?:rubber[ -]+)?soles?\b/.test(text));
   const soleProfile: GarmentDescriptor['soleProfile'] = slot !== 'shoes' ? 'unknown'
     : sneakerSole || ['sport-sneaker', 'minimal-sneaker', 'sneaker'].includes(subtype) ? 'sneaker'
@@ -152,12 +152,12 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     || /\b(?:chest[ -]+flap|flap[ -]+chest|(?:two|twin|double)[ -]+(?:chest|front)(?:[ -]+flap)?)[ -]+pockets?\b/.test(text)
     || ( /\bshort[ -]sleeve(?:d)?\b/.test(text) && /\b(?:two|twin|double)[ -]+patch[ -]+pockets?\b/.test(text)));
   const technicalLeisure = slot === 'outerwear'
-    && ((/\btechnical\b/.test(text) && /\b(leisure|shell|nylon|zip(?:ped)?|windproof|track|jacket)\b/.test(text))
+    && ((/\btechnical\b/.test(text) && /\b(leisure|shell|nylon|zip(?:ped)?|windproof|track|jacket|blazer)\b/.test(text))
       || (/\b(nylon|shell|windbreaker|track)\b/.test(text) && /\b(zip(?:ped)?|jacket|windproof)\b/.test(text)));
   const sportyZip = slot === 'outerwear' && /\b(zip(?:ped)?|zip[ -]up|full[ -]zip)\b/.test(text)
     && (technicalLeisure || /\b(track|athletic|sports?|sweatshirt|fleece|contrast[ -]+(?:bands?|panels?))\b/.test(text));
   const fadedDenim = subtype === 'jeans'
-    && /\b(faded|fading|bleached|acid[ -]wash(?:ed)?|stone[ -]wash(?:ed)?|light[ -]wash(?:ed)?|distressed|ripped|shredded|whisker(?:ed|ing)?)\b/.test(text);
+    && /\b(faded|fading|bleached|heavily[ -]washed|acid[ -]wash(?:ed)?|stone[ -]wash(?:ed)?|light[ -]wash(?:ed)?|distressed|ripped|shredded|whisker(?:ed|ing)?)\b/.test(text);
   const loudBranding = /\b(monograms?|graphics?|slogans?|lettering|all[ -]over[ -]+(?:logos?|branding)|repeat(?:ed|ing)?[ -]+logos?)\b/.test(text)
     || (/\blogos?\b/.test(text) && /\b(large|oversized|bold|printed|repeat(?:ed|ing)?|all[ -]over)\b/.test(text));
   const structured =

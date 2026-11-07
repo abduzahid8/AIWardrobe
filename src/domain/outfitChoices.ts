@@ -1,4 +1,4 @@
-import {productIdentityKeys} from './outfitDiversity.ts';
+import {productIdentityKeys, garmentNearDuplicateKey} from './outfitDiversity.ts';
 
 /** Enumerate bounded, diverse proposals. The caller supplies the full validator. */
 export function outfitChoices<T extends {id: string; macroCategory?: string; name?: string; type?: string}>(
@@ -78,4 +78,41 @@ export function parseRankedOutfitChoices(raw: string): any[] | null {
     if(!Array.isArray(ids)||!ids.length||ids.length>100||ids.some(id=>typeof id!=='string'||!id.trim()))return null;
     return ids.map(id=>({items:[{id:id.trim()}]}));
   }catch{return null;}
+}
+
+/** Expand a feasible seed deck with diverse alternatives from the existing
+ * validated reserve. No new enumeration or provider calls; at most 24 x 9
+ * cached comparisons. Shared products are allowed BETWEEN shortlist options,
+ * since the final deck selector enforces product uniqueness after ranking. */
+export function curatedOutfitShortlist<T extends {id: string; items: any[]}>(
+  candidates: T[], seed: T[], qualityOf: (look: T) => number,
+  requiredIds: string[] = [], maximum = 9,
+): T[] {
+  const cap = Math.min(9, Math.max(1, maximum));
+  const locked = new Set(requiredIds);
+  const reserve = candidates.slice(0, 24).map((look, order) => ({look, order, quality: qualityOf(look),
+    products: look.items.filter(item => !locked.has(String(item.id))).flatMap(productIdentityKeys),
+    families: look.items.filter(item => !locked.has(String(item.id))).map(garmentNearDuplicateKey).filter(Boolean)}));
+  const chosen = seed.filter((look, index) => candidates.includes(look) && seed.indexOf(look) === index).slice(0, cap);
+  const products = new Set<string>(), families = new Set<string>();
+  const remember = (look: T) => {
+    const row = reserve.find(row => row.look === look);
+    row?.products.forEach(key => products.add(key));
+    row?.families.forEach(key => families.add(key));
+  };
+  chosen.forEach(remember);
+  while (chosen.length < cap) {
+    const available = reserve.filter(row => !chosen.includes(row.look));
+    if (!available.length) break;
+    const novelty = (row: typeof available[number]) =>
+      row.products.filter(key => !products.has(key)).length / Math.max(1, row.products.length)
+      + row.families.filter(key => !families.has(key)).length / Math.max(1, row.families.length);
+    const bestQuality = Math.max(...available.map(row => row.quality));
+    const comparable = available.filter(row => row.quality >= bestQuality - 0.08)
+      .map(row => ({...row, novelty: novelty(row)}));
+    comparable.sort((a, b) => b.novelty - a.novelty || b.quality - a.quality || a.order - b.order);
+    chosen.push(comparable[0].look);
+    remember(comparable[0].look);
+  }
+  return chosen;
 }

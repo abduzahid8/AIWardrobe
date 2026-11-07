@@ -15,20 +15,20 @@ function select(candidates:ReturnType<typeof look>[]) {
     return assembleDiverseDeck({candidates,itemsOf:o=>o.items,qualityOf:o=>o.score,usedKeys:new Set<string>(),target:3,maxSearchSteps:512}).deck;
 }
 
-test('concentrated valid decks compare suitable brands across every slot, including final shoe assignment',()=>{
+test('brand novelty never displaces stronger outfits; identity diversity survives shoe assignment',()=>{
     const mono=[look('a1','Brand A'),look('a2','Brand A'),look('a3','Brand A')];
     const candidates=[...mono,look('b','Brand B',0.93),look('c','Brand C',0.92),look('weak','Brand D',0.50)];
     expect(deckNeedsVarietyReserve(mono.map(o=>o.items))).toBe(true);
     const chosen=select(candidates);
     expect(chosen).toHaveLength(3);
-    for(const slot of slots)expect(new Set(chosen.map(o=>brandKey(o.items.find(i=>i.macroCategory===slot))))).toHaveProperty('size',3);
+    expect(chosen.map(o=>o.id).sort()).toEqual(['a1','a2','a3']);
     expect(chosen.some(o=>o.id==='weak')).toBe(false);
     expect(select(mono)).toHaveLength(3); // Scarcity never rejects suitable repeated brands.
     const ordered=spreadSuitableProducts(candidates.flatMap(o=>o.items.filter(i=>i.macroCategory==='top')),i=>i,()=>0.94);
     expect(new Set(ordered.slice(0,3).map(brandKey)).size).toBe(3);
     const scoreVariety=createDeckVarietyScorer();
     const assigned=assignRotatingShoes(mono,candidates.filter(o=>o.id!=='weak').flatMap(o=>o.items.filter(i=>i.macroCategory==='shoes')),()=>true,()=>[0],()=>0.94,undefined,deck=>-scoreVariety(deck.map(o=>o.items)));
-    expect(new Set(assigned.deck.map(o=>brandKey(o.items.find(i=>i.macroCategory==='shoes')))).size).toBe(3);
+    expect(new Set(assigned.deck.map(o=>o.items.find(i=>i.macroCategory==='shoes')!.id)).size).toBe(3);
 });
 
 test('display history reaches the next occasion, persists and excludes product variants, raw IDs and old image aliases',async()=>{

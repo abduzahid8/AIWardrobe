@@ -60,6 +60,27 @@ export function outfitQualityFloor(
   const top = bySlot('top'), outer = bySlot('outerwear'), bottom = bySlot('bottom'), shoe = bySlot('shoes');
   const dressSilhouette = shoe && !shoe.casualSole && ['oxford', 'monk', 'dress-boot'].includes(shoe.subtype);
   const reject = (why: string) => { score = Math.min(score, 0.49); reason = why; };
+  // Whole-look conflicts cannot be averaged away by three strong pieces.
+  // Use positive construction evidence; keep chinos, technical travel sets,
+  // summer linen drawstrings and slim rubber dress soles available.
+  if (bottom?.structured && shoe?.casualSole
+    && (shoe.soleProfile === 'sneaker' || formal || context.dressCode === 'smart'
+      || outer?.subtype === 'blazer' || top?.subtype === 'dress-shirt')
+    && ['oxford', 'derby', 'monk', 'loafer', 'dress-boot'].includes(shoe.subtype))
+    reject('hybrid_or_comfort_sole_conflicts_with_dress_trousers');
+  const bottomItem = items.find(item => item.macroCategory === 'bottom');
+  const bottomText = `${bottomItem?.name || ''} ${bottomItem?.description || ''} ${bottomItem?.material || ''}`;
+  if (bottom?.athletic && /\b(jersey|interlock|sweatpants?|joggers?|knitted|knit)\b/i.test(bottomText)
+    && shoe?.subtype === 'driver')
+    reject('jersey_drawstring_bottom_conflicts_with_driving_loafers');
+  if ((formal || context.dressCode === 'smart') && bottom?.fadedDenim
+    && (outer?.structured || shoe?.formality === 'formal'))
+    reject('washed_denim_conflicts_with_refined_tailoring');
+  const airyLinen = descriptors.some(d => d.slot !== 'shoes' && d.bulk === 'light' && d.materials.includes('linen'));
+  const winterLayer = descriptors.some((d, index) => d.slot !== 'shoes'
+    && (d.insulated || (d.bulk === 'heavy' && /\b(wool|cashmere|flannel|velvet|winter|cable[ -]knit)\b/i.test(
+      `${items[index].name || ''} ${items[index].description || ''} ${items[index].material || ''}`))));
+  if (airyLinen && winterLayer) reject('lightweight_linen_conflicts_with_heavy_winter_layers');
   // A formal last and heavily casual surface cannot be rescued by three
   // individually high scores. Dark clean denim with loafers remains valid.
   if (dressSilhouette && bottom?.fadedDenim) reject('dress_footwear_conflicts_with_faded_denim');

@@ -4,7 +4,7 @@ import { validatedQuartets } from '../../../../src/domain/validatedQuartets.ts'
 import { stylingContext } from '../../../../src/domain/stylingContext.ts'
 import type { CatalogCandidateRpcRequest } from '../../../../src/domain/catalogCandidates.ts'
 import * as styleInference from '../../../../src/domain/styleInference.ts'
-import { outfitChoices, resolveOutfitChoices, parseRankedOutfitChoices } from '../_shared/outfitChoices.ts'
+import { outfitChoices, resolveOutfitChoices, parseRankedOutfitChoices, curatedOutfitShortlist } from '../_shared/outfitChoices.ts'
 import { readOutfitGenerationRequest, OutfitRequestError } from '../_shared/outfitGenerationRequest.ts'
 import { budgetCandidatesFromText as budgetCandidatesFromTextEdge } from '../_shared/outfitBudgetText.ts'
 import { type BudgetFxContext, BudgetFxError, budgetFxContext, fitsBudgetAmount, referenceAmount } from '../_shared/budgetFx.ts'
@@ -27,7 +27,7 @@ const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-const GENERATION_VERSION = 'stylist-product-brand-visual-diversity-20261107';
+const GENERATION_VERSION = 'stylist-full-outfit-selection-quality-20261107';
 // Public catalog pages only; account history and eligibility are never cached.
 const catalogPages = new Map<string, {at:number; rows:any[]}>();
 const CATALOG_PAGE_TTL = 5 * 60 * 1000;
@@ -2877,14 +2877,13 @@ serve(async (req: Request) => {
         async function generateCuratedChoices(): Promise<any[] | null> {
         let choices = completeChoices()
         if (!choices.length) return null
-        // Resolve product compatibility jointly BEFORE asking the model to rank.
-        // A five-look shortlist can omit the only compatible third card, while
-        // ranking 24 IDs overloads the compact provider's output reliability.
+        // Preserve a feasible seed, then offer up to nine quality-approved
+        // alternatives from the same bounded reserve for NVIDIA to rank.
         const rankCompleteSet = Math.min(Number(deckTarget) || limit, limit) > 1
         if (rankCompleteSet) {
             const anchor = anchorItemId && (!isShopOnlyDeck(stylePreferences, occasion) || !!anchorItemId)
                 ? wardrobeItems.find((item: any) => String(item.id) === String(anchorItemId)) : undefined
-            choices = assembleDiverseDeck({
+            const seed = assembleDiverseDeck({
                 candidates: choices, itemsOf: choice => choice.items,
                 qualityOf: choice => signalsFor(choice).quality,
                 recencyOf: choice => signalsFor(choice).recency,
@@ -2896,9 +2895,10 @@ serve(async (req: Request) => {
                 priorityOfDeck: deck => deckPriority(deck.flatMap(choice => choice.items)),
                 maxSearchSteps: 512,
             }).deck
+            choices = curatedOutfitShortlist(choices, seed, choice => signalsFor(choice).quality, requiredChoiceIds)
         }
         if (!choices.length) return null
-        verifiedChoiceFallback = choices.map((choice, index) => ({items:choice.items, curationRank:index, description:`${selectionStyle} outfit`, stylingTips:[]}))
+        verifiedChoiceFallback = choices.map(choice => ({items:choice.items, description:`${selectionStyle} outfit`, stylingTips:[]}))
         const usedIds = new Set(choices.flatMap(choice => choice.items.map(item => item.id)))
         const context = getStyleContext(selectionStyle)
         const selectionCount = rankCompleteSet ? choices.length : Math.min(limit, choices.length)
@@ -2906,10 +2906,10 @@ serve(async (req: Request) => {
             ? `Rank all ${selectionCount} supplied complete look IDs from best to least preferred. Return IDs only, without descriptions or explanations.`
             : `Choose exactly ${selectionCount} of the supplied complete look IDs. Provide a short description per selected look.`
         const choiceSystem = `You are a fashion stylist curating complete outfits for ${selectionStyle}. ${context.vibe}
-${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's preferences. The options have already passed structural, style and budget validation. Never invent IDs or change the items inside a look. Select distinct look IDs. Return only JSON.`
+${selectionTask} Judge full-outfit silhouette, footwear/hem compatibility, fabric weight, color harmony, occasion and the user's preferences. Brand repetition is not a quality defect. The options have already passed structural, style and budget validation. Never invent IDs or change the items inside a look. Select distinct look IDs. Return only JSON.`
         console.log(`[curation] options=${choices.length} required=${selectionCount}`)
         const choiceUser = JSON.stringify({requiredCount:selectionCount,request:prompt,occasion,weather,preferences:{favoriteColors:preferences?.favoriteColors,fitPreference:preferences?.fitPreference,styleGoals:preferences?.styleGoals},
-          products:wardrobeItems.filter((item:any)=>usedIds.has(item.id)).map((item:any)=>({id:item.id,name:item.name,slot:item.macroCategory,color:item.color,material:item.material,pattern:item.pattern})),
+          products:wardrobeItems.filter((item:any)=>usedIds.has(item.id)).map((item:any)=>({id:item.id,name:item.name,description:String(item.description || '').slice(0,320),slot:item.macroCategory,color:item.color,material:item.material,pattern:item.pattern})),
           looks:choices.map(choice=>({id:choice.id,items:choice.items.map(item=>item.id)}))})
         const choiceContract = rankCompleteSet
             ? '\nOUTPUT CONTRACT: {"rankedLookIds":["look001","look002"]}. Return every supplied look ID once, best first, in this flat string array. No outfit objects, descriptions, explanations, individual garment IDs or extra fields.'
@@ -3163,6 +3163,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
                 candidates,
                 itemsOf: (o: any) => o.items || [],
                 qualityOf: (o: any) => signalsFor(o).quality,
+                rankOf: useCuratedChoices ? (o: any) => o.curationRank : undefined,
                 recencyOf: (o: any) => signalsFor(o).recency,
                 keysOf: (item: any) => productIdentityKeys(item),
                 anchorKeys: anchorIdentityKeys.size > 0 ? anchorIdentityKeys : undefined,
@@ -3265,6 +3266,7 @@ ${selectionTask} Judge aesthetic quality, color harmony, occasion and the user's
         // the same acceptance floor, with all hard validators unchanged.
         if (finalOutfits.some((look: any) => !signalsFor(look).acceptable))
             return new Response(JSON.stringify({success:false,outfits:[],code:'quality_replacement_unavailable'}), {status:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
+        if (useCuratedChoices) finalOutfits.sort((a: any, b: any) => (a.curationRank ?? 1000) - (b.curationRank ?? 1000))
         finalOutfits = finalOutfits.slice(0, limit)
         if (personalStylist && finalOutfits.length !== 3) return new Response(JSON.stringify({success: false, outfits: [], code: qualityRejected > 0 ? 'quality_replacement_unavailable' : 'incomplete_outfit_deck', error: 'Three complete, suitable outfits are required. Add more suitable clothing or adjust the request.',debug:{completeChoices:completeChoices().length,candidateSlots:Object.fromEntries(['top','outerwear','bottom','shoes'].map(slot=>[slot,wardrobeItems.filter((item:any)=>item.macroCategory===slot).length])),choiceRejections:Object.fromEntries(choiceRejections)}}), {status: 422, headers: {...corsHeaders, 'Content-Type': 'application/json'}})
         if (!finalOutfits.length) return new Response(JSON.stringify({ success: false, error: 'ai_generation_unavailable', outfits: [], providerAttempts: providerTrace }), {status: 503, headers: {...corsHeaders, 'Content-Type':'application/json'}})
