@@ -3,6 +3,7 @@ import { lookRelationships, valueIntelligence, imageEvidenceStrength } from '../
 import { groundedLookExplanation } from '../../../../src/domain/lookExplanation.ts'
 import { outfitConcepts } from '../../../../src/domain/outfitConcepts.ts'
 import { applyVisualFashion, visualAdmissionReason } from '../../../../src/domain/visualFashion.ts'
+import { prepareHydratedStylist5Garment } from '../../../../src/domain/stylist5VisualContract.ts'
 import { rankNvidiaLooks } from '../_shared/nvidiaLookRanking.ts'
 import { stylingCandidateRepresentatives } from '../../../../src/domain/catalogCandidates.ts'
 import { describeGarment, prepareGarment, FASHION_INTELLIGENCE_VERSION } from '../../../../src/domain/garmentDescriptor.ts'
@@ -1223,7 +1224,7 @@ async function fetchShopItemsForAllSlotsEdge(
                     visualFashion:visual||undefined,visualSourceHash:sourceHash||undefined,visualEmbedding:embedding||undefined,pricePeers:peers||undefined}
                 if(visualAdmissionReason(item)) {if(trace)trace.counts.visualQuarantined=(trace.counts.visualQuarantined||0)+1;continue}
                 const cached=record?.version===FASHION_INTELLIGENCE_VERSION
-                    && Array.isArray(record.evidence)
+                    && Array.isArray(record.descriptor?.evidence)
                     && record.descriptor?.slot===slot
                     ? record.descriptor
                     : undefined
@@ -1269,15 +1270,13 @@ async function fetchShopItemsForAllSlotsEdge(
                 return picks.map(item=>{
                     const detail=byId.get(String(item.id))
                     if(!detail) return item
-                    const hydrated = {
-                        ...item,
-                        visualFashion: detail.visual_fashion || item.visualFashion,
-                        visualSourceHash: detail.visual_source_hash || item.visualSourceHash,
-                        visualEmbedding: detail.visual_embedding || item.visualEmbedding,
-                        pricePeers: item.pricePeers || detail.price_peers,
+                    const hydrated=prepareHydratedStylist5Garment(item,detail)
+                    if(!hydrated) {
+                        if(trace)trace.counts.visualQuarantined=(trace.counts.visualQuarantined||0)+1
+                        return null
                     }
-                    return prepareGarment(hydrated)
-                })
+                    return {...hydrated,pricePeers:item.pricePeers||detail.price_peers}
+                }).filter(Boolean)
             }
         }
         return picks

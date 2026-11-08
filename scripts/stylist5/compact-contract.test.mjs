@@ -41,8 +41,15 @@ test('compact retrieval migration preserves database contracts', {skip: !availab
         ('cardigan-1','Merino cardigan','Test','product only plain background','outerwear','outerwear','https://x/card.jpg',120000,'UZS','product-only','https://x/card','card-1',true),
         ('blazer-1','Wool blazer','Test','product only plain background','outerwear','outerwear','https://x/blazer.jpg',80,'USD','product-only','https://x/blazer','blazer-1',true);
       insert into public.catalog_garment_intelligence values
-        ('cardigan-1',1,'outerwear','cardigan','smart','{"descriptor":{"color":"navy","volume":"regular"}}'),
-        ('blazer-1',1,'outerwear','blazer','smart','{"descriptor":{"color":"navy","volume":"regular"}}');
+        ('cardigan-1',1,'outerwear','cardigan','smart','{"version":1,"descriptor":{"slot":"outerwear","subtype":"cardigan","color":"navy","volume":"regular","evidence":["text:catalog"]}}'),
+        ('blazer-1',1,'outerwear','blazer','smart','{"version":1,"descriptor":{"slot":"outerwear","subtype":"blazer","color":"navy","volume":"regular","evidence":["text:catalog"]}}');
+      insert into public.catalog_visual_fashion
+        (product_id,version,image_url,source_hash,image_sha256,model_revision,profile)
+      values
+        ('cardigan-1',1,'https://x/card.jpg',
+          md5(jsonb_build_array('Merino cardigan','product only plain background','Test','outerwear','outerwear','https://x/card.jpg')::text),
+          repeat('b',64),repeat('c',40),
+          '{"version":1,"sourceHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","imageUrl":"https://x/card.jpg","imageSha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","model":"siglip2","revision":"cccccccccccccccccccccccccccccccccccccccc","attributes":{"color":{"value":"navy","confidence":0.95,"margin":0.2,"evidence":"image-model"}}}');
     `], {stdio: 'ignore'})
     assert.equal(psql(`set role service_role;
       select count(*) from public.catalog_stylist_candidates_compact(
@@ -60,6 +67,12 @@ test('compact retrieval migration preserves database contracts', {skip: !availab
     assert.equal(psql(`set role service_role;
       select ((r->>'id'='cardigan-1') and (r->'price_peers' ? 'normalizedCount'))::text
       from public.catalog_stylist_candidate_hydration(array['cardigan-1'],'{"currency":"USD","rates":{"UZS":1,"USD":10000,"EUR":11000,"GBP":13000}}') r;`).trim(), 'true')
+    assert.equal(psql(`set role service_role;
+      select (jsonb_typeof(i.intelligence->'descriptor'->'evidence')='array'
+        and jsonb_typeof(v.profile->'attributes'->'color')='object')::text
+      from public.catalog_garment_intelligence i
+      join public.catalog_visual_fashion v on v.product_id=i.product_id
+      where i.product_id='cardigan-1';`).trim(), 'true')
   } finally {
     spawnSync('pg_ctl', ['-D', root, 'stop', '-m', 'immediate'], {stdio: 'ignore'})
     fs.rmSync(root, {recursive: true, force: true})
