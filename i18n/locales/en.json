@@ -702,6 +702,7 @@
   "outfitMaker": {
     "activeBudget": "Active budget: {{amount}}. Every shown look is checked against this cap.",
     "lookSpend": "Look total: {{total}} · Budget cap: {{cap}}",
+    "outfitTotal": "Outfit total",
     "qualityExplanation": {
       "garmentSummary": "{{top}} with {{outerwear}}, {{bottom}} and {{shoes}}.",
       "formalStructure": "A shirt and structured blazer keep the look appropriate for a formal occasion.",

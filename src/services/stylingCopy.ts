@@ -79,10 +79,31 @@ export function outfitDescription(
     : stylingCopyParts(items, context).description;
 }
 
-/** Variant IDs are planner details; their base concept owns localized copy. */
-export function outfitConceptTitle(id: string): string {
-  const baseId = id.replace(/-no-layer$/, '');
-  return String(i18n.t(`outfitMaker.concepts.${baseId}.title`, {
-    defaultValue: i18n.t('outfitMaker.styledLook', {defaultValue:'Styled look'}),
-  }));
+/** Variant IDs are planner details; their base concept owns localized copy.
+ * An unknown concept keeps the server-supplied title when present; only an
+ * unidentifiable look falls back to the generic localized label. */
+export function outfitConceptTitle(id: string, fallbackTitle?: string): string {
+  const baseId = String(id || '').replace(/-no-layer$/, '');
+  const key = `outfitMaker.concepts.${baseId}.title`;
+  if (baseId && i18n.exists(key)) return String(i18n.t(key));
+  const fallback = typeof fallbackTitle === 'string' ? fallbackTitle.trim() : '';
+  return fallback || String(i18n.t('outfitMaker.styledLook', {defaultValue:'Styled look'}));
+}
+
+/** Advice that adds information beyond the description: no empties, no
+ * case/whitespace-only duplicates, and never the description restated. */
+export function distinctStylingTips(description: string, tips: readonly unknown[]): string[] {
+  const key = (value: string): string => value.replace(/\s+/g, ' ').trim().toLowerCase();
+  const descriptionKey = key(String(description || ''));
+  const seen = new Set<string>();
+  return (tips || [])
+    .filter((tip): tip is string => typeof tip === 'string')
+    .map((tip) => tip.replace(/\s+/g, ' ').trim())
+    .filter((tip) => {
+      if (!tip) return false;
+      const tipKey = key(tip);
+      if (tipKey === descriptionKey || seen.has(tipKey)) return false;
+      seen.add(tipKey);
+      return true;
+    });
 }

@@ -717,6 +717,7 @@
   "outfitMaker": {
     "activeBudget": "Byudjet: {{amount}}. Har bir ko‘rsatilgan obraz shu chegara bo‘yicha tekshirilgan.",
     "lookSpend": "Obraz narxi: {{total}} · Byudjet chegarasi: {{cap}}",
+    "outfitTotal": "Outfit jami",
     "qualityExplanation": {
       "garmentSummary": "{{top}}, {{outerwear}}, {{bottom}} va {{shoes}} uyg‘unligi.",
       "formalStructure": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi.",

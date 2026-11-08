@@ -717,6 +717,7 @@
   "outfitMaker": {
     "activeBudget": "Бюджет: {{amount}}. Каждый показанный образ проверен на соответствие этому лимиту.",
     "lookSpend": "Стоимость образа: {{total}} · Лимит бюджета: {{cap}}",
+    "outfitTotal": "Итого по образу",
     "qualityExplanation": {
       "garmentSummary": "{{top}} в сочетании с {{outerwear}}, {{bottom}} и {{shoes}}.",
       "formalStructure": "Рубашка и структурированный пиджак подходят для формального мероприятия.",

@@ -1,6 +1,6 @@
 import {validateOutfitGenerationRequest,OutfitRequestError} from '../src/domain/outfitGenerationRequest';
-import {outfitDescription,outfitConceptTitle} from '../src/services/stylingCopy';
-import { recordLookFeedback } from '../src/services/stylistFeedback';
+import {outfitDescription,outfitConceptTitle,distinctStylingTips} from '../src/services/stylingCopy';
+import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
 import {displayedRotation} from '../src/domain/outfitRotation';
@@ -14,7 +14,7 @@ import {formatUzsPrice} from '../src/utils/uzsPrice';
 import { useUzsDisplayRates, useUzsPrice } from '../hooks/useUzsPrice';
 import { resolveStylistWeather } from '../src/domain/outfitComposition';
 import { getBudgetRates } from '../src/services/budgetRates';
-import { budgetFxContext, fitsBudgetAmount } from '../src/domain/budgetFx';
+import { budgetFxContext, fitsBudgetAmount, type BudgetFxSnapshot } from '../src/domain/budgetFx';
 import readinessLogger from '../src/utils/logger';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Animated, Platform, Modal, TextInput, Alert, Linking, KeyboardAvoidingView } from 'react-native';
@@ -60,7 +60,7 @@ import {
     type DiversitySlot,
 } from '../features/outfit-generator/utils/outfitDiversity';
 import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
-import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, formatMoney, budgetCandidatesFromText, resolveShopQuote, withOutfitBudget } from '../src/utils/outfitBudget';
+import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, outfitTotalQuote, formatMoney, budgetCandidatesFromText, resolveShopQuote, withOutfitBudget } from '../src/utils/outfitBudget';
 import { getShopDestination } from '../src/utils/shopDestination';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
@@ -335,6 +335,17 @@ const getAiStyleDesc = (id: string, t: (key: string) => string) => {
   const style = aiStyles.find(s => s.id === id);
   return style?.desc || '';
 };
+
+/** Single-currency card total from the same quote resolver the tiles use.
+ * Hidden whenever any shop piece is unquoted or currencies are mixed. */
+function outfitTotalDisplay(items: any[], catalog: any[] | undefined, rates: BudgetFxSnapshot | null): { label: string } | null {
+  const total = outfitTotalQuote(items as any[], catalog as any[]);
+  if (!total?.currency) return null;
+  // UZS conversion only when display rates are actually loaded; otherwise the
+  // exact native-currency total stands, never a relabelled guess.
+  const label = formatUzsPrice(total.price, total.currency, rates) || formatMoney(total.price, total.currency);
+  return label ? { label } : null;
+}
 
 interface OutfitSlotGridProps {
   items: OutfitItem[];
@@ -1758,9 +1769,15 @@ const AIOutfitGenerator = () => {
             items,
             mainImage: items[0]?.image || items[0]?.imageUrl || outfit.mainImage || '',
             matchScore: judgeOk ? baseScore : Math.min(baseScore, 0.69),
-            stylingTips: Array.isArray(outfit.stylingTips)
-              ? outfit.stylingTips
-              : outfit.explanationVersion===1 ? '' : copy.tips.join(' '),
+            stylingTips: (() => {
+              const serverTips = Array.isArray(outfit.stylingTips) ? outfit.stylingTips : [];
+              const tips = serverTips.length
+                ? serverTips
+                : outfit.explanationVersion === 1 ? [] : copy.tips;
+              // The screen bypasses stylingCopyParts, so restated advice is
+              // suppressed here: never render the description as its own tip.
+              return distinctStylingTips(description, tips).join(' ');
+            })(),
             weather: resolvedWeather,
           };
         };
@@ -2109,7 +2126,7 @@ const AIOutfitGenerator = () => {
                 </View>
 
                 {outfit.concept && <ScaledText style={[styles.outfitDesc,{fontWeight:'700',fontSize:20,marginBottom:12}]}>
-                  {outfitConceptTitle(outfit.concept.id)}
+                  {outfitConceptTitle(outfit.concept.id, outfit.concept.title)}
                 </ScaledText>}
                 <OutfitSlotGrid
                   items={outfit.items}
@@ -2117,6 +2134,16 @@ const AIOutfitGenerator = () => {
                   priceCatalog={liveShopMapped}
                   showBuyButtons={currentSource === 'shop'}
                 />
+
+                {(() => {
+                  const total = outfitTotalDisplay(outfit.items as any[], liveShopMapped, displayRates);
+                  return total ? (
+                    <View style={styles.priceRow}>
+                      <ScaledText style={styles.priceRowLabel}>{t('outfitMaker.outfitTotal')}</ScaledText>
+                      <ScaledText style={styles.priceRowValue} minScale={0.7}>{total.label}</ScaledText>
+                    </View>
+                  ) : null;
+                })()}
 
                 <ScaledText style={styles.outfitDesc} minScale={0.65}>{outfit.description}</ScaledText>
 
@@ -2128,7 +2155,7 @@ const AIOutfitGenerator = () => {
                   </View>
                 </View>}
 
-                {outfit.concept && outfit.generationRequestId && (
+                {canRecordLookFeedback(outfit) && (
                   <View style={{flexDirection:'row',alignItems:'center',gap:16,marginTop:12}}>
                     <ScaledText>{lookRatings[`${outfit.generationRequestId}:${outfit.id}`] ? t('outfitMaker.feedbackSaved') : t('outfitMaker.feedbackPrompt')}</ScaledText>
                     {([1,-1] as const).map(rating=>(
@@ -3274,6 +3301,22 @@ const styles = StyleSheet.create({
   matchPillText: {
     color: '#FFFFFF',
     ...LiquidGlass2026Theme.typography.scale.labelMedium,
+    fontWeight: '700',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  priceRowLabel: {
+    ...LiquidGlass2026Theme.typography.scale.labelMedium,
+    color: LiquidGlass2026Theme.colors.text.secondary,
+  },
+  priceRowValue: {
+    ...LiquidGlass2026Theme.typography.scale.titleSmall,
+    color: LiquidGlass2026Theme.colors.text.primary,
     fontWeight: '700',
   },
   slotGrid: {

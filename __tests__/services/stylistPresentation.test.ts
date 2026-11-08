@@ -1,5 +1,5 @@
 import i18n from 'i18next';
-import { outfitDescription, outfitConceptTitle } from '../../src/services/stylingCopy';
+import { outfitDescription, outfitConceptTitle, distinctStylingTips } from '../../src/services/stylingCopy';
 import { stylingContext } from '../../src/domain/stylingContext';
 import { assessOutfitQuality } from '../../src/domain/occasionRules';
 
@@ -22,6 +22,28 @@ test.each(['en','ru','uz'])('versioned explanation renders grounded facts in %s 
   expect(spend).not.toContain('{{');
   expect(outfitConceptTitle('clean-lines-no-layer')).toBe(resources[lng].translation.outfitMaker.concepts['clean-lines'].title);
   expect(outfitConceptTitle('future-unknown-concept')).toBe(resources[lng].translation.outfitMaker.styledLook);
+});
+
+test('an unknown concept keeps the server title when one exists', async () => {
+  await i18n.init({lng:'en', resources:{en:{translation:require('../../i18n/locales/en.json')}}});
+  expect(outfitConceptTitle('future-unknown-concept', '  Server concept title  ')).toBe('Server concept title');
+  expect(outfitConceptTitle('future-unknown-concept', '   ')).toBe('Styled look');
+  expect(outfitConceptTitle('clean-lines', 'Server fallback loses to the localized key'))
+    .toBe(i18n.t('outfitMaker.concepts.clean-lines.title'));
+});
+
+test('styling tips never restate the description or each other', () => {
+  const description = 'The line of the blazer keeps the look sharp';
+  const tips = distinctStylingTips(description, [
+    description,
+    `  ${description.toUpperCase()}  `,
+    'The shoes ground the tailoring',
+    'the shoes ground the tailoring',
+    '   ',
+    null,
+    7,
+  ]);
+  expect(tips).toEqual(['The shoes ground the tailoring']);
 });
 
 test('legacy prose remains compatible and versioned copy changes with actual garments', () => {
