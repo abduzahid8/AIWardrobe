@@ -1,0 +1,12 @@
+{
+  "slug": "generate-outfits",
+  "version": 203,
+  "status": "ACTIVE",
+  "verify_jwt": false,
+  "ezbr_sha256": "7f6aba0cfc9da4884dd0069bc6dd3d9ee1f94b2cce6603cacd1caa81fab2a410",
+  "entrypoint_path": "index.ts",
+  "sourceLength": 313256,
+  "project_id": "fyqpifmrsftsfqibhwhy",
+  "baseline_sha": "962bd102f718969dc07fe390ab3b677a543b8e15",
+  "backup_branch": "backup/stylist5-v203-production-20261108"
+}
