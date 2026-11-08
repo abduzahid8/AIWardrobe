@@ -9,6 +9,7 @@ export interface StylingPreferences {
   fitPreference?: string;
 }
 export interface StylingContext {
+  legacyFourSlot?: boolean;
   optionalLayer?: boolean;
   ruleVersion: 'stylist-quality-v1';
   style: string;

@@ -1,3 +1,4 @@
+import {legacyClientCompatible} from '../../../../src/domain/legacyClientCompatibility.ts'
 import { lookRelationships, valueIntelligence, imageEvidenceStrength } from '../../../../src/domain/editorialIntelligence.ts'
 import { groundedLookExplanation } from '../../../../src/domain/lookExplanation.ts'
 import { outfitConcepts } from '../../../../src/domain/outfitConcepts.ts'
@@ -1652,9 +1653,10 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         wardrobeItems=wardrobeItems.map((item:any)=>Object.isFrozen(item)?item:prepareGarment(item))
         const qualityContext=stylingContext({style:stylePreferences,occasion,request:prompt,weather,anchorId:anchorItemId,preferences,sourceMode:wardrobeOnly?'wardrobe':catalogOnly?'catalog':'mixed'});
         qualityContext.conceptFeedback=conceptFeedback;
+        qualityContext.legacyFourSlot=body.compositionProtocol!=='optional-layer-v1';
         qualityContext.optionalLayer=body.compositionProtocol==='optional-layer-v1' && Deno.env.get('STYLIST_OPTIONAL_LAYER_V1')!=='false' && qualityContext.dressCode!=='formal' && !(qualityContext.weather?.temp!=null&&qualityContext.weather.temp<18) && !/winter|freezing|snow|зим|мороз/i.test(qualityContext.weather?.condition||'') && !requiredIdsFromBodyLayer();
         function requiredIdsFromBodyLayer(){return wardrobeItems.some((i:any)=>i.macroCategory==='outerwear'&&(String(i.id)===String(anchorItemId)||(selectedItemIds||[]).includes(i.id)))}
-        const eligibleCandidate = (item: any) => !visualAdmissionReason(item) && !garmentContextReason(item,qualityContext) && !wornItemIds.has(String(item.id)) && !wornItemIds.has(`shop_${item.id}`) && isFourSlotCandidate(item) && !isNonOutfitItem(item) && !rejectForStyleOccasion(item, String(item.id) === String(anchorItemId || '') ? 'casual' : selectionStyle, `${occasion} ${prompt}`)
+        const eligibleCandidate = (item: any) => legacyClientCompatible(item,qualityContext) && !visualAdmissionReason(item) && !garmentContextReason(item,qualityContext) && !wornItemIds.has(String(item.id)) && !wornItemIds.has(`shop_${item.id}`) && isFourSlotCandidate(item) && !isNonOutfitItem(item) && !rejectForStyleOccasion(item, String(item.id) === String(anchorItemId || '') ? 'casual' : selectionStyle, `${occasion} ${prompt}`)
             && !rejectForClimate(item, weather) && !rejectForRequestIntent(item, `${occasion} ${prompt}`, weather) && !rejectForActivity(item, `${occasion} ${prompt}`)
         const requiredIds = new Set([...(selectedItemIds || []).map(String), ...(anchorItemId ? [String(anchorItemId)] : [])])
         const blockedSelectedItemIds = wardrobeItems.filter((item: any) => requiredIds.has(String(item.id)) && !eligibleCandidate(item)).map((item: any) => String(item.id))

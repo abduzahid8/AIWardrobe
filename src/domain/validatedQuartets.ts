@@ -473,7 +473,7 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       decks.push({looks: deck, quality: primary, utility});
     };
     const distinct = (a: PlannedLook<T>, b: PlannedLook<T>) =>
-      a.identity !== b.identity && distance(a, b) >= 0.08;
+      context.legacyFourSlot === true || (a.identity !== b.identity && distance(a, b) >= 0.08);
     // Exact feasible matching over the bounded reserve: diversity cannot
     // turn an existing valid triple into an unexplained 422.
     for (let a = 0; a < choices.length; a++) {
@@ -521,14 +521,14 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       for (let b = a + 1; b < ordered.length; b++) {
         if (
           masks.get(ordered[a])! & masks.get(ordered[b])! ||
-          ordered[a].identity === ordered[b].identity
+          (!context.legacyFourSlot && ordered[a].identity === ordered[b].identity)
         )
           continue;
         if (performance.now() - start > (options.maxSyncMs ?? 650)) {
           cpuRisk = true;
           break matching;
         }
-        if (distance(ordered[a], ordered[b]) >= 0.08) adjacency[a] |= 1n << BigInt(b);
+        if (context.legacyFourSlot || distance(ordered[a], ordered[b]) >= 0.08) adjacency[a] |= 1n << BigInt(b);
       }
     search: for (let a = 0; a < ordered.length && !cpuRisk; a++)
       for (let b = a + 1; b < ordered.length; b++) {
