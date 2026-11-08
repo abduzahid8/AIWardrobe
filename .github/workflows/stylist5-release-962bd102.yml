@@ -1,0 +1,72 @@
+name: Build pinned Stylist 5 Edge candidate 962bd102
+on:
+  push:
+    branches: [release/stylist5-v2-edge-962bd102-20261108]
+    paths: ['.github/workflows/stylist5-release-962bd102.yml']
+permissions:
+  contents: write
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: true
+      - name: Verify source provenance
+        run: |
+          test "$(git rev-parse HEAD^)" = "962bd102f718969dc07fe390ab3b677a543b8e15"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/stylist5-release-962bd102.yml"
+          git diff --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Critical selection + hosted request contracts
+        run: npx jest --runInBand --silent __tests__/backend/fourSlotHosted.test.js __tests__/services/outfitDeckSelection.test.ts __tests__/services/stylist5.test.ts
+      - name: Lint affected production code
+        run: npx eslint src/domain/outfitDeckSelection.ts src/domain/validatedQuartets.ts src/domain/outfitVisualSignature.ts backend/supabase/functions/generate-outfits/index.ts
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Locked Deno Edge compile
+        run: deno check --no-config --node-modules-dir=none --lock=backend/supabase/functions/deno.lock --frozen backend/supabase/functions/generate-outfits/index.ts
+      - name: Compile and record the exact deployment source
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import assert from 'node:assert/strict';
+          import esbuild from 'esbuild';
+          const sourceCommit = '962bd102f718969dc07fe390ab3b677a543b8e15';
+          const {outputFiles,metafile} = await esbuild.build({
+            entryPoints:['backend/supabase/functions/generate-outfits/index.ts'],
+            absWorkingDir:process.cwd(),bundle:true,format:'esm',
+            platform:'neutral',target:'es2022',external:['https://*'],
+            write:false,metafile:true,logLevel:'silent'
+          });
+          const bytes=outputFiles[0].contents;
+          assert(bytes.length>200000 && bytes.length<1500000,'Unexpected Edge bundle size');
+          const hash=crypto.createHash('sha256').update(bytes).digest('hex');
+          fs.mkdirSync('.stylist5-release-candidate',{recursive:true});
+          fs.writeFileSync('.stylist5-release-candidate/index.ts',bytes);
+          fs.writeFileSync('.stylist5-release-candidate/manifest.json',JSON.stringify({
+            sourceCommit,sourceBranch:'codex/stylist-5-integrated-20261108',
+            generationVersion:'stylist-5-editorial-v2',
+            bundleSha256:hash,bundleBytes:bytes.length,
+            inputCount:Object.keys(metafile.inputs).length,
+            testedBy:'GitHub Actions isolated release build',
+            productionDeploymentAuthorized:true
+          },null,2)+'\n');
+          console.log('SHA256',hash,'bytes',bytes.length,'inputs',Object.keys(metafile.inputs).length);
+          JS
+      - name: Persist pinned candidate to isolated release branch
+        run: |
+          git config user.name "AIWardrobe release build"
+          git config user.email "actions@users.noreply.github.com"
+          git add .stylist5-release-candidate/index.ts .stylist5-release-candidate/manifest.json
+          git diff --cached --check
+          git commit -m "build: preserve tested 962bd102 Edge bundle"
+          git push origin HEAD:release/stylist5-v2-edge-962bd102-20261108
