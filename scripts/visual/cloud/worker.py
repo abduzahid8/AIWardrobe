@@ -10,7 +10,9 @@ def call(action,payload=None):
  for attempt in range(5):
   try:
    r=session.post(endpoint,headers=headers,json={'action':action,'worker':worker,'payload':payload or {}},timeout=(10,40))
-   if r.status_code in (401,403):raise RuntimeError('worker authentication rejected')
+   if r.status_code in (401,403):raise PermissionError('worker authentication rejected')
+   if r.status_code==503 and r.json().get('code')=='42501':
+    print(json.dumps({'paused':True}),flush=True);sys.exit(0)
    if r.status_code==400:raise RuntimeError('worker contract rejected')
    r.raise_for_status();return r.json()['data']
   except requests.RequestException:
