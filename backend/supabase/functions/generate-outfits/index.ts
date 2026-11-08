@@ -328,12 +328,24 @@ function retainBudgetFloorCandidates(
     }
     const combined = [...(anchor ? [anchor] : []), ...representatives, ...ranked]
     const ids = new Set<string>()
-    return collapseBySimEdge(combined.filter(item => {
+    const distinct = collapseBySimEdge(combined.filter(item => {
         const id = String(item.id)
         if (ids.has(id)) return false
         ids.add(id)
         return true
-    }), item => canonicalProductKey(item)).slice(0, 40)
+    }), item => canonicalProductKey(item))
+    // Never truncate a slot-grouped shortlist globally: previously top and
+    // outerwear consumed ~36/40 places, leaving just 3 bottoms and 1 shoe.
+    // Preserve the cheapest floor and anchor already at the front of each slot.
+    const perSlot = new Map<string, any[]>()
+    for (const item of distinct) {
+        const slot = isDressGarment(item) ? 'dress' : String(item.macroCategory || '').toLowerCase()
+        if (!['top', 'outerwear', 'bottom', 'shoes', 'dress'].includes(slot)) continue
+        const entries = perSlot.get(slot) || []
+        if (entries.length < perSlotChoices) entries.push(item)
+        perSlot.set(slot, entries)
+    }
+    return ['top', 'outerwear', 'bottom', 'shoes', 'dress'].flatMap(slot => perSlot.get(slot) || [])
 }
 function deckHashEdge(style: string, occasion: string): number {
     const key = `${style}::${occasion}`.toLowerCase()
