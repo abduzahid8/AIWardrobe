@@ -1,0 +1,10 @@
+{
+  "sourceCommit": "962bd102f718969dc07fe390ab3b677a543b8e15",
+  "sourceBranch": "codex/stylist-5-integrated-20261108",
+  "generationVersion": "stylist-5-editorial-v2",
+  "bundleSha256": "ab3d9232541f8c355e2224a2fcb1119996fb4b59fb2cd1ab122d7fd73dc1ac69",
+  "bundleBytes": 310088,
+  "inputCount": 45,
+  "testedBy": "GitHub Actions isolated release build",
+  "productionDeploymentAuthorized": true
+}
