@@ -1,5 +1,5 @@
 import {validateOutfitGenerationRequest,OutfitRequestError} from '../src/domain/outfitGenerationRequest';
-import {editorialCopy} from '../src/services/stylingCopy';
+import {outfitDescription,outfitConceptTitle} from '../src/services/stylingCopy';
 import { recordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
@@ -390,7 +390,7 @@ const SlotCell = React.memo(function SlotCell({
         source={imgFailed ? undefined : imageSource}
         placeholderContentFit="contain"
         style={[slotStyles.image, { backgroundColor: '#EEF3F8' }]}
-        contentFit="cover"
+        contentFit="contain"
         cachePolicy="memory-disk"
         recyclingKey={`${slotKey}-${itemId ?? ''}-${imageUri ?? ''}-${imgFailed ? 'fb' : 'src'}`}
         onError={() => setImgFailed(true)}
@@ -428,10 +428,10 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
   // garments, or add a stock product while rendering a result.
   const slotConfig = React.useMemo(() => items.map(item => {
     const macro = canonicalizeMacroCategory(item.macroCategory || item.type || '');
-    const labels: Record<string, string> = { top: 'Top', outerwear: 'Layer', bottom: 'Bottom', shoes: 'Shoes' };
+    const labels: Record<string, string> = { top: t('calendar.top'), outerwear: t('calendar.layer'), bottom: t('calendar.bottom'), shoes: t('calendar.shoes') };
     const keys: Record<string, string> = { top: 'second-top', outerwear: 'main-top', bottom: 'pants', shoes: 'shoes' };
-    return { key: `${keys[macro] || macro}-${item.id}`, label: labels[macro] || 'Item', item };
-  }), [items]);
+    return { key: `${keys[macro] || macro}-${item.id}`, label: labels[macro] || t('common.item'), item };
+  }), [items, t]);
 
   const handleBuy = useCallback(async (url: string) => {
     try {
@@ -614,6 +614,7 @@ const AIOutfitGenerator = () => {
   }, [quizStyleDefault]);
   const [loading, setLoading] = useState(false);
   const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
+  const [resultBudget, setResultBudget] = useState<ReturnType<typeof parseBudgetFromText>>(null);
   const [inventoryNote, setInventoryNote] = useState('');
   const [error, setError] = useState('');
   const displayRates = useUzsDisplayRates();
@@ -1718,7 +1719,7 @@ const AIOutfitGenerator = () => {
       try { validateOutfitGenerationRequest(requestBody); }
       catch (error) {
         if (error instanceof OutfitRequestError) {
-          console.info('stylist_admission', {field:error.field,reason:error.reason});
+          readinessLogger.info('stylist_admission', {field:error.field,reason:error.reason});
           throw new OutfitGenerationFailure('outfitMaker.invalidRequest','invalid_generation_request','admission');
         }
         throw error;
@@ -1741,11 +1742,10 @@ const AIOutfitGenerator = () => {
         const slotDeckUsed = new Set<string>();
         const wrapLook = (outfit: any, items: any[], idx: number): GeneratedOutfit => {
           const copy = stylingCopyParts(items, stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather}));
-          const description = typeof outfit.description === 'string' && outfit.description.trim()
-            ? outfit.description
-            : outfit.explanationVersion===1
-              ? editorialCopy(items,stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather}))
-              : outfit.concept?.id ? String(t(`outfitMaker.concepts.${outfit.concept.id}.story`,{defaultValue:outfit.concept.story || copy.description})) : copy.description;
+          const description = outfitDescription(outfit, items, stylingContext({
+            style: styleToUse, occasion: occasionToUse,
+            request: effectivePrompt || promptText, weather: resolvedWeather,
+          }));
           const judgeOk = passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences);
           // Hosted confidence is not a score from this client's occasion judge.
           const baseScore = outfitCoherence(items, stylingContext({style:styleToUse, occasion:occasionToUse, request:effectivePrompt||promptText, weather:resolvedWeather})).score;
@@ -1969,17 +1969,21 @@ const AIOutfitGenerator = () => {
           }
 
           if (!await consumeOrPaywall('aiOutfits', {cancelSignal}) || !isCurrentGeneration()) return;
+          setResultBudget(shopBudget);
           setInventoryNote(data.inventoryReason==='distinct_editorial_inventory_limited' ? t('outfitMaker.distinctInventoryLimited') : '');
           setOutfits(
             shownOutfits
               .map((o) => {
-                // Base description first (shop source always rewrites it),
-                // THEN the budget line — overwriting after the append is what
-                // silently dropped "· 2 400 000 UZS / 3 150 000 UZS".
-                const baseDescription = o.description;
-                return shopBudget
-                  ? { ...o, description: `${baseDescription} · ${formatUzsPrice(outfitShopSpend(o.items as any[], liveShopMapped, shopBudget?.currency, shopBudget?.fx), shopBudget.currency, displayRates) || '— UZS'} / ${formatUzsPrice(shopBudget.amount, shopBudget.currency, displayRates) || '— UZS'}${shopBudget.fx ? ` · ${t('outfitMaker.referenceRate', {date: shopBudget.fx.snapshot.asOf})}` : ''}` }
-                  : { ...o, description: baseDescription };
+                if (!shopBudget) return o;
+                const spend = outfitShopSpend(o.items as any[], liveShopMapped, shopBudget.currency, shopBudget.fx);
+                const budgetLabel = t('outfitMaker.lookSpend', {
+                  total: formatUzsPrice(spend, shopBudget.currency, displayRates) || `${spend} ${shopBudget.currency}`,
+                  cap: formatUzsPrice(shopBudget.amount, shopBudget.currency, displayRates) || `${shopBudget.amount} ${shopBudget.currency}`,
+                });
+                const rateLabel = shopBudget.fx
+                  ? ` · ${t('outfitMaker.referenceRate', {date: shopBudget.fx.snapshot.asOf})}`
+                  : '';
+                return {...o, description: `${o.description} · ${budgetLabel}${rateLabel}`};
               }),
           );
           // History persistence must not turn already rendered success into
@@ -2074,13 +2078,12 @@ const AIOutfitGenerator = () => {
               </View>
             </View>
           )}
-          {shopBudget && (
+          {resultBudget && (
             <View testID="activeBudgetStatus" style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
               <ScaledText style={styles.outfitDesc} minScale={0.65}>
                 {t('outfitMaker.activeBudget', {
-                  defaultValue: 'Active budget: {{amount}} {{currency}}. Every shown look is checked against this cap.',
-                  amount: formatUzsPrice(shopBudget.amount, shopBudget.currency, displayRates) || shopBudget.amount,
-                  currency: shopBudget.currency,
+                  defaultValue: 'Active budget: {{amount}}. Every shown look is checked against this cap.',
+                  amount: formatUzsPrice(resultBudget.amount, resultBudget.currency, displayRates) || `${resultBudget.amount} ${resultBudget.currency}`,
                 })}
               </ScaledText>
             </View>
@@ -2106,7 +2109,7 @@ const AIOutfitGenerator = () => {
                 </View>
 
                 {outfit.concept && <ScaledText style={[styles.outfitDesc,{fontWeight:'700',fontSize:20,marginBottom:12}]}>
-                  {t(`outfitMaker.concepts.${outfit.concept.id}.title`,{defaultValue:outfit.concept.title})}
+                  {outfitConceptTitle(outfit.concept.id)}
                 </ScaledText>}
                 <OutfitSlotGrid
                   items={outfit.items}

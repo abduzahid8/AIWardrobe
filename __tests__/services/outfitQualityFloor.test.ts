@@ -23,7 +23,8 @@ test('a high aggregate score cannot hide weak Work compatibility', () => {
   ]);
   expect(styleJudgeReason(look, 'old_money', 'Work')).toBeNull();
   const q = assessOutfitQuality(look, 'old_money', 'Work');
-  expect(q.score).toBeGreaterThan(0.85);
+  // The aggregate alone clears the required floor; acceptance still vetoes it.
+  expect(q.score).toBeGreaterThan(q.acceptance.minimum);
   expect(q.reasons).toEqual([]);
   expect(q.acceptance.passed).toBe(false);
   expect(q.acceptance.score).toBeLessThan(q.acceptance.minimum);

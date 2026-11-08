@@ -1,4 +1,4 @@
-import {stylingCopyParts,editorialCopy} from './stylingCopy';
+import {stylingCopyParts,outfitDescription} from './stylingCopy';
 import { validatedQuartets } from '../domain/validatedQuartets';
 import { stylingContext } from '../domain/stylingContext';
 import { budgetFxContext, fitsBudgetAmount, type BudgetFxContext } from '../domain/budgetFx';
@@ -1457,13 +1457,10 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
     return {
         id: o.id || `outfit_${Date.now()}_${Math.random()}`,
         compositionProtocol:o.compositionProtocol,explanationVersion:o.explanationVersion,concept:o.concept,selectionSource:o.selectionSource,generationRequestId:o.generationRequestId,engineVersion:o.engineVersion,
-        // Server explanations are authoritative for Stylist 5. Rebuilding
-        // them here caused duplicate/contradictory copy on older clients.
-        description: typeof o.description === 'string' && o.description.trim()
-          ? o.description
-          : o.explanationVersion===1
-            ? editorialCopy(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather}))
-            : stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).description,
+        description: outfitDescription(o, items, stylingContext({
+          style: params.stylePreferences, occasion: params.occasion,
+          request: params.prompt, weather: params.weather,
+        })),
         style: o.style || params.stylePreferences || 'Casual',
         occasion: o.occasion || params.occasion || 'Everyday',
         confidence: assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score,

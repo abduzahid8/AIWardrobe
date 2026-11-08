@@ -715,6 +715,8 @@
     "uzbek": "O'zbek"
   },
   "outfitMaker": {
+    "activeBudget": "Byudjet: {{amount}}. Har bir ko‘rsatilgan obraz shu chegara bo‘yicha tekshirilgan.",
+    "lookSpend": "Obraz narxi: {{total}} · Byudjet chegarasi: {{cap}}",
     "qualityExplanation": {
       "garmentSummary": "{{top}}, {{outerwear}}, {{bottom}} va {{shoes}} uyg‘unligi.",
       "formalStructure": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi.",
@@ -819,6 +821,14 @@
     "feedbackDislike": "Obrazni yaxshilash kerak",
     "feedbackUnavailable": "Fikr saqlanmadi. Qayta urinib ko‘ring.",
     "concepts": {
+      "clean-lines": {"title": "Sodda chiziqlar"},
+      "textured-knit": {"title": "Sokin trikotaj fakturasi"},
+      "modern-tailoring": {"title": "Uyg‘un ranglardagi zamonaviy obraz"},
+      "tailored": {"title": "Rasmiy obraz"},
+      "active": {"title": "Faol harakat uchun obraz"},
+      "ivy-knit": {"title": "Nafis trikotaj qatlamlari"},
+      "soft-tailoring": {"title": "Yumshoq bichim"},
+      "relaxed-layers": {"title": "Erkin qatlamlar"},
       "refined-ivy": {
         "title": "Nafis Ivy",
         "story": "Aniq ko‘ylak chizig‘i, yengil qatlamlar va vazmin charm poyabzal."

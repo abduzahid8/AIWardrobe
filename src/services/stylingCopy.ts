@@ -65,3 +65,24 @@ export function editorialCopy(items: GarmentEvidence[], context: StylingContext)
     sentences.push(translate('outfitMaker.qualityExplanation.shapeStory', values));
   return sentences.join(' ');
 }
+
+/** Version 1 describes grounded facts, not server-localized prose. Render those
+ * facts in the active locale; legacy free-form descriptions remain compatible. */
+export function outfitDescription(
+  outfit: { explanationVersion?: number; description?: unknown },
+  items: GarmentEvidence[],
+  context: StylingContext
+): string {
+  if (outfit.explanationVersion === 1) return editorialCopy(items, context);
+  return typeof outfit.description === 'string' && outfit.description.trim()
+    ? outfit.description
+    : stylingCopyParts(items, context).description;
+}
+
+/** Variant IDs are planner details; their base concept owns localized copy. */
+export function outfitConceptTitle(id: string): string {
+  const baseId = id.replace(/-no-layer$/, '');
+  return String(i18n.t(`outfitMaker.concepts.${baseId}.title`, {
+    defaultValue: i18n.t('outfitMaker.styledLook', {defaultValue:'Styled look'}),
+  }));
+}

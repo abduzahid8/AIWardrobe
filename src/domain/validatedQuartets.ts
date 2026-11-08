@@ -172,7 +172,18 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
         )
     );
   formulas = formulas.filter(canFill);
-  if (!formulas.length && pools.every((pool) => pool.length)) {
+  // Older clients require three physical four-slot alternatives. A feasible
+  // brief may cover only one trouser subtype despite adequate compatible
+  // inventory. Retain a reserve of the available roles under the same whole-
+  // outfit evaluator instead of treating that brief as catalog authority.
+  const legacyRoleGap = context.legacyFourSlot && pools.some((pool, index) => {
+    if (pool.some(item => required.has(item.id))) return false;
+    const covered = pool.filter(item => formulas.some(f =>
+      f.slots[index].includes(descriptors.get(item)!.subtype)
+      && conceptRoleCompatible(descriptors.get(item)!, f, context)));
+    return covered.length < Math.min(options.target, pool.length);
+  });
+  if ((!formulas.length || legacyRoleGap) && pools.every((pool) => pool.length)) {
     const roles = pools.map((pool) =>
       [...new Set(pool.map((item) => descriptors.get(item)!.subtype))].filter(
         (type) => type !== 'unknown'
@@ -180,6 +191,7 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
     );
     if (roles.every((role) => role.length))
       formulas = [
+        ...formulas,
         {
           id: 'available-separates',
           layerPurpose:

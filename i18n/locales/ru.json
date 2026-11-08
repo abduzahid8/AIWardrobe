@@ -715,6 +715,8 @@
     "uzbek": "Узбекский"
   },
   "outfitMaker": {
+    "activeBudget": "Бюджет: {{amount}}. Каждый показанный образ проверен на соответствие этому лимиту.",
+    "lookSpend": "Стоимость образа: {{total}} · Лимит бюджета: {{cap}}",
     "qualityExplanation": {
       "garmentSummary": "{{top}} в сочетании с {{outerwear}}, {{bottom}} и {{shoes}}.",
       "formalStructure": "Рубашка и структурированный пиджак подходят для формального мероприятия.",
@@ -819,6 +821,14 @@
     "feedbackDislike": "Образ можно улучшить",
     "feedbackUnavailable": "Не удалось сохранить отзыв. Попробуйте ещё раз.",
     "concepts": {
+      "clean-lines": {"title": "Чистые линии"},
+      "textured-knit": {"title": "Сдержанная фактура трикотажа"},
+      "modern-tailoring": {"title": "Современный тональный образ"},
+      "tailored": {"title": "Строгий образ"},
+      "active": {"title": "Образ для активности"},
+      "ivy-knit": {"title": "Элегантные трикотажные слои"},
+      "soft-tailoring": {"title": "Мягкий силуэт"},
+      "relaxed-layers": {"title": "Свободные слои"},
       "refined-ivy": {
         "title": "Утончённый Ivy",
         "story": "Чёткая линия рубашки, мягкие слои и сдержанная кожаная обувь."

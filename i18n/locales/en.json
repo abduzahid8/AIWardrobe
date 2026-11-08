@@ -700,6 +700,8 @@
     }
   },
   "outfitMaker": {
+    "activeBudget": "Active budget: {{amount}}. Every shown look is checked against this cap.",
+    "lookSpend": "Look total: {{total}} · Budget cap: {{cap}}",
     "qualityExplanation": {
       "garmentSummary": "{{top}} with {{outerwear}}, {{bottom}} and {{shoes}}.",
       "formalStructure": "A shirt and structured blazer keep the look appropriate for a formal occasion.",
@@ -804,6 +806,14 @@
     "feedbackDislike": "This look needs work",
     "feedbackUnavailable": "Could not save feedback. Please try again.",
     "concepts": {
+      "clean-lines": {"title": "Clean lines"},
+      "textured-knit": {"title": "Quiet knit texture"},
+      "modern-tailoring": {"title": "Tonal modern separates"},
+      "tailored": {"title": "Formal tailoring"},
+      "active": {"title": "Active layers"},
+      "ivy-knit": {"title": "Refined knit layers"},
+      "soft-tailoring": {"title": "Soft tailoring"},
+      "relaxed-layers": {"title": "Relaxed layers"},
       "refined-ivy": {
         "title": "Refined Ivy",
         "story": "A crisp base, easy tailoring and grounded leather footwear."

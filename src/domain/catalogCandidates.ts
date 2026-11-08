@@ -73,16 +73,21 @@ export function stylingCandidateRepresentatives<T>(
   // Preserve independently feasible editorial roles BEFORE the generic cap.
   // This prevents an equally suitable rack of blazers hiding every cardigan.
   for (const formula of formulas) {
-    const candidates = remaining
+    const roleCandidates = remaining
       .filter((entry) => {
         const slot = ['top', 'outerwear', 'bottom', 'shoes'].indexOf(entry.d.slot);
         return (
           slot >= 0 &&
           formula.slots[slot].includes(entry.d.subtype) &&
-          conceptRoleCompatible(entry.d, formula, context) &&
-          entry.score >= entries[0].score - 0.2
+          conceptRoleCompatible(entry.d, formula, context)
         );
-      })
+      });
+    // A cardigan and an overshirt serve different briefs. Comparing every
+    // role to the globally preferred subtype erases valid concepts before
+    // whole-look evaluation can judge them. Keep the band within this role.
+    const roleBest = Math.max(...roleCandidates.map(entry => entry.score));
+    const candidates = roleCandidates
+      .filter(entry => entry.score >= roleBest - 0.2)
       .sort(
         (a, b) =>
           conceptGarmentAffinity(b.d, formula) - conceptGarmentAffinity(a.d, formula) ||

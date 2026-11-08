@@ -33,7 +33,7 @@ const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-const GENERATION_VERSION = 'stylist-5-editorial-v1';
+const GENERATION_VERSION = 'stylist-5-editorial-v2';
 
 // Team Collaboration is always 100% shop — no wardrobe anchor.
 // Matches by style (`business_casual`) OR occasion label (`Team Collaboration`).
@@ -765,7 +765,6 @@ Create ${limit} distinct, on-aesthetic outfits. Each outfit must feel like it wa
 // we can trigger a retry. This catches the failure mode where the model
 // obeys color rules but picks, say, a graphic tee for Old Money.
 function validateOutfitAgainstStyle(outfit: any, style: string, itemMap: Map<string, any>, layered: boolean, preferences?: any): { ok: boolean; reason?: string } {
-    const ctx = getStyleContext(style)
     const items = Array.isArray(outfit.items) ? outfit.items : []
     const includesDress = items.some((item: any) => isDressItem(itemMap.get(String(item?.id))))
     const minItems = includesDress ? (layered ? 3 : 2) : (layered ? 4 : 3)
@@ -920,36 +919,11 @@ function validateOutfitAgainstStyle(outfit: any, style: string, itemMap: Map<str
         }
     }
 
-    // The selected anchor may override aesthetic taste; the hard validators above still apply.
-    const rejectKeywords = extractRejectKeywords(ctx.reject)
-    for (const it of items) {
-        if (preferences?.lockedAnchorId && String(it.id) === preferences.lockedAnchorId) continue
-        const src = itemMap.get(it.id) || {}
-        const blob = `${it.name || ''} ${src.name || ''} ${src.description || ''} ${src.type || ''} ${it.type || ''} ${it.pattern || ''} ${src.pattern || ''} ${it.material || ''} ${src.material || ''}`.toLowerCase()
-        for (const kw of rejectKeywords) {
-            if (blob.includes(kw)) {
-                return { ok: false, reason: `item "${it.name || it.id}" contains rejected keyword "${kw}" for style ${style}` }
-            }
-        }
-    }
+    // Style and occasion eligibility belong to eligibleCandidate and the
+    // shared whole-outfit judge. Prompt prose is not executable policy:
+    // comma-splitting "Avoid black — use navy, charcoal, or brown" used to
+    // veto charcoal, a recommended alternative, at this final structural gate.
     return { ok: true }
-}
-
-function extractRejectKeywords(rejectRules: string[]): string[] {
-    // Pull out the comma-separated nouns after "NEVER include:" / "Avoid:" so we
-    // can substring-match item names and descriptions. Lowercased.
-    const out: string[] = []
-    for (const rule of rejectRules) {
-        const m = rule.match(/(?:NEVER include|Avoid):\s*(.+?)\.?$/i)
-        if (!m) continue
-        const parts = m[1].split(/,|;/).map(s => s.trim().toLowerCase()).filter(Boolean)
-        for (const p of parts) {
-            // Preserve the rule's scope: "loafers with tie laces" must not
-            // prohibit every loafer, nor "chunky sneakers" every sneaker.
-            out.push(p)
-        }
-    }
-    return Array.from(new Set(out))
 }
 
 // Reject outfits that mix formal outerwear (blazer, suit jacket, overcoat,
@@ -2018,7 +1992,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         const rotationSlots = ['outerwear', 'top', 'bottom', 'shoes'] as DiversitySlot[]
         const freshBySlot = new Map(rotationSlots.map(slot => [
             slot,
-            wardrobeItems.filter(item => item.macroCategory === slot && !wasRecentlyShown(item, excludeSet)),
+            wardrobeItems.filter((item:any) => item.macroCategory === slot && !wasRecentlyShown(item, excludeSet)),
         ]))
         const forcedRepeatSlots = rotationTarget
             ? rotationSlots.filter(slot => countDistinctProducts(freshBySlot.get(slot) || []) < target)
@@ -2027,7 +2001,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
             const strictRotationSlots = new Set(
                 rotationSlots.filter(slot => !forcedRepeatSlots.includes(slot)),
             )
-            wardrobeItems = wardrobeItems.filter(item =>
+            wardrobeItems = wardrobeItems.filter((item:any) =>
                 !strictRotationSlots.has(item.macroCategory) ||
                 !wasRecentlyShown(item, excludeSet) ||
                 requiredChoiceIds.includes(String(item.id)),
@@ -2223,7 +2197,7 @@ serve(async(req:Request)=>{
       body={...body,error:known,code:known,stage:body.stage||trace.stage};
       response=new Response(JSON.stringify(body),{status:response.status,headers:response.headers});
     }
-    console.info('stylist_request',{status:response.status,stage:trace.stage,code:failureCode,syncMs:trace.syncMs,waitMs:trace.waitMs,counts:trace.counts});
+    console.info('stylist_request',{generationVersion:GENERATION_VERSION,status:response.status,stage:trace.stage,code:failureCode,syncMs:trace.syncMs,waitMs:trace.waitMs,counts:trace.counts});
   }
   return response;
 });
