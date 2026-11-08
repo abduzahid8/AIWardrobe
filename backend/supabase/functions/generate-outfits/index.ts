@@ -1275,7 +1275,7 @@ async function fetchShopItemsForAllSlotsEdge(
                         if(trace)trace.counts.visualQuarantined=(trace.counts.visualQuarantined||0)+1
                         return null
                     }
-                    return {...hydrated,pricePeers:item.pricePeers||detail.price_peers}
+                    return hydrated
                 }).filter(Boolean)
             }
         }

@@ -39,7 +39,7 @@ test('hydration contract preserves canonical identity and full peer shape', () =
   expect(edge).toMatch(/id:\s*`shop_\$\{row\.id\}`/)
   expect(edge).toContain('Array.isArray(record.descriptor?.evidence)')
   expect(edge).toMatch(/prepareHydratedStylist5Garment\(item,\s*detail\)/)
-  expect(edge).toContain('pricePeers:item.pricePeers||detail.price_peers')
+  expect(edge).not.toContain('pricePeers:item.pricePeers||detail.price_peers')
   expect(edge).not.toContain('...item,...detail');
 });
 
