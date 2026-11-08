@@ -1,6 +1,7 @@
 /** @jest-environment node */
 import { describeGarment } from '../../src/domain/garmentDescriptor';
 import { prepareHydratedStylist5Garment } from '../../src/domain/stylist5VisualContract';
+import type { GarmentEvidence } from '../../src/domain/garmentDescriptor';
 import type { VisualFashionProfile } from '../../src/domain/visualFashion';
 import { createOutfitPlan } from '../../src/domain/validatedQuartets';
 import { stylingContext } from '../../src/domain/stylingContext';
@@ -73,7 +74,7 @@ test('preserves the prepared descriptor through planning and selection', () => {
       price_peers: { median: 100 },
     }
   );
-  const inventory = [
+  const inventory: Array<GarmentEvidence & { id: string }> = [
     cardigan!,
     { id: 'shop-shirt-1', name: 'Oxford shirt', macroCategory: 'top' },
     { id: 'shop-trouser-1', name: 'Tailored wool trousers', macroCategory: 'bottom' },

@@ -12,11 +12,11 @@ export interface Stylist5HydrationDetail {
   price_peers?: unknown;
 }
 
-export function prepareHydratedStylist5Garment(
-  item: GarmentEvidence,
+export function prepareHydratedStylist5Garment<T extends GarmentEvidence>(
+  item: T,
   detail: Stylist5HydrationDetail & { price_peers?: unknown }
-): GarmentEvidence | null {
-  const hydrated: GarmentEvidence = {
+): T | null {
+  const hydrated: T = {
     ...item,
     visualFashion: detail.visual_fashion || item.visualFashion,
     visualSourceHash: detail.visual_source_hash || item.visualSourceHash,
