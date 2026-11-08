@@ -61,6 +61,7 @@ export async function removeCloudOutfit(id: string): Promise<void> {
 
 export interface CloudSavedOutfit {
   id: string;
+  composition_protocol?: 'optional-layer-v1' | null;
   date: string | null;
   occasion: string | null;
   items: unknown;
@@ -77,7 +78,7 @@ export async function listCloudOutfits(): Promise<CloudSavedOutfit[]> {
   const pageSize = 250;
   let cursor: string | undefined;
   for (;;) {
-    let query = supabase.from('saved_outfits').select('id, date, occasion, items, created_at')
+    let query = supabase.from('saved_outfits').select('id, date, occasion, items, composition_protocol, created_at')
       .eq('user_id', owner).order('id', { ascending: false });
     if (cursor) query = query.lt('id', cursor);
     const { data: rows, error } = await query.limit(pageSize);
