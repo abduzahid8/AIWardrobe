@@ -340,6 +340,7 @@ export function outfitConcepts(context: StylingContext): readonly OutfitConcept[
     if (context.dressCode === 'casual' && (context.style === 'casual' || cityTravel)
       && !cool && !winter && concepts.length) {
       return [{...concepts[0],id:'clean-transit',title:'Clean transit',layerRole:'absent',
+        slots:[concepts[0].slots[0],[],concepts[0].slots[2],concepts[0].slots[3]],
         story:'A simple base and trousers with understated city footwear.'},...concepts.slice(1)];
     }
     return concepts;

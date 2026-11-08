@@ -25,9 +25,12 @@ for(let n=0;n<scenarios.length;n++) {
   const context=api.stylingContext({style,occasion,sourceMode:'catalog'});
   const retrieval={engine:label==='stylist5'?'stylist5':'v200',dressCode:context.dressCode,concepts:api.outfitConcepts(context).slice(0,3).map(c=>({id:c.id,roles:Object.fromEntries(['top','outerwear','bottom','shoes'].map((slot,i)=>[slot,c.slots[i]])),preferredSubtypes:[...new Set(c.slots.flat())]}))};
   if(label==='stylist5'){const fx=JSON.parse(fs.readFileSync(path.join(dir,'fx.json')));retrieval.rates=fx.uzsPerUnit;}
-  const functionName=label==='v200'?'catalog_stylist_candidates_v200':'catalog_stylist_candidates';
-  const sql="set role service_role;select jsonb_agg(row) from public."+functionName+"(array['top','outerwear','bottom','shoes'],'stylist5-fixed-benchmark','"+JSON.stringify(retrieval).replaceAll("'","''")+"'::jsonb,100,0,null,null) row";
+  const functionName=label==='v200'?'catalog_stylist_candidates_v200':'catalog_stylist_candidates_compact';
+  const contextSql=JSON.stringify(retrieval).replaceAll("'","''");
+  const sql="set role service_role;select coalesce(jsonb_agg(row),'[]'::jsonb) from public."+functionName+"(array['top','outerwear','bottom','shoes'],'stylist5-fixed-benchmark','"+contextSql+"'::jsonb,100,0,null,null) row";
   const output=cp.execFileSync('/opt/homebrew/opt/postgresql@16/bin/psql',['-h','127.0.0.1','-p','55440','-d','postgres','-X','-A','-t','-q','-v','ON_ERROR_STOP=1','-c',sql],{encoding:'utf8',maxBuffer:32*1024*1024});
+  const explain=cp.execFileSync('/opt/homebrew/opt/postgresql@16/bin/psql',['-h','127.0.0.1','-p','55440','-d','postgres','-X','-A','-t','-q','-v','ON_ERROR_STOP=1','-c',`set role service_role;explain (analyze,buffers,format json) select * from public.${functionName}(array['top','outerwear','bottom','shoes'],'stylist5-fixed-benchmark','${contextSql}'::jsonb,100,0,null,null)`],{encoding:'utf8',maxBuffer:32*1024*1024});
+  const explainJson=JSON.parse(explain.trim())[0]?.Plan || {};
   const baselinePool=path.join(dir,`baseline-role-pool-${n}.json`);
   const frozen=label==='v200'&&fs.existsSync(baselinePool)?JSON.parse(fs.readFileSync(baselinePool)):JSON.parse(output);
   fs.writeFileSync(path.join(dir,'..',`retrieved-${n}-${label}.json`),JSON.stringify(frozen),{mode:0o600});
@@ -62,7 +65,10 @@ for(let n=0;n<scenarios.length;n++) {
    meanCoherence:deck.reduce((sum,look)=>sum+evaluate(look.items).score,0)/Math.max(1,deck.length),
    photoProducts:pool.filter(i=>api.describeGarment(i).evidence.some(e=>e.startsWith('image:'))).length,poolSize:pool.length,
    maximumUzsItem:Math.max(0,...deck.flatMap(l=>l.items).filter(i=>i.currency==='UZS').map(i=>i.price)),
-   evaluations:plan.diagnostics.evaluations,wallMs:Math.round(wall),cpuMs:Math.round((usage.user+usage.system)/1000)};
+   evaluations:plan.diagnostics.evaluations,wallMs:Math.round(wall),cpuMs:Math.round((usage.user+usage.system)/1000),
+   retrievalRows:frozen.length,retrievalPayloadBytes:Buffer.byteLength(JSON.stringify(frozen)),
+   sqlExecutionMs:Math.round(explainJson['Actual Total Time']||0),sqlSharedHitBlocks:explainJson['Shared Hit Blocks']||0,
+   sqlSharedReadBlocks:explainJson['Shared Read Blocks']||0};
   runs.push({metrics,deck:deck.map(l=>({concept:l.concept.id,quality:l.quality,value:l.valueScore,items:l.items.map(i=>({id:i.id,name:i.name,price:i.price,currency:i.currency,imageUrl:i.imageUrl,shopUrl:i.shopUrl,macroCategory:i.macroCategory,descriptor:api.describeGarment(i),imageSha256:i.visualFashion?.imageSha256}))})),diagnostics:{...plan.diagnostics,conceptQuality:plan.alternatives.reduce((groups,l)=>{(groups[l.concept.id]||=[]).push({q:l.quality,fit:l.conceptScore,layer:api.describeGarment(l.items.find(i=>i.macroCategory==='outerwear')||{}).subtype});return groups;},{})}});
  }
  privateReport.push({style,occasion,runs});summary.push({style,occasion,before:runs[0].metrics,after:runs[1].metrics});

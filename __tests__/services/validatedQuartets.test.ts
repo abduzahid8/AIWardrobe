@@ -1,4 +1,8 @@
-import { selectedPlanDiagnostics, validatedQuartets } from '../../src/domain/validatedQuartets';
+import {
+  NVIDIA_RANK_UTILITY_WEIGHT,
+  selectedPlanDiagnostics,
+  validatedQuartets,
+} from '../../src/domain/validatedQuartets';
 import { stylingContext } from '../../src/domain/stylingContext';
 import { fourSlotOutfitReason } from '../../src/domain/outfitStructure';
 const pool = ['Cotton shirt', 'Fine cardigan', 'Tailored trousers', 'Leather loafers'].flatMap(
@@ -95,4 +99,9 @@ it('reports diagnostics from the selected deck rather than the planner seed', ()
     conceptsAchieved: 1,
     editorialIdentities: 1,
   });
+});
+
+it('keeps provider rank as a bounded quality tie-breaker', () => {
+  expect(NVIDIA_RANK_UTILITY_WEIGHT).toBeGreaterThan(0);
+  expect(NVIDIA_RANK_UTILITY_WEIGHT).toBeLessThan(0.035);
 });

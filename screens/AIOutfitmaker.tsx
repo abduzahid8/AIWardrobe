@@ -1741,7 +1741,11 @@ const AIOutfitGenerator = () => {
         const slotDeckUsed = new Set<string>();
         const wrapLook = (outfit: any, items: any[], idx: number): GeneratedOutfit => {
           const copy = stylingCopyParts(items, stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather}));
-          const description = outfit.explanationVersion===1 ? editorialCopy(items,stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather})) : outfit.concept?.id ? String(t(`outfitMaker.concepts.${outfit.concept.id}.story`,{defaultValue:outfit.concept.story || copy.description})) : copy.description;
+          const description = typeof outfit.description === 'string' && outfit.description.trim()
+            ? outfit.description
+            : outfit.explanationVersion===1
+              ? editorialCopy(items,stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather}))
+              : outfit.concept?.id ? String(t(`outfitMaker.concepts.${outfit.concept.id}.story`,{defaultValue:outfit.concept.story || copy.description})) : copy.description;
           const judgeOk = passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences);
           // Hosted confidence is not a score from this client's occasion judge.
           const baseScore = outfitCoherence(items, stylingContext({style:styleToUse, occasion:occasionToUse, request:effectivePrompt||promptText, weather:resolvedWeather})).score;
@@ -1754,7 +1758,9 @@ const AIOutfitGenerator = () => {
             items,
             mainImage: items[0]?.image || items[0]?.imageUrl || outfit.mainImage || '',
             matchScore: judgeOk ? baseScore : Math.min(baseScore, 0.69),
-            stylingTips: outfit.explanationVersion===1 ? '' : copy.tips.join(' '),
+            stylingTips: Array.isArray(outfit.stylingTips)
+              ? outfit.stylingTips
+              : outfit.explanationVersion===1 ? '' : copy.tips.join(' '),
             weather: resolvedWeather,
           };
         };
@@ -2066,6 +2072,17 @@ const AIOutfitGenerator = () => {
                   </ScaledText>
                 </View>
               </View>
+            </View>
+          )}
+          {shopBudget && (
+            <View testID="activeBudgetStatus" style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
+              <ScaledText style={styles.outfitDesc} minScale={0.65}>
+                {t('outfitMaker.activeBudget', {
+                  defaultValue: 'Active budget: {{amount}} {{currency}}. Every shown look is checked against this cap.',
+                  amount: formatUzsPrice(shopBudget.amount, shopBudget.currency, displayRates) || shopBudget.amount,
+                  currency: shopBudget.currency,
+                })}
+              </ScaledText>
             </View>
           )}
 

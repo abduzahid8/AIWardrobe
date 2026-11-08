@@ -17,6 +17,10 @@ import { outfitQualityFloor } from './outfitQualityFloor.ts';
 import { productIdentityKeys } from './outfitDiversity.ts';
 import type { GarmentEvidence } from './garmentDescriptor.ts';
 import type { StylingContext } from './stylingContext.ts';
+
+/** Provider ranking may break a near-quality tie but cannot override the
+ * planner's 0.035 quality acceptance band. */
+export const NVIDIA_RANK_UTILITY_WEIGHT = 0.012;
 /** Compatibility adapter: all callers now share the same bounded planner. */
 export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
   items: T[],
@@ -105,7 +109,21 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
   const descriptors = new Map(items.map((item) => [item, describeGarment(item)]));
   const identities = new Map(items.map((item) => [item, productIdentityKeys(item)]));
   const valueOf = valueIntelligence(items, context);
-  let formulas = outfitConcepts(context);
+  let formulas = outfitConcepts(context).flatMap((formula) =>
+    context.optionalLayer && formula.layerRole !== 'absent'
+      ? [
+          formula,
+          {
+            ...formula,
+            id: `${formula.id}-no-layer`,
+            title: `${formula.title} without a layer`,
+            layerRole: 'absent' as const,
+            slots: [formula.slots[0], [], formula.slots[2], formula.slots[3]] as OutfitConcept['slots'],
+            story: 'The same styling direction with no physical outer layer.',
+          },
+        ]
+      : [formula]
+  );
   const slots = ['top', 'outerwear', 'bottom', 'shoes'];
   const pools = slots.map((slot) => {
     const pool = items.filter(
@@ -497,7 +515,8 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       const roleVariety =
         actualRoles[0] * 0.2 + actualRoles[1] * 0.45 + actualRoles[2] * 0.2 + actualRoles[3] * 0.15;
       variety = 0.35 * variety + 0.65 * roleVariety;
-      const utility = primary + 0.15 * variety + 0.007 * rankValue + 0.005 * recency;
+      const utility =
+        primary + 0.15 * variety + NVIDIA_RANK_UTILITY_WEIGHT * rankValue + 0.005 * recency;
       bestQuality = Math.max(bestQuality, primary);
       decks.push({looks: deck, quality: primary, utility});
     };
