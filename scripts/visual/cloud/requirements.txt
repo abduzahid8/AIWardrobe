@@ -1,0 +1,6 @@
+# CPU-only torch==2.6.0 is installed from the official PyTorch wheel index.
+transformers==4.57.6
+numpy==2.2.6
+Pillow==11.3.0
+requests==2.32.5
+sentencepiece==0.2.1

@@ -1,3 +1,4 @@
+import {sourceCatalogTaxonomy} from './catalogTaxonomy.ts';
 import { applyVisualFashion, type VisualFashionProfile } from './visualFashion.ts';
 import { normalizeGarmentText } from './garmentText.ts';
 import { colorFamilyOf, materialsOf, patternOf, textureOf } from './outfitDiversity.ts';
@@ -29,6 +30,7 @@ export interface GarmentDescriptor {
   footwearPurpose?: string;
   accentHue?: string;
   hemShape?: string;
+  productKind?: 'garment' | 'complete-suit';
   slot: string;
   subtype: string;
   color: string;
@@ -78,7 +80,9 @@ function sourceInsulation(item: GarmentEvidence, slot: string): boolean {
 }
 export function prepareGarment<T extends GarmentEvidence>(item: T, descriptor?: GarmentDescriptor): T {
   const snapshot = Object.freeze({...item});
-  const base = descriptor || describeGarment(snapshot);
+  const inferred = descriptor || describeGarment(snapshot);
+  const taxonomy = sourceCatalogTaxonomy(snapshot);
+  const base = taxonomy ? {...inferred,...taxonomy,evidence:[...inferred.evidence,'source:taxonomy']} : inferred;
   const insulated = sourceInsulation(snapshot, base.slot);
   preparedDescriptors.set(snapshot, insulated ? {
     ...base,
@@ -101,7 +105,8 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     + ' ' + [item.fit, item.silhouette, item.formality, item.layering, item.footwearPurpose]
       .filter(value => typeof value === 'string').join(' ')
   );
-  const slot = String(item.macroCategory || item.category || 'unknown');
+  const taxonomy = sourceCatalogTaxonomy(item);
+  const slot = taxonomy?.slot || String(item.macroCategory || item.category || 'unknown');
   // This exact sparse catalog row omits its drawstring waist. Manufacturer:
   // https://aurelien-online.com/products/beige-flannel-trousers
   // Confirmed 2026-11-07; derived evidence only, never a catalog mutation.
@@ -169,7 +174,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
               ['fine-knit', /\b(fine|lightweight|thin|gauge|merino)\b.*\b(knit|sweater|pullover)/],
               ['sweater', /\b(sweaters?|pullovers?|jumpers?)\b/],
             ];
-  const subtype = verifiedDrawstring ? 'athletic-trouser' : rules.find(([, r]) => r.test(text))?.[0] || 'unknown';
+  const subtype = taxonomy?.subtype || (verifiedDrawstring ? 'athletic-trouser' : rules.find(([, r]) => r.test(text))?.[0] || 'unknown');
   const athletic =
     /\b(athletic|training|track[ -]?pants?|joggers?|sweatpants?|workout|sportswear)\b/.test(text) ||
     subtype === 'sport-sneaker' ||
@@ -322,6 +327,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
       ? 'openable'
       : 'unknown';
   return applyVisualFashion({
+    productKind:taxonomy?.productKind || 'garment',
     slot,
     subtype,
     length,

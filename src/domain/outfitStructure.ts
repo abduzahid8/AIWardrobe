@@ -1,3 +1,4 @@
+import {sourceCatalogTaxonomy} from './catalogTaxonomy.ts';
 import {productIdentityKeys} from './outfitDiversity.ts';
 export function isDressGarment(item: { name?: string; type?: string; macroCategory?: string } | null | undefined): boolean {
     if (!item) return false;
@@ -51,6 +52,7 @@ export function outfitStructureReason(items: unknown, requireLayer = false): str
 
 /** Only identifiable shirts/T-shirts and pants can fill those categories. */
 export function isFourSlotCandidate(item: {macroCategory?: string; name?: string; type?: string}): boolean {
+    if(sourceCatalogTaxonomy(item)?.productKind==='complete-suit')return false;
     const text = `${item.name || ''} ${item.type || ''}`.toLowerCase();
     const name = String(item.name || '').toLowerCase();
     if (isNonOutfitItem(item) || isDressGarment(item)) return false;

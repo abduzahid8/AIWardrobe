@@ -26,8 +26,8 @@ const allowed: Partial<Record<keyof GarmentDescriptor, readonly (string | boolea
   footwearPurpose: ['walking', 'training', 'trail', 'dress'],
   accentHue: ['black', 'white', 'cream', 'beige', 'brown', 'navy', 'blue', 'grey', 'green', 'red'],
   hemShape: ['straight', 'tapered', 'barrel', 'flared'],
-  slot: ['top', 'outerwear', 'bottom', 'shoes'],
-  subtype: [
+  slot: ['top', 'outerwear', 'bottom', 'shoes','outfits'],
+  subtype: ['complete-suit',
     'dress-shirt',
     'shirt',
     'field-shirt',
@@ -158,6 +158,7 @@ export function applyVisualFashion(
   return result;
 }
 export function subtypeSlot(subtype: string): string {
+  if(subtype==='complete-suit')return 'outfits';
   if (
     ['dress-shirt', 'shirt', 'field-shirt', 'polo', 't-shirt', 'fine-knit', 'sweater'].includes(
       subtype
