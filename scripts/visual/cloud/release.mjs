@@ -10,7 +10,7 @@ const hash=x=>crypto.createHash('sha256').update(x).digest('hex'),save=(name,v)=
 const git=(...args)=>cp.execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
 async function source(slug){const b=Buffer.from(await(await management('/functions/'+slug+'/body')).arrayBuffer()),key=Buffer.from('"sourcesContent":['),offset=b.indexOf(key);assert(offset>=0,'deployed source missing');const a=offset+key.length;let e=a+1;for(;e<b.length;e++){if(b[e]===92){e++;continue}if(b[e]===34)break}return JSON.parse(b.subarray(a,e+1).toString())}
 async function live(){const all=await(await management('/functions')).json();return all.find(f=>f.slug==='generate-outfits')}
-async function baseline(){const f=await live();assert.equal(f.version,200,'baseline version drift');assert.equal(f.status,'ACTIVE');assert.equal(f.ezbr_sha256,oldFingerprint);assert.equal(hash(await source('generate-outfits')),oldSource);return f;}
+async function baseline(){const f=await live();const pinned=fs.existsSync(dir+'/runtime-baseline.json')?read('runtime-baseline.json'):{version:200};assert.equal(f.version,pinned.version,'baseline version drift');if(pinned.verify_jwt!==undefined)assert.equal(f.verify_jwt,pinned.verify_jwt);assert.equal(f.status,'ACTIVE');assert.equal(f.ezbr_sha256,oldFingerprint);assert.equal(hash(await source('generate-outfits')),oldSource);return f;}
 function sourceGuards(){
  const declarations=s=>{const tree=ts.createSourceFile('entry.ts',s,ts.ScriptTarget.Latest,true),out=new Map();function visit(n){if(ts.isFunctionDeclaration(n)&&n.name)out.set(n.name.text,n.getText(tree));ts.forEachChild(n,visit)}visit(tree);return out};
  const before=declarations(git('show',base+':'+entry)),s=fs.readFileSync(root+'/'+entry,'utf8'),after=declarations(s);
