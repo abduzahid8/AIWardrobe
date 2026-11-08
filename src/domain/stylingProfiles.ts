@@ -29,7 +29,7 @@ export const STYLING_PROFILES: Readonly<Record<string, StylingProfile>> = {
     restrained: true,
   },
   classic: {
-    preferred: ['dress-shirt', 'shirt', 'blazer', 'coat', 'tailored-trouser', 'oxford', 'derby', 'monk'],
+    preferred: ['dress-shirt', 'shirt', 'polo', 'blazer', 'cardigan', 'coat', 'tailored-trouser', 'chino', 'oxford', 'derby', 'loafer', 'monk'],
     textures: ['smooth', 'wool'], restrained: true,
   },
   business_casual: {
@@ -40,6 +40,8 @@ export const STYLING_PROFILES: Readonly<Record<string, StylingProfile>> = {
     preferred: [
       'dress-shirt',
       'shirt',
+      'polo',
+      'cardigan',
       'blazer',
       'tailored-trouser',
       'derby',
@@ -91,7 +93,7 @@ const modern = formula('modern-tailoring', ['t-shirt', 'fine-knit', 'polo'], ['b
   ['tailored-trouser', 'chino', 'jeans'], ['minimal-sneaker', 'chelsea', 'loafer']);
 const clean = formula('clean-lines', ['t-shirt', 'fine-knit', 'shirt'], ['overshirt', 'coat', 'cardigan'],
   ['tailored-trouser', 'chino', 'jeans'], ['minimal-sneaker', 'chelsea']);
-const active = formula('active', ['t-shirt', 'polo'], ['jacket', 'hoodie', 'bomber'],
+const active = formula('active', ['t-shirt', 'polo', 'shirt'], ['jacket', 'hoodie', 'bomber'],
   ['athletic-trouser', 'cargo'], ['sport-sneaker', 'hiking-boot']);
 const STYLE_FORMULAS: Readonly<Record<string, readonly StylingFormula[]>> = {
   old_money: [ivy, soft, tailoring], classic: [tailoring, soft, ivy],

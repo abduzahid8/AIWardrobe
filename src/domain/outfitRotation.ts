@@ -22,11 +22,14 @@ export function wasRecentlyShown(item: any, history: ReadonlySet<string>): boole
         || productIdentityKeys({...item, imageUrl: item?.imageUrl || item?.image_url || item?.image}).some(key => history.has(key));
 }
 
-/** Apply only to eligible products. Recycle a slot only after its fresh supply runs short. */
+/** Apply only to eligible products. Recycle a slot only after its fresh supply runs short.
+ * `pruned` carries the recently-shown products dropped while fresh supply still met the
+ * target — the caller needs them to prove feasibility when the fresh-only pool starves. */
 export function rotationPool<T extends {id?: unknown}>(
     items: T[], history: ReadonlySet<string>, target: number, lockedIds: ReadonlySet<string> = new Set(),
-): {items: T[]; recycledSlots: DiversitySlot[]} {
+): {items: T[]; recycledSlots: DiversitySlot[]; pruned: T[]} {
     const recycledSlots: DiversitySlot[] = [];
+    const pruned: T[] = [];
     const kept: T[] = [];
     for (const slot of ['outerwear','top','bottom','shoes'] as DiversitySlot[]) {
         const pool = items.filter(item => diversitySlotOf(item) === slot);
@@ -36,9 +39,11 @@ export function rotationPool<T extends {id?: unknown}>(
         if (countDistinctProducts(fresh) < target && seen.length) {
             recycledSlots.push(slot);
             kept.push(...seen);
+        } else {
+            pruned.push(...seen);
         }
     }
-    return {items: kept, recycledSlots};
+    return {items: kept, recycledSlots, pruned};
 }
 
 /** Among already valid decks, consume unused physical products before recycling. */
@@ -125,7 +130,7 @@ export function createShoeRotationPriority(history: ReadonlySet<string>, previou
         }
         // Prefer the oldest last-use buckets, then the fewest appearances.
         // Explicit vector comparison avoids weights that quality can outweigh.
-        return [-shoeOverlap, -otherOverlap, freshClothing, ...ages, ...counts, legacy(clothing)];
+        return [-shoeOverlap, freshClothing, -otherOverlap, ...ages, ...counts, legacy(clothing)];
     };
 }
 

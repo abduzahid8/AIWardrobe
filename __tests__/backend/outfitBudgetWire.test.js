@@ -11,7 +11,7 @@ function load(modelItems=['wardrobe-shirt','wardrobe-pants','wardrobe-shoes','wa
  const pinnedRates=jest.fn(async(_admin,id)=>{const snapshot=makeReferenceSnapshot();if(id!==snapshot.id)throw new fxCore.BudgetFxError();return snapshot;});
  const rateMock=jest.fn(async()=>admission);
  const fetchMock=jest.fn(async()=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({outfits:Array.isArray(modelItems[0])?modelItems.map(items=>({items})):[{items:modelItems}]})}}]})));
- const catalogRpc=jest.fn((name,args)=>{if(catalogQuery?.rpc)return catalogQuery.rpc(name,args);if(name==='catalog_discovery_candidates'){const missing={abortSignal:()=>missing,then:resolve=>Promise.resolve({data:null,error:{code:'PGRST202'}}).then(resolve)};return missing;}if(args.p_after_id)(catalogQuery||emptyCatalog).gt('id',args.p_after_id);const result={abortSignal:()=>result,then:resolve=>Promise.resolve(catalogQuery||emptyCatalog).then(({data,error})=>({data:data?.map(row=>({...row,_budget_cost:Number(row.price)>0&&args.p_rates[row.currency]?String(Number(row.price)*args.p_rates[row.currency]):null})),error})).then(resolve)};return result;});
+ const catalogRpc=jest.fn((name,args)=>{if(catalogQuery?.rpc)return catalogQuery.rpc(name,args);if(name==='catalog_discovery_candidates'){const missing={abortSignal:()=>missing,then:resolve=>Promise.resolve({data:null,error:{code:'PGRST202'}}).then(resolve)};return missing;}if(args.p_after_id)(catalogQuery||emptyCatalog).gt('id',args.p_after_id); const result={abortSignal:()=>result,then:resolve=>Promise.resolve(catalogQuery||emptyCatalog).then(({data,error})=>({data:data?.map(row=>({...row,fashion_slot:row.fashion_slot||row.macroCategory,garment_type:row.garment_type||row.type,_budget_cost:Number(row.price)>0&&args.p_rates?.[row.currency]?String(Number(row.price)*args.p_rates[row.currency]):null})),error})).then(resolve)};return result;});
  const requireModule=name=>{
   if(name.includes('server.ts'))return {serve:fn=>{handler=fn;}};
   if(name.includes('supabase-js'))return {createClient:(_url,_key,options)=>({...paidTier?{from:()=>({select:()=>({eq:()=>({order:()=>({limit:async()=>({data:[{tier:paidTier,status:'active'}],error:null})})})})})}:{},...(catalogQuery?{rpc:catalogRpc,from:table=>{if(table==='shop_catalog')return catalogQuery;throw Error('Unexpected fixture table');}}:{}),rpc:catalogRpc,from:table=>{if(table==='wear_logs'){const q={select:()=>q,eq:()=>q,order:()=>q,limit:n=>Promise.resolve({data:wearLogs.slice(0,n),error:null})};return q;}if(table==='stylist_look_feedback')return emptyCatalog;if(table==='shop_catalog')return catalogQuery||emptyCatalog;if(paidTier)return {select:()=>({eq:()=>({order:()=>({limit:async()=>({data:[{tier:paidTier,status:'active'}],error:null})})})})};throw Error('Unexpected fixture table '+table);},auth:{getUser:async()=>authFailure?{data:{user:null},error:authFailure}:options?.global?.headers?.Authorization==='Bearer fixture-user'?{data:{user:{id:'fixture-user-id'}},error:null}:{data:{user:null},error:{status:401}}}})};
@@ -44,11 +44,18 @@ test('without a budget the actual prompt orders equally suitable lower-priced ca
  expect((await response.json()).budgetReference).toBeUndefined();
 });
 const request=(budget,wardrobeItems=owned)=>new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify({prompt:'Create one casual outfit. Budget under $1000.',stylePreferences:'casual',occasion:'Everyday',weather:{temp:20},limit:1,wardrobeItems,useProvidedWardrobeOnly:true,wardrobeOnly:!wardrobeItems.some(item=>item.isShopItem===true||String(item.id).startsWith('shop_')),preferences:{maxShopBudget:budget}})});
-test.each([250,0])('wire prompt preserves the selected %s USD cap despite larger prompt text',async amount=>{
- const {handler,fetchMock}=load();const response=await handler(request({amount,currency:'USD'}));
- expect(response.status).toBe(200);expect(fetchMock).toHaveBeenCalled();
- const messages=JSON.parse(fetchMock.mock.calls[0][1].body).messages;
- expect(messages.map(row=>row.content).join('\n')).toContain(`HARD BUDGET ${amount} USD`);
+test.each([250,0])('the selected %s USD cap is enforced despite larger prompt text',async amount=>{
+ const {handler,fetchMock}=load();
+ // A required shop top above the selected cap; the "$1000" in the prose must
+ // never override authoritative feasibility. Enforcement lives in the plan,
+ // not in a model instruction, so no provider request may occur.
+ const items=owned.map(item=>item.macroCategory==='top'
+  ?{...item,isWardrobe:false,isShopItem:true,price:amount+50,currency:'USD'}
+  :item);
+ const response=await handler(request({amount,currency:'USD'},items));
+ expect(response.status).toBe(422);
+ expect((await response.json()).code).toBe('no_outfit_within_budget');
+ expect(fetchMock).not.toHaveBeenCalled();
 });
 test('malformed explicit budget is rejected before any provider request',async()=>{
  const {handler,fetchMock}=load();const response=await handler(request({amount:-1,currency:'USD'}));
@@ -304,7 +311,7 @@ test('fabricated model metadata cannot reject otherwise allowed canonical items'
 
 test('workout intent uses athletic guidance even when the saved style is old money',async()=>{
  const {handler,fetchMock}=load();
- const names={top:'Navy performance training shirt',bottom:'Navy performance training trousers',shoes:'White athletic running shoes'};
+ const names={top:'Navy performance training shirt',bottom:'Navy performance training trousers',shoes:'White athletic running shoes',outerwear:'Warm performance training jacket'};
  const athletic=owned.map(item=>({...item,name:names[item.macroCategory]}));
  const body=await request({amount:300,currency:'USD'},athletic).json();
  body.stylePreferences='old_money';body.occasion='Gym workout';body.prompt='Create one complete outfit for a gym workout.';
@@ -312,27 +319,27 @@ test('workout intent uses athletic guidance even when the saved style is old mon
  expect(result.status).toBe(200);
  const messages=JSON.parse(fetchMock.mock.calls[0][1].body).messages;
  const system=messages.find(message=>message.role==='system').content;
- const user=messages.find(message=>message.role==='user').content;
- expect(system).toContain('STYLE DIRECTION — SPORT');
- expect(system).toContain('performance');
+ const payload=JSON.parse(messages.find(message=>message.role==='user').content);
+ // Workout intent overrides the saved Old Money style on the ranking wire.
+ expect(system).toContain('fashion stylist for sport');
  expect(system).not.toContain('CITY BANS');
  expect(system).not.toContain('Black only pairs with white');
- expect(user).toContain('Requested style: sport');
+ expect(payload.request.toLowerCase()).toContain('gym workout');
+ expect(payload.occasion).toBe('Gym workout');
 });
 
 test('cold workout prompts require a warm performance layer without prescribing dress clothing',async()=>{
- const ids=['wardrobe-shirt','wardrobe-pants','wardrobe-shoes','training-jacket'];
- const {handler,fetchMock}=load(ids);
- const names={top:'Navy performance training shirt',bottom:'Navy performance training trousers',shoes:'White athletic running shoes'};
+ const {handler,fetchMock}=load();
+ const names={top:'Navy performance training shirt',bottom:'Navy performance training trousers',shoes:'White athletic running shoes',outerwear:'Warm performance training jacket'};
  const athletic=owned.map(item=>({...item,name:names[item.macroCategory]}));
- athletic.push({...owned[0],id:'training-jacket',macroCategory:'outerwear',name:'Warm performance training jacket',type:'jacket'});
  const body=await request({amount:300,currency:'USD'},athletic).json();
  body.stylePreferences='old_money';body.occasion='Gym workout';body.prompt='Create one complete outfit for a gym workout.';body.weather={temp:15,condition:'Clear'};
  const result=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
  expect(result.status).toBe(200);
- expect((await result.json()).outfits[0].items).toHaveLength(4);
+ const data=await result.json();
+ expect(data.outfits[0].items).toHaveLength(4);
+ expect(data.outfits[0].items.find(item=>item.macroCategory==='outerwear').name).toMatch(/performance|training/i);
  const user=JSON.parse(fetchMock.mock.calls[0][1].body).messages.find(message=>message.role==='user').content;
- expect(user).toContain('warm performance layers');
  expect(user).not.toContain('wool blazer');
 });
 
@@ -365,7 +372,7 @@ test('catalog activity filtering runs before per-slot trimming',async()=>{
 });
 
 test('workout prompts exclude ineligible extra items while retaining a complete valid pool',async()=>{
- const {handler,fetchMock}=load();const names={top:'Navy performance training shirt',bottom:'Navy performance training trousers',shoes:'White athletic running shoes'};
+ const {handler,fetchMock}=load();const names={top:'Navy performance training shirt',bottom:'Navy performance training trousers',shoes:'White athletic running shoes',outerwear:'Warm performance training jacket'};
  const athletic=owned.map(item=>({...item,name:names[item.macroCategory]}));athletic.push({...owned[0],id:'ineligible-dress-shirt',name:'Formal dress shirt'});
  const body=await request({amount:400,currency:'USD'},athletic).json();body.stylePreferences='sport';body.occasion='Gym workout';body.prompt='Create one gym outfit.';
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));

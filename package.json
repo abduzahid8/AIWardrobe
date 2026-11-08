@@ -45,6 +45,7 @@
     "test:media-durability": "node scripts/validation/pending-media-durability.mjs",
     "test:navigation-links": "node --test scripts/validation/navigation-links.test.mjs",
     "test:release-toolchain": "node --test scripts/validation/release-toolchain.test.mjs",
+    "test:vercel-topology": "node --test scripts/validation/vercel-topology.test.mjs",
     "test:native-links": "node --test scripts/validation/native-links.test.mjs",
     "test:asset-formats": "node --test scripts/validation/asset-formats.test.mjs",
     "load:plan": "node scripts/load/readiness.mjs --plan",

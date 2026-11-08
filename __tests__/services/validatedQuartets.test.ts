@@ -1,4 +1,9 @@
-import { validatedQuartets } from '../../src/domain/validatedQuartets';
+import {
+  NVIDIA_RANK_UTILITY_WEIGHT,
+  createOutfitPlan,
+  selectedPlanDiagnostics,
+  validatedQuartets,
+} from '../../src/domain/validatedQuartets';
 import { stylingContext } from '../../src/domain/stylingContext';
 import { fourSlotOutfitReason } from '../../src/domain/outfitStructure';
 const pool = ['Cotton shirt', 'Fine cardigan', 'Tailored trousers', 'Leather loafers'].flatMap(
@@ -80,4 +85,47 @@ it('enforces explicit source mode before constructing quartets', () => {
       () => true
     ).every((c) => c.items.every((i) => i.id.startsWith('shop_')))
   ).toBe(true);
+});
+
+it('reports diagnostics from the selected deck rather than the planner seed', () => {
+  const looks = [
+    { concept: { id: 'minimalist' }, identity: 'clean-separates' },
+    { concept: { id: 'classic' }, identity: 'tailored-contrast' },
+  ];
+  expect(selectedPlanDiagnostics(looks)).toEqual({
+    conceptsAchieved: 2,
+    editorialIdentities: 2,
+  });
+  expect(selectedPlanDiagnostics([looks[0], looks[0]])).toEqual({
+    conceptsAchieved: 1,
+    editorialIdentities: 1,
+  });
+});
+
+it('keeps provider rank as a bounded quality tie-breaker', () => {
+  expect(NVIDIA_RANK_UTILITY_WEIGHT).toBeGreaterThan(0);
+  expect(NVIDIA_RANK_UTILITY_WEIGHT).toBeLessThan(0.035);
+});
+
+it('legacy role reserves recover compatible chinos when the feasible brief only covers one tailored bottom', () => {
+  const rows = [
+    ...['top','outerwear','bottom'].flatMap((slot,s) => Array.from({length:3},(_,i)=>({
+      id:`legacy-${s}-${i}`,macroCategory:slot,
+      name:[`White cotton shirt edition ${i}`,`Navy wool blazer edition ${i}`,
+        i===0?'Grey tailored wool trousers':`Beige cotton chinos edition ${i}`][s],
+    }))),
+    {id:'anchor',macroCategory:'shoes',name:'Black leather Oxford shoes'},
+  ];
+  const context=stylingContext({style:'classic',occasion:'date',anchorId:'anchor'});
+  context.legacyFourSlot=true;
+  const plan=createOutfitPlan(rows,context,()=>({valid:true,score:0.9}),{
+    requiredIds:['anchor'],target:3,priority:()=>[],cost:()=>0,
+  });
+  expect(plan.seed).toHaveLength(3);
+  expect(new Set(plan.seed.flatMap(l=>l.items.filter(i=>i.macroCategory==='bottom').map(i=>i.id))).size).toBe(3);
+  expect(plan.seed.every(l=>l.items.some(i=>i.id==='anchor'))).toBe(true);
+  const rejected=createOutfitPlan(rows,context,()=>({valid:false,score:0}),{
+    requiredIds:['anchor'],target:3,priority:()=>[],cost:()=>0,
+  });
+  expect(rejected.seed).toEqual([]);
 });

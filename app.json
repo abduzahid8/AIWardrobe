@@ -2,7 +2,7 @@
   "expo": {
     "name": "AIWardrobe",
     "slug": "wardrobe-app",
-    "version": "3.0.2",
+    "version": "3.0.3",
     "assetBundlePatterns": [
       "assets/icon.png",
       "assets/splash-icon.png",
@@ -30,7 +30,7 @@
     },
     "scheme": "com.aiwardrobe",
     "ios": {
-      "buildNumber": "65",
+      "buildNumber": "66",
       "supportsTablet": true,
       "bundleIdentifier": "com.aiwardrobe",
       "infoPlist": {

@@ -1,3 +1,4 @@
+import {sourceCatalogTaxonomy} from './catalogTaxonomy.ts';
 import {productIdentityKeys} from './outfitDiversity.ts';
 export function isDressGarment(item: { name?: string; type?: string; macroCategory?: string } | null | undefined): boolean {
     if (!item) return false;
@@ -51,6 +52,7 @@ export function outfitStructureReason(items: unknown, requireLayer = false): str
 
 /** Only identifiable shirts/T-shirts and pants can fill those categories. */
 export function isFourSlotCandidate(item: {macroCategory?: string; name?: string; type?: string}): boolean {
+    if(sourceCatalogTaxonomy(item)?.productKind==='complete-suit')return false;
     const text = `${item.name || ''} ${item.type || ''}`.toLowerCase();
     const name = String(item.name || '').toLowerCase();
     if (isNonOutfitItem(item) || isDressGarment(item)) return false;
@@ -72,13 +74,13 @@ export function isFourSlotCandidate(item: {macroCategory?: string; name?: string
 }
 
 /** App generation contract: exactly one layer, base shirt, pants and shoes. */
-export function fourSlotOutfitReason(items: unknown, _requireLayer = true): string | null {
-    const structural = outfitStructureReason(items, true);
+export function fourSlotOutfitReason(items: unknown, requireLayer = true): string | null {
+    const structural = outfitStructureReason(items, requireLayer);
     if (structural) return structural;
     const parts = items as Array<{macroCategory: string; name?: string; type?: string}>;
     const physicalKeys=new Set<string>();
     for(const item of parts){const keys=productIdentityKeys(item);if(keys.some(key=>physicalKeys.has(key)))return 'duplicate_physical_item';keys.forEach(key=>physicalKeys.add(key));}
-    if (parts.length !== 4 || parts.some(isDressGarment)) return 'requires_four_categories';
+    if ((requireLayer ? parts.length !== 4 : ![3,4].includes(parts.length)) || parts.some(isDressGarment)) return 'requires_four_categories';
     if (!parts.every(isFourSlotCandidate)) return 'invalid_required_category';
     const top = parts.find(item => item.macroCategory === 'top')!;
     const bottom = parts.find(item => item.macroCategory === 'bottom')!;

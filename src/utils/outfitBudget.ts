@@ -149,6 +149,30 @@ export function outfitShopSpend(
     return (items || []).reduce((sum, item) => sum + resolveShopPrice(item, catalog, currency, fx), 0);
 }
 
+/**
+ * One currency-consistent purchase total for a look, or null when the look
+ * cannot be totalled honestly: an unquoted shop piece, mixed currencies, or
+ * no priced pieces at all. Owned wardrobe pieces cost zero.
+ */
+export function outfitTotalQuote(
+    items: Array<QuoteItem | null | undefined>,
+    catalog?: QuoteItem[],
+): ListedShopQuote | null {
+    const quotes: ListedShopQuote[] = [];
+    for (const item of items || []) {
+        if (!item || (item.isWardrobe === true && item.isShopItem !== true)) continue;
+        const quote = resolveShopQuote(item, catalog);
+        const price = Number(quote?.price);
+        if (!quote || !quote.currency || !(price > 0)) return null;
+        quotes.push({ price, currency: quote.currency });
+    }
+    if (!quotes.length) return null;
+    const currencies = new Set(quotes.map((quote) => quote.currency));
+    if (currencies.size !== 1) return null;
+    const currency = quotes[0].currency as string;
+    return { price: quotes.reduce((sum, quote) => sum + quote.price, 0), currency };
+}
+
 export function formatMoney(amount: number, currency = 'USD'): string {
     if (!Number.isFinite(amount)) return '—';
     const n = amount;

@@ -700,6 +700,9 @@
     }
   },
   "outfitMaker": {
+    "activeBudget": "Active budget: {{amount}}. Every shown look is checked against this cap.",
+    "lookSpend": "Look total: {{total}} · Budget cap: {{cap}}",
+    "outfitTotal": "Outfit total",
     "qualityExplanation": {
       "garmentSummary": "{{top}} with {{outerwear}}, {{bottom}} and {{shoes}}.",
       "formalStructure": "A shirt and structured blazer keep the look appropriate for a formal occasion.",
@@ -710,7 +713,28 @@
       "tailoredFootwear": "Dress footwear follows the tailored trouser silhouette.",
       "restrainedPalette": "The restrained palette supports the minimalist style.",
       "casualLayer": "An overshirt gives the T-shirt a distinct casual layer.",
-      "fourPieces": "A complete look with a top, layer, trousers and shoes."
+      "fourPieces": "A complete look with a top, layer, trousers and shoes.",
+      "editorialLayered": "{{top}} sits under {{layer}}; {{bottom}} and {{shoes}} carry the lower line.",
+      "editorialUnlayered": "{{top}} pairs with {{bottom}} and {{shoes}}, without an extra layer.",
+      "paletteStory": "The {{palette}} palette links the known colors.",
+      "shapeStory": "The {{shape}} trouser line defines the silhouette.",
+      "shape_unknown": "",
+      "shape_slim": "slim",
+      "shape_regular": "regular",
+      "shape_wide": "wide",
+      "texture_unknown": "",
+      "texture_smooth": "smooth",
+      "texture_knit": "knitted",
+      "texture_ribbed": "ribbed",
+      "texture_denim": "denim",
+      "texture_suede": "suede",
+      "texture_corduroy": "corduroy",
+      "texture_tweed": "tweed",
+      "texture_technical": "technical",
+      "editorialTailoredFootwear": "The line of {{bottom}} is continued by the dress profile of {{shoes}}.",
+      "editorialLightBase": "{{top}} provides a light base inside the openable {{layer}}.",
+      "editorialTextureContrast": "{{layer}} adds {{texture}} texture against the smoother {{top}}.",
+      "editorialCasualFootwear": "{{bottom}} and {{shoes}} share a casual register."
     },
     "closestShopAlternative": "Closest available combination with pieces from the shop.",
     "closestAlternative": "Closest available combination from your wardrobe.",
@@ -783,6 +807,14 @@
     "feedbackDislike": "This look needs work",
     "feedbackUnavailable": "Could not save feedback. Please try again.",
     "concepts": {
+      "clean-lines": {"title": "Clean lines"},
+      "textured-knit": {"title": "Quiet knit texture"},
+      "modern-tailoring": {"title": "Tonal modern separates"},
+      "tailored": {"title": "Formal tailoring"},
+      "active": {"title": "Active layers"},
+      "ivy-knit": {"title": "Refined knit layers"},
+      "soft-tailoring": {"title": "Soft tailoring"},
+      "relaxed-layers": {"title": "Relaxed layers"},
       "refined-ivy": {
         "title": "Refined Ivy",
         "story": "A crisp base, easy tailoring and grounded leather footwear."
@@ -826,7 +858,50 @@
       "relaxed-knit": {
         "title": "Relaxed knit layers",
         "story": "Soft knit texture balances relaxed trousers and comfortable footwear."
+      },
+      "clean-transit": {
+        "title": "Clean transit",
+        "story": "{{top}} pairs with {{bottom}} and {{shoes}}, without an extra layer."
+      },
+      "unlayered-separates-1": {
+        "title": "Clean separates",
+        "story": "A complete look with no additional layer."
+      },
+      "unlayered-separates-2": {
+        "title": "Soft separates",
+        "story": "A complete look with no additional layer."
+      },
+      "unlayered-separates-3": {
+        "title": "Textured separates",
+        "story": "A complete look with no additional layer."
+      },
+      "available-separates": {
+        "title": "Inventory separates",
+        "story": "A complete alternative from the available catalog."
       }
+    },
+    "distinctInventoryLimited": "These are the strongest distinct, complete options found for this request.",
+    "editorialColors": {
+      "black": "black",
+      "white": "white",
+      "cream": "cream",
+      "beige": "beige",
+      "brown": "brown",
+      "navy": "navy",
+      "blue": "blue",
+      "grey": "grey",
+      "green": "green",
+      "olive": "olive",
+      "burgundy": "burgundy",
+      "red": "red",
+      "pink": "pink",
+      "purple": "purple",
+      "yellow": "yellow",
+      "orange": "orange",
+      "dark": "dark tones",
+      "dark-neutral": "dark neutrals",
+      "light": "light tones",
+      "earth": "earth tones"
     }
   },
   "paywall": {

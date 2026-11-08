@@ -1,0 +1,33 @@
+name: STYLIST 5 focused gates
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stylist5-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Compile affected Edge entry
+        run: deno check --no-config --node-modules-dir=none --lock=backend/supabase/functions/deno.lock --frozen backend/supabase/functions/generate-outfits/index.ts
+      - name: Focused request and planner contracts (no providers)
+        run: npx jest --runInBand __tests__/services/stylist5.test.ts __tests__/backend/outfitGenerationRequest.test.js
+      - name: Verify pushed bundle is the benchmarked bundle
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';import crypto from 'node:crypto';import assert from 'node:assert/strict';import esbuild from 'esbuild';
+          const b=await esbuild.build({entryPoints:['backend/supabase/functions/generate-outfits/index.ts'],bundle:true,format:'esm',platform:'neutral',target:'es2022',external:['https://*'],write:false});
+          assert.equal(crypto.createHash('sha256').update(b.outputFiles[0].contents).digest('hex'),JSON.parse(fs.readFileSync('docs/reports/stylist-5/benchmark.json')).bundleSha256);
+          JS

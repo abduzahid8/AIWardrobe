@@ -1,6 +1,7 @@
+import { valueIntelligence, imageEvidenceStrength } from './editorialIntelligence.ts';
 import { productIdentityKeys } from './outfitDiversity.ts';
 import { describeGarment, type GarmentEvidence } from './garmentDescriptor.ts';
-import { conceptGarmentAffinity, outfitConcepts } from './outfitConcepts.ts';
+import { conceptGarmentAffinity, conceptRoleCompatible, outfitConcepts } from './outfitConcepts.ts';
 import type { StylingContext } from './stylingContext.ts';
 
 /** Neutral retrieval wire contract shared by mobile discovery and Edge.
@@ -34,7 +35,9 @@ export function stylingCandidateRepresentatives<T>(
   context: StylingContext,
   maximum = rows.length
 ): T[] {
+  if (!rows.length || maximum <= 0) return [];
   const formulas = outfitConcepts(context);
+  const valueOf = valueIntelligence(rows.map(itemOf), context);
   const entries = rows
     .map((row, order) => {
       const item = itemOf(row),
@@ -51,7 +54,7 @@ export function stylingCandidateRepresentatives<T>(
         family,
         brand,
         keys: productIdentityKeys(item),
-        score: scoreOf(row),
+        score: scoreOf(row) + 0.12 * valueOf(item).score + 0.02 * imageEvidenceStrength(item),
         owned: item.isShopItem !== true && !String(item.id || '').startsWith('shop_'),
       };
     })
@@ -67,6 +70,37 @@ export function stylingCandidateRepresentatives<T>(
     });
   const families = new Map<string, number>();
   const brands = new Map<string, number>();
+  // Preserve independently feasible editorial roles BEFORE the generic cap.
+  // This prevents an equally suitable rack of blazers hiding every cardigan.
+  for (const formula of formulas) {
+    const roleCandidates = remaining
+      .filter((entry) => {
+        const slot = ['top', 'outerwear', 'bottom', 'shoes'].indexOf(entry.d.slot);
+        return (
+          slot >= 0 &&
+          formula.slots[slot].includes(entry.d.subtype) &&
+          conceptRoleCompatible(entry.d, formula, context)
+        );
+      });
+    // A cardigan and an overshirt serve different briefs. Comparing every
+    // role to the globally preferred subtype erases valid concepts before
+    // whole-look evaluation can judge them. Keep the band within this role.
+    const roleBest = Math.max(...roleCandidates.map(entry => entry.score));
+    const candidates = roleCandidates
+      .filter(entry => entry.score >= roleBest - 0.2)
+      .sort(
+        (a, b) =>
+          conceptGarmentAffinity(b.d, formula) - conceptGarmentAffinity(a.d, formula) ||
+          b.score - a.score
+      );
+    for (const chosen of candidates.slice(0, Math.min(2, maximum - selected.length))) {
+      if (!remaining.includes(chosen)) continue;
+      selected.push(chosen);
+      remaining.splice(remaining.indexOf(chosen), 1);
+      brands.set(chosen.brand, (brands.get(chosen.brand) || 0) + 1);
+      families.set(chosen.family, (families.get(chosen.family) || 0) + 1);
+    }
+  }
   while (remaining.length && selected.length < maximum) {
     const best = remaining[0].score;
     const f = formulas[selected.length % formulas.length];

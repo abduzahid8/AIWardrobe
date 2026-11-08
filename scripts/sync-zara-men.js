@@ -32,6 +32,7 @@ try {
 
 const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
+const { normalizeCatalogImageUrl } = require('./lib/catalogImageUrl');
 
 const APIFY_TOKEN  = process.env.APIFY_API_TOKEN;
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -522,12 +523,13 @@ function pickImage(raw) {
         return score;
     };
 
-    const direct = pick(raw, 'image_url');
+    const direct = normalizeCatalogImageUrl(pick(raw, 'image_url'));
     const candidates = [];
     if (isRenderableImageUrl(direct)) candidates.push(direct);
 
     if (Array.isArray(raw.image_urls)) {
-        for (const url of raw.image_urls) {
+        for (const value of raw.image_urls) {
+            const url = normalizeCatalogImageUrl(value);
             if (isRenderableImageUrl(url)) candidates.push(url);
         }
     }
@@ -576,7 +578,7 @@ function mapItem(raw, categoryIndex, itemIndex, categoryLabel, sourceUrl, syncTi
     if (!isSupportedMensClothing(raw, categoryLabel, sourceUrl)) return null;
 
     const name = pick(raw, 'name');
-    const imageUrl = pickImage(raw);
+    const imageUrl = normalizeCatalogImageUrl(pickImage(raw));
     if (!name || !imageUrl) return null;
 
     const garmentInput = [

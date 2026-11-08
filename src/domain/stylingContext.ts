@@ -9,6 +9,8 @@ export interface StylingPreferences {
   fitPreference?: string;
 }
 export interface StylingContext {
+  legacyFourSlot?: boolean;
+  optionalLayer?: boolean;
   ruleVersion: 'stylist-quality-v1';
   style: string;
   occasion: string;
@@ -22,12 +24,13 @@ export interface StylingContext {
   preferences?: StylingPreferences;
   uncertainty: string[];
   /** Private aggregate concept preferences; soft and bounded, never admission. */
-  conceptFeedback?: Readonly<Record<string,number>>;
+  conceptFeedback?: Readonly<Record<string, number>>;
 }
 export function isDateNightOccasion(occasion?: string | null): boolean {
   return /\bdate\b|свидан/i.test(String(occasion || '').replace(/[_-]+/g, ' '));
 }
 export function stylingContext(input: {
+  optionalLayer?: boolean;
   style?: string | null;
   occasion?: string | null;
   request?: string | null;
@@ -50,6 +53,7 @@ export function stylingContext(input: {
         }
       : null;
   return {
+    optionalLayer: input.optionalLayer === true,
     ruleVersion: 'stylist-quality-v1',
     style: normalizeStyleId(input.style || 'casual'),
     occasion,

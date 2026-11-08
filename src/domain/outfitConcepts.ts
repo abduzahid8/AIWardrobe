@@ -1,3 +1,4 @@
+import { resolveOutfitComposition, hasColdLayerIntent } from './outfitComposition.ts';
 import { colorFamilyOf } from './outfitDiversity.ts';
 import {
   describeGarment,
@@ -6,9 +7,12 @@ import {
 } from './garmentDescriptor.ts';
 import { formulaGarmentAffinity, stylingFormulas, type StylingFormula } from './stylingProfiles.ts';
 import type { StylingContext } from './stylingContext.ts';
-export const OUTFIT_CONCEPT_VERSION = 1;
+export const OUTFIT_CONCEPT_VERSION = 2;
 export interface OutfitConcept extends StylingFormula {
   title: string;
+  footwearPurpose?: 'city' | 'dress' | 'active';
+  layerPurpose?: 'light-shell' | 'weather-shell';
+  layerRole?: 'physical' | 'absent';
   palette: readonly string[];
   silhouette: 'balanced' | 'relaxed' | 'tailored';
   textures: readonly string[];
@@ -62,7 +66,7 @@ const smartLayer = concept(
   'Smart knit layering',
   [
     ['shirt', 'dress-shirt', 'polo'],
-    ['cardigan', 'overshirt'],
+    ['cardigan'],
     ['tailored-trouser', 'chino'],
     ['loafer', 'chelsea'],
   ],
@@ -145,24 +149,19 @@ const modern = concept(
 const travel = concept(
   'easy-transit',
   'Easy transit',
-  [
-    ['t-shirt', 'polo'],
-    ['overshirt', 'jacket'],
-    ['chino', 'jeans'],
-    ['minimal-sneaker', 'sneaker'],
-  ],
+  [['t-shirt'], ['overshirt'], ['chino', 'jeans'], ['minimal-sneaker', 'sneaker']],
   ['navy', 'grey', 'cream', 'blue'],
   'relaxed',
   ['smooth', 'denim', 'knit'],
   ['casual'],
-  'Easy proportions, walkable footwear and an adaptable layer for travel.'
+  'Easy proportions, understated footwear and an adaptable layer for travel.'
 );
 const utility = concept(
   'soft-utility',
   'Soft utility',
   [
-    ['t-shirt', 'shirt'],
-    ['jacket', 'overshirt', 'bomber'],
+    ['shirt', 'polo'],
+    ['jacket', 'bomber'],
     ['cargo', 'chino', 'jeans'],
     ['sneaker', 'boot', 'minimal-sneaker'],
   ],
@@ -176,8 +175,8 @@ const weekend = concept(
   'relaxed-knit',
   'Relaxed knit layers',
   [
-    ['t-shirt', 'polo', 'shirt'],
-    ['cardigan', 'pullover'],
+    ['polo', 'shirt'],
+    ['cardigan'],
     ['jeans', 'chino', 'trouser'],
     ['minimal-sneaker', 'sneaker', 'loafer'],
   ],
@@ -185,9 +184,9 @@ const weekend = concept(
   'relaxed',
   ['knit', 'denim', 'suede'],
   ['casual', 'smart'],
-  'Soft knit texture balances relaxed trousers and comfortable footwear.'
+  'Soft knit texture balances relaxed trousers and understated footwear.'
 );
-export function outfitConcepts(context: StylingContext): readonly OutfitConcept[] {
+function baseConcepts(context: StylingContext): readonly OutfitConcept[] {
   if (['formal', 'athletic'].includes(context.dressCode))
     return stylingFormulas(context).map((f) => ({
       ...f,
@@ -198,10 +197,60 @@ export function outfitConcepts(context: StylingContext): readonly OutfitConcept[
       register: [context.dressCode],
       story: 'A complete look aligned with the requested dress code.',
     }));
+  if (context.style === 'minimalist')
+    return [
+      {
+        ...modern,
+        id: 'clean-lines',
+        title: 'Clean lines',
+        palette: ['black', 'white', 'grey', 'navy'],
+        textures: ['smooth', 'denim'],
+        slots: [
+          ['t-shirt'],
+          ['overshirt'],
+          ['jeans', 'chino', 'trouser'],
+          ['minimal-sneaker', 'sneaker', 'chelsea'],
+        ],
+      },
+      {
+        ...weekend,
+        id: 'textured-knit',
+        title: 'Quiet knit texture',
+        palette: ['cream', 'grey', 'beige', 'brown'],
+        silhouette: 'balanced',
+        slots: [
+          ['shirt', 'dress-shirt'],
+          ['cardigan'],
+          ['chino', 'trouser', 'tailored-trouser'],
+          ['minimal-sneaker', 'loafer', 'chelsea'],
+        ],
+      },
+      {
+        ...modern,
+        id: 'modern-tailoring',
+        title: 'Tonal modern separates',
+        palette: ['black', 'navy', 'grey', 'cream'],
+        textures: ['smooth', 'knit'],
+        slots: [
+          ['polo', 'fine-knit'],
+          ['blazer', 'jacket'],
+          ['chino', 'tailored-trouser', 'trouser'],
+          ['loafer', 'minimal-sneaker', 'chelsea'],
+        ],
+      },
+    ];
   if (context.style === 'old_money') return [ivy, textured, smartLayer];
-  if (context.style === 'classic') return [office, separates, textured];
+  if (context.style === 'classic')
+    return [
+      office,
+      smartLayer,
+      {
+        ...textured,
+        slots: [textured.slots[0], ['coat', 'blazer'], textured.slots[2], textured.slots[3]],
+      },
+    ];
   if (context.style === 'semi_classic' && /date|свидан/.test(context.occasion))
-    return [evening, softDate, modern];
+    return [evening, softDate, { ...modern, layerPurpose: 'light-shell' }];
   if (context.style === 'semi_classic' || context.style === 'business_casual')
     return [separates, smartLayer, office];
   if (context.style === 'casual' || /travel|trip|путеш/.test(context.occasion))
@@ -250,7 +299,7 @@ export function lookConcept(
   const descriptors = items.map(describeGarment);
   return outfitConcepts(context)
     .map((concept) => {
-      const values = descriptors.map((d) => conceptGarmentAffinity(d, concept));
+      const values = descriptors.map((d) => conceptRoleCompatible(d,concept,context) ? conceptGarmentAffinity(d, concept) : 0.1);
       return {
         concept,
         score:
@@ -259,4 +308,65 @@ export function lookConcept(
       };
     })
     .sort((a, b) => b.score - a.score)[0];
+}
+
+/** Capability and real weather/intent decide whether a layer is mandated.
+ * No garment or placeholder represents the absence of a physical layer. */
+export function outfitConcepts(context: StylingContext): readonly OutfitConcept[] {
+  const activeFootwear = context.dressCode === 'athletic' || (context.dressCode === 'casual'
+    && /\b(hik(?:e|ing)|trail|trek(?:king)?|training|basketball)\b/i.test(`${context.activity} ${context.request}`));
+  const cityTravel = /\b(travel|trip|sightseeing)\b/i.test(`${context.occasion} ${context.request}`);
+  const cold = hasColdLayerIntent(context.weather);
+  const concepts: OutfitConcept[] = baseConcepts(context).map(c => ({
+    ...c,
+    footwearPurpose: activeFootwear ? 'active' as const : cityTravel ? 'city' as const : c.footwearPurpose,
+    ...(activeFootwear && context.dressCode === 'casual' ? {slots:[c.slots[0],c.slots[1],c.slots[2],['sport-sneaker','hiking-boot','boot']]} : {}),
+    ...(cold && context.dressCode !== 'formal' && context.dressCode !== 'athletic' ? {
+      layerRole: 'physical' as const,
+      layerPurpose: 'weather-shell' as const,
+      slots: [c.slots[0], ['coat','jacket'], c.slots[2], ['chelsea','dress-boot','boot','hiking-boot']],
+    } : {}),
+  }));
+  const policy = resolveOutfitComposition(
+    context.style,
+    context.weather,
+    context.request,
+    context.optionalLayer === true
+  );
+  if (!context.optionalLayer) return concepts;
+  if (policy.layered) {
+    const cool = context.weather?.temp != null && context.weather.temp < 18;
+    const winter = /winter|freezing|snow|зим|мороз/i.test(context.weather?.condition || '');
+    if (context.dressCode === 'casual' && (context.style === 'casual' || cityTravel)
+      && !cool && !winter && concepts.length) {
+      return [{...concepts[0],id:'clean-transit',title:'Clean transit',layerRole:'absent',
+        slots:[concepts[0].slots[0],[],concepts[0].slots[2],concepts[0].slots[3]],
+        story:'A simple base and trousers with understated city footwear.'},...concepts.slice(1)];
+    }
+    return concepts;
+  }
+  return concepts.map((c, index) => ({
+    ...c,
+    id: `unlayered-separates-${index + 1}`,
+    title: ['Clean separates', 'Soft separates', 'Textured separates'][index] || 'Clean separates',
+    layerRole: 'absent' as const,
+    slots: [c.slots[0], [], c.slots[2], c.slots[3]],
+    story: 'A complete look with no additional physical layer.',
+  }));
+}
+
+/** A role requirement belongs to a brief, not a global catalog veto. A known
+ * insulated shell can serve a cold-weather brief, but not a light evening layer.
+ * Missing construction evidence remains unknown and eligible. */
+export function conceptRoleCompatible(
+  d: GarmentDescriptor,
+  c: OutfitConcept,
+  context: StylingContext
+): boolean {
+  if (d.slot === 'outerwear' && c.layerPurpose === 'light-shell' && d.insulated) return false;
+  const winterTraction = context.weather?.temp != null && context.weather.temp < 5
+    && /snow|ice|снег|л[её]д/i.test(context.weather.condition || '');
+  if (d.slot === 'shoes' && c.footwearPurpose === 'city'
+    && (d.trainingFootwear || d.footwearPurpose === 'training' || (!winterTraction && (d.rugged || d.footwearPurpose === 'trail')))) return false;
+  return true;
 }

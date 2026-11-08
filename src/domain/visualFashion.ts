@@ -22,8 +22,12 @@ export interface VisualFashionProfile {
   imageQuality?: { width: number; height: number; textCoverage?: number };
 }
 const allowed: Partial<Record<keyof GarmentDescriptor, readonly (string | boolean)[]>> = {
-  slot: ['top', 'outerwear', 'bottom', 'shoes'],
-  subtype: [
+  insulated: [true,false],
+  footwearPurpose: ['walking', 'training', 'trail', 'dress'],
+  accentHue: ['black', 'white', 'cream', 'beige', 'brown', 'navy', 'blue', 'grey', 'green', 'red'],
+  hemShape: ['straight', 'tapered', 'barrel', 'flared'],
+  slot: ['top', 'outerwear', 'bottom', 'shoes','outfits'],
+  subtype: ['complete-suit',
     'dress-shirt',
     'shirt',
     'field-shirt',
@@ -101,6 +105,7 @@ export function confidentVisual(o: VisualObservation | undefined): boolean {
     o.confidence <= 1 &&
     Number.isFinite(o.margin) &&
     o.margin >= 0.1 &&
+    o.margin <= 1 &&
     ['image-model', 'image-pixels', 'image-ocr', 'human'].includes(o.evidence)
   );
 }
@@ -142,7 +147,9 @@ export function applyVisualFashion(
     (result as unknown as Record<string, unknown>)[key] = observation.value;
     result.evidence.push(`image:${key}:${p.model}@${p.revision}`);
   }
-  result.casualSole = ['comfort', 'sneaker', 'rugged'].includes(result.soleProfile);
+  if (result.footwearPurpose === 'training') result.trainingFootwear = true;
+  if (result.footwearPurpose === 'trail') result.rugged = true;
+  result.casualSole = ['comfort', 'sneaker', 'rugged'].includes(result.soleProfile) || (result.soleProfile === 'unknown' && base.casualSole);
   result.athletic =
     result.formality === 'athletic' ||
     ['athletic-trouser', 'sport-sneaker'].includes(result.subtype);
@@ -151,6 +158,7 @@ export function applyVisualFashion(
   return result;
 }
 export function subtypeSlot(subtype: string): string {
+  if(subtype==='complete-suit')return 'outfits';
   if (
     ['dress-shirt', 'shirt', 'field-shirt', 'polo', 't-shirt', 'fine-knit', 'sweater'].includes(
       subtype

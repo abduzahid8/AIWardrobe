@@ -1,8 +1,40 @@
+import {hasColdLayerIntent} from './outfitComposition.ts';
 import { normalizeGarmentText, SHORT_SLEEVE_RE } from './garmentText.ts';
 import { patternOf } from './outfitDiversity.ts';
 import { STYLING_PROFILES } from './stylingProfiles.ts';
 import { describeGarment, type GarmentEvidence, type GarmentDescriptor } from './garmentDescriptor.ts';
 import { isDateNightOccasion, type StylingContext } from './stylingContext.ts';
+
+/**
+ * Quiet classic palettes: a saturated scarlet/vivid red fights the muted
+ * scheme Old Money, Classic, Business Casual, Semi-Classic and Minimalist
+ * build on. The persisted visual color is trusted evidence even when the
+ * title never names the color (verified: a "Classic double-pleated chino
+ * pant" whose visual profile reads red surfaced in an Old Money work deck).
+ * Muted reds (burgundy, wine, maroon, oxblood) are a different decision and
+ * stay welcome — vivid scarlet and burgundy must not collapse into one
+ * family. An explicit favorite color still wins, and the rule is scoped to
+ * these styles: never a global color ban.
+ */
+const QUIET_PALETTE_STYLES = new Set(['old_money', 'classic', 'business_casual', 'semi_classic', 'minimalist']);
+const MUTED_RED_RE = /\b(burgundy|wine|maroon|oxblood|claret)\b/;
+const VIVID_RED_TOKEN_RE = /\b(scarlet|crimson|(?:vivid|bright|neon|electric)[ -]red)\b/;
+const RED_WORD_RE = /\bred\b/;
+
+function vividRedConflict(item: GarmentEvidence, context: StylingContext): boolean {
+  if (!QUIET_PALETTE_STYLES.has(context.style)) return false;
+  const favorites = (context.preferences?.favoriteColors || []).map((color) => String(color).toLowerCase());
+  if (favorites.some((color) => RED_WORD_RE.test(color))) return false;
+  const colorField = normalizeGarmentText(
+    `${typeof item.color === 'string' ? item.color : ''} ${String((item as Record<string, unknown>).primary_color ?? '')}`,
+  ).replace(/\s+/g, ' ');
+  const nameText = normalizeGarmentText(String(item.name || ''));
+  // A muted token in either the persisted color or the title keeps the
+  // garment admissible; otherwise any red evidence conflicts.
+  if (MUTED_RED_RE.test(colorField) || MUTED_RED_RE.test(nameText)) return false;
+  return RED_WORD_RE.test(colorField) || RED_WORD_RE.test(nameText) || VIVID_RED_TOKEN_RE.test(colorField) || VIVID_RED_TOKEN_RE.test(nameText);
+}
+
 /** Same hard dress/activity exclusions before pool caps and after construction. */
 export function garmentContextReason(
   item: GarmentEvidence,
@@ -27,7 +59,7 @@ export function garmentContextReason(
       : item.name || '';
   const colorEvidence =
     ' ' +
-    normalizeGarmentText(explicit)
+    normalizeGarmentText(`${explicit} ${d.evidence.some(e=>e.startsWith('image:color:')) ? d.color : ''}`)
       .replace(/[^\p{L}]+/gu, ' ')
       .trim() +
     ' ';
@@ -49,6 +81,7 @@ export function garmentContextReason(
     )
   )
     return 'excluded_pattern';
+  if (vividRedConflict(item, context)) return 'vivid_red_conflicts_with_quiet_palette';
   if (context.dressCode === 'formal') {
     const baseText = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
     if (d.slot === 'top' && (d.utilityConstruction || /\b(seaside|resort|hawaiian)\b/.test(baseText)))
@@ -204,7 +237,9 @@ export function scoreGarmentForContext(item: GarmentEvidence, context: StylingCo
   if (context.style === 'minimalist' && d.pattern !== 'solid' && d.pattern !== 'unknown')
     score -= 0.08;
   if (!context.weather && d.bulk === 'heavy') score -= 0.1;
+  if(d.insulated && !hasColdLayerIntent(context.weather))score-=context.dressCode==='smart'?0.3:0.15;
   if (d.bulk === 'light' && ['cardigan', 'blazer', 'overshirt'].includes(d.subtype)) score += 0.05;
+  if(d.color!=='unknown' && context.preferences?.favoriteColors?.some(color=>normalizeGarmentText(color).trim()===d.color))score+=0.03;
   const fit = context.preferences?.fitPreference?.toLowerCase() || '';
   if (d.volume !== 'unknown' && fit) {
     const wanted = /slim|fitted/.test(fit) ? 'slim' : /relaxed|loose|wide|oversized/.test(fit) ? 'wide' : /regular|straight/.test(fit) ? 'regular' : '';

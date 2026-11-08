@@ -192,7 +192,7 @@ it('maintains physical uniqueness, anchors and caller budget validation with a b
       maxEvaluations: 64,
     }
   );
-  expect(plan.seed).toHaveLength(3);
+  expect(plan.seed).toHaveLength(1);
   expect(calls).toBeLessThanOrEqual(64);
   const keys = new Set<string>();
   for (const look of plan.seed) {

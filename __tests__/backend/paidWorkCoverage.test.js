@@ -27,14 +27,40 @@ test.each(paid)('%s cannot opt out of shared paid-work admission', (endpoint) =>
   let binding,
     matched = false,
     returnsDenied = false;
+  // Admission may be traced (`await trace.wait('admission', () => enforceRateLimit(...))`).
+  // Unwrap awaits, arrow bodies and wait() wrappers to find the actual call;
+  // the authorization guarantees are asserted on the call itself.
+  function admissionCall(root) {
+    let current = root;
+    while (current) {
+      if (ts.isAwaitExpression(current)) {
+        current = current.expression;
+      } else if (ts.isArrowFunction(current)) {
+        const body = current.body;
+        if (ts.isBlock(body)) {
+          const ret = body.statements.find(ts.isReturnStatement);
+          current = ret?.expression;
+        } else {
+          current = body;
+        }
+      } else if (ts.isCallExpression(current)) {
+        const callee = current.expression.getText(ast);
+        if (callee === 'enforceRateLimit') return current;
+        if (callee.endsWith('.wait')) {
+          current = current.arguments[current.arguments.length - 1];
+        } else {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    }
+    return null;
+  }
   function visit(node) {
-    if (
-      ts.isVariableDeclaration(node) &&
-      node.initializer &&
-      ts.isAwaitExpression(node.initializer)
-    ) {
-      const call = node.initializer.expression;
-      if (ts.isCallExpression(call) && call.expression.getText(ast) === 'enforceRateLimit') {
+    if (ts.isVariableDeclaration(node) && node.initializer) {
+      const call = admissionCall(node.initializer);
+      if (call) {
         const options = call.arguments[1];
         expect(ts.isObjectLiteralExpression(options)).toBe(true);
         const props = new Map(

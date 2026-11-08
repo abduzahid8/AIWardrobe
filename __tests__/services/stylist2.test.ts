@@ -59,3 +59,14 @@ test('final selection values styling changes over IDs and provider rank within q
   const weak=look('weak',casual,0.3,0);
   expect(select([...candidates.slice(0,3),weak])).not.toContain(weak);
 });
+
+test('reserves each concept role before comparing different garment purposes', () => {
+  const rows = Array.from({length:12},(_,i)=>({id:`overshirt-${i}`,macroCategory:'outerwear',name:`Grey cotton overshirt edition ${i}`,quality:0.95}));
+  rows.push({id:'cardigan',macroCategory:'outerwear',name:'Cream fine merino cardigan',quality:0.6},
+    {id:'weak-cardigan',macroCategory:'outerwear',name:'Brown fine cardigan',quality:0.1});
+  const picks=stylingCandidateRepresentatives(rows,i=>i,i=>i.quality,stylingContext({style:'minimalist'}),6);
+  expect(picks.some(i=>i.id==='cardigan')).toBe(true);
+  expect(picks.some(i=>i.id==='weak-cardigan')).toBe(false);
+  expect(picks.some(i=>i.id.startsWith('overshirt-'))).toBe(true);
+  expect(picks.length).toBeLessThanOrEqual(6);
+});
