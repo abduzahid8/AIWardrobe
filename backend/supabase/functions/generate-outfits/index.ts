@@ -1154,7 +1154,14 @@ async function fetchShopItemsForAllSlotsEdge(
     context=stylingContext({style,occasion:requestIntent}), trace?:GenerationTrace,
 ):Promise<any[]> {
     if(!requiredSlots.length)return []
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000)
+    // Abort-aware transports settle quickly, but a transport that ignores the
+    // signal must not hang the request indefinitely. The shared deadline races
+    // every catalog await and rejects with the same lookup failure.
+    const controller=new AbortController()
+    let rejectDeadline:(reason?:unknown)=>void=()=>{}
+    const deadline=new Promise<never>((_,reject)=>{rejectDeadline=reject})
+    const timer=setTimeout(()=>{controller.abort();rejectDeadline(new CatalogLookupError())},12000)
+    const settled=(pending:PromiseLike<any>)=>Promise.race([Promise.resolve(pending),deadline])
     const cap=context.budget || nativeBudget
     const retrievalContext:Record<string,unknown>={engine:'stylist5',dressCode:context.dressCode,luxury:valueIntelligence<any>([],context)({}).luxury,
         preferredSubtypes:[...new Set(outfitConcepts(context).flatMap(c=>c.slots.flat()))],
@@ -1172,13 +1179,13 @@ async function fetchShopItemsForAllSlotsEdge(
                 p_currency:nativeBudget?.currency||null,p_max_price:nativeBudget?.amount??null,p_context:retrievalContext,
             }
             let pending=supabaseClient.rpc('catalog_stylist_candidates_compact',rpcArgs).abortSignal(controller.signal)
-            let result=trace?await trace.wait('catalog',()=>Promise.resolve(pending)):await pending
+            let result=trace?await trace.wait('catalog',()=>settled(pending)):await settled(pending)
             // Keep rollout safe when the Edge function is updated before the
             // additive compact-RPC migration reaches the project.
             if(result.error && ['PGRST202','404'].includes(String(result.error.code||result.error.status||''))) {
                 compactUsed=false
                 pending=supabaseClient.rpc('catalog_stylist_candidates',rpcArgs).abortSignal(controller.signal)
-                result=trace?await trace.wait('catalog_legacy',()=>Promise.resolve(pending)):await pending
+                result=trace?await trace.wait('catalog_legacy',()=>settled(pending)):await settled(pending)
             }
             const {data,error}=result
             if(error||!Array.isArray(data))throw new CatalogLookupError()
@@ -1219,6 +1226,10 @@ async function fetchShopItemsForAllSlotsEdge(
                 const prepared=prepareGarment(item,cached ? applyVisualFashion(cached,item) : undefined)
                 if(trace&&cached)trace.counts.cachedDescriptors=(trace.counts.cachedDescriptors||0)+1
                 if(trace&&visual)trace.counts.visualDescriptors=(trace.counts.visualDescriptors||0)+1
+                // Non-garment rows (watches, towels, bags mislabeled by a feed)
+                // never enter the stylist candidate pool, whatever slot the RPC
+                // claims: the planner's eligibility relies on this admission.
+                if(isNonOutfitItem(prepared))continue
                 all.push(prepared)
             }
             if(trace)trace.syncMs.catalog_filter=(trace.syncMs.catalog_filter||0)+performance.now()-filterStart
@@ -1243,7 +1254,7 @@ async function fetchShopItemsForAllSlotsEdge(
         if(compactUsed && hydrationIds.length) {
             const hydrationRequest=supabaseClient.rpc('catalog_stylist_candidate_hydration',{p_ids:hydrationIds,p_context:retrievalContext})
                 .abortSignal(controller.signal)
-            let hydration=trace?await trace.wait('catalog_hydration',()=>Promise.resolve(hydrationRequest)):await hydrationRequest
+            let hydration=trace?await trace.wait('catalog_hydration',()=>settled(hydrationRequest)):await settled(hydrationRequest)
             if(hydration.error && ['PGRST202','404'].includes(String(hydration.error.code||hydration.error.status||''))) {
                 hydration={data:[],error:null}
             }
@@ -1403,7 +1414,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
 
     if (req.method !== 'POST') return new Response(JSON.stringify({success:false,outfits:[],error:'method_not_allowed'}), {status:405,headers:{...corsHeaders,'Content-Type':'application/json'}})
 
-    const rateLimitResponse = await trace.wait('admission',()=>enforceRateLimit(req, { feature: 'generate-outfits', limit: 10, headers: corsHeaders }))
+    const rateLimitResponse = await trace.wait('admission',()=>enforceRateLimit(req, { feature: 'generate-outfits', limit: 10, headers: corsHeaders, meterPaidWork: true }))
     if (rateLimitResponse) return rateLimitResponse
 
 
@@ -1691,7 +1702,10 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
 
         trace.stage='catalog_retrieval'
         wardrobeItems=wardrobeItems.map((item:any)=>Object.isFrozen(item)?item:prepareGarment(item))
-        const qualityContext=stylingContext({style:stylePreferences,occasion,request:prompt,weather,anchorId:anchorItemId,preferences,sourceMode:wardrobeOnly?'wardrobe':catalogOnly?'catalog':'mixed'});
+        // Workout intent overrides the saved style for planning, retrieval and
+        // quality. Building this context from the raw saved style judged gym
+        // clothes as Old Money and rejected the whole deck.
+        const qualityContext=stylingContext({style:selectionStyle,occasion,request:prompt,weather,anchorId:anchorItemId,preferences,sourceMode:wardrobeOnly?'wardrobe':catalogOnly?'catalog':'mixed'});
         qualityContext.conceptFeedback=conceptFeedback;
         qualityContext.legacyFourSlot=body.compositionProtocol!=='optional-layer-v1';
         qualityContext.optionalLayer=body.compositionProtocol==='optional-layer-v1' && Deno.env.get('STYLIST_OPTIONAL_LAYER_V1')!=='false' && qualityContext.dressCode!=='formal' && !(qualityContext.weather?.temp!=null&&qualityContext.weather.temp<18) && !/winter|freezing|snow|зим|мороз/i.test(qualityContext.weather?.condition||'') && !requiredIdsFromBodyLayer();
@@ -2147,7 +2161,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
             const code=missing?'insufficient_candidates':plan.diagnostics.cpuRisk?'planning_cpu_risk'
                 :(gateCounts.budget+plan.diagnostics.budgetRejected)>0&&!gateCounts.quality?'no_outfit_within_budget':plan.diagnostics.validCandidates?'incomplete_outfit_selection':'outfit_quality_rejected'
             return new Response(JSON.stringify({success:false,outfits:[],code,stage:'planning',poolExpansion:poolExpansionAudit,
-                diagnostics:{counts:plan.diagnostics.counts,evaluations:plan.diagnostics.evaluations,valid:plan.diagnostics.validCandidates,
+                diagnostics:{counts:plan.diagnostics.counts,proposals:plan.diagnostics.proposals,evaluations:plan.diagnostics.evaluations,valid:plan.diagnostics.validCandidates,gates:{...gateCounts},
                     bounded:!plan.diagnostics.exploredCompletely,cpuRisk:plan.diagnostics.cpuRisk,selection:plan.selection}}),{status:plan.diagnostics.cpuRisk?503:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
         }
         const providerTrace:ProviderAttempt[]=[]

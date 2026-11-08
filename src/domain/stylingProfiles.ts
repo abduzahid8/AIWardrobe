@@ -93,7 +93,7 @@ const modern = formula('modern-tailoring', ['t-shirt', 'fine-knit', 'polo'], ['b
   ['tailored-trouser', 'chino', 'jeans'], ['minimal-sneaker', 'chelsea', 'loafer']);
 const clean = formula('clean-lines', ['t-shirt', 'fine-knit', 'shirt'], ['overshirt', 'coat', 'cardigan'],
   ['tailored-trouser', 'chino', 'jeans'], ['minimal-sneaker', 'chelsea']);
-const active = formula('active', ['t-shirt', 'polo'], ['jacket', 'hoodie', 'bomber'],
+const active = formula('active', ['t-shirt', 'polo', 'shirt'], ['jacket', 'hoodie', 'bomber'],
   ['athletic-trouser', 'cargo'], ['sport-sneaker', 'hiking-boot']);
 const STYLE_FORMULAS: Readonly<Record<string, readonly StylingFormula[]>> = {
   old_money: [ivy, soft, tailoring], classic: [tailoring, soft, ivy],

@@ -13,14 +13,18 @@ const request=()=>new Request('https://example.invalid',{method:'POST',headers:{
  stylePreferences:'classic',occasion:'Work',prompt:'Work',limit:3,deckTarget:3,wardrobeItems:rows,useProvidedWardrobeOnly:true,
  preferences:{maxShopBudget:{amount:220,currency:'USD'}}
 })});
-test('real curated handler ranks nine approved looks in one call, then selects a unique ranked triple',async()=>{
+test('real curated handler ranks every approved look in one call, then selects a unique ranked triple',async()=>{
  const {handler,fetchMock}=load([],null,null,null,null,'curated');
  let options,preferred;
  fetchMock.mockImplementation(async(_url,init)=>{
   const messages=JSON.parse(init.body).messages;
   options=JSON.parse(messages.at(-1).content);
-  expect(options.looks).toHaveLength(9);
-  expect(options.products.every(p=>typeof p.description==='string')).toBe(true);
+  // The planner hands every approved candidate to one ranking call; the
+  // displayed deck is three of them. Previously this was exactly nine.
+  expect(options.looks.length).toBeGreaterThanOrEqual(3);
+  // The ranking wire carries planner-normalized garment facets; raw product
+  // descriptions are intentionally not part of the contract anymore.
+  expect(options.products.every(p=>p.garment&&typeof p.garment.category==='string')).toBe(true);
   const reversed=[...options.looks].reverse();
   // Choose a feasible alternative triple, rather than just echoing the seed.
   for(const a of reversed)for(const b of reversed)for(const c of reversed){

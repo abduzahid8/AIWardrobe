@@ -18,20 +18,23 @@ const api = new Function('require','exports','Deno',compiled+'\nreturn {fetchSho
   for(const module of ['occasionRules','outfitStructure','garmentContext','stylingContext','editorialIntelligence','outfitConcepts','visualFashion','stylist5VisualContract','garmentDescriptor','catalogCandidates','lookExplanation','validatedQuartets','legacyClientCompatibility','outfitDeckSelection'])if(name.includes(module))return require(path.resolve(__dirname,'../../src/domain/',module+'.ts'));
   return {};
  }, {}, {env:{get:()=>undefined}});
+// RPC-first retrieval contract: the compact candidate RPC returns already
+// normalized rows. Hydration is a separate RPC and stays empty here so the
+// compact picks are asserted directly.
+const rpcClient=(rows)=>({rpc:(name)=>{const q={abortSignal:()=>q,then:resolve=>Promise.resolve(
+ name==='catalog_stylist_candidate_hydration'?{data:[],error:null}:{data:rows,error:null}).then(resolve)};return q;}});
+
 test.each(['UZS','USD','EUR'])('shop candidates retain authoritative %s currency for budget conversion',async currency=>{
- const row={id:'fixture-shirt',name:'White cotton shirt',category:'tops',garment_type:'upper_body',price:400000,currency,image_url:'https://example.invalid/shirt.jpg'};
- const chain={select:()=>chain,eq:()=>chain,limit:()=>chain,or:()=>chain,order:()=>chain,gt:()=>chain,abortSignal:()=>chain,then:resolve=>Promise.resolve({data:[row],error:null}).then(resolve)};
- const rows=await api.fetchShopItemsForAllSlotsEdge({from:()=>chain},['top'],'casual',1,new Set());
+ const row={id:'fixture-shirt',name:'White cotton shirt',fashion_slot:'top',category:'tops',garment_type:'upper_body',price:400000,currency,image_url:'https://example.invalid/shirt.jpg'};
+ const rows=await api.fetchShopItemsForAllSlotsEdge(rpcClient([row]),['top'],'casual',1,new Set());
  expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({id:'shop_fixture-shirt',price:400000,currency});
  if(currency==='UZS') expect(api.budgetInCurrencyEdge({amount:250,currency:'USD',fx:referenceFx},rows[0].currency)).toEqual({amount:3011180,currency:'UZS'});
 });
 
-test('candidate fetch selects and preserves the exact retailer URL',async()=>{
- const row={id:'fixture-shirt',name:'White cotton shirt',category:'tops',garment_type:'upper_body',price:50,currency:'USD',image_url:'https://example.invalid/shirt.jpg',source_url:'https://retailer.invalid/products/exact-shirt'};
- const select=jest.fn(()=>chain);
- const chain={select,eq:()=>chain,limit:()=>chain,or:()=>chain,order:()=>chain,gt:()=>chain,abortSignal:()=>chain,then:resolve=>Promise.resolve({data:[row],error:null}).then(resolve)};
- const rows=await api.fetchShopItemsForAllSlotsEdge({from:()=>chain},['top'],'casual',1,new Set());
- expect(select.mock.calls[0][0].split(',').map(value=>value.trim())).toContain('source_url');
+test('candidate fetch preserves the exact retailer URL from the compact RPC row',async()=>{
+ const row={id:'fixture-shirt',name:'White cotton shirt',fashion_slot:'top',category:'tops',garment_type:'upper_body',price:50,currency:'USD',image_url:'https://example.invalid/shirt.jpg',source_url:'https://retailer.invalid/products/exact-shirt'};
+ const rows=await api.fetchShopItemsForAllSlotsEdge(rpcClient([row]),['top'],'casual',1,new Set());
+ expect(rows).toHaveLength(1);
  expect(rows[0].shopUrl).toBe(row.source_url);
 });
 
