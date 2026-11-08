@@ -1,0 +1,66 @@
+name: Build pinned Stylist 5 Edge candidate
+on:
+  push:
+    branches: [release/stylist5-v2-edge-20261108]
+    paths: ['.github/workflows/stylist5-edge-candidate-20261108.yml']
+permissions:
+  contents: write
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Focused production contract gates
+        run: |
+          npx jest --runInBand __tests__/backend/fourSlotHosted.test.js __tests__/services/stylist5.test.ts __tests__/services/stylist2.test.ts __tests__/services/stylistPresentation.test.ts
+          npm run typecheck
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Edge source compile
+        run: deno check --no-config --node-modules-dir=none --lock=backend/supabase/functions/deno.lock --frozen backend/supabase/functions/generate-outfits/index.ts
+      - name: Compile exact pinned production candidate
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import assert from 'node:assert/strict';
+          import esbuild from 'esbuild';
+          const { outputFiles } = await esbuild.build({
+            absWorkingDir:process.cwd(),
+            entryPoints:['backend/supabase/functions/generate-outfits/index.ts'],
+            bundle:true,format:'esm',platform:'neutral',
+            target:'es2022',external:['https://*'],
+            write:false,logLevel:'silent'
+          });
+          const bytes=outputFiles[0].contents;
+          const hash=crypto.createHash('sha256').update(bytes).digest('hex');
+          const expected=JSON.parse(fs.readFileSync('docs/reports/stylist-5/benchmark.json')).bundleSha256;
+          assert.equal(hash,expected,'Candidate differs from tested benchmark bundle');
+          assert(bytes.length>200000 && bytes.length<1500000,'Unexpected Edge source size');
+          fs.mkdirSync('.stylist5-release-candidate',{recursive:true});
+          fs.writeFileSync('.stylist5-release-candidate/index.ts',bytes);
+          fs.writeFileSync('.stylist5-release-candidate/manifest.json',JSON.stringify({
+            sourceCommit:'30b05205273a96e44fa73aa16376bed751a2c013',
+            sourceBranch:'codex/stylist-5-integrated-20261108',
+            generationVersion:'stylist-5-editorial-v2',
+            bundleSha256:hash,bytes:bytes.length,
+            compiledBy:'GitHub Actions pinned source',
+          },null,2)+'\n');
+          console.log('Pinned bundle hash verified:',hash,'size:',bytes.length);
+          JS
+      - name: Store release artifact without altering PR 13
+        run: |
+          git config user.name "AIWardrobe release build"
+          git config user.email "actions@users.noreply.github.com"
+          git add .stylist5-release-candidate/index.ts .stylist5-release-candidate/manifest.json
+          git commit -m "build: preserve validated stylist 5 production candidate"
+          git push origin HEAD:release/stylist5-v2-edge-20261108
