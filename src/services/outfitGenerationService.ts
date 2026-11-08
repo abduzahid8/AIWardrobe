@@ -1457,12 +1457,22 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
     return {
         id: o.id || `outfit_${Date.now()}_${Math.random()}`,
         compositionProtocol:o.compositionProtocol,explanationVersion:o.explanationVersion,concept:o.concept,selectionSource:o.selectionSource,generationRequestId:o.generationRequestId,engineVersion:o.engineVersion,
-        description: o.explanationVersion===1?editorialCopy(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})):stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).description,
+        // Server explanations are authoritative for Stylist 5. Rebuilding
+        // them here caused duplicate/contradictory copy on older clients.
+        description: typeof o.description === 'string' && o.description.trim()
+          ? o.description
+          : o.explanationVersion===1
+            ? editorialCopy(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather}))
+            : stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).description,
         style: o.style || params.stylePreferences || 'Casual',
         occasion: o.occasion || params.occasion || 'Everyday',
         confidence: assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score,
         matchScore: assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score,
         items: normalizedItems,
-        stylingTips: o.explanationVersion===1?[]:stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).tips,
+        stylingTips: Array.isArray(o.stylingTips)
+          ? o.stylingTips
+          : o.explanationVersion===1
+            ? []
+            : stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).tips,
     };
 }

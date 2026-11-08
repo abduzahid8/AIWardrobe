@@ -112,15 +112,34 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       (item) => item.macroCategory === slot && !garmentContextReason(item, context)
     );
     const locked = pool.filter((item) => required.has(item.id));
-    return locked.length
-      ? locked
-      : stylingCandidateRepresentatives(
-          pool,
-          (i) => i,
-          (i) => scoreGarmentForContext(i, context),
-          context,
-          24
-        );
+    if (locked.length) return locked;
+    const formulas = outfitConcepts(context);
+    const reserved = formulas.flatMap((formula) =>
+      stylingCandidateRepresentatives(
+        pool.filter((item) => {
+          const descriptor = describeGarment(item);
+          const slotIndex = slots.indexOf(slot);
+          return formula.slots[slotIndex]?.includes(descriptor.subtype)
+            && conceptRoleCompatible(descriptor, formula, context);
+        }),
+        (i) => i,
+        (i) => scoreGarmentForContext(i, context),
+        context,
+        6,
+      ),
+    );
+    const unique = new Map<string, T>();
+    for (const item of [...reserved, ...stylingCandidateRepresentatives(
+      pool,
+      (i) => i,
+      (i) => scoreGarmentForContext(i, context),
+      context,
+      24,
+    )]) {
+      if (unique.size >= 24) break;
+      unique.set(productIdentityKeys(item).join('|') || item.id, item);
+    }
+    return [...unique.values()];
   });
   const canFill = (f: OutfitConcept) =>
     pools.every(

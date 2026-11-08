@@ -382,9 +382,10 @@ export function rejectForStyleOccasion(
     if (workish && isTopOrLayer && /\bdenim\b/.test(blob) && /\bshirts?\b/.test(blob)) {
         return 'denim shirts underdress a work look';
     }
-    if (workish && (slot === 'outerwear' || slot === '') && isKnitOnlyLayerBlob(blob)) {
-        return 'knit sweaters are not work outerwear';
-    }
+    // Work is a dress code, not a ban on all soft layers. Fine knits,
+    // cardigans and restrained overshirts are valid for minimalist and
+    // contemporary smart-work briefs; the whole-look coherence judge still
+    // rejects visibly casual or athletic combinations.
     if (CLASSIC_STYLES.has(style)) {
         const casualActivity = normalizedContext.dressCode === 'casual' && /\b(casual|travel|trip)\b/.test(occasion);
         // Classic is an aesthetic, not an evening dress code. Minimal leather

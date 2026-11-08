@@ -1181,6 +1181,7 @@ async function fetchShopItemsForAllSlotsEdge(
     if(budgetFx)retrievalContext.rates=budgetFx.snapshot.uzsPerUnit
     const all:any[]=[]
     const maximum=Math.min(24,Math.max(perSlot,18))
+    let compactUsed=true
     try {
         let slots=[...requiredSlots]
         for(let page=0;page<2&&slots.length;page++) {
@@ -1193,6 +1194,7 @@ async function fetchShopItemsForAllSlotsEdge(
             // Keep rollout safe when the Edge function is updated before the
             // additive compact-RPC migration reaches the project.
             if(result.error && ['PGRST202','404'].includes(String(result.error.code||result.error.status||''))) {
+                compactUsed=false
                 pending=supabaseClient.rpc('catalog_stylist_candidates',rpcArgs).abortSignal(controller.signal)
                 result=trace?await trace.wait('catalog_legacy',()=>Promise.resolve(pending)):await pending
             }
@@ -1207,6 +1209,7 @@ async function fetchShopItemsForAllSlotsEdge(
             if(trace) {
                 trace.counts.catalogPayloadBytes=(trace.counts.catalogPayloadBytes||0)+payloadBytes
                 trace.counts.catalogEmbeddingBytes=(trace.counts.catalogEmbeddingBytes||0)+embeddingBytes
+                trace.counts.catalogCompactRows=(trace.counts.catalogCompactRows||0)+(compactUsed?data.length:0)
             }
             const filterStart=performance.now()
             if(trace)trace.counts.catalogRows=(trace.counts.catalogRows||0)+data.length
@@ -1242,6 +1245,31 @@ async function fetchShopItemsForAllSlotsEdge(
                 const own=productIdentityKeys(item);if(own.some(key=>keys.has(key)))continue
                 own.forEach(key=>keys.add(key));picks.push(item)
                 if(++count>=maximum)break
+            }
+        }
+        const hydrationIds=picks.map(item=>String(item.id).replace(/^shop_/,'')).filter(Boolean)
+        if(compactUsed && hydrationIds.length) {
+            const hydrationRequest=supabaseClient.rpc('catalog_stylist_candidate_hydration',{p_ids:hydrationIds})
+                .abortSignal(controller.signal)
+            let hydration=trace?await trace.wait('catalog_hydration',()=>Promise.resolve(hydrationRequest)):await hydrationRequest
+            if(hydration.error && ['PGRST202','404'].includes(String(hydration.error.code||hydration.error.status||''))) {
+                hydration={data:[],error:null}
+            }
+            if(!hydration.error && Array.isArray(hydration.data)) {
+                if(trace) {
+                    trace.counts.catalogHydrationRows=(trace.counts.catalogHydrationRows||0)+hydration.data.length
+                    trace.counts.catalogHydrationPayloadBytes=(trace.counts.catalogHydrationPayloadBytes||0)+
+                        new TextEncoder().encode(JSON.stringify(hydration.data)).byteLength
+                }
+                const byId=new Map(hydration.data.map((row:any)=>[`shop_${row.id}`,row]))
+                return picks.map(item=>{
+                    const detail=byId.get(String(item.id))
+                    if(!detail) return item
+                    return prepareGarment({...item,...detail,visualFashion:detail.visual_fashion||item.visualFashion,
+                        visualSourceHash:detail.visual_source_hash||item.visualSourceHash,
+                        visualEmbedding:detail.visual_embedding||item.visualEmbedding,
+                        pricePeers:detail.price_peers||item.pricePeers})
+                })
             }
         }
         return picks
