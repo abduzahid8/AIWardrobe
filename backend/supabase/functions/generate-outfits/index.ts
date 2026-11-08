@@ -1222,7 +1222,11 @@ async function fetchShopItemsForAllSlotsEdge(
                     imageUrl:row.image_url,image:row.image_url,shopUrl:row.source_url,color:inferShopColor(row),
                     visualFashion:visual||undefined,visualSourceHash:sourceHash||undefined,visualEmbedding:embedding||undefined,pricePeers:peers||undefined}
                 if(visualAdmissionReason(item)) {if(trace)trace.counts.visualQuarantined=(trace.counts.visualQuarantined||0)+1;continue}
-                const cached=record?.version===FASHION_INTELLIGENCE_VERSION&&record.descriptor?.slot===slot?record.descriptor:undefined
+                const cached=record?.version===FASHION_INTELLIGENCE_VERSION
+                    && Array.isArray(record.evidence)
+                    && record.descriptor?.slot===slot
+                    ? record.descriptor
+                    : undefined
                 // The cached text descriptor and current image evidence are merged once.
                 const prepared=prepareGarment(item,cached ? applyVisualFashion(cached,item) : undefined)
                 if(trace&&cached)trace.counts.cachedDescriptors=(trace.counts.cachedDescriptors||0)+1
@@ -1249,7 +1253,7 @@ async function fetchShopItemsForAllSlotsEdge(
         }
         const hydrationIds=picks.map(item=>String(item.id).replace(/^shop_/,'')).filter(Boolean)
         if(compactUsed && hydrationIds.length) {
-            const hydrationRequest=supabaseClient.rpc('catalog_stylist_candidate_hydration',{p_ids:hydrationIds})
+            const hydrationRequest=supabaseClient.rpc('catalog_stylist_candidate_hydration',{p_ids:hydrationIds,p_context:retrievalContext})
                 .abortSignal(controller.signal)
             let hydration=trace?await trace.wait('catalog_hydration',()=>Promise.resolve(hydrationRequest)):await hydrationRequest
             if(hydration.error && ['PGRST202','404'].includes(String(hydration.error.code||hydration.error.status||''))) {
@@ -1265,10 +1269,14 @@ async function fetchShopItemsForAllSlotsEdge(
                 return picks.map(item=>{
                     const detail=byId.get(String(item.id))
                     if(!detail) return item
-                    return prepareGarment({...item,...detail,visualFashion:detail.visual_fashion||item.visualFashion,
-                        visualSourceHash:detail.visual_source_hash||item.visualSourceHash,
-                        visualEmbedding:detail.visual_embedding||item.visualEmbedding,
-                        pricePeers:detail.price_peers||item.pricePeers})
+                    const hydrated = {
+                        ...item,
+                        visualFashion: detail.visual_fashion || item.visualFashion,
+                        visualSourceHash: detail.visual_source_hash || item.visualSourceHash,
+                        visualEmbedding: detail.visual_embedding || item.visualEmbedding,
+                        pricePeers: item.pricePeers || detail.price_peers,
+                    }
+                    return prepareGarment(hydrated)
                 })
             }
         }
