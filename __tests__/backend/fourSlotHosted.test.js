@@ -66,7 +66,7 @@ test.each([1,2])('replaces a partial %i-card provider deck with three validated 
 });
 test('never calls a one-look Personal Stylist deck successful',async()=>{
  const {handler}=load(items.map(i=>i.id));const response=await handler(await stylistRequest(items));const data=await response.json();
- expect(response.status).toBe(422);expect(data.code).toBe('incomplete_outfit_deck');expect(data.outfits).toEqual([]);
+ expect(response.status).toBe(422);expect(data.code).toBe('incomplete_outfit_selection');expect(data.outfits).toEqual([]);
 });
 
 const rotationFixtures = ['outerwear','top','bottom','shoes'].flatMap((slot,s)=>Array.from({length:9},(_,i)=>({id:`rotation-${s}-${i}`,name:['Navy cotton blazer','White cotton shirt','Beige cotton chinos','Brown leather loafers'][s]+` edition ${i}`,type:slot,macroCategory:slot,color:['navy','white','beige','brown'][s],isWardrobe:true,imageUrl:`https://example.invalid/rotation-${s}-${i}.jpg`})));

@@ -2010,6 +2010,32 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
                     status: 422, headers: {...corsHeaders, 'Content-Type': 'application/json'},
                 })
             }
+
+        }
+
+        const target=Math.max(1,Math.min(3,Number(deckTarget)||limit))
+        const requiredChoiceIds=[...new Set([...(selectedItemIds||[]),...(anchorItemId?[anchorItemId]:[])])].map(String)
+        const rotationSlots = ['outerwear', 'top', 'bottom', 'shoes'] as DiversitySlot[]
+        const freshBySlot = new Map(rotationSlots.map(slot => [
+            slot,
+            wardrobeItems.filter(item => item.macroCategory === slot && !wasRecentlyShown(item, excludeSet)),
+        ]))
+        const forcedRepeatSlots = rotationTarget
+            ? rotationSlots.filter(slot => countDistinctProducts(freshBySlot.get(slot) || []) < target)
+            : []
+        if (rotationTarget) {
+            const strictRotationSlots = new Set(
+                rotationSlots.filter(slot => !forcedRepeatSlots.includes(slot)),
+            )
+            wardrobeItems = wardrobeItems.filter(item =>
+                !strictRotationSlots.has(item.macroCategory) ||
+                !wasRecentlyShown(item, excludeSet) ||
+                requiredChoiceIds.includes(String(item.id)),
+            )
+        }
+        if (rotationTarget && excludeSet.size) {
+            wardrobeItems = [...wardrobeItems].sort((a, b) =>
+                Number(!wasRecentlyShown(b, excludeSet)) - Number(!wasRecentlyShown(a, excludeSet)))
         }
 
         // ── 4. Get API keys ───────────────────────────────────────────────
@@ -2055,7 +2081,6 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         trace.stage='planning'
         wardrobeItems = trace.sync('intelligence',()=>wardrobeItems.map((item:any)=>Object.isFrozen(item)?item:prepareGarment(item)))
         const itemMap = new Map<string,any>(wardrobeItems.map((item:any)=>[String(item.id),item]))
-        const requiredChoiceIds=[...new Set([...(selectedItemIds||[]),...(anchorItemId?[anchorItemId]:[])])].map(String)
         const hasOwnedCandidates=wardrobeItems.some((item:any)=>!isShopRow(item))
         const shopOnly=(catalogOnly || isShopOnlyDeck(stylePreferences,occasion)) && !anchorItemId
         const evaluations=new Map<string,ReturnType<typeof assessOutfitQuality>>()
@@ -2083,11 +2108,11 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
             if(!assessment.acceptance.passed || styleJudgeReason(parts,styleKey,`${occasion} ${prompt}`,weather,anchorItemId,preferences,assessment,qualityContext))return fail('quality')
             return {valid:true,score:assessment.score}
         }
-        const target=Math.max(1,Math.min(3,Number(deckTarget)||limit))
         const plan=trace.sync('planning',()=>createOutfitPlan(wardrobeItems,qualityContext,evaluate,{
             requiredIds:requiredChoiceIds,target,priority:deckPriority,
             cost:item=>shopPriceOf(item,parsedBudget?.currency,parsedBudget?.fx),budget:parsedBudget?.amount,
-            maxEvaluations:256,maxSyncMs:Math.max(50,Math.min(600,800-Object.values(trace.syncMs).reduce((sum,ms)=>sum+ms,0))),
+            forcedRepeatSlots,
+            maxEvaluations:rotationTarget?512:256,maxSyncMs:Math.max(50,Math.min(600,800-Object.values(trace.syncMs).reduce((sum,ms)=>sum+ms,0))),
         }))
         trace.counts={...trace.counts,...plan.diagnostics.counts,evaluations:plan.diagnostics.evaluations,
             proposals:plan.diagnostics.proposals,valid:plan.diagnostics.validCandidates,...gateCounts,budgetPruned:plan.diagnostics.budgetRejected}
@@ -2152,6 +2177,11 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
             rotationScope:body.rotationScope,outfits:finalOutfits,source:generationSource,layered:!qualityContext.optionalLayer,compositionProtocol:qualityContext.optionalLayer?'optional-layer-v1':undefined,
             inventoryReason:deck.length<target?'distinct_editorial_inventory_limited':undefined,provider:'nvidia:'+nvidiaModel,
             providerAttempts:providerTrace,previousDeckOverlapBySlot,
+            shoeRotationAudit:{
+                previousShoeOverlap:finalOutfits.flatMap(look=>look.items)
+                    .filter((item:any)=>item.macroCategory==='shoes' && item.id!==anchorItemId)
+                    .filter((item:any)=>wasRecentlyShown(item,previousShoeSet)).length,
+            },
             diversity:{activeSlots,strictSlots:activeSlots.filter(slot=>!forcedSlots.includes(slot as DiversitySlot)),forcedRepeatSlots:forcedSlots},
             rotation:{recycledSlots:forcedSlots,freshProducts:freshProductCount(finalOutfits.flatMap(look=>look.items),excludeSet,anchorItemId)},
             diagnostics:{stage:'complete',syncMs:trace.syncMs,counts:trace.counts,cpuRisk:plan.diagnostics.cpuRisk},

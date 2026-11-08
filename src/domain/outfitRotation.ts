@@ -125,7 +125,7 @@ export function createShoeRotationPriority(history: ReadonlySet<string>, previou
         }
         // Prefer the oldest last-use buckets, then the fewest appearances.
         // Explicit vector comparison avoids weights that quality can outweigh.
-        return [-shoeOverlap, -otherOverlap, freshClothing, ...ages, ...counts, legacy(clothing)];
+        return [-shoeOverlap, freshClothing, -otherOverlap, ...ages, ...counts, legacy(clothing)];
     };
 }
 

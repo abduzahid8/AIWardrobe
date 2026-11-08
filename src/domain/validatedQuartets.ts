@@ -15,6 +15,7 @@ import { layerCompatibility } from './layerCompatibility.ts';
 import { outfitCoherence } from './outfitCoherence.ts';
 import { outfitQualityFloor } from './outfitQualityFloor.ts';
 import { productIdentityKeys } from './outfitDiversity.ts';
+import type { DiversitySlot } from './outfitDiversity.ts';
 import type { GarmentEvidence } from './garmentDescriptor.ts';
 import type { StylingContext } from './stylingContext.ts';
 
@@ -97,6 +98,7 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
     budget?: number;
     maxEvaluations?: number;
     maxSyncMs?: number;
+    forcedRepeatSlots?: readonly DiversitySlot[];
   }
 ) {
   const start = performance.now(),
@@ -215,12 +217,17 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
     }
   });
   const group = new Map(items.map((item, i) => [item, root(i)]));
-  const forcedSlots = slots.filter(
+  const forcedSlots = [
+    ...new Set([
+      ...slots.filter(
     (slot, i) =>
       !(slot === 'outerwear' && formulas.every(f => f.layerRole === 'absent')) &&
       !pools[i].some((item) => required.has(item.id)) &&
       new Set(pools[i].map((item) => group.get(item))).size < options.target
-  );
+      ),
+      ...(options.forcedRepeatSlots || []),
+    ]),
+  ];
   const mask = (parts: T[]) =>
     parts.reduce(
       (m, item) =>
@@ -419,8 +426,18 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
   // Precompute semantic differences and rotation priorities once; the exact
   // triple search below performs no garment extraction or outfit scoring.
   const reserve: PlannedLook<T>[] = [];
+  const reserveCap = forcedSlots.length ? 128 : 48;
   const productCoverage = new Set<number>();
-  const sorted = [...candidates].sort((a, b) => b.quality - a.quality);
+  const comparePriority = (a: readonly number[], b: readonly number[]) => {
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      const delta = (a[i] || 0) - (b[i] || 0);
+      if (delta) return delta;
+    }
+    return 0;
+  };
+  const sorted = [...candidates].sort(
+    (a, b) => comparePriority(b.priority, a.priority) || b.quality - a.quality,
+  );
   for (const concept of formulas) {
     const best = sorted.filter((look) => look.concept.id === concept.id).slice(0, 4);
     for (const look of best)
@@ -436,10 +453,10 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       reserve.push(look);
       look.items.forEach((item) => productCoverage.add(group.get(item)!));
     }
-    if (reserve.length >= 48) break;
+    if (reserve.length >= reserveCap) break;
   }
   for (const look of sorted) {
-    if (reserve.length >= 48) break;
+    if (reserve.length >= reserveCap) break;
     if (!reserve.includes(look)) reserve.push(look);
   }
   const distances = new Map<string, number>();
@@ -460,7 +477,10 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
     const consider = (deck: PlannedLook<T>[]) => {
       for (let i = 0; i < slots.length; i++) {
         if (
-          lockedSlots[i] || availablePerSlot[i] < deck.length
+          lockedSlots[i] || (
+            !forcedSlots.includes(slots[i]) &&
+            availablePerSlot[i] < deck.length
+          )
         )
           continue;
         const products = deck.flatMap((look) =>
@@ -521,7 +541,9 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       decks.push({looks: deck, quality: primary, utility});
     };
     const distinct = (a: PlannedLook<T>, b: PlannedLook<T>) =>
-      context.legacyFourSlot === true || (a.identity !== b.identity && distance(a, b) >= 0.08);
+      context.legacyFourSlot === true ||
+      (a.identity !== b.identity &&
+        (distance(a, b) >= 0.08 || forcedSlots.length > 0));
     // Exact feasible matching over the bounded reserve: diversity cannot
     // turn an existing valid triple into an unexplained 422.
     for (let a = 0; a < choices.length; a++) {
@@ -549,9 +571,32 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
     // Fix the quality floor across the entire feasible set before applying
     // diversity, provider or recency preferences. Selection order cannot move it.
     let best: typeof decks[number] | undefined;
+    const comparePriority = (a: readonly number[], b: readonly number[]) => {
+      for (let i = 0; i < Math.max(a.length, b.length); i++) {
+        const delta = (a[i] || 0) - (b[i] || 0);
+        if (delta) return delta;
+      }
+      return 0;
+    };
     for (const deck of decks) {
       if (deck.quality < bestQuality - 0.035) continue;
-      if (!best || deck.utility > best.utility || (deck.utility === best.utility && deck.quality > best.quality)) best = deck;
+      if (!best) {
+        best = deck;
+        continue;
+      }
+      const priority = comparePriority(
+        deck.looks.reduce((sum, look) => {
+          look.priority.forEach((value, index) => (sum[index] = (sum[index] || 0) + value));
+          return sum;
+        }, [] as number[]),
+        best.looks.reduce((sum, look) => {
+          look.priority.forEach((value, index) => (sum[index] = (sum[index] || 0) + value));
+          return sum;
+        }, [] as number[]),
+      );
+      if (priority > 0 || (priority === 0 && (deck.utility > best.utility || (deck.utility === best.utility && deck.quality > best.quality)))) {
+        best = deck;
+      }
     }
     return best?.looks || [];
   };
