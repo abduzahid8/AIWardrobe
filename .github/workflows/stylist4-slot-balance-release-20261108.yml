@@ -66,7 +66,7 @@ jobs:
             fs.writeFileSync('.v199-balanced-build/hashes.txt',
               'v199 '+sum(oldBundle)+' '+oldBundle.length+'\n'+'v200 '+sum(nextBundle)+' '+nextBundle.length+'\n');
             if(oldBundle.length<250000||nextBundle.length<250000)throw Error('Unexpected bundle size');
-            if(oldBundle.equals(nextBundle))throw Error('No changed behavior compiled');
+            if(Buffer.from(oldBundle).equals(Buffer.from(nextBundle)))throw Error('No changed behavior compiled');
             console.log('Both Edge bundles built and SHA-256 recorded');
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
