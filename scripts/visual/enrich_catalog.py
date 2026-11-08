@@ -114,6 +114,9 @@ class CatalogEnricher:
   # Shoe construction and cloth-only attributes never cross source slots.
   # Length/cloth weight are not calibrated by this model; leave them unknown.
   attrs.pop('length',None);attrs.pop('bulk',None)
+  observed_slot=attrs.get('slot',{}).get('value')
+  if {row['slot'],observed_slot}<={'top','outerwear'} and observed_slot!=row['slot']:attrs.pop('slot',None)
+  if row['slot']=='outfits' and observed_slot!='outfits':attrs.pop('slot',None);attrs.pop('subtype',None)
   if attrs.get('pattern',{}).get('value')=='solid': attrs.pop('patternProminence',None)
   if row['slot']=='bottom':
    attrs.pop('closure',None);attrs.pop('collar',None)
