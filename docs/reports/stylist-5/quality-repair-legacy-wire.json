@@ -1,0 +1,44 @@
+{
+  "baselineCommit": "bcda5f1da2d2745b192686e8fbff384b646e12fa",
+  "implementationCommit": "a3137e359fd9f112721f563a72d0d1667cc367e2",
+  "suite": "__tests__/backend/outfitBudgetWire.test.js",
+  "baseline": {
+    "passed": 70,
+    "failed": 25
+  },
+  "after": {
+    "passed": 70,
+    "failed": 25
+  },
+  "newFailures": [],
+  "failureNames": [
+    "wire prompt preserves the selected 250 USD cap despite larger prompt text",
+    "wire prompt preserves the selected 0 USD cap despite larger prompt text",
+    "multiple text currencies are compared by value rather than their raw numbers",
+    "correction explains the actual authoritative combination rejection instead of trusting model metadata",
+    "a correction that fixes the named combination error can return a validated complete outfit",
+    "workout intent uses athletic guidance even when the saved style is old money",
+    "cold workout prompts require a warm performance layer without prescribing dress clothing",
+    "catalog activity filtering runs before per-slot trimming",
+    "workout prompts exclude ineligible extra items while retaining a complete valid pool",
+    "six unsuitable owned bottoms no longer suppress a valid shop supplement",
+    "server response never exceeds the requested 2 outfit count",
+    "catalog discovery applies avoidColors before page completion and per-slot selection",
+    "catalog discovery applies dislikedPatterns before page completion and per-slot selection",
+    "a later cheaper catalog bottom is discovered before an affordable budget is rejected",
+    "six provided shop choices cannot suppress discovery of an affordable catalog alternative",
+    "a dress-loafer proposal missing a top enters correction before final validation",
+    "repeated structurally invalid provider choices never return a malformed outfit",
+    "an unparseable provider response gets one bounded format correction",
+    "format and quality correction together cannot exceed two provider requests",
+    "two unparseable responses fall back to a validated deck without inventing an outfit",
+    "rate-limited provider requests do not trigger a format correction",
+    "primary and format-correction requests both describe the required climate layer",
+    "curated mode rejects timeout provider output and returns independently validated options",
+    "capacity is assessed against the displayed three-card target even when AI returns two looks",
+    "multi-card curation jointly selects a compatible deck before bounded AI ranking"
+  ],
+  "note": "Unmodified historical suite; no skipped tests. Includes retired product-generation/correction prompt expectations and old catalog fixtures. This comparison does not claim universal test-suite success.",
+  "githubImplementationCommit": "01d01b07b1b45910b2939bb3c72ece792799f3e3",
+  "validatedImplementationTree": "e1bae89058fa03fedf4d4fde9e3866e8f55f885f"
+}
