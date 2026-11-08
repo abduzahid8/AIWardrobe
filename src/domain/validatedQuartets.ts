@@ -1,4 +1,5 @@
-import {hasColdLayerIntent} from './outfitComposition.ts';
+import { createDeckSelector } from './outfitDeckSelection.ts';
+import { hasColdLayerIntent } from './outfitComposition.ts';
 import {
   valueIntelligence,
   garmentRelationship,
@@ -6,10 +7,15 @@ import {
   imageEvidenceStrength,
   editorialIdentity,
 } from './editorialIntelligence.ts';
-import { outfitStylingDistance } from './outfitVisualSignature.ts';
+import { outfitStylingFeatures, stylingFeatureDistance } from './outfitVisualSignature.ts';
 import { stylingCandidateRepresentatives } from './catalogCandidates.ts';
 import { describeGarment, prepareGarment } from './garmentDescriptor.ts';
-import { outfitConcepts, conceptGarmentAffinity, conceptRoleCompatible, type OutfitConcept } from './outfitConcepts.ts';
+import {
+  outfitConcepts,
+  conceptGarmentAffinity,
+  conceptRoleCompatible,
+  type OutfitConcept,
+} from './outfitConcepts.ts';
 import { garmentContextReason, scoreGarmentForContext } from './garmentContext.ts';
 import { layerCompatibility } from './layerCompatibility.ts';
 import { outfitCoherence } from './outfitCoherence.ts';
@@ -78,7 +84,7 @@ export interface PlannedLook<T> {
 }
 
 export function selectedPlanDiagnostics<T extends { concept: { id: string }; identity: string }>(
-  looks: readonly T[],
+  looks: readonly T[]
 ) {
   return {
     conceptsAchieved: new Set(looks.map((look) => look.concept.id)).size,
@@ -102,7 +108,7 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
   }
 ) {
   const start = performance.now(),
-    maximum = options.maxEvaluations ?? 256;
+    maximum = Math.min(512, Math.max(0, options.maxEvaluations ?? 256));
   items = items.map((item) => (Object.isFrozen(item) ? item : prepareGarment(item)));
   const required = new Set([
     ...options.requiredIds,
@@ -120,7 +126,12 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
             id: `${formula.id}-no-layer`,
             title: `${formula.title} without a layer`,
             layerRole: 'absent' as const,
-            slots: [formula.slots[0], [], formula.slots[2], formula.slots[3]] as OutfitConcept['slots'],
+            slots: [
+              formula.slots[0],
+              [],
+              formula.slots[2],
+              formula.slots[3],
+            ] as OutfitConcept['slots'],
             story: 'The same styling direction with no physical outer layer.',
           },
         ]
@@ -139,23 +150,28 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
         pool.filter((item) => {
           const descriptor = describeGarment(item);
           const slotIndex = slots.indexOf(slot);
-          return formula.slots[slotIndex]?.includes(descriptor.subtype)
-            && conceptRoleCompatible(descriptor, formula, context);
+          return (
+            formula.slots[slotIndex]?.includes(descriptor.subtype) &&
+            conceptRoleCompatible(descriptor, formula, context)
+          );
         }),
         (i) => i,
         (i) => scoreGarmentForContext(i, context),
         context,
-        6,
-      ),
+        6
+      )
     );
     const unique = new Map<string, T>();
-    for (const item of [...reserved, ...stylingCandidateRepresentatives(
-      pool,
-      (i) => i,
-      (i) => scoreGarmentForContext(i, context),
-      context,
-      24,
-    )]) {
+    for (const item of [
+      ...reserved,
+      ...stylingCandidateRepresentatives(
+        pool,
+        (i) => i,
+        (i) => scoreGarmentForContext(i, context),
+        context,
+        24
+      ),
+    ]) {
       if (unique.size >= 24) break;
       unique.set(productIdentityKeys(item).join('|') || item.id, item);
     }
@@ -176,13 +192,19 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
   // brief may cover only one trouser subtype despite adequate compatible
   // inventory. Retain a reserve of the available roles under the same whole-
   // outfit evaluator instead of treating that brief as catalog authority.
-  const legacyRoleGap = context.legacyFourSlot && pools.some((pool, index) => {
-    if (pool.some(item => required.has(item.id))) return false;
-    const covered = pool.filter(item => formulas.some(f =>
-      f.slots[index].includes(descriptors.get(item)!.subtype)
-      && conceptRoleCompatible(descriptors.get(item)!, f, context)));
-    return covered.length < Math.min(options.target, pool.length);
-  });
+  const legacyRoleGap =
+    context.legacyFourSlot &&
+    pools.some((pool, index) => {
+      if (pool.some((item) => required.has(item.id))) return false;
+      const covered = pool.filter((item) =>
+        formulas.some(
+          (f) =>
+            f.slots[index].includes(descriptors.get(item)!.subtype) &&
+            conceptRoleCompatible(descriptors.get(item)!, f, context)
+        )
+      );
+      return covered.length < Math.min(options.target, pool.length);
+    });
   if ((!formulas.length || legacyRoleGap) && pools.every((pool) => pool.length)) {
     const roles = pools.map((pool) =>
       [...new Set(pool.map((item) => descriptors.get(item)!.subtype))].filter(
@@ -216,7 +238,8 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
     cpuRisk = false;
   const candidates: PlannedLook<T>[] = [];
   const evaluated = new Map<string, { valid: boolean; score: number }>();
-  // Bit masks use exact identity equivalence, including aliases linked by
+  const lookBySignature = new Map<string, PlannedLook<T>>();
+  // Resolve exact identity equivalence, including aliases linked by
   // any product key. No name/color family is used as physical uniqueness.
   const parent = items.map((_, i) => i),
     keyOwner = new Map<string, number>();
@@ -232,23 +255,14 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
   const forcedSlots = [
     ...new Set([
       ...slots.filter(
-    (slot, i) =>
-      !(slot === 'outerwear' && formulas.every(f => f.layerRole === 'absent')) &&
-      !pools[i].some((item) => required.has(item.id)) &&
-      new Set(pools[i].map((item) => group.get(item))).size < options.target
+        (slot, i) =>
+          !(slot === 'outerwear' && formulas.every((f) => f.layerRole === 'absent')) &&
+          !pools[i].some((item) => required.has(item.id)) &&
+          new Set(pools[i].map((item) => group.get(item))).size < options.target
       ),
       ...(options.forcedRepeatSlots || []),
     ]),
   ];
-  const mask = (parts: T[]) =>
-    parts.reduce(
-      (m, item) =>
-        required.has(item.id) || forcedSlots.includes(String(item.macroCategory))
-          ? m
-          : m | (1n << BigInt(group.get(item)!)),
-      0n
-    );
-  const masks = new Map<PlannedLook<T>, bigint>();
   const admit = (parts: T[], concept: OutfitConcept) => {
     proposals++;
     const ids = new Set(parts.map((item) => item.id));
@@ -259,19 +273,34 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
     )
       return;
     const signature = [...ids].sort().join('|');
-    if (evaluated.has(signature)) return;
-    const physical = new Set<string>();
-    for (const item of parts) {
-      const keys = identities.get(item)!;
-      if (keys.some((key) => physical.has(key))) return;
-      keys.forEach((key) => physical.add(key));
-    }
-    if (
-      options.budget !== undefined &&
-      parts.reduce((n, item) => n + options.cost(item), 0) > options.budget + 0.000001
-    ) {
-      budgetRejected++;
+    if (evaluated.has(signature)) {
+      // A shared combination is evaluated once, but its editorial identity
+      // must not depend on which compatible brief happened to visit it first.
+      const prior = lookBySignature.get(signature);
+      if (prior) {
+        const fit =
+          parts.reduce(
+            (sum, item) => sum + conceptGarmentAffinity(descriptors.get(item)!, concept),
+            0
+          ) / parts.length;
+        if (fit > prior.conceptScore) {
+          prior.concept = concept;
+          prior.conceptScore = fit;
+        }
+      }
       return;
+    }
+    // Equivalence is transitive across listings, not just direct key overlap.
+    if (new Set(parts.map((item) => group.get(item))).size !== parts.length) return;
+    if (options.budget !== undefined) {
+      const costs = parts.map((item) => options.cost(item));
+      if (
+        costs.some((cost) => !Number.isFinite(cost) || cost < 0) ||
+        costs.reduce((sum, cost) => sum + cost, 0) > options.budget + 0.000001
+      ) {
+        budgetRejected++;
+        return;
+      }
     }
     if (evaluations >= maximum) return;
     if (performance.now() - start > (options.maxSyncMs ?? 650)) {
@@ -281,7 +310,7 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
     evaluations++;
     const result = evaluate(parts);
     evaluated.set(signature, result);
-    if (!result.valid) {
+    if (!result.valid || !Number.isFinite(result.score)) {
       rejected++;
       return;
     }
@@ -289,10 +318,6 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
     const conceptFit = { concept, score: affinities.reduce((n, v) => n + v, 0) / parts.length };
     const valueScore = parts.reduce((n, item) => n + valueOf(item).score, 0) / parts.length;
     const relationships = lookRelationships(parts, context);
-    const feedback = Math.max(
-      -1,
-      Math.min(1, context.conceptFeedback?.[conceptFit.concept.id] || 0)
-    );
     const look = {
       id: `look${String(candidates.length + 1).padStart(3, '0')}`,
       items: parts,
@@ -303,8 +328,7 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
           0.74 * result.score +
             0.16 * relationships +
             0.08 * valueScore +
-            (0.02 * parts.reduce((n, item) => n + imageEvidenceStrength(item), 0)) / parts.length +
-            0.01 * feedback
+            (0.02 * parts.reduce((n, item) => n + imageEvidenceStrength(item), 0)) / parts.length
         )
       ),
       valueScore,
@@ -315,7 +339,7 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       priority: options.priority(parts),
     };
     candidates.push(look);
-    masks.set(look, mask(parts));
+    lookBySignature.set(signature, look);
   };
   // Briefs exist BEFORE selecting products. Each slot is retrieved for its
   // stated role, so a blazer cannot retrospectively become a knit concept.
@@ -435,234 +459,99 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       if (join) admit(join.parts, f.concept);
     }
   }
-  // Precompute semantic differences and rotation priorities once; the exact
-  // triple search below performs no garment extraction or outfit scoring.
-  const reserve: PlannedLook<T>[] = [];
-  const reserveCap = forcedSlots.length ? 128 : 48;
-  const productCoverage = new Set<number>();
-  const comparePriority = (a: readonly number[], b: readonly number[]) => {
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      const delta = (a[i] || 0) - (b[i] || 0);
-      if (delta) return delta;
-    }
-    return 0;
-  };
-  const sorted = [...candidates].sort(
-    (a, b) => comparePriority(b.priority, a.priority) || b.quality - a.quality,
-  );
-  for (const concept of formulas) {
-    const best = sorted.filter((look) => look.concept.id === concept.id).slice(0, 4);
-    for (const look of best)
-      if (!reserve.includes(look)) {
-        reserve.push(look);
-        look.items.forEach((item) => productCoverage.add(group.get(item)!));
-      }
-  }
-  for (const look of sorted) {
-    if (
-      look.items.some((item) => !required.has(item.id) && !productCoverage.has(group.get(item)!))
-    ) {
-      reserve.push(look);
-      look.items.forEach((item) => productCoverage.add(group.get(item)!));
-    }
-    if (reserve.length >= reserveCap) break;
-  }
-  for (const look of sorted) {
-    if (reserve.length >= reserveCap) break;
-    if (!reserve.includes(look)) reserve.push(look);
-  }
-  const distances = new Map<string, number>();
+  // One graph owns every cross-look constraint over the full evaluated set.
+  // The provider shortlist is a presentation boundary, never a feasibility cap.
+  const indices = new Map(candidates.map((look, i) => [look, i]));
+  const features = candidates.map((look) => outfitStylingFeatures(look.items, context.anchorId));
+  const distances = new Float64Array(candidates.length * candidates.length).fill(NaN);
   const distance = (a: PlannedLook<T>, b: PlannedLook<T>) => {
-    const key = [a.id, b.id].sort().join(':');
-    let value = distances.get(key);
-    if (value === undefined) {
-      value = outfitStylingDistance(a.items, b.items, context.anchorId);
-      distances.set(key, value);
-    }
-    return value;
+    const x = indices.get(a)!,
+      y = indices.get(b)!,
+      key = Math.min(x, y) * candidates.length + Math.max(x, y);
+    if (Number.isNaN(distances[key]))
+      distances[key] = stylingFeatureDistance(features[x], features[y]);
+    return distances[key];
   };
-  const availablePerSlot = pools.map(pool => new Set(pool.map(item => group.get(item))).size);
-  const lockedSlots = pools.map(pool => pool.some(item => required.has(item.id)));
-  const select = (choices: PlannedLook<T>[], ranks: ReadonlyMap<string, number> = new Map()) => {
-    const decks: {looks: PlannedLook<T>[]; quality: number; utility: number}[] = [];
-    let bestQuality = -Infinity;
-    const consider = (deck: PlannedLook<T>[]) => {
-      for (let i = 0; i < slots.length; i++) {
-        if (
-          lockedSlots[i] || (
-            !forcedSlots.includes(slots[i]) &&
-            availablePerSlot[i] < deck.length
-          )
-        )
-          continue;
-        const products = deck.flatMap((look) =>
-          look.items
-            .filter((item) => item.macroCategory === slots[i])
-            .map((item) => group.get(item))
-        );
-        if (new Set(products).size !== products.length) return;
-      }
-      const priority: number[] = [];
-      for (const look of deck)
-        look.priority.forEach((n, i) => (priority[i] = (priority[i] || 0) + n));
-      const quality = deck.reduce((n, look) => n + look.quality, 0);
-      const conceptVariety =
-        new Set(deck.filter((look) => look.conceptScore >= 0.65).map((look) => look.concept.id))
-          .size / Math.max(1, deck.length);
-      let variety = 1;
-      for (let a = 0; a < deck.length; a++)
-        for (let b = a + 1; b < deck.length; b++)
-          variety = Math.min(variety, distance(deck[a], deck[b]));
-      variety = 0.55 * variety + 0.45 * conceptVariety;
-      const rank = deck.reduce((n, look) => n + (ranks.get(look.id) ?? 100), 0);
-      const mean = quality / Math.max(1, deck.length),
-        floor = Math.min(...deck.map((look) => look.quality));
-      const primary = 0.65 * mean + 0.35 * floor;
-      const rankValue = ranks.size ? 1 - rank / Math.max(1, ranks.size * deck.length) : 0;
-      const recency =
-        priority.reduce((n, value) => n + Math.tanh(value / Math.max(1, deck.length)), 0) /
-        Math.max(1, priority.length);
-      const actualRoles = ['top', 'outerwear', 'bottom', 'shoes'].map(
-        (slot) =>
-          new Set(
-            deck.map((look) => {
-              const item = look.items.find((item) => item.macroCategory === slot);
-              if (!item) return 'absent';
-              const d = descriptors.get(item)!;
-              if (slot === 'top' && ['shirt', 'dress-shirt'].includes(d.subtype)) return 'shirt';
-              if (slot === 'shoes')
-                return d.athletic
-                  ? 'athletic'
-                  : d.casualSole
-                    ? 'casual'
-                    : d.subtype === 'loafer'
-                      ? 'loafer'
-                      : 'dress';
-              if (slot === 'bottom')
-                return [d.subtype, d.volume === 'unknown' ? 'unverified' : d.volume].join(':');
-              return d.subtype;
-            })
-          ).size / Math.max(1, deck.length)
-      );
-      const roleVariety =
-        actualRoles[0] * 0.2 + actualRoles[1] * 0.45 + actualRoles[2] * 0.2 + actualRoles[3] * 0.15;
-      variety = 0.35 * variety + 0.65 * roleVariety;
-      const utility =
-        primary + 0.15 * variety + NVIDIA_RANK_UTILITY_WEIGHT * rankValue + 0.005 * recency;
-      bestQuality = Math.max(bestQuality, primary);
-      decks.push({looks: deck, quality: primary, utility});
-    };
-    const distinct = (a: PlannedLook<T>, b: PlannedLook<T>) =>
-      context.legacyFourSlot === true ||
-      (a.identity !== b.identity &&
-        (distance(a, b) >= 0.08 || forcedSlots.length > 0));
-    // Exact feasible matching over the bounded reserve: diversity cannot
-    // turn an existing valid triple into an unexplained 422.
-    for (let a = 0; a < choices.length; a++) {
-      if (options.target === 1) {
-        consider([choices[a]]);
-        continue;
-      }
-      for (let b = a + 1; b < choices.length; b++) {
-        if (masks.get(choices[a])! & masks.get(choices[b])! || !distinct(choices[a], choices[b]))
-          continue;
-        if (options.target === 2) {
-          consider([choices[a], choices[b]]);
-          continue;
-        }
-        const used = masks.get(choices[a])! | masks.get(choices[b])!;
-        for (let c = b + 1; c < choices.length; c++)
-          if (
-            !(used & masks.get(choices[c])!) &&
-            distinct(choices[a], choices[c]) &&
-            distinct(choices[b], choices[c])
-          )
-            consider([choices[a], choices[b], choices[c]]);
-      }
-    }
-    // Fix the quality floor across the entire feasible set before applying
-    // diversity, provider or recency preferences. Selection order cannot move it.
-    let best: typeof decks[number] | undefined;
-    const comparePriority = (a: readonly number[], b: readonly number[]) => {
-      for (let i = 0; i < Math.max(a.length, b.length); i++) {
-        const delta = (a[i] || 0) - (b[i] || 0);
-        if (delta) return delta;
-      }
-      return 0;
-    };
-    for (const deck of decks) {
-      if (deck.quality < bestQuality - 0.035) continue;
-      if (!best) {
-        best = deck;
-        continue;
-      }
-      const priority = comparePriority(
-        deck.looks.reduce((sum, look) => {
-          look.priority.forEach((value, index) => (sum[index] = (sum[index] || 0) + value));
-          return sum;
-        }, [] as number[]),
-        best.looks.reduce((sum, look) => {
-          look.priority.forEach((value, index) => (sum[index] = (sum[index] || 0) + value));
-          return sum;
-        }, [] as number[]),
-      );
-      if (priority > 0 || (priority === 0 && (deck.utility > best.utility || (deck.utility === best.utility && deck.quality > best.quality)))) {
-        best = deck;
-      }
-    }
-    return best?.looks || [];
+  const roles = new Map(
+    candidates.map((look) => [
+      look,
+      slots.map((slot) => {
+        const item = look.items.find((item) => item.macroCategory === slot);
+        if (!item) return 'absent';
+        const d = descriptors.get(item)!;
+        if (slot === 'top' && ['shirt', 'dress-shirt'].includes(d.subtype)) return 'shirt';
+        if (slot === 'shoes')
+          return d.athletic
+            ? 'athletic'
+            : d.casualSole
+              ? 'casual'
+              : d.subtype === 'loafer'
+                ? 'loafer'
+                : 'dress';
+        if (slot === 'bottom')
+          return `${d.subtype}:${d.volume === 'unknown' ? 'unverified' : d.volume}`;
+        return d.subtype;
+      }),
+    ])
+  );
+  const editorialUtility = (deck: PlannedLook<T>[], ranks: ReadonlyMap<string, number>) => {
+    const mean = deck.reduce((sum, look) => sum + look.quality, 0) / deck.length;
+    const primary = 0.65 * mean + 0.35 * Math.min(...deck.map((look) => look.quality));
+    const concepts =
+      new Set(deck.filter((look) => look.conceptScore >= 0.65).map((look) => look.concept.id))
+        .size / deck.length;
+    let gap = 1;
+    for (let a = 0; a < deck.length; a++)
+      for (let b = a + 1; b < deck.length; b++) gap = Math.min(gap, distance(deck[a], deck[b]));
+    const roleVariety = slots.reduce(
+      (sum, _, i) =>
+        sum +
+        ([0.2, 0.45, 0.2, 0.15][i] * new Set(deck.map((look) => roles.get(look)![i])).size) /
+          deck.length,
+      0
+    );
+    const variety = 0.35 * (0.55 * gap + 0.45 * concepts) + 0.65 * roleVariety;
+    const rank = ranks.size
+      ? deck.reduce(
+          (sum, look) => sum + (ranks.has(look.id) ? 1 - ranks.get(look.id)! / ranks.size : 0),
+          0
+        ) / deck.length
+      : 0;
+    // Personal taste belongs after intrinsic quality acceptance. Changing a
+    // combination's best-fitting brief cannot change its quality certificate.
+    const feedback =
+      deck.reduce(
+        (sum, look) =>
+          sum + Math.max(-1, Math.min(1, context.conceptFeedback?.[look.concept.id] || 0)),
+        0
+      ) / deck.length;
+    return primary + 0.15 * variety + NVIDIA_RANK_UTILITY_WEIGHT * rank + 0.01 * feedback;
   };
-  let seed = select(reserve);
-  // Reserve trimming must not turn a feasible three-look inventory into
-  // a false shortage. A bounded compatibility bitset search recovers a seed
-  // from already evaluated, quality-approved looks, preserving identity and
-  // semantic differences. It never evaluates additional garment combinations.
-  if (!seed.length && options.target === 3 && candidates.length > reserve.length) {
-    const ordered = [...candidates].sort((a, b) => b.quality - a.quality),
-      adjacency = ordered.map(() => 0n),
-      bitIndex = new Map<bigint, number>();
-    ordered.forEach((_, i) => bitIndex.set(1n << BigInt(i), i));
-    matching: for (let a = 0; a < ordered.length; a++)
-      for (let b = a + 1; b < ordered.length; b++) {
-        if (
-          masks.get(ordered[a])! & masks.get(ordered[b])! ||
-          (!context.legacyFourSlot && ordered[a].identity === ordered[b].identity)
-        )
-          continue;
-        if (performance.now() - start > (options.maxSyncMs ?? 650)) {
-          cpuRisk = true;
-          break matching;
-        }
-        if (context.legacyFourSlot || distance(ordered[a], ordered[b]) >= 0.08) adjacency[a] |= 1n << BigInt(b);
-      }
-    search: for (let a = 0; a < ordered.length && !cpuRisk; a++)
-      for (let b = a + 1; b < ordered.length; b++) {
-        if (!(adjacency[a] & (1n << BigInt(b)))) continue;
-        const shared = adjacency[a] & adjacency[b];
-        if (shared) {
-          seed = [ordered[a], ordered[b], ordered[bitIndex.get(shared & -shared)!]];
-          break search;
-        }
-      }
-    for (const look of seed) if (!reserve.includes(look)) reserve.push(look);
-    if (seed.length) seed = select(reserve);
-  }
-  if (!seed.length && options.target > 1) {
-    const target = options.target;
-    options = { ...options, target: target - 1 };
-    seed = select(reserve);
-    if (!seed.length && options.target > 1) {
-      options = { ...options, target: 1 };
-      seed = select(reserve);
+  const selector = createDeckSelector(
+    candidates.map((look) => ({
+      look,
+      quality: look.quality,
+      priority: look.priority,
+      products: slots.map((slot) => {
+        const item = look.items.find((item) => item.macroCategory === slot);
+        return !item || required.has(item.id) ? -1 : group.get(item)!;
+      }),
+    })),
+    {
+      target: options.target,
+      scarceSlots: forcedSlots.map((slot) => slots.indexOf(slot)),
+      compatible: (a, b) =>
+        context.legacyFourSlot === true || (a.identity !== b.identity && distance(a, b) >= 0.08),
+      utility: editorialUtility,
     }
-  }
-
-  // Always carry a feasible seed into the provider shortlist.
+  );
+  let selection = selector.select();
+  const seed = selection.looks;
+  const reserve = [...candidates].sort((a, b) => b.quality - a.quality);
   const shortlist = [...seed];
-  for (const concept of formulas) {
+  for (const concept of formulas)
     for (const look of reserve.filter((look) => look.concept.id === concept.id).slice(0, 2))
-      if (!shortlist.includes(look)) shortlist.push(look);
-  }
+      if (!shortlist.includes(look) && shortlist.length < 12) shortlist.push(look);
   for (const look of reserve) {
     if (shortlist.length >= 12) break;
     if (!shortlist.includes(look)) shortlist.push(look);
@@ -671,7 +560,13 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
     candidates: shortlist,
     alternatives: reserve,
     seed,
-    select: (ranks?: ReadonlyMap<string, number>) => select(shortlist, ranks),
+    select: (ranks?: ReadonlyMap<string, number>) => {
+      selection = selector.select(ranks);
+      return selection.looks;
+    },
+    get selection() {
+      return selection.diagnostics;
+    },
     diagnostics: {
       counts,
       conceptsTarget: 3,
@@ -690,7 +585,17 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       conceptCounts: Object.fromEntries(
         formulas.map((f) => [f.id, candidates.filter((look) => look.concept.id === f.id).length])
       ),
-      exploredCompletely: proposals < 4096 && evaluations < maximum && !cpuRisk,
+      exploredCompletely: feasible.every((f) =>
+        f.joins.every((join) =>
+          evaluated.has(
+            join.parts
+              .map((item) => item.id)
+              .sort()
+              .join('|')
+          )
+        )
+      ),
+      selection: selection.diagnostics,
       syncMs: performance.now() - start,
     },
   };

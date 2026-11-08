@@ -1,3 +1,4 @@
+import { DECK_SELECTION_VERSION } from '../../../../src/domain/outfitDeckSelection.ts'
 import {legacyClientCompatible} from '../../../../src/domain/legacyClientCompatibility.ts'
 import { lookRelationships, valueIntelligence, imageEvidenceStrength } from '../../../../src/domain/editorialIntelligence.ts'
 import { groundedLookExplanation } from '../../../../src/domain/lookExplanation.ts'
@@ -2096,7 +2097,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
                 :(gateCounts.budget+plan.diagnostics.budgetRejected)>0&&!gateCounts.quality?'no_outfit_within_budget':plan.diagnostics.validCandidates?'incomplete_outfit_selection':'outfit_quality_rejected'
             return new Response(JSON.stringify({success:false,outfits:[],code,stage:'planning',
                 diagnostics:{counts:plan.diagnostics.counts,evaluations:plan.diagnostics.evaluations,valid:plan.diagnostics.validCandidates,
-                    bounded:!plan.diagnostics.exploredCompletely,cpuRisk:plan.diagnostics.cpuRisk}}),{status:plan.diagnostics.cpuRisk?503:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
+                    bounded:!plan.diagnostics.exploredCompletely,cpuRisk:plan.diagnostics.cpuRisk,selection:plan.selection}}),{status:plan.diagnostics.cpuRisk?503:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
         }
         const providerTrace:ProviderAttempt[]=[]
         let ranks=new Map<string,number>(),generationSource:'ai'|'deterministic_fallback'='deterministic_fallback'
@@ -2129,8 +2130,8 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         // The feasible seed survives a missing, malformed or failed rank call.
         const deck=selected.length?selected:plan.seed
         if(!deck.length)return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection'}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
-        if(deck.length<target && body.compositionProtocol!=='optional-layer-v1')return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection',inventoryReason:'distinct_editorial_inventory_limited'}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}});
-        const forcedSlots=plan.diagnostics.forcedSlots as DiversitySlot[]
+        if(deck.length<target && body.compositionProtocol!=='optional-layer-v1')return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection',inventoryReason:'distinct_editorial_inventory_limited',diagnostics:{selection:plan.selection,generationBounded:!plan.diagnostics.exploredCompletely}}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}});
+        const forcedSlots=[...new Set([...plan.diagnostics.forcedSlots,...plan.selection.repeatedSlots.map(slot=>['top','outerwear','bottom','shoes'][slot])])] as DiversitySlot[]
         const finalPlanDiagnostics=selectedPlanDiagnostics(deck)
         const activeSlots=['top','outerwear','bottom','shoes'].filter(slot=>deck.some(look=>look.items.some(item=>item.macroCategory===slot)))
         const finalOutfits=trace.sync('response',()=>deck.map((look,index)=>({
@@ -2144,6 +2145,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         const previousDeckOverlapBySlot=Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,
             finalOutfits.flatMap(look=>look.items).filter((item:any)=>item.macroCategory===slot&&item.id!==anchorItemId&&wasRecentlyShown(item,slot==='shoes'?previousShoeSet:previousSet)).length]))
         trace.counts.selected=finalOutfits.length
+        trace.counts.selectionPairs=plan.selection.pairChecks;trace.counts.selectionReuse=plan.selection.repeatedProducts;trace.counts.selectionComplete=Number(plan.selection.feasibilityComplete)
         trace.counts.conceptsTarget=plan.diagnostics.conceptsTarget;trace.counts.conceptsFeasible=plan.diagnostics.conceptsFeasible;trace.counts.conceptsAchieved=finalPlanDiagnostics.conceptsAchieved;trace.counts.editorialIdentities=finalPlanDiagnostics.editorialIdentities;trace.counts.photoProducts=plan.diagnostics.photoProducts;
         const pricePercentiles=Object.fromEntries(['UZS','USD','EUR','GBP'].map(currency=>{const prices=deck.flatMap(look=>look.items).filter((item:any)=>item.isShopItem&&item.currency===currency&&Number(item.price)>0).map((item:any)=>Number(item.price)).sort((a,b)=>a-b);return [currency,prices.length?{p25:prices[Math.floor((prices.length-1)*0.25)],median:prices[Math.floor((prices.length-1)*0.5)],p75:prices[Math.floor((prices.length-1)*0.75)]}:null]}));
         console.info('stylist_quality',{pricePercentiles,target,selected:deck.length,quality:deck.map(look=>Number(look.quality.toFixed(3))),value:deck.map(look=>Number(look.valueScore.toFixed(3))),conceptsAchieved:finalPlanDiagnostics.conceptsAchieved,identities:finalPlanDiagnostics.editorialIdentities,photoProducts:plan.diagnostics.photoProducts,providerAccepted:ranks.size});
@@ -2158,7 +2160,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
             },
             diversity:{activeSlots,strictSlots:activeSlots.filter(slot=>!forcedSlots.includes(slot as DiversitySlot)),forcedRepeatSlots:forcedSlots},
             rotation:{recycledSlots:forcedSlots,freshProducts:freshProductCount(finalOutfits.flatMap(look=>look.items),excludeSet,anchorItemId)},
-            diagnostics:{stage:'complete',syncMs:trace.syncMs,counts:trace.counts,cpuRisk:plan.diagnostics.cpuRisk},
+            diagnostics:{stage:'complete',syncMs:trace.syncMs,counts:trace.counts,cpuRisk:plan.diagnostics.cpuRisk,selection:plan.selection,generationBounded:!plan.diagnostics.exploredCompletely},
             budgetReference:requestFx?{id:requestFx.snapshot.id,asOf:requestFx.snapshot.asOf,source:'CBU'}:undefined,
         }),{headers:{...corsHeaders,'Content-Type':'application/json'}})
 
@@ -2197,7 +2199,7 @@ serve(async(req:Request)=>{
       body={...body,error:known,code:known,stage:body.stage||trace.stage};
       response=new Response(JSON.stringify(body),{status:response.status,headers:response.headers});
     }
-    console.info('stylist_request',{generationVersion:GENERATION_VERSION,status:response.status,stage:trace.stage,code:failureCode,syncMs:trace.syncMs,waitMs:trace.waitMs,counts:trace.counts});
+    console.info('stylist_request',{generationVersion:GENERATION_VERSION,selectionAlgorithm:DECK_SELECTION_VERSION,status:response.status,stage:trace.stage,code:failureCode,syncMs:trace.syncMs,waitMs:trace.waitMs,counts:trace.counts});
   }
   return response;
 });

@@ -30,10 +30,12 @@ export function recentLookSimilarity(
   for (const previous of recent.slice(-36)) {
     if (!previous.startsWith('sq1:')) continue;
     const other = previous.slice(4).split('|');
-    let equal = 0, weight = 0, known = 0;
+    let equal = 0,
+      weight = 0,
+      known = 0;
     // Formula, palette and fit carry more evidence than shared generic
     // formality/length values. Keep the persisted sq1 format compatible.
-    const weights = [0, 0.35, 0.25, 0.20, 0.10, 0.03, 0.07];
+    const weights = [0, 0.35, 0.25, 0.2, 0.1, 0.03, 0.07];
     for (let i = 0; i < parts.length; i++) {
       const a = parts[i].split(':'),
         b = (other[i] || '').split(':');
@@ -59,18 +61,45 @@ export function recentStylingPenalty(
 
 /** Semantic change, independent of brands/IDs. Unknown attributes provide no
  * novelty credit. Cache this per pair in the existing bounded deck search. */
-export function outfitStylingDistance(a: GarmentEvidence[], b: GarmentEvidence[], anchorId?: string | null): number {
-  let changed = 0, possible = 0;
-  for (const slot of ['top', 'outerwear', 'bottom', 'shoes']) {
-    const first = a.find(item => item.macroCategory === slot), second = b.find(item => item.macroCategory === slot);
-    if (!first || !second || (anchorId && (String(first.id) === anchorId || String(second.id) === anchorId))) continue;
-    const da = describeGarment(first), db = describeGarment(second);
-    for (const [key, weight] of [['subtype', 0.35], ['volume', 0.2], ['color', 0.2], ['texture', 0.15], ['pattern', 0.1]] as const) {
-      if (['unknown', 'neutral', ''].includes(da[key]) || ['unknown', 'neutral', ''].includes(db[key])) continue;
-      possible += weight;
-      if (da[key] !== db[key]) changed += weight;
+export type OutfitStylingFeatures = readonly (readonly (string | undefined)[] | null)[];
+const STYLE_DISTANCE_WEIGHTS = [0.35, 0.2, 0.2, 0.15, 0.1];
+/** Compile once for the graph: no repeated garment extraction per look pair. */
+export function outfitStylingFeatures(
+  items: GarmentEvidence[],
+  anchorId?: string | null
+): OutfitStylingFeatures {
+  return ['top', 'outerwear', 'bottom', 'shoes'].map((slot) => {
+    const item = items.find((item) => item.macroCategory === slot);
+    if (!item || (anchorId && String(item.id) === anchorId)) return null;
+    const d = describeGarment(item);
+    return [d.subtype, d.volume, d.color, d.texture, d.pattern];
+  });
+}
+export function stylingFeatureDistance(a: OutfitStylingFeatures, b: OutfitStylingFeatures): number {
+  let changed = 0,
+    possible = 0;
+  for (let slot = 0; slot < 4; slot++) {
+    const first = a[slot],
+      second = b[slot];
+    if (!first || !second) continue;
+    for (let field = 0; field < STYLE_DISTANCE_WEIGHTS.length; field++) {
+      const x = first[field],
+        y = second[field];
+      if (!x || !y || x === 'unknown' || y === 'unknown' || x === 'neutral' || y === 'neutral')
+        continue;
+      possible += STYLE_DISTANCE_WEIGHTS[field];
+      if (x !== y) changed += STYLE_DISTANCE_WEIGHTS[field];
     }
   }
-  // Require comparable evidence across at least two garments.
   return possible >= 0.7 ? changed / possible : 0;
+}
+export function outfitStylingDistance(
+  a: GarmentEvidence[],
+  b: GarmentEvidence[],
+  anchorId?: string | null
+): number {
+  return stylingFeatureDistance(
+    outfitStylingFeatures(a, anchorId),
+    outfitStylingFeatures(b, anchorId)
+  );
 }
