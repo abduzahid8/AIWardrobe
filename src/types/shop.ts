@@ -5,7 +5,7 @@
  * Try-On feature). It is the catalog shape consumed by Home, Inspo, shop
  * stores, and the outfit pipeline, so it lives here now.
  */
-import type { GarmentPhysicalProfile } from './garment';
+import type { GarmentPhysicalProfile } from './garment.ts';
 
 export interface ShopCatalogItem {
     id: string;

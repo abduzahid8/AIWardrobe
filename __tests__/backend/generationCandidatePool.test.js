@@ -3,6 +3,15 @@ const fs=require('fs'),path=require('path'),ts=require('typescript');
 const root=process.env.NVIDIA_REQUEST_SOURCE_ROOT||path.resolve(__dirname,'../../backend/supabase/functions');
 const judge={...require(path.join(root,'../../../src/domain/occasionRules.ts')),...require(path.join(root,'../../../src/domain/outfitStructure.ts')),...require(path.join(root,'../../../src/domain/outfitDiversity.ts')),...require(path.join(root,'../../../src/domain/outfitRotation.ts'))};
 Object.assign(judge,require('../../src/domain/garmentContext'),require('../../src/domain/stylingContext'));
+// Candidate retrieval now reads the shared editorial, concept, visual and
+// catalog-admission authorities; the stripped-import harness must inject them.
+Object.assign(judge,
+  require('../../src/domain/editorialIntelligence'),
+  require('../../src/domain/catalogIdentity'),
+  require('../../src/domain/visualFashion'),
+  require('../../src/domain/garmentDescriptor'),
+  require('../../src/domain/outfitConcepts'),
+  require('../../src/domain/catalogCandidates'));
 judge.styleInference = require('../../src/domain/styleInference');
 const strip=s=>s.replace(/^import .*\n/gm,'').replace(/\bexport\s+/g,'');
 const source=['_shared/modelOutfitResponse.ts','generate-outfits/index.ts'].map(file=>strip(fs.readFileSync(path.join(root,file),'utf8'))).join('\n');

@@ -12,9 +12,10 @@ const api = new Function('require','exports','Deno',compiled+'\nreturn {fetchSho
   if(name.includes('styleInference')) return require('../../src/domain/styleInference');
   if(name.includes('outfitDiversity')) return require('../../src/domain/outfitDiversity');
   if(name.includes('outfitRotation')) return require('../../src/domain/outfitRotation');
+  if(name.includes('catalogIdentity')) return require('../../src/domain/catalogIdentity');
   if(name.includes('budgetFx.ts')) return require('../../src/domain/budgetFx');
   if(name.includes('server.ts')) return {serve:()=>{}};
-  for(const module of ['occasionRules','outfitStructure','garmentContext','stylingContext'])if(name.includes(module))return require(path.resolve(__dirname,'../../src/domain/',module+'.ts'));
+  for(const module of ['occasionRules','outfitStructure','garmentContext','stylingContext','editorialIntelligence','outfitConcepts','visualFashion','stylist5VisualContract','garmentDescriptor','catalogCandidates','lookExplanation','validatedQuartets','legacyClientCompatibility','outfitDeckSelection'])if(name.includes(module))return require(path.resolve(__dirname,'../../src/domain/',module+'.ts'));
   return {};
  }, {}, {env:{get:()=>undefined}});
 test.each(['UZS','USD','EUR'])('shop candidates retain authoritative %s currency for budget conversion',async currency=>{

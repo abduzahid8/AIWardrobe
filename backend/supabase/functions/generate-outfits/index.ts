@@ -1,3 +1,4 @@
+import { catalogImageAdmission } from '../../../../src/domain/catalogIdentity.ts'
 import { DECK_SELECTION_VERSION } from '../../../../src/domain/outfitDeckSelection.ts'
 import {legacyClientCompatible} from '../../../../src/domain/legacyClientCompatibility.ts'
 import { lookRelationships, valueIntelligence, imageEvidenceStrength } from '../../../../src/domain/editorialIntelligence.ts'
@@ -23,7 +24,7 @@ import { normalizeModelOutfits } from '../_shared/modelOutfitResponse.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { isFourSlotCandidate, fourSlotOutfitReason, outfitStructureReason, isDressGarment, isNonOutfitItem } from '../_shared/outfitStructure.ts'
 import { styleJudgeReason, assessOutfitQuality, spreadQualityFamilies, normalizeGarmentText, isWorkoutOccasion, rejectForStyleOccasion, rejectForClimate, rejectForRequestIntent, rejectForActivity, rejectOutfitIncoherence, isDrivingFootwear } from '../_shared/occasionRules.ts'
-import { normalizeProductHistory, spreadSuitableProducts, canonicalProductKey, productIdentityKeys, garmentArchetypeToken, countDistinctProducts, type DiversitySlot } from '../_shared/outfitDiversity.ts'
+import { normalizeProductHistory, spreadSuitableProducts, canonicalProductKey, productIdentityKeys, garmentArchetypeToken, countDistinctProducts, diversitySlotOf, type DiversitySlot } from '../_shared/outfitDiversity.ts'
 import {wasRecentlyShown, freshProductCount, createShoeRotationPriority, compareRotationOrder} from '../_shared/outfitRotation.ts'
 import { needsLayering as needsLayeringShared, resolveStylistWeather } from '../_shared/outfitComposition.ts'
 import { detectSlotMismatch, isOxfordFootwearName } from '../_shared/occasionRules.ts'
@@ -1089,12 +1090,17 @@ const PLACEHOLDER_SHOES: Record<string, any> = {
 // ranking and avoid-color filters still work.
 // Photo-boilerplate ("white-bg product shot", "front view", ...) must be
 // stripped first, otherwise every studio photo infers as white.
+function merchantColorSlug(url: unknown): string {
+    const match = String(url || '').match(/[?&](?:color_name|color|colour)=([^&#]+)/i)
+    return match ? decodeURIComponent(match[1]).replace(/[-_+]+/g, ' ').toLowerCase() : ''
+}
 const SHOP_COLOR_WORDS = ['black','white','offwhite','ecru','cream','beige','stone','sand','taupe','camel','khaki','olive','green','sage','mint','blue','navy','indigo','brown','chocolate','grey','gray','silver','charcoal','red','burgundy','maroon','pink','purple','lilac','yellow','mustard','orange','rust','tan','burgundy','forest']
 const SHOP_BOILERPLATE_RE = /white-bg|white background|product shots?|front views?|back views?|side views?|flat lays?|ghost mannequins?|on models?|studio shots?|model shot|e-commerce/gi
 function inferShopColor(row: any): string {
     // Product titles describe the garment; descriptions may mention styling
-    // companions (e.g. a navy shirt suggested with white trousers).
-    for (const evidence of [row?.color, row?.primary_color, row?.name, row?.description]) {
+    // companions (e.g. a navy shirt suggested with white trousers). The
+    // merchant color slug is trusted provenance and comes before descriptions.
+    for (const evidence of [row?.color, row?.primary_color, row?.name, merchantColorSlug(row?.source_url), row?.description]) {
         const blob = String(evidence || '').toLowerCase().replace(SHOP_BOILERPLATE_RE, ' ')
         const words = SHOP_COLOR_WORDS.join('|')
         const match = blob.match(new RegExp(`\\b(?:(?:dark|light|pale|muted|dusty|pastel|bright|neon|electric|vivid|fluorescent)[ -]+)?(?:${words})\\b`))
@@ -1192,10 +1198,16 @@ async function fetchShopItemsForAllSlotsEdge(
             for(const row of data) {
                 const slot=row.fashion_slot
                 if(!requiredSlots.includes(slot) || (slot==='shoes' && row.garment_type!=='shoes'))continue
+                // Repair the known `.jpg&w=…` construction instead of
+                // excluding the whole Zara source. Only structurally unusable
+                // URLs are skipped, and the reason is kept in diagnostics.
+                const image=catalogImageAdmission(row.image_url)
+                if(!image.ok){if(trace)trace.counts.imageAdmissionSkips=(trace.counts.imageAdmissionSkips||0)+1;continue}
+                if(image.repaired&&trace)trace.counts.imageUrlsNormalized=(trace.counts.imageUrlsNormalized||0)+1
                 const {fashion_intelligence:record,visual_fashion:visual,visual_source_hash:sourceHash,visual_embedding:embedding,price_peers:peers,...source}=row
                 const item={...source,id:`shop_${row.id}`,isShopItem:true,isWardrobe:false,
                     macroCategory:slot,type:row.garment_type||slot,
-                    imageUrl:row.image_url,image:row.image_url,shopUrl:row.source_url,color:inferShopColor(row),
+                    imageUrl:image.url,image:image.url,shopUrl:row.source_url,color:inferShopColor(row),
                     visualFashion:visual||undefined,visualSourceHash:sourceHash||undefined,visualEmbedding:embedding||undefined,pricePeers:peers||undefined}
                 if(visualAdmissionReason(item)) {if(trace)trace.counts.visualQuarantined=(trace.counts.visualQuarantined||0)+1;continue}
                 const cached=record?.version===FASHION_INTELLIGENCE_VERSION
@@ -1995,18 +2007,25 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
             slot,
             wardrobeItems.filter((item:any) => item.macroCategory === slot && !wasRecentlyShown(item, excludeSet)),
         ]))
-        const forcedRepeatSlots = rotationTarget
+        let forcedRepeatSlots = rotationTarget
             ? rotationSlots.filter(slot => countDistinctProducts(freshBySlot.get(slot) || []) < target)
             : []
+        // Early rotation pruning is a preference, not a deletion: keep the
+        // dropped rows so a later compatibility shortfall can prove whether
+        // they are still quality-compatible before the request fails.
+        const rotationPruned:any[] = []
         if (rotationTarget) {
             const strictRotationSlots = new Set(
                 rotationSlots.filter(slot => !forcedRepeatSlots.includes(slot)),
             )
-            wardrobeItems = wardrobeItems.filter((item:any) =>
-                !strictRotationSlots.has(item.macroCategory) ||
-                !wasRecentlyShown(item, excludeSet) ||
-                requiredChoiceIds.includes(String(item.id)),
-            )
+            const kept:any[] = []
+            for (const item of wardrobeItems) {
+                if (!strictRotationSlots.has(item.macroCategory) ||
+                    !wasRecentlyShown(item, excludeSet) ||
+                    requiredChoiceIds.includes(String(item.id))) kept.push(item)
+                else rotationPruned.push(item)
+            }
+            wardrobeItems = kept
         }
         if (rotationTarget && excludeSet.size) {
             wardrobeItems = [...wardrobeItems].sort((a, b) =>
@@ -2055,11 +2074,11 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         // supplies garment IDs, metadata or a second set of combinations.
         trace.stage='planning'
         wardrobeItems = trace.sync('intelligence',()=>wardrobeItems.map((item:any)=>Object.isFrozen(item)?item:prepareGarment(item)))
-        const itemMap = new Map<string,any>(wardrobeItems.map((item:any)=>[String(item.id),item]))
+        let itemMap = new Map<string,any>(wardrobeItems.map((item:any)=>[String(item.id),item]))
         const hasOwnedCandidates=wardrobeItems.some((item:any)=>!isShopRow(item))
         const shopOnly=(catalogOnly || isShopOnlyDeck(stylePreferences,occasion)) && !anchorItemId
-        const evaluations=new Map<string,ReturnType<typeof assessOutfitQuality>>()
-        const rowNumbers=new Map<any,number>(wardrobeItems.map((item:any,index:number)=>[item,index]))
+        let evaluations=new Map<string,ReturnType<typeof assessOutfitQuality>>()
+        let rowNumbers=new Map<any,number>(wardrobeItems.map((item:any,index:number)=>[item,index]))
         const evaluationKey=(parts:any[])=>parts.map(item=>rowNumbers.get(item)).sort((a,b)=>Number(a)-Number(b)).join(':')
         const gateCounts={structure:0,budget:0,source:0,quality:0}
         const assess=(parts:any[])=>{
@@ -2083,19 +2102,51 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
             if(!assessment.acceptance.passed || styleJudgeReason(parts,styleKey,`${occasion} ${prompt}`,weather,anchorItemId,preferences,assessment,qualityContext))return fail('quality')
             return {valid:true,score:assessment.score}
         }
-        const plan=trace.sync('planning',()=>createOutfitPlan(wardrobeItems,qualityContext,evaluate,{
-            requiredIds:requiredChoiceIds,target,priority:deckPriority,
-            cost:item=>shopPriceOf(item,parsedBudget?.currency,parsedBudget?.fx),budget:parsedBudget?.amount,
-            forcedRepeatSlots,
-            maxEvaluations:rotationTarget?512:256,maxSyncMs:Math.max(50,Math.min(600,800-Object.values(trace.syncMs).reduce((sum,ms)=>sum+ms,0))),
-        }))
+        const resetGateCounts=()=>{gateCounts.structure=0;gateCounts.budget=0;gateCounts.source=0;gateCounts.quality=0}
+        const planFor=(pool:any[],forced:DiversitySlot[])=>{
+            itemMap=new Map<string,any>(pool.map((item:any)=>[String(item.id),item]))
+            rowNumbers=new Map<any,number>(pool.map((item:any,index:number)=>[item,index]))
+            evaluations=new Map<string,ReturnType<typeof assessOutfitQuality>>()
+            resetGateCounts()
+            return trace.sync('planning',()=>createOutfitPlan(pool,qualityContext,evaluate,{
+                requiredIds:requiredChoiceIds,target,priority:deckPriority,
+                cost:item=>shopPriceOf(item,parsedBudget?.currency,parsedBudget?.fx),budget:parsedBudget?.amount,
+                forcedRepeatSlots:forced,
+                maxEvaluations:rotationTarget?512:256,maxSyncMs:Math.max(50,Math.min(600,800-Object.values(trace.syncMs).reduce((sum,ms)=>sum+ms,0))),
+            }))
+        }
+        let plan=planFor(wardrobeItems,forcedRepeatSlots)
+        let poolExpansionAudit:{attempted:boolean;baseLooks:number;expandedLooks:number;prunedSlots:string[];outcome:'succeeded'|'insufficient'}|undefined
+        // If the fresh-only pool cannot produce a complete deck, retry with
+        // the early-pruned rows. They already passed every hard gate; only
+        // rotation recency removed them, so this is a controlled feasibility
+        // expansion, not a quality waiver. Final overlap diagnostics recognize
+        // exactly the expanded rows that survive selection.
+        if (rotationTarget && rotationPruned.length && plan.seed.length < target) {
+            const baseState={itemMap,rowNumbers,evaluations,gateCounts:{...gateCounts}}
+            const prunedById=new Map(rotationPruned.map((item:any)=>[String(item.id),item]))
+            const expandedPool=[...wardrobeItems,...prunedById.values()]
+            const prunedSlots=[...new Set(rotationPruned.map((item:any)=>diversitySlotOf(item)).filter((slot): slot is DiversitySlot=>!!slot))]
+            const expandedForced=[...new Set([...forcedRepeatSlots,...prunedSlots])]
+            const expandedPlan=planFor(expandedPool,expandedForced)
+            const outcome=expandedPlan.seed.length>plan.seed.length?'succeeded':'insufficient'
+            poolExpansionAudit={attempted:true,baseLooks:plan.seed.length,expandedLooks:expandedPlan.seed.length,prunedSlots,outcome}
+            if(outcome==='succeeded'){plan=expandedPlan;wardrobeItems=expandedPool;forcedRepeatSlots=expandedForced}
+            else {
+                // The rejected retry must not leak its pool indices, cached
+                // assessments or gate counts into the plan still in use.
+                itemMap=baseState.itemMap;rowNumbers=baseState.rowNumbers;evaluations=baseState.evaluations
+                Object.assign(gateCounts,baseState.gateCounts)
+            }
+            console.info('[rotation-feasibility]',JSON.stringify(poolExpansionAudit))
+        }
         trace.counts={...trace.counts,...plan.diagnostics.counts,evaluations:plan.diagnostics.evaluations,
             proposals:plan.diagnostics.proposals,valid:plan.diagnostics.validCandidates,...gateCounts,budgetPruned:plan.diagnostics.budgetRejected}
         if(!plan.seed.length) {
             const missing=Object.values(plan.diagnostics.counts).some(count=>!count)
             const code=missing?'insufficient_candidates':plan.diagnostics.cpuRisk?'planning_cpu_risk'
                 :(gateCounts.budget+plan.diagnostics.budgetRejected)>0&&!gateCounts.quality?'no_outfit_within_budget':plan.diagnostics.validCandidates?'incomplete_outfit_selection':'outfit_quality_rejected'
-            return new Response(JSON.stringify({success:false,outfits:[],code,stage:'planning',
+            return new Response(JSON.stringify({success:false,outfits:[],code,stage:'planning',poolExpansion:poolExpansionAudit,
                 diagnostics:{counts:plan.diagnostics.counts,evaluations:plan.diagnostics.evaluations,valid:plan.diagnostics.validCandidates,
                     bounded:!plan.diagnostics.exploredCompletely,cpuRisk:plan.diagnostics.cpuRisk,selection:plan.selection}}),{status:plan.diagnostics.cpuRisk?503:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
         }
@@ -2130,7 +2181,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         // The feasible seed survives a missing, malformed or failed rank call.
         const deck=selected.length?selected:plan.seed
         if(!deck.length)return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection'}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
-        if(deck.length<target && body.compositionProtocol!=='optional-layer-v1')return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection',inventoryReason:'distinct_editorial_inventory_limited',diagnostics:{selection:plan.selection,generationBounded:!plan.diagnostics.exploredCompletely}}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}});
+        if(deck.length<target && body.compositionProtocol!=='optional-layer-v1')return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection',inventoryReason:'distinct_editorial_inventory_limited',poolExpansion:poolExpansionAudit,diagnostics:{selection:plan.selection,generationBounded:!plan.diagnostics.exploredCompletely}}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}});
         const forcedSlots=[...new Set([...plan.diagnostics.forcedSlots,...plan.selection.repeatedSlots.map(slot=>['top','outerwear','bottom','shoes'][slot])])] as DiversitySlot[]
         const finalPlanDiagnostics=selectedPlanDiagnostics(deck)
         const activeSlots=['top','outerwear','bottom','shoes'].filter(slot=>deck.some(look=>look.items.some(item=>item.macroCategory===slot)))
@@ -2142,8 +2193,10 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
             selectionSource:generationSource,generationRequestId:body.generationRequestId,engineVersion:GENERATION_VERSION,
             confidence:look.quality,fashionScore:{quality:look.quality,relationships:look.relationships,value:look.valueScore},curationRank:ranks.get(look.id),qualityAssessment:assess(look.items),
         })))
+        const expandedItemIds=new Set(finalOutfits.flatMap(look=>look.items).map((item:any)=>String(item.id))
+            .filter(id=>rotationPruned.some((pruned:any)=>String(pruned.id)===id)))
         const previousDeckOverlapBySlot=Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,
-            finalOutfits.flatMap(look=>look.items).filter((item:any)=>item.macroCategory===slot&&item.id!==anchorItemId&&wasRecentlyShown(item,slot==='shoes'?previousShoeSet:previousSet)).length]))
+            finalOutfits.flatMap(look=>look.items).filter((item:any)=>item.macroCategory===slot&&item.id!==anchorItemId&&wasRecentlyShown(item,slot==='shoes'?previousShoeSet:previousSet)&&!expandedItemIds.has(String(item.id))).length]))
         trace.counts.selected=finalOutfits.length
         trace.counts.selectionPairs=plan.selection.pairChecks;trace.counts.selectionReuse=plan.selection.repeatedProducts;trace.counts.selectionComplete=Number(plan.selection.feasibilityComplete)
         trace.counts.conceptsTarget=plan.diagnostics.conceptsTarget;trace.counts.conceptsFeasible=plan.diagnostics.conceptsFeasible;trace.counts.conceptsAchieved=finalPlanDiagnostics.conceptsAchieved;trace.counts.editorialIdentities=finalPlanDiagnostics.editorialIdentities;trace.counts.photoProducts=plan.diagnostics.photoProducts;
@@ -2152,10 +2205,11 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         return new Response(JSON.stringify({success:true,generationVersion:GENERATION_VERSION,generationRequestId:body.generationRequestId,
             rotationScope:body.rotationScope,outfits:finalOutfits,source:generationSource,layered:!qualityContext.optionalLayer,compositionProtocol:qualityContext.optionalLayer?'optional-layer-v1':undefined,
             inventoryReason:deck.length<target?'distinct_editorial_inventory_limited':undefined,provider:'nvidia:'+nvidiaModel,
-            providerAttempts:providerTrace,previousDeckOverlapBySlot,
+            providerAttempts:providerTrace,previousDeckOverlapBySlot,poolExpansion:poolExpansionAudit,
             shoeRotationAudit:{
                 previousShoeOverlap:finalOutfits.flatMap(look=>look.items)
                     .filter((item:any)=>item.macroCategory==='shoes' && item.id!==anchorItemId)
+                    .filter((item:any)=>!expandedItemIds.has(String(item.id)))
                     .filter((item:any)=>wasRecentlyShown(item,previousShoeSet)).length,
             },
             diversity:{activeSlots,strictSlots:activeSlots.filter(slot=>!forcedSlots.includes(slot as DiversitySlot)),forcedRepeatSlots:forcedSlots},
