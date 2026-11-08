@@ -24,6 +24,19 @@ export async function readOutfitGenerationRequest(request: Request): Promise<Rec
     for (const chunk of chunks) { buffer.set(chunk, offset); offset += chunk.byteLength; }
     let body: unknown;
     try { body = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(buffer)); } catch { throw new OutfitRequestError(400,'body','invalid_json'); }
+    // Legacy mobile JS may send an oversized OPTIONAL displayed-product history.
+    // Keep recent valid keys and enforce the original 450-item bound; do not alter
+    // user budgets, selected items, wardrobe items, or other request constraints.
+    if (body && typeof body === 'object' && !Array.isArray(body)) {
+      const legacy = (body as Record<string, unknown>).excludeProductKeys;
+      if (Array.isArray(legacy) && legacy.length > 450) {
+        if (legacy.length > 2048)
+          throw new OutfitRequestError(400, 'excludeProductKeys', 'too_many');
+        if (legacy.some((key) => typeof key !== 'string' || !key.trim() || key.length > 2048))
+          throw new OutfitRequestError(400, 'excludeProductKeys', 'invalid_element');
+        (body as Record<string, unknown>).excludeProductKeys = [...new Set(legacy)].slice(-450);
+      }
+    }
     return validateOutfitGenerationRequest(body);
   } finally {
     clearTimeout(timer!);
