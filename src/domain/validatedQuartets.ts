@@ -71,6 +71,16 @@ export interface PlannedLook<T> {
   identity: string;
   relationships: number;
 }
+
+export function selectedPlanDiagnostics<T extends { concept: { id: string }; identity: string }>(
+  looks: readonly T[],
+) {
+  return {
+    conceptsAchieved: new Set(looks.map((look) => look.concept.id)).size,
+    editorialIdentities: new Set(looks.map((look) => look.identity)).size,
+  };
+}
+
 export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
   items: T[],
   context: StylingContext,
@@ -571,8 +581,7 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       counts,
       conceptsTarget: 3,
       conceptsFeasible: feasible.length,
-      conceptsAchieved: new Set(seed.map((look) => look.concept.id)).size,
-      editorialIdentities: new Set(seed.map((look) => look.identity)).size,
+      ...selectedPlanDiagnostics(seed),
       photoProducts: items.filter((item) => imageEvidenceStrength(item) > 0).length,
       selectedQuality: seed.map((look) => look.quality),
       selectedValue: seed.map((look) => look.valueScore),

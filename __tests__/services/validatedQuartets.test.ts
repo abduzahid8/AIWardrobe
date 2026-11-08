@@ -1,4 +1,4 @@
-import { validatedQuartets } from '../../src/domain/validatedQuartets';
+import { selectedPlanDiagnostics, validatedQuartets } from '../../src/domain/validatedQuartets';
 import { stylingContext } from '../../src/domain/stylingContext';
 import { fourSlotOutfitReason } from '../../src/domain/outfitStructure';
 const pool = ['Cotton shirt', 'Fine cardigan', 'Tailored trousers', 'Leather loafers'].flatMap(
@@ -80,4 +80,19 @@ it('enforces explicit source mode before constructing quartets', () => {
       () => true
     ).every((c) => c.items.every((i) => i.id.startsWith('shop_')))
   ).toBe(true);
+});
+
+it('reports diagnostics from the selected deck rather than the planner seed', () => {
+  const looks = [
+    { concept: { id: 'minimalist' }, identity: 'clean-separates' },
+    { concept: { id: 'classic' }, identity: 'tailored-contrast' },
+  ];
+  expect(selectedPlanDiagnostics(looks)).toEqual({
+    conceptsAchieved: 2,
+    editorialIdentities: 2,
+  });
+  expect(selectedPlanDiagnostics([looks[0], looks[0]])).toEqual({
+    conceptsAchieved: 1,
+    editorialIdentities: 1,
+  });
 });

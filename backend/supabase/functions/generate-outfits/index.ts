@@ -7,7 +7,7 @@ import { rankNvidiaLooks } from '../_shared/nvidiaLookRanking.ts'
 import { stylingCandidateRepresentatives } from '../../../../src/domain/catalogCandidates.ts'
 import { describeGarment, prepareGarment, FASHION_INTELLIGENCE_VERSION } from '../../../../src/domain/garmentDescriptor.ts'
 import {garmentContextReason,scoreGarmentForContext,compareUnbudgetedValue} from '../../../../src/domain/garmentContext.ts'
-import { createOutfitPlan } from '../../../../src/domain/validatedQuartets.ts'
+import { createOutfitPlan, selectedPlanDiagnostics } from '../../../../src/domain/validatedQuartets.ts'
 import { stylingContext } from '../../../../src/domain/stylingContext.ts'
 import * as styleInference from '../../../../src/domain/styleInference.ts'
 import { readOutfitGenerationRequest, OutfitRequestError } from '../_shared/outfitGenerationRequest.ts'
@@ -1184,12 +1184,30 @@ async function fetchShopItemsForAllSlotsEdge(
     try {
         let slots=[...requiredSlots]
         for(let page=0;page<2&&slots.length;page++) {
-            const pending=supabaseClient.rpc('catalog_stylist_candidates',{
+            const rpcArgs={
                 p_slots:slots,p_seed:generationSeed,p_limit:100,p_offset:page*100,
                 p_currency:nativeBudget?.currency||null,p_max_price:nativeBudget?.amount??null,p_context:retrievalContext,
-            }).abortSignal(controller.signal)
-            const {data,error}=trace?await trace.wait('catalog',()=>Promise.resolve(pending)):await pending
+            }
+            let pending=supabaseClient.rpc('catalog_stylist_candidates_compact',rpcArgs).abortSignal(controller.signal)
+            let result=trace?await trace.wait('catalog',()=>Promise.resolve(pending)):await pending
+            // Keep rollout safe when the Edge function is updated before the
+            // additive compact-RPC migration reaches the project.
+            if(result.error && ['PGRST202','404'].includes(String(result.error.code||result.error.status||''))) {
+                pending=supabaseClient.rpc('catalog_stylist_candidates',rpcArgs).abortSignal(controller.signal)
+                result=trace?await trace.wait('catalog_legacy',()=>Promise.resolve(pending)):await pending
+            }
+            const {data,error}=result
             if(error||!Array.isArray(data))throw new CatalogLookupError()
+            const serialized = JSON.stringify(data)
+            const payloadBytes = new TextEncoder().encode(serialized).byteLength
+            const embeddingBytes = data.reduce((total: number, row: any) => {
+                const embedding = row?.visual_embedding
+                return total + (embedding == null ? 0 : new TextEncoder().encode(JSON.stringify(embedding)).byteLength)
+            }, 0)
+            if(trace) {
+                trace.counts.catalogPayloadBytes=(trace.counts.catalogPayloadBytes||0)+payloadBytes
+                trace.counts.catalogEmbeddingBytes=(trace.counts.catalogEmbeddingBytes||0)+embeddingBytes
+            }
             const filterStart=performance.now()
             if(trace)trace.counts.catalogRows=(trace.counts.catalogRows||0)+data.length
             for(const row of data) {
@@ -2079,6 +2097,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         if(!deck.length)return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection'}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
         if(deck.length<target && body.compositionProtocol!=='optional-layer-v1')return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection',inventoryReason:'distinct_editorial_inventory_limited'}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}});
         const forcedSlots=plan.diagnostics.forcedSlots as DiversitySlot[]
+        const finalPlanDiagnostics=selectedPlanDiagnostics(deck)
         const activeSlots=['top','outerwear','bottom','shoes'].filter(slot=>deck.some(look=>look.items.some(item=>item.macroCategory===slot)))
         const finalOutfits=trace.sync('response',()=>deck.map((look,index)=>({
             id:`outfit_${index+1}`,items:look.items.map(({visualEmbedding,...item}:any)=>item),
@@ -2091,9 +2110,9 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         const previousDeckOverlapBySlot=Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,
             finalOutfits.flatMap(look=>look.items).filter((item:any)=>item.macroCategory===slot&&item.id!==anchorItemId&&wasRecentlyShown(item,slot==='shoes'?previousShoeSet:previousSet)).length]))
         trace.counts.selected=finalOutfits.length
-        trace.counts.conceptsTarget=plan.diagnostics.conceptsTarget;trace.counts.conceptsFeasible=plan.diagnostics.conceptsFeasible;trace.counts.conceptsAchieved=plan.diagnostics.conceptsAchieved;trace.counts.editorialIdentities=plan.diagnostics.editorialIdentities;trace.counts.photoProducts=plan.diagnostics.photoProducts;
+        trace.counts.conceptsTarget=plan.diagnostics.conceptsTarget;trace.counts.conceptsFeasible=plan.diagnostics.conceptsFeasible;trace.counts.conceptsAchieved=finalPlanDiagnostics.conceptsAchieved;trace.counts.editorialIdentities=finalPlanDiagnostics.editorialIdentities;trace.counts.photoProducts=plan.diagnostics.photoProducts;
         const pricePercentiles=Object.fromEntries(['UZS','USD','EUR','GBP'].map(currency=>{const prices=deck.flatMap(look=>look.items).filter((item:any)=>item.isShopItem&&item.currency===currency&&Number(item.price)>0).map((item:any)=>Number(item.price)).sort((a,b)=>a-b);return [currency,prices.length?{p25:prices[Math.floor((prices.length-1)*0.25)],median:prices[Math.floor((prices.length-1)*0.5)],p75:prices[Math.floor((prices.length-1)*0.75)]}:null]}));
-        console.info('stylist_quality',{pricePercentiles,target,selected:deck.length,quality:deck.map(look=>Number(look.quality.toFixed(3))),value:deck.map(look=>Number(look.valueScore.toFixed(3))),conceptsAchieved:plan.diagnostics.conceptsAchieved,identities:plan.diagnostics.editorialIdentities,photoProducts:plan.diagnostics.photoProducts,providerAccepted:ranks.size});
+        console.info('stylist_quality',{pricePercentiles,target,selected:deck.length,quality:deck.map(look=>Number(look.quality.toFixed(3))),value:deck.map(look=>Number(look.valueScore.toFixed(3))),conceptsAchieved:finalPlanDiagnostics.conceptsAchieved,identities:finalPlanDiagnostics.editorialIdentities,photoProducts:plan.diagnostics.photoProducts,providerAccepted:ranks.size});
         return new Response(JSON.stringify({success:true,generationVersion:GENERATION_VERSION,generationRequestId:body.generationRequestId,
             rotationScope:body.rotationScope,outfits:finalOutfits,source:generationSource,layered:!qualityContext.optionalLayer,compositionProtocol:qualityContext.optionalLayer?'optional-layer-v1':undefined,
             inventoryReason:deck.length<target?'distinct_editorial_inventory_limited':undefined,provider:'nvidia:'+nvidiaModel,
