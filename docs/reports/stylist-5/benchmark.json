@@ -1,0 +1,434 @@
+{
+  "bundleSha256": "626ee224e82c8c1e82c3d8e45494a95d218981c966e7fec70c502d3e4ded5b88",
+  "measuredAt": "2026-11-08T03:25:46.088Z",
+  "catalog": {
+    "frozenAt": "2026-11-08T02:26:49.655Z",
+    "rows": 7020,
+    "sha256": "dc4853cdb301b55cb8828bdd9e78a778bfc2de64a5da98c93dbe27dd8cafcfa6",
+    "slots": {
+      "shoes": 115,
+      "top": 3118,
+      "bottom": 1673,
+      "outerwear": 2114
+    },
+    "photoProfiles": 22
+  },
+  "providerCalls": 0,
+  "method": "Exact v200 deterministic kernel vs candidate on the same frozen full catalog and exact old/new retrieval procedures and six inputs. Candidate adds offline evidence of those same images. No human-preference or production-latency claim.",
+  "scenarios": [
+    {
+      "style": "casual",
+      "occasion": "Travel",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 0,
+          "structure": 10,
+          "accessory": 0,
+          "style": 0,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 390,
+        "looks": 3,
+        "concepts": 1,
+        "layerTypes": [
+          "overshirt",
+          "jacket"
+        ],
+        "topTypes": [
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.3684210526315789,
+        "meanCoherence": 0.9422031250000001,
+        "photoProducts": 0,
+        "poolSize": 96,
+        "maximumUzsItem": 1899900,
+        "evaluations": 256,
+        "wallMs": 144,
+        "cpuMs": 187
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 0,
+          "context": 0,
+          "structure": 5,
+          "accessory": 0,
+          "style": 0,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 395,
+        "looks": 3,
+        "concepts": 2,
+        "layerTypes": [
+          "overshirt",
+          "jacket",
+          "bomber"
+        ],
+        "topTypes": [
+          "t-shirt",
+          "polo",
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.43859649122807015,
+        "meanCoherence": 0.9321197916666666,
+        "photoProducts": 71,
+        "poolSize": 96,
+        "maximumUzsItem": 849900,
+        "evaluations": 256,
+        "wallMs": 138,
+        "cpuMs": 199
+      }
+    },
+    {
+      "style": "semi_classic",
+      "occasion": "Work",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 12,
+          "structure": 14,
+          "accessory": 0,
+          "style": 133,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 251,
+        "looks": 3,
+        "concepts": 2,
+        "layerTypes": [
+          "blazer"
+        ],
+        "topTypes": [
+          "shirt",
+          "dress-shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.588235294117647,
+        "meanCoherence": 0.9403199404761905,
+        "photoProducts": 0,
+        "poolSize": 96,
+        "maximumUzsItem": 8283691,
+        "evaluations": 256,
+        "wallMs": 154,
+        "cpuMs": 190
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 2,
+          "context": 12,
+          "structure": 19,
+          "accessory": 0,
+          "style": 18,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 361,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "cardigan",
+          "blazer"
+        ],
+        "topTypes": [
+          "shirt",
+          "dress-shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.6774193548387096,
+        "meanCoherence": 0.9368898809523808,
+        "photoProducts": 80,
+        "poolSize": 96,
+        "maximumUzsItem": 2250615,
+        "evaluations": 256,
+        "wallMs": 167,
+        "cpuMs": 213
+      }
+    },
+    {
+      "style": "old_money",
+      "occasion": "Work",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 12,
+          "structure": 27,
+          "accessory": 0,
+          "style": 137,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 233,
+        "looks": 3,
+        "concepts": 2,
+        "layerTypes": [
+          "blazer"
+        ],
+        "topTypes": [
+          "dress-shirt",
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.5555555555555555,
+        "meanCoherence": 0.9438831845238095,
+        "photoProducts": 0,
+        "poolSize": 96,
+        "maximumUzsItem": 8283691,
+        "evaluations": 256,
+        "wallMs": 163,
+        "cpuMs": 211
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 2,
+          "context": 12,
+          "structure": 30,
+          "accessory": 0,
+          "style": 94,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 274,
+        "looks": 3,
+        "concepts": 2,
+        "layerTypes": [
+          "cardigan",
+          "blazer"
+        ],
+        "topTypes": [
+          "dress-shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.5925925925925926,
+        "meanCoherence": 0.9333125,
+        "photoProducts": 80,
+        "poolSize": 96,
+        "maximumUzsItem": 2411373,
+        "evaluations": 256,
+        "wallMs": 172,
+        "cpuMs": 208
+      }
+    },
+    {
+      "style": "classic",
+      "occasion": "Work",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 12,
+          "structure": 26,
+          "accessory": 0,
+          "style": 105,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 267,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "blazer"
+        ],
+        "topTypes": [
+          "shirt",
+          "dress-shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.3958333333333333,
+        "meanCoherence": 0.9624196428571428,
+        "photoProducts": 0,
+        "poolSize": 96,
+        "maximumUzsItem": 53319510,
+        "evaluations": 256,
+        "wallMs": 151,
+        "cpuMs": 156
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 2,
+          "context": 12,
+          "structure": 30,
+          "accessory": 0,
+          "style": 94,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 274,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "blazer",
+          "cardigan"
+        ],
+        "topTypes": [
+          "dress-shirt",
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.6666666666666665,
+        "meanCoherence": 0.9424650297619048,
+        "photoProducts": 78,
+        "poolSize": 96,
+        "maximumUzsItem": 2250615,
+        "evaluations": 256,
+        "wallMs": 171,
+        "cpuMs": 262
+      }
+    },
+    {
+      "style": "semi_classic",
+      "occasion": "Date night",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 4,
+          "structure": 28,
+          "accessory": 0,
+          "style": 2,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 366,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "cardigan",
+          "blazer"
+        ],
+        "topTypes": [
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.5227272727272726,
+        "meanCoherence": 0.9493824404761906,
+        "photoProducts": 1,
+        "poolSize": 96,
+        "maximumUzsItem": 8283691,
+        "evaluations": 256,
+        "wallMs": 123,
+        "cpuMs": 165
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 1,
+          "context": 4,
+          "structure": 31,
+          "accessory": 0,
+          "style": 10,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 358,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "blazer",
+          "cardigan"
+        ],
+        "topTypes": [
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.3965517241379309,
+        "meanCoherence": 0.9238608630952382,
+        "photoProducts": 80,
+        "poolSize": 96,
+        "maximumUzsItem": 2250615,
+        "evaluations": 256,
+        "wallMs": 113,
+        "cpuMs": 157
+      }
+    },
+    {
+      "style": "minimalist",
+      "occasion": "Everyday",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 0,
+          "structure": 10,
+          "accessory": 0,
+          "style": 18,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 372,
+        "looks": 3,
+        "concepts": 1,
+        "layerTypes": [
+          "overshirt",
+          "cardigan"
+        ],
+        "topTypes": [
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.5625,
+        "meanCoherence": 0.9256052827380952,
+        "photoProducts": 0,
+        "poolSize": 96,
+        "maximumUzsItem": 1600000,
+        "evaluations": 256,
+        "wallMs": 89,
+        "cpuMs": 117
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 0,
+          "context": 0,
+          "structure": 7,
+          "accessory": 0,
+          "style": 13,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 380,
+        "looks": 3,
+        "concepts": 2,
+        "layerTypes": [
+          "overshirt",
+          "jacket"
+        ],
+        "topTypes": [
+          "t-shirt",
+          "polo"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.40298507462686556,
+        "meanCoherence": 0.9214761904761906,
+        "photoProducts": 73,
+        "poolSize": 96,
+        "maximumUzsItem": 849900,
+        "evaluations": 256,
+        "wallMs": 92,
+        "cpuMs": 126
+      }
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import {stylingCopyParts} from './stylingCopy';
+import {stylingCopyParts,editorialCopy} from './stylingCopy';
 import { validatedQuartets } from '../domain/validatedQuartets';
 import { stylingContext } from '../domain/stylingContext';
 import { budgetFxContext, fitsBudgetAmount, type BudgetFxContext } from '../domain/budgetFx';
@@ -41,6 +41,8 @@ import useWardrobeStore from '../../store/wardrobeStore';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface GenerateOutfitsParams {
+    /** Opt in only on surfaces that can render and save three-piece looks. */
+    compositionProtocol?: 'optional-layer-v1';
     /** Debug replay of candidate ordering; no effect on hard eligibility or prices. */
     replaySeed?: string;
     sourceMode?: 'wardrobe' | 'catalog' | 'mixed';
@@ -107,6 +109,8 @@ export interface GeneratedOutfitItem {
 }
 
 export interface GeneratedOutfit {
+    compositionProtocol?: 'optional-layer-v1';
+    explanationVersion?:number;
     concept?: {id:string;title:string;story:string;score?:number};
     selectionSource?: string;
     generationRequestId?:string;
@@ -122,6 +126,7 @@ export interface GeneratedOutfit {
 }
 
 export interface GenerateOutfitsResult {
+    compositionProtocol?: 'optional-layer-v1';
     success: boolean;
     outfits: GeneratedOutfit[];
     error?: string;
@@ -202,6 +207,7 @@ export async function generateOutfitsFromDB(
         const recentLookSignatures=await wait(getRecentShownLookSignatures(recencyScope));
         if (cancelled) throw new Error('generation_account_changed');
         const body = {
+            ...(params.compositionProtocol ? {compositionProtocol:params.compositionProtocol} : {}),
             prompt: params.prompt || '',
             conversationContext: params.conversationContext,
             generationRequestId:params.replaySeed,
@@ -222,7 +228,7 @@ export async function generateOutfitsFromDB(
         };
         try { validateOutfitGenerationRequest(body); }
         catch {
-            return { success: false, outfits: [], error: 'invalid_generation_request', errorTranslationKey: 'outfitMaker.invalidRequest' };
+            return { success: false, outfits: [], error: 'invalid_generation_request', code:'invalid_generation_request',stage:'admission',errorTranslationKey: 'outfitMaker.invalidRequest' };
         }
         const invokeOnce = (ignoreHistory = false) => supabase.functions.invoke('generate-outfits', {
             signal: controller.signal,
@@ -263,13 +269,14 @@ export async function generateOutfitsFromDB(
             return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
         }
 
+        const optionalLayer = params.compositionProtocol === 'optional-layer-v1' && data.compositionProtocol === 'optional-layer-v1';
         const outfits: GeneratedOutfit[] = data.outfits
-            .filter((o: any) => o && !fourSlotOutfitReason(o.items, data.layered !== false))
+            .filter((o: any) => o && !fourSlotOutfitReason(o.items, !optionalLayer))
             .map((o: any) => mapRawOutfit(o, params))
             .filter((o: GeneratedOutfit) => [...(params.selectedItemIds||[]),...(params.anchorItemId?[params.anchorItemId]:[])].every(id=>o.items.some(item=>item.id===id)) && (params.sourceMode!=='wardrobe'||o.items.every(item=>!isShopClothingItem(item))) && (params.sourceMode!=='catalog'||o.items.every(isShopClothingItem)) && passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather,params.anchorItemId,params.preferences));
         if (!outfits.length || (data.outfits.length === 3 && outfits.length !== 3)) return { success: false, outfits: [], error: 'no_valid_outfits_for_request', errorTranslationKey: 'outfitMaker.noMatchingClothing' };
         if (params.recordShown !== false) recordShownOutfits(outfits, recencyScope);
-        return { success: true, outfits, source: data.source === 'ai' ? 'ai' : 'deterministic_fallback', layered: Boolean(data.layered) };
+        return { success: true, outfits, source: data.source === 'ai' ? 'ai' : 'deterministic_fallback', layered: !optionalLayer, compositionProtocol:optionalLayer?'optional-layer-v1':undefined };
 
     } catch (err: any) {
         if (err?.message === 'generation_account_changed') {
@@ -1449,13 +1456,13 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
 
     return {
         id: o.id || `outfit_${Date.now()}_${Math.random()}`,
-        concept:o.concept,selectionSource:o.selectionSource,generationRequestId:o.generationRequestId,engineVersion:o.engineVersion,
-        description: stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).description,
+        compositionProtocol:o.compositionProtocol,explanationVersion:o.explanationVersion,concept:o.concept,selectionSource:o.selectionSource,generationRequestId:o.generationRequestId,engineVersion:o.engineVersion,
+        description: o.explanationVersion===1?editorialCopy(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})):stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).description,
         style: o.style || params.stylePreferences || 'Casual',
         occasion: o.occasion || params.occasion || 'Everyday',
         confidence: assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score,
         matchScore: assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score,
         items: normalizedItems,
-        stylingTips: stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).tips,
+        stylingTips: o.explanationVersion===1?[]:stylingCopyParts(items,stylingContext({style:params.stylePreferences,occasion:params.occasion,request:params.prompt,weather:params.weather})).tips,
     };
 }

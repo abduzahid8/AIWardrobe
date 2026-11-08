@@ -1,3 +1,4 @@
+import {boundedGenerationHistory} from '../domain/outfitGenerationRequest';
 import {outfitVisualSignature} from '../domain/outfitVisualSignature';
 /**
  * recentOutfitIds.ts
@@ -41,7 +42,7 @@ function stateFor(scope?: string): { key: string; state: RecencyState } {
 }
 
 function isRealPoolId(id: string): boolean {
-    if (!id) return false;
+    if (!id || id.length > 200) return false;
     // Placeholder / synthesized ids are not pool members — recording them
     // would burn window space without excluding anything real.
     if (id === 'placeholder_shoes') return false;
@@ -113,7 +114,7 @@ export function recordShownOutfits(outfits: unknown, scope?: string): void {
     state.writeChain = state.writeChain.then(async () => {
         await ensureHydrated(state, key);
         if (!Array.isArray(outfits)) return;
-        const signatures=outfits.filter(o=>Array.isArray(o?.items)&&o.items.length===4).map(o=>outfitVisualSignature(o.items));
+        const signatures=outfits.filter(o=>Array.isArray(o?.items)&&[3,4].includes(o.items.length)).map(o=>outfitVisualSignature(o.items));
         if(signatures.length){state.lookSignatures=[...state.lookSignatures,...signatures].slice(-36);await AsyncStorage.setItem(`${key}::looks`,JSON.stringify(state.lookSignatures)).catch(()=>undefined);}
         const seen = new Set(state.recentIds);
         const seenKeys = new Set(state.productKeys);
@@ -187,18 +188,18 @@ export async function getRotationHistory(scope:string) {
     const decks=products.decks.length ? products.decks : state.decks;
     const previous=[...(decks.at(-1)?.productKeys||[])],previousSet=new Set(previous);
     const semanticDecks=[...new Map([...state.decks,...decks].map(deck=>[deck.requestId,deck])).values()].slice(-12);
-    return {recentLookSignatures:[...new Set([...legacyLooks,...semanticDecks.flatMap(d=>d.lookSignatures||[])])].filter(s=>typeof s==='string'&&s.startsWith('sq1:')&&s.length<=1000).slice(-36),previousDeckProductKeys:previous,olderRecentProductKeys:[...new Set([...legacy,...decks.slice(0,-1).flatMap(d=>d.productKeys)])].filter(key=>!previousSet.has(key)).slice(-(450-previous.length)),rotationDecks:decks.map(d=>({...d,productKeys:[...d.productKeys]})),
+    return boundedGenerationHistory({recentLookSignatures:[...new Set([...legacyLooks,...semanticDecks.flatMap(d=>d.lookSignatures||[])])].filter(s=>typeof s==='string'&&s.startsWith('sq1:')&&s.length<=1000).slice(-36),previousDeckProductKeys:previous,olderRecentProductKeys:[...new Set([...legacy,...decks.slice(0,-1).flatMap(d=>d.productKeys)])].filter(key=>!previousSet.has(key)).slice(-(450-previous.length)),rotationDecks:decks.map(d=>({...d,productKeys:[...d.productKeys]})),
         ...(shoes.decks.length ? {previousShoeProductKeys:[...shoes.decks.at(-1)!.productKeys],
             recentShoeProductKeys:[...new Set(shoes.decks.flatMap(d=>d.productKeys))],
-            shoeRotationDecks:shoes.decks.map(d=>({...d,productKeys:[...d.productKeys]}))} : {})};
+            shoeRotationDecks:shoes.decks.map(d=>({...d,productKeys:[...d.productKeys]}))} : {})});
 }
 /** Call after final acceptance, before unlocking the next Generate press. */
 export async function recordDisplayedDeck(outfits:unknown,scope:string,requestId:string):Promise<void> {
     const state=decksFor(scope);await state.ready;
     if(!Array.isArray(outfits)||state.decks.some(d=>d.requestId===requestId))return;
-    const productKeys=[...new Set<string>(outfits.flatMap(o=>Array.isArray(o?.items)?o.items.flatMap(productIdentityKeys):[]))];
+    const productKeys=[...new Set<string>(outfits.flatMap(o=>Array.isArray(o?.items)?o.items.flatMap(productIdentityKeys):[]))].filter(key=>key.length<=2048).slice(-60);
     if(!productKeys.length)return;
-    const lookSignatures=outfits.filter(o=>Array.isArray(o?.items)&&o.items.length===4).map(o=>outfitVisualSignature(o.items)).slice(0,15);
+    const lookSignatures=outfits.filter(o=>Array.isArray(o?.items)&&[3,4].includes(o.items.length)).map(o=>outfitVisualSignature(o.items)).slice(0,15);
     state.decks=[...state.decks,{requestId,productKeys,lookSignatures}].slice(-12);
     const snapshot=JSON.stringify(state.decks);
     state.writes=state.writes.then(()=>AsyncStorage.setItem(`stylistRotationDecks::${scope}`,snapshot)).catch(()=>undefined);

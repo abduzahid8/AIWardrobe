@@ -5,16 +5,18 @@ import { parseCalendarDate } from '../utils/calendarDate';
 import { prepareWardrobeItemMedia } from './wardrobeItemMedia';
 
 export interface SavedOutfitInput {
+  compositionProtocol?: 'optional-layer-v1';
   id: string;
-  items: Array<{ id: string; type?: string; category?: string; macroCategory?: string; image?: string; imageUrl?: string; name?: string }>;
+  items: Array<{ id: string; type?: string; category?: string; macroCategory?: string; image?: string; imageUrl?: string; name?: string ;
+  }>;
   date: string;
   occasion: string;
   caption?: string;
 }
 
 export async function saveCloudOutfit(input: SavedOutfitInput): Promise<SavedOutfitInput['items']> {
-  if (savedQuartetReason(input.items) || !parseCalendarDate(input.date)) throw new Error('Invalid saved outfit');
-  const snapshot = { ...input, items: input.items.map(item => ({ ...item })) };
+  if (savedQuartetReason(input.items, input.compositionProtocol) || !parseCalendarDate(input.date)) throw new Error('Invalid saved outfit');
+  const snapshot = { ...input, items: input.items.map((item ) => ({ ...item })) };
   const revision = authEvents.getRevision();
   const { data, error: sessionError } = await supabase.auth.getSession();
   const owner = data.session?.user.id;
@@ -36,6 +38,9 @@ export async function saveCloudOutfit(input: SavedOutfitInput): Promise<SavedOut
   if (revision !== authEvents.getRevision()) throw new Error('Account changed during save');
   const { data: saved, error } = await supabase.from('saved_outfits').upsert({
     id: snapshot.id, user_id: owner, items, date: snapshot.date,
+      ...(snapshot.compositionProtocol
+        ? { composition_protocol: snapshot.compositionProtocol }
+        : {}),
     occasion: snapshot.occasion, caption: snapshot.caption || '', visibility: 'Everyone', is_ootd: false,
   }).select('id').single();
   if (error) throw error;

@@ -725,7 +725,28 @@
       "tailoredFootwear": "Klassik poyabzal bichimli shim siluetini to‘ldiradi.",
       "restrainedPalette": "Vazmin ranglar minimalistik uslubni qo‘llab-quvvatlaydi.",
       "casualLayer": "Ustki ko‘ylak futbolkani kundalik qatlam bilan to‘ldiradi.",
-      "fourPieces": "To‘liq obraz: asosiy ustki kiyim, ikkinchi qatlam, shim va poyabzal."
+      "fourPieces": "To‘liq obraz: asosiy ustki kiyim, ikkinchi qatlam, shim va poyabzal.",
+      "editorialLayered": "{{top}} — {{layer}} ostidagi asos; {{bottom}} va {{shoes}} siluet chizig‘ini davom ettiradi.",
+      "editorialUnlayered": "{{top}} {{bottom}} va {{shoes}} bilan uyg‘unlashadi, qo‘shimcha qatlamsiz.",
+      "paletteStory": "{{palette}} palitrasi kiyimlarning ma’lum ranglarini birlashtiradi.",
+      "shapeStory": "Shimning {{shape}} bichimi siluetni belgilaydi.",
+      "shape_unknown": "",
+      "shape_slim": "toraygan",
+      "shape_regular": "standart",
+      "shape_wide": "keng",
+      "texture_unknown": "",
+      "texture_smooth": "silliq",
+      "texture_knit": "trikotaj",
+      "texture_ribbed": "yo‘lli",
+      "texture_denim": "denim",
+      "texture_suede": "zamsh",
+      "texture_corduroy": "velvet",
+      "texture_tweed": "tvid",
+      "texture_technical": "texnik",
+      "editorialTailoredFootwear": "{{bottom}} chizig‘ini {{shoes}}ning klassik shakli davom ettiradi.",
+      "editorialLightBase": "{{top}} ochib kiyish mumkin bo‘lgan {{layer}} ostida yengil asos bo‘ladi.",
+      "editorialTextureContrast": "{{layer}}ning {{texture}} fakturasi {{top}}ning silliqroq yuzasi bilan uyg‘unlashadi.",
+      "editorialCasualFootwear": "{{bottom}} va {{shoes}} kundalik uslubda bir-biriga mos."
     },
     "closestShopAlternative": "Do‘kondagi kiyimlar bilan eng yaqin mos kombinatsiya.",
     "closestAlternative": "Garderobingizdagi eng yaqin mos kombinatsiya.",
@@ -841,7 +862,50 @@
       "relaxed-knit": {
         "title": "Erkin trikotaj qatlamlar",
         "story": "Yumshoq trikotaj erkin shim va qulay poyabzalni muvozanatlashtiradi."
+      },
+      "clean-transit": {
+        "title": "Sodda safar",
+        "story": "{{top}} {{bottom}} va {{shoes}} bilan uyg‘unlashadi, qo‘shimcha qatlamsiz."
+      },
+      "unlayered-separates-1": {
+        "title": "Sodda uyg‘unlik",
+        "story": "Qo‘shimcha qatlamsiz to‘liq obraz."
+      },
+      "unlayered-separates-2": {
+        "title": "Yumshoq uyg‘unlik",
+        "story": "Qo‘shimcha qatlamsiz to‘liq obraz."
+      },
+      "unlayered-separates-3": {
+        "title": "Fakturali uyg‘unlik",
+        "story": "Qo‘shimcha qatlamsiz to‘liq obraz."
+      },
+      "available-separates": {
+        "title": "Mavjud uyg‘unlik",
+        "story": "Mavjud katalogdan to‘liq muqobil obraz."
       }
+    },
+    "distinctInventoryLimited": "Bu so‘rov uchun topilgan eng yaxshi, bir-biridan farqli to‘liq obrazlar ko‘rsatilgan.",
+    "editorialColors": {
+      "black": "qora",
+      "white": "oq",
+      "cream": "qaymoqrang",
+      "beige": "bej",
+      "brown": "jigarrang",
+      "navy": "to‘q ko‘k",
+      "blue": "ko‘k",
+      "grey": "kulrang",
+      "green": "yashil",
+      "olive": "zaytunrang",
+      "burgundy": "bordo",
+      "red": "qizil",
+      "pink": "pushti",
+      "purple": "binafsha",
+      "yellow": "sariq",
+      "orange": "to‘q sariq",
+      "dark": "to‘q tuslar",
+      "dark-neutral": "to‘q neytral tuslar",
+      "light": "och tuslar",
+      "earth": "tabiiy tuslar"
     }
   },
   "paywall": {

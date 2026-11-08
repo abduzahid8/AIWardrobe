@@ -2,7 +2,7 @@ import { fourSlotOutfitReason } from '../domain/outfitStructure';
 import { productIdentityKeys } from '../domain/outfitDiversity';
 import { getMacroCategory, canonicalizeMacroCategory } from '../utils/categoryMapper';
 /** Read-only normalization at the save boundary; never substitutes garments. */
-export function savedQuartetReason(items: unknown): string | null {
+export function savedQuartetReason(items: unknown, compositionProtocol?: string): string | null {
   if (!Array.isArray(items)) return 'requires_four_categories';
   const normalized = items.map((item) => {
     const explicit = canonicalizeMacroCategory(item.macroCategory || '');
@@ -17,7 +17,7 @@ export function savedQuartetReason(items: unknown): string | null {
       type: item.type || item.subCategory,
     };
   });
-  const reason = fourSlotOutfitReason(normalized);
+  const reason = fourSlotOutfitReason(normalized, compositionProtocol !== 'optional-layer-v1');
   if (reason) return reason;
   const keys = new Set<string>();
   for (const item of normalized) {

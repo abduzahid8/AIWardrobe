@@ -256,7 +256,7 @@ export function outfitCoherence(
       evidence.push('compatible_tailoring_fabrics');
     }
   }
-  const heavy = descriptors.some((d) => d.bulk === 'heavy'),
+  const heavy = descriptors.some((d) => d.bulk === 'heavy' || d.insulated),
     airy = descriptors.some((d) => d.materials.includes('linen'));
   if (heavy && airy) {
     dimensions.texture = 0.4;

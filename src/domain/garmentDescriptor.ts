@@ -2,6 +2,7 @@ import { applyVisualFashion, type VisualFashionProfile } from './visualFashion.t
 import { normalizeGarmentText } from './garmentText.ts';
 import { colorFamilyOf, materialsOf, patternOf, textureOf } from './outfitDiversity.ts';
 export interface GarmentEvidence {
+  visualEmbedding?: readonly number[];
   visualFashion?: VisualFashionProfile;
   visualSourceHash?: string;
   imageUrl?: string | null;
@@ -25,6 +26,9 @@ export interface GarmentEvidence {
   occasions?: readonly string[] | null;
 }
 export interface GarmentDescriptor {
+  footwearPurpose?: string;
+  accentHue?: string;
+  hemShape?: string;
   slot: string;
   subtype: string;
   color: string;
@@ -63,9 +67,24 @@ export interface GarmentDescriptor {
 /** Only explicitly prepared immutable request rows are cached. Mutable caller
  * objects never receive stale descriptors, and owned rows live only as weak keys. */
 const preparedDescriptors = new WeakMap<object, GarmentDescriptor>();
+/** Positive construction facts are refreshed even when the expensive text
+ * descriptor is cached. An absent phrase never erases verified image evidence. */
+function sourceInsulation(item: GarmentEvidence, slot: string): boolean {
+  if (slot !== 'outerwear') return false;
+  const text = `${item.name || ''} ${item.type || ''} ${item.description || ''}`;
+  if (/\b(puffers?|padded|quilted|insulated|shearling)\b|пухов|ст[её]ган|утепл/i.test(text)) return true;
+  const down = /\b(?:down[ -]filled|(?:goose|duck)[ -]down|down(?:[ -]+[a-z]+){0,3}[ -]+(?:jacket|coat|parka))\b/i.test(text);
+  return down && !/\b(?:no|not|without)[ -]+(?:a[ -]+)?down\b|\bbutton[ -]down\b/i.test(text);
+}
 export function prepareGarment<T extends GarmentEvidence>(item: T, descriptor?: GarmentDescriptor): T {
   const snapshot = Object.freeze({...item});
-  preparedDescriptors.set(snapshot, descriptor || describeGarment(snapshot));
+  const base = descriptor || describeGarment(snapshot);
+  const insulated = sourceInsulation(snapshot, base.slot);
+  preparedDescriptors.set(snapshot, insulated ? {
+    ...base,
+    insulated: true,
+    evidence: [...new Set([...base.evidence, 'source:insulated-construction'])],
+  } : base);
   return snapshot;
 }
 
@@ -342,7 +361,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     vividFootwear,
     athletic,
     structured,
-    insulated: /\b(puffer|down jacket|down filling|insulated|shearling)\b/.test(text),
+    insulated: sourceInsulation(item, slot),
     evening: /\b(tuxedo|dinner jacket|dinner suit|opera pump|patent)\b/.test(text),
     evidence: [
       ...(item.footwearPurpose ? [`catalog:footwear-purpose:${item.footwearPurpose}`] : []),

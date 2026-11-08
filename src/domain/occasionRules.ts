@@ -321,10 +321,9 @@ export function rejectForStyleOccasion(
     if (/\b(iphone|phone[\s-]?cases?|airpods?)\b/.test(blob)) return 'tech accessories are not outfit pieces';
     const style = isWorkoutOccasion(occasionId) ? 'sport' : String(styleId || '').toLowerCase().replace(/[\s-]+/g, '_');
     const normalizedContext=stylingContext({style:styleId,occasion:occasionId});
-    const contextFailure=normalizedContext.dressCode==='smart'?null:garmentContextReason(item,normalizedContext);
+    const contextFailure=garmentContextReason(item,normalizedContext);
     if(contextFailure)return contextFailure;
-    const formal = occasionFormality(occasionId) === 'formal'
-        && (!isDateNightOccasion(occasionId) || stylingContext({occasion:occasionId}).dressCode === 'formal');
+    const formal = stylingContext({occasion:occasionId}).dressCode === 'formal';
     const slot = String(item.macroCategory || '').toLowerCase();
     // Print rules judge garments, never shoes/accessories (a floral tie or
     // pocket square is dandy, not sloppy). Bottoms are judged for formal
@@ -498,7 +497,7 @@ const FORMAL_LAYER_RE = /\b(blazers?|suit\s*jackets?|sport\s*coats?|overcoats?|t
 const BOARDROOM_LAYER_RE = /\b(double[\s-]?breasted|suit\s*(jacket|blazer)|cool wool suit)\b/;
 
 function isKnitOnlyLayerBlob(blob: string): boolean {
-    if (/\b(blazer|jacket|coat|trench|peacoat|bomber)\b/.test(blob)) return false;
+    if (/\b(blazer|jacket|coat|trench|peacoat|bomber|cardigans?)\b/.test(blob)) return false;
     return /\b(sweater|pullover|jumper|cardigan)\b/.test(blob);
 }
 
@@ -514,7 +513,7 @@ export function matchesOccasionSilhouette(
     if (occasion === 'work') {
         if (slot === 'outerwear' || slot === '') {
             if (isKnitOnlyLayerBlob(blob)) return false;
-            if (slot === 'outerwear') return FORMAL_LAYER_RE.test(blob);
+            if (slot === 'outerwear') return FORMAL_LAYER_RE.test(blob) || /\bcardigans?\b/.test(blob);
         }
         if ((slot === 'top' || slot === '') && /\bdenim\b/.test(blob) && /\bshirts?\b/.test(blob)) return false;
         if ((slot === 'bottom' || slot === '') && /\bjeans?\b/.test(blob)) return false;
@@ -615,8 +614,7 @@ export function rejectOutfitIncoherence(
 ): string | null {
     if (!items || items.length === 0) return null;
     const style = isWorkoutOccasion(occasionId) ? 'sport' : String(styleId || '').toLowerCase().replace(/[\s-]+/g, '_');
-    const formal = occasionFormality(occasionId) === 'formal'
-        && (!isDateNightOccasion(occasionId) || stylingContext({occasion:occasionId}).dressCode === 'formal');
+    const formal = stylingContext({occasion:occasionId}).dressCode === 'formal';
     const classic = CLASSIC_STYLES.has(style);
 
     const palette = outfitPaletteReason(items);

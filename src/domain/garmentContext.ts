@@ -1,3 +1,4 @@
+import {hasColdLayerIntent} from './outfitComposition.ts';
 import { normalizeGarmentText, SHORT_SLEEVE_RE } from './garmentText.ts';
 import { patternOf } from './outfitDiversity.ts';
 import { STYLING_PROFILES } from './stylingProfiles.ts';
@@ -27,7 +28,7 @@ export function garmentContextReason(
       : item.name || '';
   const colorEvidence =
     ' ' +
-    normalizeGarmentText(explicit)
+    normalizeGarmentText(`${explicit} ${d.evidence.some(e=>e.startsWith('image:color:')) ? d.color : ''}`)
       .replace(/[^\p{L}]+/gu, ' ')
       .trim() +
     ' ';
@@ -204,7 +205,9 @@ export function scoreGarmentForContext(item: GarmentEvidence, context: StylingCo
   if (context.style === 'minimalist' && d.pattern !== 'solid' && d.pattern !== 'unknown')
     score -= 0.08;
   if (!context.weather && d.bulk === 'heavy') score -= 0.1;
+  if(d.insulated && !hasColdLayerIntent(context.weather))score-=context.dressCode==='smart'?0.3:0.15;
   if (d.bulk === 'light' && ['cardigan', 'blazer', 'overshirt'].includes(d.subtype)) score += 0.05;
+  if(d.color!=='unknown' && context.preferences?.favoriteColors?.some(color=>normalizeGarmentText(color).trim()===d.color))score+=0.03;
   const fit = context.preferences?.fitPreference?.toLowerCase() || '';
   if (d.volume !== 'unknown' && fit) {
     const wanted = /slim|fitted/.test(fit) ? 'slim' : /relaxed|loose|wide|oversized/.test(fit) ? 'wide' : /regular|straight/.test(fit) ? 'regular' : '';

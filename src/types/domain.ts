@@ -68,6 +68,7 @@ export interface OutfitSnapshotItem {
 }
 
 export interface Outfit {
+    compositionProtocol?: 'optional-layer-v1';
     id: string;
     userId: string;
     itemIds: string[];            // ClothingItem IDs

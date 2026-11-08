@@ -1,3 +1,5 @@
+import {validateOutfitGenerationRequest,OutfitRequestError} from '../src/domain/outfitGenerationRequest';
+import {editorialCopy} from '../src/services/stylingCopy';
 import { recordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
@@ -92,6 +94,8 @@ interface OutfitItem {
 }
 
 interface GeneratedOutfit {
+  compositionProtocol?: 'optional-layer-v1';
+  explanationVersion?: number;
   concept?: {id:string;title:string;story:string;score?:number};
   selectionSource?: string;
   generationRequestId?:string;
@@ -610,6 +614,7 @@ const AIOutfitGenerator = () => {
   }, [quizStyleDefault]);
   const [loading, setLoading] = useState(false);
   const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
+  const [inventoryNote, setInventoryNote] = useState('');
   const [error, setError] = useState('');
   const displayRates = useUzsDisplayRates();
   const [userPrompt, setUserPrompt] = useState('');
@@ -1070,7 +1075,7 @@ const AIOutfitGenerator = () => {
   // to the trip day (outfitLogs) so the Trips tab / packing list updates
   // and the user gets a visible confirmation + a way back.
   const persistOutfitToTripDay = async (outfit: GeneratedOutfit, dateKey: string, occasion: string) => {
-    const mappedItems = stylistCalendarItems(outfit.items);
+    const mappedItems = stylistCalendarItems(outfit.items,outfit.compositionProtocol);
     const log = createOutfitLog(dateKey, mappedItems, occasion);
     let updated = false;
     await updateCalendarLogs(logs => {
@@ -1095,6 +1100,7 @@ const AIOutfitGenerator = () => {
     // Connected save targets the trip day; standalone saves use today.
     const connectedDateKey = planningDateKey ?? null;
     const newOutfitId = store.addOutfit({
+      compositionProtocol:outfit.compositionProtocol,
       userId: useAuthStore.getState().user?.id || '',
       itemIds,
       occasion,
@@ -1121,7 +1127,7 @@ const AIOutfitGenerator = () => {
     try {
       const confirmedItems = await saveCloudOutfit({
         id: newOutfitId,
-        items: snapshotItems,
+        items: snapshotItems,compositionProtocol:outfit.compositionProtocol,
         date: connectedDateKey ?? localDateKey(new Date()), occasion, caption: outfit.description || '',
       });
       if (revision !== authEvents.getRevision()) return;
@@ -1198,7 +1204,7 @@ const AIOutfitGenerator = () => {
     const revision = authEvents.getRevision();
     try {
       const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      const mappedItems = stylistCalendarItems(outfit.items);
+      const mappedItems = stylistCalendarItems(outfit.items,outfit.compositionProtocol);
       const log = createOutfitLog(dateStr, mappedItems, getCalendarOccasion(selectedStyle));
       const logs = await readCalendarLogs();
 
@@ -1671,13 +1677,11 @@ const AIOutfitGenerator = () => {
       const excludeProductKeys = [...new Set([...history.olderRecentProductKeys,...history.previousDeckProductKeys])];
       // Older hosted functions also understand raw IDs. Never send an empty
       // list while the persisted displayed-product window is populated.
-      const excludeItemIds = excludeProductKeys.filter(key => key.startsWith('id:')).map(key => key.slice(3)).slice(-150);
+      const excludeItemIds = excludeProductKeys.filter(key => key.startsWith('id:')).map(key => key.slice(3)).filter(id=>id.length<=200).slice(-150);
       if (!isCurrentGeneration() || !generationAccessToken) return;
       const EDGE_TIMEOUT_MS = 120000;
-      const { data, error: invokeError } = await withRequestDeadline((signal) => supabase.functions.invoke('generate-outfits', {
-        signal,
-        headers: {Authorization: `Bearer ${generationAccessToken}`},
-        body: {
+      const requestBody = {
+          compositionProtocol: 'optional-layer-v1',
           stylePreferences: styleToUse,
           occasion: occasionToUse || 'Any',
           selectedItemIds: [],
@@ -1707,11 +1711,22 @@ const AIOutfitGenerator = () => {
           // Recently-shown window → edge builds the candidate pool without
           // pieces the user just saw, so each tap surfaces new clothing.
           excludeItemIds,
-          excludeProductKeys,
           rotationScope: scope,
           generationRequestId: requestId,
           ...history,
-        },
+        };
+      try { validateOutfitGenerationRequest(requestBody); }
+      catch (error) {
+        if (error instanceof OutfitRequestError) {
+          console.info('stylist_admission', {field:error.field,reason:error.reason});
+          throw new OutfitGenerationFailure('outfitMaker.invalidRequest','invalid_generation_request','admission');
+        }
+        throw error;
+      }
+      const { data, error: invokeError } = await withRequestDeadline((signal) => supabase.functions.invoke('generate-outfits', {
+        signal,
+        headers: {Authorization: `Bearer ${generationAccessToken}`},
+        body: requestBody,
       }), EDGE_TIMEOUT_MS, cancelSignal);
 
       if (!isCurrentGeneration()) return;
@@ -1726,7 +1741,7 @@ const AIOutfitGenerator = () => {
         const slotDeckUsed = new Set<string>();
         const wrapLook = (outfit: any, items: any[], idx: number): GeneratedOutfit => {
           const copy = stylingCopyParts(items, stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather}));
-          const description = outfit.concept?.id ? String(t(`outfitMaker.concepts.${outfit.concept.id}.story`,{defaultValue:outfit.concept.story || copy.description})) : copy.description;
+          const description = outfit.explanationVersion===1 ? editorialCopy(items,stylingContext({style:styleToUse,occasion:occasionToUse,request:effectivePrompt||promptText,weather:resolvedWeather})) : outfit.concept?.id ? String(t(`outfitMaker.concepts.${outfit.concept.id}.story`,{defaultValue:outfit.concept.story || copy.description})) : copy.description;
           const judgeOk = passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences);
           // Hosted confidence is not a score from this client's occasion judge.
           const baseScore = outfitCoherence(items, stylingContext({style:styleToUse, occasion:occasionToUse, request:effectivePrompt||promptText, weather:resolvedWeather})).score;
@@ -1739,7 +1754,7 @@ const AIOutfitGenerator = () => {
             items,
             mainImage: items[0]?.image || items[0]?.imageUrl || outfit.mainImage || '',
             matchScore: judgeOk ? baseScore : Math.min(baseScore, 0.69),
-            stylingTips: copy.tips.join(' '),
+            stylingTips: outfit.explanationVersion===1 ? '' : copy.tips.join(' '),
             weather: resolvedWeather,
           };
         };
@@ -1750,7 +1765,8 @@ const AIOutfitGenerator = () => {
           recentLookSignatures: history.recentLookSignatures,
           history,
           includeReserve: !data.generationVersion,
-          immutablePlan: /^stylist-[34]-/.test(String(data.generationVersion || '')),
+          optionalLayer:data.compositionProtocol==='optional-layer-v1',
+          immutablePlan: /^stylist-[345]-/.test(String(data.generationVersion || '')),
         });
         const cleanedOutfits = prepared.cleaned;
         const recovered = prepared.recovered.map((look, index) =>
@@ -1822,13 +1838,17 @@ const AIOutfitGenerator = () => {
         // every card slot participates in the composition.
         const clientDiversitySlots: DiversitySlot[] = ['top', 'outerwear', 'bottom', 'shoes'];
         const {
-          deck: finalOutfits,
+          deck: assembledOutfits,
           relaxed: deckRelaxed,
           relaxReason: deckRelaxReason,
           archetypes: deckArchetypes,
           similarities: deckSimilarities,
           inventory: deckInventory,
-        } = assembleDiverseDeck<GeneratedOutfit>({
+        } = /^stylist-5-/.test(String(data.generationVersion || ''))
+          ? {deck:budgetedOutfits,relaxed:false,relaxReason:undefined,
+             archetypes:[] as string[],similarities:[] as {a:number;b:number;score:number}[],
+             inventory:undefined as ReturnType<typeof assembleDiverseDeck<GeneratedOutfit>>['inventory'] | undefined}
+          : assembleDiverseDeck<GeneratedOutfit>({
           candidates: budgetedOutfits,
           itemsOf: (o) => o.items as any[],
           qualityOf: (o) => Number(o.matchScore ?? 0.9),
@@ -1856,9 +1876,10 @@ const AIOutfitGenerator = () => {
             ? (message: string, data?: unknown) => readinessLogger.debug(String(`[stylist-diversity] ${message}`), data ? [data] : [])
             : undefined,
         });
+        const finalOutfits = assembledOutfits;
         const deckProducts = analyzeDeckProductDiversity(
           finalOutfits.map((outfit) => outfit.items as any[]),
-          { anchorKeys, forcedSlots: deckInventory?.forcedRepeatSlots },
+          { anchorKeys, forcedSlots: edgeDiversityCapacity?.forcedRepeatSlots || deckInventory?.forcedRepeatSlots },
         );
         if (__DEV__) {
           readinessLogger.debug(String('[AIOutfitmaker] stylist deck'), [{
@@ -1927,7 +1948,7 @@ const AIOutfitGenerator = () => {
           const inCap = finalOutfits.filter((o) => fitsCap(o.items as any[]));
           const overCap = finalOutfits.filter((o) => !fitsCap(o.items as any[]));
           const shownOutfits = inCap.slice(0, 3);
-          if (shownOutfits.length !== 3) throw new Error('incomplete_outfit_deck');
+          if (shownOutfits.length !== 3 && !(/^stylist-5-/.test(String(data.generationVersion||'')) && data.inventoryReason==='distinct_editorial_inventory_limited' && shownOutfits.length>0)) throw new Error('incomplete_outfit_deck');
           const previousKeys = new Set(history.previousDeckProductKeys);
           const previousShoeKeys = new Set(history.previousShoeProductKeys ?? history.previousDeckProductKeys);
           const previousDeckOverlapBySlot = Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,
@@ -1942,6 +1963,7 @@ const AIOutfitGenerator = () => {
           }
 
           if (!await consumeOrPaywall('aiOutfits', {cancelSignal}) || !isCurrentGeneration()) return;
+          setInventoryNote(data.inventoryReason==='distinct_editorial_inventory_limited' ? t('outfitMaker.distinctInventoryLimited') : '');
           setOutfits(
             shownOutfits
               .map((o) => {
@@ -2048,6 +2070,7 @@ const AIOutfitGenerator = () => {
           )}
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
+            {!!inventoryNote && <ScaledText style={styles.outfitDesc}>{inventoryNote}</ScaledText>}
             {outfits.map((outfit, index) => (
               <Animated.View key={outfit.id} testID={`stylistResult-${index}`} style={[styles.glassCard, { marginTop: index === 0 ? 8 : 24 }]}>
                 <BlurView intensity={Platform.OS === 'ios' ? 48 : 90} tint="light" style={StyleSheet.absoluteFill} />
@@ -2077,13 +2100,13 @@ const AIOutfitGenerator = () => {
 
                 <ScaledText style={styles.outfitDesc} minScale={0.65}>{outfit.description}</ScaledText>
 
-                <View style={styles.tipCard}>
+                {!!outfit.stylingTips && <View style={styles.tipCard}>
                   <LinearGradient colors={D.panelHighlight} style={StyleSheet.absoluteFill} />
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Ionicons name="sparkles-outline" size={16} color={D.accent} />
                     <ScaledText style={styles.tipCardText}>{outfit.stylingTips}</ScaledText>
                   </View>
-                </View>
+                </View>}
 
                 {outfit.concept && outfit.generationRequestId && (
                   <View style={{flexDirection:'row',alignItems:'center',gap:16,marginTop:12}}>

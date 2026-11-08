@@ -30,12 +30,12 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
 
     addOutfit: (outfitInput) => {
         const current=get();
-        const pieces=outfitInput.itemIds.map(id=>{
-            const snapshot=outfitInput.snapshotItems?.find(item=>item.id===id);
-            const owned=current.items.find(item=>item.id===id);
+        const pieces=outfitInput.itemIds.map((id) =>{
+            const snapshot=outfitInput.snapshotItems?.find((item) =>item.id===id);
+            const owned=current.items.find((item) =>item.id===id);
             return {...owned,...snapshot,id};
         });
-        if(savedQuartetReason(pieces))return '';
+        if(savedQuartetReason(pieces, outfitInput.compositionProtocol))return '';
         let newId = '';
         set((state) => {
             // Saving an accepted AI look must preserve its exact product IDs.
@@ -70,8 +70,7 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
             const existing = state.outfits.find(
                 (o) =>
                     [...o.itemIds].sort().join('|') === comboKey &&
-                    (o.occasion ?? '') === (outfitInput.occasion ?? ''),
-            );
+                    (o.occasion ?? '') === (outfitInput.occasion ?? ''));
             if (existing) {
                 newId = existing.id;
                 // Refresh the frozen snapshot when the old save predates
@@ -89,8 +88,7 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
                         outfits: state.outfits.map((o) =>
                             o.id === existing.id
                                 ? { ...o, snapshotItems: inputAny.snapshotItems }
-                                : o,
-                        ),
+                                : o),
                     } as Partial<WardrobeState>;
                 }
                 return {};
@@ -114,11 +112,15 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
     },
 
     saveOutfit: (id, collectionCategory?: string, savedFrom?: Outfit['savedFrom']) => {
-        const current=get(),outfit=current.outfits.find(o=>o.id===id);
-        if(!outfit||savedQuartetReason(outfit.itemIds.map(itemId=>({...current.items.find(i=>i.id===itemId),...outfit.snapshotItems?.find(i=>i.id===itemId),id:itemId}))))return;
+        const current=get(),outfit=current.outfits.find((o) =>o.id===id);
+        if(!outfit||savedQuartetReason(outfit.itemIds.map((itemId) =>({...current.items.find((i) =>i.id===itemId),...outfit.snapshotItems?.find((i) =>i.id===itemId),id:itemId,
+        })),
+        outfit.compositionProtocol
+      ))return;
         set((state) => ({
             outfits: state.outfits.map((outfit) =>
-                outfit.id === id ? { ...outfit, saved: true, ...(collectionCategory ? { collectionCategory } : {}), ...(savedFrom ? { savedFrom } : {}) } : outfit
+                outfit.id === id ? { ...outfit, saved: true, ...(collectionCategory ? { collectionCategory } : {}), ...(savedFrom ? { savedFrom } : {}) ,
+            } : outfit
             ),
         }));
     },
@@ -137,8 +139,8 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
     rateOutfit: (id, rating) => {
         set((state) => ({
             outfits: state.outfits.map((outfit) =>
-                outfit.id === id ? { ...outfit, rating } : outfit
-            ),
+                (outfit.id === id ? { ...outfit, rating } : outfit
+            )),
         }));
     },
 
@@ -171,10 +173,10 @@ export const createOutfitsSlice: StateCreator<WardrobeState, [], [], OutfitsSlic
             const names = ids
                 .map((id) => {
                     const item = items.find((i) => i.id === id);
-                    return item ? (item.name || item.subCategory || item.category) : id;
+                    return item ? item.name || item.subCategory || item.category: id;
                 })
                 .join(' + ');
             return `Disliked combo: ${names}`;
-        });
-    },
+    });
+  },
 });

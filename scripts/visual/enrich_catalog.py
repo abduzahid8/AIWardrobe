@@ -15,6 +15,8 @@ import torch
 from transformers import AutoModel, AutoProcessor
 
 MODEL='google/siglip2-base-patch16-224'
+TAXONOMY='stylist5-facets-3'
+from image_pixels import primary_hue, merge_primary_hue
 # Descriptions refer only to visible traits. Fiber composition is deliberately absent.
 GROUPS={
  'slot': {'top':'a shirt, polo or t-shirt','outerwear':'a jacket, coat or cardigan','bottom':'a pair of trousers or jeans','shoes':'a pair of shoes'},
@@ -30,6 +32,9 @@ GROUPS={
  'soleProfile': {'dress':'shoes with thin elegant low profile soles','comfort':'shoes with thick cushioned comfort soles','sneaker':'shoes with sneaker rubber cupsoles','rugged':'boots with heavy lugged rugged soles'},
  'closure': {'openable':'clothing with a button or zip front opening','pullover':'pullover clothing with no front opening'},
  'collar': {'shirt':'a shirt collar','high':'a high neck collar','open':'an open neckline','crew':'a round crew neckline'},
+ 'footwearPurpose': {'walking':'casual city walking shoes','training':'athletic training or basketball shoes','trail':'rugged trail hiking shoes','dress':'formal dress shoes'},
+ 'accentHue': {x:x+' contrasting accents on clothing or shoes' for x in ['black','white','cream','beige','brown','navy','blue','grey','green','red']},
+ 'hemShape': {'straight':'a straight garment hem','tapered':'tapered trouser legs','barrel':'curved barrel shaped trouser legs','flared':'flared wide trouser hems'},
  'imageKind': {'product':'A studio product photograph showing clothing or shoes against a plain background.','diagram':'A clothing size chart or technical measurement diagram with numbers and lines.','promotion':'An advertisement banner dominated by promotional text and sale prices.'},
 }
 
@@ -43,29 +48,44 @@ def public_url(url):
 
 def fetch_image(url):
  # Validate every redirect; cap bytes before decoding, never send credentials.
+ started_request=time.monotonic()
  for _ in range(4):
+  if time.monotonic()-started_request>20: raise ValueError('image deadline')
   public_url(url)
-  r=requests.get(url,timeout=(8,15),allow_redirects=False,stream=True)
+  r=requests.get(url,timeout=(5,10),allow_redirects=False,stream=True)
   if r.is_redirect:
    from urllib.parse import urljoin
    url=urljoin(url,r.headers['Location']); r.close(); continue
-  r.raise_for_status()
-  if not r.headers.get('content-type','').startswith('image/'): raise ValueError('not an image')
-  content=bytearray()
+  if not r.ok:
+   status=r.status_code;r.close();raise ValueError('image HTTP '+str(status))
+  if not r.headers.get('content-type','').startswith('image/'):
+   r.close();raise ValueError('not an image')
+  content=bytearray();started=time.monotonic()
   for chunk in r.iter_content(65536):
+   if time.monotonic()-started>20: r.close();raise ValueError('image deadline')
    content.extend(chunk)
-   if len(content)>12_000_000: raise ValueError('image too large')
+   if len(content)>12_000_000: r.close();raise ValueError('image too large')
   r.close()
-  image=Image.open(io.BytesIO(content)); image.load()
+  image=Image.open(io.BytesIO(content))
   if image.width*image.height>30_000_000: raise ValueError('image dimensions too large')
+  image.load()
   return bytes(content),ImageOps.exif_transpose(image).convert('RGB')
  raise ValueError('redirect limit')
 
 def main():
- ap=argparse.ArgumentParser();ap.add_argument('input');ap.add_argument('output');ap.add_argument('--revision',required=True);ap.add_argument('--limit',type=int,default=32);ap.add_argument('--ocr-command',help='optional compiled image_text.swift binary');ap.add_argument('--cache',default=os.path.expanduser('~/.cache/aiwardrobe/visual-v1'));args=ap.parse_args()
+ ap=argparse.ArgumentParser();ap.add_argument('input');ap.add_argument('output');ap.add_argument('--revision',required=True);ap.add_argument('--limit',type=int,default=32);ap.add_argument('--ocr-command',help='optional compiled image_text.swift binary');ap.add_argument('--resume',action='store_true',help='append missing or stale source revisions');ap.add_argument('--recheck-hours',type=float,default=24);ap.add_argument('--cache',default=os.path.expanduser('~/.cache/aiwardrobe/visual-v1'));args=ap.parse_args()
  if len(args.revision)!=40 or any(c not in '0123456789abcdef' for c in args.revision): raise ValueError('pin a model commit SHA')
  if not 1<=args.limit<=256: raise ValueError('batch must contain 1..256 images')
  rows=json.load(open(args.input))
+ if args.recheck_hours<0 or args.recheck_hours>168: raise ValueError('recheck interval must be 0..168 hours')
+ existing=set()
+ if args.resume and pathlib.Path(args.output).exists():
+  for line in open(args.output):
+   try:
+    p=json.loads(line)
+    observed=p['profile'].get('observedAt',pathlib.Path(args.output).stat().st_mtime)
+    if time.time()-observed<args.recheck_hours*3600: existing.add((p['product_id'],p['profile']['sourceHash'],p['profile'].get('taxonomyRevision')))
+   except (ValueError,KeyError): raise ValueError('invalid resume journal')
  if len(rows)>args.limit: raise ValueError('export exceeds explicit batch bound')
  torch.set_num_threads(2)
  device='mps' if torch.backends.mps.is_available() else 'cpu'
@@ -77,10 +97,19 @@ def main():
   text=model.get_text_features(**inputs);text=torch.nn.functional.normalize(text,dim=-1)
  cache=pathlib.Path(args.cache);cache.mkdir(parents=True,exist_ok=True)
  done=0;start=time.monotonic()
- with open(args.output,'w') as output:
+ with open(args.output,'a' if args.resume else 'w') as output:
+  os.chmod(args.output,0o600)
   for row in rows:
+   if (row['id'],row['source_hash'],TAXONOMY) in existing: continue
    try:
-    url=row['image_url'];source_hash=row['source_hash'];raw,image=fetch_image(url);sha=hashlib.sha256(raw).hexdigest()
+    url=row['image_url'];source_hash=row['source_hash'];
+    for attempt in range(2):
+     try:
+      raw,image=fetch_image(url);break
+     except (requests.RequestException,ValueError,OSError):
+      if attempt: raise
+      time.sleep(0.25)
+    sha=hashlib.sha256(raw).hexdigest()
     key=hashlib.sha256((sha+args.revision).encode()).hexdigest();file=cache/(key+'.json')
     cached=json.load(open(file)) if file.exists() else None
     with torch.inference_mode():
@@ -101,13 +130,15 @@ def main():
     if attrs.get('pattern',{}).get('value')=='solid': attrs.pop('patternProminence',None)
     if row['slot']=='bottom':
      attrs.pop('closure',None);attrs.pop('collar',None)
-    if row['slot']!='shoes': attrs.pop('soleProfile',None)
+    if row['slot']!='bottom': attrs.pop('hemShape',None)
+    if row['slot']!='shoes':
+     attrs.pop('soleProfile',None);attrs.pop('footwearPurpose',None)
     else:
      for name in ['volume','bulk','length','closure','collar']: attrs.pop(name,None)
     result={'attributes':attrs,'embedding':vector[0].cpu().tolist(),'imageQuality':{'width':image.width,'height':image.height}}
     file.write_text(json.dumps(result))
     attrs=dict(result['attributes']);kind=attrs.pop('imageKind',None)
-    profile={'version':1,'sourceHash':source_hash,'imageUrl':url,'imageSha256':sha,'model':MODEL,'revision':args.revision,'attributes':attrs,'imageQuality':result['imageQuality']}
+    profile={'version':1,'sourceHash':source_hash,'imageUrl':url,'imageSha256':sha,'model':MODEL,'revision':args.revision,'taxonomyRevision':TAXONOMY,'observedAt':time.time(),'attributes':attrs,'imageQuality':result['imageQuality']}
     if args.ocr_command:
      image_file=cache/(sha+'.image');image_file.write_bytes(raw)
      try:
@@ -119,10 +150,15 @@ def main():
      except (subprocess.SubprocessError,ValueError): pass
     if image.width<128 or image.height<128:
      kind={'value':'unusable','confidence':1,'margin':1,'evidence':'image-pixels'}
+    observed=primary_hue(image)
+    merge_primary_hue(profile['attributes'],observed)
+    (cache/(sha+'.image')).write_bytes(raw)
     if kind: profile['imageKind']=kind
     output.write(json.dumps({'product_id':row['id'],'profile':profile,'embedding':result['embedding']})+'\n');output.flush();done+=1
-    print(json.dumps({'done':done,'id':row['id'],'evidenceFields':len(attrs),'imageKind':kind,'seconds':round(time.monotonic()-start,2)}),flush=True)
+    print(json.dumps({'done':done,'evidenceFields':len(attrs),'imageKind':kind,'seconds':round(time.monotonic()-start,2)}),flush=True)
    except Exception as e:
-    print(json.dumps({'id':row['id'],'status':'unavailable','reason':type(e).__name__}),flush=True)
+
+    with open(args.output+'.failures.jsonl','a') as failures: os.chmod(args.output+'.failures.jsonl',0o600);failures.write(json.dumps({'product_id':row['id'],'source_hash':row['source_hash'],'status':'unknown','reason':type(e).__name__,'attemptedAt':time.time()})+'\n')
+    print(json.dumps({'status':'unknown','reason':type(e).__name__}),flush=True)
  print(json.dumps({'enriched':done,'requested':len(rows),'paidCalls':0,'seconds':round(time.monotonic()-start,2)}),flush=True)
 if __name__=='__main__': main()

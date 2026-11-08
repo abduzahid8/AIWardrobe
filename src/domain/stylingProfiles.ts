@@ -29,7 +29,7 @@ export const STYLING_PROFILES: Readonly<Record<string, StylingProfile>> = {
     restrained: true,
   },
   classic: {
-    preferred: ['dress-shirt', 'shirt', 'blazer', 'coat', 'tailored-trouser', 'oxford', 'derby', 'monk'],
+    preferred: ['dress-shirt', 'shirt', 'polo', 'blazer', 'cardigan', 'coat', 'tailored-trouser', 'chino', 'oxford', 'derby', 'loafer', 'monk'],
     textures: ['smooth', 'wool'], restrained: true,
   },
   business_casual: {
@@ -40,6 +40,8 @@ export const STYLING_PROFILES: Readonly<Record<string, StylingProfile>> = {
     preferred: [
       'dress-shirt',
       'shirt',
+      'polo',
+      'cardigan',
       'blazer',
       'tailored-trouser',
       'derby',

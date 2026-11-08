@@ -69,7 +69,7 @@ function safeFailureField(payload:unknown,key:string):string|undefined {
 /** Decode only known server codes; never display raw provider/server messages. */
 export async function outfitGenerationFailure(data: unknown, error?: unknown): Promise<OutfitGenerationFailure> {
   const direct = messageFrom(data);
-  if (direct) return new OutfitGenerationFailure(direct, safeFailureField(data,'code'),safeFailureField(data,'stage'));
+  if (direct) return new OutfitGenerationFailure(direct, safeFailureField(data,'code') || safeFailureField(data,'error'),safeFailureField(data,'stage'));
   const context = (error as { context?: Response } | null)?.context;
   if (context && typeof context.clone === 'function') {
     try {
@@ -78,7 +78,7 @@ export async function outfitGenerationFailure(data: unknown, error?: unknown): P
       const payload = await withRequestDeadline(() => context.clone().json(), 1500);
       const message = messageFrom(payload, context.status);
       if (!message) reportUnmappedFailure(error, 'http_body');
-      return new OutfitGenerationFailure(message,safeFailureField(payload,'code'),safeFailureField(payload,'stage'));
+      return new OutfitGenerationFailure(message,safeFailureField(payload,'code') || safeFailureField(payload,'error'),safeFailureField(payload,'stage'));
     } catch { reportUnmappedFailure(error, 'http_decode'); return new OutfitGenerationFailure(); }
   }
   reportUnmappedFailure(error, 'transport');
