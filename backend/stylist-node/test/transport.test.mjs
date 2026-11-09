@@ -4,7 +4,7 @@ import {
   signStylistTransport,
   verifyStylistTransport,
   STYLIST_TRANSPORT_MAX_BODY_BYTES,
-} from '../../stylist-transport/signature.ts';
+} from '../transport/signature.ts';
 
 const secret = 'unit-test-only-secret-that-is-long-enough-0123456789';
 const authorization = 'Bearer test-authorization';

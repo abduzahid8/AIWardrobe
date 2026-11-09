@@ -18,7 +18,7 @@
   },
   "include": [
     "api/**/*.ts",
-    "../stylist-transport/**/*.ts"
+    "transport/**/*.ts"
   ],
   "exclude": [
     "dist",
