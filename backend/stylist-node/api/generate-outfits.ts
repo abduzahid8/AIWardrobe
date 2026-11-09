@@ -76,12 +76,12 @@ export async function POST(request: Request): Promise<Response> {
       },
       body,
     });
-    const handler = await originalHandler();
-    // Measure full server-side work, not only a planner microbenchmark.
-    // process.cpuUsage is per-process (may include concurrent requests);
-    // never log or return garment data, user IDs, tokens, or provider details.
+    // Include cold-start bundle loading AND the original handler in timing;
+    // planner-only microbenchmarks miss both. The CPU figure is process-level
+    // and may include overlapping requests in a shared Node worker.
     const cpuStart = process.cpuUsage();
     const wallStart = performance.now();
+    const handler = await originalHandler();
     // Original handler performs: auth -> quota -> catalog -> full quality
     // checks -> bounded planning -> NVIDIA ranking -> response.
     const result = await handler(originalRequest);
