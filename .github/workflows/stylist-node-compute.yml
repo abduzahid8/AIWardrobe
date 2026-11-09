@@ -22,6 +22,12 @@ jobs:
       - name: Install isolated compute dependencies
         working-directory: backend/stylist-node
         run: npm install --no-audit --no-fund
+      - name: Deno 2 (verify Supabase proxy independently)
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Type-check signed Supabase Edge proxy
+        run: deno check --no-config --node-modules-dir=none backend/stylist-proxy/index.ts
       - name: Bundle original production Stylist kernel for Node
         working-directory: backend/stylist-node
         run: npm run build

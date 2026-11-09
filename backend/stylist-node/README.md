@@ -105,3 +105,45 @@ an authenticated preview response has been verified without double billing.
 Node timing response header: `server-timing` includes process CPU and wall
 duration for loading and running the original backend. Do not treat this as
 isolated per-request CPU if the Node process handles concurrent requests.
+
+## Pending server-only credential handoff
+
+The ChatGPT Supabase connector supports Edge deployment and function source
+reads but **does not support Edge Secret management**. Vercel's API currently
+has no server-only credentials for the protected preview service. Do not
+attempt to retrieve service-role or NVIDIA credentials via SQL, scrape them
+from logs, or add them to source files.
+
+The project-scoped `SUPABASE_URL` and legacy `SUPABASE_ANON_KEY` have been
+configured as encrypted preview-only Vercel environment variables for
+`codex/stylist-node-compute-20261109`.
+
+Still needed in Vercel's **Preview** environment (branch-scoped, encrypted):
+
+- `SUPABASE_SERVICE_ROLE_KEY` — existing Supabase project key, backend only.
+- `NVIDIA_API_KEY` — existing provider key, backend only.
+- `STYLIST_NODE_SHARED_SECRET` — new randomly generated >=32-character secret,
+  identical to the Supabase proxy's secret.
+
+Needed in Supabase Edge Secrets **before** proxy cutover:
+
+- `STYLIST_NODE_URL` — pinned, owner-controlled Vercel compute URL ending in
+  `/api/generate-outfits`.
+- `STYLIST_NODE_SHARED_SECRET` — identical to the Vercel value.
+- `STYLIST_VERCEL_BYPASS_SECRET` — token generated from the Vercel project's
+  Protection Bypass for Automation settings (unless the project uses another
+  secured service-to-service ingress).
+
+Generate the shared HMAC secret locally with `openssl rand -hex 32`. Enter
+secrets directly into the service dashboards. **Never paste secrets into
+GitHub issues, pull requests, ChatGPT, or app configuration.**
+
+After configuration, perform a fresh Vercel **Preview** deploy so new
+environment variables are present. Verify `GET /api/health` reports
+`computeConfigured: true`, then run a limited authorized paid-user
+generation and validate JWT, quota, budget and HTTP 200/503 behavior.
+A ready build and a healthy liveness endpoint alone are NOT an approved
+production release.
+
+Retain the existing Supabase v206 `generate-outfits` as production until
+all release gates pass and the owner approves an explicit traffic cutover.
