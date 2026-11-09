@@ -58,13 +58,13 @@ The build prints the original Edge source SHA-256 (not a deployment fingerprint)
    provenance against the existing v206; verify no double charge.
 4. Record cold/warm CPU, wall time, success rate and 5 sequential requests
    including Old Money + Work and budget rejection. Check real visual quality.
-5. Preserve exact v206 source in protected rollback storage; obtain explicit
+5. Preserve the exact currently deployed v207 source bundle and fingerprint in protected rollback storage; obtain explicit
    production authorization for the new proxy deployment.
 6. Deploy the small proxy as `generate-outfits` only (not as a new public
    mobile endpoint). Confirm old clients still work; monitor 5xx/546, quotas.
 7. If Node is unreachable, proxy returns 503. It must **never** silently
    replay generation on old Edge (which could double charge).
-8. Revert to v206 from the verified backup only for critical incidents.
+8. Restore the verified pre-cutover production v207 bundle on critical incidents; do not assume the historical v206 artifact is the current rollback target.
 
 **Production remains unchanged until all gates pass.** The new route does not
 create a publicly accessible keyless generation API.
@@ -159,3 +159,35 @@ staging function was removed. It no longer triggers HMAC-signed upstream
 requests from anonymous GET callers. The separate Node transport-health
 endpoint still requires a valid HMAC signature. No paid-generation request
 was exercised as part of this hardening change.
+
+
+## Isolated staging v3 (2026-11-09) — not production
+
+- Git commit `5be2fd59c85d6d6a1feffd99481924160f7bcece` updated only
+  `backend/stylist-proxy/staging.ts`: the isolated staging function now
+  pins Vercel Preview code `0ac820e4054e34a959b589f24d8334748ffb66c6`
+  (`aiwardrobe-stylist-compute-5vy45vooo-abduzahid8s-projects.vercel.app`).
+- The stage proxy optionally forwards a *separate* deployment-protection
+  bypass from `STYLIST_VERCEL_BYPASS_SECRET`, restricted to the pinned
+  HTTPS Vercel host. HMAC, exact-body signature, bearer forwarding, size limit,
+  redirect refusal and disabled public GET remain in place.
+- Supabase function `aiw-stylist-node-staging` **v3 ACTIVE**, bundle
+  fingerprint `04323e30337661c8084fa22bc93a5c441a95663fb598a895dbad52283a75fead`;
+  the deployed source readback confirms the new pin, optional bypass and
+  POST-only admission. The production `generate-outfits` remains **v207 ACTIVE**
+  with fingerprint
+  `9bb8efb4580760691d9df7f95cdf3aa8f203e743604d369e5402eaee62ec650d`.
+- The earlier Vercel logs contain four 401 `unauthorized` admissions from
+  negative JWT tests against the **previous** pinned preview; they validate
+  the earlier signed path, **not** a successful authenticated v3 generation.
+  No real paid positive end-to-end request to staging v3 was performed in
+  this update. No production traffic was cut over.
+- Before release, test staging v3 with an authorized paid test session,
+  validate one quota deduction per accepted request, request/response schema,
+  budget, source images/URLs, and cold/warm wall/CPU metrics. Confirm Vercel
+  Protection permits server-to-server calls without relaxing HMAC/JWT checks.
+- Preserve an independently recoverable bundle of production v207 prior to
+  cutover. Changing the public `generate-outfits` function requires separate
+  owner approval. To undo the **isolated staging-only** change, restore its
+  v2 source as recorded before `5be2fd5`; this is unrelated to the v207
+  production rollback procedure.
