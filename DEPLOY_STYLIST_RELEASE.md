@@ -1,14 +1,31 @@
-# Stylist Integrated Release — Deployment Instructions (code release f1d864e)
+# Stylist Integrated Release — production v206 (r2 release f7b4b54)
 
-Status (2026-11-09): DEPLOYED to Supabase production as Edge Function v205,
-verified ACTIVE. New code reports `generationVersion:
-stylist-5-editorial-v2-rc-20261109` in the deployed entrypoint.
-Authenticated end-to-end generation smoke tests are still PENDING; source
-identity and deployment status alone do not establish runtime quality.
-Production deployment fingerprint:
+Current production status (2026-11-09): **Stylist 5 r2 DEPLOYED as Supabase Edge Function v206 — ACTIVE.**
+Source commit: `f7b4b54909985d96d01809adb59cab5872201e93`.
+Deployed generation identifier in source:
+`stylist-5-editorial-v2-rc-20261109-r2`.
+Deployment fingerprint:
+`9bb8efb4580760691d9df7f95cdf3aa8f203e743604d369e5402eaee62ec650d`.
+All **48 runtime source files** retrieved from the active Edge deployment match
+the approved r2 source composition byte-for-byte (six new source files,
+42 unchanged v205 runtime files). Type-only source files were submitted
+for Deno dependency resolution but omitted from the retrieved runtime graph.
+`verify_jwt=false` is preserved; bearer-token authentication remains in
+the function's own code. **Authenticated end-to-end r2 generation and iOS
+tap-through are still PENDING**, and must not be inferred from the ACTIVE
+deployment state or source checks.
+
+Previous production v205 is preserved for emergency redeployment in the
+protected `public.stylist5_release_rollback` record
+`stylist5-v205-backup-before-r2-20261109`. Backup contains the exact 48
+deployed runtime files plus pinned compile-only `src/types/shop.ts`,
+with verified manifest SHA-256
+`d987b204e1b8bf42616737f61ce0462ed73c99d2aacc328170d9b25383c70a12`.
+Metadata records original v205 fingerprint
 `89fd3872ff0f9c29905e9938de69efd4b7458cdd56be8b52b8e2d09ad5cf1fc6`.
-No DB migration or RLS/auth/subscription change was applied as part of the
-release. The former v204 Edge source is backed up for emergency recovery.
+Older v204 backup remains available separately.
+
+Historical v205 release details below are retained for traceability.
 
 ## 1. Preconditions
 
@@ -84,23 +101,25 @@ Save Outfit / Add to Calendar / thumbs feedback all persist.
   Minimalist + Work → budget/currency controls → Generate → images, totals,
   Buy (real store URL), Save Outfit, Add to Calendar, thumbs feedback;
   confirm loud checks rejected and concept names match garments.
-- The production v205 source contains the new version identifier and matches
-  the approved GitHub release; an authenticated live generation response from
-  v205 has not yet been observed. Older v204 budgeted + unbudgeted calls do
-  not verify v205 fashion output. Run the bounded cases above with an
-  authorized paid test account; keep usage metering intact.
+- Production v206 is deployed and source-verified, but there is not yet an
+  authenticated live generation response confirming r2 runtime behavior.
+  Earlier live screenshots/logs exercised v205, not r2. Run bounded
+  Minimalist+Work, Old Money+Work, Semi-Classic+Date Night and explicit
+  budget scenarios using an authorized test account. Keep quota metering intact.
 - 19 `outfitBudgetWire` Jest failures are pre-existing obsolete-harness
   debt (present at base `737da82`); modernize that harness separately.
 - A full iOS Release archive was subsequently reported built successfully at
   `/tmp/AIWardrobe-RC.xcarchive` (208 MB); iOS app store signing/submission and
   direct in-app tap-through still need independent confirmation.
 
-## 6. Release candidate r2 (`stylist-5-editorial-v2-rc-20261109-r2`) — CODE COMPLETE, NOT DEPLOYED
+## 6. Stylist 5 r2 (`stylist-5-editorial-v2-rc-20261109-r2`) — DEPLOYED v206, RUNTIME SMOKE PENDING
 
-Seven confirmed v205 product defects are fixed in this tree. Production v205
-is untouched and stays live until the owner gives a NEW explicit deployment
-authorization; the earlier GO covered v205 only and does not authorize this
-candidate.
+Seven confirmed v205 product defects were addressed in this code release.
+The owner gave new explicit GO for deploying r2. Supabase MCP deployed this
+candidate as production v206, replacing v205 only. No changes were made to
+other functions, migrations, RLS, authentication configuration, quotas,
+retailer/catalogue records or subscriptions. The v205 source backup was
+verified before deployment.
 
 What changed (one coordinated candidate, no new ranking engine or provider):
 
@@ -146,16 +165,28 @@ all green. The 19 `outfitBudgetWire` failures and 13 other failing
 suites are byte-identical pre-existing failures on the v205 base
 (verified by stash comparison).
 
-Deploy ONLY with new explicit owner authorization, via the already
-connected Supabase integration (no credentials in this environment):
+Production deployment performed (2026-11-09):
 
-- Entrypoint `backend/supabase/functions/generate-outfits/index.ts` from
-  the pushed r2 commit SHA (see final report), with its full source graph
-  (notably the updated `backend/supabase/functions/_shared/nvidiaLookRanking.ts`,
-  `src/domain/*`, `src/services/stylingCopy.ts`).
-- Expect response `generationVersion:
-  stylist-5-editorial-v2-rc-20261109-r2` and `providerAttempts[].status`
-  of `ok` / `repaired_hybrid` / `rank_contract_mismatch`.
-- Preserve the v204 emergency backup
-  (`public.stylist5_release_rollback`, `stylist5-v204-backup-20261109`);
-  do not roll back for subjective styling issues.
+- GitHub code SHA: `f7b4b54909985d96d01809adb59cab5872201e93`.
+- Supabase function: `generate-outfits` in project `fyqpifmrsftsfqibhwhy`.
+- Version: **v206 ACTIVE**; fingerprint:
+  `9bb8efb4580760691d9df7f95cdf3aa8f203e743604d369e5402eaee62ec650d`.
+- Exactly 51 source files provided (48 runtime + 3 type-only).
+- All 48 source files returned from the active deployed function match the
+  approved r2 source graph without mismatches.
+- Deployment source `GENERATION_VERSION` is
+  `stylist-5-editorial-v2-rc-20261109-r2`.
+- The new NVIDIA helper contains `repairLookRanking`; correct provider
+  behavior still requires an authenticated real request to verify.
+- The complete previous v205 source is stored with checksum in protected
+  backup record `stylist5-v205-backup-before-r2-20261109`.
+  To recover, retrieve its JSON path-to-source map using authorized SQL,
+  verify SHA-256, call the Supabase Edge deploy method with entrypoint
+  `backend/supabase/functions/generate-outfits/index.ts` and
+  `verify_jwt=false`, and confirm restoration using runtime results.
+  The full source is maintained only for emergency rollback, not a target
+  for regular deployments.
+- **Do not repeat production deployment without new authorization.**
+- **Remaining verification:** authenticated generation scenarios, provider
+  provenance and hybrid behavior, budget validation, fresh r2 iOS build and
+  manual in-app Generate/Buy/Save/Calendar/feedback tap-through.
