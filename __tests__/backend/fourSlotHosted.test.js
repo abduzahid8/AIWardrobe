@@ -191,8 +191,11 @@ test.each(['outerwear','top','bottom','shoes'])('a locked owned %s remains in al
 // The previous query-builder mock silently emitted rows without fashion_slot.
 function catalogPages(pages) {
  const rpc=jest.fn((name,args)=>{
+  // The compact RPC caps every page at 100 mixed-slot rows. An uncapped mock
+  // would hand the planner an over-full page the real backend never sends and
+  // hide paging regressions behind fixture artefacts.
   const data=name==='catalog_stylist_candidate_hydration'?[]:
-   args.p_slots.flatMap(slot=>(pages[slot]?.[args.p_offset/100]||[]).map(row=>({...row,fashion_slot:slot})));
+   args.p_slots.flatMap(slot=>(pages[slot]?.[args.p_offset/100]||[]).map(row=>({...row,fashion_slot:slot}))).slice(0,100);
   const pending={abortSignal:()=>pending,then:resolve=>Promise.resolve({data,error:null}).then(resolve)};
   return pending;
  });
@@ -240,12 +243,12 @@ test('anchored discovery pages past incompatible knits without waiving whole-out
  const anchor={id:'owned-jersey',name:'3D jersey knit trousers',type:'pants',macroCategory:'bottom',isWardrobe:true,imageUrl:'https://example.invalid/jersey.jpg'};
  const rows=[anchor,...rotationFixtures.filter(i=>i.macroCategory==='shoes').map(i=>({...i,isShopItem:true,isWardrobe:false,price:40,currency:'USD'}))];
  const layers=Array.from({length:6},(_,i)=>({id:`cardigan-${i}`,name:`Cream fine-gauge merino sweater edition ${i}`,category:'outerwear',garment_type:'outerwear',price:60,currency:'USD',image_url:`https://example.invalid/cardigan-${i}.jpg`}));
- const knits=Array.from({length:100},(_,i)=>({id:`knit-${String(i).padStart(3,'0')}`,name:`Merino knit polo edition ${i}`,category:'tops',garment_type:'upper_body',price:40,currency:'USD',image_url:`https://example.invalid/knit-${i}.jpg`}));
+ const knits=Array.from({length:94},(_,i)=>({id:`knit-${String(i).padStart(3,'0')}`,name:`Merino knit polo edition ${i}`,category:'tops',garment_type:'upper_body',price:40,currency:'USD',image_url:`https://example.invalid/knit-${i}.jpg`}));
  const shirts=Array.from({length:6},(_,i)=>({id:`shirt-${i}`,name:`Lightweight white cotton shirt edition ${i}`,category:'tops',garment_type:'upper_body',price:40,currency:'USD',image_url:`https://example.invalid/shirt-${i}.jpg`}));
  const q=catalogPages({outerwear:[layers],top:[knits,shirts]});
  const {handler}=load([],null,null,null,q,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id,wardrobeOnly:false});
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
- const data=await response.json();expect(response.status).toBe(422);expect(data.code).toBe('outfit_quality_rejected');expect(data.diagnostics.counts).toMatchObject({top:6,outerwear:6});expect(data.outfits).toEqual([]);expect(q.rpc).toHaveBeenCalledWith('catalog_stylist_candidates_compact',expect.objectContaining({p_offset:100,p_slots:['top']}));
+ const data=await response.json();expect(response.status).toBe(422);expect(data.code).toBe('outfit_quality_rejected');expect(data.diagnostics.counts).toMatchObject({top:6,outerwear:6});expect(data.outfits).toEqual([]);expect(q.rpc).toHaveBeenCalledWith('catalog_stylist_candidates_compact',expect.objectContaining({p_offset:100,p_slots:['outerwear','top']}));
  // Retrieval found the shirts, but sparse pullover/jersey evidence does not meet the refined date floor.
 });
 

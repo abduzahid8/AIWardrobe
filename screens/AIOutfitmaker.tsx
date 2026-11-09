@@ -1382,7 +1382,7 @@ const AIOutfitGenerator = () => {
 
     // Build a clean payload for the backend — strip non-serialisable fields
     // (require() numbers) and ensure every item has macroCategory + imageUrl.
-    let payloadItems = [];
+    let payloadItems: any[] = [];
     // Per-tap normalize pool: memoized first page + random slice, collapsed.
     // normalizeTo4Slots MUST draw from this (not the frozen memo), otherwise
     // the random slice only reaches the edge while finals keep recycling the

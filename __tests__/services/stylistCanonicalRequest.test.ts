@@ -185,23 +185,24 @@ describe('client request admission',()=>{
  });
 });
 
-it('retries a starved shop-only Home deck without excluding recent products', async () => {
+it('surfaces a stable failure for a starved shop-only Home deck without relaxing history', async () => {
+  // The server is authoritative for recency fallback (rotation-pruned expansion
+  // and partial decks). A second client invoke would duplicate metered work and
+  // discard the planner's rotation decision, so the client sends history once
+  // and reports the server code honestly.
   invoke.mockReset();
   require('../../src/services/recentOutfitIds').getRecentShownProductKeys.mockResolvedValueOnce(['id:shoe']);
-  const shopOutfit = { items: complete.items.map(item => ({ ...item, isShopItem: true })) };
-  invoke.mockResolvedValueOnce({ data: null, error: { context: new Response(JSON.stringify({code:'no_matching_clothing'}), {status:422}) } })
-    .mockResolvedValueOnce({ data: {success:true, source:'ai', outfits:[shopOutfit]}, error:null });
+  invoke.mockResolvedValueOnce({ data: null, error: { context: new Response(JSON.stringify({code:'no_matching_clothing'}), {status:422}) } });
   const params = {stylePreferences:'business_casual', occasion:'Team Collaboration', allowRecentFallback:true, weather:{temp:20, condition:'clear'}, preferences:{avoidColors:['red']}};
   const result = await generateOutfitsFromDB(params);
-  expect(result.success).toBe(true);
-  expect(invoke).toHaveBeenCalledTimes(2);
-  const first = invoke.mock.calls[0][1].body, second = invoke.mock.calls[1][1].body;
-  expect(first.excludeItemIds).toEqual(['recent']);
-  expect(first.excludeProductKeys).toEqual(['id:shoe']);
-  expect(second.excludeItemIds).toEqual([]);
-  expect(second.excludeProductKeys).toEqual([]);
-  expect({...first, excludeItemIds: [], excludeProductKeys: []}).toEqual(second);
-  expect(result.outfits[0].items).toHaveLength(4);
+  expect(result.success).toBe(false);
+  expect(result.code).toBe('no_matching_clothing');
+  expect(result.errorTranslationKey).toBe('outfitMaker.noMatchingClothing');
+  expect(invoke).toHaveBeenCalledTimes(1);
+  const sent = invoke.mock.calls[0][1].body;
+  expect(sent.excludeItemIds).toEqual(['recent']);
+  expect(sent.excludeProductKeys).toEqual(['id:shoe']);
+  expect(sent.preferences).toEqual(params.preferences);
 });
 
 it('does not relax history for other failure categories or ordinary requests', async () => {
@@ -212,33 +213,32 @@ it('does not relax history for other failure categories or ordinary requests', a
 });
 
 
-it('retries when only product identity history exhausts a shop slot', async () => {
+it('does not retry when only product identity history exhausts a shop slot', async () => {
   invoke.mockReset();
   const history = require('../../src/services/recentOutfitIds');
   history.getRecentShownIds.mockResolvedValueOnce([]);
   history.getRecentShownProductKeys.mockResolvedValueOnce(['id:shoe']);
-  const shopOutfit = {items: complete.items.map(item => ({...item, isShopItem:true}))};
-  invoke.mockResolvedValueOnce({data:null,error:{context:new Response(JSON.stringify({code:'no_matching_clothing'}),{status:422})}})
-    .mockResolvedValueOnce({data:{success:true,source:'ai',outfits:[shopOutfit]},error:null});
-  expect((await generateOutfitsFromDB({stylePreferences:'business_casual',occasion:'Team Collaboration',allowRecentFallback:true})).success).toBe(true);
-  expect(invoke).toHaveBeenCalledTimes(2);
-  expect(invoke.mock.calls[1][1].body.excludeProductKeys).toEqual([]);
+  invoke.mockResolvedValueOnce({data:null,error:{context:new Response(JSON.stringify({code:'no_matching_clothing'}),{status:422})}});
+  const result = await generateOutfitsFromDB({stylePreferences:'business_casual',occasion:'Team Collaboration',allowRecentFallback:true});
+  expect(result.success).toBe(false);
+  expect(invoke).toHaveBeenCalledTimes(1);
+  expect(invoke.mock.calls[0][1].body.excludeProductKeys).toEqual(['id:shoe']);
 });
 
 
-it('allows another Home occasion to recover an exhausted footwear pool without changing its constraints', async () => {
+it('keeps an exhausted footwear pool failure on the same Home occasion constraints', async () => {
   invoke.mockReset();
   const history = require('../../src/services/recentOutfitIds');
   history.getRecentShownIds.mockResolvedValueOnce(['recent']);
   history.getRecentShownProductKeys.mockResolvedValueOnce(['id:shoe']);
-  invoke.mockResolvedValueOnce({data:null,error:{context:new Response(JSON.stringify({code:'no_matching_clothing'}),{status:422})}})
-    .mockResolvedValueOnce({data:{success:true,source:'ai',outfits:[complete]},error:null});
+  invoke.mockResolvedValueOnce({data:null,error:{context:new Response(JSON.stringify({code:'no_matching_clothing'}),{status:422})}});
   const result = await generateOutfitsFromDB({stylePreferences:'old_money',occasion:'Night-Time Dinner',allowRecentFallback:true});
-  expect(result.success).toBe(true);
-  const [first, second] = invoke.mock.calls.map((call: any[]) => call[1].body);
-  expect({...first, excludeItemIds: [], excludeProductKeys: []}).toEqual(second);
-  expect(second.stylePreferences).toBe('old_money');
-  expect(result.outfits[0].items).toHaveLength(4);
+  expect(result.success).toBe(false);
+  expect(invoke).toHaveBeenCalledTimes(1);
+  const [sent] = invoke.mock.calls.map((call: any[]) => call[1].body);
+  expect(sent.stylePreferences).toBe('old_money');
+  expect(sent.excludeItemIds).toEqual(['recent']);
+  expect(sent.excludeProductKeys).toEqual(['id:shoe']);
 });
 
 it('requests a catalog-only pool for the shop-only Home deck', async () => {
