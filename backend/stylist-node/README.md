@@ -191,3 +191,54 @@ was exercised as part of this hardening change.
   owner approval. To undo the **isolated staging-only** change, restore its
   v2 source as recorded before `5be2fd5`; this is unrelated to the v207
   production rollback procedure.
+
+
+## Gated authorized staging smoke — READY TO RUN, NOT EXECUTED
+
+A local-only test harness now exists at
+backend/stylist-node/scripts/authorized-staging-smoke.mjs.
+Its JavaScript syntax is checked by CI, but **CI deliberately does not
+execute it**. A run must be explicitly authorized because the original
+handler consumes the paid test account's edge:aiOutfits quota at admission,
+including requests that later fail during outfit planning or inference.
+
+Requirements:
+1. A dedicated, authorized **paid** Supabase test account with an active
+   session token or credentials. Never use a real customer's session.
+2. On the trusted developer Mac only: securely supply SUPABASE_URL,
+   SUPABASE_ANON_KEY, AIW_TEST_SERVICE_ROLE_KEY for read-only quota
+   snapshots, and either AIW_TEST_ACCESS_TOKEN or
+   AIW_TEST_EMAIL + AIW_TEST_PASSWORD. Never commit or paste these into
+   GitHub, chat, or CI; do not log them.
+3. Ensure no other calls share the test account during this run.
+   Avoid running across 00:00 UTC because quota is keyed by UTC day.
+4. From backend/stylist-node, run npm install --no-audit --no-fund,
+   then deliberately opt in using
+   AIW_STAGING_SMOKE_ACK=I_ACCEPT_5_QUOTA_DEBITS node scripts/authorized-staging-smoke.mjs.
+   Do not put the ACK in any scheduled workflow. Five valid admissions
+   will consume **five** edge:aiOutfits counts.
+
+The runner targets **only**
+https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/aiw-stylist-node-staging.
+It first verifies anonymous requests fail with 401 and cause no quota
+change. It then makes at most five sequential authenticated scenarios:
+Minimalist + Work, Old Money + Work, Classic + Date night, high-budget new
+clothing, low-budget new clothing. There are **no automatic retries**.
+It verifies status, response schema, fashion acceptance, source URLs,
+image URLs, per-request exact quota delta of +1, generation version and
+server-timing Node CPU/wall values. It prints only safe aggregate metrics
+(no bearer, product rows, email, password, keys, user ID or response body).
+
+Cross-currency budget totals need independent checking against the pinned
+budgetReference FX snapshot; the script explicitly reports that step as
+pending rather than claiming success. Human visual QA, iOS Buy/Save/Calendar,
+five-request stability, deployment protection and rollback evidence remain
+release gates. No successful **live** paid staging request has been confirmed
+by merely committing this runner.
+
+The acceptance is **NO-GO** if the runner fails, if quota delta is not
+exactly +1 per admitted call, if a required source link/image is absent,
+if CPU/wall timing is unavailable, or if an FX/visual requirement has not
+been independently verified. Passing it also does not authorize a
+production cutover. Preserve production generate-outfits **v207** and
+its readback fingerprint as the rollback baseline.
