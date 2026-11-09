@@ -208,7 +208,9 @@ test('repeated provider ranking reuses the exact feasible set without altering r
       feasibilityComplete: true,
       repeatedProducts: 0,
       pairChecks: 18336,
-      utilityBounded: true,
+      // Fewer than UTILITY_LIMIT (4096) rotation-tied finalists exist for
+      // this fixture, so nothing is truncated: the flag is truthfully false.
+      utilityBounded: false,
     });
   }
 });
