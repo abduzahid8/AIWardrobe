@@ -69,9 +69,16 @@ Deno.serve(async (request: Request): Promise<Response> => {
     if (!upstream.headers.get('content-type')?.toLowerCase().includes('application/json')) {
       return jsonError('stylist_compute_unavailable', 502);
     }
+    // Only whitelisted non-sensitive runtime timing is forwarded. No
+    // provider details, tokens, product records, or internal debug headers.
+    const headers = new Headers(corsHeaders);
+    const timing = upstream.headers.get('server-timing');
+    if (timing && /^aiw_node_cpu;dur=\\d+(?:\\.\\d+)?, aiw_node_wall;dur=\\d+(?:\\.\\d+)?$/.test(timing)) {
+      headers.set('server-timing', timing);
+    }
     return new Response(upstream.body, {
       status: upstream.status,
-      headers: corsHeaders,
+      headers,
     });
   } catch {
     // Never log JWTs, products, request bodies, HMAC signatures, or secrets.

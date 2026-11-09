@@ -77,9 +77,20 @@ export async function POST(request: Request): Promise<Response> {
       body,
     });
     const handler = await originalHandler();
+    // Measure full server-side work, not only a planner microbenchmark.
+    // process.cpuUsage is per-process (may include concurrent requests);
+    // never log or return garment data, user IDs, tokens, or provider details.
+    const cpuStart = process.cpuUsage();
+    const wallStart = performance.now();
     // Original handler performs: auth -> quota -> catalog -> full quality
     // checks -> bounded planning -> NVIDIA ranking -> response.
-    return await handler(originalRequest);
+    const result = await handler(originalRequest);
+    const cpu = process.cpuUsage(cpuStart);
+    const cpuMs = (cpu.user + cpu.system) / 1000;
+    const wallMs = performance.now() - wallStart;
+    const headers = new Headers(result.headers);
+    headers.set('server-timing', `aiw_node_cpu;dur=${cpuMs.toFixed(1)}, aiw_node_wall;dur=${wallMs.toFixed(1)}`);
+    return new Response(result.body, { status: result.status, headers });
   } catch {
     // Never leak backend internals, JWTs, product data or service credentials.
     return errorResponse('stylist_compute_unavailable', 503);

@@ -38,6 +38,8 @@ test('signed requests run the original, quota-enforcing Stylist handler', async 
       body,
     }));
     assert.equal(response.status, 503);
+    assert.equal(response.status, 503);
+    assert.match(response.headers.get('server-timing') || '', /^aiw_node_cpu;dur=\\d+(?:\\.\\d+)?, aiw_node_wall;dur=\\d+(?:\\.\\d+)?$/);
     assert.equal((await response.json()).error, 'rate_limit_unavailable');
     assert.equal(typeof globalThis.__AIW_STYLIST_HANDLER__, 'function');
   } finally {
