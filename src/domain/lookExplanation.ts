@@ -48,14 +48,17 @@ export function lookExplanationFacts(items: GarmentEvidence[], context: StylingC
 }
 export function groundedLookExplanation(items: GarmentEvidence[], context: StylingContext): string {
   const f = lookExplanationFacts(items, context);
+  // Name the actual garments: a specific relationship beats a generic one,
+  // and the named fallback never restates the inventory as advice.
   const relationship = f.tailoredFootwear
-    ? 'Dress shoes balance the tailored trousers.'
-    : f.lightOpenLayer ? 'The lighter base sits neatly beneath the open layer.'
-    : f.textureContrast ? 'The textured layer adds depth to the smoother base.'
-    : f.casualFootwear ? 'The shoes keep the casual trousers in the same style register.'
-    : f.layer ? 'The base, layer and footwear form a coordinated complete look.'
-    : 'The top, trousers and shoes form a coordinated look.';
+    ? `${f.shoes || 'Dress shoes'} echo the line of ${f.bottom || 'the tailored trousers'}.`
+    : f.lightOpenLayer ? `${f.top || 'The lighter base'} sits neatly beneath ${f.layer || 'the open layer'}.`
+    : f.textureContrast ? `${f.layer || 'The textured layer'} adds depth over ${f.top || 'the smoother base'}.`
+    : f.casualFootwear ? `${f.shoes || 'The shoes'} keep ${f.bottom || 'the casual trousers'} in the same register.`
+    : f.layer ? `${f.top || 'The base'} sits under ${f.layer || 'the layer'} for a coordinated complete look.`
+    : `${f.top || 'The top'} pairs with ${f.bottom || 'the trousers'} for a coordinated look.`;
   const occasion = context.dressCode === 'formal' ? 'formal occasion'
     : context.dressCode === 'smart' ? 'occasion' : '';
-  return occasion ? `${relationship} The overall formality suits the ${occasion}.` : relationship;
+  const palette = f.palette && f.knownColors >= 2 ? ` The ${f.palette} palette holds the look together.` : '';
+  return occasion ? `${relationship}${palette} The overall formality suits the ${occasion}.` : `${relationship}${palette}`;
 }

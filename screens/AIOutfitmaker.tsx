@@ -1,5 +1,5 @@
 import {validateOutfitGenerationRequest,OutfitRequestError} from '../src/domain/outfitGenerationRequest';
-import {outfitDescription,outfitConceptTitle,distinctStylingTips} from '../src/services/stylingCopy';
+import {outfitDescription,outfitConceptTitle,distinctStylingTips,resolveSelectionSource,selectionBadgeKey} from '../src/services/stylingCopy';
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
@@ -103,6 +103,13 @@ interface GeneratedOutfit {
   description: string;
   items: OutfitItem[];
   stylingTips?: string;
+  /** Styling inputs captured at generation time so result copy can be
+   * re-localized when the app language changes without a new request. */
+  stylingStyle?: string;
+  stylingOccasion?: string;
+  stylingRequest?: string;
+  /** True when tips came from the server and must not be re-derived. */
+  serverTips?: boolean;
   weather?: { temp: number; condition: string; city?: string };
 }
 
@@ -315,14 +322,22 @@ function useDesignTokens() {
   };
 }
 
-const getAiStyleLabel = (id: string, t: (key: string) => string) => {
+type TranslateFn = (key: string, opts?: any) => string;
+const getAiStyleLabel = (id: string, t: TranslateFn) => {
   const style = aiStyles.find(s => s.id === id);
-  return style?.label || id;
+  return t(`outfitMaker.style_${id}`, { defaultValue: style?.label || id });
 };
 
-const getAiStyleDesc = (id: string, t: (key: string) => string) => {
+const getAiStyleDesc = (id: string, t: TranslateFn) => {
   const style = aiStyles.find(s => s.id === id);
-  return style?.desc || '';
+  return t(`outfitMaker.styleDesc_${id}`, { defaultValue: style?.desc || '' });
+};
+
+/** Localized occasion preset name. `date` renders as "Date night" via dateNight. */
+const getOccasionLabel = (id: string, t: TranslateFn) => {
+  const preset = OCCASION_PRESETS.find(o => o.id === id);
+  const key = id === 'date' ? 'dateNight' : id;
+  return t(`outfitMaker.${key}`, { defaultValue: preset?.label || id });
 };
 
 /** Single-currency card total from the same quote resolver the tiles use.
@@ -589,7 +604,7 @@ const AIOutfitGenerator = () => {
     () => parseCalendarDate(planningDateKey),
     [planningDateKey],
   );
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // ── Quiz-oriented defaults ──────────────────────────────────────────
   // When the user arrives from the Style Quiz, the generator orients on
   // their quiz personality instead of a hardcoded fallback.
@@ -619,6 +634,35 @@ const AIOutfitGenerator = () => {
   }, [quizStyleDefault]);
   const [loading, setLoading] = useState(false);
   const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
+  // Switching languages re-renders static labels via t(), but stored result
+  // copy (descriptions, tips) was localized at generation time. Re-derive it
+  // from the stored garments so the result screen refreshes without a new
+  // paid generation request. Concept titles already resolve at render time.
+  const resultLanguage = i18n.language;
+  useEffect(() => {
+    setOutfits(current => {
+      if (!current.length) return current;
+      let changed = false;
+      const next = current.map(look => {
+        const items = (look.items || []) as any[];
+        if (!items.length || !look.stylingStyle) return look;
+        const ctx = stylingContext({
+          style: look.stylingStyle,
+          occasion: look.stylingOccasion || '',
+          request: look.stylingRequest || '',
+          weather: look.weather,
+        });
+        const description = outfitDescription(look, items, ctx);
+        const tips = look.serverTips
+          ? (look.stylingTips || '')
+          : distinctStylingTips(description, stylingCopyParts(items, ctx).tips).join(' ');
+        if (description === look.description && tips === (look.stylingTips || '')) return look;
+        changed = true;
+        return { ...look, description, stylingTips: tips };
+      });
+      return changed ? next : current;
+    });
+  }, [resultLanguage]);
   const [resultBudget, setResultBudget] = useState<ReturnType<typeof parseBudgetFromText>>(null);
   const [inventoryNote, setInventoryNote] = useState('');
   const [error, setError] = useState('');
@@ -1567,18 +1611,26 @@ const AIOutfitGenerator = () => {
           const baseScore = outfitCoherence(items, stylingContext({style:styleToUse, occasion:occasionToUse, request:effectivePrompt||promptText, weather:resolvedWeather})).score;
           return {
             ...outfit,
-            selectionSource:data.source==='ai'?'ai':'deterministic_fallback',
+            // Truthful provenance: only genuine provider acceptance is 'ai';
+            // a repaired ordering is 'hybrid'; everything else is fallback.
+            // The card pill shows the AI badge for 'ai' only.
+            selectionSource:resolveSelectionSource(data.source),
             generationRequestId:data.generationRequestId,engineVersion:data.generationVersion,
             id: outfit.id || `look_${tapNonce}_${idx}`,
             description,
+            stylingStyle: styleToUse,
+            stylingOccasion: `${occasionToUse} ${effectivePrompt || promptText || ''}`,
+            stylingRequest: effectivePrompt || promptText || '',
+            serverTips: Array.isArray(outfit.stylingTips) && outfit.stylingTips.length > 0,
             items,
             mainImage: items[0]?.image || items[0]?.imageUrl || outfit.mainImage || '',
             matchScore: judgeOk ? baseScore : Math.min(baseScore, 0.69),
             stylingTips: (() => {
               const serverTips = Array.isArray(outfit.stylingTips) ? outfit.stylingTips : [];
-              const tips = serverTips.length
-                ? serverTips
-                : outfit.explanationVersion === 1 ? [] : copy.tips;
+              // Server v205 sends no localized tips; fall back to the
+              // localized, evidence-grounded tips. Restated advice is
+              // suppressed below: never render the description as its own tip.
+              const tips = serverTips.length ? serverTips : copy.tips;
               // The screen bypasses stylingCopyParts, so restated advice is
               // suppressed here: never render the description as its own tip.
               return distinctStylingTips(description, tips).join(' ');
@@ -1913,7 +1965,7 @@ const AIOutfitGenerator = () => {
                     </View>
                   ) : <View />}
                   <LinearGradient colors={[D.accent, '#5B7CF9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.matchPill}>
-                    <ScaledText style={styles.matchPillText}>{outfit.selectionSource === 'ai' ? t('outfitMaker.aiRanked') : t('outfitMaker.styledLook')}</ScaledText>
+                    <ScaledText style={styles.matchPillText}>{t(selectionBadgeKey(outfit.selectionSource))}</ScaledText>
                   </LinearGradient>
                 </View>
 
@@ -2073,11 +2125,11 @@ const AIOutfitGenerator = () => {
   // ── AI thinking view (same page, after setup animates out) ──────────
   // Shows HOW the AI is thinking: quiz style → occasion → source scan.
   if (loading) {
-    const selectedStyleLabel = aiStyles.find(s => s.id === selectedStyle)?.label || 'AI';
-    const occasionLabel = OCCASION_PRESETS.find((o) => o.id === selectedOccasion)?.label;
+    const selectedStyleLabel = getAiStyleLabel(selectedStyle, t);
+    const occasionLabel = selectedOccasion ? getOccasionLabel(selectedOccasion, t) : undefined;
     const sourceLabel = currentSource === 'shop'
-      ? t('outfitMaker.newClothing', { defaultValue: 'new clothing' })
-      : t('outfitMaker.fromWardrobe', { defaultValue: 'your wardrobe' });
+      ? t('outfitMaker.newClothing', { defaultValue: 'New clothing' })
+      : t('outfitMaker.fromWardrobe', { defaultValue: 'From wardrobe' });
     // Map wardrobe items for the animation
     const animationItems = wardrobeItems.slice(0, 24).map((item: any) => ({
       id: item.id || String(Math.random()),
@@ -2184,17 +2236,17 @@ const AIOutfitGenerator = () => {
             {t('outfitMaker.newOutfit', { defaultValue: 'New outfit' })}
           </ScaledText>
           <ScaledText style={styles.heroSub} numberOfLines={1}>
-            {aiStyles.find((s) => s.id === selectedStyle)?.label}
+            {getAiStyleLabel(selectedStyle, t)}
             {' · '}
             {currentSource === 'shop'
               ? t('outfitMaker.newShort', { defaultValue: 'New' })
               : t('outfitMaker.wardrobeShort', { defaultValue: 'Wardrobe' })}
             {' · '}
             {selectedOccasion
-              ? OCCASION_PRESETS.find((o) => o.id === selectedOccasion)?.label
+              ? getOccasionLabel(selectedOccasion, t)
               : t('outfitMaker.pickOccasion', { defaultValue: 'Pick an occasion' })}
             {' · '}
-            {weather ? `${weather.temp}°C` : 'Weather unavailable'}
+            {weather ? `${weather.temp}°C` : t('outfitMaker.weatherUnavailable', { defaultValue: 'Weather unavailable' })}
           </ScaledText>
         </View>
 
@@ -2344,7 +2396,7 @@ const AIOutfitGenerator = () => {
                         <Ionicons name={occ.icon as any} size={20} color={on ? '#FFFFFF' : '#173A65'} />
                       </View>
                       <ScaledText style={[styles.bigTileLabel, on && styles.bigTileLabelActive]}>
-                        {occ.label}
+                        {getOccasionLabel(occ.id, t)}
                       </ScaledText>
                       {on && (
                         <View style={styles.bigTileCheck}>
@@ -2436,7 +2488,7 @@ const AIOutfitGenerator = () => {
                         <Ionicons name={activeStyle.icon as any} size={26} color="#FFFFFF" />
                       </View>
                       <View style={{ flex: 1, marginLeft: 14 }}>
-                        <ScaledText style={styles.featureName}>{activeStyle.label}</ScaledText>
+                        <ScaledText style={styles.featureName}>{getAiStyleLabel(activeStyle.id, t)}</ScaledText>
                         {quizStyleDefault === activeStyle.id && quizPersonality ? (
                           <View style={[styles.quizBadge, { alignSelf: 'flex-start', marginTop: 6 }]}>
                             <Ionicons name="sparkles" size={11} color="#FFFFFF" />
@@ -2482,7 +2534,7 @@ const AIOutfitGenerator = () => {
                             return renderCheckRow(
                               styleObj.id,
                               styleObj.icon,
-                              styleObj.label,
+                              getAiStyleLabel(styleObj.id, t),
                               isSelected,
                               () => {
                                 setError('');

@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const EXPECTED_GENERATION_VERSION = 'stylist-5-editorial-v2-rc-20261109';
+const EXPECTED_GENERATION_VERSION = 'stylist-5-editorial-v2-rc-20261109-r2';
 const PRODUCTION_VERSION = 'stylist-5-editorial-v2';
 
 const source = fs.readFileSync(

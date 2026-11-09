@@ -234,9 +234,18 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
   // distress. Keep it separate so clean light denim is still usable.
   const paleDenim = subtype === 'jeans'
     && /\b(light|pale|ice)[ -]blue\b/.test(`${text} ${String(item.color || '').toLowerCase()}`);
-  // Jacquard is a weave, not necessarily a busy motif. Only explicit motif
-  // evidence upgrades it; tonal jacquard and herringbone remain textures.
-  const pattern = /\b(paisley|floral|geometric|polka[ -]dots?|camo)\b/.test(text)
+  // Jacquard is a weave, not necessarily a busy motif. Named knit motifs
+  // (geometric jacquard, fair isle, argyle, intarsia, brocade, damask,
+  // nordic) are visible patterns, not quiet texture. A bare "jacquard"
+  // with no motif evidence stays a texture, as does an explicitly subtle
+  // or tonal knit (even with a filler word such as "tonal textured
+  // jacquard"): a subtle cardigan is not a bright motif.
+  const subtleKnitMotif = /\b(subtle|tonal|micro|fine|small|low[ -]contrast)(?:[ -]+\w+){0,2}[ -]+(jacquard|brocade|damask|intarsia|fair[ -]?isle|fairisle|argyle|nordic)\b/.test(text);
+  const knitMotifEvidence = !subtleKnitMotif
+    && (/\b(fair[ -]?isle|fairisle|argyle|intarsia|brocade|damask|nordic)\b/.test(text)
+      || (/\bjacquard\b/.test(text)
+        && /\b(geometric|pattern(?:ed|s)?|all[ -]over|bold|large|oversized|busy|high[ -]contrast|medium[ -]contrast|graphic|chevron|fair[ -]?isle|argyle|intarsia|brocade)\b/.test(text)));
+  const pattern = /\b(paisley|floral|geometric|polka[ -]dots?|camo)\b/.test(text) || knitMotifEvidence
     ? 'print'
     : /\b(checks?|checked|plaid|gingham|houndstooth|windowpane|tartan)\b/.test(text)
       ? 'check'
@@ -244,8 +253,8 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
         || (typeof item.pattern === 'string' && !/^(unknown|other|\s*)$/i.test(item.pattern))
         ? patternOf(item) : 'unknown';
   const patterned = ['stripe', 'check', 'print'].includes(pattern);
-  const prominentMotif = /\b(busy|bold|large|oversized|high[ -]contrast|medium[ -]contrast|all[ -]over)(?:[ -]+(?:busy|bold|large|scale|geometric))?[ -]+(?:checks?|checked|plaid|tartan|stripes?|striped|paisley|floral|jacquard|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
-  const subtleMotif = /\b(subtle|tonal|micro|fine|small|low[ -]contrast)(?:[ -]+(?:fine|subtle|small|micro|scale))?[ -]+(?:checks?|checked|plaid|windowpane|houndstooth|stripes?|striped|pinstriped|paisley|floral|jacquard|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
+  const prominentMotif = /\b(busy|bold|large|oversized|high[ -]contrast|medium[ -]contrast|all[ -]over|heavily|highly)(?:[ -]+(?:busy|bold|large|scale|geometric|patterned))?[ -]+(?:checks?|checked|plaid|tartan|stripes?|striped|paisley|floral|jacquard|brocade|intarsia|fair[ -]?isle|argyle|graphics?|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
+  const subtleMotif = /\b(subtle|tonal|micro|fine|small|low[ -]contrast)(?:[ -]+(?:fine|subtle|small|micro|scale))?[ -]+(?:checks?|checked|plaid|windowpane|houndstooth|stripes?|striped|pinstriped|paisley|floral|jacquard|brocade|intarsia|fair[ -]?isle|argyle|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
   // Large-scale, high-contrast checks read as statement patterns, not the
   // restrained checks minimalism and quiet tailoring allow. Buffalo (and
   // lumberjack) is a large-scale check by construction; bright/vivid motifs

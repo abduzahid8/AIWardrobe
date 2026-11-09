@@ -94,3 +94,68 @@ Save Outfit / Add to Calendar / thumbs feedback all persist.
 - A full iOS Release archive was subsequently reported built successfully at
   `/tmp/AIWardrobe-RC.xcarchive` (208 MB); iOS app store signing/submission and
   direct in-app tap-through still need independent confirmation.
+
+## 6. Release candidate r2 (`stylist-5-editorial-v2-rc-20261109-r2`) — CODE COMPLETE, NOT DEPLOYED
+
+Seven confirmed v205 product defects are fixed in this tree. Production v205
+is untouched and stays live until the owner gives a NEW explicit deployment
+authorization; the earlier GO covered v205 only and does not authorize this
+candidate.
+
+What changed (one coordinated candidate, no new ranking engine or provider):
+
+- Ranking contract: a provider response with the right count but one
+  repeated ID is safely repaired (valid unique IDs keep provider order,
+  unknowns dropped, missing tail filled from deterministic shortlist order)
+  with provenance `hybrid`; unrepairable responses stay a full
+  `deterministic_fallback`. AI badge renders for `ai` only. Regression
+  coverage: `__tests__/backend/stylistR2RankingRepair.test.js` (9/9).
+- Fashion coherence: named knit motifs (geometric jacquard, fair isle,
+  argyle, intarsia, brocade) are visible patterns while tonal/subtle knits
+  stay textures; restrained styles reject competing upper patterns (soft
+  penalty for formal dress pairings); formal tailoring over performance
+  bottoms and very casual layers on polished date nights are rejected.
+  Known-good tailoring stays accepted.
+- Naming: evidence-grounded fallback variants (`grounded-knit-layers`,
+  `grounded-tailoring`, `grounded-denim-ease`, `grounded-separates`) with
+  full en/ru/uz titles; no color claims; deck-distinct localized titles.
+- Explanations: relationship sentences name the actual garments plus a
+  grounded second sentence (palette or silhouette); localized tips render
+  when they add information and are always deduplicated against the
+  description.
+- Localization: the 26 Stylist keys missing in all locales were added
+  (en/ru/uz); style names, occasion names, weather, headers, budget, result
+  cards, actions, and error/empty states resolve in the active language;
+  switching languages re-localizes stored results without a new request.
+  The prompt placeholder no longer contains the old `1 500 000 UZS` budget
+  example (budget has its own explicit control; no hidden default limit).
+- Client/server contract: response `source` is now
+  `ai | hybrid | deterministic_fallback`; per-look `selectionSource`
+  matches; generation identifier is the new r2 value below.
+
+Gates on this candidate: `npx tsc --noEmit` clean;
+`npm run typecheck:edge` (all Edge functions) clean;
+`__tests__/backend/stylistR2RankingRepair.test.js` 9/9,
+`__tests__/services/stylistR2QualityFixes.test.ts` 31/31,
+fashion neighbors (`stylistFashionRegression`, `stylistPresentation` — the
+latter was already red at v205 base and is fixed here,
+`stylingQualityRefinement`, `stylingV193`, `outfitCoherence`,
+`formalityCoherence`, `nvidiaOutfitRequest`, `generationVersion`,
+`generationCandidatePool`, `deckAssembly`, `curatedSelectionQuality`)
+all green. The 19 `outfitBudgetWire` failures and 13 other failing
+suites are byte-identical pre-existing failures on the v205 base
+(verified by stash comparison).
+
+Deploy ONLY with new explicit owner authorization, via the already
+connected Supabase integration (no credentials in this environment):
+
+- Entrypoint `backend/supabase/functions/generate-outfits/index.ts` from
+  the pushed r2 commit SHA (see final report), with its full source graph
+  (notably the updated `backend/supabase/functions/_shared/nvidiaLookRanking.ts`,
+  `src/domain/*`, `src/services/stylingCopy.ts`).
+- Expect response `generationVersion:
+  stylist-5-editorial-v2-rc-20261109-r2` and `providerAttempts[].status`
+  of `ok` / `repaired_hybrid` / `rank_contract_mismatch`.
+- Preserve the v204 emergency backup
+  (`public.stylist5_release_rollback`, `stylist5-v204-backup-20261109`);
+  do not roll back for subjective styling issues.

@@ -59,11 +59,13 @@ export function editorialCopy(items: GarmentEvidence[], context: StylingContext)
     : facts.casualFootwear ? 'editorialCasualFootwear'
     : facts.layer ? 'editorialLayered' : 'editorialUnlayered';
   const sentences = [translate(`outfitMaker.qualityExplanation.${relationship}`, values)];
-  // One useful relationship is better than a template reciting every measured
-  // attribute. Add palette only when the garment relationship is generic.
-  if ((relationship === 'editorialLayered' || relationship === 'editorialUnlayered')
-    && facts.palette && facts.knownColors >= 2)
+  // A second sentence is added only when it contributes grounded information
+  // the first sentence did not state: a verified multi-color palette first,
+  // otherwise the verified trouser silhouette. Never a third recitation.
+  if (facts.palette && facts.knownColors >= 2)
     sentences.push(translate('outfitMaker.qualityExplanation.paletteStory', values));
+  else if (values.shape)
+    sentences.push(translate('outfitMaker.qualityExplanation.shapeStory', values));
   return sentences.join(' ');
 }
 
@@ -78,6 +80,25 @@ export function outfitDescription(
   return typeof outfit.description === 'string' && outfit.description.trim()
     ? outfit.description
     : stylingCopyParts(items, context).description;
+}
+
+/** Truthful ranking provenance. Only a fully accepted provider ordering is
+ * 'ai'; a repaired ordering is 'hybrid'; everything else is fallback.
+ * Unknown and legacy values stay fallback, never AI. */
+export function resolveSelectionSource(
+  source: unknown
+): 'ai' | 'hybrid' | 'deterministic_fallback' {
+  return source === 'ai' ? 'ai'
+    : source === 'hybrid' ? 'hybrid'
+    : 'deterministic_fallback';
+}
+
+/** Card badge copy key. The AI badge renders for genuine provider acceptance
+ * only; hybrid and fallback looks use the neutral curated label. */
+export function selectionBadgeKey(source: unknown): string {
+  return resolveSelectionSource(source) === 'ai'
+    ? 'outfitMaker.aiRanked'
+    : 'outfitMaker.styledLook';
 }
 
 /** Variant IDs are planner details; their base concept owns localized copy.

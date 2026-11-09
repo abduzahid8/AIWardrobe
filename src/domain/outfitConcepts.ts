@@ -292,10 +292,43 @@ export function conceptGarmentAffinity(d: GarmentDescriptor, c: OutfitConcept): 
     0.1 * proportion
   );
 }
-/** Neutral fallback: preserves the context's composition (slots, layer and
- * footwear roles) but makes no texture or knit claims, so the title always
- * describes the actual garments. Base object is spread, never mutated. */
-export function groundedConceptFallback(base: OutfitConcept): OutfitConcept {
+/**
+ * Neutral fallbacks: preserve the context's composition (slots, layer and
+ * footwear roles) but make no texture, color, or knit claims beyond verified
+ * garment evidence, so the title always describes the actual garments. The
+ * variant is chosen from verified subtypes and register — never from color
+ * words, product names, or slot concatenations. Base object is spread, never
+ * mutated.
+ */
+export function groundedConceptFallback(
+  base: OutfitConcept,
+  items?: readonly GarmentEvidence[],
+): OutfitConcept {
+  const descriptors = (items || []).map(describeGarment);
+  const slot = (s: string) => descriptors.find((d) => d.slot === s);
+  const layer = slot('outerwear'), bottom = slot('bottom'), shoe = slot('shoes');
+  const knitLayer = layer && (layer.texture === 'knit'
+    || ['cardigan', 'pullover', 'sweater', 'fine-knit'].includes(layer.subtype));
+  const dressyShoes = shoe && !shoe.casualSole
+    && ['oxford', 'derby', 'monk', 'dress-boot', 'loafer', 'chelsea'].includes(shoe.subtype);
+  const tailoredLayer = layer && (layer.subtype === 'blazer' || layer.subtype === 'coat');
+  const denimEase = bottom?.subtype === 'jeans'
+    && shoe && ['sneaker', 'minimal-sneaker', 'boot'].includes(shoe.subtype);
+  if (knitLayer && dressyShoes !== false && bottom && ['chino', 'tailored-trouser', 'trouser'].includes(bottom.subtype))
+    return {
+      ...base, id: 'grounded-knit-layers', title: 'Soft Knit Layers', textures: [],
+      story: 'Soft knit layering keeps the look polished and approachable.',
+    };
+  if (tailoredLayer && bottom?.structured && dressyShoes)
+    return {
+      ...base, id: 'grounded-tailoring', title: 'Refined Tailoring', textures: [],
+      story: 'Structured tailoring and dress footwear carry a refined register.',
+    };
+  if (denimEase)
+    return {
+      ...base, id: 'grounded-denim-ease', title: 'Relaxed Denim Ease', textures: [],
+      story: 'Relaxed denim and understated footwear keep the look easy.',
+    };
   return {
     ...base,
     id: 'grounded-separates',
@@ -326,8 +359,9 @@ export function lookConcept(
     return descriptors.some((d) => d.texture === 'knit' || knitSubtypes.has(d.subtype));
   });
   // Zero fulfillable concepts must never resurrect an ungrounded knit/texture
-  // title: score a single neutral concept built on this context's composition.
-  const pool = fulfillable.length ? fulfillable : [groundedConceptFallback(all[0])];
+  // title: score a single neutral concept built on this context's composition
+  // and grounded in the actual garments.
+  const pool = fulfillable.length ? fulfillable : [groundedConceptFallback(all[0], items)];
   return pool
     .map((concept) => {
       const values = descriptors.map((d) => conceptRoleCompatible(d,concept,context) ? conceptGarmentAffinity(d, concept) : 0.1);

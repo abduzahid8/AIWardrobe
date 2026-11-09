@@ -56,7 +56,7 @@ export function wholeOutfitRegisterClash(
   // base competes with patterned tailoring even when each item alone passes.
   // Read positive catalog pattern evidence directly (including pinstripes).
   const visiblePattern = (item: GarmentEvidence) => ['check','stripe','print'].includes(patternOf(item))
-    || /\b(chevron|geometric|paisley|jacquard|pattern(?:ed)?)\b/i.test(`${item.name || ''} ${item.description || ''} ${item.pattern || ''}`);
+    || /\b(chevron|geometric|paisley|jacquard|brocade|damask|intarsia|fair[ -]?isle|fairisle|argyle|nordic|graphic|pattern(?:ed)?)\b/i.test(`${item.name || ''} ${item.description || ''} ${item.pattern || ''}`);
   if (context.dressCode === 'formal' && top && visiblePattern(top)
     && [layer, bottomIndex >= 0 ? items[bottomIndex] : undefined].some(item => item && visiblePattern(item)))
     return 'formal_patterned_tailoring_requires_quiet_base';
@@ -73,6 +73,33 @@ export function wholeOutfitRegisterClash(
     const a = describeGarment(top), b = describeGarment(layer);
     if (a.subtype === 'field-shirt' && b.subtype === 'blazer')
       return 'utility_base_with_tailored_blazer';
+  }
+  // Restrained aesthetics (semi-classic, classic, old money, minimalist —
+  // and any smart/formal dress code) never pair two competing prominent
+  // upper-body motifs: a checked flannel base under a geometric jacquard
+  // cardigan reads chaotic, not elegant. Two provably subtle motifs may
+  // still mix; uncertainty counts against the look, never for it.
+  const restrained = ['semi_classic', 'classic', 'old_money', 'minimalist', 'business_casual'].includes(context.style)
+    || context.dressCode === 'smart' || context.dressCode === 'formal';
+  if (restrained && top && layer && context.dressCode !== 'athletic') {
+    const a = describeGarment(top), b = describeGarment(layer);
+    // Formal dress pairings keep the traditional pattern-mixing rules with
+    // soft penalties only: a striped dress shirt under a checked blazer is
+    // classic menswear, not chaos. The hard reject targets casual pairings
+    // (flannel bases, knit layers) that cannot carry two competing motifs.
+    const formalPairing = a.formality === 'formal' && b.formality === 'formal';
+    if (!formalPairing && visiblePattern(top) && visiblePattern(layer) && competingUpperPatterns(a, b))
+      return 'restrained_style_rejects_competing_upper_patterns';
+  }
+  // Polished date nights reject very casual layers outright: hoodies,
+  // sporty zips and technical leisure shells underdress the occasion even
+  // when each piece passes its own slot gate. Weather shells (puffer, coat)
+  // stay eligible — cold evenings still need a real coat.
+  if (layer && /\bdate\b/i.test(`${context.occasion} ${context.request}`)
+    && (context.dressCode === 'smart' || context.dressCode === 'formal')) {
+    const layerDesc = describeGarment(layer);
+    if (layerDesc.subtype === 'hoodie' || layerDesc.sportyZip || layerDesc.technicalLeisure)
+      return 'date_night_rejects_very_casual_layer';
   }
   if (refined && bottomIndex >= 0) {
     const outer = descriptors.find(d => d.slot === 'outerwear');
@@ -120,6 +147,20 @@ export function wholeOutfitRegisterClash(
       );
     if (vacationCue(layer) || (bottomIndex >= 0 && vacationCue(items[bottomIndex])))
       return 'classic_work_rejects_vacation_pieces';
+  }
+  // Formal tailoring over performance bottoms: a suit jacket with technical
+  // performance chinos or training trousers splits the register down the
+  // middle — polished on top, gym below. This sits after the refined-work
+  // block so established work reasons keep precedence; it covers the same
+  // mismatch outside work contexts (date nights, smart evenings). Tailored
+  // or plain-casual bottoms remain valid smart-casual bridges.
+  if (layer && bottomIndex >= 0 && (refined || context.dressCode === 'smart' || context.dressCode === 'formal')) {
+    const layerDesc = describeGarment(layer);
+    const bottomText = `${items[bottomIndex].name || ''} ${items[bottomIndex].description || ''}`.toLowerCase();
+    const performanceBottom = descriptors[bottomIndex].athletic
+      || /\b(performance|technical|training|workout|gym)\b/.test(bottomText);
+    if (layerDesc.subtype === 'blazer' && layerDesc.formality === 'formal' && performanceBottom)
+      return 'formal_tailoring_with_performance_bottom';
   }
   // Formal dress consistency (old_money / classic + Formal): a checked casual
   // base or a leisure-cut layer each clears its individual formal gate, but
@@ -332,6 +373,15 @@ export function outfitCoherence(
     && ['stripe', 'check', 'print'].includes(outer!.pattern)) {
     dimensions.palette = Math.min(dimensions.palette, 0.55);
     evidence.push('competing_office_upper_patterns');
+  }
+  // A casual flannel base under formal tailoring is a register stretch, not
+  // a clash: penalize rather than reject, so genuine smart-casual flannel
+  // pairings can still rank while overdressed combinations sink.
+  if (base && outer && outer.subtype === 'blazer' && outer.formality === 'formal'
+    && base.formality === 'casual' && ['smart', 'formal'].includes(context.dressCode)
+    && /\bflannel\b/i.test(`${top?.name || ''} ${top?.description || ''}`)) {
+    dimensions.layer = Math.min(dimensions.layer, 0.5);
+    evidence.push('casual_flannel_under_formal_tailoring');
   }
   // Evaluate the outfit's pattern hierarchy and dress register as a whole.
   // One accent and smart-casual bridges remain supported; uncertainty is neutral.
