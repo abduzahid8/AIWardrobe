@@ -25,6 +25,9 @@ jobs:
       - name: Bundle original production Stylist kernel for Node
         working-directory: backend/stylist-node
         run: npm run build
+      - name: Type-check the isolated Vercel Node entry
+        working-directory: backend/stylist-node
+        run: npx tsc --noEmit -p tsconfig.json
       - name: Verify signed transport AND real Node-handler admission
         working-directory: backend/stylist-node
         run: npm test
