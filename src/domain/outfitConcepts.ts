@@ -292,6 +292,18 @@ export function conceptGarmentAffinity(d: GarmentDescriptor, c: OutfitConcept): 
     0.1 * proportion
   );
 }
+/** Neutral fallback: preserves the context's composition (slots, layer and
+ * footwear roles) but makes no texture or knit claims, so the title always
+ * describes the actual garments. Base object is spread, never mutated. */
+export function groundedConceptFallback(base: OutfitConcept): OutfitConcept {
+  return {
+    ...base,
+    id: 'grounded-separates',
+    title: 'Clean separates',
+    textures: [],
+    story: 'Coordinated separates form a complete look.',
+  };
+}
 export function lookConcept(
   items: GarmentEvidence[],
   context: StylingContext
@@ -302,7 +314,8 @@ export function lookConcept(
   // knit texture or a knit-construction subtype (unknown construction stays
   // eligible; only proven absence disqualifies).
   const knitSubtypes = new Set(['sweater', 'cardigan', 'pullover', 'fine-knit', 'knit-polo', 'knit']);
-  const fulfillable = outfitConcepts(context).filter((concept) => {
+  const all = outfitConcepts(context);
+  const fulfillable = all.filter((concept) => {
     if (!concept.textures.length) return true;
     const needsKnit = concept.textures.includes('knit') || /knit/i.test(concept.title);
     if (!needsKnit) {
@@ -312,7 +325,10 @@ export function lookConcept(
     }
     return descriptors.some((d) => d.texture === 'knit' || knitSubtypes.has(d.subtype));
   });
-  return (fulfillable.length ? fulfillable : outfitConcepts(context))
+  // Zero fulfillable concepts must never resurrect an ungrounded knit/texture
+  // title: score a single neutral concept built on this context's composition.
+  const pool = fulfillable.length ? fulfillable : [groundedConceptFallback(all[0])];
+  return pool
     .map((concept) => {
       const values = descriptors.map((d) => conceptRoleCompatible(d,concept,context) ? conceptGarmentAffinity(d, concept) : 0.1);
       return {

@@ -35,7 +35,10 @@ const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-const GENERATION_VERSION = 'stylist-5-editorial-v2';
+// Release-candidate identifier. Must match the deployed source tree and stay
+// compatible with the client's /^stylist-5-/ server-plan gate.
+// Documented in DEPLOY_STYLIST_RELEASE.md; never reuse a production identifier.
+const GENERATION_VERSION = 'stylist-5-editorial-v2-rc-20261109';
 
 // Team Collaboration is always 100% shop — no wardrobe anchor.
 // Matches by style (`business_casual`) OR occasion label (`Team Collaboration`).

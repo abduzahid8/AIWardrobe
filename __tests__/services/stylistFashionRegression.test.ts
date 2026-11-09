@@ -1,6 +1,6 @@
 import { describeGarment, competingUpperPatterns } from '../../src/domain/garmentDescriptor';
 import { rejectForStyleOccasion } from '../../src/domain/occasionRules';
-import { lookConcept } from '../../src/domain/outfitConcepts';
+import { lookConcept, outfitConcepts } from '../../src/domain/outfitConcepts';
 import { wholeOutfitRegisterClash } from '../../src/domain/outfitCoherence';
 import { groundedLookExplanation } from '../../src/domain/lookExplanation';
 import { stylingContext } from '../../src/domain/stylingContext';
@@ -107,6 +107,29 @@ describe('stylist fashion regression: user screenshot scenarios', () => {
         (en.outfitMaker.editorialColors as Record<string, string>)[family]
       ).toBeTruthy();
     }
+  });
+
+  test('Concept fallback: zero fulfillable concepts yields grounded neutral, never a knit title', () => {
+    const deck = [
+      item('Black technical overshirt', 'top'),
+      item('Charcoal technical stretch trousers', 'bottom'),
+      item('Grey technical low-profile sneakers', 'shoes'),
+    ];
+    const context = stylingContext({ style: 'minimalist', occasion: 'Work' });
+    const before = outfitConcepts(context);
+    expect(before.length).toBeGreaterThan(0);
+    const { concept } = lookConcept(deck, context);
+    expect(concept.id).toBe('grounded-separates');
+    expect(concept.title).toBe('Clean separates');
+    expect(concept.title).not.toMatch(/knit/i);
+    expect(concept.textures).toEqual([]);
+    // Composition (slots, layer role) is preserved from this context.
+    expect(concept.slots).toEqual(before[0].slots);
+    expect(concept.layerRole).toBe(before[0].layerRole);
+    // Shared concept objects are untouched: fallback is a fresh object.
+    expect(before.includes(concept)).toBe(false);
+    expect(before.some((c) => c.id === 'grounded-separates')).toBe(false);
+    expect(before.every((c) => c.textures.length > 0)).toBe(true);
   });
 
   test('Scenario F: explanations stay concise and never recite templates', () => {
