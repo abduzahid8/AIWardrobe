@@ -128,11 +128,15 @@ export function createDeckSelector<T>(
     }
     return result;
   };
-  const primary = (indices: number[]) => {
-    const quality = indices.map((i) => vertices[i].quality);
-    return (
-      (0.65 * quality.reduce((sum, q) => sum + q, 0)) / quality.length + 0.35 * Math.min(...quality)
-    );
+  // Vertices are quality-sorted. Avoid allocating arrays and scanning minima
+  // for each pair/triple during the exact feasibility search.
+  const primary = (size: number, a: number, b: number, c: number) => {
+    const qa = vertices[a].quality;
+    if (size === 1) return qa;
+    const qb = vertices[b].quality;
+    if (size === 2) return (0.65 * (qa + qb)) / 2 + 0.35 * qb;
+    const qc = vertices[c].quality;
+    return (0.65 * (qa + qb + qc)) / 3 + 0.35 * qc;
   };
   // A visit sees one bitset per (pair, repetition count), never materializes
   // the potentially millions of complete triples.
@@ -174,7 +178,7 @@ export function createDeckSelector<T>(
     for (policy = 0; policy < (size === 1 ? 1 : 3); policy++) {
       visit(size, policy, (a, b, choices, repeated) => {
         const c = first(choices);
-        const q = primary(size === 1 ? [a] : size === 2 ? [a, b] : [a, b, c]);
+        const q = primary(size, a, b, c);
         if (repeated < repeats) {
           repeats = repeated;
           bestQuality = q;
@@ -211,14 +215,16 @@ export function createDeckSelector<T>(
     }
     return priorityOrder[lo - 1];
   };
-  const select = (ranks: ReadonlyMap<string, number> = new Map()) => {
-    let best: number[] = [],
-      bestOrder: number[] = [],
-      bestUtility = -Infinity;
-    let utilityBounded = false;
-    let finalists: number[][] = [];
-    if (size >= 1)
-      visit(size, policy, (a, b, set, repeated) => {
+  // Feasibility and rotation-priority ordering do not depend on NVIDIA
+  // ranks. Materialize the exact tied finalists once per graph, then replay
+  // only bounded editorial utility for successive seed/AI/hybrid selections.
+  // This removes an expensive duplicate O(n² log n) pass without changing
+  // quality thresholds, cardinality, reuse policy, or source provenance.
+  let bestOrder: number[] = [];
+  let utilityBounded = false;
+  let finalists: number[][] = [];
+  if (size >= 1)
+    visit(size, policy, (a, b, set, repeated) => {
         if (repeated !== repeats) return;
         const base = size === 1 ? [] : size === 2 ? [a] : [a, b];
         // For sorted a<b<c, c is the minimum-quality member. Solve the
@@ -245,7 +251,10 @@ export function createDeckSelector<T>(
           if (finalists.length < UTILITY_LIMIT) finalists.push(indices);
           else utilityBounded = true;
         }
-      });
+    });
+  const select = (ranks: ReadonlyMap<string, number> = new Map()) => {
+    let best: number[] = [],
+      bestUtility = -Infinity;
     // Finish the exact rotation pass before spending any editorial work.
     // Even adversarial priority order cannot exceed this fixed utility budget.
     for (const indices of finalists) {

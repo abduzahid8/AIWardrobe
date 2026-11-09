@@ -182,3 +182,33 @@ test('matches exhaustive feasibility, least reuse, quality band and rotation pri
     ).toBeGreaterThanOrEqual(floor - 1e-12);
   }
 });
+
+test('repeated provider ranking reuses the exact feasible set without altering rotation or quality policy', () => {
+  const rows = Array.from({ length: 192 }, (_, i) =>
+    vertex(`candidate${i}`, [i, 1000 + i, 2000 + i, 3000 + i], 0.80 + (i % 17) / 1000, [i % 5])
+  );
+  const compatible = jest.fn(() => true);
+  const selector = createDeckSelector(rows, {
+    target: 3,
+    scarceSlots: [],
+    compatible,
+    utility: (looks, ranks) => looks.reduce((sum, look) => sum + (ranks.get(look.id) || 0), 0),
+  });
+  const baseline = selector.select();
+  const pairCalls = compatible.mock.calls.length;
+  const provider = selector.select(new Map(rows.map((row, i) => [row.look.id, i])));
+  const recovered = selector.select();
+
+  expect(baseline.looks).toHaveLength(3);
+  expect(provider.looks).toHaveLength(3);
+  expect(recovered.looks).toEqual(baseline.looks);
+  expect(compatible.mock.calls.length).toBe(pairCalls);
+  for (const outcome of [baseline, provider, recovered]) {
+    expect(outcome.diagnostics).toMatchObject({
+      feasibilityComplete: true,
+      repeatedProducts: 0,
+      pairChecks: 18336,
+      utilityBounded: true,
+    });
+  }
+});
