@@ -713,6 +713,7 @@
       "travelLayer": "The openable layer can be removed during the journey and added outdoors.",
       "adaptableLayer": "With the weather unknown, adjust the removable layer as conditions change.",
       "fitCheck": "Check that the outer layer fits comfortably over the base without pulling.",
+      "unlayeredFitCheck": "Check that the top and bottom fit comfortably together without bunching.",
       "textureDepth": "Let the textured layer lead — keep the base smooth and simple.",
       "lightBase": "A lightweight base sits under an openable layer.",
       "tailoredFootwear": "Dress footwear follows the tailored trouser silhouette.",

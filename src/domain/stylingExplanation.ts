@@ -34,6 +34,7 @@ export function stylingExplanationKeys(
   )
     keys.push('casualLayer');
   if (!context.weather && layer?.closure === 'openable' && layer.bulk !== 'heavy') keys.push('adaptableLayer');
-  if (!keys.length) keys.push('fitCheck');
+  // An unlayered look cannot receive advice about adjusting a nonexistent outer layer.
+  if (!keys.length) keys.push(layer ? 'fitCheck' : 'unlayeredFitCheck');
   return keys.slice(0, 2).map((key) => `outfitMaker.qualityExplanation.${key}`);
 }
