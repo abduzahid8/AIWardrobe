@@ -297,7 +297,22 @@ export function lookConcept(
   context: StylingContext
 ): { concept: OutfitConcept; score: number } {
   const descriptors = items.map(describeGarment);
-  return outfitConcepts(context)
+  // A concept title must describe the actual selected garments: a knit-titled
+  // concept is only fulfillable when at least one item shows knit evidence —
+  // knit texture or a knit-construction subtype (unknown construction stays
+  // eligible; only proven absence disqualifies).
+  const knitSubtypes = new Set(['sweater', 'cardigan', 'pullover', 'fine-knit', 'knit-polo', 'knit']);
+  const fulfillable = outfitConcepts(context).filter((concept) => {
+    if (!concept.textures.length) return true;
+    const needsKnit = concept.textures.includes('knit') || /knit/i.test(concept.title);
+    if (!needsKnit) {
+      const known = descriptors.filter((d) => d.texture !== 'unknown');
+      if (!known.length) return true;
+      return known.some((d) => concept.textures.includes(d.texture));
+    }
+    return descriptors.some((d) => d.texture === 'knit' || knitSubtypes.has(d.subtype));
+  });
+  return (fulfillable.length ? fulfillable : outfitConcepts(context))
     .map((concept) => {
       const values = descriptors.map((d) => conceptRoleCompatible(d,concept,context) ? conceptGarmentAffinity(d, concept) : 0.1);
       return {

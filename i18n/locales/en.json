@@ -910,7 +910,11 @@
       "dark": "dark tones",
       "dark-neutral": "dark neutrals",
       "light": "light tones",
-      "earth": "earth tones"
+      "earth": "earth tones",
+      "warm": "warm tones",
+      "mid": "muted tones",
+      "cool-dark": "deep cool tones",
+      "cool-mid": "cool tones"
     }
   },
   "paywall": {

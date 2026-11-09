@@ -436,6 +436,15 @@ export function rejectForStyleOccasion(
     if (style === 'minimalist' && MINIMALIST_NOISE_RE.test(blob)) {
         return 'loud piece breaks minimalist discipline';
     }
+    // Large-scale, high-contrast checks (buffalo, bright or red-on-black)
+    // are statement patterns. Restrained checks — glen, windowpane,
+    // pinstripe, oxford stripe — still pass for minimalist work.
+    if (style === 'minimalist' && isTopOrLayer
+        && /\b(checks?|checked|plaid)\b/.test(blob)
+        && (/\b(buffalo|lumberjack|bright|vivid|striking)\b/.test(blob)
+            || (/\bred\b/.test(blob) && /\bblack\b/.test(blob)))) {
+        return 'loud checked patterns break minimalist discipline';
+    }
     // Minimalism vetoes loud pieces in every occasion (see header): route the
     // shared loud-print detector here so theatre prints (palm, floral,
     // souvenir…) cannot slip through the narrower noise list above.

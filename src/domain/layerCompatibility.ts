@@ -68,6 +68,18 @@ function evaluateLayer(
   // strict formal dress codes.
   if (a.formality === 'formal' && b.athletic)
     reasons.push('athletic_outerwear_over_formal_base');
+  // A hooded casual knit over a formal base (dress shirt) mixes registers:
+  // boardroom polish below, off-duty comfort on top. Refined dress codes
+  // reject the combination; the layer alone is never the problem.
+  const refinedStyle = ['old_money', 'classic', 'semi_classic', 'business_casual'].includes(context.style)
+    || context.dressCode === 'smart' || context.dressCode === 'formal';
+  const layerText = normalizeGarmentText(
+    [layer.name, layer.type, layer.description].filter(Boolean).join(' ')
+  );
+  const hoodedCasualLayer = b.subtype === 'hoodie'
+    || (/hood/i.test(layerText) && !b.structured && b.formality !== 'formal');
+  if (refinedStyle && a.formality === 'formal' && hoodedCasualLayer)
+    reasons.push('hooded_casual_layer_over_formal_base');
   if (a.bulk === 'light' && b.closure === 'openable') {
     score += 0.15;
     evidence.push('light_base_under_openable_layer');

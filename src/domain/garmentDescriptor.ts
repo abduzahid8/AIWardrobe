@@ -246,7 +246,15 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
   const patterned = ['stripe', 'check', 'print'].includes(pattern);
   const prominentMotif = /\b(busy|bold|large|oversized|high[ -]contrast|medium[ -]contrast|all[ -]over)(?:[ -]+(?:busy|bold|large|scale|geometric))?[ -]+(?:checks?|checked|plaid|tartan|stripes?|striped|paisley|floral|jacquard|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
   const subtleMotif = /\b(subtle|tonal|micro|fine|small|low[ -]contrast)(?:[ -]+(?:fine|subtle|small|micro|scale))?[ -]+(?:checks?|checked|plaid|windowpane|houndstooth|stripes?|striped|pinstriped|paisley|floral|jacquard|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
-  const patternProminence = patterned && prominentMotif
+  // Large-scale, high-contrast checks read as statement patterns, not the
+  // restrained checks minimalism and quiet tailoring allow. Buffalo (and
+  // lumberjack) is a large-scale check by construction; bright/vivid motifs
+  // and red-on-black checks are high-contrast by color.
+  const loudCheck = pattern === 'check'
+    && (/\b(buffalo|lumberjack)\b/.test(text)
+      || /\b(bright|vivid|striking)\b/.test(text)
+      || (/\bred\b/.test(text) && /\bblack\b/.test(text)));
+  const patternProminence = patterned && (prominentMotif || loudCheck)
     ? 'prominent'
     : patterned && subtleMotif
       ? 'subtle' : 'unknown';
@@ -395,7 +403,11 @@ export function competingUpperPatterns(a: GarmentDescriptor, b: GarmentDescripto
   const motif = (d: GarmentDescriptor) => ['stripe', 'check', 'print'].includes(d.pattern);
   if (!motif(a) || !motif(b)) return false;
   if (a.patternProminence === 'subtle' && b.patternProminence === 'subtle') return false;
-  return a.patternProminence === 'prominent' || b.patternProminence === 'prominent' || a.pattern !== b.pattern;
+  if (a.patternProminence === 'prominent' || b.patternProminence === 'prominent') return true;
+  if (a.pattern !== b.pattern) return true;
+  // Same motif family at full saturation (e.g. checked shirt with checked
+  // trousers) still competes unless at least one side is provably subtle.
+  return a.patternProminence !== 'subtle' && b.patternProminence !== 'subtle';
 }
 
 

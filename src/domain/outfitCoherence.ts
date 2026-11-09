@@ -30,6 +30,7 @@ const LAYER_REGISTER_CLASH = new Set([
   'hood_under_tailored_blazer',
   'bulky_base_under_tailored_blazer',
   'athletic_outerwear_over_formal_base',
+  'hooded_casual_layer_over_formal_base',
 ]);
 
 export function wholeOutfitRegisterClash(
