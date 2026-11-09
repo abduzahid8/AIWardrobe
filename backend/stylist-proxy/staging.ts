@@ -6,7 +6,7 @@
  */
 import { signStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 
-const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-697pmz6vi-abduzahid8s-projects.vercel.app';
+const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-5vy45vooo-abduzahid8s-projects.vercel.app';
 const CORS = {
   'Access-Control-Allow-Origin':'*',
   'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
@@ -36,6 +36,12 @@ Deno.serve(async(request:Request):Promise<Response>=>{
   if(new TextEncoder().encode(body).byteLength>STYLIST_TRANSPORT_MAX_BODY_BYTES)
     return fail('invalid_generation_request',413);
   try{
+    // Optional Vercel deployment protection bypass is independent of the
+    // HMAC transport and original user JWT; never forward to another host.
+    const bypass = Deno.env.get('STYLIST_VERCEL_BYPASS_SECRET')?.trim();
+    if (bypass && (!/^[a-zA-Z0-9_-]{32,128}$/.test(bypass) ||
+        !new URL(NODE_ORIGIN).hostname.toLowerCase().endsWith('.vercel.app')))
+      return fail('staging_transport_unconfigured',503);
     const signature=await signStylistTransport({secret,body,authorization});
     const response=await fetch(NODE_ORIGIN+'/api/generate-outfits',{
       method:'POST',redirect:'error',
@@ -43,6 +49,7 @@ Deno.serve(async(request:Request):Promise<Response>=>{
         ...signature,authorization,
         apikey:request.headers.get('apikey')||'',
         'content-type':'application/json',
+        ...(bypass ? {'x-vercel-protection-bypass':bypass} : {}),
       },
       body,signal:AbortSignal.timeout(45000),
     });
