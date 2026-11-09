@@ -13,6 +13,7 @@ import {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Expose-Headers': 'server-timing',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json',
@@ -73,7 +74,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     // provider details, tokens, product records, or internal debug headers.
     const headers = new Headers(corsHeaders);
     const timing = upstream.headers.get('server-timing');
-    if (timing && /^aiw_node_cpu;dur=\\d+(?:\\.\\d+)?, aiw_node_wall;dur=\\d+(?:\\.\\d+)?$/.test(timing)) {
+    if (timing && /^aiw_node_cpu;dur=\d+(?:\.\d+)?, aiw_node_wall;dur=\d+(?:\.\d+)?$/.test(timing)) {
       headers.set('server-timing', timing);
     }
     return new Response(upstream.body, {
