@@ -1,14 +1,21 @@
 /**
- * Temporary PREVIEW-ONLY runtime module diagnostic. No tokens, secrets, user
- * data, product identifiers, or request input are read. Remove before release.
+ * Temporary PREVIEW diagnostic that verifies both runtime ESM transport and
+ * the generated original Stylist kernel are loadable in Vercel. Never call
+ * the handler, read secrets, or process user data here. Remove before release.
  */
 export default {
   async fetch(): Promise<Response> {
     try {
-      const mod = await import('../transport/signature.mjs');
+      const transport = await import('../transport/signature.mjs');
+      const stylist = await import('../dist/stylist-bundle.mjs');
+      const glob = globalThis as typeof globalThis & {
+        __AIW_STYLIST_HANDLER__?: (request: Request) => Promise<Response>;
+      };
+      void stylist;
       return Response.json({
         status: 'ok',
-        available: typeof mod.signStylistTransport === 'function',
+        signatureLoaded: typeof transport.verifyStylistTransport === 'function',
+        originalStylistHandlerLoaded: typeof glob.__AIW_STYLIST_HANDLER__ === 'function',
       }, { headers: { 'Cache-Control': 'no-store' } });
     } catch (error: unknown) {
       const e = error instanceof Error ? error : new Error('unknown');

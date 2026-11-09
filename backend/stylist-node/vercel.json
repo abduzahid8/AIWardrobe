@@ -7,6 +7,10 @@
     "api/generate-outfits.ts": {
       "maxDuration": 60,
       "includeFiles": "{transport/signature.mjs,dist/stylist-bundle.mjs}"
+    },
+    "api/module-check.ts": {
+      "includeFiles": "{transport/signature.mjs,dist/stylist-bundle.mjs}",
+      "maxDuration": 30
     }
   },
   "outputDirectory": "public"
