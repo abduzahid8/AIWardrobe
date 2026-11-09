@@ -34,3 +34,34 @@ Status: **NOT ACCEPTED**. Evidence: 15 user-provided iPhone simulator screenshot
 Reproduced evidence, minimal source changes, tested mobile build and exact commit SHA, screenshots of corrected scenarios, localized copy nonduplication, catalog/source/price checks, and a separately authenticated staging smoke report including quota+1/request and Node CPU/wall. Do not mark release GO until production rollback artifacts, security and performance are validated.
 
 Production Supabase `generate-outfits` must stay v207 during this investigation.
+
+
+## Catalog visual-evidence gap (read-only Supabase check, 2026-11-09)
+
+This is **not proof** that any individual screenshot product lacks evidence.
+
+- shop_catalog contains **7,020 active products**. All have garment intelligence.
+  Exactly **5,467** active products have a visual-fashion row (77.9% coverage);
+  **1,553** lack visual profiles. No active products have empty image URLs,
+  source URLs or non-positive prices in the catalog, but stored links can fail.
+- catalog_visual_jobs: **5,461 succeeded**, **1,557 unknown**, **2 pending**.
+  The unknown group includes **1,553 download_unavailable** and
+  **4 no_confident_facets**.
+- Missing visual profiles by image host: assets-cf.armani.com 800;
+  media.loropiana.com 263; www.fredperry.com 153; static.zara.net 145;
+  imagena1.lacoste.com 105; static.massimodutti.net 86;
+  images.jackjones.com 1.
+- Zara and Massimo Dutti also have successfully processed images, so these
+  data do not prove a blanket blocked hostname. The cloud worker currently
+  collapses HTTP, image decoding, timeout, and validation errors into one
+  download_unavailable reason. Precise causes need a safe reproduction.
+- Worker configuration is enabled; however the daily scheduled GitHub workflow
+  only exists on a feature branch and not the default main branch. A GitHub
+  Actions schedule does not activate from a nondefault branch.
+
+Next investigation: aggregate safe failure categories for a bounded, lawful
+sample: HTTP 403/404/429, redirects, DNS/TLS, content type, decode failure,
+dimensions, and timeout. Avoid logging signed image URLs or product/user data.
+Never blindly requeue 1,553 jobs, evade retailer access controls, buy GPU
+capacity, or mutate active product URLs. Prioritize images belonging to
+actually rejected QA looks. Keep this separate from PR #14 transport cutover.
