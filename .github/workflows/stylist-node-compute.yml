@@ -1,0 +1,42 @@
+name: Stylist Node compute candidate
+on:
+  push:
+    branches:
+      - codex/stylist-node-compute-20261109
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-node-compute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout pinned source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install isolated compute dependencies
+        working-directory: backend/stylist-node
+        run: npm install --no-audit --no-fund
+      - name: Verify signed transport
+        working-directory: backend/stylist-node
+        run: npm test
+      - name: Bundle original production Stylist kernel for Node
+        working-directory: backend/stylist-node
+        run: npm run build
+      - name: Verify actual generated Node handler loads
+        working-directory: backend/stylist-node
+        run: |
+          node --input-type=module -e '
+            await import("./dist/stylist-bundle.mjs");
+            if (typeof globalThis.__AIW_STYLIST_HANDLER__ !== "function") {
+              throw new Error("Node generated handler not registered");
+            }
+            console.log("Stylist Node handler registered");
+          '
+      - name: Ensure production files not modified by candidate
+        run: git diff --exit-code -- backend/supabase/functions/generate-outfits/index.ts
