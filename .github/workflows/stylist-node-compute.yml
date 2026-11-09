@@ -22,12 +22,12 @@ jobs:
       - name: Install isolated compute dependencies
         working-directory: backend/stylist-node
         run: npm install --no-audit --no-fund
-      - name: Verify signed transport
-        working-directory: backend/stylist-node
-        run: npm test
       - name: Bundle original production Stylist kernel for Node
         working-directory: backend/stylist-node
         run: npm run build
+      - name: Verify signed transport AND real Node-handler admission
+        working-directory: backend/stylist-node
+        run: npm test
       - name: Verify actual generated Node handler loads
         working-directory: backend/stylist-node
         run: |
