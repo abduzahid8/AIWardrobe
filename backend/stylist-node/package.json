@@ -1,0 +1,19 @@
+{
+  "name": "@aiwardrobe/stylist-node",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.45.4"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.9"
+  }
+}
