@@ -270,11 +270,19 @@ export async function generateOutfitsFromDB(
         }
 
         const optionalLayer = params.compositionProtocol === 'optional-layer-v1' && data.compositionProtocol === 'optional-layer-v1';
+        const serverPlan = /^stylist-5-/.test(String(data.generationVersion || ''));
+        const cap = params.preferences?.maxShopBudget;
         const outfits: GeneratedOutfit[] = data.outfits
             .filter((o: any) => o && !fourSlotOutfitReason(o.items, !optionalLayer))
+            .filter((o: any) => !serverPlan || (o.items.every((item:any) => typeof item?.id==='string' && item.id.trim())
+                && new Set(o.items.map((item:any)=>item.id)).size===o.items.length))
             .map((o: any) => mapRawOutfit(o, params))
-            .filter((o: GeneratedOutfit) => [...(params.selectedItemIds||[]),...(params.anchorItemId?[params.anchorItemId]:[])].every(id=>o.items.some(item=>item.id===id)) && (params.sourceMode!=='wardrobe'||o.items.every(item=>!isShopClothingItem(item))) && (params.sourceMode!=='catalog'||o.items.every(isShopClothingItem)) && passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather,params.anchorItemId,params.preferences));
-        if (!outfits.length || (data.outfits.length === 3 && outfits.length !== 3)) return { success: false, outfits: [], error: 'no_valid_outfits_for_request', errorTranslationKey: 'outfitMaker.noMatchingClothing' };
+            .filter((o: GeneratedOutfit) => [...(params.selectedItemIds||[]),...(params.anchorItemId?[params.anchorItemId]:[])].every(id=>o.items.some(item=>item.id===id))
+                && (params.sourceMode!=='wardrobe'||o.items.every(item=>!isShopClothingItem(item)))
+                && (params.sourceMode!=='catalog'||o.items.every(isShopClothingItem))
+                && (!cap || fitsBudgetAmount(outfitShopSpend(o.items,undefined,cap.currency,params.budgetFx||cap.fx),cap.amount))
+                && (serverPlan || passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather,params.anchorItemId,params.preferences)));
+        if (!outfits.length) return { success: false, outfits: [], error: 'no_valid_outfits_for_request', errorTranslationKey: 'outfitMaker.noMatchingClothing' };
         if (params.recordShown !== false) recordShownOutfits(outfits, recencyScope);
         return { success: true, outfits, source: data.source === 'ai' ? 'ai' : 'deterministic_fallback', layered: !optionalLayer, compositionProtocol:optionalLayer?'optional-layer-v1':undefined };
 
@@ -1453,6 +1461,9 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
     });
 
     const normalizedItems = dedupedItems;
+    const serverScore = /^stylist-5-/.test(String(o.engineVersion || '')) ? Number(o.confidence) : NaN;
+    const score = Number.isFinite(serverScore) ? serverScore
+        : assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score;
 
     return {
         id: o.id || `outfit_${Date.now()}_${Math.random()}`,
@@ -1463,8 +1474,8 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
         })),
         style: o.style || params.stylePreferences || 'Casual',
         occasion: o.occasion || params.occasion || 'Everyday',
-        confidence: assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score,
-        matchScore: assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score,
+        confidence: score,
+        matchScore: score,
         items: normalizedItems,
         stylingTips: Array.isArray(o.stylingTips)
           ? o.stylingTips

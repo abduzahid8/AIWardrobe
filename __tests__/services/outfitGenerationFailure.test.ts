@@ -7,6 +7,11 @@ test.each([
  ['no_outfit_within_budget','outfitMaker.budgetTooLow'],
  ['no_items_within_budget','outfitMaker.noItemsWithinBudget'],
  ['no_matching_clothing','outfitMaker.noMatchingClothing'],
+ ['incompatible_locked_item','outfitMaker.incompatibleLockedItem'],
+ ['insufficient_candidates','outfitMaker.missingRequiredClothing'],
+ ['outfit_quality_rejected','outfitMaker.qualityShortfall'],
+ ['incomplete_outfit_selection','outfitMaker.distinctInventoryLimited'],
+ ['planning_cpu_risk','outfitMaker.generationBusy'],
  ['invalid_outfit_budget','outfitMaker.invalidBudget'],
 ])('maps known server code %s to localized message %s',async(code,key)=>{
  expect((await outfitGenerationFailure({code})).translationKey).toBe(key);
@@ -47,7 +52,7 @@ test('a hung error-body read cannot leave the outfit screen waiting',async()=>{
 });
 test.each(['en','ru','uz'])('%s includes every mapped outfit failure message',locale=>{
  const translations=require(`../../i18n/locales/${locale}.json`);
- for(const key of ['budgetTooLow','noItemsWithinBudget','noMatchingClothing','invalidBudget','generateFailed','aiUnavailable','subscriptionRequired']) expect(translations.outfitMaker[key].length).toBeGreaterThan(20);
+ for(const key of ['budgetTooLow','noItemsWithinBudget','noMatchingClothing','missingRequiredClothing','qualityShortfall','generationBusy','requestTimeout','invalidBudget','generateFailed','aiUnavailable','subscriptionRequired']) expect(translations.outfitMaker[key].length).toBeGreaterThan(20);
 });
 
 test('unknown prices have their own localized failure rather than a budget-too-low claim', async () => {

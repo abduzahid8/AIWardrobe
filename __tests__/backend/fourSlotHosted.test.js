@@ -56,6 +56,17 @@ const richItems = [
  ['Navy chino trousers','Grey wool trousers','Beige cotton chinos'],
  ['Brown leather loafers','Black leather derby shoes','Burgundy leather oxford shoes'],
 ].flatMap((names,slotIndex)=>names.map((name,index)=>({id:`rich-${slotIndex}-${index}`,macroCategory:['outerwear','top','bottom','shoes'][slotIndex],name,type:['outerwear','shirt','trousers','shoes'][slotIndex],isWardrobe:true,color:['navy','white','navy','brown'][slotIndex],imageUrl:`https://example.invalid/rich-${slotIndex}-${index}.jpg`})));
+test('shop mode ignores provided products and searches every server catalog slot',async()=>{
+ const rows=richItems.map(item=>({...item,id:`shop_${item.id}`,isWardrobe:false,isShopItem:true,price:100,currency:'USD'}));
+ const {handler,catalogRpc}=load(rows.slice(0,4).map(item=>item.id));
+ const body=await (await stylistRequest(rows)).json();
+ body.catalogOnly=true;body.wardrobeOnly=false;body.useProvidedWardrobeOnly=true;
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ expect(response.status).toBe(422);
+ expect((await response.json()).outfits).toEqual([]);
+ expect(catalogRpc.mock.calls.some(([name,args])=>name==='catalog_stylist_candidates_compact'
+  && ['top','outerwear','bottom','shoes'].every(slot=>args.p_slots.includes(slot)))).toBe(true);
+});
 async function stylistRequest(rows){const body=await request(rows).json();return new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify({...body,stylePreferences:'casual',occasion:'Casual',prompt:'Casual',limit:5,deckTarget:3})});}
 test.each([1,2])('replaces a partial %i-card provider deck with three validated four-item cards',async count=>{
  const proposals=Array.from({length:count},(_,i)=>richItems.filter(row=>row.id.endsWith(`-${i}`)).map(row=>row.id));
@@ -67,6 +78,16 @@ test.each([1,2])('replaces a partial %i-card provider deck with three validated 
 test('never calls a one-look Personal Stylist deck successful',async()=>{
  const {handler}=load(items.map(i=>i.id));const response=await handler(await stylistRequest(items));const data=await response.json();
  expect(response.status).toBe(422);expect(data.code).toBe('incomplete_outfit_selection');expect(data.outfits).toEqual([]);
+});
+test('an opted-in incomplete deck returns its one validated look with an inventory reason',async()=>{
+ const {handler}=load(items.map(i=>i.id));
+ const body=await (await stylistRequest(items)).json();body.allowPartialResults=true;
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ const data=await response.json();
+ expect(response.status).toBe(200);
+ expect(data.outfits).toHaveLength(1);
+ expect(data.inventoryReason).toBe('distinct_editorial_inventory_limited');
+ expect(data.outfits[0].qualityAssessment.acceptance.passed).toBe(true);
 });
 
 const rotationFixtures = ['outerwear','top','bottom','shoes'].flatMap((slot,s)=>Array.from({length:9},(_,i)=>({id:`rotation-${s}-${i}`,name:['Navy cotton blazer','White cotton shirt','Beige cotton chinos','Brown leather loafers'][s]+` edition ${i}`,type:slot,macroCategory:slot,color:['navy','white','beige','brown'][s],isWardrobe:true,imageUrl:`https://example.invalid/rotation-${s}-${i}.jpg`})));

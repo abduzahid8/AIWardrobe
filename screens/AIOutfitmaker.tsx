@@ -15,6 +15,7 @@ import { useUzsDisplayRates, useUzsPrice } from '../hooks/useUzsPrice';
 import { resolveStylistWeather } from '../src/domain/outfitComposition';
 import { getBudgetRates } from '../src/services/budgetRates';
 import { budgetFxContext, fitsBudgetAmount, type BudgetFxSnapshot } from '../src/domain/budgetFx';
+import { parseBudgetControl, strictestOutfitBudget } from '../src/domain/outfitBudgetSelection';
 import readinessLogger from '../src/utils/logger';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Animated, Platform, Modal, TextInput, Alert, Linking, KeyboardAvoidingView } from 'react-native';
@@ -30,15 +31,12 @@ import Reanimated, { FadeIn, FadeInUp, FadeOut, FadeOutUp } from 'react-native-r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { withRequestDeadline } from '../src/lib/requestDeadline';
+import { RequestTimeoutError } from '../src/lib/requestDeadline';
 import { OutfitGenerationFailure, outfitGenerationFailure } from '../src/services/outfitGenerationFailure';
-import { getCachedStylistCatalogInventory, loadStylistCatalogInventory } from '../src/services/stylistCatalogInventory';
-import { loadOutfitCandidates } from '../src/services/outfitCandidateProvider';
-import { catalogRowToItem } from '../src/services/catalogRepository';
 import { useShopCatalog } from '../hooks/useShopCatalog';
-import { fillMissingSlots, catalogRepository, type OutfitSlotId } from '../src/services/shoppingService';
 import { recordShownOutfits, rotationScope, generationRequestId, getRotationHistory, recordDisplayedDeck } from '../src/services/recentOutfitIds';
-import { mergeShopSlices, collapseSimilarByName, collapseDuplicateProductImages, isTrustedProductImage, isBrandCatalogImage, productImageKey, preferMappedMacro, hasUsableProductName, inferCatalogColor, normalizeCatalogNameKey, garmentVarietyFamily, inferShopRowMacro } from '../src/utils/shopCatalogOrder';
-import { passesStyleJudge, rejectForStyleOccasion, rejectForClimate, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
+import { collapseSimilarByName, isTrustedProductImage, isBrandCatalogImage, preferMappedMacro, hasUsableProductName, inferCatalogColor, inferShopRowMacro } from '../src/utils/shopCatalogOrder';
+import { passesStyleJudge, humanizeProductName, SHORT_SLEEVE_RE, STRIP_SHORT_SLEEVE_RE } from '../features/outfit-generator/utils/occasionRules';
 import LiquidGlass2026Theme, { SpatialElevation } from '../constants/LiquidGlass2026Theme';
 import * as Location from 'expo-location';
 import Config from '../src/config/env';
@@ -50,7 +48,6 @@ import { readCalendarLogs, updateCalendarLogs } from '../src/services/calendarSt
 import { createOutfitLog, resolveCalendarOccasion } from '../features/calendar/types';
 import AIThinkingAnimation from '../components/AIThinkingAnimation';
 import { canonicalizeMacroCategory } from '../src/utils/categoryMapper';
-import { prioritizeUnseen } from '../features/outfit-generator/utils/deckDedupe';
 import {
     analyzeDeckProductDiversity,
     assembleDiverseDeck,
@@ -60,7 +57,7 @@ import {
     type DiversitySlot,
 } from '../features/outfit-generator/utils/outfitDiversity';
 import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
-import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, outfitTotalQuote, formatMoney, budgetCandidatesFromText, resolveShopQuote, withOutfitBudget } from '../src/utils/outfitBudget';
+import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, outfitTotalQuote, formatMoney, budgetCandidatesFromText, budgetInCurrency, resolveShopQuote, withOutfitBudget } from '../src/utils/outfitBudget';
 import { getShopDestination } from '../src/utils/shopDestination';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
@@ -189,14 +186,6 @@ function mapShopCatalogRow(item: {
     price: typeof item.price === 'number' ? item.price : undefined,
     currency: item.currency,
   };
-}
-
-function mapStylistCatalogInventory(rows: NonNullable<ReturnType<typeof getCachedStylistCatalogInventory>>) {
-  return rows.map(row => mapShopCatalogRow({
-    id: row.id, name: row.name, brand: row.brand, description: row.description,
-    imageUrl: row.image_url, garmentType: row.garment_type, sourceUrl: row.source_url,
-    price: Number(row.price) || undefined, currency: row.currency,
-  })).filter(item => hasUsableProductName(item.name, item.id) && isTrustedProductImage(item.imageUrl));
 }
 
 function getStaticPoolItems(): StaticPoolItem[] {
@@ -338,13 +327,18 @@ const getAiStyleDesc = (id: string, t: (key: string) => string) => {
 
 /** Single-currency card total from the same quote resolver the tiles use.
  * Hidden whenever any shop piece is unquoted or currencies are mixed. */
-function outfitTotalDisplay(items: any[], catalog: any[] | undefined, rates: BudgetFxSnapshot | null): { label: string } | null {
+function outfitTotalDisplay(items: any[], catalog: any[] | undefined, rates: BudgetFxSnapshot | null,
+  budget?: ReturnType<typeof parseBudgetFromText>): { label: string; converted: boolean } | null {
   const total = outfitTotalQuote(items as any[], catalog as any[]);
-  if (!total?.currency) return null;
+  if (!total?.currency) {
+    if (!budget) return null;
+    const spend = outfitShopSpend(items as any[], catalog as any[], budget.currency, budget.fx);
+    return Number.isFinite(spend) ? {label: `${formatMoney(spend, budget.currency)} / ${formatMoney(budget.amount, budget.currency)}`, converted: !!budget.fx} : null;
+  }
   // UZS conversion only when display rates are actually loaded; otherwise the
   // exact native-currency total stands, never a relabelled guess.
   const label = formatUzsPrice(total.price, total.currency, rates) || formatMoney(total.price, total.currency);
-  return label ? { label } : null;
+  return label ? { label, converted: false } : null;
 }
 
 interface OutfitSlotGridProps {
@@ -630,6 +624,8 @@ const AIOutfitGenerator = () => {
   const [error, setError] = useState('');
   const displayRates = useUzsDisplayRates();
   const [userPrompt, setUserPrompt] = useState('');
+  const [budgetAmount, setBudgetAmount] = useState('');
+  const [budgetCurrency, setBudgetCurrency] = useState<'UZS' | 'USD' | 'EUR' | 'GBP'>('UZS');
   const promptRef = React.useRef(userPrompt);
   // Chip taps are the live dress-code. Stale comment text ("date night, old
   // money") must not override a later Casual/Formal chip — Maestro and
@@ -705,111 +701,16 @@ const AIOutfitGenerator = () => {
     [liveShopCatalog],
   );
 
-  const initialInventory = useMemo(() => getCachedStylistCatalogInventory(), []);
-  const [stylistCatalog, setStylistCatalog] = useState(() => mapStylistCatalogInventory(initialInventory || []));
-  useEffect(() => {
-    if (currentSource !== 'shop') return;
-    const controller = new AbortController();
-    loadStylistCatalogInventory(controller.signal).then(rows => {
-      if (controller.signal.aborted) return;
-      setStylistCatalog(mapStylistCatalogInventory(rows));
-    }).catch(() => { /* Generation reports catalog failures when requested. */ });
-    return () => controller.abort();
-  }, [currentSource]);
-
   // Prevent setState after unmount
   const isMounted = React.useRef(true);
   const fallbackTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // ── Cross-tap recency memory ──────────────────────────────────────
-  // Item ids shown in recent decks. The next shop payload sorts these last
-  // (prioritizeUnseen) so the edge's top-N trim drops them first — this is
-  // what breaks the "same linen pants + penny loafers every tap" loop.
-  // In-memory ref = instant effect on the very next tap; AsyncStorage = the
-  // memory survives app restarts. Capped so the pool can never starve.
-  const rotationOwner = useAuthStore(state => state.session?.user.id || state.user?.id);
-  const RECENT_SHOWN_KEY = rotationOwner ? `aiRecentShownItemIds::${rotationOwner}` : undefined;
-  const RECENT_SHOWN_CAP = 240;
-  const recentShownIds = React.useRef<Set<string>>(new Set());
-  const rememberShownIds = React.useCallback((outfits: Array<{ items?: Array<{ id?: string; name?: string; image?: string; imageUrl?: string }> }>) => {
-    try {
-      if (!RECENT_SHOWN_KEY || authEvents.getUserId() !== rotationOwner) return;
-      for (const o of outfits || []) {
-        for (const it of o.items || []) {
-          if (it?.id) recentShownIds.current.add(String(it.id));
-          const nk = normalizeCatalogNameKey(it?.name);
-          if (nk) recentShownIds.current.add(`__n:${nk}`);
-          const img = productImageKey(it);
-          if (img) recentShownIds.current.add(`__img:${img}`);
-          const fam = garmentVarietyFamily(it);
-          if (fam) recentShownIds.current.add(`__fam:${fam}`);
-        }
-      }
-      while (recentShownIds.current.size > RECENT_SHOWN_CAP) {
-        const oldest = recentShownIds.current.values().next().value;
-        if (oldest === undefined) break;
-        recentShownIds.current.delete(oldest);
-      }
-      AsyncStorage.setItem(RECENT_SHOWN_KEY, JSON.stringify([...recentShownIds.current])).catch(() => {});
-    } catch (_) {
-      // Recency is best-effort — never break generation.
-    }
-  }, [RECENT_SHOWN_KEY, rotationOwner]);
-
-  useEffect(() => {
-    let active = true;
-    recentShownIds.current = new Set();
-    if (!RECENT_SHOWN_KEY) return;
-    AsyncStorage.getItem(RECENT_SHOWN_KEY)
-      .then((raw) => {
-        if (!raw || !isMounted.current || !active) return;
-        try {
-          const ids = JSON.parse(raw);
-          if (Array.isArray(ids)) recentShownIds.current = new Set([...ids.map(String).slice(-RECENT_SHOWN_CAP), ...recentShownIds.current]);
-        } catch (_) {
-          // Corrupt cache — start fresh.
-        }
-      })
-      .catch(() => {});
-    return () => { active = false; };
-  }, [RECENT_SHOWN_KEY]);
-
-  // A per-request seed discovers across slots without a guessed catalog count.
-  // Classic/style/budget eligibility remains in the existing request pipeline.
-  const fetchRandomShopSlice = async (opts?: {preferClassicBand?: boolean; salt?: number; occasion?: string}): Promise<Array<ReturnType<typeof mapShopCatalogRow>>> => {
-    try {
-      const pages = await Promise.all((['top','bottom','shoes','outerwear'] as const).map(slot =>
-        loadOutfitCandidates({slot,breadth:200,seed:String(opts?.salt ?? Date.now())})));
-      const broad=pages.flatMap(page=>page.rows).map(catalogRowToItem);
-      // Small indexed/searchable reserves complement broad discovery. A
-      // generic window must not hide blazers for Work or sneakers for Travel.
-      const terms: {slot: 'top'|'outerwear'|'bottom'|'shoes'; search: string}[] = opts?.occasion === 'formal'
-        ? [{slot:'top',search:'shirt'}, {slot:'outerwear',search:'blazer'}, {slot:'bottom',search:'suit'}, {slot:'shoes',search:'oxford'}]
-        : opts?.occasion === 'work'
-          ? [{slot:'outerwear',search:'blazer'}, {slot:'outerwear',search:'cardigan'}]
-          : [{slot:'outerwear',search:'overshirt'}, {slot:'shoes',search:'sneaker'}];
-      const reserves = await Promise.all(terms.map(query => loadOutfitCandidates({...query, breadth:100, seed:String(opts?.salt ?? Date.now())})));
-      const contextual = reserves.flatMap(page => page.rows).map(catalogRowToItem);
-      // Retain the bounded curated representatives the refined-style fallback
-      // previously relied on, alongside broad discovery from every slot.
-      const curated=opts?.preferClassicBand ? (await catalogRepository.search({query:'',limit:80,discovery:false})).items : [];
-      return mergeShopSlices(contextual,mergeShopSlices(curated,broad)).map(row=>mapShopCatalogRow(row))
-        .filter(item=>hasUsableProductName(item.name,item.id));
-    } catch (err) {
-      if (__DEV__) readinessLogger.debug('Catalog discovery unavailable; retaining loaded concrete candidates', [(err as Error)?.message]);
-      return [];
-    }
-  };
 
   useEffect(() => {
     isMounted.current = true;
     
     let active = true;
-    if (currentSource === 'wardrobe') {
-      loadWardrobeItems(() => active);
-    } else if (!shopCatalogLoading) {
-      loadWardrobeItems(() => active);
-    }
+    if (currentSource === 'wardrobe') loadWardrobeItems(() => active);
+    else setWardrobeItems([]);
     
     return () => {
       active = false;
@@ -819,27 +720,15 @@ const AIOutfitGenerator = () => {
   // baseItemId/baseItem included: anchor must survive source switches
   // (wardrobe ↔ shop) without losing the lock.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shopCatalogLoading, liveShopMapped, currentSource, baseItemId]);
+  }, [currentSource, baseItemId]);
 
   const loadWardrobeItems = async (isActive: () => boolean) => {
     try {
-      // ── Shop mode: live Supabase shop catalog items ONLY.
-      // Real Supabase UUIDs MUST be preserved so the edge function can enrich
-      // items with imageUrl via its itemMap lookup. Do NOT mix in AsyncStorage.
-      // "New clothing" means 100% new (Supabase shop_catalog) — a wardrobe
-      // anchor must NEVER be injected here, otherwise every outfit gets built
-      // around the user's own piece even though the UI shows New clothing.
+      // New clothing comes from the Edge catalog search; no local catalog
+      // page needs to enter the generation pool.
       if (currentSource === 'shop') {
         if (!isMounted.current || !isActive()) return;
-        const shopOnly = liveShopMapped.map((item: any) => ({
-          ...item,
-          // Preserve the real UUID from shop_catalog — never overwrite with a fake id
-          type: item.type || item.category || 'Clothing Piece',
-          imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
-          name: item.name || item.type || t('common.clothingItem'),
-          description: item.description || item.name || '',
-        }));
-        setWardrobeItems(shopOnly);
+        setWardrobeItems([]);
         return;
       }
 
@@ -1010,13 +899,8 @@ const AIOutfitGenerator = () => {
   }, []);
 
   const candidatePool = useMemo(() => {
-    // Wardrobe mode = Supabase clothing only (isWardrobe === true).
-    // Shop mode merges live catalog. Mixing shop into the wardrobe pool is
-    // what produced classic-m-*/shop_* outfits for wardrobe requests.
-    const sourcePool =
-      currentSource === 'wardrobe'
-        ? (wardrobeItems || []).filter((it: any) => it?.isWardrobe === true)
-        : [...(liveShopMapped || []), ...stylistCatalog];
+    if (currentSource !== 'wardrobe') return [];
+    const sourcePool = (wardrobeItems || []).filter((it: any) => it?.isWardrobe === true);
     const seen = new Set<string>();
     const pool: any[] = [];
     for (const it of sourcePool) {
@@ -1065,7 +949,7 @@ const AIOutfitGenerator = () => {
       };
     }).sort((a, b) => (b.isWardrobe ? 1 : 0) - (a.isWardrobe ? 1 : 0));
     return mapped;
-  }, [currentSource, liveShopMapped, stylistCatalog, wardrobeItems]);
+  }, [currentSource, wardrobeItems]);
 
   const availableStyles = aiStyles.filter(style => style.id !== 'business_casual');
   const availableOccasions = OCCASION_PRESETS;
@@ -1409,11 +1293,19 @@ const AIOutfitGenerator = () => {
       if (occasionLabel) return occasionLabel;
       return trimmed;
     })();
-    const rawShopBudget = commentIntent.budget || parseBudgetFromText(promptText);
+    let selectedBudget: ReturnType<typeof parseBudgetControl>;
+    try { selectedBudget = parseBudgetControl(budgetAmount, budgetCurrency); }
+    catch {
+      setError(t('outfitMaker.invalidBudget', {defaultValue:'Enter a valid budget amount.'}));
+      setLoading(false);
+      return;
+    }
+    const textBudget = commentIntent.budget || parseBudgetFromText(promptText);
+    const rawShopBudget = selectedBudget || textBudget;
     // Preserve the cap in its original currency. A request-scoped reference
     // snapshot is loaded below only when monetary comparisons need conversion.
     const edgePrompt = stripBudgetFromText(effectivePrompt);
-    let shopBudget = rawShopBudget;
+    let shopBudget: ReturnType<typeof parseBudgetFromText> = rawShopBudget;
     const fitsCap = (items: any[]) =>
       !shopBudget || fitsBudgetAmount(outfitShopSpend(items as any[], liveShopMapped, shopBudget?.currency, shopBudget?.fx), shopBudget.amount);
     const resolvedWeather = resolveStylistWeather(promptText, weather);
@@ -1496,108 +1388,15 @@ const AIOutfitGenerator = () => {
     // the random slice only reaches the edge while finals keep recycling the
     // same 100 pool items. Wardrobe taps keep the memoized pool (purity).
     let genPool: any[] = candidatePool;
-    // The anchor is owned clothing even when companions come from the shop.
-    // Shop loading deliberately excludes wardrobe items, so resolve it separately.
-    const storedAnchor = baseItemId ? useWardrobeStore.getState().items.find(item => item.id === baseItemId) : undefined;
-    const anchorSource = storedAnchor ? {
-      ...storedAnchor, type: storedAnchor.subCategory || storedAnchor.category,
-      color: storedAnchor.primaryColor,
-    } : baseItem;
-    const lockedAnchor = baseItemId && anchorSource ? {
-      ...anchorSource, id: baseItemId,
-      name: anchorSource.name || anchorSource.type || anchorSource.category || t('common.clothingItem'),
-      macroCategory: getBackendMacroCategory(anchorSource.type || '', anchorSource.category || '', anchorSource.name || ''),
-      image: anchorSource.imageUrl || '', imageUrl: anchorSource.imageUrl || '',
-      isWardrobe: true, isShopItem: false,
-    } : undefined;
     let alternativeItems: any[] = [];
 
     if (effectiveSource === 'shop') {
-      const toPayload = (item: any) => ({
-        id: item.id,
-        name: item.name || item.type || t('common.clothingItem'),
-        type: item.type || 'top',
-        category: item.category || item.type || 'tops',
-        color: item.color || 'neutral',
-        brand: item.brand || '',
-        description: item.description || item.name || '',
-        material: item.material, pattern: item.pattern,
-        shopUrl: item.shopUrl || item.sourceUrl || item.source_url,
-        imageUrl: item.imageUrl || (typeof item.image === 'string' ? item.image : '') || '',
-        isShopItem: true,
-        price: typeof item.price === 'number' ? item.price : undefined,
-        currency: item.currency,
-        // Trust the identity-first mapped macro: recomputing from
-        // type/category aliases would flip mistagged tees (type "bottoms")
-        // back to 'bottom' on the way out.
-        macroCategory: preferMappedMacro(
-          item.macroCategory,
-          getBackendMacroCategory(item.type || '', item.category || '', item.name || ''),
-        ),
-      });
-      // A fresh random window per tap: without this the pool is always page
-      // 1 (same 100 ids → same elite bottoms win every style). Merged with
-      // dedupe-by-id, so overlap with the live page is free.
-      const classicOrWork = /old_money|classic|business_casual/.test(String(styleToUse || ''))
-        || occasionToUse === 'work' || occasionToUse === 'date' || occasionToUse === 'formal';
-      const randomSlice = await fetchRandomShopSlice({ preferClassicBand: classicOrWork, salt: tapNonce, occasion:occasionToUse });
-      const poolBase = collapseSimilarByName(mergeShopSlices(
-        mergeShopSlices(liveShopMapped, stylistCatalog),
-        randomSlice,
-      ));
-      // Keep SKU variants in the pick pool so cards can rotate; name-collapse
-      // is only for the edge payload (LLM trim). Family skip handles clones.
-      genPool = collapseDuplicateProductImages(mergeShopSlices(candidatePool, randomSlice))
-        .filter((it: any) => isTrustedProductImage(it.imageUrl || it.image));
-      alternativeItems = [...(lockedAnchor ? [lockedAnchor] : []), ...genPool.filter(item => item.isShopItem === true && item.isWardrobe !== true)];
-      if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] shop pool: live=${wardrobeItems.length} slice=${randomSlice.length} merged=${poolBase.length} genPool=${genPool.length}`), []);
-      payloadItems = poolBase
-        .map(toPayload)
-        // Accessories can never fill a slot — drop them so they don't eat
-        // the edge's top-N trim budget (the first catalog page is 28% dead
-        // weight otherwise).
-        .filter((item: any) => {
-          const m = canonicalizeMacroCategory(item.macroCategory);
-          if (!(m === 'top' || m === 'bottom' || m === 'shoes' || m === 'outerwear')) return false;
-          return rejectForStyleOccasion({ ...item, macroCategory: m }, styleToUse, occasionToUse) === null
-            && rejectForClimate({ ...item, macroCategory: m }, resolvedWeather) === null
-            && isTrustedProductImage(item.imageUrl || item.image);
-        });
-      const tasteKept = payloadItems.length;
-      payloadItems = collapseDuplicateProductImages(payloadItems);
-      genPool = collapseDuplicateProductImages(mergeShopSlices(payloadItems, genPool))
-        .filter((it: any) => isTrustedProductImage(it.imageUrl || it.image));
-      if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] taste-filtered shop payload: ${tasteKept} items for ${styleToUse}/${occasionToUse}`), []);
-      // Cross-tap recency: recently shown items sort last, so the edge trim
-      // prefers fresh pieces. Deprioritized, never deleted (no starvation).
-      if (recentShownIds.current.size > 0) {
-        const recencyKeys = (p: any) => {
-          const keys = [String(p.id)];
-          const nk = normalizeCatalogNameKey(p?.name);
-          if (nk) keys.push(`__n:${nk}`);
-          const img = productImageKey(p);
-          if (img) keys.push(`__img:${img}`);
-          const fam = garmentVarietyFamily(p);
-          if (fam) keys.push(`__fam:${fam}`);
-          return keys;
-        };
-        const before = payloadItems.map((p: any) => String(p.id));
-        payloadItems = prioritizeUnseen(payloadItems, recentShownIds.current, recencyKeys);
-        genPool = prioritizeUnseen(genPool, recentShownIds.current, recencyKeys);
-        if (__DEV__) {
-          const moved = before.filter((id) => recentShownIds.current.has(id)).length;
-          readinessLogger.debug(String(`[AIOutfitmaker] recency: deprioritized ${moved} recently-shown item(s) in shop payload`), []);
-        }
-      }
-      // An empty live pool cannot be supplemented with unverified products.
-      if (payloadItems.length === 0) {
-        if (isMounted.current) {
-          setError(t(shopCatalogError || shopCatalogLoading ? 'outfitMaker.catalogUnavailable' : 'outfitMaker.noMatchingClothing'));
-          setLoading(false);
-        }
-        return;
-      }
-
+      // Shop mode has one authority: the authenticated Edge catalog search.
+      // Sending a local first page creates stale inventory, duplicate work and
+      // a large request without giving the server additional products.
+      payloadItems = [];
+      genPool = [];
+      alternativeItems = [];
     } else {
       // Wardrobe mode: Supabase clothing only — drop anything not owned,
       // so shop/static items can never leak into the edge candidate pool.
@@ -1633,20 +1432,25 @@ const AIOutfitGenerator = () => {
 
     try {
       const budgetCandidates = budgetCandidatesFromText(promptText);
-      const mixedLimits = new Set(budgetCandidates.map(b => b.currency)).size > 1;
-      const crossCurrencyShop = shopBudget && effectiveSource === 'shop' && liveShopMapped.some((item: any) =>
-        Number(item.price) > 0 && ['USD','EUR','GBP','UZS'].includes(String(item.currency || '').trim().toUpperCase()) &&
-        String(item.currency || '').trim().toUpperCase() !== shopBudget!.currency);
-      if (mixedLimits || crossCurrencyShop) {
+      const mixedLimits = new Set([...budgetCandidates.map(b => b.currency), ...(selectedBudget ? [selectedBudget.currency] : [])]).size > 1;
+      // The Edge may discover a different currency beyond the client's first
+      // catalog page. Pin one FX snapshot for every budgeted shop request so
+      // the local safety check can validate the actual returned products.
+      if (mixedLimits || (shopBudget && effectiveSource === 'shop')) {
         let fx;
         try { fx = budgetFxContext(await getBudgetRates()); }
-        catch {
-          if (mixedLimits) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
-          // Let the server find catalog prices in the requested currency.
-          // No conversion or guessed reference is used in this mode.
-        }
+        catch { throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable'); }
         if (!isCurrentGeneration()) return;
-        shopBudget = parseBudgetFromText(promptText, fx);
+        shopBudget = (() => {
+          const parsed = parseBudgetFromText(promptText, fx);
+          const selected = strictestOutfitBudget(selectedBudget, parsed, (budget, currency) =>
+            budgetInCurrency({...budget, ...(fx ? {fx} : {})}, currency));
+          return selected ? {...selected, ...(fx ? {fx} : {})} : null;
+        })();
+      } else {
+        const selected = strictestOutfitBudget(selectedBudget, textBudget, (budget, currency) =>
+          budgetInCurrency(budget, currency));
+        shopBudget = selected;
       }
       try {
         const { data: sess } = await supabase.auth.getSession();
@@ -1707,11 +1511,12 @@ const AIOutfitGenerator = () => {
           // otherwise a 5-candidate request would mark a 3-pair shoe slot
           // "thin" and license repeating shoes on the three visible cards.
           deckTarget: 3,
+          allowPartialResults: true,
           prompt: edgePrompt,
           // A locked owned piece remains the anchor; the other slots use the catalog.
           anchorItemId: baseItemId,
-          // When source is 'shop', use only the provided shop catalog items
-          // (Massimo Dutti etc.) and do NOT mix in user's own wardrobe items
+          // Catalog mode excludes the user's wardrobe; the server fetches
+          // real shop items directly from its current catalog.
           useProvidedWardrobeOnly: effectiveSource === 'shop',
           // Wardrobe mode: tell the edge to build ONLY from Supabase
           // clothing_items + provided wardrobe items — no shop_catalog
@@ -1757,7 +1562,7 @@ const AIOutfitGenerator = () => {
             style: styleToUse, occasion: occasionToUse,
             request: effectivePrompt || promptText, weather: resolvedWeather,
           }));
-          const judgeOk = passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences);
+          const judgeOk = /^stylist-5-/.test(String(data.generationVersion || '')) || passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences);
           // Hosted confidence is not a score from this client's occasion judge.
           const baseScore = outfitCoherence(items, stylingContext({style:styleToUse, occasion:occasionToUse, request:effectivePrompt||promptText, weather:resolvedWeather})).score;
           return {
@@ -1982,34 +1787,19 @@ const AIOutfitGenerator = () => {
           // Repair may adjust labels, but must never reintroduce a product
           // that the authoritative backend deck successfully avoided.
           for (const [slot,count] of Object.entries(previousDeckOverlapBySlot)) {
-            if (data.generationVersion && count > Number(data.previousDeckOverlapBySlot?.[slot] ?? 0)) throw new Error('client_rotation_overlap');
+            if (data.generationVersion && !/^stylist-5-/.test(String(data.generationVersion)) && count > Number(data.previousDeckOverlapBySlot?.[slot] ?? 0)) throw new Error('client_rotation_overlap');
           }
 
           if (!await consumeOrPaywall('aiOutfits', {cancelSignal}) || !isCurrentGeneration()) return;
           setResultBudget(shopBudget);
           setInventoryNote(data.inventoryReason==='distinct_editorial_inventory_limited' ? t('outfitMaker.distinctInventoryLimited') : '');
-          setOutfits(
-            shownOutfits
-              .map((o) => {
-                if (!shopBudget) return o;
-                const spend = outfitShopSpend(o.items as any[], liveShopMapped, shopBudget.currency, shopBudget.fx);
-                const budgetLabel = t('outfitMaker.lookSpend', {
-                  total: formatUzsPrice(spend, shopBudget.currency, displayRates) || `${spend} ${shopBudget.currency}`,
-                  cap: formatUzsPrice(shopBudget.amount, shopBudget.currency, displayRates) || `${shopBudget.amount} ${shopBudget.currency}`,
-                });
-                const rateLabel = shopBudget.fx
-                  ? ` · ${t('outfitMaker.referenceRate', {date: shopBudget.fx.snapshot.asOf})}`
-                  : '';
-                return {...o, description: `${o.description} · ${budgetLabel}${rateLabel}`};
-              }),
-          );
+          setOutfits(shownOutfits);
           // History persistence must not turn already rendered success into
           // an error (or charge a use for a screen cleared by a cache failure).
           try { await recordDisplayedDeck(shownOutfits, scope, requestId); }
           catch { console.warn('[AIOutfitmaker] Could not persist displayed outfit history'); }
           if (!isCurrentGeneration()) return;
           recordShownOutfits(shownOutfits, recencyScope);
-          rememberShownIds(shownOutfits);
           if (__DEV__) void 0;
           setLoading(false);
         }
@@ -2035,7 +1825,9 @@ const AIOutfitGenerator = () => {
         : ['No complete outfits returned from AI', 'incomplete_outfit_deck', 'client_rotation_overlap'].includes(err?.message);
       // Server failure stays visible. Do not silently replace a failed new
       // generation with local/previous suggestions labeled as generated.
-      const failure = noMatch && !(err instanceof OutfitGenerationFailure)
+      const failure = err instanceof RequestTimeoutError
+        ? new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'transport')
+        : noMatch && !(err instanceof OutfitGenerationFailure)
         ? new OutfitGenerationFailure('outfitMaker.noMatchingClothing') : err;
       const messageKey = noMatch && occasionToUse === 'formal' ? 'outfitMaker.formalInventoryShortfall'
         : failure instanceof OutfitGenerationFailure ? failure.translationKey : 'outfitMaker.generateFailed';
@@ -2100,7 +1892,7 @@ const AIOutfitGenerator = () => {
               <ScaledText style={styles.outfitDesc} minScale={0.65}>
                 {t('outfitMaker.activeBudget', {
                   defaultValue: 'Active budget: {{amount}}. Every shown look is checked against this cap.',
-                  amount: formatUzsPrice(resultBudget.amount, resultBudget.currency, displayRates) || `${resultBudget.amount} ${resultBudget.currency}`,
+                  amount: formatMoney(resultBudget.amount, resultBudget.currency),
                 })}
               </ScaledText>
             </View>
@@ -2136,11 +1928,16 @@ const AIOutfitGenerator = () => {
                 />
 
                 {(() => {
-                  const total = outfitTotalDisplay(outfit.items as any[], liveShopMapped, displayRates);
+                  const total = outfitTotalDisplay(outfit.items as any[], liveShopMapped, displayRates, resultBudget);
                   return total ? (
                     <View style={styles.priceRow}>
                       <ScaledText style={styles.priceRowLabel}>{t('outfitMaker.outfitTotal')}</ScaledText>
-                      <ScaledText style={styles.priceRowValue} minScale={0.7}>{total.label}</ScaledText>
+                      <View style={{alignItems:'flex-end', flex:1}}>
+                        <ScaledText style={styles.priceRowValue} minScale={0.7}>{total.label}</ScaledText>
+                        {total.converted && resultBudget?.fx && <ScaledText style={styles.priceRowLabel}>
+                          {t('outfitMaker.referenceRate', {date: resultBudget.fx.snapshot.asOf})}
+                        </ScaledText>}
+                      </View>
                     </View>
                   ) : null;
                 })()}
@@ -2708,7 +2505,7 @@ const AIOutfitGenerator = () => {
                   testID="stylistCommentInput"
                   style={styles.detailsInput}
                   placeholder={t('outfitMaker.promptPlaceholderShort', {
-                    defaultValue: "Where you're going, style, budget (1 500 000 UZS)…",
+                    defaultValue: "Where you're going and the style you want…",
                   })}
                   placeholderTextColor={D.textSecondary}
                   value={userPrompt}
@@ -2728,6 +2525,36 @@ const AIOutfitGenerator = () => {
                   onSubmitEditing={() => handleGeneratePress()}
                 />
               </View>
+
+              {currentSource === 'shop' && (
+                <View style={[styles.formGroup, {marginTop: 12, padding: 14}]}>
+                  <ScaledText style={{color: D.textPrimary, fontWeight: '700', marginBottom: 4}}>
+                    {t('outfitMaker.optionalBudget', {defaultValue: 'Budget for one complete outfit (optional)'})}
+                  </ScaledText>
+                  <TextInput
+                    testID="stylistBudgetAmount"
+                    accessibilityLabel={t('outfitMaker.budgetAmount', {defaultValue: 'Maximum outfit spend'})}
+                    style={[styles.detailsInput, {minHeight: 48, paddingVertical: 8}]}
+                    placeholder={t('outfitMaker.noBudget', {defaultValue: 'No budget set'})}
+                    placeholderTextColor={D.textSecondary}
+                    keyboardType="decimal-pad"
+                    value={budgetAmount}
+                    onChangeText={setBudgetAmount}
+                  />
+                  <View style={{flexDirection:'row', flexWrap:'wrap', gap:6}}>
+                    {(['UZS','USD','EUR','GBP'] as const).map(currency => (
+                      <TouchableOpacity key={currency} testID={`stylistBudgetCurrency-${currency}`}
+                        accessibilityRole="radio" accessibilityState={{checked:budgetCurrency===currency}}
+                        accessibilityLabel={`${t('outfitMaker.budgetCurrency', {defaultValue:'Budget currency'})}: ${currency}`}
+                        onPress={() => setBudgetCurrency(currency)}
+                        style={{paddingHorizontal:12,paddingVertical:7,borderRadius:10,
+                          backgroundColor:budgetCurrency===currency?D.accent:'rgba(23,58,101,0.08)'}}>
+                        <ScaledText style={{color:budgetCurrency===currency?'#FFF':D.textPrimary,fontWeight:'700'}}>{currency}</ScaledText>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
 
 
             </ScrollView>

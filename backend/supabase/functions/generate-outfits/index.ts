@@ -1173,7 +1173,7 @@ async function fetchShopItemsForAllSlotsEdge(
     let compactUsed=true
     try {
         let slots=[...requiredSlots]
-        for(let page=0;page<2&&slots.length;page++) {
+        for(let page=0;page<4&&slots.length;page++) {
             const rpcArgs={
                 p_slots:slots,p_seed:generationSeed,p_limit:100,p_offset:page*100,
                 p_currency:nativeBudget?.currency||null,p_max_price:nativeBudget?.amount??null,p_context:retrievalContext,
@@ -1233,8 +1233,13 @@ async function fetchShopItemsForAllSlotsEdge(
                 all.push(prepared)
             }
             if(trace)trace.syncMs.catalog_filter=(trace.syncMs.catalog_filter||0)+performance.now()-filterStart
-            slots=requiredSlots.filter(slot=>countDistinctProducts(all.filter(item=>item.macroCategory===slot&&(!eligibility||eligibility(item,all))))<maximum
-                && data.filter((row:any)=>row.fashion_slot===slot).length===100)
+            // RPC pages cover all requested slots together. A full mixed-slot
+            // page can contain fewer than 100 rows in *each* slot, and later
+            // pages may contain the affordable or visually valid alternatives.
+            // Keep the slot set stable so offsets cannot skip rows.
+            slots=data.length===100 && requiredSlots.some(slot=>
+                countDistinctProducts(all.filter(item=>item.macroCategory===slot&&(!eligibility||eligibility(item,all))))<maximum)
+                ? [...requiredSlots] : []
         }
         const picks:any[]=[]
         for(const slot of requiredSlots) {
@@ -1424,10 +1429,13 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
 
     let body: any
     try { body = await readOutfitGenerationRequest(req) } catch (error) {
-        const diagnostic=error instanceof OutfitRequestError?{field:error.field,reason:error.reason}:{field:'body',reason:'invalid_json'};
+        const detail=error as Partial<OutfitRequestError>;
+        const requestError=error instanceof OutfitRequestError || (typeof detail?.field==='string' && typeof detail?.reason==='string' && detail?.message==='invalid_generation_request');
+        const diagnostic=requestError?{field:String(detail.field),reason:String(detail.reason)}:{field:'body',reason:'invalid_json'};
         console.info('stylist_admission',diagnostic);
-        return new Response(JSON.stringify({ success: false, outfits: [], error: 'invalid_generation_request', stage:'admission',diagnostic }), {
-            status: error instanceof OutfitRequestError ? error.status : 400,
+        const code=diagnostic.field==='preferences.maxShopBudget'?'invalid_outfit_budget':'invalid_generation_request';
+        return new Response(JSON.stringify({ success: false, outfits: [], error: code, stage:'admission',diagnostic }), {
+            status: requestError && [400,408,413].includes(Number(detail.status)) ? Number(detail.status) : 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
     }
@@ -1472,7 +1480,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         shoeRotationDecks,
     } = body
 
-    if((catalogOnly&&anchorItemId&&!String(anchorItemId).startsWith('shop_'))||(wardrobeOnly&&String(anchorItemId||'').startsWith('shop_')))return new Response(JSON.stringify({success:false,outfits:[],code:'no_matching_clothing',error:'The locked item is outside the selected source.'}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
+    if((catalogOnly&&anchorItemId&&!String(anchorItemId).startsWith('shop_'))||(wardrobeOnly&&String(anchorItemId||'').startsWith('shop_')))return new Response(JSON.stringify({success:false,outfits:[],code:'incompatible_locked_item'}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
 
     if (catalogOnly) {
         legacyWardrobe = []
@@ -1733,12 +1741,16 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         // style-ranked shop catalog items so the combinations can actually vary.
         // Shop-only decks (Team Collaboration) fetch every slot from the shop.
         // wardrobeOnly requests skip this entirely — Supabase clothing only.
+        let catalogUnavailable=false
         if (!wardrobeOnly) {
             let requiredSlots = ['top', 'bottom', 'shoes']
-            if (needsLayering(stylePreferences, weather, prompt)) requiredSlots.push('outerwear')
+            if (qualityContext.legacyFourSlot || needsLayering(stylePreferences, weather, prompt)) requiredSlots.push('outerwear')
             const lockedSlot = wardrobeItems.find((item:any)=>String(item.id)===String(anchorItemId || ''))?.macroCategory
             if (lockedSlot) requiredSlots = requiredSlots.filter(slot=>slot!==lockedSlot)
-            const shopOnlyRequest = isShopOnlyDeck(stylePreferences, occasion)
+            // A shop request needs a fresh server catalog search even when a
+            // client supplied enough individually eligible first-page rows.
+            // Those rows may not combine into a strong complete look.
+            const shopOnlyRequest = catalogOnly || isShopOnlyDeck(stylePreferences, occasion)
             const { slots: missingSlots, targetChoicesPerSlot } = shopOnlyRequest
                 ? { slots: requiredSlots, targetChoicesPerSlot: limit >= 10 ? 16 : 8 }
                 : requiredShopSupplementSlots(
@@ -1802,8 +1814,13 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
                     wardrobeItems = [...wardrobeItems, ...shopItems]
                 }
             } catch (error) {
-                if (error instanceof CatalogLookupError || error instanceof BudgetFxError) throw error
-                void 0
+                if (error instanceof CatalogLookupError && wardrobeItems.length) {
+                    // A failed optional expansion cannot discard an already
+                    // usable, authenticated pool. Report the outage if that
+                    // pool cannot form a validated look below.
+                    catalogUnavailable=true
+                    trace.counts.catalogFallback=1
+                } else if (error instanceof CatalogLookupError || error instanceof BudgetFxError) throw error
             }
         } else {
             void 0
@@ -2158,11 +2175,11 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
             proposals:plan.diagnostics.proposals,valid:plan.diagnostics.validCandidates,...gateCounts,budgetPruned:plan.diagnostics.budgetRejected}
         if(!plan.seed.length) {
             const missing=Object.values(plan.diagnostics.counts).some(count=>!count)
-            const code=missing?'insufficient_candidates':plan.diagnostics.cpuRisk?'planning_cpu_risk'
+            const code=catalogUnavailable?'catalog_lookup_unavailable':missing?'insufficient_candidates':plan.diagnostics.cpuRisk?'planning_cpu_risk'
                 :(gateCounts.budget+plan.diagnostics.budgetRejected)>0&&!gateCounts.quality?'no_outfit_within_budget':plan.diagnostics.validCandidates?'incomplete_outfit_selection':'outfit_quality_rejected'
             return new Response(JSON.stringify({success:false,outfits:[],code,stage:'planning',poolExpansion:poolExpansionAudit,
                 diagnostics:{counts:plan.diagnostics.counts,proposals:plan.diagnostics.proposals,evaluations:plan.diagnostics.evaluations,valid:plan.diagnostics.validCandidates,gates:{...gateCounts},
-                    bounded:!plan.diagnostics.exploredCompletely,cpuRisk:plan.diagnostics.cpuRisk,selection:plan.selection}}),{status:plan.diagnostics.cpuRisk?503:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
+                    bounded:!plan.diagnostics.exploredCompletely,cpuRisk:plan.diagnostics.cpuRisk,selection:plan.selection}}),{status:catalogUnavailable||plan.diagnostics.cpuRisk?503:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
         }
         const providerTrace:ProviderAttempt[]=[]
         let ranks=new Map<string,number>(),generationSource:'ai'|'deterministic_fallback'='deterministic_fallback'
@@ -2195,7 +2212,7 @@ async function generateOutfitsHandler(req: Request, trace: GenerationTrace) {
         // The feasible seed survives a missing, malformed or failed rank call.
         const deck=selected.length?selected:plan.seed
         if(!deck.length)return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection'}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}})
-        if(deck.length<target && body.compositionProtocol!=='optional-layer-v1')return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection',inventoryReason:'distinct_editorial_inventory_limited',poolExpansion:poolExpansionAudit,diagnostics:{selection:plan.selection,generationBounded:!plan.diagnostics.exploredCompletely}}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}});
+        if(deck.length<target && body.allowPartialResults!==true && body.compositionProtocol!=='optional-layer-v1')return new Response(JSON.stringify({success:false,outfits:[],code:'incomplete_outfit_selection',stage:'final_selection',inventoryReason:'distinct_editorial_inventory_limited',poolExpansion:poolExpansionAudit,diagnostics:{selection:plan.selection,generationBounded:!plan.diagnostics.exploredCompletely}}),{status:422,headers:{...corsHeaders,'Content-Type':'application/json'}});
         const forcedSlots=[...new Set([...plan.diagnostics.forcedSlots,...plan.selection.repeatedSlots.map(slot=>['top','outerwear','bottom','shoes'][slot])])] as DiversitySlot[]
         const finalPlanDiagnostics=selectedPlanDiagnostics(deck)
         const activeSlots=['top','outerwear','bottom','shoes'].filter(slot=>deck.some(look=>look.items.some(item=>item.macroCategory===slot)))

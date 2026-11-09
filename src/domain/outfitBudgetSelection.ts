@@ -1,5 +1,18 @@
 export interface OutfitBudget { amount: number; currency: string }
 
+/** Empty means no cap. Reject incomplete and ambiguous amounts before network I/O. */
+export function parseBudgetControl(input: string, currency: string): OutfitBudget | null {
+  const value = input.trim();
+  if (!value) return null;
+  const compact = value.replace(/[\s\u00a0\u202f]/g, '');
+  const grouped = /^\d{1,3}(?:[,.]\d{3})+$/.test(compact);
+  if (!grouped && !/^\d+(?:[.,]\d{1,2})?$/.test(compact)) throw new Error('invalid_outfit_budget');
+  const amount = Number(grouped ? compact.replace(/[,.]/g, '') : compact.replace(',', '.'));
+  if (!Number.isFinite(amount) || amount <= 0 || !['UZS', 'USD', 'EUR', 'GBP'].includes(currency))
+    throw new Error('invalid_outfit_budget');
+  return { amount, currency };
+}
+
 /** A prompt may tighten an explicit spending limit, but cannot raise it. */
 export function strictestOutfitBudget(
   selected: unknown, parsed: OutfitBudget | null,

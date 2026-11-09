@@ -40,6 +40,22 @@ it('keeps a valid sibling when another returned outfit is malformed', async () =
   expect(result.outfits).toHaveLength(1);
   expect(result.outfits[0].items.map(item => item.id)).toEqual(['layer', 'shirt', 'pants', 'shoes']);
 });
+it('keeps the server score and rejects a corrupted Stylist 5 product identity', async () => {
+  invoke.mockResolvedValueOnce({data:{success:true,source:'deterministic_fallback',generationVersion:'stylist-5-editorial-v2',
+    outfits:[{...complete,engineVersion:'stylist-5-editorial-v2',confidence:0.84},
+      {...complete,items:[{...complete.items[0],id:''},...complete.items.slice(1)]}]},error:null});
+  const result=await generateOutfitsFromDB({recordShown:false});
+  expect(result.success).toBe(true);
+  expect(result.outfits).toHaveLength(1);
+  expect(result.outfits[0].confidence).toBe(0.84);
+});
+it('does not admit an over-cap server look', async () => {
+  const purchased={...complete,items:complete.items.map(item=>({...item,id:`shop_${item.id}`,isShopItem:true,price:100,currency:'USD'}))};
+  invoke.mockResolvedValue({data:{success:true,source:'ai',generationVersion:'stylist-5-editorial-v2',outfits:[purchased]},error:null});
+  const result=await generateOutfitsFromDB({recordShown:false,preferences:{maxShopBudget:{amount:250,currency:'USD'}}});
+  expect(result.success).toBe(false);
+  expect(result.outfits).toEqual([]);
+});
 it('aborts the network request on timeout instead of leaving it running', async () => {
   jest.useFakeTimers();
   try {

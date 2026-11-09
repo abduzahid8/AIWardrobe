@@ -120,7 +120,7 @@ test.each([false, true])(
   }
 );
 test.each(['missing', 'budget', 'recency', 'physical-alias'])(
-  'fails closed when reserve alternatives are unavailable by %s',
+  'keeps hard quality, price and product identity when legacy reserve is unavailable by %s',
   async (mode) => {
     const f = scenario({ spare: mode !== 'missing' });
     if (mode === 'budget')
@@ -135,9 +135,16 @@ test.each(['missing', 'budget', 'recency', 'physical-alias'])(
     const { handler } = load(f.provider);
     const response = await send(handler, f.body),
       data = await response.json();
-    expect(response.status).toBe(422);
-    expect(data.code).toBe('quality_replacement_unavailable');
-    expect(data.outfits).toEqual([]);
+    expect(response.status).toBe(200);
+    expect(data.outfits).toHaveLength(3);
+    const sourceIds=new Set(f.rows.map(row=>row.id));
+    for(const look of data.outfits){
+      expect(look.qualityAssessment.acceptance.passed).toBe(true);
+      expect(styleJudgeReason(look.items,'old_money','Work')).toBeNull();
+      expect(look.items.every(item=>sourceIds.has(item.id))).toBe(true);
+      expect(look.items.reduce((sum,item)=>sum+Number(item.isShopItem?item.price:0),0)).toBeLessThanOrEqual(220);
+    }
+    expect(data.outfits.map(look=>signature(look.items))).not.toContain(signature(f.provider[2]));
   }
 );
 test('all weak provider looks can enter the same bounded reserve without keeping a weak card', async () => {

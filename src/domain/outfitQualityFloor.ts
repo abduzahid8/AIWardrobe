@@ -34,7 +34,10 @@ export function outfitQualityFloor(
     Math.min(
       coherence.dimensions.layer,
       coherence.dimensions.footwear,
-      coherence.dimensions.style
+      // A smart casual date can be more polished than the requested casual
+      // archetype without becoming unsuitable. Old Money dates and formal
+      // settings still need a strong match to their specific style.
+      formal || refinedWork || oldMoney ? coherence.dimensions.style : 1
     ) < 0.5
   ) {
     score = Math.min(score, 0.49);

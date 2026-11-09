@@ -243,7 +243,8 @@ export type CatalogImageAdmission =
 export function catalogImageAdmission(url: unknown): CatalogImageAdmission {
   const value = typeof url === 'string' ? url.trim() : '';
   if (!value) return { ok: false, reason: 'image_missing' };
-  if (/[\u0000-\u001f\u007f\s]/.test(value)) return { ok: false, reason: 'image_malformed' };
+  if ([...value].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127 || /\s/.test(character)))
+    return { ok: false, reason: 'image_malformed' };
   const repaired = normalizeCatalogImageUrl(value);
   if (!repaired) return { ok: false, reason: 'image_missing' };
   // A continuation that could not be repaired remains malformed. Only the
@@ -252,14 +253,13 @@ export function catalogImageAdmission(url: unknown): CatalogImageAdmission {
   if (/\.(?:jpe?g|png|webp|avif|gif)&/i.test(path))
     return { ok: false, reason: 'image_malformed' };
   if ((repaired.match(/\?/g) || []).length > 1) return { ok: false, reason: 'image_malformed' };
-  if (/^[a-z][a-z0-9+.-]*:/i.test(repaired)) {
-    try {
-      const parsed = new URL(repaired);
-      if (!['http:', 'https:'].includes(parsed.protocol))
-        return { ok: false, reason: 'image_malformed' };
-    } catch {
+  try {
+    const parsed = new URL(repaired);
+    if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname)
       return { ok: false, reason: 'image_malformed' };
-    }
+  } catch {
+    // Relative paths cannot render outside their originating catalog site.
+    return { ok: false, reason: 'image_malformed' };
   }
   return { ok: true, url: repaired, repaired: repaired !== value };
 }

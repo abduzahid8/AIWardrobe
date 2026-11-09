@@ -180,7 +180,8 @@ test('catalog discovery evaluates later pages even when the first page fills the
  expect(visited).toContain('shop_late-product');
  // The predicate is evaluated at several stages; unique rows must still be 101.
  expect(new Set(visited).size).toBe(101);
- expect(result).toHaveLength(1);
+ expect(result.map(item=>item.id)).toContain('shop_late-product');
+ expect(result.length).toBeLessThanOrEqual(24);
 });
 
 test.each([
@@ -206,6 +207,26 @@ test('activated discovery reaches high IDs with bounded pages and preserves hard
  expect(offsets.every(offset=>offset===0||offset===100)).toBe(true);
  expect(from).not.toHaveBeenCalled();
  expect(rpc).toHaveBeenCalledWith('catalog_stylist_candidates_compact',expect.objectContaining({p_seed:'replay-seed',p_limit:100}));
+});
+test('a full mixed-slot page cannot hide eligible products on the next page',async()=>{
+ const slots=['top','outerwear','bottom','shoes'];
+ const row=(slot,i,label)=>({id:`${label}-${slot}-${i}`,name:`${label} ${slot} cotton ${i}`,
+  category:slot,garment_type:slot==='shoes'?'shoes':slot,fashion_slot:slot,
+  image_url:`https://image.invalid/${label}-${slot}-${i}.jpg`,source_url:`https://shop.invalid/${label}-${slot}-${i}`,
+  price:100,currency:'USD'});
+ const first=slots.flatMap(slot=>Array.from({length:25},(_,i)=>row(slot,i,'blocked')));
+ const second=slots.flatMap(slot=>Array.from({length:2},(_,i)=>row(slot,i,'eligible')));
+ const offsets=[];
+ const rpc=jest.fn((name,args)=>{
+  if(name==='catalog_stylist_candidate_hydration')return thenable({data:[],error:null});
+  offsets.push(args.p_offset);
+  return thenable({data:args.p_offset===0?first:args.p_offset===100?second:[],error:null});
+ });
+ const result=await api.fetchShopItemsForAllSlotsEdge({rpc},slots,'classic',4,undefined,
+  item=>item.name.startsWith('eligible'));
+ expect(offsets).toEqual([0,100]);
+ expect(new Set(result.map(item=>item.macroCategory))).toEqual(new Set(slots));
+ expect(result.every(item=>item.name.startsWith('eligible'))).toBe(true);
 });
 test('a missing compact RPC degrades to the legacy RPC, but permissions failures never bypass it',async()=>{
  const row={id:'late',name:'Cotton trousers',category:'bottoms',garment_type:'lower_body',fashion_slot:'bottom',image_url:'https://image.invalid/late.jpg'};

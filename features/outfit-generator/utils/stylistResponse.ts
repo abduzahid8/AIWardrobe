@@ -21,13 +21,17 @@ export function prepareStylistResponse(proposals: EdgeLook[], inventory: Alterna
       reject('structure'); return false;
     });
   const accepted = cleaned.filter((look ) => {
+    if (options.immutablePlan && (!look.items.every(item => typeof item.id === 'string' && item.id.trim())
+      || new Set(look.items.map(item => item.id)).size !== look.items.length)) {
+      reject('invalid_product_identity'); return false;
+    }
     const sourceOK = look.items.every((item ) => options.source === 'shop'
       ? (item.isShopItem === true && item.isWardrobe !== true) || item.id === options.anchorId
       : item.isShopItem !== true && item.isWardrobe !== false);
     if (!sourceOK || (options.anchorId && !look.items.some((item ) => item.id === options.anchorId))) {
       reject('source_or_anchor'); return false;
     }
-    if (!passesStyleJudge(look.items, options.style, options.occasion, options.weather, options.anchorId, options.preferences)) {
+    if (!options.immutablePlan && !passesStyleJudge(look.items, options.style, options.occasion, options.weather, options.anchorId, options.preferences)) {
       reject(styleJudgeReason(look.items, options.style, options.occasion, options.weather, options.anchorId, options.preferences) || 'quality');
       return false;
     }

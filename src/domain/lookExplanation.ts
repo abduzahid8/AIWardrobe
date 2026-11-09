@@ -49,13 +49,13 @@ export function lookExplanationFacts(items: GarmentEvidence[], context: StylingC
 export function groundedLookExplanation(items: GarmentEvidence[], context: StylingContext): string {
   const f = lookExplanationFacts(items, context);
   const relationship = f.tailoredFootwear
-    ? `The line of ${f.bottom} is continued by the dress profile of ${f.shoes}.`
-    : f.lightOpenLayer ? `${f.top} provides a light base inside the openable ${f.layer}.`
-    : f.textureContrast ? `${f.layer} adds ${f.texture} texture against the smoother ${f.top}.`
-    : f.casualFootwear ? `${f.bottom} and ${f.shoes} share a casual register.`
-    : f.layer ? `${f.top} sits under ${f.layer}; ${f.bottom} finishes with ${f.shoes}.`
-    : `${f.top} pairs with ${f.bottom} and ${f.shoes}, with no additional layer.`;
-  return relationship
-    + (f.palette && f.knownColors >= 2 ? ` The ${f.palette} palette links the known colors.` : '')
-    + (f.shape !== 'unknown' ? ` The ${f.shape} trouser cut defines the silhouette.` : '');
+    ? 'Dress shoes balance the tailored trousers.'
+    : f.lightOpenLayer ? 'The lighter base sits neatly beneath the open layer.'
+    : f.textureContrast ? 'The textured layer adds depth to the smoother base.'
+    : f.casualFootwear ? 'The shoes keep the casual trousers in the same style register.'
+    : f.layer ? 'The base, layer and footwear form a coordinated complete look.'
+    : 'The top, trousers and shoes form a coordinated look.';
+  const occasion = context.dressCode === 'formal' ? 'formal occasion'
+    : context.dressCode === 'smart' ? 'occasion' : '';
+  return occasion ? `${relationship} The overall formality suits the ${occasion}.` : relationship;
 }

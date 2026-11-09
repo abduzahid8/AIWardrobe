@@ -11,11 +11,12 @@ const messages = {
   no_outfit_within_budget: 'outfitMaker.budgetTooLow',
   no_items_within_budget: 'outfitMaker.noItemsWithinBudget',
   no_matching_clothing: 'outfitMaker.noMatchingClothing',
+  incompatible_locked_item: 'outfitMaker.incompatibleLockedItem',
   incomplete_outfit_deck: 'outfitMaker.noMatchingClothing',
-  insufficient_candidates: 'outfitMaker.noMatchingClothing',
-  outfit_quality_rejected: 'outfitMaker.noMatchingClothing',
-  incomplete_outfit_selection: 'outfitMaker.noMatchingClothing',
-  planning_cpu_risk: 'outfitMaker.generateFailed',
+  insufficient_candidates: 'outfitMaker.missingRequiredClothing',
+  outfit_quality_rejected: 'outfitMaker.qualityShortfall',
+  incomplete_outfit_selection: 'outfitMaker.distinctInventoryLimited',
+  planning_cpu_risk: 'outfitMaker.generationBusy',
   generation_failed: 'outfitMaker.generateFailed',
   // Do not trigger the screen's looser closest-match recovery after a floor failure.
   quality_replacement_unavailable: 'outfitMaker.generateFailed',
@@ -23,7 +24,8 @@ const messages = {
   invalid_outfit_budget: 'outfitMaker.invalidBudget',
 } as const;
 type MessageKey = typeof messages[keyof typeof messages] | 'outfitMaker.generateFailed'
-  | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut' | 'outfitMaker.connectionFailed';
+  | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut' | 'outfitMaker.connectionFailed'
+  | 'outfitMaker.requestTimeout';
 
 export class OutfitGenerationFailure extends Error {
   constructor(readonly translationKey: MessageKey = 'outfitMaker.generateFailed', readonly code?:string, readonly stage?:string) {

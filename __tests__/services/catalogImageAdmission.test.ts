@@ -73,6 +73,10 @@ describe('catalog image admission', () => {
       ok: false,
       reason: 'image_malformed',
     });
+    expect(catalogImageAdmission('/products/shirt.jpg')).toEqual({
+      ok: false,
+      reason: 'image_malformed',
+    });
     expect(catalogImageAdmission('https://cdn.test/a.jpg&w')).toEqual({
       ok: false,
       reason: 'image_malformed',

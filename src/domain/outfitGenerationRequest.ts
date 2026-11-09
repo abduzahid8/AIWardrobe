@@ -74,6 +74,8 @@ export function validateOutfitGenerationRequest(body: unknown): Record<string, a
   for (const key of ['wardrobeOnly', 'useProvidedWardrobeOnly', 'catalogOnly'])
     if (body[key] !== undefined && typeof body[key] !== 'boolean')
       throw new OutfitRequestError(400, key, 'invalid_type');
+  if (body.allowPartialResults !== undefined && typeof body.allowPartialResults !== 'boolean')
+    throw new OutfitRequestError(400, 'allowPartialResults', 'invalid_type');
   if (body.weather !== undefined && body.weather !== null) {
     if (!object(body.weather)) throw new OutfitRequestError(400, 'weather', 'invalid_type');
     if (
@@ -98,6 +100,12 @@ export function validateOutfitGenerationRequest(body: unknown): Record<string, a
       list(body.preferences[key] ?? undefined, 20, 100, 'preferences.' + key);
     text(body.preferences.fitPreference ?? undefined, 100, 'preferences.fitPreference');
     text(body.preferences.budgetRatesId, 200, 'preferences.budgetRatesId');
+    if (body.preferences.maxShopBudget !== undefined && body.preferences.maxShopBudget !== null) {
+      const budget = body.preferences.maxShopBudget;
+      if (!object(budget) || typeof budget.amount !== 'number' || !Number.isFinite(budget.amount)
+        || budget.amount < 0 || !['UZS', 'USD', 'EUR', 'GBP'].includes(budget.currency))
+        throw new OutfitRequestError(400, 'preferences.maxShopBudget', 'invalid_budget');
+    }
   }
   if (body.wardrobeItems !== undefined) {
     if (!Array.isArray(body.wardrobeItems) || body.wardrobeItems.length > 200)

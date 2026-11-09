@@ -59,10 +59,11 @@ export function editorialCopy(items: GarmentEvidence[], context: StylingContext)
     : facts.casualFootwear ? 'editorialCasualFootwear'
     : facts.layer ? 'editorialLayered' : 'editorialUnlayered';
   const sentences = [translate(`outfitMaker.qualityExplanation.${relationship}`, values)];
-  if (facts.palette && facts.knownColors >= 2)
+  // One useful relationship is better than a template reciting every measured
+  // attribute. Add palette only when the garment relationship is generic.
+  if ((relationship === 'editorialLayered' || relationship === 'editorialUnlayered')
+    && facts.palette && facts.knownColors >= 2)
     sentences.push(translate('outfitMaker.qualityExplanation.paletteStory', values));
-  if (facts.shape !== 'unknown')
-    sentences.push(translate('outfitMaker.qualityExplanation.shapeStory', values));
   return sentences.join(' ');
 }
 
