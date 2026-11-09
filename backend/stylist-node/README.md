@@ -68,3 +68,19 @@ The build prints the original Edge source SHA-256 (not a deployment fingerprint)
 
 **Production remains unchanged until all gates pass.** The new route does not
 create a publicly accessible keyless generation API.
+
+## Deployment protection and secret separation
+
+Vercel preview deployments can require Vercel Authentication even for
+server-to-server traffic. Configure a Vercel **Protection Bypass for
+Automation** token for the compute project and store it only as a Supabase
+secret named `STYLIST_VERCEL_BYPASS_SECRET`. The edge proxy forwards it through
+`x-vercel-protection-bypass` only to an HTTPS `*.vercel.app` endpoint, and
+rejects redirects. This bypass does **not** authenticate generation: the
+separate `STYLIST_NODE_SHARED_SECRET` HMAC and the user's original JWT are both
+still required.
+
+Do not place a bypass token, HMAC shared secret, Supabase service role key,
+provider API key, or paid test user's JWT in GitHub, client-side Expo config
+or any public environment. Do not connect the proxy to production until
+an authenticated preview response has been verified without double billing.

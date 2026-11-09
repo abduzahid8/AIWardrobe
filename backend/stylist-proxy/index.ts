@@ -56,14 +56,25 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
   try {
     const signatureHeaders = await signStylistTransport({ secret, authorization, body });
+    // Deployment Protection is independent of the application HMAC. Only
+    // forward a separately configured automation bypass to *.vercel.app.
+    // Redirects are forbidden so neither JWT nor HMAC can be sent elsewhere.
+    const bypass = Deno.env.get('STYLIST_VERCEL_BYPASS_SECRET')?.trim();
+    if (bypass && (!/^[a-zA-Z0-9_-]{32,128}$/.test(bypass) ||
+        !destination.hostname.toLowerCase().endsWith('.vercel.app'))) {
+      return jsonError('stylist_compute_unconfigured', 503);
+    }
+    const headers: Record<string, string> = {
+      ...signatureHeaders,
+      authorization,
+      apikey: request.headers.get('apikey') || '',
+      'content-type': 'application/json',
+    };
+    if (bypass) headers['x-vercel-protection-bypass'] = bypass;
     const upstream = await fetch(destination, {
       method: 'POST',
-      headers: {
-        ...signatureHeaders,
-        authorization,
-        apikey: request.headers.get('apikey') || '',
-        'content-type': 'application/json',
-      },
+      headers,
+      redirect: 'error',
       body,
       signal: AbortSignal.timeout(45_000),
     });
