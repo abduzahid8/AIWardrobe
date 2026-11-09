@@ -20,30 +20,13 @@ const fail = (code:string,status:number) =>
 Deno.serve(async(request:Request):Promise<Response>=>{
   if(request.method==='OPTIONS') return new Response('ok',{headers:CORS});
 
+  // The public unsigned health probe was removed after HMAC and JWT admission
+  // were verified. GET must not trigger even non-billable signed upstream work.
+  if(request.method!=='POST')return fail('method_not_allowed',405);
+
   const secret = Deno.env.get('STYLIST_NODE_SHARED_SECRET');
   if (!secret || secret.length < 32) return fail('staging_transport_unconfigured',503);
 
-  // A transport-only probe which never invokes original Stylist generation.
-  if(request.method==='GET' && new URL(request.url).pathname.endsWith('/health')){
-    const body='{"probe":"aiw-stylist-transport-v1"}';
-    const authorization='Bearer aiw-transport-probe-no-user';
-    try{
-      const signature = await signStylistTransport({secret,body,authorization});
-      const response = await fetch(NODE_ORIGIN+'/api/transport-health',{
-        method:'POST',
-        headers:{...signature,authorization,'content-type':'application/json'},
-        body,redirect:'error',signal:AbortSignal.timeout(9000),
-      });
-      const success = response.status===200 && response.headers.get('content-type')?.includes('application/json');
-      return Response.json(
-        {status:success?'ok':'upstream_rejected',signedTransport:!!success,upstreamStatus:response.status},
-        {status:success?200:503,headers:{...CORS,'Cache-Control':'no-store'}}
-      );
-    }catch{
-      return fail('staging_transport_unavailable',503);
-    }
-  }
-  if(request.method!=='POST')return fail('method_not_allowed',405);
 
   const authorization = request.headers.get('authorization')||'';
   if(!/^Bearer\s+\S+$/i.test(authorization))return fail('unauthorized',401);

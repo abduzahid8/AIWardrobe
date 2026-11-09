@@ -150,3 +150,12 @@ stylist-5-editorial-v2-rc-20261109-r2 source fingerprint as v206;
 Do NOT merge this draft or deploy over production just because the negative
 staging tests passed. Do not put JWTs, provider keys, Supabase service-role
 keys, HMAC values or Vercel automation bypass values into GitHub or chat.
+
+## Sealed staging after successful preflight
+
+After three successful HMAC transport probes and three negative JWT-admission
+probes, the public unsigned `GET /health` route on the isolated Supabase
+staging function was removed. It no longer triggers HMAC-signed upstream
+requests from anonymous GET callers. The separate Node transport-health
+endpoint still requires a valid HMAC signature. No paid-generation request
+was exercised as part of this hardening change.
