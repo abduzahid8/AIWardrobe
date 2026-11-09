@@ -7,5 +7,6 @@
     "api/generate-outfits.ts": {
       "maxDuration": 60
     }
-  }
+  },
+  "outputDirectory": "public"
 }

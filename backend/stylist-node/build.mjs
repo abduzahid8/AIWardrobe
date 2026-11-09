@@ -35,6 +35,7 @@ await build({
   bundle: true,
   platform: 'node',
   target: ['node22'],
+  tsconfigRaw: { compilerOptions: { target: 'ES2022', useDefineForClassFields: true } },
   format: 'esm',
   packages: 'external',
   logLevel: 'info',
