@@ -1,21 +1,30 @@
-# Stylist Integrated Release — Deployment Instructions (commit c55a54f)
+# Stylist Integrated Release — Deployment Instructions (code release f1d864e)
 
 Status: release candidate VERIFIED locally, NOT deployed. Production Edge
 Function `generate-outfits` is still the previous version (`v204`,
-`generationVersion: stylist-5-editorial-v2`). No DB migration is required
+`generationVersion: stylist-5-editorial-v2`). This candidate identifies
+itself as `generationVersion: stylist-5-editorial-v2-rc-20261109` once
+deployed — verified in source and asserted by
+`__tests__/backend/generationVersion.test.js`. No DB migration is required
 by this release (no new migrations included).
 
 ## 1. Preconditions
 
-- Branch `codex/stylist-integrated-rebuild-20261109` at `c55a54f` (pushed,
-  remote SHA verified). No force-push; merge to the release branch via PR.
+- Branch `codex/stylist-integrated-rebuild-20261109` at `f1d864e` (code
+  release; pushed, remote SHA verified). No force-push; merge to the
+  release branch via PR.
 - Local gates green on that SHA:
-  - `npx tsc --noEmit`
-  - `deno check --frozen backend/supabase/functions/generate-outfits/index.ts`
-  - `npx jest __tests__/services/stylistFashionRegression.test.ts` (9/9)
-- iOS Release artifact: arm64-only verification build succeeded, installed
-  on simulator `AIWardrobe-RC-Local-20261103` as `com.aiwardrobe` 3.0.3 (66),
-  launch + home render screenshotted. Full dual-arch dSYM build is blocked
+  - `npx tsc --noEmit` (clean)
+  - `deno check --frozen backend/supabase/functions/generate-outfits/index.ts` (clean)
+  - `npx jest __tests__/services/stylistFashionRegression.test.ts`
+    `__tests__/backend/generationVersion.test.js` (12/12)
+  - Targeted concept-affected suites: 58/58
+    (`outfitCandidateCurrency`, `generationCandidatePool`,
+    `shopColorProvenance`, `stylist4`)
+- iOS Release artifact: arm64-only verification build from the release tree
+  succeeded, installed on simulator `AIWardrobe-RC-Local-20261103` as
+  `com.aiwardrobe` 3.0.3 (66), launch + home render screenshotted
+  (`/tmp/aiwardrobe-rc3-app.png`). Full dual-arch dSYM build is blocked
   by host disk (~1 GB free); run it on a host with headroom before TestFlight.
 
 ## 2. Deploy the Edge Function (explicit authorization required)
@@ -62,8 +71,17 @@ Save Outfit / Add to Calendar / thumbs feedback all persist.
 ## 5. Known remaining blockers (do not present as done)
 
 - In-app tap-through of Generate/Buy/Save/Calendar/feedback was not
-  possible in this environment (no scripted touch input); needs a manual
-  pass on the installed build.
+  possible in this environment (no scripted touch input: no `simctl` touch
+  API, AppleScript GUI control TCC-denied). Manual pass required on the
+  installed 3.0.3/66 build: open AI Stylist → New clothing →
+  Minimalist + Work → budget/currency controls → Generate → images, totals,
+  Buy (real store URL), Save Outfit, Add to Calendar, thumbs feedback;
+  confirm loud checks rejected and concept names match garments.
+- No isolated local/staging Supabase environment exists, so the new
+  `stylist-5-editorial-v2-rc-20261109` identifier cannot be observed in a
+  live response until the authorized production deploy. The request/response
+  contract is unchanged (string literal only); budgeted + unbudgeted live
+  calls against production v204 already prove contract match.
 - 19 `outfitBudgetWire` Jest failures are pre-existing obsolete-harness
   debt (present at base `737da82`); modernize that harness separately.
 - Full dual-arch dSYM Release build needs a host with more free disk.
