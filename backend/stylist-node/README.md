@@ -97,53 +97,56 @@ an authenticated preview response has been verified without double billing.
 - Temporary diagnostic API files were removed from this release candidate.
 - An authenticated paid generation, subscription quota consumption, runtime
   CPU benchmark, and five sequential scenario requests are **not yet proven**.
-- No environment secrets were inserted into source or the preview project.
-  Configure encrypted Vercel and Supabase secrets outside Git, then run
-  bounded smoke tests with an authorized test user before proposing cutover.
-- **Production remains on existing Supabase v206** until explicitly approved.
+- No environment secrets were inserted into source. Server-only preview
+  secrets are configured; run bounded positive authenticated smoke tests with
+  an authorized test user before proposing cutover.
+- **Production remains on existing Supabase v207** until explicitly approved.
 
 Node timing response header: `server-timing` includes process CPU and wall
 duration for loading and running the original backend. Do not treat this as
 isolated per-request CPU if the Node process handles concurrent requests.
 
-## Pending server-only credential handoff
+## Verified protected staging transport — 2026-11-09
 
-The ChatGPT Supabase connector supports Edge deployment and function source
-reads but **does not support Edge Secret management**. Vercel's API currently
-has no server-only credentials for the protected preview service. Do not
-attempt to retrieve service-role or NVIDIA credentials via SQL, scrape them
-from logs, or add them to source files.
+**Branch:** codex/stylist-node-compute-20261109 (draft PR #14)
+**Production:** Supabase generate-outfits v207 ACTIVE, same original
+stylist-5-editorial-v2-rc-20261109-r2 source fingerprint as v206;
+**no Node traffic cutover**.
 
-The project-scoped `SUPABASE_URL` and legacy `SUPABASE_ANON_KEY` have been
-configured as encrypted preview-only Vercel environment variables for
-`codex/stylist-node-compute-20261109`.
+**Deployment status**
+- Vercel Preview for Node compute reports /api/health status 200 with
+  computeConfigured:true. Five server-only preview variables are configured
+  without placing values in Git, PR comments, or mobile app code.
+- Separate Supabase Edge Function aiw-stylist-node-staging v1 ACTIVE; the
+  existing generate-outfits service was NOT replaced.
+- Staging points at a pinned protected Vercel preview. The HMAC-only health
+  request is non-billable and does NOT invoke the Stylist generator.
+- Three consecutive signed staging transport probes returned HTTP 200 with
+  hmacVerified:true; three invalid-user-JWT negative admission probes returned
+  HTTP 200 from their diagnostic harness, while the original Stylist handler
+  returned HTTP 401 unauthorized as expected. OriginalHandlerReached:true.
+- Those six probes were issued without using real user credentials, reading
+  products, calling paid NVIDIA inference or consuming generation quotas.
+- The Vercel stage-connectivity and stage-auth-probe diagnostics used for
+  verification were removed from the current branch once checks succeeded.
+  The HMAC-gated transport-health route remains for future operational checks.
+- CI on an earlier commit passed. The last diagnostic commit produced a
+  GitHub Actions failed workflow with no jobs reported; re-run via GitHub App
+  was disallowed. A fresh commit here triggers a new full verification.
+- Original protected Node API continues to reject GET with HTTP 405.
+  Full paid positive end-to-end inference is NOT yet established.
 
-Still needed in Vercel's **Preview** environment (branch-scoped, encrypted):
+**Still required before production cutover**
+1. Bounded authorized paid test-user POST against staging (not via public GET
+   diagnostic), verifying response schema, no double-charge, exact products,
+   budget guarantees and NVIDIA provenance.
+2. Measure cold/warm CPU and wall, five sequential successful user requests,
+   Old Money+Work and two other style+occasion scenarios.
+3. Independently check quota/rate-limit effects and restore tests. Confirm
+   production v207 backup before modifying its public route.
+4. Explicit owner authorization for any production cutover. Roll back on
+   5xx/546 or quota anomalies.
 
-- `SUPABASE_SERVICE_ROLE_KEY` — existing Supabase project key, backend only.
-- `NVIDIA_API_KEY` — existing provider key, backend only.
-- `STYLIST_NODE_SHARED_SECRET` — new randomly generated >=32-character secret,
-  identical to the Supabase proxy's secret.
-
-Needed in Supabase Edge Secrets **before** proxy cutover:
-
-- `STYLIST_NODE_URL` — pinned, owner-controlled Vercel compute URL ending in
-  `/api/generate-outfits`.
-- `STYLIST_NODE_SHARED_SECRET` — identical to the Vercel value.
-- `STYLIST_VERCEL_BYPASS_SECRET` — token generated from the Vercel project's
-  Protection Bypass for Automation settings (unless the project uses another
-  secured service-to-service ingress).
-
-Generate the shared HMAC secret locally with `openssl rand -hex 32`. Enter
-secrets directly into the service dashboards. **Never paste secrets into
-GitHub issues, pull requests, ChatGPT, or app configuration.**
-
-After configuration, perform a fresh Vercel **Preview** deploy so new
-environment variables are present. Verify `GET /api/health` reports
-`computeConfigured: true`, then run a limited authorized paid-user
-generation and validate JWT, quota, budget and HTTP 200/503 behavior.
-A ready build and a healthy liveness endpoint alone are NOT an approved
-production release.
-
-Retain the existing Supabase v206 `generate-outfits` as production until
-all release gates pass and the owner approves an explicit traffic cutover.
+Do NOT merge this draft or deploy over production just because the negative
+staging tests passed. Do not put JWTs, provider keys, Supabase service-role
+keys, HMAC values or Vercel automation bypass values into GitHub or chat.
