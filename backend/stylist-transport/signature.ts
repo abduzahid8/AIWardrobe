@@ -18,10 +18,10 @@ function hex(bytes: Uint8Array): string {
   return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function fromHex(value: string): Uint8Array {
+function fromHex(value: string): ArrayBuffer {
   const bytes = new Uint8Array(value.length / 2);
   for (let i = 0; i < bytes.length; i++) bytes[i] = Number.parseInt(value.slice(i * 2, i * 2 + 2), 16);
-  return bytes;
+  return bytes.buffer as ArrayBuffer;
 }
 
 async function keyFor(secret: string): Promise<CryptoKey> {
@@ -34,9 +34,10 @@ async function signedMessage(
   nonce: string,
   authorization: string,
   body: string
-): Promise<Uint8Array> {
+): Promise<ArrayBuffer> {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(body)));
-  return encoder.encode([timestamp, nonce, authorization, hex(digest)].join('\n'));
+  const bytes = encoder.encode([timestamp, nonce, authorization, hex(digest)].join('\n'));
+  return bytes.buffer as ArrayBuffer;
 }
 
 export async function signStylistTransport(input: {
