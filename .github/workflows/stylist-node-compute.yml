@@ -36,6 +36,10 @@ jobs:
       - name: Type-check the isolated Vercel Node entry
         working-directory: backend/stylist-node
         run: npx tsc --noEmit -p tsconfig.json
+      # Static validation only; do NOT run the paid smoke tool in CI.
+      - name: Syntax-check opt-in paid smoke runner (no requests)
+        working-directory: backend/stylist-node
+        run: node --check scripts/authorized-staging-smoke.mjs
       - name: Verify signed transport AND real Node-handler admission
         working-directory: backend/stylist-node
         run: npm test
