@@ -83,14 +83,14 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
     // Only whitelisted non-sensitive runtime timing is forwarded. No
     // provider details, tokens, product records, or internal debug headers.
-    const headers = new Headers(corsHeaders);
+    const responseHeaders = new Headers(corsHeaders);
     const timing = upstream.headers.get('server-timing');
     if (timing && /^aiw_node_cpu;dur=\d+(?:\.\d+)?, aiw_node_wall;dur=\d+(?:\.\d+)?$/.test(timing)) {
-      headers.set('server-timing', timing);
+      responseHeaders.set('server-timing', timing);
     }
     return new Response(upstream.body, {
       status: upstream.status,
-      headers,
+      headers: responseHeaders,
     });
   } catch {
     // Never log JWTs, products, request bodies, HMAC signatures, or secrets.
