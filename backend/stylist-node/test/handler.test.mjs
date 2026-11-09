@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { POST } from '../api/generate-outfits.ts';
+import endpoint, { POST } from '../api/generate-outfits.ts';
 import { signStylistTransport } from '../../stylist-transport/signature.ts';
 
 const secret = 'test-hmac-secret-for-node-handler-not-production-12345';
@@ -46,4 +46,17 @@ test('signed requests run the original, quota-enforcing Stylist handler', async 
     if (oldKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     else process.env.SUPABASE_SERVICE_ROLE_KEY = oldKey;
   }
+});
+
+test('Vercel default fetch entrypoint is exported and fails closed', async () => {
+  assert.equal(typeof endpoint.fetch, 'function');
+  process.env.STYLIST_NODE_SHARED_SECRET = secret;
+  const unsigned = await endpoint.fetch(new Request('https://node.example/api/generate-outfits', {
+    method: 'POST', headers: { authorization }, body,
+  }));
+  assert.equal(unsigned.status, 401);
+  const forbiddenMethod = await endpoint.fetch(new Request('https://node.example/api/generate-outfits', {
+    method: 'GET',
+  }));
+  assert.equal(forbiddenMethod.status, 405);
 });

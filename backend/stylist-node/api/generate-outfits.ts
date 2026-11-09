@@ -89,3 +89,15 @@ export async function POST(request: Request): Promise<Response> {
 export function GET(): Response {
   return errorResponse('method_not_allowed', 405);
 }
+
+/**
+ * Vercel Frameworks API convention (non-Next, root api/ directory):
+ * the module's default fetch handler is the actual HTTP entrypoint.
+ * Named POST and GET exports remain for focused unit tests.
+ */
+export default {
+  fetch(request: Request): Promise<Response> | Response {
+    if (request.method === 'POST') return POST(request);
+    return GET();
+  },
+};
