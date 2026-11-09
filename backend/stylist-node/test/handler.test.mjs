@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import endpoint, { POST } from '../api/generate-outfits.ts';
-import { signStylistTransport } from '../transport/signature.ts';
+import { signStylistTransport } from '../transport/signature.mjs';
 
 const secret = 'test-hmac-secret-for-node-handler-not-production-12345';
 const authorization = 'Bearer placeholder-not-a-user-jwt';

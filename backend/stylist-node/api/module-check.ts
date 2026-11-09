@@ -5,7 +5,7 @@
 export default {
   async fetch(): Promise<Response> {
     try {
-      const mod = await import('../transport/signature.ts');
+      const mod = await import('../transport/signature.mjs');
       return Response.json({
         status: 'ok',
         available: typeof mod.signStylistTransport === 'function',

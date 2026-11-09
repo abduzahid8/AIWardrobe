@@ -9,7 +9,7 @@
 import {
   verifyStylistTransport,
   STYLIST_TRANSPORT_MAX_BODY_BYTES,
-} from '../transport/signature.ts';
+} from '../transport/signature.mjs';
 
 type EdgeHandler = (request: Request) => Promise<Response>;
 type StylistGlobal = typeof globalThis & {

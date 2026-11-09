@@ -9,7 +9,7 @@
 import {
   signStylistTransport,
   STYLIST_TRANSPORT_MAX_BODY_BYTES,
-} from '../stylist-node/transport/signature.ts';
+} from '../stylist-node/transport/signature.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

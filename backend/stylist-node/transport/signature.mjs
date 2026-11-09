@@ -14,39 +14,33 @@ const encoder = new TextEncoder();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SIGNATURE_RE = /^[0-9a-f]{64}$/i;
 
-function hex(bytes: Uint8Array): string {
+function hex(bytes) {
   return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function fromHex(value: string): ArrayBuffer {
+function fromHex(value) {
   const bytes = new Uint8Array(value.length / 2);
   for (let i = 0; i < bytes.length; i++) bytes[i] = Number.parseInt(value.slice(i * 2, i * 2 + 2), 16);
-  return bytes.buffer as ArrayBuffer;
+  return bytes.buffer;
 }
 
-async function keyFor(secret: string): Promise<CryptoKey> {
+async function keyFor(secret) {
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('stylist_transport_secret_unconfigured');
   return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 }
 
 async function signedMessage(
-  timestamp: string,
-  nonce: string,
-  authorization: string,
-  body: string
-): Promise<ArrayBuffer> {
+  timestamp,
+  nonce,
+  authorization,
+  body
+) {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(body)));
   const bytes = encoder.encode([timestamp, nonce, authorization, hex(digest)].join('\n'));
-  return bytes.buffer as ArrayBuffer;
+  return bytes.buffer;
 }
 
-export async function signStylistTransport(input: {
-  secret: string;
-  body: string;
-  authorization: string;
-  now?: number;
-  nonce?: string;
-}): Promise<Record<string, string>> {
+export async function signStylistTransport(input) {
   const timestamp = String(input.now ?? Date.now());
   const nonce = input.nonce ?? crypto.randomUUID();
   if (!UUID_RE.test(nonce) || encoder.encode(input.body).byteLength > STYLIST_TRANSPORT_MAX_BODY_BYTES) {
@@ -63,15 +57,7 @@ export async function signStylistTransport(input: {
   };
 }
 
-export async function verifyStylistTransport(input: {
-  secret: string;
-  body: string;
-  authorization: string;
-  timestamp: string | null;
-  nonce: string | null;
-  signature: string | null;
-  now?: number;
-}): Promise<boolean> {
+export async function verifyStylistTransport(input) {
   const timestamp = input.timestamp ?? '';
   const nonce = input.nonce ?? '';
   const signature = input.signature ?? '';
