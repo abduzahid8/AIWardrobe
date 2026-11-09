@@ -10,7 +10,7 @@
  */
 import { build } from 'esbuild';
 import { createHash } from 'node:crypto';
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -64,6 +64,8 @@ await build({
     }
   }],
 });
+// Keep the generated JS private but give strict TS clients its ESM declaration.
+await writeFile(resolve(serviceRoot, 'dist/stylist-bundle.d.mts'), 'export {};\n', 'utf8');
 console.info('stylist_node_bundle_ready', {
   sourceSha256: sha,
   entry: 'backend/supabase/functions/generate-outfits/index.ts',
