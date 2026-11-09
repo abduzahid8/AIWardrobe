@@ -28,6 +28,8 @@ jobs:
           deno-version: v2.9.6
       - name: Type-check signed Supabase Edge proxy
         run: deno check --no-config --node-modules-dir=none backend/stylist-proxy/index.ts
+      - name: Type-check isolated staging Edge proxy
+        run: deno check --no-config --node-modules-dir=none backend/stylist-proxy/staging.ts
       - name: Bundle original production Stylist kernel for Node
         working-directory: backend/stylist-node
         run: npm run build
