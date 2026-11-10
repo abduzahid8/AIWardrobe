@@ -19,10 +19,14 @@ const candidate = {
 };
 
 const verdict = {
-  slotVisibility: { top: 'visible', outerwear: 'visible', bottom: 'visible', shoes: 'visible' },
+  slotObservations: { top: 'light striped shirt', outerwear: 'short dark jacket', bottom: 'grey straight trousers', shoes: 'dark round toe shoes' },
   candidateId: candidate.id, visualCohesion: 0.9, referenceFidelity: 0.87, styleFit: 0.88,
   occasionFit: 0.91, formalityFit: 0.93, confidence: 0.95, reject: false,
-  evidence: ['mock top observation', 'mock layer observation', 'mock trouser observation'],
+  relationships: [
+          { kind: 'outfit', slots: ['top', 'outerwear'], observation: 'mock top and layer match' },
+          { kind: 'outfit', slots: ['bottom', 'shoes'], observation: 'mock footwear repeats bottom color' },
+          { kind: 'reference', slots: ['top'], observation: 'mock reference repeats the top pattern' },
+        ],
 };
 const nvidiaResponse = (row, finish_reason = 'stop') => Response.json({
   choices: [{ finish_reason, message: { content: JSON.stringify(row) } }],
@@ -56,6 +60,7 @@ test('NVIDIA request sends only style context and ordered, pinned outfit images'
   const body = JSON.parse(init.body);
   assert.equal(body.model, NVIDIA_VISION_MODEL);
   assert.equal(body.stream, false);
+  assert.deepEqual(body.response_format, { type: 'json_object' });
   assert.equal(body.chat_template_kwargs.enable_thinking, false);
   const [prompt, ...mediaParts] = body.messages[0].content;
   const images = mediaParts.filter((part) => part.type === 'image_url');
@@ -203,15 +208,32 @@ test('usage telemetry retains safe token counts even when a successful response 
 });
 
 test('a provider that did not visibly resolve every supplied slot must abstain', async () => {
-  for (const slotVisibility of [undefined, { ...verdict.slotVisibility, outerwear: 'missing' },
-    { ...verdict.slotVisibility, outerwear: 'unclear' }, { ...verdict.slotVisibility, coat: 'visible' }]) {
+  for (const slotObservations of [undefined, { ...verdict.slotObservations, outerwear: 'No outerwear image is supplied' },
+    { ...verdict.slotObservations, outerwear: null }, { ...verdict.slotObservations, coat: 'unknown garment' }]) {
     const events = [];
     const critic = createHostedVisualCritic({
       provider: 'nvidia', apiKey, resolveReference: () => asset(), resolveProduct: () => asset(),
-      fetchImpl: async () => nvidiaResponse({ ...verdict, slotVisibility }),
+      fetchImpl: async () => nvidiaResponse({ ...verdict, slotObservations }),
       onEvent: (event) => events.push(event),
     });
     assert.deepEqual(await critic([candidate]), []);
     assert.equal(events[0].reason, 'incomplete_visual_coverage');
+  }
+});
+
+test('well-formed scores cannot pass with single-garment or contradictory outfit evidence', async () => {
+  for (const relationships of [
+    [{ ...verdict.relationships[0], slots: ['top'] }, ...verdict.relationships.slice(1)],
+    [{ ...verdict.relationships[0], observation: 'No outerwear image was supplied.' }, ...verdict.relationships.slice(1)],
+    [verdict.relationships[0], verdict.relationships[0], verdict.relationships[2]],
+  ]) {
+    const events = [];
+    const critic = createHostedVisualCritic({
+      provider: 'nvidia', apiKey, resolveReference: () => asset(), resolveProduct: () => asset(),
+      fetchImpl: async () => nvidiaResponse({ ...verdict, relationships }),
+      onEvent: (event) => events.push(event),
+    });
+    assert.deepEqual(await critic([candidate]), []);
+    assert.equal(events[0].reason, 'incomplete_outfit_evidence');
   }
 });

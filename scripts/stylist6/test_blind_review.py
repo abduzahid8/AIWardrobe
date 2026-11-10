@@ -26,7 +26,7 @@ class BlindReviewTests(unittest.TestCase):
         return path
 
     def submission(self, reviewer, preference, quality=4):
-        values = {"Q01.preference": preference}
+        values = {"Q01.preference": preference, "reviewer": reviewer}
         for label in "AB":
             values[f"Q01.variety{label}"] = "4"
             for look in range(1, 4):
@@ -49,7 +49,8 @@ class BlindReviewTests(unittest.TestCase):
         result = review.score(key, paths)
         self.assertEqual((result["wins"], result["losses"], result["ties"], result["splits"]), (1, 0, 0, 0))
         self.assertEqual(result["cases"]["Q01"]["votes"], {"v6Retrieval": 2, "baseline": 1})
-        self.assertEqual(result["independentFashionJudgments"] if "independentFashionJudgments" in result else 0, 0)
+        self.assertEqual(result["reviewers"], 3)
+        self.assertEqual(result["disagreementCases"], 1)
         key, paths = self.score_files(("B", "A", "Tie"))
         result = review.score(key, paths)
         self.assertEqual((result["wins"], result["losses"], result["splits"]), (0, 0, 1))
@@ -62,6 +63,7 @@ class BlindReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "distinct reviewers"):
             review.score(key, paths)
         bad["reviewer"] = "r2"
+        bad["values"]["reviewer"] = "r2"
         bad["values"]["Q01.A.1.quality"] = "8"
         paths[1].write_text(json.dumps(bad))
         with self.assertRaisesRegex(ValueError, "Missing or invalid score"):
@@ -104,6 +106,14 @@ class BlindReviewTests(unittest.TestCase):
                   "results": [{"id": scenario_id, "baseline": [ids] * 3,
                                "v6Retrieval": [ids] * 3}]}
         (folder / "replay.json").write_text(json.dumps(replay))
+        grant = {"status": "active", "validFrom": "2020-01-01T00:00:00Z", "expiresAt": None,
+                 "sha256": digest, "rightsHolder": "Synthetic fixture author", "reviewedBy": "Fixture test",
+                 "evidence": {"reference": "synthetic fixture", "sha256": digest},
+                 "privateReview": {"redistribute": True, "audience": "assigned_independent_reviewers"}}
+        (folder / "image-rights.json").write_text(json.dumps({"version": 1, "assets": [
+            {**grant, "kind": "reference", "id": "rt_001"},
+            *[{**grant, "kind": "product", "id": sku} for sku in ids],
+        ]}))
         return folder
 
     def test_builds_local_review_pack_and_disallows_unsafe_paths(self):
@@ -115,6 +125,13 @@ class BlindReviewTests(unittest.TestCase):
         self.assertEqual(len(list((output / "assets").glob("*.jpg"))), 1)
         key = json.loads((folder / "retail-blind-key.json").read_text())
         self.assertEqual(set(key["cases"]["Q01"]), {"A", "B"})
+        seed = (folder / "retail-review-allocation.txt").read_text().strip()
+        self.assertNotIn(seed, (output / "index.html").read_text())
+        again = self.root / "again"
+        review.build(folder, again)
+        self.assertEqual((output / "index.html").read_bytes(), (again / "index.html").read_bytes())
+        with self.assertRaisesRegex(ValueError, "Hosted comparison requires judged"):
+            review.build(folder, self.root / "not-hosted", v6_arm="v6Hosted")
 
     def test_twelve_cases_counterbalance_hidden_deck_position(self):
         folder = self.fixture()
@@ -133,6 +150,32 @@ class BlindReviewTests(unittest.TestCase):
         self.assertEqual(len(assignments), 12)
         self.assertEqual(sum(labels["A"] == "baseline" for labels in assignments.values()), 6)
         self.assertEqual(sum(labels["B"] == "baseline" for labels in assignments.values()), 6)
+
+    def test_owner_preview_does_not_distribute_and_default_requires_review_rights(self):
+        folder = self.fixture()
+        (folder / "image-rights.json").unlink()
+        output = self.root / "review"
+        with self.assertRaisesRegex(ValueError, "distribution requires"):
+            review.build(folder, output)
+        self.assertFalse(output.exists())
+        review.build(folder, output, owner_local=True)
+        self.assertFalse(output.with_suffix(".zip").exists())
+        self.assertNotIn('type="submit"', (output / "index.html").read_text())
+        with self.assertRaisesRegex(ValueError, "Owner preview"):
+            review.score(folder / "owner-preview-key.json", [])
+
+    def test_display_permission_does_not_authorize_reviewer_distribution(self):
+        folder = self.fixture()
+        path = folder / "image-rights.json"
+        rights = json.loads(path.read_text())
+        rights["assets"][0]["display"] = True
+        rights["assets"][0].pop("privateReview")
+        path.write_text(json.dumps(rights))
+        output = self.root / "display-only"
+        with self.assertRaisesRegex(ValueError, "lacks assigned-reviewer distribution grant"):
+            review.build(folder, output)
+        self.assertFalse(output.exists())
+        self.assertFalse(output.with_suffix(".zip").exists())
 
     def test_rejects_unexpected_photo_paths(self):
         folder = self.fixture(unsafe_photo=True)

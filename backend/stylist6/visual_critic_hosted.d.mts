@@ -13,7 +13,8 @@ export interface VisualImage {
 
 export interface HostedVisualVerdict {
   candidateId: string;
-  slotVisibility?: Partial<Record<HostedVisualProduct['slot'], 'visible'>>;
+  slotObservations?: Partial<Record<HostedVisualProduct['slot'], string>>;
+  relationships?: { kind: 'outfit' | 'reference'; slots: HostedVisualProduct['slot'][]; observation: string }[];
   visualCohesion: number;
   referenceFidelity: number;
   styleFit: number;
@@ -63,6 +64,7 @@ export function createHostedVisualCritic(options: {
     reason?: string;
     latencyMs?: number;
     httpStatus?: number;
+    finishReason?: string;
     usage?: Partial<Record<'prompt_tokens' | 'completion_tokens' | 'total_tokens', number>>;
   }) => void;
 }): (payload: HostedVisualCandidate[], request?: HostedVisualRequest) => Promise<HostedVisualVerdict[]>;

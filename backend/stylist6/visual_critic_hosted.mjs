@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const HOSTED_VISUAL_CRITIC_VERSION = 'hosted-visual-critic-v4';
+export const HOSTED_VISUAL_CRITIC_VERSION = 'hosted-visual-critic-v6';
 export const NVIDIA_VISION_MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
@@ -66,11 +66,12 @@ function buildPrompt(candidate, request) {
     context,
     'Assess color harmony, silhouette, visible material relationships, proportions, formality and occasion across the outfit.',
     'Score reference fidelity separately from internal visual cohesion. Look for a coherent translation of the reference.',
-    'Ground evidence in visible relationships and name the relevant slots. Do not infer exact fibers, fit or inventory from photos.',
-    'Use low confidence when evidence is ambiguous. Reject clear incompatibility and cite the visible cause.',
-    'Return only JSON with keys candidateId, slotVisibility, visualCohesion, referenceFidelity, styleFit, occasionFit, formalityFit, confidence, reject, evidence.',
-    'For slotVisibility, provide an object with exactly one key per listed candidate slot. Mark each as "visible" only if you can identify the pictured garment, otherwise "unclear" or "missing".',
-    'Use 0–1 scores, a boolean reject, and 3–6 short evidence strings (at most 240 characters each).',
+    'Observe each garment independently before scoring the outfit as a whole. Do not infer exact fibers, fit or inventory.',
+    'Return only JSON with keys candidateId, slotObservations, visualCohesion, referenceFidelity, styleFit, occasionFit, formalityFit, confidence, reject, relationships.',
+    'slotObservations must map each listed slot to a short visible description (such as color and shape or trim). Use null if you cannot identify the garment.',
+    'For relationships, give exactly three objects with kind, slots, and observation. Two must have kind "outfit" and compare two or more candidate slots. One must have kind "reference" and explain a visible similarity or difference with the reference.',
+    'For example: {"kind":"outfit","slots":["top","bottom"],"observation":"The narrow dark trousers balance the wider light shirt."}',
+    'Use 0–1 scores and a boolean reject. Reject clear incompatibility and cite its visible cause. Keep descriptions under 160 characters.',
     `candidateId must be exactly "${candidate.id}".`,
   ].join('\n');
 }
@@ -110,6 +111,33 @@ function decodeVerdict(data, provider) {
   } catch {
     return { reason: 'invalid_verdict_json' };
   }
+}
+
+// Reject explicit claims that a supplied image is missing, including when
+// another field claims the same slot was assessed. This is a contract check,
+// not a way to determine whether a color or garment description is true.
+const missingImageClaim = /\bno (?:\w+ ){0,2}(?:image|photo)\b|\b(?:image|photo) (?:is |was )?(?:missing|unavailable|not (?:provided|supplied))\b/i;
+const observation = (text) => typeof text === 'string' && text.trim().length >= 8
+  && text.length <= 160 && !missingImageClaim.test(text)
+  && !/^(?:unclear|missing|unknown|not visible|cannot (?:tell|identify))[.!]?$/i.test(text.trim());
+
+function outfitEvidence(row, products) {
+  const slots = new Set(products.map(({ slot }) => slot));
+  const coverage = row?.slotObservations;
+  if (!coverage || Array.isArray(coverage) || typeof coverage !== 'object'
+      || Object.keys(coverage).length !== slots.size
+      || [...slots].some((slot) => !observation(coverage[slot]))) return { reason: 'incomplete_visual_coverage' };
+  const links = row.relationships;
+  if (!Array.isArray(links) || links.length !== 3 || links.some((link) =>
+    !['outfit', 'reference'].includes(link?.kind) || !Array.isArray(link.slots)
+    || link.slots.length < (link.kind === 'outfit' ? 2 : 1)
+    || new Set(link.slots).size !== link.slots.length || link.slots.some((slot) => !slots.has(slot))
+    || !observation(link.observation))
+    || links.filter(({ kind }) => kind === 'reference').length !== 1
+    || new Set(links.map(({ observation }) => observation.trim().toLowerCase())).size !== links.length) {
+    return { reason: 'incomplete_outfit_evidence' };
+  }
+  return { slotObservations: coverage, evidence: links.map((link) => link.observation) };
 }
 
 export function createHostedVisualCritic({
@@ -156,10 +184,11 @@ export function createHostedVisualCritic({
       const candidate = payload[index];
       const started = performance.now();
       let dispatched = false;
-      let httpStatus, usage;
+      let httpStatus, usage, finishReason;
       const telemetry = () => ({
         ...(dispatched ? { latencyMs: performance.now() - started } : {}),
         ...(httpStatus === undefined ? {} : { httpStatus }),
+        ...(finishReason ? { finishReason } : {}),
         ...(usage && Object.keys(usage).length ? { usage } : {}),
       });
       let reason = 'invalid_candidate';
@@ -202,7 +231,7 @@ export function createHostedVisualCritic({
                   { type: 'image_url', image_url: { url: `data:${mimeType};base64,${data}` } },
                 ]),
               ] }],
-              temperature: 0.6, top_p: 0.95, max_tokens: 900, stream: false,
+              temperature: 0.6, top_p: 0.95, max_tokens: 900, stream: false, response_format: { type: 'json_object' },
               chat_template_kwargs: { enable_thinking: false },
             }
           : {
@@ -238,6 +267,8 @@ export function createHostedVisualCritic({
         reason = 'invalid_provider_verdict';
         const data = await bounded(readProviderJson(response));
         if (provider === 'nvidia') {
+          const finish = data?.choices?.[0]?.finish_reason;
+          finishReason = ['stop', 'length', 'content_filter'].includes(finish) ? finish : 'unknown';
           usage = Object.fromEntries(['prompt_tokens', 'completion_tokens', 'total_tokens']
             .map((key) => [key, data?.usage?.[key]])
             .filter(([, count]) => Number.isSafeInteger(count) && count >= 0));
@@ -245,16 +276,19 @@ export function createHostedVisualCritic({
         const { row, reason: decodeFailure } = decodeVerdict(data, provider);
         signal.throwIfAborted();
         reason = decodeFailure || 'invalid_verdict_schema';
-        if (!validVisualVerdict(row, candidate.id)) throw new Error(reason);
-        const { candidateId, slotVisibility, visualCohesion, referenceFidelity, styleFit, occasionFit, formalityFit, confidence, reject, evidence } = row;
-        reason = 'incomplete_visual_coverage';
-        if (!slotVisibility || typeof slotVisibility !== 'object' || Array.isArray(slotVisibility)
-            || Object.keys(slotVisibility).length !== candidate.products.length
-            || candidate.products.some(({ slot }) => slotVisibility[slot] !== 'visible')) {
+        if (!row || row.candidateId !== candidate.id) throw new Error(reason);
+        const grounding = outfitEvidence(row, candidate.products);
+        if (grounding.reason) {
+          reason = grounding.reason;
           throw new Error(reason);
         }
+        const { evidence, slotObservations } = grounding;
+        if (!validVisualVerdict({ ...row, evidence }, candidate.id)) throw new Error(reason);
+        const { candidateId, visualCohesion, referenceFidelity, styleFit, occasionFit, formalityFit, confidence, reject } = row;
         verdicts[index] = {
-          candidateId, slotVisibility, visualCohesion, referenceFidelity, styleFit, occasionFit, formalityFit, confidence, reject, evidence,
+          candidateId, slotObservations,
+          relationships: row.relationships.map(({ kind, slots, observation }) => ({ kind, slots, observation })),
+          visualCohesion, referenceFidelity, styleFit, occasionFit, formalityFit, confidence, reject, evidence,
           criticVersion: `${HOSTED_VISUAL_CRITIC_VERSION}/${provider}/${selectedModel}`,
           latencyMs: performance.now() - started,
           estimatedCostUsd: null,

@@ -71,10 +71,14 @@ test('NVIDIA verdict reverses the feasible seed winner; rejected and unknown loo
       const id = content[0].text.match(/candidateId must be exactly "([^"]+)"/)[1];
       seen.push(id);
       return Response.json({ choices: [{ message: { content: JSON.stringify({
-        slotVisibility: { top: 'visible', outerwear: 'visible', bottom: 'visible', shoes: 'visible' },
+        slotObservations: { top: 'light striped shirt', outerwear: 'short dark jacket', bottom: 'grey straight trousers', shoes: 'dark round toe shoes' },
         candidateId: id === third.id ? 'unknown' : id, visualCohesion: 0.9, referenceFidelity: 0.9,
         styleFit: 0.9, occasionFit: 0.9, formalityFit: 0.9, confidence: 0.95, reject: id === first.id,
-        evidence: ['mock tonal relationship', 'mock coat weight', 'mock boot formality'],
+        relationships: [
+          { kind: 'outfit', slots: ['top', 'outerwear'], observation: 'mock top and layer match' },
+          { kind: 'outfit', slots: ['bottom', 'shoes'], observation: 'mock footwear repeats bottom color' },
+          { kind: 'reference', slots: ['top'], observation: 'mock reference repeats the top pattern' },
+        ],
       }) } }] });
     },
   });

@@ -25,10 +25,14 @@ for (const { id } of scenarios) {
       const candidateId = prompt.text.match(/candidateId must be exactly "([^"]+)"/)[1];
       mockCalls.push(candidateId);
       return Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({
-        candidateId, slotVisibility: { top: 'visible', outerwear: 'visible', bottom: 'visible', shoes: 'visible' },
+        candidateId, slotObservations: { top: 'light striped shirt', outerwear: 'short dark jacket', bottom: 'grey straight trousers', shoes: 'dark round toe shoes' },
         visualCohesion: 0.9, referenceFidelity: candidateId === preferred ? 1 : 0.7,
         styleFit: 0.9, occasionFit: 0.9, formalityFit: 0.9, confidence: 0.95, reject: candidateId === seed,
-        evidence: ['MOCK top and layer', 'MOCK trouser proportions', 'MOCK shoe register'],
+        relationships: [
+          { kind: 'outfit', slots: ['top', 'outerwear'], observation: 'mock top and layer match' },
+          { kind: 'outfit', slots: ['bottom', 'shoes'], observation: 'mock footwear repeats bottom color' },
+          { kind: 'reference', slots: ['top'], observation: 'mock reference repeats the top pattern' },
+        ],
       }) } }] });
     },
   });

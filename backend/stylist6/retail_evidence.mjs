@@ -50,6 +50,8 @@ export function purchaseEvidence(item, offer, requirement, now = Date.now()) {
   if (!/^[A-Z]{3}$/.test(requirement?.currency || '') || offer.currency !== requirement.currency ||
       !Number.isFinite(offer.price) || offer.price <= 0 ||
       !Number.isFinite(offer.landedPrice) || offer.landedPrice < offer.price) return 'price_unverified';
+  if (requirement.requireCatalogPriceMatch === true &&
+      (offer.price !== item.price || offer.currency !== item.currency)) return 'catalog_price_drift';
   return 'verified';
 }
 

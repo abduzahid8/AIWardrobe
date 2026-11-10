@@ -7,7 +7,10 @@ const read = (name) => JSON.parse(fs.readFileSync(name, 'utf8'));
 const adjudicated = annotationsPath ? read(annotationsPath) : {};
 const scores = new Map();
 const weights = { visualCohesion: .30, referenceFidelity: .30, styleFit: .15, occasionFit: .15, formalityFit: .10 };
-const runs = ['receipt.json', 'follow-up/receipt.json', 'coverage-check/receipt.json'].map((file) => {
+const mandatory = ['receipt.json', 'follow-up/receipt.json', 'coverage-check/receipt.json'];
+const followups = ['structured-evidence/receipt.json', 'structured-json-mode/receipt.json', 'reverse-order-single-wave/receipt.json'];
+const files = [...mandatory, ...followups.filter((file) => fs.existsSync(directory + '/' + file))];
+const runs = files.map((file) => {
   const run = read(directory + '/' + file);
   for (const row of run.verdicts) {
     const score = Object.entries(weights).reduce((sum, [key, weight]) => sum + row[key] * weight, 0);
@@ -20,6 +23,7 @@ const runs = ['receipt.json', 'follow-up/receipt.json', 'coverage-check/receipt.
         !['top', 'outerwear', 'bottom', 'shoes'].includes(slot)) throw new Error('invalid_review_annotation');
   }
   return { file, calls: run.calls, wallMs: run.wallMs, valid: run.verdicts.length,
+    http200: run.events.filter(({ httpStatus }) => httpStatus === 200).length,
     abstained: run.diagnostics.visualAbstained, rejected: run.diagnostics.visualRejected,
     selected: run.winner, falseMissing, abstentionReasons: run.events.filter((event) => event.outcome === 'abstain').map((event) => event.reason),
     reportedTokens: run.events.reduce((sum, event) => sum + (event.usage?.total_tokens || 0), 0),
