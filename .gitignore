@@ -155,3 +155,7 @@ AIWardrobe_Style_References_46_Pilot.zip
 style_references_private/
 **/reference_upload_receipt.json
 **/private_reference_vault/
+
+# Original licensed fashion lookbook source files: never publish them in Git
+/image-teaste/
+**/image-teaste/
