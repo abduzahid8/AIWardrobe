@@ -75,6 +75,22 @@ test('recorded provider verdict parses to structured evidence', async () => {
   assert.deepEqual(events, [{ candidateId: 's6_abc123', outcome: 'judged', latencyMs: events[0].latencyMs }]);
 });
 
+test('Gemini 3.8 stable receives multimodal JSON request without removed sampling parameters', async () => {
+  const { impl, calls } = stubFetch();
+  const critic = createHostedVisualCritic({
+    apiKey: KEY, fetchImpl: impl,
+    resolveReference: async () => ({ base64: jpeg(9).toString('base64'), mimeType: 'image/jpeg' }),
+  });
+  const results = await critic([candidate], { style: 'old_money', occasion: 'Work' });
+  assert.equal(results.length, 1);
+  const sent = JSON.parse(calls.find((c) => String(c.url).includes('generateContent')).body);
+  assert.ok(!Object.hasOwn(sent.generationConfig, 'temperature'));
+  assert.ok(!Object.hasOwn(sent.generationConfig, 'topP'));
+  assert.ok(!Object.hasOwn(sent.generationConfig, 'topK'));
+  assert.equal(sent.generationConfig.responseMimeType, 'application/json');
+  assert.equal(sent.contents[0].parts.filter((p) => p.inlineData).length, 3);
+});
+
 test('unparseable provider text abstains instead of scoring', async () => {
   const { impl } = stubFetch({ verdict: 'no json here' });
   const events = [];
