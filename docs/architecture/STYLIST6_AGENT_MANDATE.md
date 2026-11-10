@@ -1,3 +1,9 @@
+# MANDATORY STOP GATE (2026-11-10) — supersedes the previous full-rebuild instruction
+
+**Read `docs/architecture/STYLIST6_DECISION_GATE.md` first.** Do NOT execute the complete Stylist 6 rebuild below until a controlled, real-SKU, human-blind 12-scenario evaluation of Reference-first versus Creative-first versus V5 has selected a winner. The existing 8/8 mocked prototype tests are not fashion-quality evidence. Begin with a disposable offline comparison/replay harness and a reference lookbook quality set; do not connect production, deploy, use paid APIs without explicit test authorization or change auth/quotas. If pilot quality fails, STOP and document the bottleneck. The instructions below describe possible later implementation ONLY after the gate has passed.
+
+---
+
 # CODEX MANDATE — BUILD AND PROVE STYLIST 6, ONE ARCHITECTURAL LEAP
 
 You are principal fashion-recommendation ML engineer + senior TypeScript/React Native + secure backend engineer.
