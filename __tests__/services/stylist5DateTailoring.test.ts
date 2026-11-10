@@ -59,3 +59,40 @@ test('whole-outfit assessor never accepts a pronounced resort shirt under a dres
   const accepted=assessOutfitQuality(restrained,'semi_classic','Date night');
   expect(accepted.acceptance.passed).toBe(true);
 });
+
+
+test('visual evidence disambiguates two seersucker colorways whose titles omit the print', () => {
+  const sourceHash = 'a'.repeat(32), imageSha256 = 'b'.repeat(64);
+  const visionRow = (id: string, title: string, pattern: 'print' | 'solid') => {
+    const imageUrl = 'https://example.invalid/product/' + id + '.jpg';
+    return {
+      id, name: title, macroCategory: 'top', imageUrl, visualSourceHash: sourceHash,
+      visualFashion: {
+        version:1,sourceHash,imageUrl,imageSha256,model:'google/siglip2-base-patch16-224',
+        revision:'fixture-test',attributes: {
+          slot:{value:'top' as const,confidence:0.99,margin:0.95,evidence:'image-model' as const},
+          pattern:{value:pattern,confidence:0.91,margin:0.81,evidence:'image-model' as const},
+        },
+      },
+    };
+  };
+  const printed=visionRow('lands-end-499202-qof',
+    "Men's Short Sleeve Seersucker Cotton Shirt — St Tropez/Clear Blue Sky",'print');
+  const solid=visionRow('lands-end-499202-wn6',
+    "Men's Short Sleeve Seersucker Cotton Shirt — Eucalyptus",'solid');
+  expect(describeGarment(printed).pattern).toBe('print');
+  expect(describeGarment(printed).patternProminence).toBe('unknown');
+  expect(describeGarment(printed).evidence.some(e=>e.startsWith('image:pattern:'))).toBe(true);
+  expect(describeGarment(solid).pattern).toBe('solid');
+  const companions=tailored('Plain shirt').slice(1);
+  const printedVerdict=outfitQualityFloor([printed,...companions],date,strongEvidence);
+  expect(printedVerdict.passed).toBe(false);
+  expect(printedVerdict.reason).toBe('prominent_short_sleeve_print_conflicts_with_date_tailoring');
+  const solidVerdict=outfitQualityFloor([solid,...companions],date,strongEvidence);
+  expect(solidVerdict.passed).toBe(true);
+  // A nonmatching source image must not lend stale visual labels to a garment.
+  const stale={...printed,imageUrl:'https://example.invalid/changed-photo.jpg'};
+  expect(describeGarment(stale).evidence.some(e=>e.startsWith('image:pattern:'))).toBe(false);
+  const staleVerdict=outfitQualityFloor([stale,...companions],date,strongEvidence);
+  expect(staleVerdict.reason).not.toBe('prominent_short_sleeve_print_conflicts_with_date_tailoring');
+});
