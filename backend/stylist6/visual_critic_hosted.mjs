@@ -144,7 +144,13 @@ export function createHostedVisualCritic({
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify({
               contents: [{ role: 'user', parts }],
-              generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 600, temperature: 0.2 },
+              // Gemini 3.8 stable rejects legacy sampling knobs per Google's
+              // migration guide. Explicit 2.x fixtures retain legacy config.
+              generationConfig: {
+                responseMimeType: 'application/json',
+                maxOutputTokens: 600,
+                ...(model === 'gemini-3.8-flash' ? {} : { temperature: 0.2 }),
+              },
             }),
           });
           if (!response.ok) throw new Error(`provider_http_${response.status}`);
