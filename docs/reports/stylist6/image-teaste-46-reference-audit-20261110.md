@@ -4,7 +4,7 @@ Date: 2026-11-10. Data came **only from the user-uploaded `image-teaste.zip`**; 
 
 ## Actual media audit
 
-- ZIP: 93 entries including macOS resource forks and a directory; **46 full 1920×2560 JPG outfit collages**, photo_1 through photo_46; all SHA256 hashes distinct.
+- ZIP: 93 entries including macOS resource forks and a directory; **46 full JPG outfit collages (45 at 1920×2560, one at 1925×2560)**, photo_1 through photo_46; all SHA256 hashes distinct.
 - The uploaded collages depict flat-lay **menswear complete looks** (top, trousers, footwear, generally a layer, with watches, eyewear or fragrance as decorative accessories). They are NOT model-worn outfit photographs. No on-body fit or garment SKU can be inferred from them.
 - Reviewed and labeled every collage, with approximate visual top/layer/bottom/shoes, palette, seasons, purpose and silhouette. Manual annotations are *medium-confidence* and materials may only be visual guesses.
 - Counts across the 46 annotated examples: **39 layered**, **7 without outer layer**, **35 with knit-like or roll-neck base tops**, **26 with explicitly high-neck/roll-neck/mockneck top**, **29 with visually depicted loafers**.
