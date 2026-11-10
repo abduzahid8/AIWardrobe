@@ -53,5 +53,9 @@ jobs:
             }
             console.log("Stylist Node handler registered");
           '
+      - name: Install mobile domain test dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify Stylist 5 fashion acceptance regressions
+        run: npx jest --runInBand __tests__/services/stylist5DateTailoring.test.ts __tests__/services/humanQaStyling.test.ts __tests__/services/stylist5.test.ts
       - name: Ensure production files not modified by candidate
         run: git diff --exit-code -- backend/supabase/functions/generate-outfits/index.ts
