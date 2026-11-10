@@ -47,6 +47,11 @@ def build(folder, output):
     slots = {item["id"]: item["macroCategory"] for item in replay["admitted"]}
     hashes = read(folder / "references/hashes.json")
     rng = random.Random(int(package[:16], 16))
+    # Counterbalance deck sides so each arm appears first equally often
+    # across the twelve paired cases, while keeping allocation blinded.
+    count = len(replay["results"])
+    flips = [False] * ((count + 1) // 2) + [True] * (count // 2)
+    rng.shuffle(flips)
     key = {"package": package, "cases": {}}
     fields = []
 
@@ -78,7 +83,8 @@ def build(folder, output):
                  f'<p>{escape(scenario["brief"])}. Budget per look {cap}.</p>',
                  f'<img class="reference" src="{ref_asset}" alt="Fashion reference for {name}" loading="lazy">']
         order = list(ARMS)
-        rng.shuffle(order)
+        if flips[len(key["cases"])]:
+            order.reverse()
         key["cases"][name] = dict(zip("AB", order))
         for label, arm in key["cases"][name].items():
             if len(case[arm]) != 3:
