@@ -253,7 +253,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
         || (typeof item.pattern === 'string' && !/^(unknown|other|\s*)$/i.test(item.pattern))
         ? patternOf(item) : 'unknown';
   const patterned = ['stripe', 'check', 'print'].includes(pattern);
-  const prominentMotif = /\b(busy|bold|large|oversized|high[ -]contrast|medium[ -]contrast|all[ -]over|heavily|highly)(?:[ -]+(?:busy|bold|large|scale|geometric|patterned))?[ -]+(?:checks?|checked|plaid|tartan|stripes?|striped|paisley|floral|jacquard|brocade|intarsia|fair[ -]?isle|argyle|graphics?|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
+  const prominentMotif = /\b(busy|bold|large|oversized|high[ -]contrast|medium[ -]contrast|all[ -]over|heavily|highly)(?:[ -]+(?:busy|bold|large|scale|geometric|patterned|tropical|botanical|resort|abstract|colorful|multicolou?red)){0,2}[ -]+(?:checks?|checked|plaid|tartan|stripes?|striped|paisley|floral|jacquard|brocade|intarsia|fair[ -]?isle|argyle|graphics?|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
   const subtleMotif = /\b(subtle|tonal|micro|fine|small|low[ -]contrast)(?:[ -]+(?:fine|subtle|small|micro|scale))?[ -]+(?:checks?|checked|plaid|windowpane|houndstooth|stripes?|striped|pinstriped|paisley|floral|jacquard|brocade|intarsia|fair[ -]?isle|argyle|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
   // Large-scale, high-contrast checks read as statement patterns, not the
   // restrained checks minimalism and quiet tailoring allow. Buffalo (and
