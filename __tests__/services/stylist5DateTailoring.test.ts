@@ -1,5 +1,6 @@
 /** @jest-environment node */
 import { outfitQualityFloor } from '../../src/domain/outfitQualityFloor';
+import { assessOutfitQuality } from '../../src/domain/occasionRules';
 import { describeGarment } from '../../src/domain/garmentDescriptor';
 import { stylingContext } from '../../src/domain/stylingContext';
 import type { OutfitCoherence } from '../../src/domain/outfitCoherence';
@@ -46,4 +47,15 @@ test('a verified user-owned locked printed shirt is not silently replaced by the
   const locked=stylingContext({style:'semi_classic',occasion:'Date night',anchorId:'top-1'});
   const verdict=outfitQualityFloor(look,locked,strongEvidence);
   expect(verdict.reason).not.toBe('prominent_short_sleeve_print_conflicts_with_date_tailoring');
+});
+
+
+test('whole-outfit assessor never accepts a pronounced resort shirt under a dress blazer for a polished date', () => {
+  const loud=tailored('Blue short-sleeve all-over tropical floral printed shirt');
+  const result=assessOutfitQuality(loud,'semi_classic','Date night');
+  expect(result.acceptance.passed).toBe(false);
+  expect(result.acceptance.reason).toBeTruthy();
+  const restrained=tailored('Blue fine striped long-sleeve poplin shirt');
+  const accepted=assessOutfitQuality(restrained,'semi_classic','Date night');
+  expect(accepted.acceptance.passed).toBe(true);
 });
