@@ -34,7 +34,7 @@ function parseBriefs(raw){
     formats.add(JSON.stringify([roles,x.layerPolicy,palette,silhouette]));
     // Reference-first briefs carry a stable lookbook identity; no media URL
     // or unverified user-uploaded binary is sent to a model by this adapter.
-    const referenceId=typeof x.referenceId==='string' && /^rt_\\d{3}$/.test(x.referenceId)
+    const referenceId=typeof x.referenceId==='string' && /^rt_\d{3}$/.test(x.referenceId)
       ? x.referenceId : undefined;
     return {id,name:x.name.slice(0,140),roles,layerPolicy:x.layerPolicy,palette,silhouette,referenceId};
   }).map((b,i,a)=>{if(i===a.length-1)assert(formats.size>=4,'creative_briefs_not_diverse');return b});
