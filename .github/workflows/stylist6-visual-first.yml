@@ -47,9 +47,15 @@ jobs:
       - name: Syntax-check pilot harness and contact sheets
         run: |
           node --check scripts/stylist6/pilot_12.mjs
+          node --check scripts/stylist6/catalog_drift.mjs
+          node --check scripts/stylist6/image_access.mjs
           node --check backend/stylist6/catalog_adapter.mjs
           node --check backend/stylist6/visual_critic_hosted.mjs
           python3 -m py_compile scripts/stylist6/contact_sheets_12.py
+      - name: Verify catalog drift reporter (synthetic fixtures, NO live access)
+        run: node --test scripts/stylist6/catalog_drift.test.mjs
+      - name: Verify authorized image-access policy (blocked hosts, NO network)
+        run: node --test scripts/stylist6/image_access.test.mjs
       - name: Smoke-run one pilot scenario offline (S6 arms, NO image downloads)
         run: |
           node scripts/stylist6/pilot_12.mjs --out "$RUNNER_TEMP/s6-smoke" --scenarios S6-01

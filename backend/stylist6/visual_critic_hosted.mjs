@@ -20,7 +20,12 @@
 
 export const HOSTED_VISUAL_CRITIC_VERSION = 'hosted-visual-critic-v1';
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+// Default pinned 2026-11-10 from official AI Studio model docs: `gemini-2.0-flash`
+// is gone from the current lineup and `gemini-2.5-flash` is deprecated
+// (requests auto-route elsewhere — unacceptable for a judged comparison).
+// `gemini-3.6-flash` is documented Stable with multimodal input. The single
+// authorized live test must confirm the exact served model before bulk use.
+const DEFAULT_MODEL = 'gemini-3.6-flash';
 const DEFAULT_TIMEOUT_MS = 60000;
 const DEFAULT_MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
