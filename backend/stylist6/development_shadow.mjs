@@ -5,18 +5,23 @@ import { evaluateVisualShortlist, STYLIST6_VERSION } from './prototype.mjs';
 import { outfitPurchaseEvidence, trialImageDecision } from './retail_evidence.mjs';
 
 export async function compareAuthenticatedPlan({
-  mode, plan, baselineDeck, catalog, photos, reference, rights, offers,
-  purchase, scenario, apiKey, fetchImpl, onEvent, runId, claimRun, now = Date.now(),
+  mode, plan, baselineDeck, catalog, photos, reference, rights, offers, merchantSnapshot,
+  purchase, scenario, apiKey, fetchImpl, onEvent, signal, providerTimeoutMs, runId, claimRun, now = Date.now(),
 }) {
+  const vettedOffers = merchantSnapshot?.offers ?? offers;
   const withheld = (reason, diagnostics = {}) => ({ baselineDeck, visualDeck: null, reason, diagnostics });
   if (mode !== 'private-stylist6-shadow' || scenario?.synthetic !== true) return withheld('shadow_disabled');
   if (!/^[a-zA-Z0-9_-]{1,80}$/.test(runId || '') || typeof claimRun !== 'function') {
     return withheld('missing_shadow_admission');
   }
+  if (merchantSnapshot && (!Array.isArray(merchantSnapshot.provenance) || merchantSnapshot.country !== purchase?.country)) {
+    return withheld('merchant_snapshot_scope_mismatch');
+  }
   if (!Array.isArray(plan?.candidates) || !Array.isArray(baselineDeck) ||
-      !(catalog instanceof Map) || !(photos instanceof Map) || !Array.isArray(offers) || !purchase) {
+      !(catalog instanceof Map) || !(photos instanceof Map) || !Array.isArray(vettedOffers) || !purchase) {
     return withheld('missing_trusted_plan_inputs');
   }
+  if (!fetchImpl && merchantSnapshot?.scope !== 'authorized_merchant') return withheld('merchant_snapshot_required');
   if (!fetchImpl && !apiKey?.startsWith('nvapi-')) return withheld('trial_credential_unavailable');
   if (!reference || trialImageDecision(rights, { kind: 'reference', id: reference.id, sourceUrl: reference.sourceUrl, sha256: reference.sha256 }, now) !== 'cleared') {
     return withheld('reference_rights_unverified');
@@ -24,6 +29,9 @@ export async function compareAuthenticatedPlan({
   try { verifiedVisualImage(reference); } catch { return withheld('reference_bytes_invalid'); }
 
   const candidates = new Map(plan.candidates.map((look) => [look.id, look]));
+  const merchantAssets = merchantSnapshot && new Map(merchantSnapshot.provenance
+    .filter((entry) => entry.inference === 'cleared')
+    .map(({ sku, variantId, photoSha256 }) => [JSON.stringify([sku, variantId]), photoSha256]));
   const preferred = new Set([...baselineDeck, ...plan.candidates].map((look) => look.id));
   const eligible = [], resolved = new Map();
   for (const id of preferred) {
@@ -48,7 +56,11 @@ export async function compareAuthenticatedPlan({
     });
     if (products.some((product) => !product)) continue;
     const retailItems = products.map(({ row }, index) => ({ ...row, macroCategory: look.items[index].macroCategory }));
-    if (outfitPurchaseEvidence(retailItems, offers, { ...purchase, requireCatalogPriceMatch: true }, now).status !== 'verified') continue;
+    const eligibleOffers = merchantAssets ? vettedOffers.filter((offer) => {
+      const product = products.find(({ row }) => row.id === offer.sku);
+      return product && merchantAssets.get(JSON.stringify([offer.sku, offer.variantId])) === product.photo.sha256;
+    }) : vettedOffers;
+    if (outfitPurchaseEvidence(retailItems, eligibleOffers, { ...purchase, requireCatalogPriceMatch: true }, now).status !== 'verified') continue;
     const brief = { id: look.concept?.id || 'shared', name: look.concept?.title || 'Stylist look', referenceId: reference.id };
     eligible.push({ id, briefId: brief.id, brief, items: look.items });
     if (eligible.length === MAX_VISUAL_CANDIDATES) break;
@@ -56,7 +68,7 @@ export async function compareAuthenticatedPlan({
   if (eligible.length < 3) return withheld('insufficient_verified_candidates', { eligible: eligible.length });
 
   const critic = createHostedVisualCritic({
-    apiKey, provider: 'nvidia', fetchImpl, onEvent,
+    apiKey, provider: 'nvidia', fetchImpl, onEvent, signal, providerTimeoutMs,
     resolveReference: (id) => id === reference.id ? reference : null,
     resolveProduct: ({ id, imageUrl }) => resolved.get(id)?.imageUrl === imageUrl ? resolved.get(id).photo : null,
   });

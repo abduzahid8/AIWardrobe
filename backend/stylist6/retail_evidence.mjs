@@ -12,18 +12,32 @@ const HTTPS = (url) => {
 const supplied = (value) => typeof value === 'string' && value.trim().length > 0;
 const millis = (value) => typeof value === 'string' ? Date.parse(value) : NaN;
 
-export function trialImageDecision(manifest, asset, now = Date.now()) {
-  if (manifest?.version !== 1 || !Array.isArray(manifest.assets)) return 'missing_manifest';
+function resolveImageGrant(manifest, asset, now) {
+  if (manifest?.version !== 1 || !Array.isArray(manifest.assets)) return { status: 'missing_manifest' };
   const matches = manifest.assets.filter((row) =>
     row?.kind === asset.kind && row.id === asset.id && row.sha256 === asset.sha256);
-  if (matches.length !== 1) return matches.length ? 'ambiguous_grant' : 'missing_exact_asset_grant';
+  if (matches.length !== 1) return { status: matches.length ? 'ambiguous_grant' : 'missing_exact_asset_grant' };
   const grant = matches[0];
   if (!SHA256.test(asset.sha256) || !HTTPS(grant.sourceUrl) ||
-      (asset.sourceUrl && grant.sourceUrl !== asset.sourceUrl)) return 'source_mismatch';
+      (asset.sourceUrl && grant.sourceUrl !== asset.sourceUrl)) return { status: 'source_mismatch' };
   if (!supplied(grant.rightsHolder) || !supplied(grant.reviewedBy) ||
-      !supplied(grant.evidence?.reference) || !SHA256.test(grant.evidence?.sha256 || '')) return 'missing_grant_evidence';
+      !supplied(grant.evidence?.reference) || !SHA256.test(grant.evidence?.sha256 || '')) return { status: 'missing_grant_evidence' };
   if (grant.status !== 'active' || !(millis(grant.validFrom) <= now) ||
-      !(grant.expiresAt === null || millis(grant.expiresAt) > now)) return 'inactive_grant';
+      !(grant.expiresAt === null || millis(grant.expiresAt) > now)) return { status: 'inactive_grant' };
+  return { status: 'cleared', grant };
+}
+
+export function reviewerImageDecision(manifest, asset, now = Date.now()) {
+  const { status, grant } = resolveImageGrant(manifest, asset, now);
+  if (!grant) return status;
+  const review = grant.privateReview;
+  return review?.redistribute === true && review.audience === 'assigned_independent_reviewers'
+    ? 'cleared' : 'reviewer_scope_denied';
+}
+
+export function trialImageDecision(manifest, asset, now = Date.now()) {
+  const { status, grant } = resolveImageGrant(manifest, asset, now);
+  if (!grant) return status;
   const trial = grant.nvidiaTrial;
   if (trial?.submit !== true || trial?.territory !== 'global' ||
       trial?.providerServiceImprovement !== true || trial?.terms !== 'nvidia-api-trial' ||

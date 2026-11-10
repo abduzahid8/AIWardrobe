@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { importMerchantSnapshot } from './merchant_snapshot.mjs';
 import { compareAuthenticatedPlan } from './development_shadow.mjs';
 
 const now = Date.parse('2026-11-10T12:00:00Z');
@@ -116,4 +117,82 @@ test('only one admitted shadow call can judge a plan with the same run identity'
   assert.equal(calls.length, 4);
   assert.equal(results.filter((row) => row.reason === 'shadow_already_claimed').length, 1);
   assert.equal(results.filter((row) => row.visualDeck?.length === 3).length, 1);
+});
+
+
+function privateExport(input, modify = () => {}) {
+  const authority = { merchantId: 'synthetic-merchant', country: 'UZ', currency: 'UZS', priceDecimals: 2,
+    source: 'merchant_feed', scope: 'synthetic' };
+  const variants = input.offers.map((offer) => ({
+    ...offer, priceMinor: offer.price * 100, shippingMinor: 800, landedMinor: offer.landedPrice * 100,
+    photo: { sourceUrl: input.catalog.get(offer.sku).image_url, sha256: input.photos.get(offer.sku).sha256 },
+  }));
+  const snapshot = { version: 1, ...authority, variants };
+  modify(snapshot);
+  const bytes = Buffer.from(JSON.stringify(snapshot));
+  return importMerchantSnapshot({
+    bytes, evidenceSha256: createHash('sha256').update(bytes).digest('hex'), evidenceRef: 'synthetic fixture only',
+    authority, catalog: input.catalog, bindings: input.offers, rights: input.rights, now,
+  });
+}
+
+test('one-merchant one-destination synthetic feed supports a verified three-look shadow deck', async () => {
+  const input = fixture(), calls = [];
+  const merchantSnapshot = privateExport(input, ({ variants }) => {
+    variants.find(({ sku }) => sku === 'top-0').stock = 'out_of_stock';
+  });
+  assert.equal(merchantSnapshot.scope, 'synthetic');
+  assert.equal(merchantSnapshot.offers.length, 15);
+  assert.equal(merchantSnapshot.excluded.size_or_stock_unverified, 1);
+  assert.equal(merchantSnapshot.provenance.filter(({ reviewerDistribution }) => reviewerDistribution).length, 0);
+  const result = await compareAuthenticatedPlan({ ...input, merchantSnapshot, fetchImpl: mock(calls) });
+  assert.deepEqual(new Set(calls), new Set(['look-1', 'look-2', 'look-3']));
+  assert.equal(result.baselineDeck, input.baselineDeck);
+  assert.equal(result.visualDeck.length, 3);
+  assert.equal(new Set(result.visualDeck.flatMap(({ items }) => items.map(({ id }) => id))).size, 12);
+  assert.ok(result.visualDeck.every((look) => input.plan.candidates.includes(look)));
+});
+
+test('merchant export preserves separate inference and reviewer grants, rejects stale and conflicting evidence', () => {
+  const input = fixture();
+  const row = input.rights.assets.find(({ id }) => id === 'top-3');
+  row.privateReview = { redistribute: true, audience: 'assigned_independent_reviewers' };
+  delete row.nvidiaTrial;
+  const verified = privateExport(input, ({ variants }) => {
+    variants.find(({ sku }) => sku === 'top-0').observedAt = '2026-11-08T10:00:00Z';
+    variants.find(({ sku }) => sku === 'top-1').shippingConfirmed = false;
+    variants.find(({ sku }) => sku === 'top-2').size = 'S';
+    variants.find(({ sku }) => sku === 'shoes-1').variantId = 'shoes-2-M';
+    variants.push(variants.find(({ sku }) => sku === 'shoes-3'));
+    variants.find(({ sku }) => sku === 'bottom-0').landedMinor = 9000;
+  });
+  assert.deepEqual(verified.excluded, {
+    stale_offer: 1, destination_unverified: 1, variant_identity_unverified: 2,
+    invalid_merchant_price: 1, duplicate_variant_offer: 2,
+  });
+  const reviewOnly = verified.provenance.find(({ sku }) => sku === 'top-3');
+  assert.equal(reviewOnly.inference, 'trial_scope_denied');
+  assert.equal(reviewOnly.reviewerDistribution, true);
+});
+
+test('shadow abstains on wrong merchant photo bytes and does not retry a provider timeout', async () => {
+  const input = fixture(), calls = [], events = [];
+  const merchantSnapshot = privateExport(input);
+  input.photos.set('top-0', { ...input.photos.get('top-0'), bytes: Buffer.alloc(256) });
+  const healthy = mock(calls);
+  const result = await compareAuthenticatedPlan({ ...input, merchantSnapshot, providerTimeoutMs: 40,
+    fetchImpl: (url, init) => {
+      if (JSON.parse(init.body).messages[0].content[0].text.includes('exactly "look-1"')) {
+        calls.push('look-1');
+        return new Promise(() => {});
+      }
+      return healthy(url, init);
+    },
+    onEvent: (event) => events.push(event),
+  });
+  assert.deepEqual(new Set(calls), new Set(['look-1', 'look-2', 'look-3']));
+  assert.equal(calls.length, 3);
+  assert.equal(result.visualDeck, null);
+  assert.equal(result.baselineDeck, input.baselineDeck);
+  assert.equal(events.find(({ candidateId }) => candidateId === 'look-1').reason, 'provider_deadline');
 });
