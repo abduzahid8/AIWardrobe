@@ -91,6 +91,60 @@ test('Gemini 3.8 stable receives multimodal JSON request without removed samplin
   assert.equal(sent.contents[0].parts.filter((p) => p.inlineData).length, 3);
 });
 
+test('NVIDIA Nemotron VL receives reference and actual product images in one authorized POST', async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init });
+    if (String(url).startsWith('https://cdn.example.com/')) {
+      return { ok: true, status: 200, arrayBuffer: async () => jpeg(3) };
+    }
+    return { ok: true, status: 200, json: async () => ({
+      choices: [{ message: { content: verdictJson } }],
+    }) };
+  };
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey: KEY, fetchImpl,
+    resolveReference: async () => ({ base64: jpeg(4).toString('base64'), mimeType: 'image/jpeg' }),
+  });
+  const out = await critic([candidate], { style: 'old_money', occasion: 'Work' });
+  assert.equal(out.length, 1);
+  assert.match(out[0].criticVersion, /nvidia\/nvidia\/nemotron-3\.5-super-vl-120b-a12b$/);
+  assert.equal(out[0].estimatedCostUsd, null);
+  const nvidia = calls.filter(x => String(x.url).includes('integrate.api.nvidia.com'));
+  assert.equal(nvidia.length, 1);
+  assert.equal(nvidia[0].init.method, 'POST');
+  assert.equal(nvidia[0].init.headers.Authorization, 'Bearer '+KEY);
+  const req = JSON.parse(nvidia[0].init.body);
+  assert.equal(req.model, 'nvidia/nemotron-3.5-super-vl-120b-a12b');
+  assert.equal(req.stream, false);
+  assert.equal(req.messages.length, 1);
+  const parts = req.messages[0].content;
+  assert.equal(parts.filter(x => x.type === 'image_url').length, 3);
+  assert.ok(parts.filter(x => x.type === 'image_url').every(x => x.image_url.url.startsWith('data:image/jpeg;base64,')));
+  assert.equal(req.chat_template_kwargs.enable_thinking, false);
+});
+
+test('NVIDIA failure and malformed response abstain rather than fabricate a judgment', async () => {
+  for(const response of [
+    { ok:false, status:429 },
+    { ok:true, status:200, json:async()=>({choices:[{message:{content:'unparseable'}}]}) },
+  ]) {
+    let postCalls=0;
+    const fetchImpl = async (url) => {
+      if(String(url).startsWith('https://cdn.example.com/'))
+        return {ok:true,status:200,arrayBuffer:async()=>jpeg(3)};
+      postCalls++;
+      return response;
+    };
+    const critic = createHostedVisualCritic({
+      provider:'nvidia',apiKey:KEY,fetchImpl,
+      resolveReference:async()=>({base64:jpeg(4).toString('base64'),mimeType:'image/jpeg'}),
+    });
+    assert.deepEqual(await critic([candidate], {style:'old_money'}), []);
+    assert.equal(postCalls,1);
+  }
+});
+
 test('unparseable provider text abstains instead of scoring', async () => {
   const { impl } = stubFetch({ verdict: 'no json here' });
   const events = [];
