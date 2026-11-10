@@ -40,6 +40,8 @@ jobs:
         run: node --test backend/stylist6/reference_library.test.mjs
       - name: Verify 46 curated outfit briefs and reference-first integration (offline mocks)
         run: node --test backend/stylist6/lookbook_briefs.test.mjs
+      - name: Verify flat-lay ZIP import never stores unsafe/unreviewed media
+        run: python3 -m unittest scripts/style_references/test_import_flatlay_archive.py -v
       - name: Confirm this workflow is not an authorized production release
         run: |
           echo "Stylist 6 is isolated; no deploys, quota calls, migrations or production cutover."
