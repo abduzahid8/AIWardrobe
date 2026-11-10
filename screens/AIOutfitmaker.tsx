@@ -3,6 +3,8 @@ import {outfitDescription,outfitConceptTitle,distinctStylingTips,resolveSelectio
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
+import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, buildStylist6BridgeBody, acceptStylist6DevDeck, type DevEngine} from '../src/services/stylist6Dev';
+import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
 import {recentLookSimilarity} from '../src/domain/outfitVisualSignature';
@@ -666,6 +668,14 @@ const AIOutfitGenerator = () => {
   const [resultBudget, setResultBudget] = useState<ReturnType<typeof parseBudgetFromText>>(null);
   const [inventoryNote, setInventoryNote] = useState('');
   const [error, setError] = useState('');
+  // Development-only engine choice. The picker renders only when
+  // STYLIST6_DEV_ENABLED, so release builds can never select Stylist 6.
+  const [devEngine, setDevEngine] = useState<DevEngine>('stylist5');
+  // Actual engine that produced the visible deck (or null before/after).
+  const [lastEngineVersion, setLastEngineVersion] = useState<string | null>(null);
+  const [lastEngineDetail, setLastEngineDetail] = useState<string | null>(null);
+  // Dev-only: real failure code of the last failed generation.
+  const [lastFailureCode, setLastFailureCode] = useState<string | null>(null);
   const displayRates = useUzsDisplayRates();
   const [userPrompt, setUserPrompt] = useState('');
   const [budgetAmount, setBudgetAmount] = useState('');
@@ -1365,6 +1375,9 @@ const AIOutfitGenerator = () => {
     setLoading(true);
     setError('');
     setOutfits([]);
+    setLastEngineVersion(null);
+    setLastEngineDetail(null);
+    setLastFailureCode(null);
 
     const selectedClothing: any[] = [];
 
@@ -1584,15 +1597,50 @@ const AIOutfitGenerator = () => {
         }
         throw error;
       }
-      const { data, error: invokeError } = await withRequestDeadline((signal) => supabase.functions.invoke('generate-outfits', {
-        signal,
-        headers: {Authorization: `Bearer ${generationAccessToken}`},
-        body: requestBody,
-      }), EDGE_TIMEOUT_MS, cancelSignal);
+      // Development Stylist 6 path: the real local ranker over live catalog
+      // rows via the loopback bridge. Ranking failures surface below and
+      // are never replaced with a Stylist 5 deck.
+      const s6Active = STYLIST6_DEV_ENABLED && devEngine === 'stylist6';
+      let data: any;
+      let invokeError: any;
+      if (s6Active) {
+        const catalogRows = await loadStylistCatalogInventory(cancelSignal);
+        if (!isCurrentGeneration()) return;
+        const bridgeBody = buildStylist6BridgeBody({
+          request: {
+            style: styleToUse,
+            occasion: occasionToUse || 'Any',
+            brief: edgePrompt,
+            weather: resolvedWeather?.temp != null
+              ? {temp: resolvedWeather.temp, condition: resolvedWeather.condition || 'clear'}
+              : undefined,
+            budget: shopBudget ? {amount: shopBudget.amount, currency: shopBudget.currency} : undefined,
+            preferences: useStylePreferenceStore.getState().preferences,
+            recentSignatures: history.recentLookSignatures,
+            excludeItemIds,
+          },
+          catalogRows: catalogRows as unknown as Record<string, unknown>[],
+        });
+        try {
+          data = await withRequestDeadline((signal) => invokeStylist6Bridge(bridgeBody, {signal}), EDGE_TIMEOUT_MS, cancelSignal);
+        } catch (error) { invokeError = error; }
+      } else {
+        ({ data, error: invokeError } = await withRequestDeadline((signal) => supabase.functions.invoke('generate-outfits', {
+          signal,
+          headers: {Authorization: `Bearer ${generationAccessToken}`},
+          body: requestBody,
+        }), EDGE_TIMEOUT_MS, cancelSignal));
+      }
 
       if (!isCurrentGeneration()) return;
       if (__DEV__) void 0;
-      if (invokeError) throw await outfitGenerationFailure(data, invokeError);
+      // The dev bridge throws classified Stylist 6 failures; rethrow them
+      // intact so their real code reaches the screen. Never translate a
+      // Stylist 6 failure through the Stylist 5 code map.
+      if (invokeError) {
+        if (invokeError instanceof OutfitGenerationFailure) throw invokeError;
+        throw await outfitGenerationFailure(data, invokeError);
+      }
 
       if (shopBudget?.fx && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
       if (data && data.success && data.outfits && data.outfits.length > 0) {
@@ -1638,9 +1686,18 @@ const AIOutfitGenerator = () => {
             weather: resolvedWeather,
           };
         };
-        const prepared = prepareStylistResponse(data.outfits, alternativeItems, {
+        // The Stylist 6 dev deck is ranked by the bridge over catalog rows, so
+        // it flows through the shop pipeline with its exact plan intact: the
+        // shared Stylist 5 taste gates (base-shirt-only tops, style-judge
+        // repair, closest-match recovery) must not rewrite it. Only the
+        // rendering contract is enforced; budgets still apply downstream.
+        const pipelineSource = s6Active ? 'shop' : effectiveSource;
+        const s6Acceptance = s6Active ? acceptStylist6DevDeck(data.outfits) : null;
+        const prepared = s6Acceptance
+          ? {cleaned: s6Acceptance.accepted, accepted: s6Acceptance.accepted, recovered: [] as any[], rejections: s6Acceptance.rejections}
+          : prepareStylistResponse(data.outfits, alternativeItems, {
           anchorId: baseItemId, style: styleToUse, occasion: `${occasionToUse} ${effectivePrompt || promptText || ''}`,
-          weather: resolvedWeather, source: effectiveSource, accepts: fitsCap,
+          weather: resolvedWeather, source: pipelineSource, accepts: fitsCap,
           preferences: useStylePreferenceStore.getState().preferences,
           recentLookSignatures: history.recentLookSignatures,
           history,
@@ -1724,7 +1781,7 @@ const AIOutfitGenerator = () => {
           archetypes: deckArchetypes,
           similarities: deckSimilarities,
           inventory: deckInventory,
-        } = /^stylist-5-/.test(String(data.generationVersion || ''))
+        } = s6Active || /^stylist-5-/.test(String(data.generationVersion || ''))
           ? {deck:budgetedOutfits,relaxed:false,relaxReason:undefined,
              archetypes:[] as string[],similarities:[] as {a:number;b:number;score:number}[],
              inventory:undefined as ReturnType<typeof assembleDiverseDeck<GeneratedOutfit>>['inventory'] | undefined}
@@ -1819,6 +1876,10 @@ const AIOutfitGenerator = () => {
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`), []);
 
         if (finalOutfits.length === 0) {
+          if (s6Active) {
+            throw new OutfitGenerationFailure(
+              'outfitMaker.noMatchingClothing', 'stylist6_deck_empty', 'stylist6_dev');
+          }
           throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing');
         }
 
@@ -1839,12 +1900,17 @@ const AIOutfitGenerator = () => {
           // Repair may adjust labels, but must never reintroduce a product
           // that the authoritative backend deck successfully avoided.
           for (const [slot,count] of Object.entries(previousDeckOverlapBySlot)) {
-            if (data.generationVersion && !/^stylist-5-/.test(String(data.generationVersion)) && count > Number(data.previousDeckOverlapBySlot?.[slot] ?? 0)) throw new Error('client_rotation_overlap');
+            // The dev bridge ships its exact deck; rotation-overlap audit
+            // applies to recomposed edge decks only.
+            if (!s6Active && data.generationVersion && !/^stylist-5-/.test(String(data.generationVersion)) && count > Number(data.previousDeckOverlapBySlot?.[slot] ?? 0)) throw new Error('client_rotation_overlap');
           }
 
           if (!await consumeOrPaywall('aiOutfits', {cancelSignal}) || !isCurrentGeneration()) return;
           setResultBudget(shopBudget);
           setInventoryNote(data.inventoryReason==='distinct_editorial_inventory_limited' ? t('outfitMaker.distinctInventoryLimited') : '');
+          // Record the ACTUAL engine that produced this deck for dev display.
+          setLastEngineVersion(String(data.generationVersion || 'unknown'));
+          setLastEngineDetail(data?.diagnostics?.visualVerdict ? `visual ${String(data.diagnostics.visualVerdict)}` : (s6Active ? 'local bridge' : null));
           setOutfits(shownOutfits);
           // History persistence must not turn already rendered success into
           // an error (or charge a use for a screen cleared by a cache failure).
@@ -1887,6 +1953,9 @@ const AIOutfitGenerator = () => {
       if (isMounted.current) {
         setOutfits([]);
         setLoading(false);
+        setLastFailureCode(failure instanceof OutfitGenerationFailure
+          ? String(failure.code || failure.translationKey || failure.message || 'unknown')
+          : String((failure as Error)?.message || 'unknown'));
         setError(t(messageKey, {
           defaultValue: 'Could not create an outfit right now. Please try again.',
         }));
@@ -1916,7 +1985,14 @@ const AIOutfitGenerator = () => {
             <View style={styles.headerRight} />
           </View>
 
-          {__DEV__ && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true' && <StylistRuntimeDiagnostic />}
+          {__DEV__ && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true' && <StylistRuntimeDiagnostic engine={lastEngineVersion || undefined} detail={lastEngineDetail || undefined} />}
+          {STYLIST6_DEV_ENABLED && lastEngineVersion ? (
+            <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
+              <ScaledText testID="stylistEngineBanner" style={{fontSize: 11, textAlign: 'center', color: '#173A65', fontWeight: '700'}}>
+                {`Engine ${lastEngineVersion}${lastEngineDetail ? ` · ${lastEngineDetail}` : ''}`}
+              </ScaledText>
+            </View>
+          ) : null}
           {planningDate && (
             <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
               <View style={styles.planningBanner}>
@@ -1968,6 +2044,11 @@ const AIOutfitGenerator = () => {
                     <ScaledText style={styles.matchPillText}>{t(selectionBadgeKey(outfit.selectionSource))}</ScaledText>
                   </LinearGradient>
                 </View>
+                {STYLIST6_DEV_ENABLED && outfit.engineVersion ? (
+                  <ScaledText testID={`stylistEngine-${index}`} style={{fontSize: 10, color: '#526174', marginTop: 6}}>
+                    {outfit.engineVersion}
+                  </ScaledText>
+                ) : null}
 
                 {outfit.concept && <ScaledText style={[styles.outfitDesc,{fontWeight:'700',fontSize:20,marginBottom:12}]}>
                   {outfitConceptTitle(outfit.concept.id, outfit.concept.title)}
@@ -2609,12 +2690,42 @@ const AIOutfitGenerator = () => {
               )}
 
 
+            {STYLIST6_DEV_ENABLED ? (
+              <View style={[styles.formGroup, {marginTop: 12, padding: 14}]}>
+                <ScaledText style={{color: D.textPrimary, fontWeight: '700', marginBottom: 4}}>
+                  {'Engine (dev only)'}
+                </ScaledText>
+                <View style={{flexDirection:'row', gap:6}}>
+                  {(['stylist5','stylist6'] as const).map(engine => (
+                    <TouchableOpacity key={engine} testID={`stylistEnginePick-${engine}`}
+                      accessibilityRole="radio" accessibilityState={{checked:devEngine===engine}}
+                      accessibilityLabel={engine === 'stylist5' ? 'Stylist 5' : 'Stylist 6 local'}
+                      onPress={() => setDevEngine(engine)}
+                      style={{paddingHorizontal:12,paddingVertical:7,borderRadius:10,
+                        backgroundColor:devEngine===engine?D.accent:'rgba(23,58,101,0.08)'}}>
+                      <ScaledText style={{color:devEngine===engine?'#FFF':D.textPrimary,fontWeight:'700'}}>
+                        {engine === 'stylist5' ? 'Stylist 5' : 'Stylist 6 (local)'}
+                      </ScaledText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <ScaledText style={{color: D.textSecondary, fontSize: 12, marginTop: 6}}>
+                  {'Stylist 6 runs the local ranker over the live catalog. Failures are shown, never replaced.'}
+                </ScaledText>
+              </View>
+            ) : null}
+
             </ScrollView>
           </Reanimated.View>
           {/* Keep failures visible beside the retry action, outside scrolling choices. */}
           <View style={styles.stickyFooter}>
             {error ? <View accessibilityRole="alert" accessibilityLiveRegion="assertive" style={[styles.errorBox, { marginBottom: 12 }]}>
               <ScaledText style={styles.errorText}>{error}</ScaledText>
+              {STYLIST6_DEV_ENABLED && lastFailureCode ? (
+                <ScaledText testID="stylistFailureCode" style={[styles.errorText, { marginTop: 4, fontSize: 12 }]}>
+                  {`code: ${lastFailureCode}`}
+                </ScaledText>
+              ) : null}
             </View> : null}
             <TouchableOpacity
               testID="stylistGenerate"
