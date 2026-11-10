@@ -1,3 +1,39 @@
+# UPDATE 2026-11-10 — SOURCE FOLDER `image-teaste` EXISTS ON OWNER'S MAC
+
+**THIS OVERRIDES THE "MUST DOWNLOAD CANONICAL ZIP" STEP BELOW.** The user showed a Finder/IDE screenshot of a directory named `image-teaste` next to `i18n`. Do NOT assume it is in Downloads; locate the directory in the actual AIWardrobe checkout first. The owner's Mac is NOT directly mounted into this ChatGPT session, but Codex on that Mac can inspect it.
+
+The repository now contains `scripts/style_references/verify_image_teaste_folder.py` with a canonical **SHA-256 aggregate over all 46 original JPEG filename + SHA-256 pairs** independently derived from the verified ZIP in this conversation:
+
+`8b7b47845d678d15952dce6b1b16a42aeb4d94955e4ba08b8d0ede828167f04f`
+
+Run from the actual local checkout:
+
+```bash
+git switch codex/stylist6-visual-first-20261110
+git pull --ff-only
+python3 scripts/style_references/verify_image_teaste_folder.py --folder ./image-teaste
+# If passing repo root instead:
+python3 scripts/style_references/verify_image_teaste_folder.py --folder .
+```
+
+A successful result MUST report `verified_canonical_46_photo_folder`, `count:46`, `total_bytes:12972713`, and `uploaded:false`. If any source byte differs, stop — do not silently accept unknown Telegram photos.
+
+If the source folder matches, prepare a private upload-compatible ZIP **without downloading or recreating the exact old ZIP bytes**:
+
+```bash
+python3 scripts/style_references/verify_image_teaste_folder.py \
+ --folder ./image-teaste \
+ --output-private-bundle "$HOME/Downloads/s6-reference46-private-repacked.zip"
+python3 scripts/style_references/upload_private_reference_bundle.py \
+ --archive "$HOME/Downloads/s6-reference46-private-repacked.zip"
+```
+
+The newly repacked ZIP has a different *ZIP-level* hash by design; all 46 original JPG hashes are preserved and validated. **This is dry-run only.** Supabase upload still needs explicit owner authorization, reviewed image rights and private server credentials. Do not upload into a public bucket or publish photos into the public GitHub repository. The `.gitignore` explicitly excludes `image-teaste/`.
+
+Once the original images are verified, continue the actual **live-catalog drift comparison** with the existing `scripts/stylist6/catalog_drift.mjs` and the model-backed, authorized, single-request image test; then gather three independent human blind reviews. Do not skip the 12-scenario quality gate. The hosted critic defaults to `gemini-3.8-flash`; its generation config has been made compatible with the current Google migration requirements (no legacy sampling temperature in 3.8 requests).
+
+---
+
 # CODEX HANDOFF — complete a real Reference-First Stylist 6 pilot
 
 **Updated:** 2026-11-10
