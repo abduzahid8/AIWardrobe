@@ -66,7 +66,21 @@ Consequences, all verified from the two tables, no new data invented:
    dropped in and all three arms re-run unchanged. Export shape mapping:
    live JSON rows use the same keys as `data/` rows plus optional
    `fashion_slot`/`fashion_subtype` (used for the pool slot when present,
-   adapter projection otherwise).
+   adapter projection otherwise). Live `outerwear/pullover` knit items now
+   project to `top/fine-knit` with `live_intelligence_role_projection`
+   provenance (tested); non-knit pullovers and cardigans stay outerwear.
+
+## Footwear: the binding constraint (verified 2026-11-10)
+
+Live UZS shoe supply per the audit: loafer 23 (min 1,299,900), sneaker 21
+(min 549,900), minimal-sneaker 11 (min 649,900). Reference briefs demand
+loafer in ~2/3 of layered looks plus derby/boot/chelsea — categories with no
+tabulated live UZS supply at all. Snapshot UZS shows the same shape at lower
+prices (loafer 211 from 649,900; derby 234 from 1,499,900; boot 35 from
+1,199,900; chelsea 12 from 779,900): the 649,900–779,900 tier that makes any
+sub-1.5M outfit conceivable exists ONLY as stale snapshot variants, not in
+live stock. Any staging pilot must either raise the floor price point or
+accept sneaker-only budget looks — an inventory fact, not a retrieval bug.
 
 ## Image availability under the authorized-access policy (measured)
 

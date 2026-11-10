@@ -127,6 +127,28 @@ export function liveHint(row) {
   return null;
 }
 
+// A knit pullover the intelligence table files under outerwear is still worn
+// as a BASE top in ~27/46 reference looks (verified on photo_3/photo_5).
+// Without this wearing-role projection the 268 live outerwear/pullover items
+// would be invisible to every S6 top role on a live replay. Cardigans never
+// take this path.
+// NOTE: the bare word "pullover" alone is NOT knit evidence (sport anoraks
+// exist); require genuine knit/material wording.
+const PULLOVER_BASE_LAYER = /\bknits?\b|\bsweaters?\b|\bturtlenecks?\b|\bmocknecks?\b|\bmock\snecks?\b|\broll[\s-]?necks?\b|\bhigh[\s-]?necks?\b|\bcrewnecks?\b|\bcrew\snecks?\b|\bjumpers?\b|\bfair[\s-]?isles?\b|\bcashmere\b|\bmerino\b|\bwool\b/i;
+const NOT_BASE_LAYER = /\bcardigans?\b/i;
+
+export function pulloverBaseLayer(row, hint) {
+  if (!hint || hint.macroCategory !== 'outerwear' || hint.subtype !== 'pullover') return null;
+  const text = `${row?.name || ''} ${row?.description || ''}`;
+  if (NOT_BASE_LAYER.test(text) || !PULLOVER_BASE_LAYER.test(text)) return null;
+  return {
+    macroCategory: 'top',
+    subtype: 'fine-knit',
+    via: 'live_intelligence_role_projection',
+    evidence: ['intelligence:outerwear/pullover worn as base top', 'knit base-layer wording in name/description'],
+  };
+}
+
 const finitePrice = (value) =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 
@@ -149,6 +171,25 @@ export function projectCatalogItem(row) {
   }
   const name = String(row.name || id);
   const hint = liveHint(row);
+  const roleProjected = pulloverBaseLayer(row, hint);
+  if (roleProjected) {
+    return Object.freeze({
+      id,
+      name,
+      macroCategory: roleProjected.macroCategory,
+      subtype: roleProjected.subtype,
+      color: inferColor(name),
+      texture: inferTexture(name),
+      imageUrl: row.image_url,
+      shopUrl: row.source_url,
+      price: row.price,
+      currency: row.currency,
+      brand: row.brand || null,
+      isShopItem: true,
+      visualEvidenceVerified: false,
+      projection: { kind: roleProjected.via, evidence: roleProjected.evidence },
+    });
+  }
   if (hint) {
     return Object.freeze({
       id,

@@ -126,10 +126,31 @@ test('live intelligence hints are honored with provenance, never remapped', asyn
   assert.equal(liveHint({ fashion_slot: 'top', fashion_subtype: 'spacesuit' }), null);
   assert.equal(liveHint({}), null);
   const item = projectCatalogItem(row({
-    id: 'live-1', name: 'Chunky Handmade Sweater',
+    id: 'live-1', name: 'Ripstop Stadium Anorak',
+    description: 'water-resistant nylon',
     fashion_slot: 'outerwear', fashion_subtype: 'pullover',
   }));
   assert.equal(item.macroCategory, 'outerwear');
   assert.equal(item.subtype, 'pullover');
   assert.equal(item.projection.kind, 'live_intelligence');
+});
+
+test('knit pullovers keep their top role under live hints; cardigans do not', async () => {
+  const { pulloverBaseLayer } = await import('./catalog_adapter.mjs');
+  const hint = { macroCategory: 'outerwear', subtype: 'pullover' };
+  const knit = pulloverBaseLayer(
+    { name: 'Brown Geometric Knit Pullover', description: 'merino wool' }, hint);
+  assert.deepEqual([knit.macroCategory, knit.subtype], ['top', 'fine-knit']);
+  assert.equal(knit.via, 'live_intelligence_role_projection');
+  assert.equal(pulloverBaseLayer({ name: 'Nylon Stadium Pullover' }, hint), null);
+  assert.equal(pulloverBaseLayer({ name: 'Knit Cardigan Pullover' }, hint), null);
+  assert.equal(pulloverBaseLayer({ name: 'Knit Pullover' },
+    { macroCategory: 'top', subtype: 'fine-knit' }), null);
+  const item = projectCatalogItem(row({
+    id: 'live-knit-1', name: 'Cream Mockneck Knit Pullover',
+    fashion_slot: 'outerwear', fashion_subtype: 'pullover',
+  }));
+  assert.equal(item.macroCategory, 'top');
+  assert.equal(item.subtype, 'fine-knit');
+  assert.equal(item.projection.kind, 'live_intelligence_role_projection');
 });
