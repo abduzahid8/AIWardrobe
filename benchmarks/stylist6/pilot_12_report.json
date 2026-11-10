@@ -1,7 +1,7 @@
 {
  "pilot": "stylist6-12-scenario-pilot",
- "generatedAt": "2026-11-10T05:27:56.343Z",
- "gitSha": "e136bd5db7aa373a4c027491a9431269dc1fa88b",
+ "generatedAt": "2026-11-10T05:34:40.086Z",
+ "gitSha": "70ccc006bb073d0b6f77c8bcba6fba88bbd2acd2",
  "provenance": {
   "v207sha256": "f90ced33ca3b0034c61cd2dfa289b189728dc75398cd72329f0b7c1854efc5e1",
   "stylist6prototype": "stylist6-visual-first-prototype-1",
@@ -15,8 +15,7 @@
   },
   "referenceIndex": "image-teaste-2026-11-10",
   "visualVerdict": "NOT_RUN",
-  "visualNotRunReason": "no hosted vision key and no authorized reference bytes in this environment; decks are retrieval shortlists for blind human review",
-  "imageReachabilityNote": "403-blocked brand CDNs from pilot host; app-side fetching may differ. Reviewers see labeled cells + these counts."
+  "visualNotRunReason": "no hosted vision key and no authorized reference bytes in this environment; decks are retrieval shortlists for blind human review"
  },
  "scenarios": [
   {
@@ -36,7 +35,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 508,
+     "wallMs": 491,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -85,7 +84,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 559,
+     "wallMs": 542,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -127,7 +126,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 2024,
+     "wallMs": 1972,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -213,7 +212,7 @@
        "utilityBounded": false,
        "feasibilityComplete": true
       },
-      "syncMs": 108.52979100000039,
+      "syncMs": 104.89416699999992,
       "eligible": 26454,
       "poolSize": 96,
       "rejections": {
@@ -262,7 +261,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 499,
+     "wallMs": 484,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -311,7 +310,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 535,
+     "wallMs": 520,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -353,7 +352,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 1885,
+     "wallMs": 1794,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -441,7 +440,7 @@
        "utilityBounded": false,
        "feasibilityComplete": true
       },
-      "syncMs": 78.03233400000045,
+      "syncMs": 76.71462499999961,
       "eligible": 27882,
       "poolSize": 96,
       "rejections": {
@@ -490,7 +489,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 478,
+     "wallMs": 465,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -539,7 +538,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 547,
+     "wallMs": 533,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -581,7 +580,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 1957,
+     "wallMs": 1974,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -668,7 +667,7 @@
        "utilityBounded": false,
        "feasibilityComplete": true
       },
-      "syncMs": 82.4562079999996,
+      "syncMs": 80.25279199999932,
       "eligible": 26252,
       "poolSize": 96,
       "rejections": {
@@ -717,7 +716,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 504,
+     "wallMs": 503,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -768,7 +767,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 578,
+     "wallMs": 576,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -810,7 +809,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 1857,
+     "wallMs": 1804,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -900,7 +899,7 @@
        "utilityBounded": false,
        "feasibilityComplete": true
       },
-      "syncMs": 91.57533300000068,
+      "syncMs": 90.41541700000016,
       "eligible": 27681,
       "poolSize": 96,
       "rejections": {
@@ -949,7 +948,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 468,
+     "wallMs": 458,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -998,7 +997,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 538,
+     "wallMs": 528,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -1040,7 +1039,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 1811,
+     "wallMs": 1801,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -1128,7 +1127,7 @@
        "utilityBounded": false,
        "feasibilityComplete": true
       },
-      "syncMs": 75.0049999999992,
+      "syncMs": 76.37783300000046,
       "eligible": 27276,
       "poolSize": 96,
       "rejections": {
@@ -1177,7 +1176,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 532,
+     "wallMs": 520,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -1225,7 +1224,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 617,
+     "wallMs": 589,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -1267,7 +1266,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 2090,
+     "wallMs": 1986,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -1356,7 +1355,7 @@
        "utilityBounded": false,
        "feasibilityComplete": true
       },
-      "syncMs": 85.44316599999911,
+      "syncMs": 80.11041599999953,
       "eligible": 26454,
       "poolSize": 96,
       "rejections": {
@@ -1405,7 +1404,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 548,
+     "wallMs": 539,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -1453,7 +1452,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 617,
+     "wallMs": 610,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -1495,7 +1494,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 2037,
+     "wallMs": 2079,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -1584,7 +1583,7 @@
        "utilityBounded": false,
        "feasibilityComplete": true
       },
-      "syncMs": 83.94054099999994,
+      "syncMs": 81.32287499999802,
       "eligible": 26454,
       "poolSize": 96,
       "rejections": {
@@ -1633,7 +1632,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 494,
+     "wallMs": 482,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -1682,7 +1681,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 563,
+     "wallMs": 551,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -1724,7 +1723,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 1974,
+     "wallMs": 1924,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -1812,7 +1811,7 @@
        "utilityBounded": true,
        "feasibilityComplete": true
       },
-      "syncMs": 91.76983299999847,
+      "syncMs": 84.01812499999869,
       "eligible": 27250,
       "poolSize": 96,
       "rejections": {
@@ -1861,7 +1860,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 453,
+     "wallMs": 462,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -1908,7 +1907,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 532,
+     "wallMs": 541,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -1951,7 +1950,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 1812,
+     "wallMs": 1746,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -2040,7 +2039,7 @@
        "utilityBounded": true,
        "feasibilityComplete": true
       },
-      "syncMs": 96.99791699999696,
+      "syncMs": 85.74895899999683,
       "eligible": 32027,
       "poolSize": 96,
       "rejections": {
@@ -2089,7 +2088,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 479,
+     "wallMs": 468,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -2136,7 +2135,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 558,
+     "wallMs": 544,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -2179,7 +2178,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 1910,
+     "wallMs": 1811,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -2267,7 +2266,7 @@
        "utilityBounded": true,
        "feasibilityComplete": true
       },
-      "syncMs": 83.98070900000312,
+      "syncMs": 82.51029199999903,
       "eligible": 28574,
       "poolSize": 96,
       "rejections": {
@@ -2319,7 +2318,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 10509,
+     "wallMs": 10408,
      "visualVerdict": "NOT_RUN",
      "totals": [],
      "budgetOk": [],
@@ -2339,7 +2338,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 11383,
+     "wallMs": 11352,
      "visualVerdict": "NOT_RUN",
      "totals": [],
      "budgetOk": [],
@@ -2351,7 +2350,7 @@
     "v5-baseline": {
      "looks": 0,
      "distinctInventory": true,
-     "wallMs": 347,
+     "wallMs": 336,
      "visualVerdict": "N/A-control",
      "totals": [],
      "budgetOk": [],
@@ -2410,7 +2409,7 @@
        "utilityBounded": true,
        "feasibilityComplete": true
       },
-      "syncMs": 87.57004099999904,
+      "syncMs": 85.31054099999892,
       "eligible": 2357,
       "poolSize": 96,
       "rejections": {
@@ -2463,7 +2462,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 10700,
+     "wallMs": 10378,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -2512,7 +2511,7 @@
       "hardGate": 0,
       "unpriced": 0
      },
-     "wallMs": 10753,
+     "wallMs": 10429,
      "visualVerdict": "NOT_RUN",
      "totals": [
       {
@@ -2553,7 +2552,7 @@
     "v5-baseline": {
      "looks": 3,
      "distinctInventory": true,
-     "wallMs": 346,
+     "wallMs": 335,
      "visualVerdict": "N/A-control",
      "totals": [
       {
@@ -2641,7 +2640,7 @@
        "utilityBounded": true,
        "feasibilityComplete": true
       },
-      "syncMs": 76.17579100000148,
+      "syncMs": 74.66204199999629,
       "eligible": 4142,
       "poolSize": 96,
       "rejections": {
