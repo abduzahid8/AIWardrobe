@@ -32,15 +32,16 @@ const concepts=[
   ['office','Polished business tailoring','shirt','blazer','chino','derby','grey'],
   ['casual','Understated weekend knits','fine_knit','cardigan','jeans','minimal_sneaker','cream'],
   ['creative','Textured seasonal separates','fine_knit','overshirt','tailored_trouser','derby','olive'],
-].map(([id,name,top,outer,bottom,shoes,color])=>({
+].map(([id,name,top,outer,bottom,shoes,color],index)=>({
+  referenceId:'rt_00'+(index+1),
   id,name,roles:{top:[top],outerwear:[outer],bottom:[bottom],shoes:[shoes]},
   layerPolicy:'required',palette:[color],silhouette:id,
 }));
 const base={
   request:{style:'old_money',occasion:'Work',sourceMode:'catalog'},catalog,
   creativeDirector:async()=>concepts,
-  visualCritic:async(xs)=>xs.map(x=>({candidateId:x.id,visualCohesion:0.90,styleFit:0.91,
-    occasionFit:0.89,formalityFit:0.92,confidence:0.96,evidence:['mock_visual_provider_not_real_qa']})),
+  visualCritic:async(xs)=>xs.map(x=>({candidateId:x.id,visualCohesion:0.90,referenceFidelity:0.91,reject:false,styleFit:0.91,
+    occasionFit:0.89,formalityFit:0.92,confidence:0.96,evidence:['mock cohesion','mock reference','mock formality']})),
   hardGate:async()=>({ok:true}),
   priceToBudgetCurrency:(x,currency)=>x.currency===currency?x.price:null,
 };
@@ -104,4 +105,19 @@ test('retrieval shortlist is explicitly marked visual-verdict NOT RUN',async()=>
   assert.ok(deck.shortlist.length>0);
   assert.ok(!('visualQuality' in (deck.shortlist[0]||{}))||deck.shortlist[0].visualQuality===undefined);
   assert.ok(deck.diagnostics.candidateCount>0);
+});
+
+test('duplicate verdicts and unexpected critic failures never create approved outfits',async()=>{
+  const duplicate=await proposeVisualFirstDeck({...base,visualCritic:async(xs)=>{
+    const [row]=await base.visualCritic(xs);
+    return [row,{...row,referenceFidelity:1}];
+  }});
+  assert.equal(duplicate.status,'no_verified_looks');
+  assert.equal(duplicate.diagnostics.visualValid,0);
+  assert.equal(duplicate.diagnostics.visualAbstained,duplicate.diagnostics.visualAttempted);
+  const failure=await proposeVisualFirstDeck({...base,visualCritic:async()=>{throw new Error('sensitive details')}});
+  assert.equal(failure.status,'no_verified_looks');
+  assert.equal(failure.diagnostics.criticFailed,true);
+  assert.equal(failure.diagnostics.visualVerdict,'ABSTAINED');
+  assert.doesNotMatch(JSON.stringify(failure),/sensitive details/);
 });

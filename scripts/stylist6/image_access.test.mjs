@@ -36,3 +36,28 @@ test('allowlist is explicit and versioned', () => {
   assert.ok(KNOWN_BLOCKED.has('www.apc.com'));
   assert.equal(IMAGE_ACCESS_VERSION, 'image-access-v1');
 });
+
+test('merchant media refuses credentials, private hosts, alternate ports and redirects', async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'imgacc-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const calls = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, redirect: options.redirect });
+    return new Response(null, { status: 302, headers: { Location: 'https://127.0.0.1/private' } });
+  };
+  try {
+    const urls = [
+      'http://static.zara.net/x.jpg', 'https://static.zara.net:8443/x.jpg',
+      'https://user@static.zara.net/x.jpg', 'https://[::ffff:127.0.0.1]/private',
+      'https://static.zara.net/x.jpg',
+    ].map((imageUrl, id) => ({ id, imageUrl }));
+    const results = await resolveImages({ urls, outDir: dir, auditPath: null });
+    assert.deepEqual(results.map((r) => r.status), ['blocked', 'blocked', 'blocked', 'blocked', 'failed']);
+    assert.deepEqual(calls, [
+      { url: urls[4].imageUrl, redirect: 'error' }, { url: urls[4].imageUrl, redirect: 'error' },
+    ]);
+  } finally {
+    globalThis.fetch = original;
+  }
+});

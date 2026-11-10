@@ -7,7 +7,8 @@
  * backend adapter. Do not call it directly from mobile or replace production.
  */
 import {createHash} from 'node:crypto';
-export const STYLIST6_VERSION='stylist6-visual-first-prototype-1';
+import {MAX_VISUAL_CANDIDATES,validVisualVerdict} from './visual_critic_hosted.mjs';
+export const STYLIST6_VERSION='stylist6-visual-first-prototype-2';
 const slots=['top','outerwear','bottom','shoes'];
 const text=x=>String(x??'').trim().toLowerCase().replace(/[\s-]+/g,'_');
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
@@ -40,7 +41,7 @@ function parseBriefs(raw){
   }).map((b,i,a)=>{if(i===a.length-1)assert(formats.size>=4,'creative_briefs_not_diverse');return b});
 }
 function safeCatalogItem(raw,mode){
-  if(!raw||!raw.id)return null;
+  if(!raw||!raw.id||raw.is_active===false||raw.isActive===false)return null;
   const item={...raw};
   item.id=String(item.id);item.macroCategory=text(item.macroCategory);
   item.subtype=text(item.subtype||item.visual?.subtype);
@@ -101,12 +102,6 @@ const similarity=(a,b)=>{
   const roleMatch=slots.filter(slot=>a.items.find(i=>i.macroCategory===slot)?.subtype===b.items.find(i=>i.macroCategory===slot)?.subtype).length/4;
   return 0.65*roleMatch+0.35*overlap;
 };
-function validCritique(row,allowed){
-  if(!row||!allowed.has(row.candidateId))return false;
-  const keys=['visualCohesion','styleFit','occasionFit','formalityFit','confidence'];
-  return keys.every(k=>finite(row[k])&&row[k]>=0&&row[k]<=1)&&
-    Array.isArray(row.evidence)&&row.evidence.length>0&&row.evidence.every(v=>typeof v==='string');
-}
 /**
  * Retrieval-only shortlist for blind human review. Runs every deterministic
  * stage up to (not including) the hosted visual critic and returns
@@ -119,6 +114,8 @@ export async function shortlistRetrievalDeck({
 }){
   assert(request&&['catalog','wardrobe','mixed'].includes(request.sourceMode),'request');
   assert(Array.isArray(catalog)&&typeof creativeDirector==='function','input');
+  assert(!request.budget||(finite(request.budget.amount)&&request.budget.amount>=0&&
+    /^[A-Z]{3}$/.test(request.budget.currency)),'budget');
   assert(typeof hardGate==='function'&&typeof priceToBudgetCurrency==='function','trusted_gates_required');
   const briefLimit=Math.min(12,Math.max(6,options.briefLimit??8));
   const perRole=Math.min(24,Math.max(4,options.perRole??12));
@@ -139,7 +136,7 @@ export async function shortlistRetrievalDeck({
         if(!gate||gate.ok!==true){rejections.hardGate++;continue}
         if(request.budget){
           const charges=c.items.map(i=>i.isShopItem===true?priceToBudgetCurrency(i,request.budget.currency,request):0);
-          if(charges.some(v=>!finite(v)||v<0)){rejections.unpriced++;continue}
+          if(charges.some((v,i)=>!finite(v)||v<0||(c.items[i].isShopItem===true&&v===0))){rejections.unpriced++;continue}
           if(charges.reduce((a,v)=>a+v,0)>request.budget.amount+0.000001){rejections.budget++;continue}
         }
         const prior=all.get(c.id);
@@ -167,26 +164,53 @@ export async function shortlistRetrievalDeck({
 export async function proposeVisualFirstDeck({
  request,catalog,creativeDirector,visualCritic,hardGate,priceToBudgetCurrency,options={}
 }){
+  const retrieval=await shortlistRetrievalDeck({
+    request,catalog,creativeDirector,hardGate,priceToBudgetCurrency,options});
+  const shortlist=request.referenceId
+    ? retrieval.shortlist.filter(c=>c.brief.referenceId===request.referenceId)
+    : retrieval.shortlist.filter(c=>c.brief.referenceId);
+  return evaluateVisualShortlist({...retrieval,shortlist},request,visualCritic,options);
+}
+
+/** Judge a bounded slice of a trusted, already feasibility-gated shortlist. */
+export async function evaluateVisualShortlist(retrieval,request,visualCritic,options={}){
   assert(typeof visualCritic==='function','visual_critic_required');
+  const limit=options.maxHostedCandidates??MAX_VISUAL_CANDIDATES;
+  assert(Number.isInteger(limit)&&limit>=1&&limit<=MAX_VISUAL_CANDIDATES,'invalid_visual_limit');
+  const shortlist=retrieval.shortlist.slice(0,limit);
+  const payload=shortlist.map(c=>({
+    id:c.id,referenceId:request.referenceId||c.brief.referenceId,
+    products:c.items.map(i=>({id:i.id,slot:i.macroCategory,imageUrl:i.imageUrl||i.image_url}))
+  }));
+  let critiques=[];
+  let criticFailed=false;
+  if(payload.length){
+    try{
+      const rows=await visualCritic(payload,{style:request.style,occasion:request.occasion,brief:request.brief});
+      if(Array.isArray(rows)&&rows.length<=limit)critiques=rows;
+      else criticFailed=true;
+    }catch{criticFailed=true}
+  }
+  return selectVisualDeck({...retrieval,shortlist},critiques,options,criticFailed);
+}
+
+/** Replay verdicts against the exact judged candidate set without provider I/O. */
+export function selectVisualDeck({generationVersion,shortlist,diagnostics},critiques,options={},criticFailed=false){
   const target=Math.min(3,Math.max(1,options.target??3));
   const minVisualQuality=options.minVisualQuality??0.68;
-  const {generationVersion,briefs,shortlist,added,diagnostics}=await shortlistRetrievalDeck({
-    request,catalog,creativeDirector,hardGate,priceToBudgetCurrency,options});
-  // Actual photos must be consumed by the remote critic adapter, not
-  // replaced with image-derived adjectives and called 'visual analysis'.
-  const critiques=await visualCritic(shortlist.map(c=>({
-    id:c.id,briefId:c.briefId,concept:c.brief.name,
-    referenceId:c.brief.referenceId || null,
-    // Visual critic must resolve the reference image server-side through
-    // a verified private manifest; text labels alone are NOT image grounding.
-    products:c.items.map(i=>({id:i.id,imageUrl:i.imageUrl||i.image_url,name:i.name}))
-  })),request);
-  assert(Array.isArray(critiques),'critic_response');
-  const accepted=new Map();
-  for(const c of critiques){
-    if(!validCritique(c,added)||accepted.has(c.candidateId))continue;
-    const quality=0.30*c.visualCohesion+0.25*c.styleFit+0.25*c.occasionFit+0.20*c.formalityFit;
-    if(c.confidence>=0.6&&quality>=minVisualQuality&&!c.reject)accepted.set(c.candidateId,{...c,quality});
+  const allowed=new Set(shortlist.map(c=>c.id));
+  const seen=new Set(),duplicates=new Set(),valid=new Map(),accepted=new Map();
+  for(const row of critiques){
+    if(!allowed.has(row?.candidateId))continue;
+    if(seen.has(row.candidateId))duplicates.add(row.candidateId);
+    seen.add(row.candidateId);
+    if(validVisualVerdict(row,row.candidateId))valid.set(row.candidateId,row);
+  }
+  for(const id of duplicates)valid.delete(id);
+  for(const [id,c] of valid){
+    const quality=0.30*c.visualCohesion+0.30*c.referenceFidelity+
+      0.15*c.styleFit+0.15*c.occasionFit+0.10*c.formalityFit;
+    if(c.confidence>=0.6&&quality>=minVisualQuality&&!c.reject)accepted.set(id,{...c,quality});
   }
   const eligible=shortlist.filter(c=>accepted.has(c.id));
   const selected=[];
@@ -204,8 +228,11 @@ export async function proposeVisualFirstDeck({
   return {generationVersion,
     status:selected.length===target?'complete':selected.length?'distinct_inventory_limited':'no_verified_looks',
     outfits:selected.map(c=>({id:c.id,concept:{id:c.brief.id,title:c.brief.name,referenceId:c.brief.referenceId||null},
-      items:c.items,visualQuality:accepted.get(c.id).quality,evidence:accepted.get(c.id).evidence})),
-    diagnostics:{...diagnostics,visualVerdict:'JUDGED',
-      visualReviewed:shortlist.length,visualApproved:accepted.size,selected:selected.length}
+      items:c.items,visualQuality:accepted.get(c.id).quality,
+      referenceFidelity:accepted.get(c.id).referenceFidelity,evidence:accepted.get(c.id).evidence})),
+    diagnostics:{...diagnostics,visualVerdict:valid.size?'JUDGED':shortlist.length?'ABSTAINED':'NOT_RUN',
+      visualAttempted:shortlist.length,visualValid:valid.size,visualAbstained:shortlist.length-valid.size,
+      visualRejected:[...valid.values()].filter(row=>row.reject).length,visualApproved:accepted.size,
+      criticFailed,selected:selected.length}
   };
 }

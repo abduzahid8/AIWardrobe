@@ -56,9 +56,9 @@ test('reference-first briefs remain grounded in real catalog SKUs under mocked q
     visualCritic:async (payload)=>{
       reviewed.push(...payload);
       return payload.map(p=>({
-        candidateId:p.id,visualCohesion:0.92,styleFit:0.89,
+        candidateId:p.id,visualCohesion:0.92,referenceFidelity:0.94,reject:false,styleFit:0.89,
         occasionFit:0.91,formalityFit:0.94,confidence:0.95,
-        evidence:['mocked visual judgement; NOT a real provider'],
+        evidence:['mock coherence','mock silhouette','mock reference'],
       }));
     },
     hardGate:async()=>({ok:true}),

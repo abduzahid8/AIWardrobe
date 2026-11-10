@@ -1,46 +1,59 @@
+import type { Buffer } from 'node:buffer';
+
 export const HOSTED_VISUAL_CRITIC_VERSION: string;
 export const NVIDIA_VISION_MODEL: string;
+export const MAX_VISUAL_CANDIDATES: number;
+export const MAX_VISUAL_IMAGE_BYTES: number;
+export const VISUAL_TIMEOUT_MS: number;
+
+export interface VisualImage {
+  bytes: Buffer;
+  sha256: string;
+}
 
 export interface HostedVisualVerdict {
   candidateId: string;
   visualCohesion: number;
+  referenceFidelity: number;
   styleFit: number;
   occasionFit: number;
   formalityFit: number;
   confidence: number;
   evidence: string[];
-  reject?: boolean;
+  reject: boolean;
   criticVersion: string;
   latencyMs: number;
-  estimatedCostUsd: number | null;
+  estimatedCostUsd: null;
+}
+
+export interface HostedVisualProduct {
+  id: string;
+  slot: 'top' | 'outerwear' | 'bottom' | 'shoes';
+  imageUrl: string;
 }
 
 export interface HostedVisualCandidate {
   id: string;
-  briefId: string;
-  concept: string;
   referenceId?: string | null;
-  products: Array<{ id: string; imageUrl: string; name?: string }>;
+  products: HostedVisualProduct[];
 }
 
 export interface HostedVisualRequest {
   style?: string;
   occasion?: string;
+  brief?: string;
 }
 
-export function createHostedVisualCritic(options?: {
-  apiKey?: string;
-  provider?: string;
+export function validVisualVerdict(row: unknown, candidateId: string): row is HostedVisualVerdict;
+export function verifiedVisualImage(asset: VisualImage | null): { mimeType: string; data: string };
+
+export function createHostedVisualCritic(options: {
+  apiKey: string;
+  provider?: 'nvidia' | 'gemini';
   model?: string;
-  endpoint?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
-  maxImageBytes?: number;
-  estimatedCostUsdPerCall?: number;
-  resolveReference?: ((referenceId: string) => Promise<{
-    base64: string;
-    mimeType?: string;
-    sha256?: string;
-  } | null>) | null;
-  onEvent?: (event: { candidateId: string; outcome: string; reason?: string; latencyMs?: number }) => void;
+  resolveReference: (referenceId: string, signal: AbortSignal) => Promise<VisualImage | null> | VisualImage | null;
+  resolveProduct: (product: HostedVisualProduct, signal: AbortSignal) => Promise<VisualImage | null> | VisualImage | null;
+  onEvent?: (event: { candidateId: string; outcome: string; dispatched: boolean; reason?: string; latencyMs?: number }) => void;
 }): (payload: HostedVisualCandidate[], request?: HostedVisualRequest) => Promise<HostedVisualVerdict[]>;

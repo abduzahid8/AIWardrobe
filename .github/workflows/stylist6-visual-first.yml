@@ -43,7 +43,9 @@ jobs:
       - name: Verify snapshot catalog adapter and knit base-layer projection
         run: node --test backend/stylist6/catalog_adapter.test.mjs
       - name: Verify hosted visual critic contract (recorded fixtures, NO API calls)
-        run: node --test backend/stylist6/visual_critic_hosted.test.mjs
+        run: |
+          node --test backend/stylist6/visual_critic_hosted.test.mjs backend/stylist6/nvidia_integration.test.mjs scripts/stylist6/stylist6_nvidia_pilot.test.mjs
+          node --experimental-strip-types --test backend/stylist-node/test/stylist6-vision-test.test.mjs
       - name: Syntax-check pilot harness and contact sheets
         run: |
           node --check scripts/stylist6/pilot_12.mjs

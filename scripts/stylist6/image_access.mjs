@@ -81,7 +81,9 @@ const args = Object.fromEntries(
 
 function hostOf(url) {
   try {
-    return new URL(url).hostname;
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && !parsed.username && !parsed.password && !parsed.port
+      ? parsed.hostname : '';
   } catch {
     return '';
   }
@@ -96,13 +98,24 @@ async function fetchOnce(url, timeoutMs) {
   try {
     const response = await fetch(url, {
       signal: controller.signal,
+      redirect: 'error',
       headers: {
         'User-Agent': 'AIWardrobe-Stylist6-Pilot/1.0',
         Accept: 'image/*,*/*;q=0.8',
       },
     });
-    if (!response.ok) return { ok: false, status: response.status };
-    const buffer = Buffer.from(await response.arrayBuffer());
+    if (!response.ok || !response.body) {
+      void response.body?.cancel().catch(() => {});
+      return { ok: false, status: response.status };
+    }
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of response.body) {
+      size += chunk.byteLength;
+      if (size > MAX_BYTES) return { ok: false, status: 'bad_bytes' };
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks, size);
     if (buffer.length < 1024 || buffer.length > MAX_BYTES || !isPhoto(buffer)) {
       return { ok: false, status: 'bad_bytes' };
     }

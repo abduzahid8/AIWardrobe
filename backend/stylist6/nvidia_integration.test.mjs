@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { proposeVisualFirstDeck } from './prototype.mjs';
+import { createHash } from 'node:crypto';
+import { proposeVisualFirstDeck, shortlistRetrievalDeck } from './prototype.mjs';
 import { createHostedVisualCritic } from './visual_critic_hosted.mjs';
 
 // Isolated Stylist 6 + NVIDIA integration: retrieval -> real NVIDIA critic
@@ -37,71 +38,52 @@ const briefs = [
   layerPolicy, palette, silhouette,
 }));
 
-const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, ...new Array(2040).fill(7)]);
-const approved = JSON.stringify({
-  candidateId: 'REPLACE', visualCohesion: 0.9, styleFit: 0.88, occasionFit: 0.91,
-  formalityFit: 0.93, confidence: 0.95, reject: false,
-  evidence: ['tonal brown register holds', 'coat weight suits autumn', 'boot formality fits'],
-});
+const jpeg = Buffer.alloc(256, 7);
+Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0, 8, 8, 0, 16, 0, 16, 3]).copy(jpeg);
+jpeg.writeUInt16BE(0xffd9, jpeg.length - 2);
+const asset = { bytes: jpeg, sha256: createHash('sha256').update(jpeg).digest('hex') };
 
-test('NVIDIA critic verdicts drive real outfit selection (stubbed transport)', async () => {
-  let providerCalls = 0;
-  // Product photos only; provider calls are recorded below.
-  const stubFetch = async (url) => {
-    assert.ok(!String(url).includes('integrate.api.nvidia.com'));
-    return { ok: true, status: 200, arrayBuffer: async () => jpeg };
-  };
-  const seen = [];
-  const recordingFetch = async (url, init) => {
-    if (String(url).includes('integrate.api.nvidia.com')) {
-      providerCalls += 1;
-      const body = JSON.parse(init.body);
-      assert.equal(body.model, 'nvidia/nemotron-3.5-super-vl-120b-a12b');
-      assert.equal(body.stream, false);
-      const parts = body.messages[0].content;
-      const images = parts.filter((p) => p.type === 'image_url');
-      assert.ok(images.length >= 2, 'reference + product photos required');
-      assert.ok(images.every((p) => p.image_url.url.startsWith('data:image/')));
-      const text = parts.find((p) => p.type === 'text').text;
-      const id = text.match(/candidateId must be exactly "([^"]+)"/)[1];
-      seen.push(id);
-      return {
-        ok: true, status: 200,
-        json: async () => ({
-          choices: [{ message: { content: approved.replace('REPLACE', id) } }],
-        }),
-      };
-    }
-    return stubFetch(url, init);
-  };
-  const critic = createHostedVisualCritic({
-    apiKey: 'test-nvidia-key-0123456789abcdef', provider: 'nvidia',
-    fetchImpl: recordingFetch,
-    resolveReference: async () => ({ base64: jpeg.toString('base64'), mimeType: 'image/jpeg' }),
-  });
-  const result = await proposeVisualFirstDeck({
-    request: { style: 'old_money', occasion: 'Work', sourceMode: 'catalog' },
+test('NVIDIA verdict reverses the feasible seed winner; rejected and unknown looks never surface', async () => {
+  const base = {
+    request: { style: 'old_money', occasion: 'Work', sourceMode: 'catalog', referenceId: 'rt_005',
+      budget: { amount: 708000, currency: 'UZS' } },
     catalog,
     creativeDirector: async () => briefs,
-    visualCritic: critic,
-    hardGate: async () => ({ ok: true }),
+    hardGate: async (items) => ({ ok: !items.some((i) => i.id === 'top-fine-knit-1') }),
     priceToBudgetCurrency: (i) => i.price,
-    options: { briefLimit: 6, perRole: 6, maxVisual: 6, perBrief: 20, minVisualQuality: 0.5 },
+    options: { target: 1, maxHostedCandidates: 3 },
+  };
+  const retrieval = await shortlistRetrievalDeck(base);
+  const [first, second, third] = retrieval.shortlist;
+  assert.ok(first && second && third);
+  const seen = [];
+  const critic = createHostedVisualCritic({
+    apiKey: 'test-nvidia-key-0123456789abcdef', provider: 'nvidia',
+    resolveProduct: ({ id }) => {
+      assert.notEqual(id, 'top-fine-knit-1');
+      return asset;
+    },
+    resolveReference: (id) => { assert.equal(id, 'rt_005'); return asset; },
+    fetchImpl: async (url, init) => {
+      assert.equal(url, 'https://integrate.api.nvidia.com/v1/chat/completions');
+      const { content } = JSON.parse(init.body).messages[0];
+      assert.equal(content.length, 6);
+      const id = content[0].text.match(/candidateId must be exactly "([^"]+)"/)[1];
+      seen.push(id);
+      return Response.json({ choices: [{ message: { content: JSON.stringify({
+        candidateId: id === third.id ? 'unknown' : id, visualCohesion: 0.9, referenceFidelity: 0.9,
+        styleFit: 0.9, occasionFit: 0.9, formalityFit: 0.9, confidence: 0.95, reject: id === first.id,
+        evidence: ['mock tonal relationship', 'mock coat weight', 'mock boot formality'],
+      }) } }] });
+    },
   });
-  // Engine floors maxVisual at 12; 8 candidates -> 8 judged calls.
-  assert.ok(providerCalls > 0 && providerCalls <= 12);
-  assert.ok(result.outfits.length > 0, 'NVIDIA approvals must yield real outfits');
-  for (const outfit of result.outfits) {
-    assert.equal(outfit.items.length, 4);
-    assert.match(outfit.concept.referenceId || '', /^rt_\d{3}$/);
-    assert.ok(outfit.visualQuality >= 0.5);
-  }
-  assert.ok(result.diagnostics.visualApproved > 0);
-});
-
-test('NVIDIA provider rejects unconfigured keys without transport', () => {
-  assert.throws(() => createHostedVisualCritic({ provider: 'nvidia', apiKey: 'short' }),
-    /hosted_visual_critic_not_configured/);
-  assert.throws(() => createHostedVisualCritic({ provider: 'nvidia-nope', apiKey: 'test-nvidia-key-0123456789abcdef' }),
-    /unsupported_visual_critic_provider/);
+  const result = await proposeVisualFirstDeck({ ...base, visualCritic: critic });
+  assert.deepEqual(new Set(seen), new Set([first.id, second.id, third.id]));
+  assert.equal(result.outfits[0].id, second.id);
+  assert.equal(result.outfits[0].items.length, 4);
+  assert.ok(result.outfits[0].items.reduce((sum, i) => sum + i.price, 0) <= base.request.budget.amount);
+  assert.equal(result.diagnostics.visualValid, 2);
+  assert.equal(result.diagnostics.visualRejected, 1);
+  assert.equal(result.diagnostics.visualAbstained, 1);
+  assert.equal(result.diagnostics.visualApproved, 1);
 });
