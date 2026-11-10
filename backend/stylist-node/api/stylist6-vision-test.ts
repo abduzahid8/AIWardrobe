@@ -28,6 +28,36 @@ const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_REFERENCE_BYTES = 3 * 1024 * 1024;
 const MAX_PRODUCTS = 4;
 
+// Single-instance replay guard. Nonces are NOT persisted: two identical
+// signed bodies hitting the SAME warm instance are rejected (409); a replay
+// landing on a different serverless instance still passes HMAC and executes
+// once more. Exactly-once therefore holds per invocation, not globally —
+// operators must still send one curl with a fresh nonce and never retry.
+// This guard ships with the NEXT deployment; the current Preview build
+// documents the window without enforcing it.
+const NONCE_TTL_MS = 45_000;
+const NONCE_MAX_ENTRIES = 5000;
+const seenNonces = new Map<string, number>();
+
+function pruneNonces(now: number): void {
+  for (const [nonce, expires] of seenNonces) {
+    if (expires <= now) seenNonces.delete(nonce);
+  }
+  while (seenNonces.size > NONCE_MAX_ENTRIES) {
+    const oldest = seenNonces.keys().next();
+    if (oldest.done) break;
+    seenNonces.delete(oldest.value);
+  }
+}
+
+function claimNonce(nonce: string, now: number): boolean {
+  pruneNonces(now);
+  const expires = seenNonces.get(nonce);
+  if (expires !== undefined && expires > now) return false;
+  seenNonces.set(nonce, now + NONCE_TTL_MS);
+  return true;
+}
+
 const error = (code: string, status: number) =>
   Response.json({ ok: false, code }, { status, headers: { 'Cache-Control': 'no-store' } });
 
@@ -51,14 +81,16 @@ export default {
     const body = await request.text();
     if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES) return error('invalid_request', 413);
 
+    const nonce = request.headers.get('x-aiw-nonce') || '';
     const authorized = await verifyStylistTransport({
       secret, body,
       authorization: request.headers.get('authorization') || '',
       timestamp: request.headers.get('x-aiw-timestamp'),
-      nonce: request.headers.get('x-aiw-nonce'),
+      nonce,
       signature: request.headers.get('x-aiw-signature'),
     });
     if (!authorized) return error('unauthorized', 401);
+    if (!claimNonce(nonce, Date.now())) return error('duplicate_replay', 409);
 
     let payload: any;
     try {

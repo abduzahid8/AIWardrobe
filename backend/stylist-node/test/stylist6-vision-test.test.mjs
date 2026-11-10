@@ -106,6 +106,37 @@ test('approved call without server key is rejected without provider traffic', as
   assert.equal(calls, 0);
 });
 
+test('identical replay on the same instance is rejected without provider traffic', async () => {
+  const prevSecret = process.env.STYLIST_NODE_SHARED_SECRET;
+  const prevKey = process.env.NVIDIA_API_KEY;
+  process.env.STYLIST_NODE_SHARED_SECRET = SECRET;
+  delete process.env.NVIDIA_API_KEY;
+  let calls = 0;
+  const prev = globalThis.fetch;
+  globalThis.fetch = (async () => { calls += 1; throw new Error('must not fetch'); });
+  try {
+    const text = body();
+    const headers = await signStylistTransport({ secret: SECRET, body: text, authorization: AUTH });
+    const once = async () => route.fetch(new Request('https://stylist.internal/api/stylist6-vision-test', {
+      method: 'POST',
+      headers: { ...headers, authorization: AUTH, 'content-type': 'application/json' },
+      body: text,
+    }));
+    const first = await once();
+    assert.equal(first.status, 503, 'first delivery reaches the key check');
+    const second = await once();
+    assert.equal(second.status, 409, 'same-instance replay is rejected');
+    assert.equal((await second.json()).code, 'duplicate_replay');
+    assert.equal(calls, 0);
+  } finally {
+    globalThis.fetch = prev;
+    if (prevSecret === undefined) delete process.env.STYLIST_NODE_SHARED_SECRET;
+    else process.env.STYLIST_NODE_SHARED_SECRET = prevSecret;
+    if (prevKey === undefined) delete process.env.NVIDIA_API_KEY;
+    else process.env.NVIDIA_API_KEY = prevKey;
+  }
+});
+
 test('approved call returns one redacted NVIDIA verdict for exactly one provider POST', async () => {
   let providerCalls = 0;
   const seenModels = [];
