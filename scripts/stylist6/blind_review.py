@@ -7,6 +7,7 @@ import json
 from math import comb
 from pathlib import Path
 import random
+import re
 import shutil
 from statistics import mean
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -35,6 +36,8 @@ def build(folder, output):
     assets.mkdir()
     replay_path = folder / "replay.json"
     replay = read(replay_path)
+    if not isinstance(replay.get("results"), list) or not replay["results"] or len({row["id"] for row in replay["results"]}) != len(replay["results"]):
+        raise ValueError("Expected nonempty, unique review scenarios")
     package = digest(replay_path)
     if (digest(folder / "inventory.json") != replay["inventorySha256"]
             or digest(folder / "scenarios.json") != replay["scenariosSha256"]):
@@ -48,6 +51,11 @@ def build(folder, output):
     fields = []
 
     def copy_photo(source, expected):
+        if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
+            raise ValueError("Invalid photo digest")
+        source = source.resolve(strict=True)
+        if not source.is_relative_to(folder.resolve(strict=True)) or not source.is_file():
+            raise ValueError("Review photo must be inside organizer")
         if digest(source) != expected:
             raise ValueError("Fixture photo digest mismatch")
         filename = expected + ".jpg"
@@ -57,11 +65,15 @@ def build(folder, output):
 
     for case in replay["results"]:
         name = case["id"]
+        if not isinstance(name, str) or not re.fullmatch(r"Q[0-9]{2}", name):
+            raise ValueError("Unexpected review scenario ID")
         scenario = scenarios[name]
         ref = scenario["reference"]
+        if not isinstance(ref, str) or not re.fullmatch(r"rt_[0-9]{3}", ref):
+            raise ValueError("Unexpected reference ID")
         ref_asset = copy_photo(folder / "references" / (ref + ".jpg"), hashes[ref])
         budget = scenario["budget"]
-        cap = f'{budget["amount"]:,} {budget["currency"]}' if budget else "No price cap"
+        cap = escape(f'{budget["amount"]:,} {budget["currency"]}') if budget else "No price cap"
         parts = [f'<details><summary>{name} · {escape(scenario["occasion"])}</summary>',
                  f'<p>{escape(scenario["brief"])}. Budget per look {cap}.</p>',
                  f'<img class="reference" src="{ref_asset}" alt="Fashion reference for {name}" loading="lazy">']
@@ -82,6 +94,8 @@ def build(folder, output):
                     record = inventory[sku]
                     row = record["row"]
                     totals[row["currency"]] += row["price"]
+                    if record["photo"] != f'photos/{record["photoSha256"]}.jpg':
+                        raise ValueError("Unexpected product photo path")
                     src = copy_photo(folder / record["photo"], record["photoSha256"])
                     caption = escape(f'{slots[sku]} · {row["name"]}')
                     parts.append(f'<figure><img src="{src}" alt="{caption}" loading="lazy"><figcaption>{caption}'
@@ -164,10 +178,14 @@ def rate(values, field, high):
 
 def score(key_file, files):
     key = read(key_file)
+    if not key.get("cases") or any(set(labels) != {"A", "B"} or set(labels.values()) != set(ARMS)
+                                   for labels in key["cases"].values()):
+        raise ValueError("Invalid or empty blind review key")
     submissions = [read(file) for file in files]
     if (any(x.get("package") != key["package"] for x in submissions)
             or len({x.get("reviewer") for x in submissions}) != 3
-            or not all(x.get("reviewer") for x in submissions)):
+            or not all(isinstance(x.get("reviewer"), str) and re.fullmatch(r"[A-Za-z0-9_]{2,32}", x["reviewer"])
+                       for x in submissions)):
         raise ValueError("Expected three distinct reviewers for this package")
     cases, flags = {}, []
     for name, labels in key["cases"].items():
