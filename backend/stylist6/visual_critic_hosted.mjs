@@ -101,9 +101,15 @@ function decodeVerdict(data, provider) {
   const output = provider === 'nvidia'
     ? (choice?.message?.refusal || (choice?.finish_reason && choice.finish_reason !== 'stop') ? null : choice?.message?.content)
     : data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('');
-  if (typeof output !== 'string') throw new Error('critic_unparseable_response');
+  if (typeof output !== 'string') return { reason: choice?.message?.refusal ? 'provider_refusal'
+    : choice?.finish_reason === 'length' ? 'provider_truncated'
+      : choice?.finish_reason === 'content_filter' ? 'provider_content_filter' : 'missing_verdict_text' };
   // Accept a plain object or a single JSON fence, with no trailing material.
-  return JSON.parse(output.trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, '$1'));
+  try {
+    return { row: JSON.parse(output.trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, '$1')) };
+  } catch {
+    return { reason: 'invalid_verdict_json' };
+  }
 }
 
 export function createHostedVisualCritic({
@@ -236,8 +242,9 @@ export function createHostedVisualCritic({
             .map((key) => [key, data?.usage?.[key]])
             .filter(([, count]) => Number.isSafeInteger(count) && count >= 0));
         }
-        const row = decodeVerdict(data, provider);
+        const { row, reason: decodeFailure } = decodeVerdict(data, provider);
         signal.throwIfAborted();
+        reason = decodeFailure || 'invalid_verdict_schema';
         if (!validVisualVerdict(row, candidate.id)) throw new Error(reason);
         const { candidateId, slotVisibility, visualCohesion, referenceFidelity, styleFit, occasionFit, formalityFit, confidence, reject, evidence } = row;
         reason = 'incomplete_visual_coverage';

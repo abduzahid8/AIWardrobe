@@ -69,11 +69,26 @@ test('dry run pins complete, budget-eligible candidate photos and detects modifi
 
 test('an existing claim or a mismatched approval is refused before dispatch', (t) => {
   const { dir } = makeFixture(t);
-  const { approvalSha256 } = loadPilotCase(dir, 'Q01');
+  const { rightsAssets, approvalSha256: uncleared } = loadPilotCase(dir, 'Q01');
   const preload = path.join(dir, 'no-network.mjs');
   fs.writeFileSync(preload, 'globalThis.fetch = () => { process.exit(99); };');
   const env = { ...process.env, NVIDIA_SPEND_APPROVED: '1', NVIDIA_REFERENCE_RIGHTS_CONFIRMED: '1',
-    NVIDIA_API_KEY: 'test-key-never-use-network' };
+    NVIDIA_API_KEY: 'nvapi-test-key-never-use-network' };
+  const denied = spawnSync(process.execPath, [
+    '--import', preload, cli.pathname, '--organizer', dir, '--scenario', 'Q01', '--approve-plan', uncleared,
+  ], { encoding: 'utf8', env });
+  assert.equal(denied.status, 2, denied.stderr);
+  assert.match(denied.stderr, /pilot_image_rights_denied/);
+  assert.ok(!fs.existsSync(path.join(dir, 'nvidia-' + uncleared + '.json')));
+  fs.writeFileSync(path.join(dir, 'image-rights.json'), JSON.stringify({ version: 1, assets: rightsAssets.map(asset => ({
+    ...asset, sourceUrl: asset.sourceUrl || 'https://archive.example.com/reference',
+    rightsHolder: 'Fixture holder', reviewedBy: 'Fixture reviewer', status: 'active',
+    validFrom: '2020-01-01', expiresAt: null, evidence: { reference: 'fixture', sha256: 'a'.repeat(64) },
+    nvidiaTrial: { submit: true, territory: 'global', providerServiceImprovement: true,
+      terms: 'nvidia-api-trial', purposes: ['internal_outfit_evaluation'] },
+  })) }));
+  const { approvalSha256 } = loadPilotCase(dir, 'Q01');
+  assert.notEqual(uncleared, approvalSha256);
   const claim = path.join(dir, 'nvidia-' + approvalSha256 + '.json');
   fs.writeFileSync(claim, 'prior claim');
   for (const [approval, reason] of [['wrong', 'pilot_approval_required'], [approvalSha256, 'pilot_already_claimed']]) {

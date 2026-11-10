@@ -34,7 +34,7 @@ for (const { id } of scenarios) {
   });
   assert.equal(result.providerCalls, 4);
   assert.equal(new Set(mockCalls).size, 4);
-  assert.equal(result.v6Diagnostics.visualValid, 3);
+  assert.equal(result.v6Diagnostics.visualValid, fixture.candidates.filter(({ origin }) => origin !== 'v5').length);
   assert.equal(result.v6Diagnostics.visualRejected, 1);
   assert.equal(result.v6VisualPick, preferred);
   assert.notEqual(result.v6VisualPick, result.v6RetrievalPick);

@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { parseArgs } from 'node:util';
+import { trialImageDecision } from '../../backend/stylist6/retail_evidence.mjs';
 import { adaptCatalog } from '../../backend/stylist6/catalog_adapter.mjs';
 import { evaluateVisualShortlist, STYLIST6_VERSION } from '../../backend/stylist6/prototype.mjs';
 import {
@@ -49,7 +50,7 @@ export function loadPilotCase(directory, scenarioId) {
     throw new Error('pilot_manifest_mismatch');
   }
   if (entry.candidates.length !== MAX_VISUAL_CANDIDATES
-      || entry.candidates.filter(({ origin }) => origin === 'v5').length !== 1) {
+      || entry.candidates.filter(({ origin }) => origin === 'v5').length > 1) {
     throw new Error('pilot_candidate_count_mismatch');
   }
   const rows = readJson(inventoryBytes);
@@ -59,6 +60,11 @@ export function loadPilotCase(directory, scenarioId) {
   if (products.size !== rows.length || catalog.size !== items.length) throw new Error('duplicate_catalog_sku');
 
   const referenceHashes = readJson(readManifest('references/hashes.json'));
+  let rightsBytes;
+  try { rightsBytes = readManifest('image-rights.json'); } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  const rights = rightsBytes ? readJson(rightsBytes) : null;
   const reference = {
     bytes: readBounded(path.join(directory, 'references', scenario.reference + '.jpg'), MAX_VISUAL_IMAGE_BYTES),
     sha256: referenceHashes[scenario.reference],
@@ -107,7 +113,9 @@ export function loadPilotCase(directory, scenarioId) {
       new URL('../../backend/stylist6/prototype.mjs', import.meta.url),
       new URL('../../backend/stylist6/visual_critic_hosted.mjs', import.meta.url),
       new URL('../../backend/stylist6/catalog_adapter.mjs', import.meta.url),
+      new URL('../../backend/stylist6/retail_evidence.mjs', import.meta.url),
     ].map((file) => fs.readFileSync(new URL(file))))),
+    rightsSha256: rightsBytes ? sha(rightsBytes) : null,
     queueSha256: sha(queueBytes), inventorySha256: sha(inventoryBytes), referenceSha256: reference.sha256,
     candidates: candidates.map(({ id, items }) => ({
       id, products: items.map((item) => ({
@@ -116,11 +124,19 @@ export function loadPilotCase(directory, scenarioId) {
       })),
     })),
   };
-  return { plan, approvalSha256: sha(asJson(plan)), candidates, reference, photos };
+  const rightsAssets = [
+    { kind: 'reference', id: scenario.reference, sha256: reference.sha256 },
+    ...[...photos].map(([id, photo]) => ({ kind: 'product', id, sha256: photo.sha256, sourceUrl: catalog.get(id).imageUrl })),
+  ];
+  return { plan, approvalSha256: sha(asJson(plan)), candidates, reference, photos, rights, rightsAssets };
 }
 
 export async function judgePilotCase(fixture, { apiKey, fetchImpl }) {
   const { candidates, plan, reference, photos } = fixture;
+  if (!fetchImpl && (!fixture.rightsAssets?.length ||
+      fixture.rightsAssets.some((asset) => trialImageDecision(fixture.rights, asset) !== 'cleared'))) {
+    throw new Error('pilot_image_rights_denied');
+  }
   const events = [];
   const critic = createHostedVisualCritic({
     provider: 'nvidia', apiKey, fetchImpl, onEvent: (event) => events.push(event),
@@ -139,14 +155,15 @@ export async function judgePilotCase(fixture, { apiKey, fetchImpl }) {
   }, { target: 1 });
   const visualOnly = candidates.filter(({ origin }) => origin !== 'v5');
   const v6Deck = await evaluateVisualShortlist({ ...retrieval, shortlist: visualOnly },
-    plan.request, async () => verdicts.filter(({ candidateId }) => visualOnly.some(({ id }) => id === candidateId)), { target: 1 });
+    plan.request, async () => verdicts.filter(({ candidateId }) => visualOnly.some(({ id }) => id === candidateId)), { target: 3 });
   return {
     providerCalls: events.filter(({ dispatched }) => dispatched).length,
     wallMs: performance.now() - started, providerCostUsd: null,
-    v5Control: candidates.find(({ origin }) => origin === 'v5').id,
+    v5Control: candidates.find(({ origin }) => origin === 'v5')?.id ?? null,
     v6RetrievalPick: visualOnly[0].id,
     fixedPoolPick: deck.outfits[0]?.id ?? null,
     v6VisualPick: v6Deck.outfits[0]?.id ?? null,
+    v6VisualDeck: v6Deck.outfits.map(({ id, items }) => ({ id, items: items.map((item) => item.id) })),
     fixedPoolDiagnostics: deck.diagnostics, v6Diagnostics: v6Deck.diagnostics,
     events, verdicts,
   };
@@ -161,12 +178,18 @@ async function main() {
   const fixture = loadPilotCase(directory, values.scenario);
   const { approvalSha256, plan } = fixture;
   if (!values['approve-plan']) {
-    console.log(asJson({ status: 'NOT_RUN', providerCalls: 0, approvalSha256, plan }));
+    const rights = fixture.rightsAssets.map((asset) => ({
+      id: asset.id, status: trialImageDecision(fixture.rights, asset),
+    }));
+    console.log(asJson({ status: 'NOT_RUN', providerCalls: 0, approvalSha256, rights, plan }));
     return;
   }
   if (values['approve-plan'] !== approvalSha256 || process.env.NVIDIA_SPEND_APPROVED !== '1'
       || process.env.NVIDIA_REFERENCE_RIGHTS_CONFIRMED !== '1'
-      || (process.env.NVIDIA_API_KEY || '').length < 20) throw new Error('pilot_approval_required');
+      || !process.env.NVIDIA_API_KEY?.startsWith('nvapi-')) throw new Error('pilot_approval_required');
+  if (fixture.rightsAssets.some((asset) => trialImageDecision(fixture.rights, asset) !== 'cleared')) {
+    throw new Error('pilot_image_rights_denied');
+  }
   // Exclusive creation on the organizer filesystem. Preserve the claim on
   // crash or ambiguous dispatch, and require a new approved plan for reruns.
   const claim = path.join(directory, 'nvidia-' + approvalSha256 + '.json');

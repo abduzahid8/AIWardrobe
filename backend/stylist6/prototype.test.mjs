@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {proposeVisualFirstDeck,shortlistRetrievalDeck,STYLIST6_VERSION} from './prototype.mjs';
+import {proposeVisualFirstDeck,shortlistRetrievalDeck,selectVisualDeck,STYLIST6_VERSION} from './prototype.mjs';
 
 const catalog=[];
 function add(slot,subtype,colors,price=170000){
@@ -151,4 +151,22 @@ test('review slots preserve the seed and cover distinct products from the same b
   // The second and third strongest seeds can differ by at most one palette
   // match, so limited inventory may require some reuse of the seed pieces.
   assert.ok(new Set(alternatives.flatMap(({items})=>items.map(({id})=>id))).size===8);
+});
+
+
+test('joint selection keeps the strongest first look and avoids a second look that blocks a full deck',()=>{
+  const slots=['top','outerwear','bottom','shoes'];
+  const looks=[[0,0,0,0],[1,2,0,0],[1,1,0,0],[1,2,0,1]].map((keys,index)=>({
+    id:'look-'+index,briefId:'rt_001',brief:{id:'rt_001',name:'Test'},
+    items:keys.map((key,i)=>({id:slots[i]+'-'+key,macroCategory:slots[i],subtype:slots[i],color:String(key)})),
+  }));
+  const rows=looks.map(({id},index)=>{
+    const score=[.95,.90,.80,.80][index];
+    return {candidateId:id,visualCohesion:score,referenceFidelity:score,styleFit:score,occasionFit:score,
+      formalityFit:score,confidence:.95,reject:false,evidence:['mock colors','mock formality','mock balance']};
+  });
+  const result=selectVisualDeck({generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}},rows);
+  assert.equal(result.status,'complete');
+  assert.equal(result.outfits[0].id,'look-0');
+  assert.deepEqual(new Set(result.outfits.map(({id})=>id)),new Set(['look-0','look-2','look-3']));
 });

@@ -7,8 +7,9 @@
  * backend adapter. Do not call it directly from mobile or replace production.
  */
 import {createHash} from 'node:crypto';
+import {baseProductId} from './catalog_adapter.mjs';
 import {MAX_VISUAL_CANDIDATES,validVisualVerdict} from './visual_critic_hosted.mjs';
-export const STYLIST6_VERSION='stylist6-visual-first-prototype-3';
+export const STYLIST6_VERSION='stylist6-visual-first-prototype-4';
 // Treat a near-tie as insufficient evidence to displace an earlier feasible pick.
 const VISUAL_NEAR_TIE=0.015;
 const PALETTE_MATCH_WEIGHT=0.15;
@@ -99,6 +100,10 @@ function makeCandidateDeck(brief,pools,max){
   }
   return selected;
 }
+const photoUrl=i=>i.imageUrl||i.image_url;
+const sameProduct=(a,b)=>baseProductId(a.id)===baseProductId(b.id)||
+  (!!photoUrl(a)&&photoUrl(a)===photoUrl(b));
+const sharedProducts=(a,b)=>a.items.filter(item=>b.items.some(other=>sameProduct(item,other))).length;
 // Preserve the seed winner and use the remaining review slots for alternatives
 // within one palette match of the strongest unreviewed seed.
 function diversifyBriefHead(candidates){
@@ -110,9 +115,7 @@ function diversifyBriefHead(candidates){
     let best=0,leastOverlap=Infinity;
     for(const [index,candidate] of candidates.entries()){
       if(candidate.seedScore<floor)break;
-      const overlap=Math.max(...chosen.map(look=>candidate.items.filter(item=>
-        look.items.some(other=>other.id===item.id||
-          (other.imageUrl||other.image_url)===(item.imageUrl||item.image_url))).length));
+      const overlap=Math.max(...chosen.map(look=>sharedProducts(candidate,look)));
       if(overlap<leastOverlap){
         best=index;
         leastOverlap=overlap;
@@ -123,12 +126,16 @@ function diversifyBriefHead(candidates){
   }
   candidates.unshift(...chosen);
 }
-const similarity=(a,b)=>{
-  const ai=new Set(a.items.map(i=>i.id)),bi=new Set(b.items.map(i=>i.id));
-  const overlap=[...ai].filter(x=>bi.has(x)).length/new Set([...ai,...bi]).size;
-  const roleMatch=slots.filter(slot=>a.items.find(i=>i.macroCategory===slot)?.subtype===b.items.find(i=>i.macroCategory===slot)?.subtype).length/4;
-  return 0.65*roleMatch+0.35*overlap;
-};
+function novelty(a,b){
+  const shared=sharedProducts(a,b);
+  if(Math.max(a.items.length,b.items.length)-shared<2)return 0;
+  const overlap=shared/(a.items.length+b.items.length-shared);
+  const roleMatch=slots.filter(slot=>{
+    const x=a.items.find(i=>i.macroCategory===slot),y=b.items.find(i=>i.macroCategory===slot);
+    return x?.subtype===y?.subtype&&['color','texture'].every(field=>!x?.[field]||!y?.[field]||x[field]===y[field]);
+  }).length/slots.length;
+  return 1-(0.65*roleMatch+0.35*overlap);
+}
 /**
  * Retrieval-only shortlist for blind human review. Runs every deterministic
  * stage up to (not including) the hosted visual critic and returns
@@ -223,6 +230,7 @@ export async function evaluateVisualShortlist(retrieval,request,visualCritic,opt
 
 /** Replay verdicts against the exact judged candidate set without provider I/O. */
 export function selectVisualDeck({generationVersion,shortlist,diagnostics},critiques,options={},criticFailed=false){
+  assert(shortlist.length<=MAX_VISUAL_CANDIDATES,'invalid_visual_limit');
   const target=Math.min(3,Math.max(1,options.target??3));
   const minVisualQuality=options.minVisualQuality??0.68;
   const allowed=new Set(shortlist.map(c=>c.id));
@@ -240,20 +248,26 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
     if(c.confidence>=0.6&&quality>=minVisualQuality&&!c.reject)accepted.set(id,{...c,quality});
   }
   const eligible=shortlist.filter(c=>accepted.has(c.id));
-  const selected=[];
-  while(selected.length<target){
-    const remaining=eligible.filter(c=>!selected.some(s=>s.id===c.id)).map(c=>{
-      const closest=selected.length?Math.max(...selected.map(s=>similarity(s,c))):0;
-      const repeats=selected.some(s=>s.briefId===c.briefId);
-      return {...c,utility:accepted.get(c.id).quality+0.18*(1-closest)-(repeats?0.10:0),
-        novelty:1-closest};
-    }).filter(c=>!selected.length||c.novelty>=(options.minNovelty??0.30))
-      .sort((a,b)=>b.utility-a.utility||a.id.localeCompare(b.id));
-    if(!remaining.length)break;
-    const first=selected.length?null:eligible.find(c=>
-      accepted.get(c.id).quality>=accepted.get(remaining[0].id).quality-VISUAL_NEAR_TIE);
-    selected.push(first||remaining[0]);
+  const strongest=Math.max(...eligible.map(c=>accepted.get(c.id).quality));
+  const first=eligible.find(c=>accepted.get(c.id).quality>=strongest-VISUAL_NEAR_TIE);
+  let selected=first?[first]:[],bestUtility=-Infinity;
+  // A greedy second pick can block the only viable third. The judged pool
+  // is capped at four, so evaluate the small set of feasible continuations.
+  function consider(deck,utility){
+    if(deck.length>selected.length||(deck.length===selected.length&&utility>bestUtility)){
+      selected=deck;
+      bestUtility=utility;
+    }
+    if(deck.length===target)return;
+    for(const c of eligible){
+      if(deck.includes(c))continue;
+      const difference=Math.min(...deck.map(other=>novelty(c,other)));
+      if(difference<(options.minNovelty??0.30)||difference===0)continue;
+      const repeats=deck.some(other=>other.briefId===c.briefId);
+      consider([...deck,c],utility+accepted.get(c.id).quality+0.18*difference-(repeats?0.10:0));
+    }
   }
+  if(first)consider([first],0);
   return {generationVersion,
     status:selected.length===target?'complete':selected.length?'distinct_inventory_limited':'no_verified_looks',
     outfits:selected.map(c=>({id:c.id,concept:{id:c.brief.id,title:c.brief.name,referenceId:c.brief.referenceId||null},
