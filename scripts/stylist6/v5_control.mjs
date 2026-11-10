@@ -124,4 +124,3 @@ export async function runV5(api, snapshotRows, scenario, slotById, rankLooks) {
     diagnostics: plan.diagnostics,
     mode: ranking?.ids ? ranking.attempt.status === 'repaired_hybrid' ? 'hybrid' : 'hosted_ranked' : rankLooks ? 'deterministic_fallback' : 'deterministic' };
 }
-

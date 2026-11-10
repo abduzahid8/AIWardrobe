@@ -13,8 +13,11 @@ ARMS = {
 
 
 def safe_link(value):
-    url = urlsplit(value or "")
-    return value if url.scheme == "https" and url.hostname and not (url.username or url.password) else ""
+    try:
+        url = urlsplit(value or "")
+        return value if url.scheme == "https" and url.hostname and not (url.username or url.password) else ""
+    except ValueError:
+        return ""
 
 
 def gallery(data):
@@ -28,7 +31,7 @@ def gallery(data):
         cap = f'{budget["amount"]:,} {budget["currency"]}' if budget else "open cap"
         refs = row.get("reference")
         reference = escape(refs["name"]) if refs else "No matched lookbook brief"
-        html = [f'<details><summary>{title}</summary><p>{weather}°C · {escape(cap)} · {reference}</p>']
+        html = [f'<details id="{escape(case["id"], quote=True)}"><summary>{title}</summary><p>{weather}°C · {escape(cap)} · {reference}</p>']
         if case.get("preferences"):
             pref = ", ".join(f"{k} {', '.join(v) if isinstance(v, list) else v}" for k, v in case["preferences"].items())
             html.append(f"<p>Preferences · {escape(pref)}</p>")
@@ -83,6 +86,8 @@ function syncImages() {
   }
 }
 toggle.addEventListener('change', syncImages);
+const linked = document.getElementById(location.hash.slice(1));
+if (linked?.tagName === 'DETAILS') linked.open = true;
 for (const section of document.querySelectorAll('details')) section.addEventListener('toggle', syncImages);
 </script></html>
 """

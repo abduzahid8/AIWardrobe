@@ -38,7 +38,7 @@ These are deterministic diagnostic measures using some of the same signals the r
 
 ## Example looks
 
-- **Business-casual office at 23°C.** Previous Stylist 6 chose an anthracite merino turtleneck, reversible padded parka, blue wool trousers and black dress loafers. New Stylist 6 chose a regular-fit cotton shirt, double-breasted blazer, suit trousers and cognac leather Oxfords. Total snapshot cost changed from 25,682,243 to 6,169,867 UZS. The replay was unbudgeted.
+- **Business-casual office at 23°C.** Previous Stylist 6 chose an anthracite merino turtleneck, reversible padded parka, blue wool trousers and black dress loafers. New Stylist 6 chose a regular-fit long-sleeve shirt, double-breasted blazer, suit trousers and cognac leather Oxfords. Total snapshot cost changed from 25,682,243 to 6,169,867 UZS. The replay was unbudgeted.
 - **Wedding.** Stylist 5's first look paired a knit polo, denim jacket, chinos and waterproof ankle boots. New Stylist 6 chose a poplin shirt, double-breasted blazer, brown wool flannel trousers and black leather Derbies. The gallery lists the exact SKUs and prices for both decks.
 
 ## Run and inspect

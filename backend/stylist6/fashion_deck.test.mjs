@@ -113,3 +113,18 @@ test('an unspecified wedding uses formal composition while a beach wedding or ex
     assert.ok(items.every(({ id }) => id !== 'snow-parka' && id !== 'training-shoe'));
   }
 });
+
+test('a confident visual rejection removes the lead even when the other candidate abstains', async () => {
+  const baseline = await recommendFashionDeck(base);
+  const result = await recommendFashionDeck({
+    ...base, canJudgeOutfit: async () => true,
+    visualCritic: async ([lead]) => [{
+      candidateId: lead.id, visualCohesion: .4, referenceFidelity: .6, styleFit: .7,
+      occasionFit: .7, formalityFit: .7, confidence: .9, reject: true,
+      evidence: ['mock top and trouser contrast', 'mock shoe relationship', 'mock reference comparison'],
+    }],
+  });
+  assert.equal(result.diagnostics.visualVerdict, 'ABSTAINED');
+  assert.equal(result.outfits.length, 3);
+  assert.ok(result.outfits.every(({ id, visualEvidence }) => id !== baseline.outfits[0].id && !visualEvidence));
+});
