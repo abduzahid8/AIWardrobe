@@ -123,7 +123,7 @@ export function outfitQualityFloor(
     const baseItem = items.find(item => item.macroCategory === 'top');
     const baseText = String(baseItem?.name || '') + ' ' + String(baseItem?.description || '');
     if (context.style === 'semi_classic' && baseItem &&
-      /\\bshort[ -]?sleeve(?:s|d)?\\b/i.test(baseText) &&
+      /\bshort[ -]?sleeve(?:s|d)?\b/i.test(baseText) &&
       top?.patternProminence === 'prominent' &&
       ['shirt', 'dress-shirt'].includes(top.subtype) &&
       outer?.subtype === 'blazer' && outer.structured &&
