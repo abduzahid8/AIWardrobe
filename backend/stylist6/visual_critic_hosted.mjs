@@ -202,7 +202,7 @@ export function createHostedVisualCritic({
           confidence: row.confidence,
           evidence: row.evidence,
           ...(row.reject === true ? { reject: true } : {}),
-          criticVersion: `${HOSTED_VISUAL_CRITIC_VERSION}/${provider}/${selectedModel}`,
+          criticVersion: `${HOSTED_VISUAL_CRITIC_VERSION}/${provider === 'nvidia' ? 'nvidia/' : ''}${selectedModel}`,
           latencyMs: Date.now() - started,
           estimatedCostUsd: provider === 'nvidia' ? null : estimatedCostUsdPerCall,
         });
