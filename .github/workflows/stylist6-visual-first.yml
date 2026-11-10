@@ -34,6 +34,10 @@ jobs:
             assert.equal(f.testsNotRun,true);
             console.log("35 A/B scenarios defined; no live API tests executed");
           '
+      - name: Verify owner-authorized Instagram dataset importer (synthetic archive only)
+        run: python3 -m unittest scripts/style_references/test_import_instagram_archive.py -v
+      - name: Verify curated references are fail-closed (no photo uploads)
+        run: node --test backend/stylist6/reference_library.test.mjs
       - name: Confirm this workflow is not an authorized production release
         run: |
           echo "Stylist 6 is isolated; no deploys, quota calls, migrations or production cutover."
