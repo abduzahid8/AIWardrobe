@@ -1,12 +1,16 @@
 import { createHash } from 'node:crypto';
 
-export const HOSTED_VISUAL_CRITIC_VERSION = 'hosted-visual-critic-v6';
+export const HOSTED_VISUAL_CRITIC_VERSION = 'hosted-visual-critic-v8';
 export const NVIDIA_VISION_MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 export const MAX_VISUAL_CANDIDATES = 4;
 export const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
-export const VISUAL_TIMEOUT_MS = 12_000;
+export const VISUAL_TIMEOUT_MS = 18_000;
+export const VISUAL_PROVIDER_TIMEOUT_MS = 8_000;
+export const VISUAL_CONCURRENCY = 2;
+const SHA256 = /^[a-f0-9]{64}$/;
+const GARMENT_SLOTS = ['top', 'outerwear', 'bottom', 'shoes'];
 const MAX_RESPONSE_BYTES = 64 * 1024;
 const MAX_PROMPT_CHARS = 400;
 const DIMENSION_LIMIT = 2048;
@@ -50,14 +54,16 @@ export function verifiedVisualImage(asset) {
   if (createHash('sha256').update(bytes).digest('hex') !== asset.sha256) {
     throw new Error('image_digest_mismatch');
   }
-  return { mimeType: 'image/jpeg', data: bytes.toString('base64') };
+  return { mimeType: 'image/jpeg', data: bytes.toString('base64'), sha256: asset.sha256 };
 }
 
 const safeText = (value) => typeof value === 'string' ? value.slice(0, MAX_PROMPT_CHARS) : '';
-function buildPrompt(candidate, request) {
+function buildPrompt(candidate, request, { shared, referenceOnly }) {
   const context = JSON.stringify({
     style: safeText(request?.style), occasion: safeText(request?.occasion), brief: safeText(request?.brief),
     imageSlots: candidate.products.map((product) => product.slot),
+    ...(shared.length ? { verifiedIdenticalReferenceSlots: shared } : {}),
+    ...(referenceOnly.length ? { verifiedReferenceOnlySlots: referenceOnly } : {}),
   });
   return [
     'Judge one complete outfit against a fashion reference. The first image is the reference.',
@@ -70,15 +76,19 @@ function buildPrompt(candidate, request) {
     'Return only JSON with keys candidateId, slotObservations, visualCohesion, referenceFidelity, styleFit, occasionFit, formalityFit, confidence, reject, relationships.',
     'slotObservations must map each listed slot to a short visible description (such as color and shape or trim). Use null if you cannot identify the garment.',
     'For relationships, give exactly three objects with kind, slots, and observation. Two must have kind "outfit" and compare two or more candidate slots. One must have kind "reference" and explain a visible similarity or difference with the reference.',
+    ...(shared.length ? ['Verified identical reference slots use the same source photograph. Do not describe a difference in those slots. Use an empty reference slots array only if there are no other candidate or reference slots.'] : []),
+    ...(referenceOnly.length ? ['A verified reference-only slot is intentionally absent from the candidate outfit. Include every such slot in the reference relationship and explain its effect. Do not call it missing media.'] : []),
     'For example: {"kind":"outfit","slots":["top","bottom"],"observation":"The narrow dark trousers balance the wider light shirt."}',
     'Use 0–1 scores and a boolean reject. Reject clear incompatibility and cite its visible cause. Keep descriptions under 160 characters.',
     `candidateId must be exactly "${candidate.id}".`,
   ].join('\n');
 }
 
-async function readProviderJson(response) {
+async function readProviderBody(response, signal) {
   if (!response.body) throw new Error('provider_body_missing');
   const reader = response.body.getReader();
+  const cancel = () => { void reader.cancel().catch(() => {}); };
+  signal.addEventListener('abort', cancel, { once: true });
   let size = 0;
   const chunks = [];
   try {
@@ -90,11 +100,12 @@ async function readProviderJson(response) {
       chunks.push(value);
     }
   } finally {
+    signal.removeEventListener('abort', cancel);
     // Do not wait on a remote stream cancellation.
-    void reader.cancel().catch(() => {});
+    cancel();
     reader.releaseLock();
   }
-  return JSON.parse(Buffer.concat(chunks, size).toString('utf8'));
+  return Buffer.concat(chunks, size);
 }
 
 function decodeVerdict(data, provider) {
@@ -121,23 +132,49 @@ const observation = (text) => typeof text === 'string' && text.trim().length >= 
   && text.length <= 160 && !missingImageClaim.test(text)
   && !/^(?:unclear|missing|unknown|not visible|cannot (?:tell|identify))[.!]?$/i.test(text.trim());
 
-function outfitEvidence(row, products) {
+function outfitEvidence(row, products, { shared, referenceOnly }) {
   const slots = new Set(products.map(({ slot }) => slot));
   const coverage = row?.slotObservations;
   if (!coverage || Array.isArray(coverage) || typeof coverage !== 'object'
       || Object.keys(coverage).length !== slots.size
       || [...slots].some((slot) => !observation(coverage[slot]))) return { reason: 'incomplete_visual_coverage' };
   const links = row.relationships;
+  const identical = shared.length === slots.size && !referenceOnly.length;
+  const referenceSlots = new Set([...slots, ...referenceOnly].filter((slot) => !shared.includes(slot)));
   if (!Array.isArray(links) || links.length !== 3 || links.some((link) =>
     !['outfit', 'reference'].includes(link?.kind) || !Array.isArray(link.slots)
-    || link.slots.length < (link.kind === 'outfit' ? 2 : 1)
-    || new Set(link.slots).size !== link.slots.length || link.slots.some((slot) => !slots.has(slot))
+    || link.slots.length < (link.kind === 'outfit' ? 2 : identical ? 0 : 1)
+    || (link.kind === 'reference' && referenceOnly.some((slot) => !link.slots.includes(slot)))
+    || new Set(link.slots).size !== link.slots.length
+    || link.slots.some((slot) => !(link.kind === 'outfit' ? slots : referenceSlots).has(slot))
     || !observation(link.observation))
     || links.filter(({ kind }) => kind === 'reference').length !== 1
     || new Set(links.map(({ observation }) => observation.trim().toLowerCase())).size !== links.length) {
     return { reason: 'incomplete_outfit_evidence' };
   }
-  return { slotObservations: coverage, evidence: links.map((link) => link.observation) };
+  const relationships = links.map(({ kind, slots, observation }) => ({
+    kind, slots, observation: kind === 'reference' && identical
+      ? 'Every candidate slot uses the same source photo as the reference.' : observation,
+  }));
+  return { slotObservations: coverage, relationships, evidence: relationships.map((link) => link.observation) };
+}
+
+function referenceImage(asset) {
+  const image = verifiedVisualImage(asset);
+  // Only trusted resolvers supply manifests from a reference composition step.
+  const manifest = asset.components;
+  const slotDigests = manifest?.referenceSha256 === image.sha256 ? manifest.slotSha256 : null;
+  return { ...image, slotDigests };
+}
+
+function abortable(operation, signal) {
+  if (signal.aborted) return Promise.race([Promise.reject(signal.reason), operation]);
+  let listener;
+  const stopped = new Promise((_, reject) => {
+    listener = () => reject(signal.reason);
+    signal.addEventListener('abort', listener, { once: true });
+  });
+  return Promise.race([operation, stopped]).finally(() => signal.removeEventListener('abort', listener));
 }
 
 export function createHostedVisualCritic({
@@ -146,6 +183,8 @@ export function createHostedVisualCritic({
   model,
   fetchImpl = globalThis.fetch,
   timeoutMs = VISUAL_TIMEOUT_MS,
+  providerTimeoutMs = VISUAL_PROVIDER_TIMEOUT_MS,
+  signal: callerSignal,
   resolveReference,
   resolveProduct,
   onEvent,
@@ -157,6 +196,9 @@ export function createHostedVisualCritic({
   }
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > VISUAL_TIMEOUT_MS) {
     throw new Error('invalid_visual_timeout');
+  }
+  if (!Number.isInteger(providerTimeoutMs) || providerTimeoutMs < 1 || providerTimeoutMs > VISUAL_PROVIDER_TIMEOUT_MS) {
+    throw new Error('invalid_visual_provider_timeout');
   }
   const selectedModel = model || (provider === 'nvidia' ? NVIDIA_VISION_MODEL : DEFAULT_GEMINI_MODEL);
   const endpoint = provider === 'nvidia' ? NVIDIA_ENDPOINT
@@ -170,11 +212,9 @@ export function createHostedVisualCritic({
       throw new Error('invalid_visual_batch');
     }
     const controller = new AbortController();
-    const { signal } = controller;
-    const deadline = new Promise((_, reject) => {
-      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
-    });
-    const bounded = (operation) => Promise.race([operation, deadline]);
+    const signal = callerSignal ? AbortSignal.any([controller.signal, callerSignal]) : controller.signal;
+    const batchStarted = performance.now();
+    const batchDeadline = batchStarted + timeoutMs;
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const references = new Map();
     let next = 0;
@@ -183,42 +223,64 @@ export function createHostedVisualCritic({
     async function judge(index) {
       const candidate = payload[index];
       const started = performance.now();
-      let dispatched = false;
-      let httpStatus, usage, finishReason;
-      const telemetry = () => ({
-        ...(dispatched ? { latencyMs: performance.now() - started } : {}),
-        ...(httpStatus === undefined ? {} : { httpStatus }),
-        ...(finishReason ? { finishReason } : {}),
-        ...(usage && Object.keys(usage).length ? { usage } : {}),
-      });
+      let httpStatus, usage, finishReason, dispatchAt, headersAt, bodyAt, parseAt, parsedAt;
+      let mediaStarted, mediaEnded, providerTimer, providerController;
+      const telemetry = () => {
+        const ended = performance.now();
+        return {
+          queueMs: started - batchStarted,
+          ...(mediaStarted === undefined ? {} : { mediaMs: (mediaEnded ?? ended) - mediaStarted }),
+          ...(dispatchAt === undefined ? {} : { latencyMs: ended - started, providerMs: (bodyAt ?? ended) - dispatchAt }),
+          ...(headersAt === undefined ? {} : { headersMs: headersAt - dispatchAt }),
+          ...(parseAt === undefined ? {} : { parseMs: (parsedAt ?? ended) - parseAt }),
+          ...(parsedAt === undefined ? {} : { validationMs: ended - parsedAt }),
+          ...(httpStatus === undefined ? {} : { httpStatus }),
+          ...(finishReason ? { finishReason } : {}),
+          ...(usage && Object.keys(usage).length ? { usage } : {}),
+        };
+      };
       let reason = 'invalid_candidate';
       try {
         signal.throwIfAborted();
+        if (admissionStop) {
+          reason = admissionStop;
+          throw new Error(reason);
+        }
         if (!/^[a-zA-Z0-9_-]{1,64}$/.test(candidate.id) || !candidate.referenceId
             || ![3, 4].includes(candidate.products.length)
             || new Set(candidate.products.map((p) => p.id)).size !== candidate.products.length
             || new Set(candidate.products.map((p) => p.slot)).size !== candidate.products.length
             || !['top', 'bottom', 'shoes'].every((slot) => candidate.products.some((p) => p.slot === slot))
-            || !candidate.products.every((p) => ['top', 'outerwear', 'bottom', 'shoes'].includes(p.slot))) {
+            || !candidate.products.every((p) => GARMENT_SLOTS.includes(p.slot))) {
           throw new Error(reason);
         }
+        mediaStarted = performance.now();
         reason = 'reference_unresolved';
         if (!references.has(candidate.referenceId)) {
           references.set(candidate.referenceId, Promise.resolve(resolveReference(candidate.referenceId, signal))
-            .then(verifiedVisualImage));
+            .then(referenceImage));
         }
-        const images = [await bounded(references.get(candidate.referenceId))];
+        const reference = await abortable(references.get(candidate.referenceId), signal);
+        const images = [reference];
         reason = 'product_image_unresolved';
         for (const product of candidate.products) {
           signal.throwIfAborted();
-          images.push(verifiedVisualImage(await bounded(resolveProduct(product, signal))));
+          images.push(verifiedVisualImage(await abortable(resolveProduct(product, signal), signal)));
         }
         signal.throwIfAborted();
         if (admissionStop) {
           reason = admissionStop;
           throw new Error(reason);
         }
-        const prompt = buildPrompt(candidate, request);
+        mediaEnded = performance.now();
+        const shared = candidate.products.flatMap(({ slot }, index) => {
+          const hash = reference.slotDigests?.[slot];
+          return SHA256.test(hash || '') && hash === images[index + 1].sha256 ? [slot] : [];
+        });
+        const referenceOnly = GARMENT_SLOTS.filter((slot) =>
+          SHA256.test(reference.slotDigests?.[slot] || '') && !candidate.products.some((product) => product.slot === slot));
+        const referenceFacts = { shared, referenceOnly };
+        const prompt = buildPrompt(candidate, request, referenceFacts);
         const imageLabel = (index) => index === 0 ? 'Reference outfit image:'
           : `Candidate ${candidate.products[index - 1].slot} image:`;
         const postBody = provider === 'nvidia'
@@ -235,9 +297,9 @@ export function createHostedVisualCritic({
               chat_template_kwargs: { enable_thinking: false },
             }
           : {
-              contents: [{ role: 'user', parts: [{ text: prompt }, ...images.flatMap((inlineData, index) => [
+              contents: [{ role: 'user', parts: [{ text: prompt }, ...images.flatMap(({ mimeType, data }, index) => [
                 { text: imageLabel(index) },
-                { inlineData },
+                { inlineData: { mimeType, data } },
               ])] }],
               generationConfig: {
                 responseMimeType: 'application/json', maxOutputTokens: 600,
@@ -245,14 +307,24 @@ export function createHostedVisualCritic({
               },
             };
         reason = 'provider_transport';
-        dispatched = true;
-        const response = await bounded(fetchImpl(endpoint, {
-          method: 'POST', signal, redirect: 'error',
+        const remaining = batchDeadline - performance.now();
+        if (remaining <= 0) {
+          reason = 'batch_budget_before_dispatch';
+          throw new Error(reason);
+        }
+        providerController = new AbortController();
+        const attemptSignal = AbortSignal.any([signal, providerController.signal]);
+        providerTimer = setTimeout(() => providerController.abort(), providerTimeoutMs);
+        attemptSignal.throwIfAborted();
+        dispatchAt = performance.now();
+        const response = await abortable(fetchImpl(endpoint, {
+          method: 'POST', signal: attemptSignal, redirect: 'error',
           headers: provider === 'nvidia'
             ? { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }
             : { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
           body: JSON.stringify(postBody),
-        }));
+        }), attemptSignal);
+        headersAt = performance.now();
         httpStatus = response.status;
         if (!response.ok) {
           if (httpStatus === 402) admissionStop = 'provider_payment_required';
@@ -265,7 +337,11 @@ export function createHostedVisualCritic({
           throw new Error(reason);
         }
         reason = 'invalid_provider_verdict';
-        const data = await bounded(readProviderJson(response));
+        const bytes = await abortable(readProviderBody(response, attemptSignal), attemptSignal);
+        bodyAt = performance.now();
+        parseAt = bodyAt;
+        reason = 'invalid_provider_json';
+        const data = JSON.parse(bytes.toString('utf8'));
         if (provider === 'nvidia') {
           const finish = data?.choices?.[0]?.finish_reason;
           finishReason = ['stop', 'length', 'content_filter'].includes(finish) ? finish : 'unknown';
@@ -274,36 +350,44 @@ export function createHostedVisualCritic({
             .filter(([, count]) => Number.isSafeInteger(count) && count >= 0));
         }
         const { row, reason: decodeFailure } = decodeVerdict(data, provider);
-        signal.throwIfAborted();
+        parsedAt = performance.now();
+        attemptSignal.throwIfAborted();
         reason = decodeFailure || 'invalid_verdict_schema';
         if (!row || row.candidateId !== candidate.id) throw new Error(reason);
-        const grounding = outfitEvidence(row, candidate.products);
+        const grounding = outfitEvidence(row, candidate.products, referenceFacts);
         if (grounding.reason) {
           reason = grounding.reason;
           throw new Error(reason);
         }
-        const { evidence, slotObservations } = grounding;
+        const { evidence, slotObservations, relationships } = grounding;
         if (!validVisualVerdict({ ...row, evidence }, candidate.id)) throw new Error(reason);
         const { candidateId, visualCohesion, referenceFidelity, styleFit, occasionFit, formalityFit, confidence, reject } = row;
         verdicts[index] = {
           candidateId, slotObservations,
-          relationships: row.relationships.map(({ kind, slots, observation }) => ({ kind, slots, observation })),
+          relationships, verifiedSharedSlots: shared, verifiedReferenceOnlySlots: referenceOnly,
           visualCohesion, referenceFidelity, styleFit, occasionFit, formalityFit, confidence, reject, evidence,
           criticVersion: `${HOSTED_VISUAL_CRITIC_VERSION}/${provider}/${selectedModel}`,
           latencyMs: performance.now() - started,
           estimatedCostUsd: null,
         };
-        emit({ candidateId, outcome: 'judged', dispatched, ...telemetry() });
+        emit({ candidateId, outcome: 'judged', dispatched: true, ...telemetry() });
       } catch {
-        emit({ candidateId: candidate.id, outcome: 'abstain', dispatched,
-          reason: signal.aborted ? 'deadline' : reason, ...telemetry() });
+        const dispatched = dispatchAt !== undefined;
+        const failure = callerSignal?.aborted ? 'cancelled'
+          : providerController?.signal.aborted ? 'provider_deadline'
+            : controller.signal.aborted ? dispatched ? 'batch_deadline_in_flight'
+              : mediaStarted === undefined ? 'batch_deadline_queued' : 'batch_deadline_media'
+              : reason;
+        emit({ candidateId: candidate.id, outcome: 'abstain', dispatched, reason: failure, ...telemetry() });
+      } finally {
+        clearTimeout(providerTimer);
       }
     }
     async function worker() {
       while (next < payload.length) await judge(next++);
     }
     try {
-      await Promise.all([worker(), worker()]);
+      await Promise.all(Array.from({ length: VISUAL_CONCURRENCY }, worker));
       return verdicts.filter(Boolean);
     } finally {
       clearTimeout(timer);

@@ -100,7 +100,9 @@ test('missing, mismatched and oversized media abstains with zero outbound I/O', 
     });
     assert.deepEqual(await critic([candidate]), []);
     assert.equal(calls, 0);
-    assert.deepEqual(events, [{ candidateId: candidate.id, outcome: 'abstain', dispatched: false, reason: 'product_image_unresolved' }]);
+    const [{ mediaMs, queueMs, ...event }] = events;
+    assert.ok(mediaMs >= 0 && queueMs >= 0);
+    assert.deepEqual(event, { candidateId: candidate.id, outcome: 'abstain', dispatched: false, reason: 'product_image_unresolved' });
   }
 });
 
@@ -160,7 +162,8 @@ test('the shared deadline aborts in-flight requests and prevents later dispatch'
   assert.deepEqual(await critic(Array.from({ length: 4 }, (_, i) => ({ ...candidate, id: 'deadline-' + i }))), []);
   assert.equal(calls, 2);
   assert.equal(events.length, 4);
-  assert.ok(events.every(({ reason }) => reason === 'deadline'));
+  assert.equal(events.filter(({ reason }) => reason === 'batch_deadline_in_flight').length, 2);
+  assert.equal(events.filter(({ reason }) => reason === 'batch_deadline_queued').length, 2);
 });
 
 test('a stalled media resolver is bounded and never dispatches', async () => {
@@ -174,7 +177,7 @@ test('a stalled media resolver is bounded and never dispatches', async () => {
   });
   assert.deepEqual(await critic([candidate]), []);
   assert.equal(calls, 0);
-  assert.equal(events[0].reason, 'deadline');
+  assert.equal(events[0].reason, 'batch_deadline_media');
 });
 
 test('payment-required responses block any remaining dispatches without retry', async () => {
@@ -235,5 +238,126 @@ test('well-formed scores cannot pass with single-garment or contradictory outfit
     });
     assert.deepEqual(await critic([candidate]), []);
     assert.equal(events[0].reason, 'incomplete_outfit_evidence');
+  }
+});
+
+test('separate provider deadline releases a worker with no retry and every candidate traced', async () => {
+  const calls = [], events = [];
+  const payload = Array.from({ length: 4 }, (_, i) => ({ ...candidate, id: 'look-' + i }));
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey, timeoutMs: 250, providerTimeoutMs: 25,
+    resolveReference: () => asset(), resolveProduct: () => asset(),
+    fetchImpl: async (url, { body }) => {
+      const id = JSON.parse(body).messages[0].content[0].text.match(/exactly "(look-\d)"/)[1];
+      calls.push(id);
+      return id === 'look-0' ? new Promise(() => {}) : nvidiaResponse({ ...verdict, candidateId: id });
+    },
+    onEvent: (event) => events.push(event),
+  });
+  assert.equal((await critic(payload)).length, 3);
+  assert.equal(new Set(calls).size, 4);
+  assert.equal(events.length, 4);
+  const slow = events.find(({ candidateId }) => candidateId === 'look-0');
+  assert.equal(slow.reason, 'provider_deadline');
+  assert.ok(slow.providerMs >= 0 && slow.mediaMs >= 0 && slow.queueMs >= 0);
+  assert.ok(events.filter(({ outcome }) => outcome === 'judged').every(({ headersMs, parseMs, validationMs }) =>
+    headersMs >= 0 && parseMs >= 0 && validationMs >= 0));
+});
+
+test('caller cancellation labels queued candidates and aborts active calls', async () => {
+  const controller = new AbortController(), events = [];
+  let calls = 0;
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey, signal: controller.signal,
+    resolveReference: () => asset(), resolveProduct: () => asset(),
+    fetchImpl: async () => {
+      if (++calls === 2) controller.abort();
+      return new Promise(() => {});
+    },
+    onEvent: (event) => events.push(event),
+  });
+  await critic(Array.from({ length: 4 }, (_, i) => ({ ...candidate, id: 'cancel-' + i })));
+  assert.equal(calls, 2);
+  assert.equal(events.length, 4);
+  assert.ok(events.every(({ reason }) => reason === 'cancelled'));
+});
+
+test('verified exact reference photos cannot be counted as model-observed differences', async () => {
+  const ref = asset(1), photo = asset(2), events = [];
+  let content, result = verdict;
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey,
+    resolveReference: () => ({ ...ref, components: { referenceSha256: ref.sha256, slotSha256: { outerwear: photo.sha256 } } }),
+    resolveProduct: () => photo,
+    fetchImpl: async (url, { body }) => {
+      content = JSON.parse(body).messages[0].content;
+      return nvidiaResponse(result);
+    },
+    onEvent: (event) => events.push(event),
+  });
+  const [judged] = await critic([candidate]);
+  assert.deepEqual(judged.verifiedSharedSlots, ['outerwear']);
+  assert.match(content[0].text, /"verifiedIdenticalReferenceSlots":\["outerwear"\]/);
+  assert.doesNotMatch(content[0].text, new RegExp(photo.sha256));
+  result = { ...verdict, relationships: verdict.relationships.map((link) =>
+    link.kind === 'reference' ? { ...link, slots: ['outerwear'], observation: 'The candidate adds trim absent from the reference.' } : link) };
+  assert.deepEqual(await critic([candidate]), []);
+  assert.equal(events.at(-1).reason, 'incomplete_outfit_evidence');
+});
+
+test('an unbound reference manifest cannot declare any identical slots', async () => {
+  const ref = asset(1), photo = asset(2);
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey,
+    resolveReference: () => ({ ...ref, components: { referenceSha256: photo.sha256, slotSha256: { top: photo.sha256 } } }),
+    resolveProduct: () => photo,
+    fetchImpl: async () => nvidiaResponse(verdict),
+  });
+  const [judged] = await critic([candidate]);
+  assert.deepEqual(judged.verifiedSharedSlots, []);
+});
+
+test('reference-only outerwear is an outfit difference even when all three candidate photos match', async () => {
+  const photo = asset(2), ref = asset(1);
+  const three = { ...candidate, products: candidate.products.filter(({ slot }) => slot !== 'outerwear') };
+  const { outerwear, ...slotObservations } = verdict.slotObservations;
+  const links = [
+    { kind: 'outfit', slots: ['top', 'bottom'], observation: 'Light top contrasts with dark trousers.' },
+    verdict.relationships[1],
+    { kind: 'reference', slots: [], observation: 'These use the same three photographs.' },
+  ];
+  let payload = { ...verdict, slotObservations, relationships: links };
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey,
+    resolveReference: () => ({ ...ref, components: {
+      referenceSha256: ref.sha256,
+      slotSha256: { top: photo.sha256, bottom: photo.sha256, shoes: photo.sha256, outerwear: asset(3).sha256 },
+    } }),
+    resolveProduct: () => photo,
+    fetchImpl: async () => nvidiaResponse(payload),
+  });
+  assert.deepEqual(await critic([three]), []);
+  payload = { ...payload, relationships: [...links.slice(0, 2),
+    { kind: 'reference', slots: ['outerwear'], observation: 'Omitting the long coat makes the outfit less layered.' }] };
+  const [judged] = await critic([three]);
+  assert.deepEqual(judged.verifiedSharedSlots, ['top', 'bottom', 'shoes']);
+  assert.deepEqual(judged.verifiedReferenceOnlySlots, ['outerwear']);
+  assert.match(judged.evidence.at(-1), /Omitting the long coat/);
+});
+
+test('access denial stops later scheduling while recording every candidate', async () => {
+  for (const status of [401, 403]) {
+    const events = [];
+    let calls = 0;
+    const critic = createHostedVisualCritic({
+      provider: 'nvidia', apiKey, resolveReference: () => asset(), resolveProduct: () => asset(),
+      fetchImpl: async () => { calls++; return new Response(null, { status }); },
+      onEvent: (event) => events.push(event),
+    });
+    assert.deepEqual(await critic(Array.from({ length: 4 }, (_, i) => ({ ...candidate, id: 'deny-' + i }))), []);
+    assert.ok(calls >= 1 && calls <= 2);
+    assert.equal(events.length, 4);
+    assert.equal(events.filter(({ dispatched }) => dispatched).length, calls);
+    assert.ok(events.every(({ reason }) => reason === 'provider_access_denied'));
   }
 });

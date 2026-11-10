@@ -44,12 +44,13 @@ jobs:
         run: node --test backend/stylist6/catalog_adapter.test.mjs
       - name: Verify hosted visual critic contract (recorded fixtures, NO API calls)
         run: |
-          node --test backend/stylist6/visual_critic_hosted.test.mjs backend/stylist6/nvidia_integration.test.mjs backend/stylist6/retail_evidence.test.mjs backend/stylist6/development_shadow.test.mjs scripts/stylist6/stylist6_nvidia_pilot.test.mjs
+          node --test backend/stylist6/visual_critic_hosted.test.mjs backend/stylist6/nvidia_integration.test.mjs backend/stylist6/retail_evidence.test.mjs backend/stylist6/development_shadow.test.mjs scripts/stylist6/stylist6_nvidia_pilot.test.mjs scripts/stylist6/visual_schedule_simulation.test.mjs
           node --experimental-strip-types --test backend/stylist-node/test/stylist6-vision-test.test.mjs
       - name: Syntax-check pilot harness and contact sheets
         run: |
           node --check scripts/stylist6/pilot_12.mjs
           node --check scripts/stylist6/retail_replay.mjs
+          node --check scripts/stylist6/cc0_grounding_trial.mjs
           node --check scripts/stylist6/retail_audit.mjs
           node --check scripts/stylist6/reliability_report.mjs
           python3 -m py_compile scripts/stylist6/blind_review.py

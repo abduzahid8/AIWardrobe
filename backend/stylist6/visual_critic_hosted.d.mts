@@ -5,15 +5,23 @@ export const NVIDIA_VISION_MODEL: string;
 export const MAX_VISUAL_CANDIDATES: number;
 export const MAX_VISUAL_IMAGE_BYTES: number;
 export const VISUAL_TIMEOUT_MS: number;
+export const VISUAL_PROVIDER_TIMEOUT_MS: number;
+export const VISUAL_CONCURRENCY: number;
 
 export interface VisualImage {
   bytes: Buffer;
   sha256: string;
 }
 
+export interface ReferenceImage extends VisualImage {
+  components?: { referenceSha256: string; slotSha256: Partial<Record<HostedVisualProduct['slot'], string>> };
+}
+
 export interface HostedVisualVerdict {
   candidateId: string;
   slotObservations?: Partial<Record<HostedVisualProduct['slot'], string>>;
+  verifiedSharedSlots?: HostedVisualProduct['slot'][];
+  verifiedReferenceOnlySlots?: HostedVisualProduct['slot'][];
   relationships?: { kind: 'outfit' | 'reference'; slots: HostedVisualProduct['slot'][]; observation: string }[];
   visualCohesion: number;
   referenceFidelity: number;
@@ -47,7 +55,7 @@ export interface HostedVisualRequest {
 }
 
 export function validVisualVerdict(row: unknown, candidateId: string): row is HostedVisualVerdict;
-export function verifiedVisualImage(asset: VisualImage | null): { mimeType: string; data: string };
+export function verifiedVisualImage(asset: VisualImage | null): { mimeType: string; data: string; sha256: string };
 
 export function createHostedVisualCritic(options: {
   apiKey: string;
@@ -55,7 +63,9 @@ export function createHostedVisualCritic(options: {
   model?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
-  resolveReference: (referenceId: string, signal: AbortSignal) => Promise<VisualImage | null> | VisualImage | null;
+  providerTimeoutMs?: number;
+  signal?: AbortSignal;
+  resolveReference: (referenceId: string, signal: AbortSignal) => Promise<ReferenceImage | null> | ReferenceImage | null;
   resolveProduct: (product: HostedVisualProduct, signal: AbortSignal) => Promise<VisualImage | null> | VisualImage | null;
   onEvent?: (event: {
     candidateId: string;
@@ -63,6 +73,12 @@ export function createHostedVisualCritic(options: {
     dispatched: boolean;
     reason?: string;
     latencyMs?: number;
+    queueMs: number;
+    mediaMs?: number;
+    providerMs?: number;
+    headersMs?: number;
+    parseMs?: number;
+    validationMs?: number;
     httpStatus?: number;
     finishReason?: string;
     usage?: Partial<Record<'prompt_tokens' | 'completion_tokens' | 'total_tokens', number>>;

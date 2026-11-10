@@ -11,7 +11,7 @@ import { adaptCatalog } from '../../backend/stylist6/catalog_adapter.mjs';
 import { evaluateVisualShortlist, STYLIST6_VERSION } from '../../backend/stylist6/prototype.mjs';
 import {
   createHostedVisualCritic, HOSTED_VISUAL_CRITIC_VERSION, MAX_VISUAL_IMAGE_BYTES,
-  MAX_VISUAL_CANDIDATES, NVIDIA_VISION_MODEL, VISUAL_TIMEOUT_MS, verifiedVisualImage,
+  MAX_VISUAL_CANDIDATES, NVIDIA_VISION_MODEL, VISUAL_TIMEOUT_MS, VISUAL_PROVIDER_TIMEOUT_MS, VISUAL_CONCURRENCY, verifiedVisualImage,
 } from '../../backend/stylist6/visual_critic_hosted.mjs';
 
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -107,7 +107,8 @@ export function loadPilotCase(directory, scenarioId) {
   const plan = {
     scenarioId, request, budget: scenario.budget, model: NVIDIA_VISION_MODEL,
     criticVersion: HOSTED_VISUAL_CRITIC_VERSION, selectorVersion: STYLIST6_VERSION,
-    timeoutMs: VISUAL_TIMEOUT_MS, maxProviderCalls: candidates.length, maxConcurrent: 2, retries: 0,
+    timeoutMs: VISUAL_TIMEOUT_MS, providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
+    maxProviderCalls: candidates.length, maxConcurrent: VISUAL_CONCURRENCY, retries: 0,
     implementationSha256: sha(Buffer.concat([
       import.meta.url,
       new URL('../../backend/stylist6/prototype.mjs', import.meta.url),
