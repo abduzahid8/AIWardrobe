@@ -22,7 +22,7 @@ jobs:
       - name: Syntax-check independent creative planner
         run: node --check backend/stylist6/prototype.mjs
       - name: Test real-SKU grounding and fail-closed contracts (mock providers, NO API calls)
-        run: node --test backend/stylist6/prototype.test.mjs
+        run: node --test backend/stylist6/prototype.test.mjs backend/stylist6/fashion_deck.test.mjs
       - name: Verify benchmark scenarios contain 35 unique requests
         run: |
           node --input-type=module -e '
@@ -50,6 +50,8 @@ jobs:
         run: |
           node --check scripts/stylist6/pilot_12.mjs
           node --check scripts/stylist6/retail_replay.mjs
+          node --check scripts/stylist6/fashion_replay.mjs
+          python3 -m py_compile scripts/stylist6/fashion_gallery.py
           node --check scripts/stylist6/cc0_grounding_trial.mjs
           node --check scripts/stylist6/retail_audit.mjs
           node --check scripts/stylist6/reliability_report.mjs

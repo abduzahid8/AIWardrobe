@@ -18,8 +18,8 @@ const text=x=>String(x??'').trim().toLowerCase().replace(/[\s-]+/g,'_');
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 const isHttps=x=>{try{const u=new URL(x);return u.protocol==='https:'&&!!u.hostname&&!/^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.)/i.test(u.hostname)}catch{return false}};
 const assert=(yes,reason)=>{if(!yes)throw Error('stylist6_'+reason)};
-function parseBriefs(raw){
-  assert(Array.isArray(raw)&&raw.length>=6&&raw.length<=12,'creative_briefs_required');
+function parseBriefs(raw,fashion){
+  assert(Array.isArray(raw)&&raw.length>=(fashion?1:6)&&raw.length<=12,'creative_briefs_required');
   const seen=new Set(),formats=new Set();
   return raw.map(x=>{
     assert(x&&typeof x==='object'&&!Array.isArray(x)&&typeof x.id==='string'&&typeof x.name==='string','brief_schema');
@@ -42,7 +42,7 @@ function parseBriefs(raw){
     const referenceId=typeof x.referenceId==='string' && /^rt_\d{3}$/.test(x.referenceId)
       ? x.referenceId : undefined;
     return {id,name:x.name.slice(0,140),roles,layerPolicy:x.layerPolicy,palette,silhouette,referenceId};
-  }).map((b,i,a)=>{if(i===a.length-1)assert(formats.size>=4,'creative_briefs_not_diverse');return b});
+  }).map((b,i,a)=>{if(!fashion&&i===a.length-1)assert(formats.size>=4,'creative_briefs_not_diverse');return b});
 }
 function safeCatalogItem(raw,mode){
   if(!raw||!raw.id||raw.is_active===false||raw.isActive===false)return null;
@@ -62,12 +62,18 @@ const score=(item,brief)=>(
   +(brief.palette.includes(item.color)?PALETTE_MATCH_WEIGHT:0)
   +(item.visualEvidenceVerified===true?0.05:0)
 );
-function getRole(items,brief,slot,cap){
-  const ranked=items.filter(i=>i.macroCategory===slot&&brief.roles[slot].includes(i.subtype))
-    .sort((a,b)=>score(b,brief)-score(a,brief)||a.id.localeCompare(b.id));
+function getRole(items,brief,slot,cap,rank,fashion,required){
+  const slotItems=items.filter(i=>i.macroCategory===slot);
+  const locked=fashion?slotItems.filter(i=>required.includes(i.id)):[];
+  if(locked.length)return locked;
+  const matched=slotItems.filter(i=>brief.roles[slot].includes(i.subtype));
+  const ranked=(fashion&&matched.length<cap?slotItems:matched)
+    .map(item=>({item,rank:rank(item,brief)}))
+    .sort((a,b)=>b.rank-a.rank||a.item.id.localeCompare(b.item.id))
+    .map(({item})=>item);
   const chosen=[],seen=new Set();
   for(const i of ranked){
-    const kind=i.subtype+'|'+i.color+'|'+i.texture;
+    const kind=fashion?fashion.family(i):i.subtype+'|'+i.color+'|'+i.texture;
     if(seen.has(kind))continue;
     chosen.push(i);seen.add(kind);
     if(chosen.length===Math.min(cap,brief.roles[slot].length*2))break;
@@ -76,16 +82,16 @@ function getRole(items,brief,slot,cap){
   return chosen;
 }
 function hashLook(items){return createHash('sha256').update(items.map(i=>i.id).sort().join('|')).digest('hex').slice(0,16)}
-function makeCandidateDeck(brief,pools,max){
+function makeCandidateDeck(brief,pools,max,rank,admit){
   const pairs=brief.layerPolicy==='absent'?pools.top.map(t=>[t]):
     pools.top.flatMap(t=>pools.outerwear.map(l=>[t,l]));
   const bottoms=pools.bottom.flatMap(b=>pools.shoes.map(s=>[b,s]));
   const candidates=[];
   for(const upper of pairs)for(const lower of bottoms){
     const items=[...upper,...lower];
-    if(new Set(items.map(x=>x.id)).size!==items.length)continue;
+    if(new Set(items.map(x=>x.id)).size!==items.length||!admit(items))continue;
     candidates.push({id:'s6_'+hashLook(items),briefId:brief.id,brief,items,
-      seedScore:items.reduce((s,i)=>s+score(i,brief),0)});
+      seedScore:items.reduce((s,i)=>s+rank(i,brief),0)});
   }
   candidates.sort((a,b)=>b.seedScore-a.seedScore||a.id.localeCompare(b.id));
   // Interleave item families, not just the first preferred item repeatedly.
@@ -155,23 +161,41 @@ export async function shortlistRetrievalDeck({
   const perRole=Math.min(24,Math.max(4,options.perRole??12));
   const maxVisual=Math.min(72,Math.max(12,options.maxVisual??48));
   const briefCandidates=Math.min(120,Math.max(10,options.perBrief??60));
-  const items=catalog.map(i=>safeCatalogItem(i,request.sourceMode)).filter(Boolean);
-  const briefs=parseBriefs(await creativeDirector(request,briefLimit));
-  const all=new Map(),rejections={budget:0,hardGate:0,unpriced:0};
+  const fashion=options.fashion,required=request.requiredIds||[];
+  const rank=fashion?fashion.rankItem:score;
+  let items=catalog.map(i=>safeCatalogItem(i,request.sourceMode)).filter(Boolean);
+  if(fashion)items=items.map(fashion.prepare).filter(Boolean);
+  const briefs=parseBriefs(await creativeDirector(request,briefLimit),fashion);
+  const all=new Map(),rejections={budget:0,hardGate:0,unpriced:0,...(fashion?{coherence:0}:{})};
+  const costs=new Map();
+  const budgetAdmits=(parts)=>{
+    if(!request.budget)return true;
+    const charges=parts.map(i=>{
+      if(!costs.has(i))costs.set(i,i.isShopItem===true?priceToBudgetCurrency(i,request.budget.currency,request):0);
+      return costs.get(i);
+    });
+    if(charges.some((v,i)=>!finite(v)||v<0||(parts[i].isShopItem===true&&v===0))){rejections.unpriced++;return false}
+    if(charges.reduce((a,v)=>a+v,0)>request.budget.amount+0.000001){rejections.budget++;return false}
+    return true;
+  };
+  const admit=fashion?parts=>required.every(id=>parts.some(i=>i.id===id))&&
+    !parts.some((item,index)=>parts.slice(0,index).some(other=>sameProduct(item,other)))&&budgetAdmits(parts):()=>true;
   for(const b of briefs){
-    const roles=Object.fromEntries(slots.map(slot=>[slot,getRole(items,b,slot,perRole)]));
+    const roles=Object.fromEntries(slots.map(slot=>[slot,getRole(items,b,slot,perRole,rank,fashion,required)]));
     if(!roles.top.length||!roles.bottom.length||!roles.shoes.length)continue;
     for(const policy of b.layerPolicy==='optional'?['required','absent']:[b.layerPolicy]){
       if(policy==='required'&&!roles.outerwear.length)continue;
-      const candidates=makeCandidateDeck({...b,layerPolicy:policy},roles,briefCandidates);
+      const candidates=makeCandidateDeck({...b,layerPolicy:policy},roles,briefCandidates,rank,admit);
       for(const c of candidates){
-        if((request.requiredIds||[]).some(id=>!c.items.some(i=>i.id===id)))continue;
+        if(required.some(id=>!c.items.some(i=>i.id===id)))continue;
         const gate=await hardGate(c.items.map(i=>i),request);
         if(!gate||gate.ok!==true){rejections.hardGate++;continue}
-        if(request.budget){
-          const charges=c.items.map(i=>i.isShopItem===true?priceToBudgetCurrency(i,request.budget.currency,request):0);
-          if(charges.some((v,i)=>!finite(v)||v<0||(c.items[i].isShopItem===true&&v===0))){rejections.unpriced++;continue}
-          if(charges.reduce((a,v)=>a+v,0)>request.budget.amount+0.000001){rejections.budget++;continue}
+        if(!fashion&&!budgetAdmits(c.items))continue;
+        if(fashion){
+          const quality=fashion.rankLook(c.items,c.brief);
+          if(!quality){rejections.coherence++;continue}
+          c.fashion=quality;
+          c.seedScore=quality.score;
         }
         const prior=all.get(c.id);
         if(!prior||c.seedScore>prior.seedScore)all.set(c.id,c);
@@ -275,7 +299,9 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       referenceFidelity:accepted.get(c.id).referenceFidelity,evidence:accepted.get(c.id).evidence})),
     diagnostics:{...diagnostics,visualVerdict:valid.size?'JUDGED':shortlist.length?'ABSTAINED':'NOT_RUN',
       visualAttempted:shortlist.length,visualValid:valid.size,visualAbstained:shortlist.length-valid.size,
-      visualRejected:[...valid.values()].filter(row=>row.reject).length,visualApproved:accepted.size,
+      visualRejected:[...valid.values()].filter(row=>row.reject).length,
+      rejectedCandidateIds:[...valid.values()].filter(row=>row.reject&&row.confidence>=0.6).map(row=>row.candidateId),
+      visualApproved:accepted.size,
       criticFailed,selected:selected.length}
   };
 }

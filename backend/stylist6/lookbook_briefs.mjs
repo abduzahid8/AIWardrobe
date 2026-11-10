@@ -115,6 +115,7 @@ function toBrief(index,ref){
     },
     layerPolicy:ref.layer_policy,
     palette:unique(ref.palette.map(normalize)),
+    garmentNotes:{...ref.garments},
     silhouette:String(ref.silhouette||'balanced').slice(0,48),
     referenceEvidence:{sourceIndex:index.dataset_id,refId:ref.id,method:'manual_outfit_collage_review',
       confidence:'medium',isVisualImageComparison:false},

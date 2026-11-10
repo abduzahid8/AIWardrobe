@@ -304,7 +304,12 @@ export function adaptCatalog(rows) {
       bump(projected.skipped);
       continue;
     }
-    items.push(projected);
+    items.push(Object.freeze({
+      ...projected, description: row.description || '', type: row.garment_type || projected.macroCategory,
+      ...(row.visual_fashion && row.visual_source_hash ? {
+        visualFashion: row.visual_fashion, visualSourceHash: row.visual_source_hash,
+      } : {}),
+    }));
   }
   const bySlotSubtype = {};
   const byProjection = {};
