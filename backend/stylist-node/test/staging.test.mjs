@@ -35,7 +35,7 @@ test('staging signs the live request, forwards optional preview bypass, and pres
   let calls=0;
   globalThis.fetch=async(url,init)=>{
     calls++;
-    assert.equal(url,'https://aiwardrobe-stylist-compute-5vy45vooo-abduzahid8s-projects.vercel.app/api/generate-outfits');
+    assert.equal(url,'https://aiwardrobe-stylist-compute-mgvhq6y9o-abduzahid8s-projects.vercel.app/api/generate-outfits');
     assert.equal(init.method,'POST');
     assert.equal(init.redirect,'error');
     assert.equal(init.body,body);
