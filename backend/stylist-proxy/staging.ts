@@ -6,7 +6,7 @@
  */
 import { signStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 
-const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-5vy45vooo-abduzahid8s-projects.vercel.app';
+const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-mgvhq6y9o-abduzahid8s-projects.vercel.app';
 const CORS = {
   'Access-Control-Allow-Origin':'*',
   'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
