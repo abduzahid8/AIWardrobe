@@ -113,6 +113,25 @@ export function outfitQualityFloor(
     if (bottom?.athletic || outer?.sportyZip) reject('sporting_construction_conflicts_with_old_money');
   }
   if (dateNight) {
+    // A verified prominent resort/statement print on a short-sleeved woven
+    // shirt reads as an intentional casual focal point. When the remaining
+    // outfit is formal tailoring (structured blazer + trousers + polished
+    // leather footwear), the registers conflict. This is an evidence-based
+    // whole-look veto, NOT a ban on patterned shirts, short sleeves, summer
+    // looks or a user's specifically locked garment. One quiet stripe or
+    // a short-sleeved fine knit still remains eligible.
+    const baseItem = items.find(item => item.macroCategory === 'top');
+    const baseText = String(baseItem?.name || '') + ' ' + String(baseItem?.description || '');
+    if (context.style === 'semi_classic' && baseItem &&
+      /\\bshort[ -]?sleeve(?:s|d)?\\b/i.test(baseText) &&
+      top?.patternProminence === 'prominent' &&
+      ['shirt', 'dress-shirt'].includes(top.subtype) &&
+      outer?.subtype === 'blazer' && outer.structured &&
+      bottom?.structured && shoe && !shoe.casualSole &&
+      ['oxford', 'derby', 'monk', 'loafer', 'dress-boot'].includes(shoe.subtype) &&
+      String(baseItem.id || '') !== String(context.anchorId || '')) {
+      reject('prominent_short_sleeve_print_conflicts_with_date_tailoring');
+    }
     if (bottom?.fadedDenim) reject('faded_denim_underdresses_date_night');
     if (bottom?.athletic || bottom?.subtype === 'cargo' || outer?.sportyZip || outer?.subtype === 'hoodie'
       || shoe?.athletic || shoe?.rugged || ['sport-sneaker','sandal','espadrille','driver'].includes(shoe?.subtype || ''))
