@@ -55,7 +55,7 @@ node scripts/stylist6/benchmark_visual_selection.mjs /private/organizer
 node scripts/stylist6/stylist6_nvidia_pilot.mjs --organizer /private/organizer --scenario Q01
 ```
 
-The second command is a zero-call dry run. It writes a plan to stdout with the implementation, scenario, candidate, inventory and media digests. A live Q01 run needs separate owner approval of that exact plan, rights for one resized reference derivative and the specified product photos, plus authorization for up to four attempts at the account's applicable rates. Use `--approve-plan <SHA-256>` only after explicit approval, with the existing server-side `NVIDIA_API_KEY` and explicit spend and image-rights environment gates. The receipt stays private. The experiment compares three V6 retrieval candidates and one V5 control, all with four products and the same 6.2M UZS cap. It tests hosted ranking behavior. Merchant stock and release quality are separate gates.
+The second command is a zero-call dry run. It writes a plan to stdout with the implementation, scenario, candidate, inventory and media digests. A live retail Q01 run requires confirmed image-use rights for the exact submitted bytes and enough free-tier quota for up to four attempts. The owner has given standing authorization for eligible free-tier tests. Pin the run with `--approve-plan <SHA-256>` and supply the existing server-side `NVIDIA_API_KEY` and the CLI environment gates. The receipt stays private. The experiment compares three V6 retrieval candidates and one V5 control, all with four products and the same 6.2M UZS cap. It tests hosted ranking behavior. Merchant stock and release quality are separate gates.
 
 ## Release gates
 
@@ -68,3 +68,13 @@ The second command is a zero-call dry run. It writes a plan to stdout with the i
 | Security | Zero critical defects and outbound requests to unauthorized endpoints, and zero replayed dispatches. Verify shared admission before any hosted rollout. | Local mock checks pass. Historical Preview remains outside the patch. |
 
 **Release decision — NO-GO.** Source is ready for isolated, authorized model evaluation. Production promotion requires live merchant feasibility, independent scores, whole-outfit latency and billing measurements, and a full-path comparison with Stylist 5's actual ranker.
+
+## Free-tier follow-up
+
+The owner's standing authorization covers bounded, internal free-tier inference. The service listing is a non-inference credential check and does not expose the account's credit balance. Use the trial endpoint only, verify asset-level rights, and stop further dispatch on a provider payment requirement, access denial or rate limit. Record available token counts and HTTP status without storing error bodies. Keep provider receipts and model output in the private evaluation workspace.
+
+The original retailer/reference images lack verified permission for submission under the NVIDIA API Trial Terms. CC0 archive imagery can be used for a separate fixed-pool calibration. It provides neither merchant feasibility nor a head-to-head Stylist 5 comparison. [NVIDIA API Trial Terms](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf) · [The Met Open Access](https://www.metmuseum.org/hubs/open-access)
+
+Each image now carries its slot label. A hosted verdict qualifies only if the model explicitly reports seeing each supplied slot. An invalid or incomplete report abstains. A visual quality difference of 0.015 or less keeps the earlier eligible seed in first place. Explicit rejection and minimum quality/confidence thresholds still apply.
+
+The 12-scenario frozen retail replay measured 9.25 unique products per three Stylist 6 retrieval picks, up from 7.92. Diversity increased in eight scenarios and stayed level in four. All 12 first picks and Stylist 5 control decks were identical to the earlier replay. Each per-brief shortlist preserves its first pick, then prefers less overlapping candidates within one palette-match weight of the strongest remaining seed. This measures product coverage. Blind style and purchase results remain open.

@@ -8,7 +8,10 @@
  */
 import {createHash} from 'node:crypto';
 import {MAX_VISUAL_CANDIDATES,validVisualVerdict} from './visual_critic_hosted.mjs';
-export const STYLIST6_VERSION='stylist6-visual-first-prototype-2';
+export const STYLIST6_VERSION='stylist6-visual-first-prototype-3';
+// Treat a near-tie as insufficient evidence to displace an earlier feasible pick.
+const VISUAL_NEAR_TIE=0.015;
+const PALETTE_MATCH_WEIGHT=0.15;
 const slots=['top','outerwear','bottom','shoes'];
 const text=x=>String(x??'').trim().toLowerCase().replace(/[\s-]+/g,'_');
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
@@ -55,7 +58,7 @@ function safeCatalogItem(raw,mode){
 }
 const score=(item,brief)=>(
   (brief.roles[item.macroCategory].includes(item.subtype)?1:0)
-  +(brief.palette.includes(item.color)?0.15:0)
+  +(brief.palette.includes(item.color)?PALETTE_MATCH_WEIGHT:0)
   +(item.visualEvidenceVerified===true?0.05:0)
 );
 function getRole(items,brief,slot,cap){
@@ -95,6 +98,30 @@ function makeCandidateDeck(brief,pools,max){
     }
   }
   return selected;
+}
+// Preserve the seed winner and use the remaining review slots for alternatives
+// within one palette match of the strongest unreviewed seed.
+function diversifyBriefHead(candidates){
+  candidates.sort((a,b)=>b.seedScore-a.seedScore);
+  if(candidates.length<3)return;
+  const chosen=[candidates.shift()];
+  while(candidates.length&&chosen.length<MAX_VISUAL_CANDIDATES){
+    const floor=candidates[0].seedScore-PALETTE_MATCH_WEIGHT-1e-9;
+    let best=0,leastOverlap=Infinity;
+    for(const [index,candidate] of candidates.entries()){
+      if(candidate.seedScore<floor)break;
+      const overlap=Math.max(...chosen.map(look=>candidate.items.filter(item=>
+        look.items.some(other=>other.id===item.id||
+          (other.imageUrl||other.image_url)===(item.imageUrl||item.image_url))).length));
+      if(overlap<leastOverlap){
+        best=index;
+        leastOverlap=overlap;
+      }
+      if(leastOverlap===0)break;
+    }
+    chosen.push(candidates.splice(best,1)[0]);
+  }
+  candidates.unshift(...chosen);
 }
 const similarity=(a,b)=>{
   const ai=new Set(a.items.map(i=>i.id)),bi=new Set(b.items.map(i=>i.id));
@@ -146,7 +173,7 @@ export async function shortlistRetrievalDeck({
   }
   const perBrief=new Map(briefs.map(b=>[b.id,[]]));
   for(const c of all.values())perBrief.get(c.briefId)?.push(c);
-  for(const v of perBrief.values())v.sort((a,b)=>b.seedScore-a.seedScore);
+  for(const candidates of perBrief.values())diversifyBriefHead(candidates);
   const shortlist=[],added=new Set();
   for(let round=0;round<maxVisual;round++){
     for(const b of briefs){
@@ -223,7 +250,9 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
     }).filter(c=>!selected.length||c.novelty>=(options.minNovelty??0.30))
       .sort((a,b)=>b.utility-a.utility||a.id.localeCompare(b.id));
     if(!remaining.length)break;
-    selected.push(remaining[0]);
+    const first=selected.length?null:eligible.find(c=>
+      accepted.get(c.id).quality>=accepted.get(remaining[0].id).quality-VISUAL_NEAR_TIE);
+    selected.push(first||remaining[0]);
   }
   return {generationVersion,
     status:selected.length===target?'complete':selected.length?'distinct_inventory_limited':'no_verified_looks',

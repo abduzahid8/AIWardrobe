@@ -20,12 +20,13 @@ for (const { id } of scenarios) {
     fetchImpl: async (url, init) => {
       assert.equal(url, 'https://integrate.api.nvidia.com/v1/chat/completions');
       const body = JSON.parse(init.body);
-      const [prompt, ...images] = body.messages[0].content;
-      assert.equal(images.length, 5);
+      const [prompt, ...media] = body.messages[0].content;
+      assert.equal(media.filter((part) => part.type === 'image_url').length, 5);
       const candidateId = prompt.text.match(/candidateId must be exactly "([^"]+)"/)[1];
       mockCalls.push(candidateId);
       return Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({
-        candidateId, visualCohesion: 0.9, referenceFidelity: candidateId === preferred ? 1 : 0.7,
+        candidateId, slotVisibility: { top: 'visible', outerwear: 'visible', bottom: 'visible', shoes: 'visible' },
+        visualCohesion: 0.9, referenceFidelity: candidateId === preferred ? 1 : 0.7,
         styleFit: 0.9, occasionFit: 0.9, formalityFit: 0.9, confidence: 0.95, reject: candidateId === seed,
         evidence: ['MOCK top and layer', 'MOCK trouser proportions', 'MOCK shoe register'],
       }) } }] });

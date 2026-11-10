@@ -19,6 +19,7 @@ const candidate = {
 };
 
 const verdict = {
+  slotVisibility: { top: 'visible', outerwear: 'visible', bottom: 'visible', shoes: 'visible' },
   candidateId: candidate.id, visualCohesion: 0.9, referenceFidelity: 0.87, styleFit: 0.88,
   occasionFit: 0.91, formalityFit: 0.93, confidence: 0.95, reject: false,
   evidence: ['mock top observation', 'mock layer observation', 'mock trouser observation'],
@@ -56,7 +57,12 @@ test('NVIDIA request sends only style context and ordered, pinned outfit images'
   assert.equal(body.model, NVIDIA_VISION_MODEL);
   assert.equal(body.stream, false);
   assert.equal(body.chat_template_kwargs.enable_thinking, false);
-  const [prompt, ...images] = body.messages[0].content;
+  const [prompt, ...mediaParts] = body.messages[0].content;
+  const images = mediaParts.filter((part) => part.type === 'image_url');
+  assert.deepEqual(mediaParts.filter((part) => part.type === 'text').map(({ text }) => text), [
+    'Reference outfit image:', ...candidate.products.map(({ slot }) => `Candidate ${slot} image:`),
+  ]);
+  assert.ok(mediaParts.every((part, index) => part.type === (index % 2 === 0 ? 'text' : 'image_url')));
   assert.match(prompt.text, /Soft tailoring/);
   assert.doesNotMatch(init.body, /127\.0\.0\.1|private-data/);
   assert.deepEqual(images.map(({ image_url }) => image_url.url),
@@ -164,4 +170,48 @@ test('a stalled media resolver is bounded and never dispatches', async () => {
   assert.deepEqual(await critic([candidate]), []);
   assert.equal(calls, 0);
   assert.equal(events[0].reason, 'deadline');
+});
+
+test('payment-required responses block any remaining dispatches without retry', async () => {
+  const events = [];
+  let calls = 0;
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey, resolveReference: () => asset(), resolveProduct: () => asset(),
+    fetchImpl: async () => { calls++; return new Response(null, { status: 402 }); },
+    onEvent: (event) => events.push(event),
+  });
+  assert.deepEqual(await critic(Array.from({ length: 4 }, (_, i) => ({ ...candidate, id: 'payment-' + i }))), []);
+  assert.ok(calls >= 1 && calls <= 2);
+  assert.equal(events.filter((event) => event.httpStatus === 402).length, calls);
+  assert.ok(events.every(({ reason }) => reason === 'provider_payment_required'));
+});
+
+test('usage telemetry retains safe token counts even when a successful response fails verdict validation', async () => {
+  const events = [];
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey, resolveReference: () => asset(), resolveProduct: () => asset(),
+    fetchImpl: async () => Response.json({
+      usage: { prompt_tokens: 120, completion_tokens: 2, total_tokens: 'invalid', other: 'private' },
+      choices: [{ message: { content: 'bad verdict' } }],
+    }),
+    onEvent: (event) => events.push(event),
+  });
+  assert.deepEqual(await critic([candidate]), []);
+  assert.equal(events[0].httpStatus, 200);
+  assert.deepEqual(events[0].usage, { prompt_tokens: 120, completion_tokens: 2 });
+  assert.ok(events[0].latencyMs >= 0);
+});
+
+test('a provider that did not visibly resolve every supplied slot must abstain', async () => {
+  for (const slotVisibility of [undefined, { ...verdict.slotVisibility, outerwear: 'missing' },
+    { ...verdict.slotVisibility, outerwear: 'unclear' }, { ...verdict.slotVisibility, coat: 'visible' }]) {
+    const events = [];
+    const critic = createHostedVisualCritic({
+      provider: 'nvidia', apiKey, resolveReference: () => asset(), resolveProduct: () => asset(),
+      fetchImpl: async () => nvidiaResponse({ ...verdict, slotVisibility }),
+      onEvent: (event) => events.push(event),
+    });
+    assert.deepEqual(await critic([candidate]), []);
+    assert.equal(events[0].reason, 'incomplete_visual_coverage');
+  }
 });

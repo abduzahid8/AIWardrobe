@@ -67,10 +67,11 @@ test('NVIDIA verdict reverses the feasible seed winner; rejected and unknown loo
     fetchImpl: async (url, init) => {
       assert.equal(url, 'https://integrate.api.nvidia.com/v1/chat/completions');
       const { content } = JSON.parse(init.body).messages[0];
-      assert.equal(content.length, 6);
+      assert.equal(content.filter((part) => part.type === 'image_url').length, 5);
       const id = content[0].text.match(/candidateId must be exactly "([^"]+)"/)[1];
       seen.push(id);
       return Response.json({ choices: [{ message: { content: JSON.stringify({
+        slotVisibility: { top: 'visible', outerwear: 'visible', bottom: 'visible', shoes: 'visible' },
         candidateId: id === third.id ? 'unknown' : id, visualCohesion: 0.9, referenceFidelity: 0.9,
         styleFit: 0.9, occasionFit: 0.9, formalityFit: 0.9, confidence: 0.95, reject: id === first.id,
         evidence: ['mock tonal relationship', 'mock coat weight', 'mock boot formality'],

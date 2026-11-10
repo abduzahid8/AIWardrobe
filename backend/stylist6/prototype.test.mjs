@@ -121,3 +121,34 @@ test('duplicate verdicts and unexpected critic failures never create approved ou
   assert.equal(failure.diagnostics.visualVerdict,'ABSTAINED');
   assert.doesNotMatch(JSON.stringify(failure),/sensitive details/);
 });
+
+test('a narrow visual lead keeps the feasible seed while a clear lead displaces it',async()=>{
+  for(const [fidelityIncrease,winner] of [[0.01,0],[0.08,1]]){
+    const seen=[];
+    const result=await proposeVisualFirstDeck({...base,options:{target:1,maxHostedCandidates:2},
+      visualCritic:async(payload)=>{
+        seen.push(...payload.map(({id})=>id));
+        const [first,second]=await base.visualCritic(payload);
+        return [first,{...second,referenceFidelity:second.referenceFidelity+fidelityIncrease}];
+      }});
+    assert.equal(result.outfits[0].id,seen[winner]);
+  }
+});
+
+test('review slots preserve the seed and cover distinct products from the same brief',async()=>{
+  const brief=concepts[0];
+  const threePerRole=Object.entries(brief.roles).flatMap(([slot,[subtype]])=>
+    Array.from({length:3},(_,index)=>{
+      const id=slot+'-diversity-'+index;
+      return {id,macroCategory:slot,subtype,color:['top','shoes'].includes(slot)||index===0?'navy':'grey',texture:'smooth',
+        isShopItem:true,price:50,currency:'UZS',
+        imageUrl:'https://example.com/images/'+id,shopUrl:'https://example.com/shop/'+id};
+    }));
+  const {shortlist}=await shortlistRetrievalDeck({...base,catalog:threePerRole});
+  const alternatives=shortlist.filter(({briefId})=>briefId===brief.id).slice(0,3);
+  assert.equal(alternatives.length,3);
+  assert.ok(alternatives[0].items.every(({color})=>color==='navy'));
+  // The second and third strongest seeds can differ by at most one palette
+  // match, so limited inventory may require some reuse of the seed pieces.
+  assert.ok(new Set(alternatives.flatMap(({items})=>items.map(({id})=>id))).size===8);
+});
