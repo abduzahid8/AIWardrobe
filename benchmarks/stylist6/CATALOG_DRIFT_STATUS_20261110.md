@@ -25,6 +25,49 @@
   the live universe (`pilot_12.mjs` accepts the same row shape). Do not claim
   the 99-look offline result transfers to live stock.
 
+## Statistical intersection: snapshot UZS slice vs live UZS intelligence (2026-11-10)
+
+ID-level intersection is BLOCKED (no live export in this environment).
+The table below compares pilot-adapter taxonomy (snapshot) against the
+audit's `catalog_garment_intelligence` taxonomy (live). Minima that coincide
+to the unit prove shared anchor products; count gaps prove variant inflation
+(snapshot) and taxonomy divergence (knit pullovers).
+
+| Role/subtype | Live active SKUs (min UZS) | Snapshot UZS rows (min) | Reading |
+|---|---|---|---|
+| top / t-shirt | 317 (219,900) | 397 (219,900) | same anchor product; +80 variant rows |
+| top / polo | 251 (238,141) | 675 (238,141) | same anchor; +424 variant rows |
+| top / shirt | 364 (349,900) | 578 (349,900) | same anchor family |
+| top / fine-knit | **8 (1,186,196)** | **418 (279,900)** | live keeps 268 knits in outerwear/pullover; adapter projects them to top |
+| outerwear / pullover | 268 (396,902) | — (projected to top/fine-knit or jacket) | taxonomy divergence, not missing stock |
+| outerwear / jacket | 232 (258,000) | 364 (258,000) | same anchor; +132 variant rows |
+| outerwear / blazer | 119 (849,900) | 92 (849,900) | snapshot UNDER-counts live blazers |
+| outerwear / cardigan | 66 (635,043) | 199 (635,043) | same anchor; +133 variant rows |
+| outerwear / coat | — (not tabulated) | 42 (1,099,900) | snapshot-only coats need live check |
+| bottom / trouser | 287 (396,902) | 613 (396,902) | same anchor; +326 variant rows |
+| bottom / tailored-trouser | 113 (429,900) | 78 (649,900) | snapshot misses cheapest live tailored |
+| shoes / loafer | **23 (1,299,900)** | **211 (649,900)** | snapshot loafer supply is 9× live; live cheapest is 2× snapshot cheapest |
+| shoes / sneaker | 21 (549,900) | 150 (803,630) | snapshot misses cheapest live sneaker |
+| shoes / minimal-sneaker | 11 (649,900) | 8 (1,829,000) | snapshot misses cheapest live minimal |
+| shoes / boot | — (not tabulated) | 35 (1,199,900) | snapshot-only boots need live check |
+
+Consequences, all verified from the two tables, no new data invented:
+
+1. B01 (1.5M UZS, old_money/Work) under LIVE numbers: cheapest loafer alone
+   (1,299,900) + cheapest t-shirt (219,900) = 1,519,800 > cap — any
+   loafer look is infeasible; cheapest knit look (fine-knit 1,186,196 +
+   loafer 1,299,900) is infeasible before trousers. Only a sneaker-based
+   look (1,424,702 theoretical floor) could fit — incompatible with the
+   reference-first knit briefs. Abstention stands; bottleneck = catalog.
+2. Variant inflation confirmed both directions: snapshot UZS slice holds
+   ~5,322 rows vs 3,006 live active UZS SKUs (~2,300 stale rows), while
+   missing the cheapest live tailored-trousers/sneakers/minimal-sneakers.
+3. `pilot_12.mjs` now accepts `--snapshot-dir` so the live export can be
+   dropped in and all three arms re-run unchanged. Export shape mapping:
+   live JSON rows use the same keys as `data/` rows plus optional
+   `fashion_slot`/`fashion_subtype` (used for the pool slot when present,
+   adapter projection otherwise).
+
 ## Image availability under the authorized-access policy (measured)
 
 `scripts/stylist6/image_access.mjs` (`image-access-v1`): allowlist-only fetch,

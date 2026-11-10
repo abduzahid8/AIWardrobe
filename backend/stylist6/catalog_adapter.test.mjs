@@ -116,3 +116,20 @@ test('color and texture inference covers reference palette words', () => {
 test('adapter version is pinned for pilot provenance', () => {
   assert.equal(CATALOG_ADAPTER_VERSION, 'catalog-adapter-v1');
 });
+
+test('live intelligence hints are honored with provenance, never remapped', async () => {
+  const { liveHint } = await import('./catalog_adapter.mjs');
+  assert.deepEqual(liveHint({ fashion_slot: 'outerwear', fashion_subtype: 'pullover' }),
+    { macroCategory: 'outerwear', subtype: 'pullover' });
+  assert.deepEqual(liveHint({ fashion_slot: 'TOP', fashion_subtype: 'fine_knit' }),
+    { macroCategory: 'top', subtype: 'fine-knit' });
+  assert.equal(liveHint({ fashion_slot: 'top', fashion_subtype: 'spacesuit' }), null);
+  assert.equal(liveHint({}), null);
+  const item = projectCatalogItem(row({
+    id: 'live-1', name: 'Chunky Handmade Sweater',
+    fashion_slot: 'outerwear', fashion_subtype: 'pullover',
+  }));
+  assert.equal(item.macroCategory, 'outerwear');
+  assert.equal(item.subtype, 'pullover');
+  assert.equal(item.projection.kind, 'live_intelligence');
+});

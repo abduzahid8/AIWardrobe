@@ -65,13 +65,18 @@ function shaFile(file) {
 }
 
 async function loadSnapshotCatalog() {
-  const dir = path.join(root, 'data');
+  // --snapshot-dir <dir> replays the pilot on a read-only live export:
+  // every *.json file holding an array of rows (same keys as data/ rows,
+  // plus optional fashion_slot/fashion_subtype from the intelligence table).
+  const dir = args['snapshot-dir'] ? String(args['snapshot-dir']) : path.join(root, 'data');
+  const prefix = args['snapshot-dir'] ? '' : 'shop_catalog_';
   const rows = [];
   for (const file of fs.readdirSync(dir)) {
-    if (!file.startsWith('shop_catalog_') || !file.endsWith('.json')) continue;
+    if (!file.endsWith('.json') || !file.startsWith(prefix)) continue;
     const parsed = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
-    rows.push(...parsed);
+    rows.push(...(Array.isArray(parsed) ? parsed : parsed.rows || parsed.items || parsed.products || []));
   }
+  if (!rows.length) throw new Error('empty_snapshot:' + dir);
   const h = crypto.createHash('sha256');
   for (const r of rows) h.update(String(r.id));
   return { rows, snapshotSha: h.digest('hex').slice(0, 16), files: fs.readdirSync(dir).length };
@@ -344,9 +349,11 @@ async function main() {
       stylist6prototype: stylist6.STYLIST6_VERSION || 'stylist6-visual-first-prototype-1',
       catalogAdapter: adapted.adapterVersion,
       catalogSnapshotSha: snapshotSha,
+      catalogSource: args['snapshot-dir'] ? 'live_export:' + args['snapshot-dir'] : 'committed_data_snapshot',
       catalogRows: rows.length,
       catalogAdmitted: adapted.items.length,
       catalogSkipped: adapted.skipped,
+      liveIntelligenceHints: adapted.items.filter((i) => i.projection?.kind === 'live_intelligence').length,
       referenceIndex: index.dataset_id,
       visualVerdict: 'NOT_RUN',
       visualNotRunReason: 'no hosted vision key and no authorized reference bytes in this environment; '

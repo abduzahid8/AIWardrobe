@@ -109,6 +109,24 @@ const isHttps = (value) => {
   }
 };
 
+// Authoritative live taxonomy (`catalog_garment_intelligence` slot/subtype).
+// Used ONLY when a row carries an explicit, valid live hint (read-only live
+// export). Anything unrecognized falls through to the transparent projection
+// below — never silently remapped.
+const LIVE_SUBTYPES = {
+  top: new Set(['t-shirt', 'polo', 'shirt', 'dress-shirt', 'fine-knit']),
+  outerwear: new Set(['blazer', 'coat', 'jacket', 'overshirt', 'cardigan', 'bomber', 'pullover']),
+  bottom: new Set(['jeans', 'chino', 'tailored-trouser', 'trouser']),
+  shoes: new Set(['loafer', 'derby', 'boot', 'minimal-sneaker', 'sneaker', 'chelsea']),
+};
+
+export function liveHint(row) {
+  const slot = String(row?.fashion_slot || '').toLowerCase();
+  const subtype = String(row?.fashion_subtype || '').toLowerCase().replace(/_/g, '-');
+  if (LIVE_SUBTYPES[slot]?.has(subtype)) return { macroCategory: slot, subtype };
+  return null;
+}
+
 const finitePrice = (value) =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 
@@ -130,6 +148,25 @@ export function projectCatalogItem(row) {
     return { skipped: 'bad_currency', id };
   }
   const name = String(row.name || id);
+  const hint = liveHint(row);
+  if (hint) {
+    return Object.freeze({
+      id,
+      name,
+      macroCategory: hint.macroCategory,
+      subtype: hint.subtype,
+      color: inferColor(name),
+      texture: inferTexture(name),
+      imageUrl: row.image_url,
+      shopUrl: row.source_url,
+      price: row.price,
+      currency: row.currency,
+      brand: row.brand || null,
+      isShopItem: true,
+      visualEvidenceVerified: false,
+      projection: { kind: 'live_intelligence', evidence: [`intelligence:${hint.macroCategory}/${hint.subtype}`] },
+    });
+  }
   const text = `${name} ${row.description || ''}`.toLowerCase();
   const category = String(row.category || '').toLowerCase();
   const garmentType = String(row.garment_type || '').toLowerCase();
