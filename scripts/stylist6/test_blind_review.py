@@ -116,6 +116,24 @@ class BlindReviewTests(unittest.TestCase):
         key = json.loads((folder / "retail-blind-key.json").read_text())
         self.assertEqual(set(key["cases"]["Q01"]), {"A", "B"})
 
+    def test_twelve_cases_counterbalance_hidden_deck_position(self):
+        folder = self.fixture()
+        cases = [{"id": f"Q{i:02}", "reference": "rt_001", "occasion": "Work",
+                  "brief": "Synthetic test", "budget": {"amount": 100, "currency": "UZS"}}
+                 for i in range(1, 13)]
+        scenario_bytes = json.dumps(cases).encode()
+        (folder / "scenarios.json").write_bytes(scenario_bytes)
+        replay = json.loads((folder / "replay.json").read_text())
+        replay["scenariosSha256"] = hashlib.sha256(scenario_bytes).hexdigest()
+        first = replay["results"][0]
+        replay["results"] = [{**first, "id": case["id"]} for case in cases]
+        (folder / "replay.json").write_text(json.dumps(replay))
+        review.build(folder, self.root / "balanced-review")
+        assignments = json.loads((folder / "retail-blind-key.json").read_text())["cases"]
+        self.assertEqual(len(assignments), 12)
+        self.assertEqual(sum(labels["A"] == "baseline" for labels in assignments.values()), 6)
+        self.assertEqual(sum(labels["B"] == "baseline" for labels in assignments.values()), 6)
+
     def test_rejects_unexpected_photo_paths(self):
         folder = self.fixture(unsafe_photo=True)
         with self.assertRaisesRegex(ValueError, "Unexpected product photo path"):
