@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { signStylistTransport } from '../transport/signature.mjs';
+import {
+  STYLIST6_VISION_MAX_BODY_BYTES,
+  STYLIST_TRANSPORT_MAX_BODY_BYTES,
+  signStylistTransport,
+  verifyStylistTransport,
+} from '../transport/signature.mjs';
 import route from '../api/stylist6-vision-test.ts';
 
 const SECRET = 'test-transport-secret-0123456789abcdef';
@@ -33,7 +38,7 @@ function body(over = {}) {
   });
 }
 
-async function signedCall(text, { key = KEY, fetchImpl = null } = {}) {
+async function signedCall(text, { key = KEY, fetchImpl = null, maxBodyBytes = STYLIST6_VISION_MAX_BODY_BYTES } = {}) {
   const prevKey = process.env.NVIDIA_API_KEY;
   const prevSecret = process.env.STYLIST_NODE_SHARED_SECRET;
   const prevFetch = globalThis.fetch;
@@ -42,7 +47,7 @@ async function signedCall(text, { key = KEY, fetchImpl = null } = {}) {
   else process.env.NVIDIA_API_KEY = key;
   if (fetchImpl) globalThis.fetch = fetchImpl;
   try {
-    const headers = await signStylistTransport({ secret: SECRET, body: text, authorization: AUTH });
+    const headers = await signStylistTransport({ secret: SECRET, body: text, authorization: AUTH, maxBodyBytes });
     const response = await route.fetch(new Request('https://stylist.internal/api/stylist6-vision-test', {
       method: 'POST',
       headers: { ...headers, authorization: AUTH, 'content-type': 'application/json' },
@@ -88,11 +93,39 @@ test('unsigned POST is rejected before any provider traffic', async () => {
 
 test('signed but unapproved call is rejected with zero provider traffic', async () => {
   let calls = 0;
-  const { status } = await signedCall(body({ confirmSpend: false }), {
+  const diagnostic = JSON.stringify({ protocol: 'aiw-stylist6-vision-test-v1' });
+  const { status, payload } = await signedCall(diagnostic, {
     fetchImpl: (async () => { calls += 1; throw new Error('must not fetch'); }),
   });
   assert.equal(status, 403);
+  assert.equal(payload.code, 'approval_required');
   assert.equal(calls, 0);
+});
+
+test('vision HMAC accepts exactly 4 MiB while the default transport stays at 1 MiB', async () => {
+  const diagnostic = JSON.stringify({ protocol: 'aiw-stylist6-vision-test-v1', padding: '' });
+  const paddingBytes = STYLIST6_VISION_MAX_BODY_BYTES - Buffer.byteLength(diagnostic);
+  const padding = 'é'.repeat(Math.floor(paddingBytes / 2));
+  const exact = diagnostic.replace('""', JSON.stringify(padding)) + ' '.repeat(paddingBytes % 2);
+  assert.equal(Buffer.byteLength(exact), STYLIST6_VISION_MAX_BODY_BYTES);
+  const input = { secret: SECRET, body: exact, authorization: AUTH };
+  await assert.rejects(signStylistTransport(input), /stylist_transport_invalid_request/);
+  const headers = await signStylistTransport({ ...input, maxBodyBytes: STYLIST6_VISION_MAX_BODY_BYTES });
+  assert.equal(await verifyStylistTransport({
+    ...input,
+    timestamp: headers['x-aiw-timestamp'],
+    nonce: headers['x-aiw-nonce'],
+    signature: headers['x-aiw-signature'],
+  }), false);
+  assert.equal(STYLIST_TRANSPORT_MAX_BODY_BYTES, 1024 * 1024);
+  const { status, payload } = await signedCall(exact);
+  assert.equal(status, 403);
+  assert.equal(payload.code, 'approval_required');
+  await assert.rejects(signStylistTransport({
+    ...input, body: exact + ' ', maxBodyBytes: STYLIST6_VISION_MAX_BODY_BYTES,
+  }), /stylist_transport_invalid_request/);
+  const oversized = await signedCall(exact + ' ', { maxBodyBytes: STYLIST6_VISION_MAX_BODY_BYTES + 1 });
+  assert.equal(oversized.status, 413);
 });
 
 test('approved call without server key is rejected without provider traffic', async () => {
@@ -115,6 +148,7 @@ test('approved call returns one redacted NVIDIA verdict for exactly one provider
       const parsed = JSON.parse(init.body);
       seenModels.push(parsed.model);
       assert.equal(parsed.stream, false);
+      assert.equal(init.redirect, 'error');
       const parts = parsed.messages[0].content;
       const images = parts.filter((p) => p.type === 'image_url');
       assert.equal(images.length, 3, 'reference + 2 product photos');

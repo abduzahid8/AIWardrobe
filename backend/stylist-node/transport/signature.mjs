@@ -8,6 +8,7 @@
  * or garment/user data are ever written to the logs.
  */
 export const STYLIST_TRANSPORT_MAX_BODY_BYTES = 1024 * 1024;
+export const STYLIST6_VISION_MAX_BODY_BYTES = 4 * 1024 * 1024;
 export const STYLIST_TRANSPORT_MAX_SKEW_MS = 45_000;
 
 const encoder = new TextEncoder();
@@ -41,9 +42,10 @@ async function signedMessage(
 }
 
 export async function signStylistTransport(input) {
+  const maxBodyBytes = input.maxBodyBytes ?? STYLIST_TRANSPORT_MAX_BODY_BYTES;
   const timestamp = String(input.now ?? Date.now());
   const nonce = input.nonce ?? crypto.randomUUID();
-  if (!UUID_RE.test(nonce) || encoder.encode(input.body).byteLength > STYLIST_TRANSPORT_MAX_BODY_BYTES) {
+  if (!UUID_RE.test(nonce) || encoder.encode(input.body).byteLength > maxBodyBytes) {
     throw new Error('stylist_transport_invalid_request');
   }
   const signature = new Uint8Array(await crypto.subtle.sign(
@@ -58,6 +60,7 @@ export async function signStylistTransport(input) {
 }
 
 export async function verifyStylistTransport(input) {
+  const maxBodyBytes = input.maxBodyBytes ?? STYLIST_TRANSPORT_MAX_BODY_BYTES;
   const timestamp = input.timestamp ?? '';
   const nonce = input.nonce ?? '';
   const signature = input.signature ?? '';
@@ -66,7 +69,7 @@ export async function verifyStylistTransport(input) {
       Math.abs((input.now ?? Date.now()) - millis) > STYLIST_TRANSPORT_MAX_SKEW_MS ||
       !UUID_RE.test(nonce) || !SIGNATURE_RE.test(signature) ||
       !/^Bearer\s+\S+$/i.test(input.authorization) ||
-      encoder.encode(input.body).byteLength > STYLIST_TRANSPORT_MAX_BODY_BYTES) return false;
+      encoder.encode(input.body).byteLength > maxBodyBytes) return false;
   try {
     return await crypto.subtle.verify('HMAC', await keyFor(input.secret),
       fromHex(signature),

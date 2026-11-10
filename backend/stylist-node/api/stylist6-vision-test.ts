@@ -19,12 +19,11 @@
  * curl with a fresh nonce and no retries.
  */
 
-import { verifyStylistTransport } from '../transport/signature.mjs';
+import { STYLIST6_VISION_MAX_BODY_BYTES, verifyStylistTransport } from '../transport/signature.mjs';
 import { createHostedVisualCritic, HOSTED_VISUAL_CRITIC_VERSION } from '../../stylist6/visual_critic_hosted.mjs';
 
 const PROTOCOL = 'aiw-stylist6-vision-test-v1';
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
-const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_REFERENCE_BYTES = 3 * 1024 * 1024;
 const MAX_PRODUCTS = 4;
 
@@ -43,16 +42,16 @@ function isHttps(value: unknown): value is string {
 export default {
   async fetch(request: Request): Promise<Response> {
     if (request.method !== 'POST') return error('method_not_allowed', 405);
-    if (Number(request.headers.get('content-length') || 0) > MAX_BODY_BYTES) {
+    if (Number(request.headers.get('content-length') || 0) > STYLIST6_VISION_MAX_BODY_BYTES) {
       return error('invalid_request', 413);
     }
     const secret = process.env.STYLIST_NODE_SHARED_SECRET || '';
     if (secret.length < 32) return error('compute_unconfigured', 503);
     const body = await request.text();
-    if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES) return error('invalid_request', 413);
+    if (new TextEncoder().encode(body).byteLength > STYLIST6_VISION_MAX_BODY_BYTES) return error('invalid_request', 413);
 
     const authorized = await verifyStylistTransport({
-      secret, body,
+      secret, body, maxBodyBytes: STYLIST6_VISION_MAX_BODY_BYTES,
       authorization: request.headers.get('authorization') || '',
       timestamp: request.headers.get('x-aiw-timestamp'),
       nonce: request.headers.get('x-aiw-nonce'),
@@ -116,7 +115,7 @@ export default {
           if (url === NVIDIA_ENDPOINT) {
             providerCalls += 1;
             if (providerCalls > 1) throw new Error('provider_call_budget_exhausted');
-            return globalThis.fetch(url, init);
+            return globalThis.fetch(url, { ...init, redirect: 'error' });
           }
           if (!isHttps(url)) throw new Error('product_photo_blocked');
           return globalThis.fetch(url, init);
