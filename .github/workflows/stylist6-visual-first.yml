@@ -40,6 +40,30 @@ jobs:
         run: node --test backend/stylist6/reference_library.test.mjs
       - name: Verify 46 curated outfit briefs and reference-first integration (offline mocks)
         run: node --test backend/stylist6/lookbook_briefs.test.mjs
+      - name: Verify snapshot catalog adapter and knit base-layer projection
+        run: node --test backend/stylist6/catalog_adapter.test.mjs
+      - name: Verify hosted visual critic contract (recorded fixtures, NO API calls)
+        run: node --test backend/stylist6/visual_critic_hosted.test.mjs
+      - name: Syntax-check pilot harness and contact sheets
+        run: |
+          node --check scripts/stylist6/pilot_12.mjs
+          node --check backend/stylist6/catalog_adapter.mjs
+          node --check backend/stylist6/visual_critic_hosted.mjs
+          python3 -m py_compile scripts/stylist6/contact_sheets_12.py
+      - name: Smoke-run one pilot scenario offline (S6 arms, NO image downloads)
+        run: |
+          node scripts/stylist6/pilot_12.mjs --out "$RUNNER_TEMP/s6-smoke" --scenarios S6-01
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import assert from "node:assert/strict";
+            const r = JSON.parse(fs.readFileSync("benchmarks/stylist6/pilot_12_report.json", "utf8"));
+            assert.equal(r.scenarios.length, 1);
+            for (const arm of ["creative-first", "reference-first"]) {
+              assert.equal(r.scenarios[0].arms[arm].looks, 3);
+              assert.equal(r.scenarios[0].arms[arm].visualVerdict, "NOT_RUN");
+            }
+            console.log("pilot smoke: S6 arms produced 3 retrieval decks each, zero API calls");
+          '
       - name: Verify flat-lay ZIP import never stores unsafe/unreviewed media
         run: python3 -m unittest scripts/style_references/test_import_flatlay_archive.py -v
       - name: Verify private Supabase reference upload gate (synthetic images, NO API calls)

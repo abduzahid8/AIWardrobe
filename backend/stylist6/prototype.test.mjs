@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {proposeVisualFirstDeck,STYLIST6_VERSION} from './prototype.mjs';
+import {proposeVisualFirstDeck,shortlistRetrievalDeck,STYLIST6_VERSION} from './prototype.mjs';
 
 const catalog=[];
 function add(slot,subtype,colors,price=170000){
@@ -96,4 +96,12 @@ test('identical garment directions with renamed headers do not count as creativi
   const cloned=concepts.map((c,i)=>({...c,id:'new'+i,name:'Another outfit '+i,
     roles:concepts[0].roles,layerPolicy:'required',palette:['grey'],silhouette:'same'}));
   await assert.rejects(()=>proposeVisualFirstDeck({...base,creativeDirector:async()=>cloned}),/creative_briefs_not_diverse/);
+});
+test('retrieval shortlist is explicitly marked visual-verdict NOT RUN',async()=>{
+  const deck=await shortlistRetrievalDeck(base);
+  assert.equal(deck.generationVersion,STYLIST6_VERSION);
+  assert.equal(deck.visualVerdict,'NOT_RUN');
+  assert.ok(deck.shortlist.length>0);
+  assert.ok(!('visualQuality' in (deck.shortlist[0]||{}))||deck.shortlist[0].visualQuality===undefined);
+  assert.ok(deck.diagnostics.candidateCount>0);
 });

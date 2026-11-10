@@ -107,18 +107,22 @@ function validCritique(row,allowed){
   return keys.every(k=>finite(row[k])&&row[k]>=0&&row[k]<=1)&&
     Array.isArray(row.evidence)&&row.evidence.length>0&&row.evidence.every(v=>typeof v==='string');
 }
-export async function proposeVisualFirstDeck({
- request,catalog,creativeDirector,visualCritic,hardGate,priceToBudgetCurrency,options={}
+/**
+ * Retrieval-only shortlist for blind human review. Runs every deterministic
+ * stage up to (not including) the hosted visual critic and returns
+ * seed-ranked candidates explicitly marked `visualVerdict:'NOT_RUN'`.
+ * Human judges are the primary evaluators in the pilot; this output must
+ * never be presented as visually approved.
+ */
+export async function shortlistRetrievalDeck({
+ request,catalog,creativeDirector,hardGate,priceToBudgetCurrency,options={}
 }){
   assert(request&&['catalog','wardrobe','mixed'].includes(request.sourceMode),'request');
   assert(Array.isArray(catalog)&&typeof creativeDirector==='function','input');
   assert(typeof hardGate==='function'&&typeof priceToBudgetCurrency==='function','trusted_gates_required');
-  assert(typeof visualCritic==='function','visual_critic_required');
-  const target=Math.min(3,Math.max(1,options.target??3));
   const briefLimit=Math.min(12,Math.max(6,options.briefLimit??8));
   const perRole=Math.min(24,Math.max(4,options.perRole??12));
   const maxVisual=Math.min(72,Math.max(12,options.maxVisual??48));
-  const minVisualQuality=options.minVisualQuality??0.68;
   const briefCandidates=Math.min(120,Math.max(10,options.perBrief??60));
   const items=catalog.map(i=>safeCatalogItem(i,request.sourceMode)).filter(Boolean);
   const briefs=parseBriefs(await creativeDirector(request,briefLimit));
@@ -155,6 +159,19 @@ export async function proposeVisualFirstDeck({
     }
     if(shortlist.length===maxVisual)break;
   }
+  return {generationVersion:STYLIST6_VERSION,visualVerdict:'NOT_RUN',briefs,shortlist,added,
+    diagnostics:{briefs:briefs.length,catalogInput:catalog.length,admittedCatalogItems:items.length,
+      candidateCount:all.size,shortlisted:shortlist.length,rejections}};
+}
+
+export async function proposeVisualFirstDeck({
+ request,catalog,creativeDirector,visualCritic,hardGate,priceToBudgetCurrency,options={}
+}){
+  assert(typeof visualCritic==='function','visual_critic_required');
+  const target=Math.min(3,Math.max(1,options.target??3));
+  const minVisualQuality=options.minVisualQuality??0.68;
+  const {generationVersion,briefs,shortlist,added,diagnostics}=await shortlistRetrievalDeck({
+    request,catalog,creativeDirector,hardGate,priceToBudgetCurrency,options});
   // Actual photos must be consumed by the remote critic adapter, not
   // replaced with image-derived adjectives and called 'visual analysis'.
   const critiques=await visualCritic(shortlist.map(c=>({
@@ -184,12 +201,11 @@ export async function proposeVisualFirstDeck({
     if(!remaining.length)break;
     selected.push(remaining[0]);
   }
-  return {generationVersion:STYLIST6_VERSION,
+  return {generationVersion,
     status:selected.length===target?'complete':selected.length?'distinct_inventory_limited':'no_verified_looks',
     outfits:selected.map(c=>({id:c.id,concept:{id:c.brief.id,title:c.brief.name,referenceId:c.brief.referenceId||null},
       items:c.items,visualQuality:accepted.get(c.id).quality,evidence:accepted.get(c.id).evidence})),
-    diagnostics:{briefs:briefs.length,catalogInput:catalog.length,admittedCatalogItems:items.length,
-      candidateCount:all.size,visualReviewed:shortlist.length,visualApproved:accepted.size,
-      selected:selected.length,rejections}
+    diagnostics:{...diagnostics,visualVerdict:'JUDGED',
+      visualReviewed:shortlist.length,visualApproved:accepted.size,selected:selected.length}
   };
 }
