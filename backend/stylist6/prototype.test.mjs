@@ -57,8 +57,8 @@ test('dynamic creative briefs produce three catalog-grounded distinct outfits',a
   }
 });
 test('hard budget applies to every complete outfit before visual review',async()=>{
-  const result=await proposeVisualFirstDeck({...base,request:{...base.request,budget:{amount:710000,currency:'UZS'}}});
-  for(const look of result.outfits)assert.ok(look.items.reduce((sum,item)=>sum+item.price,0)<=710000);
+  const result=await proposeVisualFirstDeck({...base,request:{...base.request,budget:{amount:690000,currency:'UZS'}}});
+  for(const look of result.outfits)assert.ok(look.items.reduce((sum,item)=>sum+item.price,0)<=690000);
   assert.ok(result.diagnostics.rejections.budget>0);
 });
 test('without genuine critic evidence the engine abstains instead of faking quality',async()=>{
