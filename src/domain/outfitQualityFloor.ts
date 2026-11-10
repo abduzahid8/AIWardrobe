@@ -124,7 +124,13 @@ export function outfitQualityFloor(
     const baseText = String(baseItem?.name || '') + ' ' + String(baseItem?.description || '');
     if (context.style === 'semi_classic' && baseItem &&
       /\bshort[ -]?sleeve(?:s|d)?\b/i.test(baseText) &&
-      top?.patternProminence === 'prominent' &&
+      (top?.patternProminence === 'prominent' ||
+        // Some catalog titles do not describe the print visible on the actual
+        // product (verified Lands' End seersucker colorway). Trust only an
+        // image-bound, confidence-gated visual print observation already
+        // admitted by applyVisualFashion; a solid colorway stays eligible.
+        (top?.pattern === 'print' &&
+          top.evidence.some(evidence => evidence.startsWith('image:pattern:')))) &&
       ['shirt', 'dress-shirt'].includes(top.subtype) &&
       outer?.subtype === 'blazer' && outer.structured &&
       bottom?.structured && shoe && !shoe.casualSole &&
