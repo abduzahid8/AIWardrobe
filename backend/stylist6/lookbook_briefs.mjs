@@ -95,14 +95,45 @@ function isSafeRef(ref){
  * garment-architecture diversity. IDs and labels are never product SKUs.
  * This DOES NOT establish the quality of the references or enable training.
  */
-export function referenceFirstBriefs(index,request,limit=8){
+function checkIndex(index){
   if(!index||index.dataset_id!=='image-teaste-2026-11-10' ||
       index.source!=='user_uploaded_flat_lay_reference_archive' ||
       !Array.isArray(index.images))throw Error('invalid_reference_index');
-  if(!request||typeof request.style!=='string'||typeof request.occasion!=='string')
-    throw Error('invalid_stylist6_request');
   if(index.images.length!==46||new Set(index.images.map(x=>x.id)).size!==46)
     throw Error('incomplete_reference_collection');
+}
+function toBrief(index,ref){
+  return {
+    id:ref.id,
+    name:String(ref.title||ref.id).slice(0,140),
+    referenceId:ref.id, // offloaded media vault resolves validated hash privately
+    roles:{
+      top:toGarmentSubtype('top',ref.garments.top),
+      outerwear:toGarmentSubtype('outerwear',ref.garments.outerwear),
+      bottom:toGarmentSubtype('bottom',ref.garments.bottom),
+      shoes:toGarmentSubtype('shoes',ref.garments.shoes),
+    },
+    layerPolicy:ref.layer_policy,
+    palette:unique(ref.palette.map(normalize)),
+    silhouette:String(ref.silhouette||'balanced').slice(0,48),
+    referenceEvidence:{sourceIndex:index.dataset_id,refId:ref.id,method:'manual_outfit_collage_review',
+      confidence:'medium',isVisualImageComparison:false},
+  };
+}
+/**
+ * Exact single-reference brief for coverage checks and isolated visual
+ * pilots. Same mapping as referenceFirstBriefs, without relevance ranking.
+ */
+export function briefForReferenceId(index,refId){
+  checkIndex(index);
+  const ref=index.images.find(x=>x&&x.id===refId);
+  if(!ref||!isSafeRef(ref))throw Error('reference_not_usable');
+  return toBrief(index,ref);
+}
+export function referenceFirstBriefs(index,request,limit=8){
+  checkIndex(index);
+  if(!request||typeof request.style!=='string'||typeof request.occasion!=='string')
+    throw Error('invalid_stylist6_request');
   if(!Number.isInteger(limit)||limit<6||limit>12)throw Error('invalid_reference_limit');
   const pool=index.images.filter(isSafeRef);
   if(pool.length<limit)throw Error('insufficient_reviewed_references');
@@ -118,20 +149,5 @@ export function referenceFirstBriefs(index,request,limit=8){
     chosen.push(next.ref);
   }
   if(chosen.length<6)throw Error('insufficient_reference_diversity');
-  return chosen.map(ref=>({
-    id:ref.id,
-    name:String(ref.title||ref.id).slice(0,140),
-    referenceId:ref.id, // offloaded media vault resolves validated hash privately
-    roles:{
-      top:toGarmentSubtype('top',ref.garments.top),
-      outerwear:toGarmentSubtype('outerwear',ref.garments.outerwear),
-      bottom:toGarmentSubtype('bottom',ref.garments.bottom),
-      shoes:toGarmentSubtype('shoes',ref.garments.shoes),
-    },
-    layerPolicy:ref.layer_policy,
-    palette:unique(ref.palette.map(normalize)),
-    silhouette:String(ref.silhouette||'balanced').slice(0,48),
-    referenceEvidence:{sourceIndex:index.dataset_id,refId:ref.id,method:'manual_outfit_collage_review',
-      confidence:'medium',isVisualImageComparison:false},
-  }));
+  return chosen.map(ref=>toBrief(index,ref));
 }

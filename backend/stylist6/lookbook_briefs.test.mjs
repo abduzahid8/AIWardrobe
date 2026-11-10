@@ -79,3 +79,14 @@ test('corrupt reference index never silently bypasses provenance checks',()=>{
   assert.throws(()=>referenceFirstBriefs({...index,source:'instagram_creator_export'},
     {style:'old_money',occasion:'work'}),/invalid_reference_index/);
 });
+test('exact single-reference brief matches ranked brief mapping', async () => {
+  const { briefForReferenceId } = await import('./lookbook_briefs.mjs');
+  const brief = briefForReferenceId(index, 'rt_003');
+  assert.equal(brief.referenceId, 'rt_003');
+  assert.deepEqual(brief.roles.top, ['fine-knit']);
+  assert.deepEqual(brief.roles.bottom, ['tailored-trouser', 'trouser']);
+  assert.equal(brief.layerPolicy, 'required');
+  assert.throws(() => briefForReferenceId(index, 'rt_999'), /reference_not_usable/);
+  assert.throws(() => briefForReferenceId({ ...index, images: index.images.slice(1) }, 'rt_001'),
+    /incomplete_reference_collection/);
+});
