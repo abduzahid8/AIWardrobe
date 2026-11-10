@@ -32,7 +32,11 @@ function parseBriefs(raw){
     const palette=Array.isArray(x.palette)?x.palette.map(text).slice(0,8):[];
     const silhouette=text(x.silhouette);
     formats.add(JSON.stringify([roles,x.layerPolicy,palette,silhouette]));
-    return {id,name:x.name.slice(0,140),roles,layerPolicy:x.layerPolicy,palette,silhouette};
+    // Reference-first briefs carry a stable lookbook identity; no media URL
+    // or unverified user-uploaded binary is sent to a model by this adapter.
+    const referenceId=typeof x.referenceId==='string' && /^rt_\\d{3}$/.test(x.referenceId)
+      ? x.referenceId : undefined;
+    return {id,name:x.name.slice(0,140),roles,layerPolicy:x.layerPolicy,palette,silhouette,referenceId};
   }).map((b,i,a)=>{if(i===a.length-1)assert(formats.size>=4,'creative_briefs_not_diverse');return b});
 }
 function safeCatalogItem(raw,mode){
@@ -155,6 +159,9 @@ export async function proposeVisualFirstDeck({
   // replaced with image-derived adjectives and called 'visual analysis'.
   const critiques=await visualCritic(shortlist.map(c=>({
     id:c.id,briefId:c.briefId,concept:c.brief.name,
+    referenceId:c.brief.referenceId || null,
+    // Visual critic must resolve the reference image server-side through
+    // a verified private manifest; text labels alone are NOT image grounding.
     products:c.items.map(i=>({id:i.id,imageUrl:i.imageUrl||i.image_url,name:i.name}))
   })),request);
   assert(Array.isArray(critiques),'critic_response');
@@ -179,7 +186,7 @@ export async function proposeVisualFirstDeck({
   }
   return {generationVersion:STYLIST6_VERSION,
     status:selected.length===target?'complete':selected.length?'distinct_inventory_limited':'no_verified_looks',
-    outfits:selected.map(c=>({id:c.id,concept:{id:c.brief.id,title:c.brief.name},
+    outfits:selected.map(c=>({id:c.id,concept:{id:c.brief.id,title:c.brief.name,referenceId:c.brief.referenceId||null},
       items:c.items,visualQuality:accepted.get(c.id).quality,evidence:accepted.get(c.id).evidence})),
     diagnostics:{briefs:briefs.length,catalogInput:catalog.length,admittedCatalogItems:items.length,
       candidateCount:all.size,visualReviewed:shortlist.length,visualApproved:accepted.size,
