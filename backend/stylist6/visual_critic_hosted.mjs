@@ -27,6 +27,8 @@ export const HOSTED_VISUAL_CRITIC_VERSION = 'hosted-visual-critic-v1';
 // — unacceptable for a judged comparison). The single authorized live test
 // must confirm the exact served model and API version before bulk use.
 const DEFAULT_MODEL = 'gemini-3.8-flash';
+const NVIDIA_VISION_MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
+const NVIDIA_VISION_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const DEFAULT_TIMEOUT_MS = 60000;
 const DEFAULT_MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
@@ -90,8 +92,9 @@ async function fetchImageBytes(fetchImpl, url, maxBytes, timeoutMs) {
 
 export function createHostedVisualCritic({
   apiKey,
-  model = DEFAULT_MODEL,
-  endpoint = 'https://generativelanguage.googleapis.com',
+  provider = 'gemini',
+  model,
+  endpoint,
   fetchImpl = globalThis.fetch,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   maxImageBytes = DEFAULT_MAX_IMAGE_BYTES,
@@ -99,6 +102,12 @@ export function createHostedVisualCritic({
   resolveReference = null,
   onEvent = null,
 } = {}) {
+  if (!['gemini','nvidia'].includes(provider)) {
+    throw new Error('unsupported_visual_critic_provider');
+  }
+  const selectedModel = model || (provider === 'nvidia' ? NVIDIA_VISION_MODEL : DEFAULT_MODEL);
+  const selectedEndpoint = endpoint || (provider === 'nvidia'
+    ? NVIDIA_VISION_ENDPOINT : 'https://generativelanguage.googleapis.com');
   if (!apiKey || typeof apiKey !== 'string' || apiKey.length < 20) {
     throw new Error('hosted_visual_critic_not_configured');
   }
@@ -133,32 +142,54 @@ export function createHostedVisualCritic({
           const photo = await fetchImageBytes(fetchImpl, product.imageUrl, maxImageBytes, timeoutMs);
           parts.push({ inlineData: { mimeType: photo.mimeType, data: photo.base64 } });
         }
-        const url = `${endpoint.replace(/\/+$/, '')}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+        const url = provider === 'nvidia'
+          ? selectedEndpoint
+          : `${selectedEndpoint.replace(/\/+$/, '')}/v1beta/models/${encodeURIComponent(selectedModel)}:generateContent`;
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         let data;
         try {
+          const postBody = provider === 'nvidia'
+            ? {
+                model: selectedModel,
+                messages: [{
+                  role: 'user',
+                  content: parts.map((part) => part.text !== undefined
+                    ? { type: 'text', text: part.text }
+                    : { type: 'image_url', image_url: {
+                        url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+                      } }),
+                }],
+                temperature: 0.6,
+                top_p: 0.95,
+                max_tokens: 900,
+                stream: false,
+                chat_template_kwargs: { enable_thinking: false },
+              }
+            : {
+                contents: [{ role: 'user', parts }],
+                generationConfig: {
+                  responseMimeType: 'application/json',
+                  maxOutputTokens: 600,
+                  ...(selectedModel === 'gemini-3.8-flash' ? {} : { temperature: 0.2 }),
+                },
+              };
           const response = await fetchImpl(url, {
             method: 'POST',
             signal: controller.signal,
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts }],
-              // Gemini 3.8 stable rejects legacy sampling knobs per Google's
-              // migration guide. Explicit 2.x fixtures retain legacy config.
-              generationConfig: {
-                responseMimeType: 'application/json',
-                maxOutputTokens: 600,
-                ...(model === 'gemini-3.8-flash' ? {} : { temperature: 0.2 }),
-              },
-            }),
+            headers: provider === 'nvidia'
+              ? { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }
+              : { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+            body: JSON.stringify(postBody),
           });
           if (!response.ok) throw new Error(`provider_http_${response.status}`);
           data = await response.json();
         } finally {
           clearTimeout(timer);
         }
-        const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '';
+        const text = provider === 'nvidia'
+          ? (typeof data?.choices?.[0]?.message?.content === 'string' ? data.choices[0].message.content : '')
+          : (data?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '');
         const row = extractJson(text);
         if (row.candidateId !== candidate.id) throw new Error('critic_candidate_mismatch');
         if (!validRow(row, allowed)) throw new Error('critic_row_invalid');
@@ -171,9 +202,9 @@ export function createHostedVisualCritic({
           confidence: row.confidence,
           evidence: row.evidence,
           ...(row.reject === true ? { reject: true } : {}),
-          criticVersion: `${HOSTED_VISUAL_CRITIC_VERSION}/${model}`,
+          criticVersion: `${HOSTED_VISUAL_CRITIC_VERSION}/${provider}/${selectedModel}`,
           latencyMs: Date.now() - started,
-          estimatedCostUsd: estimatedCostUsdPerCall,
+          estimatedCostUsd: provider === 'nvidia' ? null : estimatedCostUsdPerCall,
         });
         emit({ candidateId: candidate.id, outcome: 'judged', latencyMs: Date.now() - started });
       } catch (error) {
