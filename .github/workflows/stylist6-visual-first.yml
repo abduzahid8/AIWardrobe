@@ -53,6 +53,7 @@ jobs:
           node --check scripts/stylist6/retail_audit.mjs
           node --check scripts/stylist6/reliability_report.mjs
           python3 -m py_compile scripts/stylist6/blind_review.py
+          python3 -m unittest scripts/stylist6/test_blind_review.py -v
           node --check scripts/stylist6/catalog_drift.mjs
           node --check scripts/stylist6/image_access.mjs
           node --check backend/stylist6/catalog_adapter.mjs
