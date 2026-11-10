@@ -148,3 +148,10 @@ report.xml
 
 # Local offline catalog image enrichment environment
 /.visual-venv/
+
+# Unlicensed/unverified creator media stays outside the public repository
+image-teaste.zip
+AIWardrobe_Style_References_46_Pilot.zip
+style_references_private/
+**/reference_upload_receipt.json
+**/private_reference_vault/
