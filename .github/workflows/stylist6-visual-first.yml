@@ -1,0 +1,39 @@
+name: Stylist 6 visual-first isolated prototype
+on:
+  push:
+    branches:
+      - codex/stylist6-visual-first-20261110
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-visual-first-prototype:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout experimental branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Syntax-check independent creative planner
+        run: node --check backend/stylist6/prototype.mjs
+      - name: Test real-SKU grounding and fail-closed contracts (mock providers, NO API calls)
+        run: node --test backend/stylist6/prototype.test.mjs
+      - name: Verify benchmark scenarios contain 35 unique requests
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import assert from "node:assert/strict";
+            const f=JSON.parse(fs.readFileSync("benchmarks/stylist6/scenarios.json","utf8"));
+            assert.equal(f.scenarios.length,35);
+            assert.equal(new Set(f.scenarios.map(x=>x.id)).size,35);
+            assert.equal(f.testsNotRun,true);
+            console.log("35 A/B scenarios defined; no live API tests executed");
+          '
+      - name: Confirm this workflow is not an authorized production release
+        run: |
+          echo "Stylist 6 is isolated; no deploys, quota calls, migrations or production cutover."
