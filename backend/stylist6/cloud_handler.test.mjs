@@ -7,6 +7,7 @@ import {
   projectWardrobeItem,
   fitVisualBytesCloud,
   STYLIST6_CLOUD_VERSION,
+  canonicalRequestFingerprint,
 } from './cloud_handler.mjs';
 
 const SECRET = 'cloud-test-shared-secret-0123456789abcdef';
@@ -67,18 +68,19 @@ function makeIo(overrides = {}) {
           throw denied;
         }
       },
-      async claimRequest(userId, requestId) {
+      async claimRequest(userId, requestId, fingerprint) {
         calls.claimRequest += 1;
         assert.equal(userId, USER);
         if (claims.has(requestId)) {
-          return { duplicate: true, prior: claims.get(requestId), durable: true };
+          const prior = claims.get(requestId);
+          return { duplicate: true, conflict: prior.fingerprint !== fingerprint, prior, durable: true };
         }
-        claims.set(requestId, { status: null, code: null });
+        claims.set(requestId, { status: null, code: null, fingerprint });
         return { duplicate: false, prior: null, durable: true };
       },
       async finishRequest(userId, requestId, status, code) {
         calls.finishRequest += 1;
-        claims.set(requestId, { status, code });
+        claims.set(requestId, { ...claims.get(requestId), status, code });
       },
       async fetchShopRows() {
         calls.fetchShopRows += 1;
@@ -505,4 +507,35 @@ test('visual byte fitting passes small JPEGs and rejects the rest', () => {
   const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8]), Buffer.alloc(300, 7)]);
   assert.ok(Buffer.isBuffer(fitVisualBytesCloud(jpeg)));
   assert.equal(fitVisualBytesCloud(Buffer.concat([Buffer.from([0xff, 0xd8]), Buffer.alloc(10, 1)])), null);
+});
+
+
+test('canonical request fingerprints ignore object order but bind changed contents', () => {
+  assert.equal(canonicalRequestFingerprint({style:'Classic',budget:{amount:10,currency:'UZS'}}),
+    canonicalRequestFingerprint({budget:{currency:'UZS',amount:10},style:'Classic'}));
+  assert.notEqual(canonicalRequestFingerprint({style:'Classic'}), canonicalRequestFingerprint({style:'Casual'}));
+});
+
+test('malformed budgets fail before debit', async () => {
+  for (const budget of [{amount:-1,currency:'UZS'}, {amount:'100',currency:'UZS'}, {amount:10}, {}, '100']) {
+    const result = await signedCall({request:{...baseRequest,budget}});
+    assert.equal(result.status,400);
+    assert.equal(result.calls.debitQuota,0);
+  }
+});
+
+
+test('changed contents under one logical id conflict without a second debit', async () => {
+  const harness = makeIo();
+  const call = async (style) => {
+    const body = JSON.stringify({request:{...baseRequest,style,generationRequestId:'bound-1'}});
+    const authorization = 'Bearer ' + JWT;
+    const signature = await signStylistTransport({secret:SECRET,body,authorization});
+    return handleStylist6CloudGenerate({method:'POST',headers:{authorization,...signature},bodyText:body,env,io:harness.io});
+  };
+  assert.equal((await call('old_money')).status,200);
+  const changed = await call('casual');
+  assert.equal(changed.status,409);
+  assert.equal(changed.body.code,'request_content_conflict');
+  assert.equal(harness.calls.debitQuota,1);
 });

@@ -47,7 +47,7 @@ const VISUAL_PROFILE_CHUNK = 100;
 const PRODUCT_FETCH_TIMEOUT_MS = 8000;
 const MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
-const REQUEST_TIMEOUT_MS = 55_000;
+const REQUEST_TIMEOUT_MS = 45_000;
 
 const fail = (code, status, extra = {}) => ({
   status,
@@ -209,11 +209,11 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
      * Duplicates never re-debit and never re-plan: the caller answers 409
      * from the recorded outcome.
      */
-    async claimRequest(userId, requestId) {
+    async claimRequest(userId, requestId, fingerprint) {
       const admin = this.adminClient();
       let claimed;
       try {
-        claimed = await admin.rpc('claim_stylist6_request', { p_user: userId, p_request_id: requestId });
+        claimed = await admin.rpc('claim_stylist6_request', { p_user: userId, p_request_id: requestId, p_fingerprint: fingerprint });
       } catch {
         throw new Error('stylist6_claim_unavailable');
       }
@@ -225,6 +225,7 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       }
       return {
         duplicate: row.duplicate === true,
+        conflict: row.outcome_code === 'request_content_conflict',
         prior: row.duplicate === true ? { status: row.status_code, code: row.outcome_code } : null,
         durable: true,
       };
@@ -400,6 +401,15 @@ async function resolveReferenceAsset(env, url, referenceId, fetchFn) {
   return { bytes: fitted, sha256: createHash('sha256').update(fitted).digest('hex') };
 }
 
+// JSON object ordering must not turn an identical logical retry into a conflict.
+export function canonicalRequestFingerprint(request) {
+  const canonical = (value) => Array.isArray(value) ? value.map(canonical)
+    : value && typeof value === 'object'
+      ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]))
+      : value;
+  return createHash('sha256').update(JSON.stringify(canonical(request))).digest('hex');
+}
+
 /**
  * Authenticated Stylist 6 cloud generation. `io` performs all Supabase IO
  * (injectable fakes in tests); `env` carries server-only configuration.
@@ -432,7 +442,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
   }
   const sourceMode = normalizeSourceMode(request.sourceMode);
   if (!sourceMode) return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
-  const budget = request.budget?.amount && request.budget?.currency ? request.budget : undefined;
+  if (request.budget != null && (typeof request.budget !== 'object' ||
+      typeof request.budget.amount !== 'number' || !Number.isFinite(request.budget.amount) ||
+      request.budget.amount <= 0 || !/^[A-Z]{3}$/.test(String(request.budget.currency)))) {
+    return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
+  }
+  const budget = request.budget ?? undefined;
   if (budget && !/^[A-Z]{3}$/.test(String(budget.currency))) {
     return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
   }
@@ -504,10 +519,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // re-planning. Unavailable claim storage fails closed before debit.
     let claim;
     try {
-      claim = await io.claimRequest(userId, requestId);
+      claim = await io.claimRequest(userId, requestId, canonicalRequestFingerprint(request));
     } catch {
       return fail('stylist6_claim_unavailable', 503, { stage: 'stylist6_admission' });
     }
+    if (claim.conflict) return fail('request_content_conflict', 409, { stage: 'stylist6_admission' });
     if (claim.duplicate) {
       const prior = claim.prior || {};
       return fail('duplicate_request', 409, {
