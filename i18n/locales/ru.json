@@ -722,6 +722,7 @@
     "noBudget": "Бюджет не задан",
     "lookSpend": "Стоимость образа: {{total}} · Лимит бюджета: {{cap}}",
     "outfitTotal": "Итого по образу",
+    "outfitTotalUnavailable": "Итого недоступно — товары указаны в разных валютах",
     "qualityExplanation": {
       "garmentSummary": "{{top}} в сочетании с {{outerwear}}, {{bottom}} и {{shoes}}.",
       "formalStructure": "Рубашка и структурированный пиджак подходят для формального мероприятия.",

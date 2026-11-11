@@ -7,7 +7,7 @@ import { currentVisual, visualAdmissionReason } from '../../src/domain/visualFas
 import { outfitCoherence } from '../../src/domain/outfitCoherence.ts';
 import { garmentContextReason, scoreGarmentForContext } from '../../src/domain/garmentContext.ts';
 import { lookConcept, outfitConcepts } from '../../src/domain/outfitConcepts.ts';
-import { stylingContext } from '../../src/domain/stylingContext.ts';
+import { isDateNightOccasion, stylingContext } from '../../src/domain/stylingContext.ts';
 import { hasColdLayerIntent, resolveOutfitComposition, resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
 import { outfitStylingFeatures, recentStylingPenalty, stylingFeatureDistance } from '../../src/domain/outfitVisualSignature.ts';
 import { colorTokensOf, patternOf } from '../../src/domain/outfitDiversity.ts';
@@ -25,6 +25,9 @@ const sameProduct = (a, b) => baseProductId(a.id) === baseProductId(b.id) ||
 const overlaps = (a, b) => a.items.filter((item) => b.items.some((other) => sameProduct(item, other))).length;
 const SEARCH_DECK_LIMIT = 20;
 const TIE_MARGIN = 0.025;
+// A selected look this far below the shortlist best is decisively off the
+// pace (10x the near-tie margin), not a close alternative worth showing.
+const EXCLUSION_QUALITY_GAP = 0.25;
 // Minimum per-currency samples before an unbudgeted premium dampener may
 // apply. Below this there is no evidence for what "expensive" means here.
 const PRICE_SAMPLE_MINIMUM = 8;
@@ -95,6 +98,48 @@ function referenceAffinity(items, reference) {
   };
 }
 
+/**
+ * Date-night register (backend ranker only): shorts and athletic bottoms
+ * read daytime-casual under smart/formal evening dress codes, even when the
+ * catalog files them as bottoms. Casual dress codes and daytime wear keep
+ * them — this is a context rejection, never a garment ban.
+ */
+function rejectForUnsuitableDateNight(descriptor, context) {
+  if (descriptor.slot !== 'bottom') return false;
+  if (context.dressCode !== 'smart' && context.dressCode !== 'formal') return false;
+  if (!isDateNightOccasion(context.occasion) && !isDateNightOccasion(context.request)) return false;
+  return descriptor.subtype === 'shorts' || descriptor.athletic === true;
+}
+
+/**
+ * Single-currency preference for one look: all-shown-currency decks total
+ * honestly and shop simply. Tie-break scale only — never overrides fit.
+ * Exported for tests.
+ */
+export function singleCurrencyBonus(items) {
+  const currencies = new Set(
+    (items || []).map((item) => item?.currency).filter(Boolean).map(String));
+  return currencies.size === 1 ? 0.02 : 0;
+}
+
+/**
+ * Exclusion quality floor: when previously displayed products were excluded
+ * and a selected look scores decisively below the shortlist best, prefer a
+ * smaller honest deck over a substantially worse outfit. Never empties the
+ * deck — the top selected look is kept and the limit is disclosed.
+ * Exported for tests.
+ */
+export function applyExclusionQualityFloor(selected, best, exclusionsApplied) {
+  if (!exclusionsApplied || !Number.isFinite(best) || !selected.length) return { kept: selected, limited: false };
+  const kept = selected.filter((look) => (look.fashion?.score ?? -Infinity) >= best - EXCLUSION_QUALITY_GAP);
+  if (kept.length === selected.length) return { kept: selected, limited: false };
+  if (!kept.length) {
+    const top = selected.reduce((a, b) => (b.fashion?.score ?? -Infinity) > (a.fashion?.score ?? -Infinity) ? b : a);
+    return { kept: [top], limited: true };
+  }
+  return { kept, limited: true };
+}
+
 function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
   const contextScores = new WeakMap(), coherent = new Map();
   const likedPatterns = new Set((context.preferences?.likedPatterns || []).map((pattern) => patternOf({ pattern })));
@@ -104,7 +149,8 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       const prepared = prepareGarment(item.color ? item : { ...item, color: undefined }), descriptor = describeGarment(prepared);
       if (descriptor.slot !== item.macroCategory || descriptor.productKind === 'complete-suit' ||
           garmentContextReason(prepared, context) || rejectForClimate(prepared, context.weather) ||
-          rejectForStyleOccasion(prepared, context.style, context.occasion)) return null;
+          rejectForStyleOccasion(prepared, context.style, context.occasion) ||
+          rejectForUnsuitableDateNight(descriptor, context)) return null;
       contextScores.set(prepared, scoreGarmentForContext(prepared, context) + (known(descriptor.pattern) && likedPatterns.has(descriptor.pattern) ? .035 : 0));
       return prepared;
     },
@@ -190,7 +236,10 @@ function chooseDeck(shortlist, context, excluded = new Set()) {
     return 0.025 * (new Set(indices.map((i) => pool[i].briefId)).size - 1);
   };
   const consider = (indices, score) => {
-    const total = score + briefBonus(indices);
+    // Single-currency looks total honestly and shop simply. Per-look bonus
+    // so one mixed look cannot hide inside an otherwise consistent deck.
+    const total = score + briefBonus(indices)
+      + indices.reduce((sum, i) => sum + singleCurrencyBonus(pool[i].items), 0);
     if (indices.length > best.length || (indices.length === best.length && total > utility)) {
       best = indices;
       utility = total;
@@ -258,7 +307,11 @@ export async function recommendFashionDeck({
   const layerMix = { three: 0, four: 0 };
   for (const candidate of retrieval.shortlist) layerMix[candidate.items.length === 3 ? 'three' : 'four'] += 1;
   const ordered = retrieval.shortlist.map((c) => c.fashion?.score).filter(Number.isFinite).sort((a, b) => b - a);
-  let selected = chooseDeck(retrieval.shortlist, context), visualVerdict = 'NOT_RUN', visualWinner;
+  let selected = chooseDeck(retrieval.shortlist, context);
+  const floor = applyExclusionQualityFloor(
+    selected, ordered[0] ?? NaN, (retrieval.diagnostics.exclusions?.requested || 0) > 0);
+  selected = floor.kept;
+  let visualVerdict = 'NOT_RUN', visualWinner;
   const permitted = async (look) => {
     try { return await canJudgeOutfit(look, reference.referenceId) === true; } catch { return false; }
   };
@@ -294,6 +347,7 @@ export async function recommendFashionDeck({
       };
     }),
     diagnostics: { ...retrieval.diagnostics, visualVerdict,
-      shortlistMix: { ...layerMix, best: ordered[0] ?? null, top20cutoff: ordered[19] ?? null } },
+      shortlistMix: { ...layerMix, best: ordered[0] ?? null, top20cutoff: ordered[19] ?? null },
+      ...(floor.limited ? { exclusionQualityLimited: true } : {}) },
   };
 }

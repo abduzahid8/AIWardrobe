@@ -21,7 +21,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adaptCatalog, devLookFeasibility, sourceHash } from '../../backend/stylist6/catalog_adapter.mjs';
+import { adaptCatalog, DEV_PURCHASE_EVIDENCE, devLookFeasibility, sourceHash } from '../../backend/stylist6/catalog_adapter.mjs';
 import { recommendFashionDeck } from '../../backend/stylist6/fashion_deck.mjs';
 import { referenceFirstBriefs } from '../../backend/stylist6/lookbook_briefs.mjs';
 import { currentVisual } from '../../src/domain/visualFashion.ts';
@@ -226,6 +226,7 @@ async function handleGenerate(payload) {
       status: deck.status,
       previousDeckOverlapBySlot,
       visualHydration,
+      purchaseEvidence: DEV_PURCHASE_EVIDENCE,
       diagnostics: deck.diagnostics || null,
       outfits: deck.outfits.map((look) => ({
         id: look.id,

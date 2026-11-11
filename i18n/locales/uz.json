@@ -722,6 +722,7 @@
     "noBudget": "Byudjet belgilanmagan",
     "lookSpend": "Obraz narxi: {{total}} · Byudjet chegarasi: {{cap}}",
     "outfitTotal": "Outfit jami",
+    "outfitTotalUnavailable": "Jami mavjud emas — mahsulotlar turli valyutalarda ko'rsatilgan",
     "qualityExplanation": {
       "garmentSummary": "{{top}}, {{outerwear}}, {{bottom}} va {{shoes}} uyg‘unligi.",
       "formalStructure": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi.",

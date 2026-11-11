@@ -59,7 +59,7 @@ import {
     type DiversitySlot,
 } from '../features/outfit-generator/utils/outfitDiversity';
 import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
-import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, outfitTotalQuote, formatMoney, budgetCandidatesFromText, budgetInCurrency, resolveShopQuote, withOutfitBudget } from '../src/utils/outfitBudget';
+import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, outfitTotalQuote, formatMoney, budgetCandidatesFromText, budgetInCurrency, resolveShopQuote, withOutfitBudget, mixedCurrencyPriced } from '../src/utils/outfitBudget';
 import { getShopDestination } from '../src/utils/shopDestination';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
@@ -1493,7 +1493,12 @@ const AIOutfitGenerator = () => {
       // The Edge may discover a different currency beyond the client's first
       // catalog page. Pin one FX snapshot for every budgeted shop request so
       // the local safety check can validate the actual returned products.
-      if (mixedLimits || (shopBudget && effectiveSource === 'shop')) {
+      // The local Stylist 6 ranker enforces a same-currency budget itself
+      // (pool + admit filter), so a single-currency S6 budget needs no
+      // conversion and must not depend on the deployed rates function.
+      // Multi-currency limits and the hosted edge keep the fail-closed fetch.
+      const s6SameCurrencyBudget = STYLIST6_DEV_ENABLED && devEngine === 'stylist6' && !mixedLimits;
+      if ((mixedLimits || (shopBudget && effectiveSource === 'shop')) && !s6SameCurrencyBudget) {
         let fx;
         try { fx = budgetFxContext(await getBudgetRates()); }
         catch { throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable'); }
@@ -2062,7 +2067,8 @@ const AIOutfitGenerator = () => {
 
                 {(() => {
                   const total = outfitTotalDisplay(outfit.items as any[], liveShopMapped, displayRates, resultBudget);
-                  return total ? (
+                  if (total) {
+                    return (
                     <View style={styles.priceRow}>
                       <ScaledText style={styles.priceRowLabel}>{t('outfitMaker.outfitTotal')}</ScaledText>
                       <View style={{alignItems:'flex-end', flex:1}}>
@@ -2071,6 +2077,14 @@ const AIOutfitGenerator = () => {
                           {t('outfitMaker.referenceRate', {date: resultBudget.fx.snapshot.asOf})}
                         </ScaledText>}
                       </View>
+                    </View>
+                    );
+                  }
+                  // A combined total across currencies would be invented
+                  // arithmetic: say so explicitly instead of hiding it.
+                  return mixedCurrencyPriced(outfit.items as any[], liveShopMapped) ? (
+                    <View style={styles.priceRow}>
+                      <ScaledText style={styles.priceRowLabel}>{t('outfitMaker.outfitTotalUnavailable', {defaultValue: 'Total unavailable — items are listed in different currencies'})}</ScaledText>
                     </View>
                   ) : null;
                 })()}

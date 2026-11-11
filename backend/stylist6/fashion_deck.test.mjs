@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck } from './fashion_deck.mjs';
+import { applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, singleCurrencyBonus } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 
@@ -203,14 +203,67 @@ test('cached visual profiles attach only on exact SKU and source-hash match', ()
 
 test('the dev feasibility gate rejects unverified offers without throwing', () => {
   const ok = garment('shirt-white', 'white cotton shirt', 'top', 'shirt');
-  assert.deepEqual(devLookFeasibility([ok]), { ok: true });
-  assert.deepEqual(devLookFeasibility([{ ...ok, id: '  ' }]), { ok: false, reason: 'invalid_product_identity' });
-  assert.deepEqual(devLookFeasibility([{ ...ok, macroCategory: 'hat' }]), { ok: false, reason: 'unknown_slot' });
-  assert.deepEqual(devLookFeasibility([{ ...ok, imageUrl: 'http://plain/photo.jpg' }]), { ok: false, reason: 'unrenderable_photo' });
-  assert.deepEqual(devLookFeasibility([{ ...ok, shopUrl: 'not-a-url' }]), { ok: false, reason: 'unverified_merchant_offer' });
-  assert.deepEqual(devLookFeasibility([{ ...ok, price: 0 }]), { ok: false, reason: 'unpriced_or_currency' });
-  assert.deepEqual(devLookFeasibility([{ ...ok, currency: 'usd' }]), { ok: false, reason: 'unpriced_or_currency' });
-  assert.deepEqual(devLookFeasibility(null), { ok: true });
+  // Listing evidence only: a pass never confirms live stock, size or delivery.
+  assert.deepEqual(devLookFeasibility([ok]), { ok: true, evidence: 'listing-only', stock: 'not_checked' });
+  assert.deepEqual(devLookFeasibility([{ ...ok, id: '  ' }]),
+    { ok: false, reason: 'invalid_product_identity', evidence: 'listing-only', stock: 'not_checked' });
+  assert.deepEqual(devLookFeasibility([{ ...ok, macroCategory: 'hat' }]),
+    { ok: false, reason: 'unknown_slot', evidence: 'listing-only', stock: 'not_checked' });
+  assert.deepEqual(devLookFeasibility([{ ...ok, imageUrl: 'http://plain/photo.jpg' }])
+    , { ok: false, reason: 'unrenderable_photo', evidence: 'listing-only', stock: 'not_checked' });
+  assert.deepEqual(devLookFeasibility([{ ...ok, shopUrl: 'not-a-url' }])
+    , { ok: false, reason: 'missing_merchant_offer', evidence: 'listing-only', stock: 'not_checked' });
+  assert.deepEqual(devLookFeasibility([{ ...ok, price: 0 }])
+    , { ok: false, reason: 'unpriced_or_currency', evidence: 'listing-only', stock: 'not_checked' });
+  assert.deepEqual(devLookFeasibility([{ ...ok, currency: 'usd' }])
+    , { ok: false, reason: 'unpriced_or_currency', evidence: 'listing-only', stock: 'not_checked' });
+  assert.deepEqual(devLookFeasibility(null), { ok: true, evidence: 'listing-only', stock: 'not_checked' });
+});
+
+test('single-currency looks earn the consistency preference, mixed looks do not', () => {
+  const uzs = (id) => ({ id, currency: 'UZS' });
+  assert.equal(singleCurrencyBonus([uzs('a'), uzs('b'), uzs('c')]), 0.02);
+  assert.equal(singleCurrencyBonus([uzs('a'), { id: 'b', currency: 'USD' }]), 0);
+  assert.equal(singleCurrencyBonus([]), 0);
+  assert.equal(singleCurrencyBonus(null), 0);
+});
+
+test('the exclusion quality floor prefers a smaller honest deck over a much worse outfit', () => {
+  const look = (id, score) => ({ id, fashion: { score } });
+  const selected = [look('a', 0.85), look('b', 0.83), look('c', 0.50)];
+  assert.deepEqual(applyExclusionQualityFloor(selected, 0.86, false), { kept: selected, limited: false });
+  const floored = applyExclusionQualityFloor(selected, 0.86, true);
+  assert.deepEqual(floored.kept.map(({ id }) => id), ['a', 'b']);
+  assert.equal(floored.limited, true);
+  const allWeak = applyExclusionQualityFloor([look('a', 0.5), look('b', 0.4)], 0.9, true);
+  assert.deepEqual(allWeak.kept.map(({ id }) => id), ['a']);
+  assert.equal(allWeak.limited, true);
+});
+
+test('shorts and athletic bottoms stay out of smart date nights but remain daytime options', async () => {
+  const catalog = [...products,
+    garment('short-denim', 'Blue denim shorts', 'bottom', 'shorts'),
+    garment('short-athletic', 'Black training shorts', 'bottom', 'athletic-trouser')];
+  const dateRequest = {
+    sourceMode: 'catalog', style: 'semi_classic', occasion: 'Date night',
+    weather: {}, optionalLayer: true, preferences: {}, requiredIds: [],
+  };
+  const date = await recommendFashionDeck({
+    ...base, catalog, hardGate: async () => ({ ok: true }),
+    priceToBudgetCurrency: (item, currency) => (item.currency === currency ? item.price : NaN),
+    request: dateRequest,
+  });
+  assert.ok(date.outfits.length > 0);
+  for (const look of date.outfits) {
+    assert.ok(look.items.every(({ id }) => !id.startsWith('short-')));
+  }
+  const workRequest = { ...dateRequest, style: 'classic', occasion: 'Work' };
+  const work = await recommendFashionDeck({
+    ...base, catalog, hardGate: async () => ({ ok: true }),
+    priceToBudgetCurrency: (item, currency) => (item.currency === currency ? item.price : NaN),
+    request: workRequest,
+  });
+  assert.equal(work.status, 'complete');
 });
 
 test('optional briefs keep three-piece candidates in the shortlist beside layered looks', async () => {

@@ -707,6 +707,7 @@
     "noBudget": "No budget set",
     "lookSpend": "Look total: {{total}} · Budget cap: {{cap}}",
     "outfitTotal": "Outfit total",
+    "outfitTotalUnavailable": "Total unavailable — items are listed in different currencies",
     "qualityExplanation": {
       "garmentSummary": "{{top}} with {{outerwear}}, {{bottom}} and {{shoes}}.",
       "formalStructure": "A shirt and structured blazer keep the look appropriate for a formal occasion.",

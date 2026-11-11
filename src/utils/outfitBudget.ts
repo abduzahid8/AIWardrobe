@@ -43,6 +43,22 @@ export function isCatalogShopId(id?: string | null): boolean {
     return /^(shop_|md-|zara-|classic-m-)/i.test(s);
 }
 
+/** True when priced shop pieces span more than one currency: a combined
+ * total would be invented arithmetic, so the UI must say so explicitly. */
+export function mixedCurrencyPriced(
+    items: Array<QuoteItem | null | undefined> | null | undefined,
+    catalog?: QuoteItem[],
+): boolean {
+    const currencies = new Set<string>();
+    for (const item of items || []) {
+        if (!item || (item.isWardrobe === true && !item.isShopItem)) continue;
+        const quote = resolveShopQuote(item, catalog);
+        if (quote && quote.currency && quote.price > 0) currencies.add(quote.currency);
+        if (currencies.size > 1) return true;
+    }
+    return false;
+}
+
 /** First non-empty item currency, upper-cased (e.g. 'UZS'). */
 export function catalogCurrencyOf(
     items: Array<{ currency?: string | null } | null | undefined> | null | undefined,

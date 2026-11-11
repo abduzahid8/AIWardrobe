@@ -292,26 +292,39 @@ export function sourceHash(row) {
 }
 
 /**
+ * What a passing dev feasibility gate actually proves. A valid merchant URL
+ * plus price/currency/SKU identity is listing evidence only: live stock,
+ * size and delivery are NEVER confirmed by this gate and must never be
+ * presented as purchase-verified.
+ */
+export const DEV_PURCHASE_EVIDENCE = Object.freeze({
+  level: 'listing-only',
+  listing: 'Product URL, price, currency and SKU identity validated per look.',
+  stock: 'Live stock, size and delivery are NOT confirmed in dev testing.',
+});
+
+/**
  * Development-safe per-look feasibility gate. Reuses the same admission
  * predicates as `projectCatalogItem`/`safeCatalogItem` (known slot,
- * reachable photo, verified merchant offer, finite price, 3-letter
- * currency, non-empty identity) so the dev bridge no longer needs an
- * unconditional stub. Returns `{ ok: true }` or `{ ok: false, reason }`;
- * never throws for data rows. Unavailable stock and unverified offers are
- * rejected, never represented as confirmed.
+ * reachable photo, merchant URL present, finite price, 3-letter currency,
+ * non-empty identity) so the dev bridge no longer needs an unconditional
+ * stub. Returns `{ ok, reason?, evidence, stock }`; never throws for data
+ * rows. Passing means the listing is well-formed — see
+ * DEV_PURCHASE_EVIDENCE: it is not a stock, size or delivery confirmation.
  */
 const KNOWN_SLOTS = new Set(['top', 'outerwear', 'bottom', 'shoes']);
 export function devLookFeasibility(items) {
+  const fail = (reason) => ({ ok: false, reason, evidence: DEV_PURCHASE_EVIDENCE.level, stock: 'not_checked' });
   for (const item of items || []) {
-    if (!item || typeof item.id !== 'string' || !item.id.trim()) return { ok: false, reason: 'invalid_product_identity' };
-    if (!KNOWN_SLOTS.has(item.macroCategory)) return { ok: false, reason: 'unknown_slot' };
-    if (!isHttps(item.imageUrl || item.image_url)) return { ok: false, reason: 'unrenderable_photo' };
+    if (!item || typeof item.id !== 'string' || !item.id.trim()) return fail('invalid_product_identity');
+    if (!KNOWN_SLOTS.has(item.macroCategory)) return fail('unknown_slot');
+    if (!isHttps(item.imageUrl || item.image_url)) return fail('unrenderable_photo');
     if (item.isShopItem === true) {
-      if (!isHttps(item.shopUrl || item.sourceUrl || item.source_url)) return { ok: false, reason: 'unverified_merchant_offer' };
-      if (!finitePrice(item.price) || !/^[A-Z]{3}$/.test(item.currency || '')) return { ok: false, reason: 'unpriced_or_currency' };
+      if (!isHttps(item.shopUrl || item.sourceUrl || item.source_url)) return fail('missing_merchant_offer');
+      if (!finitePrice(item.price) || !/^[A-Z]{3}$/.test(item.currency || '')) return fail('unpriced_or_currency');
     }
   }
-  return { ok: true };
+  return { ok: true, evidence: DEV_PURCHASE_EVIDENCE.level, stock: 'not_checked' };
 }
 
 /** Keep one row per base product (first wins; input order is the priority). */

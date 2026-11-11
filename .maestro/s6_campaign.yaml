@@ -250,3 +250,58 @@ name: s6_campaign
 - waitForAnimationToEnd:
     timeout: 2500
 - takeScreenshot: ${SHOT}_s5_repeattap_c2
+# --- s6: Classic / Work with a UZS budget (same-currency, no rates fetch) ---
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistSource-shop
+- extendedWaitUntil:
+    visible: ".*· New ·.*"
+    timeout: 10000
+- tapOn:
+    id: stylistCommentInput
+- eraseText
+- inputText: "work, classic"
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: stylistBudgetAmount
+- eraseText
+- inputText: "25000000"
+- hideKeyboard
+- tapOn:
+    id: stylistBudgetCurrency-UZS
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: ${SHOT}_s6_form_state
+- assertVisible: ".*work, classic.*"
+- assertVisible: ".*25000000.*"
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы).*"
+    timeout: 180000
+- takeScreenshot: ${SHOT}_s6_uzs_budget
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_s6_uzs_budget_c2

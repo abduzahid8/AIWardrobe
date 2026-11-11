@@ -1,0 +1,71 @@
+appId: com.aiwardrobe
+name: s6_budget_only
+---
+# Resilient entry: results -> back, home -> create outfit, form -> proceed.
+- runFlow:
+    when:
+      visible: ".*(Your Outfits|Ваши образы).*"
+    commands:
+      - tapOn:
+          point: "8%,11%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- runFlow:
+    when:
+      visible: ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*"
+    commands:
+      - tapOn: ".*(Создать образ|Create outfit).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistSource-shop
+- extendedWaitUntil:
+    visible: ".*· New ·.*"
+    timeout: 10000
+- tapOn:
+    id: stylistCommentInput
+- eraseText
+- inputText: "work, classic"
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: stylistBudgetAmount
+- eraseText
+- inputText: "25000000"
+- hideKeyboard
+- tapOn:
+    id: stylistBudgetCurrency-UZS
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: ${SHOT}_s6_form_state
+- assertVisible: ".*work, classic.*"
+- assertVisible: ".*25000000.*"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы).*"
+    timeout: 180000
+- takeScreenshot: ${SHOT}_s6_uzs_budget
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_s6_uzs_budget_c2
