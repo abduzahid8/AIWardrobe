@@ -958,8 +958,13 @@ export function passesStyleJudge(
     // Local fallback and suggestion paths use this combined gate. Keep the
     // diagnostic hard judge separate: Edge repairs below-floor provider looks
     // from its approved reserve without regenerating the already-good cards.
+    // The quality floor must judge the same remapped style the hard judge
+    // and the Edge's selectionStyle use: a workout occasion under a refined
+    // aesthetic is judged as 'sport', otherwise the floor rejects every
+    // athletic look as a construction conflict with the requested aesthetic.
+    const floorStyle = isWorkoutOccasion(occasionId) ? 'sport' : styleId;
     return styleJudgeReason(items, styleId, occasionId, weather, lockedItemId,preferences) === null
-        && assessOutfitQuality(items,styleId,occasionId,weather,lockedItemId,preferences).acceptance.passed;
+        && assessOutfitQuality(items,floorStyle,occasionId,weather,lockedItemId,preferences).acceptance.passed;
 }
 
 const VIEW_PREFIX_RE = /^(front|side|back|close[\s-]?up|detail)\s+view\s+of\s+(?:(a|an|the)\s+)?/i;

@@ -1,5 +1,5 @@
 import { describeGarment, competingUpperPatterns } from '../../src/domain/garmentDescriptor';
-import { rejectForStyleOccasion } from '../../src/domain/occasionRules';
+import { rejectForStyleOccasion, passesStyleJudge, assessOutfitQuality } from '../../src/domain/occasionRules';
 import { lookConcept, outfitConcepts } from '../../src/domain/outfitConcepts';
 import { wholeOutfitRegisterClash } from '../../src/domain/outfitCoherence';
 import { groundedLookExplanation } from '../../src/domain/lookExplanation';
@@ -145,5 +145,25 @@ describe('stylist fashion regression: user screenshot scenarios', () => {
     expect(text).not.toMatch(/defines the silhouette/i);
     expect(text).not.toMatch(/continued by the dress profile/i);
     expect(text.length).toBeLessThan(300);
+  });
+});
+
+describe('workout occasions judge the quality floor as sport (edge selectionStyle parity)', () => {
+  const athleticLook = [
+    { name: 'Black quick-dry training t-shirt', macroCategory: 'top' },
+    { name: 'Black athletic training shorts', macroCategory: 'bottom' },
+    { name: 'White running sneakers', macroCategory: 'shoes' },
+  ];
+  it('a refined aesthetic plus a workout occasion passes the floor as sport', () => {
+    expect(passesStyleJudge(athleticLook, 'old_money', 'gym workout')).toBe(true);
+    // The gate performs the remap; the raw-style floor call is unchanged.
+    expect(assessOutfitQuality(athleticLook, 'sport', 'gym workout').acceptance.passed).toBe(true);
+  });
+  it('the same aesthetic outside a workout occasion still keeps its floor discipline', () => {
+    expect(passesStyleJudge([
+      { name: 'Black quick-dry training t-shirt', macroCategory: 'top' },
+      { name: 'Black athletic training shorts', macroCategory: 'bottom' },
+      { name: 'White running sneakers', macroCategory: 'shoes' },
+    ], 'old_money', 'casual')).toBe(false);
   });
 });
