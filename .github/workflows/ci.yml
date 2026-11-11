@@ -14,7 +14,10 @@ jobs:
   quality:
     name: Lint, Type Check & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The full unit suite (3456 tests, including the multi-minute hosted
+    # backend wire suites) needs more than 15 minutes on 2-core runners;
+    # the previous budget cancelled a green suite mid-run.
+    timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v4
