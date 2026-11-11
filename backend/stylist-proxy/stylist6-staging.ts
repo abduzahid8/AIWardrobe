@@ -25,7 +25,7 @@ import { signStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../styli
 // oversize 413, all with generationVersion stylist-6-cloud-staging-1 and
 // zero crash logs. Fail-closed idempotency + RLS migration included.
 // Repoint ONLY to another verified Stylist 6 staging Preview, never to production.
-const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-4zgrgwoqe-abduzahid8s-projects.vercel.app';
+const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-acrvx5ao2-abduzahid8s-projects.vercel.app';
 const NODE_ROUTE = '/api/stylist6-generate-outfits';
 const CORS = {
   'Access-Control-Allow-Origin':'*',

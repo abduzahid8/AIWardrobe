@@ -56,7 +56,7 @@ Supabase Auth. No anonymous or invalid-JWT test was sent for generation.
   canonical fingerprints and changed-content conflicts without a second debit.
 - Four client Jest suites passed: 37 tests, budgets, currencies, cloud version gates.
 - TypeScript passed. Targeted ESLint: zero errors, 18 existing warnings.
-- Worktree secret scan: zero findings across 3253 text files; ignored files,
+- Worktree secret scan: zero findings across 3254 text files; ignored files,
   binaries and history are outside that scan.
 - Web export succeeded to `/tmp/aiw-s6-web` after granting dependency-cache access.
 - Existing bundling solution retained; compute build passed.
@@ -102,3 +102,21 @@ outcomes, then remove only the three S6 objects through a reviewed migration.
 Never reset or restore the shared database to undo this staging change.
 SQL probes were transactionally rolled back (or cleaned after concurrency tests).
 A destructive schema rollback was not executed against the live shared database.
+
+
+## Updated Preview admission
+
+Compute commit `312fdfa005325a231ff19e78f21378aba4bbfdac` is READY at
+`https://aiwardrobe-stylist-compute-acrvx5ao2-abduzahid8s-projects.vercel.app`.
+Deployment ID: `dpl_Dgc2rn9QS94zGo3UmsVd8xRQ8xqD`, Preview, region hnd1.
+Owner-authenticated GET returned 405 with the expected S6 engine identity.
+The proxy now pins that tested immutable deployment to match the applied
+three-argument fingerprint RPC. A redundant explicitly requested deployment
+was canceled after the Git-triggered deployment was confirmed READY at the same
+SHA. That canceled deployment is not passing evidence.
+
+The deployed proxy preflight returned 200 `ok`; a public project token passed
+the gateway and reached proxy code, which returned 503
+`staging_transport_unconfigured`. No runtime import failure was observed.
+This confirms that Supabase HMAC configuration remains missing, rather than
+asserting successful credential pairing.
