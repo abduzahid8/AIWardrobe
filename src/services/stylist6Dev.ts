@@ -140,19 +140,49 @@ function failureForCloud(code: unknown, stage = 'stylist6_cloud'): OutfitGenerat
 }
 
 /**
+ * The staging proxy answers application-JSON errors (4xx/5xx). supabase-js
+ * surfaces those as FunctionsHttpError and does NOT parse the body into
+ * `data`, so the real server code must be recovered from the raw Response
+ * (readable exactly once). The failure keeps the genuine code and stage so
+ * the screen presents the server's verdict, not a generic transport label.
+ */
+async function cloudFailureFromInvokeError(invokeError: unknown): Promise<OutfitGenerationFailure> {
+  const context = (invokeError as { context?: unknown } | null)?.context;
+  if (context && typeof (context as Response).json === 'function') {
+    try {
+      const body = await (context as Response).json() as { code?: unknown; stage?: unknown } | null;
+      if (body && typeof body.code === 'string') {
+        return failureForCloud(body.code, typeof body.stage === 'string' ? body.stage : 'stylist6_cloud');
+      }
+    } catch {
+      // Body already consumed or not JSON: fall through to the generic form.
+    }
+  }
+  const message = (invokeError as { message?: unknown } | null)?.message;
+  return failureForCloud(typeof message === 'string' ? message : 'stylist6_ranking_failed');
+}
+
+/**
  * POST the staging request to the isolated Stylist 6 cloud path
  * (authenticated Supabase staging proxy -> signed Vercel Node compute ->
  * server-side Stylist 6 engine). No client inventory is sent: the server
  * fetches shop and wardrobe rows itself. Failures surface intact and are
- * never replaced with a Stylist 5 deck.
+ * never replaced with a Stylist 5 deck. The optional abort signal
+ * propagates through supabase-js so a cancelled screen stops the transport
+ * (a request already dispatched server-side may still complete there).
  */
 export async function invokeStylist6Cloud(
   body: { request: Stylist6CloudRequest },
+  options?: { signal?: AbortSignal },
 ): Promise<Record<string, any>> {
   if (!STYLIST6_DEV_ENABLED) {
     throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_dev_disabled', 'stylist6_cloud');
   }
-  const { supabase } = await import('../../lib/supabase');
+  // Call-time require keeps lib/supabase out of this module's import graph
+  // (the dev-only cloud path must not force a Supabase client everywhere),
+  // while staying interceptable by the test module registry.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { supabase } = require('../../lib/supabase') as typeof import('../../lib/supabase');
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData?.session?.access_token;
   if (!token) {
@@ -164,6 +194,7 @@ export async function invokeStylist6Cloud(
     const result = await supabase.functions.invoke('aiw-stylist6-node-staging', {
       headers: { Authorization: `Bearer ${token}` },
       body,
+      ...(options?.signal ? { signal: options.signal } : {}),
     });
     data = result.data as Record<string, any> | null;
     invokeError = result.error;
@@ -171,8 +202,11 @@ export async function invokeStylist6Cloud(
     if (error instanceof Error && error.name === 'AbortError') throw error;
     throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'staging_compute_unavailable', 'stylist6_cloud');
   }
-  if (invokeError || !data || data?.success !== true || !Array.isArray(data?.outfits)) {
-    throw failureForCloud((data as any)?.code ?? (invokeError as any)?.message);
+  if (invokeError) {
+    throw await cloudFailureFromInvokeError(invokeError);
+  }
+  if (!data || data?.success !== true || !Array.isArray(data?.outfits)) {
+    throw failureForCloud((data as any)?.code);
   }
   if (!isStylist6CloudVersion(data.generationVersion)) {
     throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_wrong_engine', 'stylist6_cloud');
@@ -196,6 +230,26 @@ function isHttpsPhoto(value: unknown): boolean {
   }
 }
 
+/** Structure/identity contract shared by both exact-deck acceptances. */
+function lookStructureRejection(items: unknown[]): string | null {
+  if (items.length !== 3 && items.length !== 4) return 'structure';
+  const slots = items.map((item: any) => item?.macroCategory);
+  if (slots.some((slot: unknown) => !(DEV_SLOTS as readonly unknown[]).includes(slot))) {
+    return 'structure';
+  }
+  const count = (slot: string) => slots.filter((value: unknown) => value === slot).length;
+  if (count('top') !== 1 || count('bottom') !== 1 || count('shoes') !== 1 || count('outerwear') > 1) {
+    return 'structure';
+  }
+  if (items.some((item: any) => typeof item?.id !== 'string' || !item.id.trim())) {
+    return 'invalid_product_identity';
+  }
+  if (new Set(items.map((item: any) => item.id)).size !== items.length) {
+    return 'invalid_product_identity';
+  }
+  return null;
+}
+
 /**
  * Rendering-contract acceptance for exact Stylist 6 dev decks. The shared
  * Stylist 5 taste gates (base-shirt-only tops, style-judge repair,
@@ -214,29 +268,72 @@ export function acceptStylist6DevDeck(outfits: unknown): Stylist6DevAcceptance {
   const accepted: Record<string, any>[] = [];
   for (const look of Array.isArray(outfits) ? outfits : []) {
     const items = (look as { items?: unknown })?.items;
-    if (!Array.isArray(items) || (items.length !== 3 && items.length !== 4)) {
+    if (!Array.isArray(items)) {
       reject('structure');
       continue;
     }
-    const slots = items.map((item: any) => item?.macroCategory);
-    if (slots.some((slot: unknown) => !(DEV_SLOTS as readonly unknown[]).includes(slot))) {
-      reject('structure');
-      continue;
-    }
-    const count = (slot: string) => slots.filter((value: unknown) => value === slot).length;
-    if (count('top') !== 1 || count('bottom') !== 1 || count('shoes') !== 1 || count('outerwear') > 1) {
-      reject('structure');
-      continue;
-    }
-    if (items.some((item: any) => typeof item?.id !== 'string' || !item.id.trim())) {
-      reject('invalid_product_identity');
-      continue;
-    }
-    if (new Set(items.map((item: any) => item.id)).size !== items.length) {
-      reject('invalid_product_identity');
+    const structural = lookStructureRejection(items);
+    if (structural) {
+      reject(structural);
       continue;
     }
     if (items.some((item: any) => item?.isShopItem !== true)) {
+      reject('source_or_anchor');
+      continue;
+    }
+    if (items.some((item: any) => !isHttpsPhoto(item?.imageUrl || item?.image))) {
+      reject('unrenderable_photo');
+      continue;
+    }
+    accepted.push(look as Record<string, any>);
+  }
+  return { accepted, rejections };
+}
+
+/**
+ * Rendering-contract acceptance for exact Stylist 6 CLOUD decks, per the
+ * response's own sourceMode. The cloud deck flows to the card verbatim —
+ * the shared Stylist 5 taste gates (repair, style judge, closest-match
+ * recovery) must not rewrite the server-ranked plan — so this validates
+ * only what the outfit card needs to render truthfully:
+ * - catalog: every piece is a shop SKU with a merchant URL, price, currency;
+ * - wardrobe: every piece is an owned item (no shoppable provenance);
+ * - mixed: owned and shop pieces coexist, each keeping its own contract.
+ * Anything that fails is counted, never repaired or substituted; budgets
+ * still apply downstream through the screen's fitsCap filter.
+ */
+export function acceptStylist6CloudDeck(
+  outfits: unknown,
+  sourceMode: unknown,
+): Stylist6DevAcceptance {
+  const mode = sourceMode === 'wardrobe' || sourceMode === 'mixed' ? sourceMode : 'catalog';
+  const rejections: Record<string, number> = {};
+  const reject = (reason: string) => {
+    rejections[reason] = (rejections[reason] || 0) + 1;
+  };
+  const accepted: Record<string, any>[] = [];
+  for (const look of Array.isArray(outfits) ? outfits : []) {
+    const items = (look as { items?: unknown })?.items;
+    if (!Array.isArray(items)) {
+      reject('structure');
+      continue;
+    }
+    const structural = lookStructureRejection(items);
+    if (structural) {
+      reject(structural);
+      continue;
+    }
+    const provenance = items.every((item: any) => {
+      if (typeof item?.isShopItem !== 'boolean') return false;
+      if (item.isShopItem) {
+        // Shop SKUs keep the full merchant contract in every mode.
+        if (mode === 'wardrobe') return false;
+        return isHttpsPhoto(item?.shopUrl) && typeof item?.price === 'number'
+          && Number.isFinite(item.price) && /^[A-Z]{3}$/.test(String(item?.currency || ''));
+      }
+      return mode !== 'catalog';
+    });
+    if (!provenance) {
       reject('source_or_anchor');
       continue;
     }

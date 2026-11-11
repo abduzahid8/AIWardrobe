@@ -3,7 +3,7 @@ import {outfitDescription,outfitConceptTitle,distinctStylingTips,resolveSelectio
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, type DevEngine} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -1504,9 +1504,12 @@ const AIOutfitGenerator = () => {
       // the local safety check can validate the actual returned products.
       // The local Stylist 6 ranker enforces a same-currency budget itself
       // (pool + admit filter), so a single-currency S6 budget needs no
-      // conversion and must not depend on the deployed rates function.
-      // Multi-currency limits and the hosted edge keep the fail-closed fetch.
-      const s6SameCurrencyBudget = STYLIST6_DEV_ENABLED && devEngine === 'stylist6' && !mixedLimits;
+      // conversion and must not depend on the deployed rates function. The
+      // cloud S6 engine enforces the identical same-currency filter
+      // server-side. Multi-currency limits and the hosted edge keep the
+      // fail-closed fetch.
+      const s6SameCurrencyBudget = STYLIST6_DEV_ENABLED
+        && (devEngine === 'stylist6' || devEngine === 'stylist6cloud') && !mixedLimits;
       if ((mixedLimits || (shopBudget && effectiveSource === 'shop')) && !s6SameCurrencyBudget) {
         let fx;
         try { fx = budgetFxContext(await getBudgetRates()); }
@@ -1636,13 +1639,21 @@ const AIOutfitGenerator = () => {
             recentSignatures: history.recentLookSignatures,
             excludeItemIds,
             requiredIds: baseItemId ? [baseItemId] : [],
-            sourceMode: (currentSource === 'wardrobe' ? 'wardrobe' : 'catalog') as 'wardrobe' | 'catalog',
+            // baseItemId is always an owned piece (locked from the closet).
+            // A locked owned anchor with catalog clothing mirrors the S5
+            // semantic "the locked piece stays; the other slots use the
+            // catalog" — that is exactly the server's mixed pool. Without an
+            // anchor, shop mode stays pure catalog and wardrobe mode stays
+            // wardrobe-only.
+            sourceMode: (currentSource === 'wardrobe'
+              ? 'wardrobe'
+              : baseItemId ? 'mixed' : 'catalog') as 'wardrobe' | 'catalog' | 'mixed',
             enableVisual: nvidiaVisual === true,
             generationRequestId: requestId,
           },
         };
         try {
-          data = await withRequestDeadline(() => invokeStylist6Cloud(cloudBody), EDGE_TIMEOUT_MS, cancelSignal);
+          data = await withRequestDeadline((signal) => invokeStylist6Cloud(cloudBody, {signal}), EDGE_TIMEOUT_MS, cancelSignal);
         } catch (error) { invokeError = error; }
       } else if (s6Active) {
         const catalogRows = await loadStylistCatalogInventory(cancelSignal);
@@ -1684,7 +1695,11 @@ const AIOutfitGenerator = () => {
         throw await outfitGenerationFailure(data, invokeError);
       }
 
-      if (shopBudget?.fx && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
+      // The FX-snapshot equality guarantee only exists for engines that
+      // actually consume a rates snapshot (the hosted S5 edge). The S6 cloud
+      // engine enforces same-currency budgets server-side and never consumes
+      // FX, so there is no snapshot to compare and the check must not fire.
+      if (shopBudget?.fx && !s6CloudActive && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
       if (data && data.success && data.outfits && data.outfits.length > 0) {
         // Feed the rotation window BEFORE normalizing — the next tap must
         // exclude these exact ids even if the deck is edited downstream.
@@ -1735,8 +1750,24 @@ const AIOutfitGenerator = () => {
         // rendering contract is enforced; budgets still apply downstream.
         const pipelineSource = s6Active ? 'shop' : effectiveSource;
         const s6Acceptance = s6Active ? acceptStylist6DevDeck(data.outfits) : null;
-        const prepared = s6Acceptance
-          ? {cleaned: s6Acceptance.accepted, accepted: s6Acceptance.accepted, recovered: [] as any[], rejections: s6Acceptance.rejections}
+        // The cloud deck is ranked server-side by the Stylist 6 engine over
+        // server inventory. Like the local bridge deck, it flows through the
+        // pipeline with its exact plan intact: the shared Stylist 5 taste
+        // gates (base-shirt-only repair, style-judge rewrite, closest-match
+        // recovery) must not rewrite or replace it. Only the rendering
+        // contract is enforced — source-aware, because wardrobe and mixed
+        // decks legitimately carry owned pieces — and budgets still apply
+        // downstream.
+        const s6CloudAcceptance = s6CloudActive
+          ? acceptStylist6CloudDeck(data.outfits, (data as any)?.sourceMode)
+          : null;
+        const prepared = (s6Acceptance || s6CloudAcceptance)
+          ? {
+            cleaned: (s6Acceptance ?? s6CloudAcceptance)!.accepted,
+            accepted: (s6Acceptance ?? s6CloudAcceptance)!.accepted,
+            recovered: [] as any[],
+            rejections: (s6Acceptance ?? s6CloudAcceptance)!.rejections,
+          }
           : prepareStylistResponse(data.outfits, alternativeItems, {
           anchorId: baseItemId, style: styleToUse, occasion: `${occasionToUse} ${effectivePrompt || promptText || ''}`,
           weather: resolvedWeather, source: pipelineSource, accepts: fitsCap,

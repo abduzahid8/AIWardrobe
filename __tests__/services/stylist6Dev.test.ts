@@ -182,6 +182,19 @@ describe('stylist6 dev bridge client', () => {
 });
 
 describe('stylist6 cloud staging client', () => {
+  const mockInvoke = jest.fn();
+  beforeEach(() => {
+    mockInvoke.mockReset();
+    // The cloud client resolves supabase lazily; mock the whole module so no
+    // network or real client is involved.
+    jest.mock('../../lib/supabase', () => ({
+      supabase: {
+        auth: { getSession: async () => ({ data: { session: { access_token: 'test-token' } } }) },
+        functions: { invoke: mockInvoke },
+      },
+    }));
+  });
+
   test('cloud versions are recognized only with the stylist-6-cloud prefix', () => {
     (globalThis as any).__DEV__ = true;
     process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
@@ -201,5 +214,106 @@ describe('stylist6 cloud staging client', () => {
       request: { style: 'classic', occasion: 'Work', brief: '' },
     })).rejects.toMatchObject({ code: 'stylist6_dev_disabled' });
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  test('a non-2xx FunctionsHttpError surfaces the server code and stage, not a generic label', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const { invokeStylist6Cloud } = loadDevModule();
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: Object.assign(new Error('FunctionsHttpError'), {
+        name: 'FunctionsHttpError',
+        context: new Response(
+          JSON.stringify({ success: false, code: 'anchor_not_found', stage: 'stylist6_admission' }),
+          { status: 422 },
+        ),
+      }),
+    });
+    const failure: any = await invokeStylist6Cloud({
+      request: { style: 'classic', occasion: 'Work', brief: '' },
+    }).catch((error) => error);
+    expect(failure?.name).toBe('OutfitGenerationFailure');
+    expect(failure?.code).toBe('anchor_not_found');
+    expect(failure?.stage).toBe('stylist6_admission');
+  });
+
+  test('an error response without a JSON body still fails with a transport-safe code', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const { invokeStylist6Cloud } = loadDevModule();
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: Object.assign(new Error('FunctionsHttpError'), {
+        name: 'FunctionsHttpError',
+        context: new Response('Bad Gateway', { status: 502 }),
+      }),
+    });
+    const failure: any = await invokeStylist6Cloud({
+      request: { style: 'classic', occasion: 'Work', brief: '' },
+    }).catch((error) => error);
+    expect(failure?.name).toBe('OutfitGenerationFailure');
+    // No application body to read: the transport message is kept verbatim
+    // instead of inventing a server verdict.
+    expect(failure?.code).toBe('FunctionsHttpError');
+  });
+
+  test('a wrong-engine deck is rejected even when the transport succeeds', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const { invokeStylist6Cloud } = loadDevModule();
+    mockInvoke.mockResolvedValue({
+      data: {
+        success: true, generationVersion: 'stylist-5-editorial-v2-rc-20261109-r2', outfits: [],
+      },
+      error: null,
+    });
+    await expect(invokeStylist6Cloud({
+      request: { style: 'classic', occasion: 'Work', brief: '' },
+    })).rejects.toMatchObject({ code: 'stylist6_wrong_engine' });
+  });
+
+  test('an abort signal propagates to the transport invocation', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const { invokeStylist6Cloud } = loadDevModule();
+    const controller = new AbortController();
+    mockInvoke.mockResolvedValue({ data: { success: true, generationVersion: 'stylist-6-cloud-staging-1', outfits: [] }, error: null });
+    await invokeStylist6Cloud(
+      { request: { style: 'classic', occasion: 'Work', brief: '' } },
+      { signal: controller.signal },
+    );
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    const options = mockInvoke.mock.calls[0][1];
+    expect(options?.signal).toBe(controller.signal);
+  });
+
+  test('cloud deck acceptance is source-aware and never repairs', () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const { acceptStylist6CloudDeck } = loadDevModule();
+    const shop = (id: string, macroCategory: string, extra: Record<string, unknown> = {}) => ({
+      id, macroCategory, name: `${macroCategory} ${id}`, imageUrl: `https://example.com/${id}.jpg`,
+      isShopItem: true, isWardrobe: false, price: 100, currency: 'USD', shopUrl: `https://example.com/buy/${id}`, ...extra,
+    });
+    const owned = (id: string, macroCategory: string) => ({
+      id, macroCategory, name: `${macroCategory} ${id}`, imageUrl: `https://example.com/${id}.jpg`,
+      isShopItem: false, isWardrobe: true, price: null, currency: null, shopUrl: null,
+    });
+    const look = (...items: Record<string, unknown>[]) => ({ id: 'look', items });
+    // catalog: a shop deck passes; one owned piece rejects the look.
+    expect(acceptStylist6CloudDeck([look(shop('t', 'top'), shop('o', 'outerwear'), shop('b', 'bottom'), shop('s', 'shoes'))], 'catalog').accepted).toHaveLength(1);
+    expect(acceptStylist6CloudDeck([look(owned('t', 'top'), shop('o', 'outerwear'), shop('b', 'bottom'), shop('s', 'shoes'))], 'catalog').rejections).toMatchObject({ source_or_anchor: 1 });
+    // wardrobe: owned pieces pass; shop pieces reject.
+    expect(acceptStylist6CloudDeck([look(owned('t', 'top'), owned('b', 'bottom'), owned('s', 'shoes'))], 'wardrobe').accepted).toHaveLength(1);
+    expect(acceptStylist6CloudDeck([look(owned('t', 'top'), owned('b', 'bottom'), shop('s', 'shoes'))], 'wardrobe').rejections).toMatchObject({ source_or_anchor: 1 });
+    // mixed: both provenances coexist, shop pieces keep the merchant contract.
+    expect(acceptStylist6CloudDeck([look(owned('t', 'top'), shop('o', 'outerwear'), owned('b', 'bottom'), shop('s', 'shoes'))], 'mixed').accepted).toHaveLength(1);
+    expect(acceptStylist6CloudDeck(
+      [look(owned('t', 'top'), shop('o', 'outerwear', { price: null, currency: null }), owned('b', 'bottom'), shop('s', 'shoes'))],
+      'mixed',
+    ).rejections).toMatchObject({ source_or_anchor: 1 });
+    // Structure is still enforced exactly like the local bridge deck.
+    expect(acceptStylist6CloudDeck([look(shop('a', 'top'), shop('b', 'top'), shop('c', 'bottom'))], 'catalog').rejections).toMatchObject({ structure: 1 });
   });
 });

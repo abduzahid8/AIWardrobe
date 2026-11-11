@@ -45,6 +45,7 @@ function makeIo(overrides = {}) {
   const claims = new Map();
   return {
     calls,
+    claims,
     io: {
       async verifyUser(jwt) {
         calls.verifyUser += 1;
@@ -102,13 +103,13 @@ function makeIo(overrides = {}) {
 const env = { STYLIST6_NODE_SHARED_SECRET: SECRET, SUPABASE_URL: 'https://example.supabase.co' };
 
 async function signedCall(request, { secret = SECRET, jwt = JWT, method = 'POST' } = {}, ioOverride) {
-  const { calls, io } = makeIo(ioOverride);
+  const { calls, claims, io } = makeIo(ioOverride);
   const body = JSON.stringify(request);
   const authorization = `Bearer ${jwt}`;
   const signature = await signStylistTransport({ secret, body, authorization });
   const headers = { authorization, ...signature };
   const result = await handleStylist6CloudGenerate({ method, headers, bodyText: body, env, io });
-  return { ...result, calls };
+  return { ...result, calls, claims };
 }
 
 const baseRequest = {
@@ -322,6 +323,15 @@ test('catalog deck returns truthful stylist-6 version with real SKUs', async () 
   }
   assert.equal(result.body.visualStatus, 'NVIDIA_NOT_RUN');
   assert.equal(result.calls.debitQuota, 1);
+  // The deck echoes the logical request identity for feedback attribution,
+  // and every shop SKU carries truthful owned-piece provenance.
+  assert.equal(typeof result.body.generationRequestId, 'string');
+  assert.ok(result.body.generationRequestId.length >= 1);
+  for (const outfit of result.body.outfits) {
+    for (const item of outfit.items) {
+      assert.equal(item.isWardrobe, false);
+    }
+  }
 });
 
 test('client-supplied inventory is ignored, server SKUs rule', async () => {
@@ -343,6 +353,11 @@ test('wardrobe mode leaks no shop inventory', async () => {
   const items = result.body.outfits.flatMap((outfit) => outfit.items);
   assert.ok(items.length >= 3);
   for (const item of items) assert.equal(item.isShopItem, false);
+  for (const item of items) {
+    assert.equal(item.isWardrobe, true);
+    assert.equal(item.shopUrl, null);
+    assert.equal(item.price, null);
+  }
   assert.equal(result.calls.fetchShopRows, 0);
 });
 
@@ -524,6 +539,22 @@ test('malformed budgets fail before debit', async () => {
   }
 });
 
+test('a debited request with no feasible looks records its terminal outcome', async () => {
+  // Every shop row is UZS; a USD budget leaves zero feasible items after
+  // admission, so the already-claimed and debited request must still record
+  // its terminal outcome for honest 409 replay.
+  const request = { request: { ...baseRequest, budget: { amount: 100, currency: 'USD' } } };
+  const { status, body, calls, claims } = await signedCall(request);
+  assert.equal(status, 502);
+  assert.equal(body.code, 'stylist6_no_feasible_looks');
+  assert.equal(calls.claimRequest, 1);
+  assert.equal(calls.debitQuota, 1);
+  assert.equal(calls.finishRequest, 1);
+  const [record] = [...claims.values()];
+  assert.equal(record.status, 502);
+  assert.equal(record.code, 'stylist6_no_feasible_looks');
+});
+
 
 test('changed contents under one logical id conflict without a second debit', async () => {
   const harness = makeIo();
@@ -558,4 +589,43 @@ test('server discovery projection without is_active remains usable; explicit ina
   assert.equal(rows.find(row => row.id === 'explicit-inactive').is_active, false);
   // Raw untrusted/standalone adapter input still requires an explicit flag.
   assert.equal(adaptCatalog(liveProjection.filter(row => row.id !== 'explicit-inactive')).items.length, 0);
+});
+
+test('server discovery projection without fashion_subtype restores the intelligence descriptor subtype', async (t) => {
+  const { createCloudIo } = await import('./cloud_handler.mjs');
+  const { adaptCatalog } = await import('./catalog_adapter.mjs');
+  // Mirror the real RPC projection: fashion_slot present, subtype column
+  // omitted, intelligence descriptor intact.
+  const slotOf = { tops: 'top', bottoms: 'bottom', shoes: 'shoes' };
+  const liveProjection = SHOP.map((row) => {
+    const { is_active, ...rest } = row;
+    return {
+      ...rest,
+      fashion_slot: slotOf[row.category] ?? 'top',
+      ...(row.id === 'shoes-1'
+        ? { fashion_intelligence: { version: 1, descriptor: { slot: 'shoes', subtype: 'loafer', formality: 'smart' } } }
+        : {}),
+    };
+  });
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    assert.match(String(url), /\/rest\/v1\/rpc\/catalog_discovery_candidates$/);
+    return new Response(JSON.stringify(liveProjection), { status: 200 });
+  });
+  const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'server', supabaseJs: {} });
+  const rows = await io.fetchShopRows();
+  assert.equal(rows.find(row => row.id === 'shoes-1').fashion_subtype, 'loafer');
+  assert.equal(rows.find(row => row.id === 'shoes-2').fashion_subtype, undefined);
+  const adapted = adaptCatalog(rows);
+  const shoes1 = adapted.items.find(item => item.id === 'shoes-1');
+  assert.equal(shoes1.macroCategory, 'shoes');
+  assert.equal(shoes1.subtype, 'loafer');
+  assert.equal(shoes1.projection.kind, 'live_intelligence');
+  // Rows without a descriptor stay on the transparent text projection.
+  const shoes2 = adapted.items.find(item => item.id === 'shoes-2');
+  assert.notEqual(shoes2.projection.kind, 'live_intelligence');
+  // The general adapter itself never reads fashion_intelligence: raw RPC
+  // rows keep zero live hints — restoration happens only at the server
+  // boundary.
+  const rawAdapted = adaptCatalog(liveProjection.map((row) => ({ ...row, is_active: true })));
+  assert.equal(rawAdapted.items.find(item => item.id === 'shoes-1').projection.kind, 'native_category');
 });

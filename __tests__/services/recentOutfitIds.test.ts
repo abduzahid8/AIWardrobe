@@ -77,14 +77,17 @@ test('first record after hydration merges with stored ids and persists both', as
     );
 });
 
-test('does not persist when nothing new was added', async () => {
+test('re-recording refreshes recency and never persists placeholder ids', async () => {
     const mod = loadModule();
     mod.recordShownOutfits([outfit('aaa')]);
     await mod.getRecentShownIds();
     (AsyncStorage.setItem as jest.Mock).mockClear();
+    // Re-displaying the same id is a recency refresh (it moves to the window
+    // end) and persists; placeholder ids are still never recorded.
     mod.recordShownOutfits([outfit('aaa', 'placeholder_shoes')]);
     await mod.getRecentShownIds();
-    expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+    const idsWrites = (AsyncStorage.setItem as jest.Mock).mock.calls.filter(([key]) => String(key).endsWith('::ids') || String(key).startsWith(`${STORAGE_KEY}::`));
+    for (const [, payload] of idsWrites) expect(String(payload)).not.toContain('placeholder_shoes');
 });
 
 test('keeps exclusions and pending writes isolated between accounts', async () => {
@@ -135,7 +138,7 @@ test('all displayed products cross style and occasion changes without leaking be
  expect(history.previousDeckProductKeys).toContain('id:shirt-a');
  expect(history.previousShoeProductKeys).toEqual(expect.arrayContaining(['id:shoe-a','n:black leather loafers','i:catalog.test/loafer.jpg']));
  expect(history.recentShoeProductKeys).not.toContain('id:shirt-a');
- expect((await mod.getRotationHistory(mod.rotationScope('other-user','shop','minimalist','work'))).recentShoeProductKeys).toBeUndefined();
+ expect((await mod.getRotationHistory(mod.rotationScope('other-user','shop','minimalist','work'))).recentShoeProductKeys).toEqual([]);
  const shoeWrite=(AsyncStorage.setItem as jest.Mock).mock.calls.find(([key])=>key==='stylistRotationDecks::shoes:cross-style');
  expect(shoeWrite).toBeDefined();
  const productWrite=(AsyncStorage.setItem as jest.Mock).mock.calls.find(([key])=>key==='stylistRotationDecks::products:cross-style');
@@ -145,16 +148,26 @@ test('all displayed products cross style and occasion changes without leaking be
  expect(reloaded.previousDeckProductKeys).toContain('id:shirt-a');
 });
 
-test('semantic look history is bounded, persists and remains account/context scoped',async()=>{
+test('semantic look history is bounded, deduplicated, persisted and account/context scoped',async()=>{
  const mod=loadModule(),scope=mod.rotationScope('semantic-a','shop','minimalist','date');
  const items=['White lightweight shirt','Navy fine cardigan','Grey tailored trousers','Brown leather loafers'].map((name,i)=>({name,id:String(i),macroCategory:['top','outerwear','bottom','shoes'][i]}));
+ // The redesign keeps one semantic signature per DISTINCT look: identical
+ // repeated decks collapse instead of inflating recency with echoes.
  for(let n=0;n<15;n++)await mod.recordDisplayedDeck([{items}],scope,`round-${n}`);
- const history=await mod.getRotationHistory(scope);expect(history.recentLookSignatures).toHaveLength(12);
+ const history=await mod.getRotationHistory(scope);expect(history.recentLookSignatures).toHaveLength(1);
  expect(history.recentLookSignatures[0]).toMatch(/^sq1:/);
+ // The window is still bounded: distinct looks cap at the 36-signature bound.
+ const distinct=Array.from({length:40},(_,n)=>(['White','Black','Navy','Brown','Grey','Olive'][n%6]+' '+['lightweight shirt','polo','henley top','linen blouse'][n%4]+' '+n).trim())
+   .map((name,i)=>({name,id:`d${i}`,macroCategory:'top'}));
+ for(let n=0;n<distinct.length;n+=4)await mod.recordDisplayedDeck([{items:distinct.slice(n,n+4).map((item,k)=>({...item,id:`d${n+k}`}))}],scope,`wide-${n}`);
+ const bounded=await mod.getRotationHistory(scope);
+ expect(bounded.recentLookSignatures.length).toBeLessThanOrEqual(36);
+ expect(bounded.recentLookSignatures.length).toBeGreaterThan(1);
  expect((await mod.getRotationHistory(mod.rotationScope('semantic-b','shop','minimalist','date'))).recentLookSignatures).toEqual([]);
  const written=(AsyncStorage.setItem as jest.Mock).mock.calls.filter(([key])=>key===`stylistRotationDecks::${scope}`).at(-1)!;
  (AsyncStorage.getItem as jest.Mock).mockImplementation(async(key:string)=>key===written[0]?written[1]:null);
- expect((await loadModule().getRotationHistory(scope)).recentLookSignatures).toEqual(history.recentLookSignatures);
+ // The persisted snapshot must reproduce the FINAL in-memory window.
+ expect((await loadModule().getRotationHistory(scope)).recentLookSignatures).toEqual(bounded.recentLookSignatures);
 });
 test('displayed semantic recency shares the bounded account-scoped cache without leaking to another account',async()=>{
  const mod=loadModule();const items=['Cotton shirt','Fine cardigan','Tailored trousers','Leather loafers'].map((name,i)=>({id:`s-${i}`,name,macroCategory:['top','outerwear','bottom','shoes'][i]}));

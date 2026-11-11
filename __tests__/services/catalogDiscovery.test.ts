@@ -49,34 +49,31 @@ beforeEach(() => {
     abortSignal: async () => ({ data: null, error: { code: 'PGRST202' } }),
   });
 });
-test('counted discovery reaches interior and later rows with bounded windows and stable non-overlapping pagination', async () => {
+test('a missing discovery RPC fails closed without a legacy catalog scan', async () => {
+  // The counted table-scan fallback was removed with the Stylist 3.0
+  // retrieval redesign: a missing RPC capability is an explicit retrieval
+  // failure, never a silent legacy scan (service header comment).
+  await expect(service.loadCatalogDiscovery({ seed: 'late-row-proof', limit: 40 }))
+    .rejects.toMatchObject({ code: 'catalog_lookup_unavailable', stage: 'catalog_retrieval' });
+  expect(mockFrom).not.toHaveBeenCalled();
+});
+test('discovery forwards request identity and paging to the RPC and caches stable pages', async () => {
+  let call = 0;
+  mockRpc.mockImplementation(() => {
+    call += 1;
+    return {
+      abortSignal: async () => ({ data: rows.slice(call === 1 ? 0 : 40, call === 1 ? 40 : 80), error: null }),
+    };
+  });
   const a = await service.loadCatalogDiscovery({ seed: 'late-row-proof', limit: 40 });
   const b = await service.loadCatalogDiscovery({ seed: 'late-row-proof', limit: 40, page: 1 });
   expect(a.rows).toHaveLength(40);
   expect(b.rows).toHaveLength(40);
   expect(new Set([...a.rows, ...b.rows].map((r) => r.id)).size).toBe(80);
-  const varied = await Promise.all(
-    Array.from({ length: 10 }, (_, i) =>
-      service.loadCatalogDiscovery({ seed: `discovery-${i}`, limit: 40 })
-    )
+  expect(mockRpc).toHaveBeenCalledWith(
+    'catalog_discovery_candidates',
+    expect.objectContaining({ p_seed: 'late-row-proof', p_limit: 40, p_offset: 40 }),
   );
-  expect(varied.flatMap((page) => page.rows).some((r) => Number(r.id.slice(3)) > 600)).toBe(true);
-  expect(windows.every(([start, end]) => end - start < 40)).toBe(true);
-  expect(new Set(a.rows.map((r) => r.brand)).size).toBe(9);
-  expect(a.rows.some((r) => r.garment_type === 'shoes')).toBe(true);
-  expect(mockRpc).toHaveBeenCalledTimes(1);
-});
-test('full bounded traversal wraps without dropping or duplicating variants; different seeds expose different rows', async () => {
-  const pages = await Promise.all(
-    Array.from({ length: 9 }, (_, page) =>
-      service.loadCatalogDiscovery({ seed: 'traversal', limit: 100, page })
-    )
-  );
-  expect(new Set(pages.flatMap((p) => p.rows.map((r) => r.id))).size).toBe(900);
-  expect(pages[8].hasMore).toBe(false);
-  expect(
-    (await service.loadCatalogDiscovery({ seed: 'different', limit: 100 })).rows.map((r) => r.id)
-  ).not.toEqual(pages[0].rows.map((r) => r.id));
 });
 test('balanced RPC preserves filters and concrete IDs; concurrent readers share the request', async () => {
   mockRpc.mockReturnValue({
@@ -109,12 +106,15 @@ test('balanced RPC preserves filters and concrete IDs; concurrent readers share 
   );
   expect(mockFrom).not.toHaveBeenCalled();
 });
-test('auth errors remain errors, unsafe provenance is rejected, and cancellation is per reader', async () => {
+test('auth errors stay retrieval failures, unsafe provenance is rejected, and cancellation is per reader', async () => {
   mockRpc.mockReturnValueOnce({
     abortSignal: async () => ({ error: { code: '42501' }, data: null }),
   });
+  // The client normalizes every RPC failure (including RLS denials) to the
+  // client-safe retrieval code; raw database error codes never leak to the
+  // discovery surface.
   await expect(service.loadCatalogDiscovery({ seed: 'denied' })).rejects.toMatchObject({
-    code: '42501',
+    code: 'catalog_lookup_unavailable',
   });
   mockRpc.mockReturnValue({
     abortSignal: async () => ({

@@ -176,11 +176,15 @@ function decksFor(scope: string) {
     }
     return state;
 }
+/** Best-effort recency: a slow or hung persistence write must never stall a read. */
+const settleWrites = (writes: Promise<void>) =>
+    withRequestDeadline(() => writes, 1500).catch(() => undefined);
+
 export async function getRotationHistory(scope:string) {
-    const state=decksFor(scope);await state.ready;await state.writes;
+    const state=decksFor(scope);await state.ready;await settleWrites(state.writes);
     const owner=scope.split('|')[0];
-    const products=decksFor(`products:${owner}`);await products.ready;await products.writes;
-    const shoes=decksFor(`shoes:${owner}`);await shoes.ready;await shoes.writes;
+    const products=decksFor(`products:${owner}`);await products.ready;await settleWrites(products.writes);
+    const shoes=decksFor(`shoes:${owner}`);await shoes.ready;await settleWrites(shoes.writes);
     // Older clients persisted an account window but only kept deck boundaries
     // per occasion. Carry that evidence forward without copying another user.
     const [legacyKeys,legacyIds,legacyLooks]=await Promise.all([getRecentShownProductKeys(owner),getRecentShownIds(owner),getRecentShownLookSignatures(owner)]);

@@ -262,7 +262,20 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
             // This server RPC selects only active shop_catalog rows, but its
             // JSON projection omits is_active. Restore that contract fact
             // here, never in the general adapter or from client inventory.
-            rows.set(String(row.id), { ...row, is_active: row.is_active ?? true });
+            // The projection also omits the intelligence table's subtype
+            // column; the projected fashion_intelligence descriptor carries
+            // exactly that value (subtype = descriptor.subtype at write
+            // time), so restore it for the adapter's live-hint contract.
+            // Explicit false stays false; a missing descriptor leaves the
+            // row to the adapter's transparent text projection.
+            rows.set(String(row.id), {
+              ...row,
+              is_active: row.is_active ?? true,
+              fashion_subtype: row.fashion_subtype
+                ?? (row.fashion_intelligence && typeof row.fashion_intelligence === 'object'
+                  ? row.fashion_intelligence?.descriptor?.subtype
+                  : undefined),
+            });
           }
         }
       }
@@ -343,6 +356,9 @@ function mapDeckItem(item, rankScore) {
     image: item.imageUrl,
     recommendation: `Stylist 6 rank · score ${Number(rankScore).toFixed(2)}`,
     isShopItem: item.isShopItem === true,
+    // Truthful owned-piece provenance: the app's quote/buy pipeline skips
+    // isWardrobe pieces (no price, no Buy button, zero spend).
+    isWardrobe: item.isShopItem !== true,
     price: item.price ?? null,
     currency: item.currency || null,
     shopUrl: item.shopUrl || null,
@@ -556,6 +572,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       ? pool.filter((item) => item.isShopItem !== true || item.currency === budget.currency)
       : pool;
     if (!feasible.length) {
+      // Terminal outcome of an already-claimed (and debited) request: record
+      // it like the empty-deck path below so a redelivery replays 409 with
+      // the real prior code instead of an unrecorded "processing" claim.
+      await finish(502, 'stylist6_no_feasible_looks');
       return fail('stylist6_no_feasible_looks', 502, { stage: 'stylist6_ranking', serverInventory: true });
     }
     const weather = resolveStylistWeather(request.brief || '', request.weather || {});
@@ -662,6 +682,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         success: true,
         generationVersion: STYLIST6_CLOUD_VERSION,
         source: 'stylist-6-cloud-staging',
+        // Logical request identity echoed back so the app can attribute
+        // feedback (like/dislike) to this exact deck, as the S5 edge does.
+        generationRequestId: requestId,
         compositionProtocol: 'optional-layer-v1',
         deckTarget: 3,
         status: deck.status,
