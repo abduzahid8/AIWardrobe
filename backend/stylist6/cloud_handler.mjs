@@ -11,10 +11,10 @@
  * `stylist-6-*` generation version. It never runs as Stylist 5 and never
  * relabels deterministic ranking as provider judgment.
  *
- * Admission order (fail-closed, exactly-once billing):
- *   transport size/HMAC -> user JWT -> rate bucket -> quota debit (once,
- *   before planning; planning failures keep the debit, mirroring prod) ->
- *   server-side inventory -> ranking -> response.
+ * Admission order (fail-closed, at-most-once admission):
+ *   transport size/HMAC -> user JWT -> rate bucket -> server inventory ->
+ *   anchor validation -> durable claim -> quota debit -> ranking -> response.
+ * Claims and debits are separate transactions; planning failures keep debit.
  *
  * Client-supplied inventory is NEVER authoritative: any `catalogRows` in
  * the request body are ignored and reported as ignored. Wardrobe rows
@@ -258,7 +258,12 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         });
         const data = await check(response, 'stylist6_catalog_unavailable');
         for (const row of Array.isArray(data) ? data : []) {
-          if (row && row.id && !rows.has(String(row.id))) rows.set(String(row.id), row);
+          if (row && row.id && !rows.has(String(row.id))) {
+            // This server RPC selects only active shop_catalog rows, but its
+            // JSON projection omits is_active. Restore that contract fact
+            // here, never in the general adapter or from client inventory.
+            rows.set(String(row.id), { ...row, is_active: row.is_active ?? true });
+          }
         }
       }
       return [...rows.values()];

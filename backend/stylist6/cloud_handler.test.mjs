@@ -539,3 +539,23 @@ test('changed contents under one logical id conflict without a second debit', as
   assert.equal(changed.body.code,'request_content_conflict');
   assert.equal(harness.calls.debitQuota,1);
 });
+
+
+test('server discovery projection without is_active remains usable; explicit inactive rows stay rejected', async (t) => {
+  const { createCloudIo } = await import('./cloud_handler.mjs');
+  const { adaptCatalog } = await import('./catalog_adapter.mjs');
+  const liveProjection = SHOP.map(({ is_active, ...row }) => row);
+  liveProjection.push({ ...SHOP[0], id: 'explicit-inactive', is_active: false });
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    assert.match(String(url), /\/rest\/v1\/rpc\/catalog_discovery_candidates$/);
+    return new Response(JSON.stringify(liveProjection), { status: 200 });
+  });
+  const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'server', supabaseJs: {} });
+  const rows = await io.fetchShopRows();
+  const adapted = adaptCatalog(rows);
+  assert.equal(adapted.items.length, SHOP.length);
+  assert.equal(adapted.skipped.inactive, 1);
+  assert.equal(rows.find(row => row.id === 'explicit-inactive').is_active, false);
+  // Raw untrusted/standalone adapter input still requires an explicit flag.
+  assert.equal(adaptCatalog(liveProjection.filter(row => row.id !== 'explicit-inactive')).items.length, 0);
+});
