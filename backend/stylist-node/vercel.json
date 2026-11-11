@@ -12,7 +12,8 @@
       "maxDuration": 60
     },
     "api/stylist6-generate-outfits.ts": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "{transport/signature.mjs,dist/stylist6-bundle.mjs}"
     }
   },
   "outputDirectory": "public"

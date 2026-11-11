@@ -14,8 +14,44 @@ import {
   verifyStylistTransport,
   STYLIST_TRANSPORT_MAX_BODY_BYTES,
 } from '../transport/signature.mjs';
-import { handleStylist6CloudGenerate, createCloudIo, STYLIST6_CLOUD_VERSION } from '../../stylist6/cloud_handler.mjs';
 import * as supabaseJs from '@supabase/supabase-js';
+// Version duplicated (not imported) so the route file has zero Stylist 6
+// module dependencies at runtime: the handler arrives only via the built
+// bundle. cloud_handler.test.mjs asserts the two stay identical.
+const STYLIST6_CLOUD_VERSION = 'stylist-6-cloud-staging-1';
+
+type CloudHandler = {
+  handleStylist6CloudGenerate: (input: {
+    method: string;
+    headers: Record<string, string>;
+    bodyText: string;
+    env: Record<string, string>;
+    io: unknown;
+  }) => Promise<{ status: number; body: unknown }>;
+  createCloudIo: (input: {
+    url: string; anonKey: string; serviceKey: string; supabaseJs: unknown;
+  }) => unknown;
+};
+
+let handlerPromise: Promise<CloudHandler> | undefined;
+
+function cloudHandler(): Promise<CloudHandler> {
+  if (!handlerPromise) {
+    handlerPromise = (async () => {
+      // Generated during npm run build from the isolated Stylist 6 entry.
+      // A single artifact: no per-file module resolution at runtime.
+      const handler = await import('../dist/stylist6-bundle.mjs') as CloudHandler;
+      if (typeof handler.handleStylist6CloudGenerate !== 'function') {
+        throw new Error('stylist6_handler_unavailable');
+      }
+      return handler;
+    })().catch((error) => {
+      handlerPromise = undefined;
+      throw error;
+    });
+  }
+  return handlerPromise;
+}
 
 function errorResponse(code: string, status: number): Response {
   return Response.json(
@@ -29,7 +65,9 @@ function envOf(name: string): string {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const secret = envOf('STYLIST_NODE_SHARED_SECRET');
+  // Dedicated Stylist 6 staging secret, independent of the Stylist 5
+  // shared secret. Never fall back to the S5 value.
+  const secret = envOf('STYLIST6_NODE_SHARED_SECRET');
   if (!secret || secret.length < 32) return errorResponse('stylist_compute_unconfigured', 503);
 
   const authorization = request.headers.get('authorization') || '';
@@ -52,7 +90,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!authorized) return errorResponse('unauthorized', 401);
 
   const env = {
-    STYLIST_NODE_SHARED_SECRET: secret,
+    STYLIST6_NODE_SHARED_SECRET: secret,
     SUPABASE_URL: envOf('SUPABASE_URL'),
     SUPABASE_ANON_KEY: envOf('SUPABASE_ANON_KEY'),
     SUPABASE_SERVICE_ROLE_KEY: envOf('SUPABASE_SERVICE_ROLE_KEY'),
@@ -72,13 +110,14 @@ export async function POST(request: Request): Promise<Response> {
   const cpuStart = process.cpuUsage();
   const wallStart = performance.now();
   try {
-    const io = createCloudIo({
+    const handler = await cloudHandler();
+    const io = handler.createCloudIo({
       url: env.SUPABASE_URL,
       anonKey: env.SUPABASE_ANON_KEY,
       serviceKey: env.SUPABASE_SERVICE_ROLE_KEY,
       supabaseJs,
     });
-    const { status, body: responseBody } = await handleStylist6CloudGenerate({
+    const { status, body: responseBody } = await handler.handleStylist6CloudGenerate({
       method: 'POST', headers, bodyText: body, env, io,
     });
     const cpu = process.cpuUsage(cpuStart);

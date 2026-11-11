@@ -33,13 +33,21 @@ import {
   VISUAL_PROVIDER_TIMEOUT_MS,
   VISUAL_TIMEOUT_MS,
 } from './visual_critic_hosted.mjs';
-import { HOST_ALLOWLIST } from '../../scripts/stylist6/image_access.mjs';
+import { HOST_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/image_access.mjs';
 import { verifyStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46.json' with { type: 'json' };
 
 export const STYLIST6_CLOUD_VERSION = 'stylist-6-cloud-staging-1';
 const QUOTA_FEATURE = 'aiw-stylist6-staging';
 const RATE_LIMIT_PER_MINUTE = 10;
+// Process-local idempotency fallback (survives retries, not crashes).
+// The durable `claim_stylist6_request` RPC supersedes this once its
+// migration is applied; the response always reports which one applied.
+const CLAIM_TTL_MS = 10 * 60_000;
+const localClaims = new Map();
+
+const missingFunction = (error) => /does not exist|not found|PGRST202|42883/i.test(
+  String(error?.message || error?.code || error || ''));
 const CATALOG_SLOTS = ['top', 'bottom', 'shoes', 'outerwear'];
 const CATALOG_PER_SLOT = 100;
 const WARDROBE_PAGE = 500;
@@ -166,9 +174,13 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       if (error || !data?.user?.id) throw new Error('stylist6_unauthorized');
       return data.user.id;
     },
-    async admitQuota(userId) {
+    adminClient() {
       const { createClient } = supabaseJs;
-      const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+      return createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    },
+    // Cheap early admission: rate bucket only, never debits quota.
+    async checkRate(userId) {
+      const admin = this.adminClient();
       const nowMs = Date.now();
       const bucketMs = Math.floor(nowMs / 60_000) * 60_000;
       const bucket = await admin.rpc('increment_rate_bucket', {
@@ -182,8 +194,12 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         denied.code = 'rate_limited';
         throw denied;
       }
-      // Same paid outfit-generation bucket as production: no new entitlement
-      // surface, no migration, exactly-once debit on admission.
+    },
+    // Paid debit, called exactly once after the request is fully admitted
+    // (valid anchors, feasible inventory). Same production outfit-generation
+    // bucket: no new entitlement surface, no migration.
+    async debitQuota(userId) {
+      const admin = this.adminClient();
       const quota = await admin.rpc('consume_edge_quota', { p_user: userId, p_endpoint: 'generate-outfits' });
       if (quota.error || typeof quota.data !== 'boolean') throw new Error('stylist6_rate_unavailable');
       if (!quota.data) {
@@ -191,6 +207,56 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         denied.code = 'feature_limit_reached';
         throw denied;
       }
+    },
+    /**
+     * Idempotency claim for one logical generation request. Tries the
+     * durable `claim_stylist6_request` RPC first; when the migration has
+     * not been applied it falls back to a process-local claim table and
+     * reports `durable: false` (survives retries, not crashes).
+     * Returns {duplicate, prior?, durable}. Duplicates never re-debit
+     * and never re-plan: the caller answers 409 from the recorded outcome.
+     */
+    async claimRequest(userId, requestId) {
+      const admin = this.adminClient();
+      try {
+        const claimed = await admin.rpc('claim_stylist6_request', { p_user: userId, p_request_id: requestId });
+        if (claimed.error) {
+          if (!missingFunction(claimed.error)) throw new Error('stylist6_claim_unavailable');
+        } else {
+          // Table-returning RPCs arrive as row arrays; tolerate both shapes.
+          const row = Array.isArray(claimed.data) ? claimed.data[0] : claimed.data;
+          if (row && typeof row === 'object') {
+            return {
+              duplicate: row.duplicate === true,
+              prior: row.duplicate === true ? { status: row.status_code, code: row.outcome_code } : null,
+              durable: true,
+            };
+          }
+        }
+      } catch (error) {
+        if (!missingFunction(error) && error?.message !== 'stylist6_claim_unavailable') throw error;
+      }
+      const key = `${userId}:${requestId}`;
+      const now = Date.now();
+      for (const [stored, record] of localClaims) {
+        if (now - record.at > CLAIM_TTL_MS) localClaims.delete(stored);
+      }
+      if (localClaims.size > 5000) localClaims.clear();
+      const prior = localClaims.get(key);
+      if (prior) return { duplicate: true, prior: { status: prior.status, code: prior.code }, durable: false };
+      localClaims.set(key, { at: now, status: null, code: null });
+      return { duplicate: false, prior: null, durable: false };
+    },
+    async finishRequest(userId, requestId, status, code) {
+      const admin = this.adminClient();
+      try {
+        await admin.rpc('finish_stylist6_request', {
+          p_user: userId, p_request_id: requestId, p_status: status, p_code: String(code || ''),
+        });
+      } catch { /* best effort; the claim already prevents double billing */ }
+      const key = `${userId}:${requestId}`;
+      const record = localClaims.get(key);
+      if (record) localClaims.set(key, { at: Date.now(), status, code: String(code || '') });
     },
     async fetchShopRows() {
       const rows = new Map();
@@ -299,13 +365,14 @@ export function mapCloudVisualStatus(deck) {
   return 'NVIDIA_NOT_RUN';
 }
 
-async function resolveProductAsset(imageUrl, cache) {
+async function resolveProductAsset(imageUrl, cache, fetchFn) {
   const url = String(imageUrl || '');
   // Network reachability is NOT inference authorization: only allowlisted
   // merchant hosts are fetched, exactly like the local bridge.
   if (!HOST_ALLOWLIST.has(hostOf(url))) throw new Error('product_host_not_allowlisted');
   if (cache.has(url)) return cache.get(url);
-  const response = await fetchWithTimeout(url, {
+  const get = fetchFn || fetchWithTimeout;
+  const response = await get(url, {
     redirect: 'follow', headers: { 'User-Agent': 'AIWardrobe-Stylist6-Cloud/1.0', Accept: 'image/*,*/*;q=0.8' },
   });
   if (!response.ok) throw new Error('product_image_unresolved');
@@ -324,13 +391,16 @@ async function resolveProductAsset(imageUrl, cache) {
  * (STYLIST6_REFERENCE_BUCKET), reference-guided judging becomes available;
  * otherwise reference admission fails honestly to NOT_RUN.
  */
-async function resolveReferenceAsset(env, url, referenceId) {
+async function resolveReferenceAsset(env, url, referenceId, fetchFn) {
   const bucket = String(env.STYLIST6_REFERENCE_BUCKET || '').trim();
   if (!bucket || !/^[a-zA-Z0-9_-]{1,64}$/.test(referenceId)) throw new Error('reference_unresolved');
   const entry = (referenceIndex?.images || []).find((item) => item.id === referenceId);
   const filename = entry?.filename ? String(entry.filename).split('/').pop() : '';
   if (!filename || filename.includes('..')) throw new Error('reference_unresolved');
-  const response = await fetch(
+  // First-party staged bytes only: the owner-controlled bucket is the one
+  // inference-authorized reference source in cloud.
+  const get = fetchFn || fetch;
+  const response = await get(
     `${url}/storage/v1/object/${bucket}/${encodeURIComponent(filename)}`,
     { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } },
   );
@@ -346,8 +416,8 @@ async function resolveReferenceAsset(env, url, referenceId) {
  * (injectable fakes in tests); `env` carries server-only configuration.
  * Returns {status, body} with an edge-shaped payload.
  */
-export async function handleStylist6CloudGenerate({ method, headers, bodyText, env, io }) {
-  const secret = env.STYLIST_NODE_SHARED_SECRET || '';
+export async function handleStylist6CloudGenerate({ method, headers, bodyText, env, io, fetchImpl }) {
+  const secret = env.STYLIST6_NODE_SHARED_SECRET || '';
   if (!secret || secret.length < 32) return fail('stylist_compute_unconfigured', 503);
   if (method !== 'POST') return fail('method_not_allowed', 405);
   const body = String(bodyText || '');
@@ -393,13 +463,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     return fail('unauthorized', 401, { stage: 'stylist6_admission' });
   }
 
-  // Rate + quota exactly once on admission (planning failures keep the
-  // debit, mirroring production semantics).
+  // Cheap early rate limit: bucket only, never debits quota.
   try {
-    await io.admitQuota(userId);
+    await io.checkRate(userId);
   } catch (error) {
     if (error?.code === 'rate_limited') return fail('rate_limited', 429, { stage: 'stylist6_admission' });
-    if (error?.code === 'feature_limit_reached') return fail('feature_limit_reached', 403, { stage: 'stylist6_admission' });
     return fail('rate_limit_unavailable', 503, { stage: 'stylist6_admission' });
   }
 
@@ -407,6 +475,14 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
   const deadline = () => {
     if (Date.now() - started > REQUEST_TIMEOUT_MS) throw new Error('stylist6_timeout');
   };
+  // Logical request identity: an explicit client id when supplied,
+  // otherwise the body hash (identical bytes = identical request).
+  const requestId = (() => {
+    const explicit = String(request.generationRequestId || '').trim();
+    if (/^[A-Za-z0-9_-]{1,128}$/.test(explicit)) return explicit;
+    return `body-${createHash('sha256').update(body).digest('hex').slice(0, 32)}`;
+  })();
+  const finish = (status, code) => io.finishRequest(userId, requestId, status, code).catch(() => {});
   try {
     // Server-side inventory only. Shop rows come from the discovery RPC;
     // wardrobe rows come from clothing_items filtered by the verified user.
@@ -426,11 +502,37 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     if (!pool.length) {
       return fail('stylist6_empty_catalog', 502, { stage: 'catalog_adaptation', serverInventory: true, clientInventoryIgnored });
     }
-    // Locked anchors are validated against the server pool, never dropped.
+    // Locked anchors are validated against the server pool BEFORE any
+    // quota debit: invalid anchors fail without a generation charge and
+    // are never silently dropped.
     const poolIds = new Set(pool.map((item) => String(item.id)));
     const missingAnchors = requiredIds.filter((id) => !poolIds.has(id));
     if (missingAnchors.length) {
       return fail('anchor_not_found', 422, { stage: 'stylist6_admission', missingAnchors, serverInventory: true });
+    }
+    // Idempotency: a redelivered logical request replays its recorded
+    // outcome without another debit and without re-planning.
+    const claim = await io.claimRequest(userId, requestId);
+    if (claim.duplicate) {
+      const prior = claim.prior || {};
+      return fail('duplicate_request', 409, {
+        stage: 'stylist6_admission',
+        priorStatus: prior.status ?? null,
+        priorCode: prior.code || null,
+        replayProtection: claim.durable ? 'durable' : 'process-local',
+      });
+    }
+    // Paid debit exactly once, after full admission. Planning failures
+    // keep the debit, mirroring production semantics.
+    try {
+      await io.debitQuota(userId);
+    } catch (error) {
+      if (error?.code === 'feature_limit_reached') {
+        await finish(403, 'feature_limit_reached');
+        return fail('feature_limit_reached', 403, { stage: 'stylist6_admission' });
+      }
+      await finish(503, 'rate_limit_unavailable');
+      return fail('rate_limit_unavailable', 503, { stage: 'stylist6_admission' });
     }
     // Owned wardrobe pieces are free; shop pieces need same-currency prices
     // when budgeted (cross-currency looks cannot be priced honestly here).
@@ -484,8 +586,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         model: NVIDIA_VISION_MODEL,
         timeoutMs: VISUAL_TIMEOUT_MS,
         providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
-        resolveReference: (id) => resolveReferenceAsset(env, env.SUPABASE_URL, id),
-        resolveProduct: (product) => resolveProductAsset(product.imageUrl || product.image_url, photoCache),
+        ...(fetchImpl ? { fetchImpl } : {}),
+        resolveReference: (id, signal) => resolveReferenceAsset(env, env.SUPABASE_URL, id,
+          fetchImpl ? (refUrl, refOptions) => fetchImpl(refUrl, { ...refOptions, signal }) : undefined),
+        resolveProduct: (product) => resolveProductAsset(product.imageUrl || product.image_url, photoCache,
+          fetchImpl ? (prodUrl, prodOptions) => fetchImpl(prodUrl, prodOptions) : undefined),
         onEvent: (event) => {
           visualEvents.push({
             outcome: event.outcome,
@@ -497,8 +602,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           });
         },
       });
+      // Transmission gate, separate from download eligibility: every product
+      // image must carry explicit external-inference authorization, or the
+      // look completes as NOT_RUN with full deterministic ranking.
       canJudgeOutfit = async (look) => (look?.items || []).every((item) =>
-        HOST_ALLOWLIST.has(hostOf(item.imageUrl || item.image_url)));
+        isInferenceAuthorized(item.imageUrl || item.image_url));
     }
     deadline();
     const deck = await recommendFashionDeck({
@@ -511,12 +619,14 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     });
     const visualStatus = mapCloudVisualStatus(deck);
     if ((deck.status !== 'complete' && deck.status !== 'partial') || !deck.outfits.length) {
+      await finish(502, 'stylist6_no_feasible_looks');
       return fail('stylist6_no_feasible_looks', 502, {
         stage: 'stylist6_ranking',
         engineVersion: STYLIST6_CLOUD_VERSION,
         visualStatus,
         serverInventory: true,
         clientInventoryIgnored,
+        replayProtection: claim.durable ? 'durable' : 'process-local',
         diagnostics: deck.diagnostics || null,
       });
     }
@@ -529,6 +639,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         }
       }
     }
+    await finish(200, deck.status);
     return {
       status: 200,
       body: {
@@ -541,6 +652,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         sourceMode,
         serverInventory: true,
         clientInventoryIgnored,
+        replayProtection: claim.durable ? 'durable' : 'process-local',
         previousDeckOverlapBySlot,
         visualHydration,
         visualStatus,
@@ -575,8 +687,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     };
   } catch (error) {
     if (error?.message === 'stylist6_timeout') {
+      await finish(504, 'stylist6_ranking_failed').catch(() => {});
       return fail('stylist6_ranking_failed', 504, { stage: 'stylist6_ranking' });
     }
+    await finish(500, 'stylist6_ranking_failed').catch(() => {});
     return fail('stylist6_ranking_failed', 500, { stage: 'stylist6_ranking' });
   }
 }

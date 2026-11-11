@@ -37,7 +37,11 @@ const WARDROBE = [
 ];
 
 function makeIo(overrides = {}) {
-  const calls = { verifyUser: 0, admitQuota: 0, fetchShopRows: 0, fetchWardrobeRows: 0, fetchVisualProfiles: 0 };
+  const calls = {
+    verifyUser: 0, checkRate: 0, debitQuota: 0, claimRequest: 0, finishRequest: 0,
+    fetchShopRows: 0, fetchWardrobeRows: 0, fetchVisualProfiles: 0,
+  };
+  const claims = new Map();
   return {
     calls,
     io: {
@@ -46,14 +50,35 @@ function makeIo(overrides = {}) {
         if (jwt !== JWT) throw new Error('stylist6_unauthorized');
         return USER;
       },
-      async admitQuota(userId) {
-        calls.admitQuota += 1;
+      async checkRate(userId) {
+        assert.equal(userId, USER);
+        if (overrides.rateDeny) {
+          const denied = new Error('denied');
+          denied.code = overrides.rateDeny;
+          throw denied;
+        }
+      },
+      async debitQuota(userId) {
+        calls.debitQuota += 1;
         assert.equal(userId, USER);
         if (overrides.quotaDeny) {
           const denied = new Error('denied');
           denied.code = overrides.quotaDeny;
           throw denied;
         }
+      },
+      async claimRequest(userId, requestId) {
+        calls.claimRequest += 1;
+        assert.equal(userId, USER);
+        if (claims.has(requestId)) {
+          return { duplicate: true, prior: claims.get(requestId), durable: false };
+        }
+        claims.set(requestId, { status: null, code: null });
+        return { duplicate: false, prior: null, durable: false };
+      },
+      async finishRequest(userId, requestId, status, code) {
+        calls.finishRequest += 1;
+        claims.set(requestId, { status, code });
       },
       async fetchShopRows() {
         calls.fetchShopRows += 1;
@@ -72,7 +97,7 @@ function makeIo(overrides = {}) {
   };
 }
 
-const env = { STYLIST_NODE_SHARED_SECRET: SECRET, SUPABASE_URL: 'https://example.supabase.co' };
+const env = { STYLIST6_NODE_SHARED_SECRET: SECRET, SUPABASE_URL: 'https://example.supabase.co' };
 
 async function signedCall(request, { secret = SECRET, jwt = JWT, method = 'POST' } = {}, ioOverride) {
   const { calls, io } = makeIo(ioOverride);
@@ -93,42 +118,135 @@ test('missing transport secret fails closed without touching auth or quota', asy
   const { calls, io } = makeIo();
   const result = await handleStylist6CloudGenerate({
     method: 'POST', headers: {}, bodyText: '{}',
-    env: { STYLIST_NODE_SHARED_SECRET: '' }, io,
+    env: { STYLIST6_NODE_SHARED_SECRET: '' }, io,
   });
   assert.equal(result.status, 503);
   assert.equal(result.body.code, 'stylist_compute_unconfigured');
   assert.equal(calls.verifyUser, 0);
-  assert.equal(calls.admitQuota, 0);
+  assert.equal(calls.debitQuota, 0);
 });
 
 test('method, size and HMAC admission cost no quota', async () => {
   const probe = await makeIo();
   const badSecret = await signedCall({ request: baseRequest }, { secret: 'wrong-secret-000000000000000000000001' });
   assert.equal(badSecret.status, 401);
-  assert.equal(badSecret.calls.admitQuota, 0);
+  assert.equal(badSecret.calls.debitQuota, 0);
   const get = await handleStylist6CloudGenerate({ method: 'GET', headers: {}, bodyText: '', env, io: probe.io });
   assert.equal(get.status, 405);
   const big = await handleStylist6CloudGenerate({
     method: 'POST', headers: {}, bodyText: 'x'.repeat(1024 * 1024 + 1), env, io: probe.io,
   });
   assert.equal(big.status, 413);
-  assert.equal(probe.calls.admitQuota, 0);
+  assert.equal(probe.calls.debitQuota, 0);
 });
 
 test('invalid JWT fails before inventory and quota', async () => {
   const result = await signedCall({ request: baseRequest }, { jwt: 'bad-token' });
   assert.equal(result.status, 401);
   assert.equal(result.calls.verifyUser, 1);
-  assert.equal(result.calls.admitQuota, 0);
+  assert.equal(result.calls.debitQuota, 0);
   assert.equal(result.calls.fetchShopRows, 0);
 });
 
-test('quota denial stops before inventory (exactly-once on success)', async () => {
+test('rate denial is cheap and early; quota denial comes after admission', async () => {
+  const limited = await signedCall({ request: baseRequest }, {}, { rateDeny: 'rate_limited' });
+  assert.equal(limited.status, 429);
+  assert.equal(limited.calls.fetchShopRows, 0);
+  assert.equal(limited.calls.debitQuota, 0);
   const denied = await signedCall({ request: baseRequest }, {}, { quotaDeny: 'feature_limit_reached' });
   assert.equal(denied.status, 403);
-  assert.equal(denied.calls.fetchShopRows, 0);
-  const limited = await signedCall({ request: baseRequest }, {}, { quotaDeny: 'rate_limited' });
-  assert.equal(limited.status, 429);
+  assert.equal(denied.calls.debitQuota, 1);
+});
+
+test('invalid anchors fail 422 with zero quota debit', async () => {
+  const result = await signedCall({ request: { ...baseRequest, requiredIds: ['no-such-sku'] } });
+  assert.equal(result.status, 422);
+  assert.equal(result.body.code, 'anchor_not_found');
+  assert.equal(result.calls.debitQuota, 0);
+  assert.equal(result.calls.claimRequest, 0);
+});
+
+test('redelivered logical requests replay the recorded outcome without another debit', async () => {
+  const harness = makeIo();
+  const once = async () => {
+    const body = JSON.stringify({ request: { ...baseRequest, generationRequestId: 'idem-1' } });
+    const authorization = `Bearer ${JWT}`;
+    const signature = await signStylistTransport({ secret: SECRET, body, authorization });
+    return handleStylist6CloudGenerate({
+      method: 'POST', headers: { authorization, ...signature }, bodyText: body, env, io: harness.io,
+    });
+  };
+  const first = await once();
+  assert.equal(first.status, 200);
+  assert.equal(first.body.replayProtection, 'process-local');
+  assert.equal(harness.calls.debitQuota, 1);
+  const second = await once();
+  assert.equal(second.status, 409);
+  assert.equal(second.body.code, 'duplicate_request');
+  assert.equal(second.body.priorStatus, 200);
+  assert.equal(second.body.replayProtection, 'process-local');
+  assert.equal(harness.calls.debitQuota, 1);
+});
+
+test('durable claim RPC wins over the local table and replays outcomes', async () => {
+  const { createCloudIo } = await import('./cloud_handler.mjs');
+  const store = new Map();
+  const io = createCloudIo({
+    url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'service',
+    supabaseJs: {
+      createClient: () => ({
+        auth: { getUser: async () => ({ data: { user: { id: USER } }, error: null }) },
+        rpc: async (name, args) => {
+          if (name === 'claim_stylist6_request') {
+            const key = `${args.p_user}:${args.p_request_id}`;
+            if (store.has(key)) {
+              const prior = store.get(key);
+              return { data: [{ duplicate: true, status_code: prior.status, outcome_code: prior.code }], error: null };
+            }
+            store.set(key, { status: 0, code: '' });
+            return { data: [{ duplicate: false, status_code: 0, outcome_code: '' }], error: null };
+          }
+          if (name === 'finish_stylist6_request') {
+            store.set(`${args.p_user}:${args.p_request_id}`, { status: args.p_status, code: args.p_code });
+            return { data: null, error: null };
+          }
+          throw new Error('unexpected rpc ' + name);
+        },
+        from: () => { throw new Error('unused'); },
+      }),
+    },
+  });
+  const first = await io.claimRequest(USER, 'durable-1');
+  assert.equal(first.duplicate, false);
+  assert.equal(first.durable, true);
+  await io.finishRequest(USER, 'durable-1', 200, 'complete');
+  const second = await io.claimRequest(USER, 'durable-1');
+  assert.equal(second.duplicate, true);
+  assert.deepEqual(second.prior, { status: 200, code: 'complete' });
+  assert.equal(second.durable, true);
+});
+
+test('missing claim RPC falls back process-local and reports it honestly', async () => {
+  const { createCloudIo } = await import('./cloud_handler.mjs');
+  const calls = { rpc: 0 };
+  const io = createCloudIo({
+    url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'service',
+    supabaseJs: {
+      createClient: () => ({
+        auth: { getUser: async () => ({ data: { user: { id: USER } }, error: null }) },
+        rpc: async () => { calls.rpc += 1; return { data: null, error: { code: 'PGRST202', message: 'claim_stylist6_request does not exist' } }; },
+        from: () => { throw new Error('unused'); },
+      }),
+    },
+  });
+  const first = await io.claimRequest(USER, 'fallback-1');
+  assert.equal(first.duplicate, false);
+  assert.equal(first.durable, false);
+  await io.finishRequest(USER, 'fallback-1', 200, 'complete');
+  const second = await io.claimRequest(USER, 'fallback-1');
+  assert.equal(second.duplicate, true);
+  assert.deepEqual(second.prior, { status: 200, code: 'complete' });
+  assert.ok(calls.rpc >= 2);
 });
 
 test('catalog deck returns truthful stylist-6 version with real SKUs', async () => {
@@ -152,7 +270,7 @@ test('catalog deck returns truthful stylist-6 version with real SKUs', async () 
     }
   }
   assert.equal(result.body.visualStatus, 'NVIDIA_NOT_RUN');
-  assert.equal(result.calls.admitQuota, 1);
+  assert.equal(result.calls.debitQuota, 1);
 });
 
 test('client-supplied inventory is ignored, server SKUs rule', async () => {
@@ -185,10 +303,7 @@ test('mixed mode draws from both sources', async () => {
   assert.ok(items.some((item) => item.isShopItem === false));
 });
 
-test('missing locked anchor fails 422, present anchor survives in every outfit', async () => {
-  const missing = await signedCall({ request: { ...baseRequest, requiredIds: ['no-such-sku'] } });
-  assert.equal(missing.status, 422);
-  assert.equal(missing.body.code, 'anchor_not_found');
+test('present anchor survives in every outfit', async () => {
   const kept = await signedCall({ request: { ...baseRequest, requiredIds: ['top-1'] } });
   assert.equal(kept.status, 200);
   for (const outfit of kept.body.outfits) {
@@ -219,6 +334,91 @@ test('requested visual review without admissible media stays NOT_RUN with zero p
   assert.equal(result.body.visualStatus, 'NVIDIA_NOT_RUN');
   assert.equal(result.body.visualReceipt.requested, true);
   assert.equal(result.body.visualReceipt.providerCalls, 0);
+});
+
+test('retailer imagery without inference grants never reaches the provider', async () => {
+  const seenHosts = new Set();
+  const guardFetch = async (url) => {
+    seenHosts.add(new URL(String(url)).hostname);
+    throw new Error('must_not_fetch_here');
+  };
+  const harness = makeIo();
+  const body = JSON.stringify({ request: { ...baseRequest, enableVisual: true } });
+  const authorization = `Bearer ${JWT}`;
+  const signature = await signStylistTransport({ secret: SECRET, body, authorization });
+  const result = await handleStylist6CloudGenerate({
+    method: 'POST', headers: { authorization, ...signature }, bodyText: body,
+    env: { ...env, NVIDIA_API_KEY: 'nvapi-test-key-0123456789abcdef' },
+    io: harness.io, fetchImpl: guardFetch,
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.visualStatus, 'NVIDIA_NOT_RUN');
+  assert.equal(result.body.visualReceipt.providerCalls, 0);
+  assert.equal(seenHosts.size, 0);
+});
+
+test('authorized media flows end to end through the critic with strict mocks', async () => {
+  const jpeg = Buffer.concat([
+    Buffer.from([0xff, 0xd8]),
+    Buffer.from([0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]),
+    Buffer.from([0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x08, 0x00, 0x08, 0x01, 0x01, 0x11, 0x00]),
+    Buffer.from([0xff, 0xfe, 0x00, 0xca, ...new Array(200).fill(0x2a)]),
+    Buffer.from([0xff, 0xd9]),
+  ]);
+  const verdictRow = {
+    candidateId: 'someone-else',
+    slotObservations: {
+      top: 'a light cotton shirt', outerwear: 'a dark wool blazer',
+      bottom: 'grey tailored trousers', shoes: 'black leather shoes',
+    },
+    visualCohesion: 0.9, referenceFidelity: 0.9, styleFit: 0.9,
+    occasionFit: 0.9, formalityFit: 0.9, confidence: 0.9, reject: false,
+    relationships: [
+      { kind: 'outfit', slots: ['top', 'bottom'], observation: 'the shirt tucks cleanly into the trousers' },
+      { kind: 'outfit', slots: ['outerwear', 'shoes'], observation: 'dark layer echoes the dark shoes' },
+      { kind: 'reference', slots: ['top', 'bottom', 'shoes'], observation: 'palette follows the reference' },
+    ],
+    evidence: ['mock cohesion evidence one', 'mock cohesion evidence two', 'mock cohesion evidence three'],
+  };
+  const seenHosts = new Set();
+  const stubFetch = async (url, options = {}) => {
+    const parsed = new URL(String(url));
+    seenHosts.add(parsed.hostname);
+    if (parsed.hostname === 'integrate.api.nvidia.com') {
+      return new Response(JSON.stringify({
+        choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(verdictRow) } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (parsed.hostname.endsWith('.supabase.co')) {
+      return new Response(jpeg, { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+    }
+    throw new Error('unexpected outbound host ' + parsed.hostname);
+  };
+  const sbHost = 'https://fyqpifmrsftsfqibhwhy.supabase.co/storage/v1/object/shop-catalog';
+  const authorizedShop = ['top', 'bottom', 'shoes'].map((slot, index) => ({
+    id: `auth-${slot}-${index}`,
+    name: `${slot} authorized garment`, category: { top: 'tops', bottom: 'bottoms', shoes: 'shoes' }[slot],
+    garment_type: slot === 'bottom' ? 'lower_body' : slot === 'shoes' ? 'shoes' : 'upper_body',
+    price: 100 + index, currency: 'UZS',
+    image_url: `${sbHost}/${slot}.jpg`, source_url: `https://example.com/shop/${slot}`,
+    is_active: true, brand: 'Test',
+  }));
+  const harness = makeIo({ shopRows: authorizedShop });
+  const body = JSON.stringify({ request: { ...baseRequest, enableVisual: true } });
+  const authorization = `Bearer ${JWT}`;
+  const signature = await signStylistTransport({ secret: SECRET, body, authorization });
+  const result = await handleStylist6CloudGenerate({
+    method: 'POST', headers: { authorization, ...signature }, bodyText: body,
+    env: { ...env, NVIDIA_API_KEY: 'nvapi-test-key-0123456789abcdef', STYLIST6_REFERENCE_BUCKET: 'test-bucket' },
+    io: harness.io, fetchImpl: stubFetch,
+  });
+  assert.equal(result.status, 200);
+  // The mocked verdict names an unknown candidate, so the run abstains —
+  // but the full authorized chain (admit, fetch, dispatch, validate) ran.
+  assert.equal(result.body.visualStatus, 'NVIDIA_ABSTAINED');
+  assert.ok(result.body.visualReceipt.providerCalls >= 1);
+  assert.ok(![...seenHosts].some((host) => host !== 'integrate.api.nvidia.com' && !host.endsWith('.supabase.co')));
 });
 
 test('visual status vocabulary never fabricates influence', () => {

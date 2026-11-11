@@ -72,6 +72,12 @@ export const HOST_ALLOWLIST = new Set([
   'imagena1.lacoste.com',
 ]);
 
+// First-party storage: the project's own Supabase Storage host holds user
+// wardrobe photos and owner-staged references. Download eligibility here is
+// ordinary first-party catalog display; transmitting any image to an
+// external AI service additionally requires INFERENCE_ALLOWLIST below.
+HOST_ALLOWLIST.add('fyqpifmrsftsfqibhwhy.supabase.co');
+
 // Hosts PROVEN to 403 neutral clients (recorded 2026-11-10). Kept as
 // documentation of what is blocked — presence here changes nothing about
 // fetching; only HOST_ALLOWLIST grants fetch permission.
@@ -106,6 +112,33 @@ function hostOf(url) {
   } catch {
     return '';
   }
+}
+
+/**
+ * EXTERNAL-INFERENCE authorization, separate from download eligibility.
+ *
+ * Fetching a product photo (HOST_ALLOWLIST) is ordinary catalog display.
+ * Transmitting merchant imagery to a third-party AI service is a different
+ * act and needs its own explicit grant per host. Reachability, prior
+ * reachability checks, and CC0 calibration runs are NOT grants.
+ *
+ * Current grants (basis documented per entry; add a host only with an
+ * explicit owner media-processing approval recorded here):
+ * - the project's own Supabase Storage host: first-party, owner-controlled
+ *   buckets holding user wardrobe photos and owner-staged references. A
+ *   user-initiated review of their own garments is within that consent.
+ * Retailer merchant CDNs are deliberately absent: until an owner records an
+ * inference grant for a host, looks containing its images complete as
+ * NVIDIA_NOT_RUN with full deterministic ranking. Never weaken this list
+ * to make NOT_RUN disappear.
+ */
+export const INFERENCE_ALLOWLIST = new Set([
+  'fyqpifmrsftsfqibhwhy.supabase.co',
+]);
+
+/** True only when an image URL may be transmitted to an external AI service. */
+export function isInferenceAuthorized(url) {
+  return INFERENCE_ALLOWLIST.has(hostOf(url));
 }
 
 const isPhoto = (bytes) =>

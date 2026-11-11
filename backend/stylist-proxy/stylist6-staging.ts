@@ -5,7 +5,7 @@
  * Uses a pinned, single-deployment Vercel Preview URL serving the isolated
  * `stylist6-generate-outfits` route (truthful `stylist-6-*` versions only).
  * The proxy signs each request with the STYLIST 6 STAGING shared HMAC
- * (function secret STYLIST_NODE_SHARED_SECRET, a staging-only value that
+ * (function secret STYLIST6_NODE_SHARED_SECRET, a staging-only value that
  * matches the Preview branch env — never a production secret) and forwards
  * the original verified user JWT untouched.
  *
@@ -15,7 +15,7 @@
  *
  * DEPLOY (owner action, isolated function only):
  *   supabase functions deploy aiw-stylist6-node-staging --project-ref fyqpifmrsftsfqibhwhy
- *   supabase secrets set STYLIST_NODE_SHARED_SECRET='<staging-only-64-hex>' \
+ *   supabase secrets set STYLIST6_NODE_SHARED_SECRET='<staging-only-64-hex>' \
  *     STYLIST_VERCEL_BYPASS_SECRET='<protection-bypass>' --project-ref fyqpifmrsftsfqibhwhy
  */
 import { signStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
@@ -40,7 +40,7 @@ Deno.serve(async(request:Request):Promise<Response>=>{
   // GET must not trigger even non-billable signed upstream work.
   if(request.method!=='POST')return fail('method_not_allowed',405);
 
-  const secret = Deno.env.get('STYLIST_NODE_SHARED_SECRET');
+  const secret = Deno.env.get('STYLIST6_NODE_SHARED_SECRET');
   if (!secret || secret.length < 32) return fail('staging_transport_unconfigured',503);
 
 

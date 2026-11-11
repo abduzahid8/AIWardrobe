@@ -18,6 +18,8 @@ const serviceRoot = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(serviceRoot, '..', '..');
 const edgeEntry = resolve(repoRoot, 'backend/supabase/functions/generate-outfits/index.ts');
 const outFile = resolve(serviceRoot, 'dist/stylist-bundle.mjs');
+const s6Entry = resolve(serviceRoot, 'stylist6-entry.mjs');
+const s6OutFile = resolve(serviceRoot, 'dist/stylist6-bundle.mjs');
 
 const source = await readFile(edgeEntry, 'utf8');
 if (!source.includes('GENERATION_VERSION') ||
@@ -71,3 +73,34 @@ console.info('stylist_node_bundle_ready', {
   entry: 'backend/supabase/functions/generate-outfits/index.ts',
   authAndQuotaSource: 'unchanged',
 });
+
+// Isolated Stylist 6 cloud bundle: the full server execution graph
+// (engine .mjs, TypeScript domain modules, reference metadata JSON,
+// transport) compiled to one Vercel-compatible artifact. npm packages stay
+// external and pinned; any remote import fails the build instead of
+// shipping a partially-resolved handler.
+await build({
+  entryPoints: [s6Entry],
+  outfile: s6OutFile,
+  bundle: true,
+  platform: 'node',
+  target: ['node22'],
+  tsconfigRaw: { compilerOptions: { target: 'ES2022', useDefineForClassFields: true } },
+  format: 'esm',
+  packages: 'external',
+  logLevel: 'info',
+  legalComments: 'none',
+  sourcemap: false,
+  treeShaking: true,
+  plugins: [{
+    name: 'stylist6-no-remote',
+    setup(plugin) {
+      plugin.onResolve(
+        { filter: /^https?:\/\// },
+        args => { throw new Error('Unexpected remote import in Stylist 6 cloud: ' + args.path); }
+      );
+    }
+  }],
+});
+await writeFile(resolve(serviceRoot, 'dist/stylist6-bundle.d.mts'), 'export {};\n', 'utf8');
+console.info('stylist6_cloud_bundle_ready', { entry: 'backend/stylist-node/stylist6-entry.mjs' });

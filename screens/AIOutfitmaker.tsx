@@ -1638,6 +1638,7 @@ const AIOutfitGenerator = () => {
             requiredIds: baseItemId ? [baseItemId] : [],
             sourceMode: (currentSource === 'wardrobe' ? 'wardrobe' : 'catalog') as 'wardrobe' | 'catalog',
             enableVisual: nvidiaVisual === true,
+            generationRequestId: requestId,
           },
         };
         try {

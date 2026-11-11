@@ -117,6 +117,8 @@ export interface Stylist6CloudRequest {
   sourceMode?: 'wardrobe' | 'catalog' | 'mixed';
   /** Dev-only opt-in: run the hosted NVIDIA visual review on the backend. */
   enableVisual?: boolean;
+  /** Idempotency identity: redelivery replays the recorded outcome. */
+  generationRequestId?: string;
 }
 
 function failureForCloud(code: unknown, stage = 'stylist6_cloud'): OutfitGenerationFailure {

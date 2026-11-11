@@ -99,6 +99,7 @@ for (let index = 0; index < scenarios.length; index++) {
     recentSignatures: [],
     excludeItemIds: [],
     requiredIds: [],
+    generationRequestId: 's6-smoke-' + crypto.randomUUID(),
     ...(scenario.budget ? { budget: { amount: scenario.budget, currency: 'UZS' } } : {}),
   };
   const started = performance.now();
@@ -161,8 +162,10 @@ for (let index = 0; index < scenarios.length; index++) {
   results.push(outcome);
   console.log(JSON.stringify(outcome));
 }
-// Locked-anchor round: pin the first real SKU from scenario 1 and require
-// it in every returned outfit. Unknown IDs must 422, never drop silently.
+// Locked-anchor round: unknown IDs must 422 with zero quota debit —
+// validation happens before any generation charge, and anchors are never
+// silently dropped.
+const anchorBefore = await usedFor(first.date);
 const anchorProbe = await fetch(stage, {
   method: 'POST',
   headers: { apikey: publicKey, authorization: 'Bearer ' + token, 'content-type': 'application/json' },
@@ -172,10 +175,11 @@ const anchorProbe = await fetch(stage, {
 assert.equal(anchorProbe.status, 422, 'Unknown anchor should fail 422');
 const anchorProbeBody = await anchorProbe.json();
 assert.equal(anchorProbeBody.code, 'anchor_not_found');
-console.log(JSON.stringify({ anchor: 'unknown anchor rejected without silent drop' }));
+const anchorAfter = await usedFor(first.date);
+assert.equal(anchorAfter, anchorBefore, 'Invalid anchor must not debit generation quota');
+console.log(JSON.stringify({ anchor: 'unknown anchor rejected with zero quota debit' }));
 console.log(JSON.stringify({
   summary: 'completed_isolated_stylist6_staging_calls',
-  calls: results.length, totalQuotaDebits: results.length + 1,
-  note: 'anchor probe debits once on admission like production',
+  calls: results.length, totalQuotaDebits: results.length,
   productionCutoverAuthorized: false,
 }));
