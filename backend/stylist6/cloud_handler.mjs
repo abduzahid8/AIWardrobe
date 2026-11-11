@@ -40,14 +40,6 @@ import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46
 export const STYLIST6_CLOUD_VERSION = 'stylist-6-cloud-staging-1';
 const QUOTA_FEATURE = 'aiw-stylist6-staging';
 const RATE_LIMIT_PER_MINUTE = 10;
-// Process-local idempotency fallback (survives retries, not crashes).
-// The durable `claim_stylist6_request` RPC supersedes this once its
-// migration is applied; the response always reports which one applied.
-const CLAIM_TTL_MS = 10 * 60_000;
-const localClaims = new Map();
-
-const missingFunction = (error) => /does not exist|not found|PGRST202|42883/i.test(
-  String(error?.message || error?.code || error || ''));
 const CATALOG_SLOTS = ['top', 'bottom', 'shoes', 'outerwear'];
 const CATALOG_PER_SLOT = 100;
 const WARDROBE_PAGE = 500;
@@ -209,54 +201,51 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       }
     },
     /**
-     * Idempotency claim for one logical generation request. Tries the
-     * durable `claim_stylist6_request` RPC first; when the migration has
-     * not been applied it falls back to a process-local claim table and
-     * reports `durable: false` (survives retries, not crashes).
-     * Returns {duplicate, prior?, durable}. Duplicates never re-debit
-     * and never re-plan: the caller answers 409 from the recorded outcome.
+     * Durable idempotency claim for one logical generation request via the
+     * `claim_stylist6_request` RPC (atomic insert wins; concurrent
+     * duplicates serialize on the primary key). There is NO process-local
+     * fallback: if durable claim storage is unavailable the request fails
+     * closed BEFORE any quota debit. Returns {duplicate, prior?}.
+     * Duplicates never re-debit and never re-plan: the caller answers 409
+     * from the recorded outcome.
      */
     async claimRequest(userId, requestId) {
       const admin = this.adminClient();
+      let claimed;
       try {
-        const claimed = await admin.rpc('claim_stylist6_request', { p_user: userId, p_request_id: requestId });
-        if (claimed.error) {
-          if (!missingFunction(claimed.error)) throw new Error('stylist6_claim_unavailable');
-        } else {
-          // Table-returning RPCs arrive as row arrays; tolerate both shapes.
-          const row = Array.isArray(claimed.data) ? claimed.data[0] : claimed.data;
-          if (row && typeof row === 'object') {
-            return {
-              duplicate: row.duplicate === true,
-              prior: row.duplicate === true ? { status: row.status_code, code: row.outcome_code } : null,
-              durable: true,
-            };
-          }
-        }
-      } catch (error) {
-        if (!missingFunction(error) && error?.message !== 'stylist6_claim_unavailable') throw error;
+        claimed = await admin.rpc('claim_stylist6_request', { p_user: userId, p_request_id: requestId });
+      } catch {
+        throw new Error('stylist6_claim_unavailable');
       }
-      const key = `${userId}:${requestId}`;
-      const now = Date.now();
-      for (const [stored, record] of localClaims) {
-        if (now - record.at > CLAIM_TTL_MS) localClaims.delete(stored);
+      if (claimed?.error) throw new Error('stylist6_claim_unavailable');
+      // Table-returning RPCs arrive as row arrays; tolerate both shapes.
+      const row = Array.isArray(claimed?.data) ? claimed.data[0] : claimed?.data;
+      if (!row || typeof row !== 'object' || typeof row.duplicate !== 'boolean') {
+        throw new Error('stylist6_claim_unavailable');
       }
-      if (localClaims.size > 5000) localClaims.clear();
-      const prior = localClaims.get(key);
-      if (prior) return { duplicate: true, prior: { status: prior.status, code: prior.code }, durable: false };
-      localClaims.set(key, { at: now, status: null, code: null });
-      return { duplicate: false, prior: null, durable: false };
+      return {
+        duplicate: row.duplicate === true,
+        prior: row.duplicate === true ? { status: row.status_code, code: row.outcome_code } : null,
+        durable: true,
+      };
     },
+    /**
+     * Records the terminal outcome for a claimed request so a redelivery
+     * replays it via 409. Returns true when recorded; a false return is
+     * surfaced on the response (`idempotencyRecorded`) but never fails an
+     * otherwise successful generation — the claim itself already prevents
+     * double billing.
+     */
     async finishRequest(userId, requestId, status, code) {
       const admin = this.adminClient();
       try {
-        await admin.rpc('finish_stylist6_request', {
+        const finished = await admin.rpc('finish_stylist6_request', {
           p_user: userId, p_request_id: requestId, p_status: status, p_code: String(code || ''),
         });
-      } catch { /* best effort; the claim already prevents double billing */ }
-      const key = `${userId}:${requestId}`;
-      const record = localClaims.get(key);
-      if (record) localClaims.set(key, { at: Date.now(), status, code: String(code || '') });
+        return !finished?.error;
+      } catch {
+        return false;
+      }
     },
     async fetchShopRows() {
       const rows = new Map();
@@ -510,16 +499,22 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     if (missingAnchors.length) {
       return fail('anchor_not_found', 422, { stage: 'stylist6_admission', missingAnchors, serverInventory: true });
     }
-    // Idempotency: a redelivered logical request replays its recorded
-    // outcome without another debit and without re-planning.
-    const claim = await io.claimRequest(userId, requestId);
+    // Idempotency: durable claim first. A redelivered logical request
+    // replays its recorded outcome without another debit and without
+    // re-planning. Unavailable claim storage fails closed before debit.
+    let claim;
+    try {
+      claim = await io.claimRequest(userId, requestId);
+    } catch {
+      return fail('stylist6_claim_unavailable', 503, { stage: 'stylist6_admission' });
+    }
     if (claim.duplicate) {
       const prior = claim.prior || {};
       return fail('duplicate_request', 409, {
         stage: 'stylist6_admission',
         priorStatus: prior.status ?? null,
         priorCode: prior.code || null,
-        replayProtection: claim.durable ? 'durable' : 'process-local',
+        replayProtection: 'durable',
       });
     }
     // Paid debit exactly once, after full admission. Planning failures
@@ -626,7 +621,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         visualStatus,
         serverInventory: true,
         clientInventoryIgnored,
-        replayProtection: claim.durable ? 'durable' : 'process-local',
+        replayProtection: 'durable',
         diagnostics: deck.diagnostics || null,
       });
     }
@@ -639,7 +634,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         }
       }
     }
-    await finish(200, deck.status);
+    const idempotencyRecorded = await finish(200, deck.status);
     return {
       status: 200,
       body: {
@@ -652,7 +647,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         sourceMode,
         serverInventory: true,
         clientInventoryIgnored,
-        replayProtection: claim.durable ? 'durable' : 'process-local',
+        replayProtection: 'durable',
+        idempotencyRecorded,
         previousDeckOverlapBySlot,
         visualHydration,
         visualStatus,

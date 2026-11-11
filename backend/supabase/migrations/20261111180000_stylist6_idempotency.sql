@@ -5,9 +5,8 @@
 --
 -- APPLY (owner action; never auto-applied):
 --   supabase db push --project-ref fyqpifmrsftsfqibhwhy
--- Until applied, the Stylist 6 cloud handler falls back to a process-local
--- claim table and reports replayProtection:'process-local' on every
--- admitted response. Production billing behavior is unchanged.
+-- Until applied, the Stylist 6 cloud handler FAILS CLOSED before any quota
+-- debit (stylist6_claim_unavailable). Production billing behavior is unchanged.
 begin;
 create table if not exists public.stylist6_request_claims (
   user_id uuid not null,
@@ -18,6 +17,14 @@ create table if not exists public.stylist6_request_claims (
   updated_at timestamptz not null default now(),
   primary key (user_id, request_id)
 );
+-- Defense in depth: RLS on, no direct table access for anyone except the
+-- server role. All reads/writes go through the SECURITY DEFINER RPCs below,
+-- which are executable by service_role only. No policies for anon or
+-- regular authenticated users: without an explicit policy every direct
+-- row access is denied.
+alter table public.stylist6_request_claims enable row level security;
+revoke all on public.stylist6_request_claims from public, anon, authenticated;
+grant all on public.stylist6_request_claims to service_role;
 create or replace function public.claim_stylist6_request(p_user uuid, p_request_id text)
 returns table (duplicate boolean, status_code integer, outcome_code text)
 language plpgsql security definer set search_path = '' as $$

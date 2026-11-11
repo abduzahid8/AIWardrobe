@@ -71,10 +71,10 @@ function makeIo(overrides = {}) {
         calls.claimRequest += 1;
         assert.equal(userId, USER);
         if (claims.has(requestId)) {
-          return { duplicate: true, prior: claims.get(requestId), durable: false };
+          return { duplicate: true, prior: claims.get(requestId), durable: true };
         }
         claims.set(requestId, { status: null, code: null });
-        return { duplicate: false, prior: null, durable: false };
+        return { duplicate: false, prior: null, durable: true };
       },
       async finishRequest(userId, requestId, status, code) {
         calls.finishRequest += 1;
@@ -178,13 +178,13 @@ test('redelivered logical requests replay the recorded outcome without another d
   };
   const first = await once();
   assert.equal(first.status, 200);
-  assert.equal(first.body.replayProtection, 'process-local');
+  assert.equal(first.body.replayProtection, 'durable');
   assert.equal(harness.calls.debitQuota, 1);
   const second = await once();
   assert.equal(second.status, 409);
   assert.equal(second.body.code, 'duplicate_request');
   assert.equal(second.body.priorStatus, 200);
-  assert.equal(second.body.replayProtection, 'process-local');
+  assert.equal(second.body.replayProtection, 'durable');
   assert.equal(harness.calls.debitQuota, 1);
 });
 
@@ -226,27 +226,76 @@ test('durable claim RPC wins over the local table and replays outcomes', async (
   assert.equal(second.durable, true);
 });
 
-test('missing claim RPC falls back process-local and reports it honestly', async () => {
+test('missing claim storage fails closed before any debit', async () => {
   const { createCloudIo } = await import('./cloud_handler.mjs');
-  const calls = { rpc: 0 };
+  const calls = { debit: 0 };
   const io = createCloudIo({
     url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'service',
     supabaseJs: {
       createClient: () => ({
         auth: { getUser: async () => ({ data: { user: { id: USER } }, error: null }) },
-        rpc: async () => { calls.rpc += 1; return { data: null, error: { code: 'PGRST202', message: 'claim_stylist6_request does not exist' } }; },
+        rpc: async (name) => {
+          if (name === 'claim_stylist6_request') {
+            return { data: null, error: { code: 'PGRST202', message: 'claim_stylist6_request does not exist' } };
+          }
+          if (name === 'increment_rate_bucket') return { data: 1, error: null };
+          if (name === 'consume_edge_quota') { calls.debit += 1; return { data: true, error: null }; }
+          throw new Error('unexpected rpc ' + name);
+        },
         from: () => { throw new Error('unused'); },
       }),
     },
   });
-  const first = await io.claimRequest(USER, 'fallback-1');
-  assert.equal(first.duplicate, false);
-  assert.equal(first.durable, false);
-  await io.finishRequest(USER, 'fallback-1', 200, 'complete');
-  const second = await io.claimRequest(USER, 'fallback-1');
-  assert.equal(second.duplicate, true);
-  assert.deepEqual(second.prior, { status: 200, code: 'complete' });
-  assert.ok(calls.rpc >= 2);
+  // Real claim path, stubbed inventory: the claim gate is what this test proves.
+  io.fetchShopRows = async () => SHOP;
+  io.fetchWardrobeRows = async () => [];
+  io.fetchVisualProfiles = async () => [];
+  await assert.rejects(io.claimRequest(USER, 'closed-1'), /stylist6_claim_unavailable/);
+  const body = JSON.stringify({ request: { ...baseRequest, generationRequestId: 'closed-1' } });
+  const authorization = `Bearer ${JWT}`;
+  const signature = await signStylistTransport({ secret: SECRET, body, authorization });
+  const result = await handleStylist6CloudGenerate({
+    method: 'POST', headers: { authorization, ...signature }, bodyText: body, env, io,
+  });
+  assert.equal(result.status, 503);
+  assert.equal(result.body.code, 'stylist6_claim_unavailable');
+  assert.equal(calls.debit, 0);
+});
+
+test('concurrent duplicates admit exactly one debit', async () => {
+  const harness = makeIo();
+  const once = () => {
+    const body = JSON.stringify({ request: { ...baseRequest, generationRequestId: 'race-1' } });
+    const authorization = `Bearer ${JWT}`;
+    return signStylistTransport({ secret: SECRET, body, authorization }).then((signature) =>
+      handleStylist6CloudGenerate({
+        method: 'POST', headers: { authorization, ...signature }, bodyText: body, env, io: harness.io,
+      }));
+  };
+  const [first, second] = await Promise.all([once(), once()]);
+  const statuses = [first.status, second.status].sort();
+  assert.deepEqual(statuses, [200, 409]);
+  assert.equal(harness.calls.debitQuota, 1);
+});
+
+test('a failed planning outcome replays without another debit', async () => {
+  const harness = makeIo();
+  const once = () => {
+    const body = JSON.stringify({
+      request: { ...baseRequest, generationRequestId: 'fail-1', budget: { amount: 10, currency: 'UZS' } },
+    });
+    const authorization = `Bearer ${JWT}`;
+    return signStylistTransport({ secret: SECRET, body, authorization }).then((signature) =>
+      handleStylist6CloudGenerate({
+        method: 'POST', headers: { authorization, ...signature }, bodyText: body, env, io: harness.io,
+      }));
+  };
+  const first = await once();
+  assert.equal(first.status, 502);
+  const second = await once();
+  assert.equal(second.status, 409);
+  assert.equal(second.body.priorStatus, 502);
+  assert.equal(harness.calls.debitQuota, 1);
 });
 
 test('catalog deck returns truthful stylist-6 version with real SKUs', async () => {
