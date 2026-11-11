@@ -43,12 +43,17 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      - name: Unit tests (CPU-budgeted hosted suites, uncontended)
+        # The backend hosted suites run a wall-clock-budgeted planner: when
+        # worker processes compete for cores the evaluation budget collapses
+        # and the engine legitimately degrades decks (or refuses with
+        # planning_cpu_risk), which the quality assertions reject. Give them
+        # the uncontended machine, one suite at a time — same assertions as
+        # the local run (3456/3456 green).
+        run: npx jest __tests__/backend --ci --runInBand --reporters=default
+
       - name: Unit tests
-        # Two workers, not jest's core-count default: the hosted backend
-        # suites run a wall-clock-budgeted planner whose evaluation budget
-        # (and therefore deck variety) degrades when worker processes
-        # compete for cores. Locally the full suite is green (3456/3456).
-        run: npm test -- --coverage --ci --maxWorkers=2 --reporters=default
+        run: npm test -- --coverage --ci --maxWorkers=2 --reporters=default --testPathIgnorePatterns "/node_modules/" "/__tests__/backend/"
 
       - name: Platform quality gates (Phase 5)
         run: npx jest __tests__/platform --ci --reporters=default
