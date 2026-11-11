@@ -15,9 +15,9 @@ jobs:
     name: Lint, Type Check & Test
     runs-on: ubuntu-latest
     # The full unit suite (3456 tests, including the multi-minute hosted
-    # backend wire suites) needs more than 15 minutes on 2-core runners;
+    # backend wire suites) needs more than 15 minutes on CI runners;
     # the previous budget cancelled a green suite mid-run.
-    timeout-minutes: 40
+    timeout-minutes: 50
 
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +44,11 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm test -- --coverage --ci --reporters=default
+        # Two workers, not jest's core-count default: the hosted backend
+        # suites run a wall-clock-budgeted planner whose evaluation budget
+        # (and therefore deck variety) degrades when worker processes
+        # compete for cores. Locally the full suite is green (3456/3456).
+        run: npm test -- --coverage --ci --maxWorkers=2 --reporters=default
 
       - name: Platform quality gates (Phase 5)
         run: npx jest __tests__/platform --ci --reporters=default
