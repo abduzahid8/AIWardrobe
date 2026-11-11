@@ -18,6 +18,8 @@
  * native vs projected fills per role.
  */
 
+import { createHash } from 'node:crypto';
+
 export const CATALOG_ADAPTER_VERSION = 'catalog-adapter-v1';
 
 const has = (text, re) => re.test(text);
@@ -273,6 +275,43 @@ export function projectCatalogItem(row) {
 /** Base product id with per-shop variant suffixes removed for diversity counts. */
 export function baseProductId(id) {
   return String(id).replace(/-v\d+$/i, '');
+}
+
+/**
+ * Exact source-hash predicate for cached visual profiles. Mirrors the
+ * `catalog_visual_fashion.source_hash` contract: md5 over the PostgreSQL
+ * `jsonb_build_array(name, description, brand, category, garment_type,
+ * image_url)` text rendering (arrays joined with ", "). A profile is only
+ * attachable when the row bytes are unchanged since profiling — never
+ * invented, never transferred across SKUs or images.
+ */
+export function sourceHash(row) {
+  const parts = [row?.name, row?.description, row?.brand, row?.category, row?.garment_type, row?.image_url]
+    .map((value) => JSON.stringify(value ?? null));
+  return createHash('md5').update(`[${parts.join(', ')}]`).digest('hex');
+}
+
+/**
+ * Development-safe per-look feasibility gate. Reuses the same admission
+ * predicates as `projectCatalogItem`/`safeCatalogItem` (known slot,
+ * reachable photo, verified merchant offer, finite price, 3-letter
+ * currency, non-empty identity) so the dev bridge no longer needs an
+ * unconditional stub. Returns `{ ok: true }` or `{ ok: false, reason }`;
+ * never throws for data rows. Unavailable stock and unverified offers are
+ * rejected, never represented as confirmed.
+ */
+const KNOWN_SLOTS = new Set(['top', 'outerwear', 'bottom', 'shoes']);
+export function devLookFeasibility(items) {
+  for (const item of items || []) {
+    if (!item || typeof item.id !== 'string' || !item.id.trim()) return { ok: false, reason: 'invalid_product_identity' };
+    if (!KNOWN_SLOTS.has(item.macroCategory)) return { ok: false, reason: 'unknown_slot' };
+    if (!isHttps(item.imageUrl || item.image_url)) return { ok: false, reason: 'unrenderable_photo' };
+    if (item.isShopItem === true) {
+      if (!isHttps(item.shopUrl || item.sourceUrl || item.source_url)) return { ok: false, reason: 'unverified_merchant_offer' };
+      if (!finitePrice(item.price) || !/^[A-Z]{3}$/.test(item.currency || '')) return { ok: false, reason: 'unpriced_or_currency' };
+    }
+  }
+  return { ok: true };
 }
 
 /** Keep one row per base product (first wins; input order is the priority). */

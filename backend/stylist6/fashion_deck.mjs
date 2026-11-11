@@ -25,6 +25,50 @@ const sameProduct = (a, b) => baseProductId(a.id) === baseProductId(b.id) ||
 const overlaps = (a, b) => a.items.filter((item) => b.items.some((other) => sameProduct(item, other))).length;
 const SEARCH_DECK_LIMIT = 20;
 const TIE_MARGIN = 0.025;
+// Minimum per-currency samples before an unbudgeted premium dampener may
+// apply. Below this there is no evidence for what "expensive" means here.
+const PRICE_SAMPLE_MINIMUM = 8;
+
+/**
+ * Per slot-and-currency typical-price bands over the admitted pool. Pure
+ * evidence about this catalog — no FX, no invented budget. Exported for
+ * tests.
+ */
+export function buildPriceProfile(catalog) {
+  const byBand = new Map();
+  for (const item of catalog || []) {
+    if (!item || !/^(top|outerwear|bottom|shoes)$/.test(item.macroCategory || '')
+      || !Number.isFinite(item.price) || item.price <= 0 || !/^[A-Z]{3}$/.test(item.currency || '')) continue;
+    const key = `${item.currency}|${item.macroCategory}`;
+    if (!byBand.has(key)) byBand.set(key, []);
+    byBand.get(key).push(item.price);
+  }
+  const profile = {};
+  for (const [key, prices] of byBand) {
+    if (prices.length < PRICE_SAMPLE_MINIMUM) continue;
+    prices.sort((a, b) => a - b);
+    profile[key] = { median: prices[Math.floor((prices.length - 1) / 2)], count: prices.length };
+  }
+  return profile;
+}
+
+/**
+ * Soft, bounded dampener for unbudgeted requests: items priced above their
+ * slot's typical price in the same currency cost up to 0.06 score in total.
+ * It breaks near-ties toward representative prices but never rejects —
+ * without a budget there is nothing to fail. A look is flagged only when an
+ * item costs more than twice its slot median. Exported for tests.
+ */
+export function pricePenaltyForLook(items, profile) {
+  let penalty = 0, flagged = 0;
+  for (const item of items || []) {
+    const band = item && profile ? profile[`${item.currency}|${item.macroCategory}`] : null;
+    if (!band || !(item.price > band.median)) continue;
+    penalty += 0.06 * Math.min(1, (item.price - band.median) / band.median);
+    if (item.price > 2 * band.median) flagged += 1;
+  }
+  return { penalty: Math.min(0.06, penalty), flagged };
+}
 
 function referenceAffinity(items, reference) {
   if (!reference) return null;
@@ -51,7 +95,7 @@ function referenceAffinity(items, reference) {
   };
 }
 
-function makeFashionScorer(context, reference, recentSignatures) {
+function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
   const contextScores = new WeakMap(), coherent = new Map();
   const likedPatterns = new Set((context.preferences?.likedPatterns || []).map((pattern) => patternOf({ pattern })));
   return {
@@ -69,10 +113,14 @@ function makeFashionScorer(context, reference, recentSignatures) {
       return [d.subtype, d.color, d.volume, d.pattern, d.texture].join('|');
     },
     rankItem(item, brief) {
+      // Brief-led seeds: the brief's roles decide which items represent this
+      // concept; context fit orders within that space. A context-led seed
+      // (0.45 for every brief) builds the same pool for every concept and
+      // the decks converge on one set of heroes.
       const d = describeGarment(item);
       return (brief.roles[item.macroCategory].includes(normalized(item.subtype)) ||
-          brief.roles[item.macroCategory].includes(normalized(d.subtype)) ? 0.40 : 0)
-        + 0.45 * contextScores.get(item)
+          brief.roles[item.macroCategory].includes(normalized(d.subtype)) ? 0.55 : 0)
+        + 0.30 * contextScores.get(item)
         + (brief.palette.includes(normalized(d.color)) ? 0.15 : 0);
     },
     rankLook(items) {
@@ -89,16 +137,31 @@ function makeFashionScorer(context, reference, recentSignatures) {
       // pass can replace the palette dimension. Keep that penalty in S6.
       const palette = assessment.evidence.includes('competing_upper_patterns')
         ? Math.min(dimensions.palette, 0.55) : dimensions.palette;
-      const compatibility = (assessment.score * 7 - dimensions.palette + palette) / 7;
-      const weakLink = Math.min(dimensions.layer, dimensions.footwear, dimensions.proportion, palette);
+      const unlayered = !items.some((item) => item.macroCategory === 'outerwear');
+      // outfitCoherence score is the mean of its 7 dimensions. With no
+      // outerwear there is no layer relationship to judge, so where the
+      // request permits an unlayered look the neutral prior is excluded from
+      // both the mean and the min() — otherwise every three-piece look pays
+      // a systematic ~0.05 tax against layered looks before style is weighed.
+      const layerApplies = !(unlayered && extras.layerOptional);
+      const compatibility = layerApplies
+        ? (assessment.score * 7 - dimensions.palette + palette) / 7
+        : (assessment.score * 7 - dimensions.layer - dimensions.palette + palette) / 6;
+      const weakLink = layerApplies
+        ? Math.min(dimensions.layer, dimensions.footwear, dimensions.proportion, palette)
+        : Math.min(dimensions.footwear, dimensions.proportion, palette);
       const affinity = referenceAffinity(items, reference);
       const referenceFit = affinity
         ? .55 * affinity.roleFit + .15 * (affinity.paletteFit ?? .5)
           + .15 * (affinity.slotColorFit ?? affinity.paletteFit ?? .5) + .15 * Number(affinity.layerFit) : .5;
+      // Unbudgeted requests get a soft, evidence-based premium dampener —
+      // never a reject. Budgeted requests already hard-filter in admit().
+      const pricing = extras.budgeted || !extras.priceProfile ? { penalty: 0, flagged: 0 }
+        : pricePenaltyForLook(items, extras.priceProfile);
       const result = {
-        score: .68 * compatibility + .22 * weakLink + .10 * referenceFit - recentStylingPenalty(items, recentSignatures),
+        score: .68 * compatibility + .22 * weakLink + .10 * referenceFit - recentStylingPenalty(items, recentSignatures) - pricing.penalty,
         dimensions: { ...dimensions, palette },
-        evidence: assessment.evidence,
+        evidence: pricing.flagged ? [...assessment.evidence, 'unbudgeted_premium_selection_dampened'] : assessment.evidence,
         referenceMetadata: affinity,
         imageSupportedItems: items.filter((item) =>
           describeGarment(item).evidence.some((entry) => entry.startsWith('image:'))).length,
@@ -116,13 +179,21 @@ function chooseDeck(shortlist, context, excluded = new Set()) {
   const pairs = pool.map((a, i) => pool.map((b, j) => {
     const shared = overlaps(a, b);
     if (Math.max(a.items.length, b.items.length) - shared < 2) return null;
-    return .12 * stylingFeatureDistance(features[i], features[j]) - .035 * shared;
+    return .18 * stylingFeatureDistance(features[i], features[j]) - .05 * shared;
   }));
   let best = [], utility = -Infinity;
+  // Tie-break toward distinct styling concepts: looks assembled from
+  // different briefs represent different ideas even when they share a hero
+  // item. Bounded well below the coherence scale so it never overrides fit.
+  const briefBonus = (indices) => {
+    if (indices.length < 2) return 0;
+    return 0.025 * (new Set(indices.map((i) => pool[i].briefId)).size - 1);
+  };
   const consider = (indices, score) => {
-    if (indices.length > best.length || (indices.length === best.length && score > utility)) {
+    const total = score + briefBonus(indices);
+    if (indices.length > best.length || (indices.length === best.length && total > utility)) {
       best = indices;
-      utility = score;
+      utility = total;
     }
   };
   for (let i = 0; i < pool.length; i++) {
@@ -176,11 +247,17 @@ export async function recommendFashionDeck({
   const references = [reference, ...referenceBriefs.filter((brief) => brief !== reference)].filter(Boolean);
   const briefs = [...house, ...references].map(adaptLayer).filter(Boolean).slice(0, 10);
   if (!briefs.length) return { status: 'no_feasible_looks', outfits: [], diagnostics: { visualVerdict: 'NOT_RUN' } };
+  const priceProfile = buildPriceProfile(catalog);
   const retrieval = await shortlistRetrievalDeck({
     request: { ...request, requiredIds }, catalog, hardGate, priceToBudgetCurrency,
     creativeDirector: async () => briefs,
-    options: { fashion: makeFashionScorer(context, reference, Array.isArray(request.recentSignatures) ? request.recentSignatures.slice(-32) : []), perRole: 8, perBrief: 100, maxVisual: 72 },
+    options: { fashion: makeFashionScorer(context, reference, Array.isArray(request.recentSignatures) ? request.recentSignatures.slice(-32) : [], {
+      priceProfile, budgeted: !!request.budget, layerOptional: context.optionalLayer === true && !forceLayer,
+    }), perRole: 8, perBrief: 100, maxVisual: 72 },
   });
+  const layerMix = { three: 0, four: 0 };
+  for (const candidate of retrieval.shortlist) layerMix[candidate.items.length === 3 ? 'three' : 'four'] += 1;
+  const ordered = retrieval.shortlist.map((c) => c.fashion?.score).filter(Number.isFinite).sort((a, b) => b - a);
   let selected = chooseDeck(retrieval.shortlist, context), visualVerdict = 'NOT_RUN', visualWinner;
   const permitted = async (look) => {
     try { return await canJudgeOutfit(look, reference.referenceId) === true; } catch { return false; }
@@ -216,6 +293,7 @@ export async function recommendFashionDeck({
         ...(visualWinner?.id === look.id ? { visualEvidence: visualWinner.evidence } : {}),
       };
     }),
-    diagnostics: { ...retrieval.diagnostics, visualVerdict },
+    diagnostics: { ...retrieval.diagnostics, visualVerdict,
+      shortlistMix: { ...layerMix, best: ordered[0] ?? null, top20cutoff: ordered[19] ?? null } },
   };
 }

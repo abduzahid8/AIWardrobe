@@ -1,0 +1,252 @@
+appId: com.aiwardrobe
+name: s6_campaign
+---
+# S6 before/after campaign: Stylist 6 local engine, 4 scenarios + repeat tap.
+# Env: -e SHOT=<prefix>. Requires Metro with EXPO_PUBLIC_STYLIST6_DEV_BRIDGE=true
+# and the dev bridge on :3127. Style+occasion travel in the comment text.
+# Source (shop) and engine are selected explicitly every block and verified
+# (subtitle "· New ·"); the radio taps are doubled because a single tap can
+# be absorbed while the scroll settles (idempotent).
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: ".*(Good morning|Good afternoon|Good evening|Create outfit|Your Outfits).*"
+    timeout: 90000
+- runFlow:
+    when:
+      visible: ".*(Your Outfits|Ваши образы).*"
+    commands:
+      - tapOn:
+          point: "8%,11%"
+      - waitForAnimationToEnd:
+          timeout: 8000
+- runFlow:
+    when:
+      visible: ".*(Good morning|Good afternoon|Good evening|Доброе утро|Добрый день|Create outfit|Создать образ).*"
+    commands:
+      - tapOn: ".*(Создать образ|Create outfit).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- runFlow:
+    when:
+      visible: ".*(Вдохновение|Inspiration).*"
+    commands:
+      - tapOn: ".*(Магазин|Shop).*"
+      - waitForAnimationToEnd:
+          timeout: 8000
+      - tapOn: ".*(Персональный стилист|Personal stylist).*"
+      - waitForAnimationToEnd:
+          timeout: 10000
+- assertVisible:
+    id: stylistCommentInput
+# --- s1_oldmoney_work: work, old money ---
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistSource-shop
+- extendedWaitUntil:
+    visible: ".*· New ·.*"
+    timeout: 10000
+- tapOn:
+    id: stylistCommentInput
+- eraseText
+- inputText: "work, old money"
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы).*"
+    timeout: 180000
+- takeScreenshot: ${SHOT}_s1_oldmoney_work
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_s1_oldmoney_work_c2
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+# --- s2_minimalist_work: work, minimalist ---
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistSource-shop
+- extendedWaitUntil:
+    visible: ".*· New ·.*"
+    timeout: 10000
+- tapOn:
+    id: stylistCommentInput
+- eraseText
+- inputText: "work, minimalist"
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы).*"
+    timeout: 180000
+- takeScreenshot: ${SHOT}_s2_minimalist_work
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_s2_minimalist_work_c2
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+# --- s3_classic_work: work, classic ---
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistSource-shop
+- extendedWaitUntil:
+    visible: ".*· New ·.*"
+    timeout: 10000
+- tapOn:
+    id: stylistCommentInput
+- eraseText
+- inputText: "work, classic"
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы).*"
+    timeout: 180000
+- takeScreenshot: ${SHOT}_s3_classic_work
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_s3_classic_work_c2
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+# --- s4_semiclassic_date: date night, semi-classic ---
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistSource-shop
+- extendedWaitUntil:
+    visible: ".*· New ·.*"
+    timeout: 10000
+- tapOn:
+    id: stylistCommentInput
+- eraseText
+- inputText: "date night, semi-classic"
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы).*"
+    timeout: 180000
+- takeScreenshot: ${SHOT}_s4_semiclassic_date
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_s4_semiclassic_date_c2
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 8000
+# --- repeat tap: exclusions active ---
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistSource-shop
+- extendedWaitUntil:
+    visible: ".*· New ·.*"
+    timeout: 10000
+- tapOn:
+    id: stylistCommentInput
+- eraseText
+- inputText: "date night, semi-classic"
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: ".*(Your Outfits|Ваши образы).*"
+    timeout: 180000
+- takeScreenshot: ${SHOT}_s5_repeattap
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: ${SHOT}_s5_repeattap_c2

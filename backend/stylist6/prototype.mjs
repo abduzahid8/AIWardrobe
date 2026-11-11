@@ -90,8 +90,11 @@ function makeCandidateDeck(brief,pools,max,rank,admit){
   for(const upper of pairs)for(const lower of bottoms){
     const items=[...upper,...lower];
     if(new Set(items.map(x=>x.id)).size!==items.length||!admit(items))continue;
+    // Mean item rank, not the sum: a three-piece look must compete on the
+    // quality of its garments, not lose a full item-score to every layered
+    // look before coherence is even measured.
     candidates.push({id:'s6_'+hashLook(items),briefId:brief.id,brief,items,
-      seedScore:items.reduce((s,i)=>s+rank(i,brief),0)});
+      seedScore:items.reduce((s,i)=>s+rank(i,brief),0)/items.length});
   }
   candidates.sort((a,b)=>b.seedScore-a.seedScore||a.id.localeCompare(b.id));
   // Interleave item families, not just the first preferred item repeatedly.
@@ -165,6 +168,28 @@ export async function shortlistRetrievalDeck({
   const rank=fashion?fashion.rankItem:score;
   let items=catalog.map(i=>safeCatalogItem(i,request.sourceMode)).filter(Boolean);
   if(fashion)items=items.map(fashion.prepare).filter(Boolean);
+  // Pre-ranking exclusion: previously displayed products leave the candidate
+  // pool before roles are built, so a second tap cannot resurface the same
+  // SKU when suitable alternatives exist. Anchored required ids are exempt.
+  // When exclusion would empty a mandatory slot pool, that slot is relaxed
+  // and reported instead of failing the whole deck.
+  const requiredBases = new Set(required.map((id)=>baseProductId(String(id))));
+  const excludedBases = new Set();
+  for (const raw of (Array.isArray(request.excludedIds) ? request.excludedIds : [])) {
+    const id = String(raw || '').trim();
+    if (!id || required.includes(id) || requiredBases.has(baseProductId(id))) continue;
+    excludedBases.add(baseProductId(id));
+  }
+  const relaxedSlots = [];
+  if (excludedBases.size) {
+    const kept = items.filter((i)=>!excludedBases.has(baseProductId(i.id)));
+    for (const slot of ['top','bottom','shoes']) {
+      if (!kept.some((i)=>i.macroCategory===slot)) relaxedSlots.push(slot);
+    }
+    items = relaxedSlots.length
+      ? items.filter((i)=>relaxedSlots.includes(i.macroCategory) || !excludedBases.has(baseProductId(i.id)))
+      : kept;
+  }
   const briefs=parseBriefs(await creativeDirector(request,briefLimit),fashion);
   const all=new Map(),rejections={budget:0,hardGate:0,unpriced:0,...(fashion?{coherence:0}:{})};
   const costs=new Map();
@@ -216,7 +241,8 @@ export async function shortlistRetrievalDeck({
   }
   return {generationVersion:STYLIST6_VERSION,visualVerdict:'NOT_RUN',briefs,shortlist,added,
     diagnostics:{briefs:briefs.length,catalogInput:catalog.length,admittedCatalogItems:items.length,
-      candidateCount:all.size,shortlisted:shortlist.length,rejections}};
+      candidateCount:all.size,shortlisted:shortlist.length,rejections,
+      exclusions:{requested:excludedBases.size,relaxedSlots}}};
 }
 
 export async function proposeVisualFirstDeck({
