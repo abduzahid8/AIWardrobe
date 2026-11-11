@@ -6,33 +6,56 @@
 // Rank:   POST http://127.0.0.1:3127/generate  { request, catalogRows }
 //
 // - `request` carries { style, occasion, brief, weather, budget?, preferences?,
-//   recentSignatures?, excludeItemIds? } — the same fields the app already
-//   collects for the generate-outfits edge function.
+//   recentSignatures?, excludeItemIds?, enableVisual? } — the same fields the
+//   app already collects for the generate-outfits edge function, plus the
+//   dev-only NVIDIA toggle.
 // - `catalogRows` are live shop_catalog-shaped rows (id, name, brand, price,
 //   currency, image_url, source_url, description, is_active, ...). The bridge
 //   hydrates cached visual profiles with the exact SKU + source-hash
 //   predicate, adapts rows with the real catalog_adapter and ranks with the
-//   real recommendFashionDeck. Still no NVIDIA and no image upload: visual
-//   judging stays NOT_RUN by design (no visualCritic is injected); hydration
-//   is a bounded read-only lookup of the already-computed visual cache.
+//   real recommendFashionDeck. Cached-profile hydration is a bounded
+//   read-only lookup of the already-computed visual cache.
+// - Visual review: when `request.enableVisual === true` AND an NVIDIA API key
+//   is configured AND every candidate photo is admissible (lookbook reference
+//   bytes on local disk, product hosts on the committed allowlist), the real
+//   hosted critic (nvidia/nemotron-3.5-super-vl) judges the strongest
+//   finalist(s) through the ranker's bounded visual policy (at most one
+//   batch of <=2 candidates per deck). Anything else stays NOT_RUN by
+//   admission — never faked, never a cached profile relabeled as NVIDIA.
 // - Failures are reported as success:false with a Stylist 6 code. The app
 //   must surface them, never silently substitute a Stylist 5 deck.
 import http from 'node:http';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 import { adaptCatalog, DEV_PURCHASE_EVIDENCE, devLookFeasibility, sourceHash } from '../../backend/stylist6/catalog_adapter.mjs';
 import { recommendFashionDeck } from '../../backend/stylist6/fashion_deck.mjs';
 import { referenceFirstBriefs } from '../../backend/stylist6/lookbook_briefs.mjs';
+import { HOST_ALLOWLIST } from './image_access.mjs';
+import {
+  createHostedVisualCritic, NVIDIA_VISION_MODEL,
+  VISUAL_CONCURRENCY, VISUAL_PROVIDER_TIMEOUT_MS, VISUAL_TIMEOUT_MS,
+} from '../../backend/stylist6/visual_critic_hosted.mjs';
 import { currentVisual } from '../../src/domain/visualFashion.ts';
 import { resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
+dotenv.config({ path: path.join(root, '.env') });
 
 export const STYLIST6_DEV_ENGINE_VERSION = 'stylist-6-dev-local-20261111-r2';
 const DEFAULT_PORT = 3127;
 const MAX_BODY_BYTES = 12 * 1024 * 1024;
+const MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
+const VISUAL_DIMENSION_LIMIT = 2048;
+const PRODUCT_FETCH_TIMEOUT_MS = 8000;
+const execFileAsync = promisify(execFile);
 
 const indexPath = path.join(root, 'benchmarks/stylist6/references/image_teaste_46.json');
 const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
@@ -112,6 +135,134 @@ export async function hydrateVisualProfiles(rows) {
   return { ...outcome, status: 'ok' };
 }
 
+/**
+ * Dev-interface visual status vocabulary. The ranker reports the raw
+ * verdict (JUDGED/ABSTAINED/NOT_RUN); the dev bridge maps it to what the
+ * hosted review actually did to this deck:
+ * - NVIDIA_APPLIED: valid model evidence changed or determined the selection.
+ * - NVIDIA_EVALUATED_NO_CHANGE: valid verdicts arrived, catalog winner kept.
+ * - NVIDIA_ABSTAINED: the evaluation ran but yielded no actionable verdict.
+ * - NVIDIA_NOT_RUN: no external visual evaluation occurred.
+ * Cached catalog profiles are never reported as NVIDIA evidence.
+ */
+export function mapDevVisualStatus(deck) {
+  const verdict = deck?.diagnostics?.visualVerdict;
+  if (verdict === 'JUDGED') {
+    const applied = (deck?.outfits || []).some((look) => look.visualEvidence);
+    return applied ? 'NVIDIA_APPLIED' : 'NVIDIA_EVALUATED_NO_CHANGE';
+  }
+  if (verdict === 'ABSTAINED') return 'NVIDIA_ABSTAINED';
+  return 'NVIDIA_NOT_RUN';
+}
+
+const hostOf = (value) => {
+  try {
+    const url = new URL(String(value));
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return '';
+    return url.hostname;
+  } catch {
+    return '';
+  }
+};
+
+// Lookbook reference bytes live next to the repo (owner-provided lookbook
+// photos). A reference metadata entry without a matching local photo is
+// NOT a usable reference photograph and fails admission honestly.
+const referencePhotosDir = path.join(root, 'image-teaste');
+export function referenceFileFor(referenceId) {
+  const entry = index.images.find((item) => item.id === referenceId);
+  const filename = entry?.filename ? path.basename(String(entry.filename)) : '';
+  if (!filename) return null;
+  const full = path.join(referencePhotosDir, filename);
+  if (!full.startsWith(referencePhotosDir + path.sep)) return null;
+  try {
+    if (!fs.statSync(full).isFile()) return null;
+  } catch {
+    return null;
+  }
+  return full;
+}
+
+let sharpImpl = null;
+async function loadSharp() {
+  if (sharpImpl !== null) return sharpImpl;
+  try {
+    sharpImpl = (await import('sharp')).default;
+  } catch {
+    sharpImpl = false;
+  }
+  return sharpImpl;
+}
+
+// macOS fallback resizer when sharp is unavailable. Dev-bridge only.
+async function sipsFit(bytes) {
+  if (process.platform !== 'darwin') throw new Error('image_toolchain_unavailable');
+  const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 's6vis-'));
+  try {
+    const src = path.join(dir, 'src.img'), dst = path.join(dir, 'out.jpg');
+    await fs.promises.writeFile(src, bytes);
+    await execFileAsync('sips', ['-Z', String(VISUAL_DIMENSION_LIMIT), '-s', 'format', 'jpeg',
+      '-s', 'formatOptions', '82', src, '--out', dst]);
+    return await fs.promises.readFile(dst);
+  } finally {
+    await fs.promises.rm(dir, { recursive: true, force: true });
+  }
+}
+
+// Fit raw bytes to the hosted critic's contract (JPEG, <=512KiB,
+// <=2048px per side). Returns fitted bytes; never upscales. Throws when no
+// local toolchain can do the conversion — the candidate then abstains.
+async function prepareVisualBytes(bytes) {
+  if (!Buffer.isBuffer(bytes) || bytes.length < 1024) throw new Error('image_bytes_invalid');
+  const sharp = await loadSharp();
+  if (!sharp) return sipsFit(bytes);
+  const meta = await sharp(bytes, { failOn: 'none' }).metadata();
+  if (!Number.isFinite(meta.width) || !Number.isFinite(meta.height)) throw new Error('image_bytes_invalid');
+  if ((meta.format === 'jpeg' || meta.format === 'jpg') && bytes.length <= MAX_VISUAL_IMAGE_BYTES
+      && meta.width <= VISUAL_DIMENSION_LIMIT && meta.height <= VISUAL_DIMENSION_LIMIT) return bytes;
+  let size = VISUAL_DIMENSION_LIMIT, quality = 82;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const out = await sharp(bytes, { failOn: 'none' }).rotate()
+      .resize({ width: size, height: size, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality }).toBuffer();
+    if (out.length <= MAX_VISUAL_IMAGE_BYTES) return out;
+    size = attempt === 0 ? 1600 : 1280;
+    quality = attempt === 0 ? 75 : 68;
+  }
+  throw new Error('image_size_invalid');
+}
+
+async function resolveReferenceAsset(referenceId) {
+  const file = referenceFileFor(referenceId);
+  if (!file) throw new Error('reference_unresolved');
+  const fitted = await prepareVisualBytes(await fs.promises.readFile(file));
+  return { bytes: fitted, sha256: createHash('sha256').update(fitted).digest('hex') };
+}
+
+const productPhotoCache = new Map();
+async function resolveProductAsset({ imageUrl }) {
+  const url = String(imageUrl || '');
+  if (!HOST_ALLOWLIST.has(hostOf(url))) throw new Error('product_host_not_allowlisted');
+  if (productPhotoCache.has(url)) return productPhotoCache.get(url);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PRODUCT_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal, redirect: 'follow',
+      headers: { 'User-Agent': 'AIWardrobe-Stylist6-Dev/1.0', Accept: 'image/*,*/*;q=0.8' },
+    });
+    if (!response.ok) throw new Error('product_image_unresolved');
+    const raw = Buffer.from(await response.arrayBuffer());
+    if (raw.length > MAX_PRODUCT_IMAGE_BYTES) throw new Error('image_size_invalid');
+    const fitted = await prepareVisualBytes(raw);
+    const asset = { bytes: fitted, sha256: createHash('sha256').update(fitted).digest('hex') };
+    productPhotoCache.set(url, asset);
+    return asset;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function mapDeckItem(item, rankScore) {
   return {
     id: String(item.id),
@@ -183,6 +334,41 @@ async function handleGenerate(payload) {
     optionalLayer: true,
     preferences: request.preferences && typeof request.preferences === 'object' ? request.preferences : {},
   };
+  // Hosted NVIDIA review is strictly opt-in per request (`enableVisual`),
+  // strictly local-backend (the key never leaves this process), and strictly
+  // bounded: one batch of at most two candidates, existing concurrency and
+  // deadlines. Missing key, missing reference bytes, or a non-allowlisted
+  // product host fails admission to NOT_RUN — never a fake verdict.
+  let visualCritic, canJudgeOutfit;
+  const visualEvents = [];
+  const visualAsked = request.enableVisual === true;
+  const nvidiaKey = process.env.NVIDIA_API_KEY || '';
+  if (visualAsked && nvidiaKey.startsWith('nvapi-') && reference) {
+    visualCritic = createHostedVisualCritic({
+      provider: 'nvidia',
+      apiKey: nvidiaKey,
+      model: NVIDIA_VISION_MODEL,
+      timeoutMs: VISUAL_TIMEOUT_MS,
+      providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
+      resolveReference: (id) => resolveReferenceAsset(id),
+      resolveProduct: (product) => resolveProductAsset(product),
+      onEvent: (event) => {
+        visualEvents.push({
+          outcome: event.outcome,
+          dispatched: event.dispatched === true,
+          reason: event.reason || null,
+          httpStatus: event.httpStatus ?? null,
+          latencyMs: Math.round(event.latencyMs || event.providerMs || 0),
+          ...(event.usage && typeof event.usage === 'object' ? { usage: event.usage } : {}),
+        });
+      },
+    });
+    canJudgeOutfit = async (look) => {
+      if (!referenceFileFor(reference.referenceId)) return false;
+      return (look?.items || []).every((item) =>
+        HOST_ALLOWLIST.has(hostOf(item.imageUrl || item.image_url)));
+    };
+  }
   const deck = await recommendFashionDeck({
     request: input,
     catalog: pool,
@@ -191,7 +377,22 @@ async function handleGenerate(payload) {
     // merchant offer, price/currency, identity) — never an open gate.
     hardGate: async (items) => devLookFeasibility(items),
     priceToBudgetCurrency: (item, currency) => (item.currency === currency ? item.price : NaN),
+    ...(visualCritic ? { visualCritic, canJudgeOutfit } : {}),
   });
+  const visualStatus = mapDevVisualStatus(deck);
+  const providerCalls = visualEvents.filter((event) => event.dispatched).length;
+  const visualReceipt = {
+    model: visualAsked ? NVIDIA_VISION_MODEL : null,
+    requested: visualAsked,
+    providerCalls,
+    validVerdicts: visualEvents.filter((event) => event.outcome === 'judged').length,
+    abstentions: visualEvents.filter((event) => event.outcome === 'abstain').length,
+    totalTokens: visualEvents.reduce((sum, event) =>
+      sum + (Number.isFinite(event.usage?.total_tokens) ? event.usage.total_tokens : 0), 0) || null,
+    events: visualEvents,
+  };
+  process.stdout.write(`[stylist6-dev-bridge] visual requested=${visualAsked} key=${nvidiaKey.startsWith('nvapi-') ? 'present' : 'missing'} ` +
+    `reference=${reference ? reference.referenceId : 'none'} status=${visualStatus} providerCalls=${providerCalls}\n`);
   if ((deck.status !== 'complete' && deck.status !== 'partial') || !deck.outfits.length) {
     return {
       status: 502,
@@ -226,6 +427,8 @@ async function handleGenerate(payload) {
       status: deck.status,
       previousDeckOverlapBySlot,
       visualHydration,
+      visualStatus,
+      visualReceipt,
       purchaseEvidence: DEV_PURCHASE_EVIDENCE,
       diagnostics: deck.diagnostics || null,
       outfits: deck.outfits.map((look) => ({

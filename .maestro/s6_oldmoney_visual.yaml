@@ -1,0 +1,70 @@
+appId: host.exp.Exponent
+name: s6_oldmoney_visual
+---
+# Old Money / Work / no budget, Stylist 6 + NVIDIA. Only top-of-form taps
+# plus bare scrolls (Maestro swipe/scrollUntilVisible do not move this form).
+# No comment input (Done submits) and no style-list expansion (overlap risk).
+# REQUIRES: Metro running, bridge on :3127, logged-in session, fresh form.
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    when:
+      visible: ".*liboslaringiz.*"
+    commands:
+      - tapOn:
+          point: "10%,10%"
+      - waitForAnimationToEnd:
+          timeout: 3000
+- runFlow:
+    when:
+      visible: "AI stilist"
+    commands:
+      - tapOn:
+          point: "10%,10%"
+      - waitForAnimationToEnd:
+          timeout: 3000
+- tapOn:
+    point: "58%,92%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Shop|Магазин|Do'kon).*"
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn: ".*(Personal stylist|Персональный стилист|Shaxsiy stilist).*"
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn:
+    id: stylistSource-shop
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: stylistOccasion-work
+- waitForAnimationToEnd:
+    timeout: 2000
+- scroll
+- waitForAnimationToEnd:
+    timeout: 1500
+- scroll
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: stylistEnginePick-stylist6
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: stylistNvidiaToggle
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: s6_om_form
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: ".*Engine stylist-6.*"
+    timeout: 180000
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: s6_om_results_top
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: s6_om_results_cards

@@ -315,12 +315,13 @@ export async function recommendFashionDeck({
   const permitted = async (look) => {
     try { return await canJudgeOutfit(look, reference.referenceId) === true; } catch { return false; }
   };
-  if (selected.length === 3 && reference && typeof visualCritic === 'function' && typeof canJudgeOutfit === 'function' && await permitted(selected[0])) {
+  if (selected.length >= 1 && reference && typeof visualCritic === 'function' && typeof canJudgeOutfit === 'function' && await permitted(selected[0])) {
     const lead = selected[0];
     const alternatives = retrieval.shortlist.filter((candidate) =>
       !selected.includes(candidate) && Math.abs(candidate.fashion.score - lead.fashion.score) <= TIE_MARGIN &&
       selected.slice(1).every((look) => Math.max(look.items.length, candidate.items.length) - overlaps(look, candidate) >= 2))
       .sort((a, b) => b.fashion.score - a.fashion.score);
+    let judged = false;
     for (const alternate of alternatives) {
       if (!await permitted(alternate)) continue;
       const result = await evaluateVisualShortlist({ ...retrieval, shortlist: [lead, alternate] }, request, visualCritic, { target: 1 });
@@ -332,7 +333,22 @@ export async function recommendFashionDeck({
       } else if (rejected.has(lead.id)) {
         selected = chooseDeck(retrieval.shortlist, context, rejected);
       }
+      judged = true;
       break;
+    }
+    if (!judged) {
+      // No close alternative: confirm the lead alone in one bounded
+      // single-candidate batch. The strongest finalist still gets a real
+      // visual verdict (confirm or veto) instead of the critic never
+      // running; at most one provider batch is spent here.
+      const result = await evaluateVisualShortlist({ ...retrieval, shortlist: [lead] }, request, visualCritic, { target: 1 });
+      visualVerdict = result.diagnostics.visualValid === 1 ? 'JUDGED' : 'ABSTAINED';
+      const rejected = new Set(result.diagnostics.rejectedCandidateIds);
+      if (visualVerdict === 'JUDGED' && result.outfits[0]) {
+        visualWinner = result.outfits[0];
+      } else if (rejected.has(lead.id)) {
+        selected = chooseDeck(retrieval.shortlist, context, rejected);
+      }
     }
   }
   return {

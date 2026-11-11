@@ -37,6 +37,7 @@
     "shop:sync-product-only-feeds": "node scripts/sync-product-only-downloader-feeds.js",
     "shop:sync-product-only-feeds:check": "node scripts/sync-product-only-downloader-feeds.js --check",
     "test:wdio": "wdio run ./wdio.conf.ts",
+    "dev:stylist6": "node scripts/stylist6/dev_start.mjs",
     "test:maestro": "maestro test .maestro/expo_go_smoke.yaml --no-reinstall-driver",
     "test:e2e": "npm run test:maestro",
     "test:dependency-security": "node --test scripts/validation/dependency-security.test.mjs",

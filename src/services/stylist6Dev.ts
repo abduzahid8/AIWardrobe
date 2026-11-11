@@ -35,6 +35,8 @@ export interface Stylist6BridgeRequest {
   preferences?: unknown;
   recentSignatures?: string[];
   excludeItemIds?: string[];
+  /** Dev-only opt-in: run the hosted NVIDIA visual review on the backend. */
+  enableVisual?: boolean;
 }
 
 export function buildStylist6BridgeBody(args: {

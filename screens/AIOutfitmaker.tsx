@@ -671,6 +671,10 @@ const AIOutfitGenerator = () => {
   // Development-only engine choice. The picker renders only when
   // STYLIST6_DEV_ENABLED, so release builds can never select Stylist 6.
   const [devEngine, setDevEngine] = useState<DevEngine>('stylist5');
+  // Dev-only opt-in: hosted NVIDIA visual review for Stylist 6 (local
+  // backend only, bounded to one small batch per deck). Off by default so
+  // ordinary taps stay fast and free-tier calls stay bounded.
+  const [nvidiaVisual, setNvidiaVisual] = useState(false);
   // Actual engine that produced the visible deck (or null before/after).
   const [lastEngineVersion, setLastEngineVersion] = useState<string | null>(null);
   const [lastEngineDetail, setLastEngineDetail] = useState<string | null>(null);
@@ -1623,6 +1627,7 @@ const AIOutfitGenerator = () => {
             preferences: useStylePreferenceStore.getState().preferences,
             recentSignatures: history.recentLookSignatures,
             excludeItemIds,
+            enableVisual: nvidiaVisual === true,
           },
           catalogRows: catalogRows as unknown as Record<string, unknown>[],
         });
@@ -1915,7 +1920,7 @@ const AIOutfitGenerator = () => {
           setInventoryNote(data.inventoryReason==='distinct_editorial_inventory_limited' ? t('outfitMaker.distinctInventoryLimited') : '');
           // Record the ACTUAL engine that produced this deck for dev display.
           setLastEngineVersion(String(data.generationVersion || 'unknown'));
-          setLastEngineDetail(data?.diagnostics?.visualVerdict ? `visual ${String(data.diagnostics.visualVerdict)}` : (s6Active ? 'local bridge' : null));
+          setLastEngineDetail(typeof data?.visualStatus === 'string' ? String(data.visualStatus) : (data?.diagnostics?.visualVerdict ? `visual ${String(data.diagnostics.visualVerdict)}` : (s6Active ? 'local bridge' : null)));
           setOutfits(shownOutfits);
           // History persistence must not turn already rendered success into
           // an error (or charge a use for a screen cleared by a cache failure).
@@ -2726,6 +2731,27 @@ const AIOutfitGenerator = () => {
                 <ScaledText style={{color: D.textSecondary, fontSize: 12, marginTop: 6}}>
                   {'Stylist 6 runs the local ranker over the live catalog. Failures are shown, never replaced.'}
                 </ScaledText>
+                <TouchableOpacity testID="stylistNvidiaToggle"
+                  accessibilityRole="checkbox" accessibilityState={{checked: nvidiaVisual, disabled: devEngine !== 'stylist6'}}
+                  accessibilityLabel="NVIDIA visual review (Stylist 6 dev only)"
+                  onPress={() => setNvidiaVisual((v) => !v)}
+                  style={{flexDirection:'row', alignItems:'center', gap:8, marginTop:10,
+                    paddingHorizontal:12, paddingVertical:8, borderRadius:10,
+                    backgroundColor: nvidiaVisual ? 'rgba(23,58,101,0.12)' : 'rgba(23,58,101,0.05)',
+                    opacity: devEngine === 'stylist6' ? 1 : 0.45}}>
+                  <View style={{width:18, height:18, borderRadius:5, borderWidth:1.5, borderColor: D.accent,
+                    backgroundColor: nvidiaVisual ? D.accent : 'transparent', alignItems:'center', justifyContent:'center'}}>
+                    {nvidiaVisual ? <Ionicons name="checkmark" size={13} color="#FFF" /> : null}
+                  </View>
+                  <View style={{flex:1}}>
+                    <ScaledText style={{color: D.textPrimary, fontWeight:'700', fontSize:13}}>
+                      {'NVIDIA visual review'}
+                    </ScaledText>
+                    <ScaledText style={{color: D.textSecondary, fontSize: 11}}>
+                      {'Hosted Nemotron check on the dev bridge only. Stays off for Stylist 5.'}
+                    </ScaledText>
+                  </View>
+                </TouchableOpacity>
               </View>
             ) : null}
 

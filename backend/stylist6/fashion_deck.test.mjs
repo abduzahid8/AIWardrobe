@@ -101,6 +101,31 @@ test('authorized close contenders use at most two visual judgments and retain th
   assert.equal(judged.outfits.filter(({ visualEvidence }) => visualEvidence).length, 1);
 });
 
+test('the lead is visually confirmed alone when no close alternative is admissible', async () => {
+  const baseline = await recommendFashionDeck(base);
+  let reviewed = [];
+  const judged = await recommendFashionDeck({
+    ...base,
+    // Only the lead is cleared: every alternative is denied, so the
+    // near-tie swap cannot run and the bounded single-candidate
+    // confirmation must run instead of skipping visual review entirely.
+    canJudgeOutfit: async (look) => look.id === baseline.outfits[0].id,
+    visualCritic: async (candidates) => {
+      reviewed = candidates;
+      return candidates.map(({ id }) => ({
+        candidateId: id, visualCohesion: .9, referenceFidelity: .9,
+        styleFit: .9, occasionFit: .9, formalityFit: .9, confidence: .9, reject: false,
+        evidence: ['mock top and trouser contrast', 'mock shoe relationship', 'mock reference comparison'],
+      }));
+    },
+  });
+  assert.equal(reviewed.length, 1);
+  assert.equal(reviewed[0].id, baseline.outfits[0].id);
+  assert.equal(judged.diagnostics.visualVerdict, 'JUDGED');
+  assert.deepEqual(judged.outfits.map(({ id }) => id), baseline.outfits.map(({ id }) => id));
+  assert.equal(judged.outfits.filter(({ visualEvidence }) => visualEvidence).length, 1);
+});
+
 
 test('an unspecified wedding uses formal composition while a beach wedding or explicit code stays distinct', async () => {
   const request = { ...base.request, occasion: 'Wedding', weather: { temp: 21 }, budget: { amount: 400, currency: 'UZS' } };

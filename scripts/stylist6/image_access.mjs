@@ -34,6 +34,10 @@ import path from 'node:path';
 
 // Hosts observed reachable from a neutral client during the 2026-11-10 pilot.
 // Any host NOT listed here is blocked until the owner explicitly approves it.
+// Second batch (verified 2026-11-11 with a neutral client: plain GET, one
+// attempt, no cookies/auth): the live catalog's remaining merchant CDNs all
+// returned photo bytes, so the dev bridge may fetch them for hosted visual
+// review. Per-host audit evidence lives in the bridge log, not here.
 export const HOST_ALLOWLIST = new Set([
   'static.zara.net',
   'cdn.shopify.com',
@@ -51,6 +55,21 @@ export const HOST_ALLOWLIST = new Set([
   'www.jcrew.com',
   'images.puma.com',
   'media.i.allsaints.com',
+  'canalius.vtexassets.com',
+  'www.fredperry.com',
+  'image.hm.com',
+  's7.landsend.co.uk',
+  'cdn.platform.next',
+  'www.charlestyrwhitt.com',
+  'www.c-and-a.com',
+  'dtcralphlauren.scene7.com',
+  'static.massimodutti.net',
+  'assets.digitalcontent.marksandspencer.app',
+  'shoptommy.scene7.com',
+  'media.cos.com',
+  'images.onlyandsons.com',
+  'www.johnstonmurphy.com',
+  'imagena1.lacoste.com',
 ]);
 
 // Hosts PROVEN to 403 neutral clients (recorded 2026-11-10). Kept as
