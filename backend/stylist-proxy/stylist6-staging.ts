@@ -21,11 +21,12 @@
 import { signStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 
 // Pinned Stylist 6 staging deployment (branch codex/stylist6-visual-first-20261110).
-// Verified 2026-11-11: bundled S6 handler boots, GET 405, unsigned POST 401,
-// oversize 413, all with generationVersion stylist-6-cloud-staging-1 and
-// zero crash logs. Fail-closed idempotency + RLS migration included.
+// Verified 2026-11-12: bundled S6 handler boots with the fashion_subtype
+// restoration, terminal-claim recording, isWardrobe provenance and request-id
+// echo; generationVersion stylist-6-cloud-staging-1, zero crash logs.
+// Fail-closed idempotency + RLS migration included.
 // Repoint ONLY to another verified Stylist 6 staging Preview, never to production.
-const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-5tlso6mbt-abduzahid8s-projects.vercel.app';
+const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-raig58l0d-abduzahid8s-projects.vercel.app';
 const NODE_ROUTE = '/api/stylist6-generate-outfits';
 const CORS = {
   'Access-Control-Allow-Origin':'*',
