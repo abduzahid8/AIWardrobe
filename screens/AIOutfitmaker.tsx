@@ -3,7 +3,7 @@ import {outfitDescription,outfitConceptTitle,distinctStylingTips,resolveSelectio
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, buildStylist6BridgeBody, acceptStylist6DevDeck, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, type DevEngine} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -1615,9 +1615,35 @@ const AIOutfitGenerator = () => {
       // rows via the loopback bridge. Ranking failures surface below and
       // are never replaced with a Stylist 5 deck.
       const s6Active = STYLIST6_DEV_ENABLED && devEngine === 'stylist6';
+      const s6CloudActive = STYLIST6_DEV_ENABLED && devEngine === 'stylist6cloud';
       let data: any;
       let invokeError: any;
-      if (s6Active) {
+      if (s6CloudActive) {
+        // Isolated Stylist 6 cloud staging: authenticated proxy -> signed
+        // compute -> server-side engine. No client inventory is sent; the
+        // server fetches shop and wardrobe rows itself. Failures surface
+        // intact and are never replaced with a Stylist 5 deck.
+        const cloudBody = {
+          request: {
+            style: styleToUse,
+            occasion: occasionToUse || 'Any',
+            brief: edgePrompt,
+            weather: resolvedWeather?.temp != null
+              ? {temp: resolvedWeather.temp, condition: resolvedWeather.condition || 'clear'}
+              : undefined,
+            budget: shopBudget ? {amount: shopBudget.amount, currency: shopBudget.currency} : undefined,
+            preferences: useStylePreferenceStore.getState().preferences,
+            recentSignatures: history.recentLookSignatures,
+            excludeItemIds,
+            requiredIds: baseItemId ? [baseItemId] : [],
+            sourceMode: (currentSource === 'wardrobe' ? 'wardrobe' : 'catalog') as 'wardrobe' | 'catalog',
+            enableVisual: nvidiaVisual === true,
+          },
+        };
+        try {
+          data = await withRequestDeadline(() => invokeStylist6Cloud(cloudBody), EDGE_TIMEOUT_MS, cancelSignal);
+        } catch (error) { invokeError = error; }
+      } else if (s6Active) {
         const catalogRows = await loadStylistCatalogInventory(cancelSignal);
         if (!isCurrentGeneration()) return;
         const bridgeBody = buildStylist6BridgeBody({
@@ -2720,15 +2746,15 @@ const AIOutfitGenerator = () => {
                   {'Engine (dev only)'}
                 </ScaledText>
                 <View style={{flexDirection:'row', gap:6}}>
-                  {(['stylist5','stylist6'] as const).map(engine => (
+                  {(['stylist5','stylist6','stylist6cloud'] as const).map(engine => (
                     <TouchableOpacity key={engine} testID={`stylistEnginePick-${engine}`}
                       accessibilityRole="radio" accessibilityState={{checked:devEngine===engine}}
-                      accessibilityLabel={engine === 'stylist5' ? 'Stylist 5' : 'Stylist 6 local'}
+                      accessibilityLabel={engine === 'stylist5' ? 'Stylist 5' : engine === 'stylist6' ? 'Stylist 6 local' : 'Stylist 6 cloud staging'}
                       onPress={() => setDevEngine(engine)}
                       style={{paddingHorizontal:12,paddingVertical:7,borderRadius:10,
                         backgroundColor:devEngine===engine?D.accent:'rgba(23,58,101,0.08)'}}>
                       <ScaledText style={{color:devEngine===engine?'#FFF':D.textPrimary,fontWeight:'700'}}>
-                        {engine === 'stylist5' ? 'Stylist 5' : 'Stylist 6 (local)'}
+                        {engine === 'stylist5' ? 'Stylist 5' : engine === 'stylist6' ? 'Stylist 6 (local)' : 'Stylist 6 (cloud)'}
                       </ScaledText>
                     </TouchableOpacity>
                   ))}
@@ -2737,13 +2763,13 @@ const AIOutfitGenerator = () => {
                   {'Stylist 6 runs the local ranker over the live catalog. Failures are shown, never replaced.'}
                 </ScaledText>
                 <TouchableOpacity testID="stylistNvidiaToggle"
-                  accessibilityRole="checkbox" accessibilityState={{checked: nvidiaVisual, disabled: devEngine !== 'stylist6'}}
+                  accessibilityRole="checkbox" accessibilityState={{checked: nvidiaVisual, disabled: devEngine !== 'stylist6' && devEngine !== 'stylist6cloud'}}
                   accessibilityLabel="NVIDIA visual review (Stylist 6 dev only)"
                   onPress={() => setNvidiaVisual((v) => !v)}
                   style={{flexDirection:'row', alignItems:'center', gap:8, marginTop:10,
                     paddingHorizontal:12, paddingVertical:8, borderRadius:10,
                     backgroundColor: nvidiaVisual ? 'rgba(23,58,101,0.12)' : 'rgba(23,58,101,0.05)',
-                    opacity: devEngine === 'stylist6' ? 1 : 0.45}}>
+                    opacity: devEngine === 'stylist6' || devEngine === 'stylist6cloud' ? 1 : 0.45}}>
                   <View style={{width:18, height:18, borderRadius:5, borderWidth:1.5, borderColor: D.accent,
                     backgroundColor: nvidiaVisual ? D.accent : 'transparent', alignItems:'center', justifyContent:'center'}}>
                     {nvidiaVisual ? <Ionicons name="checkmark" size={13} color="#FFF" /> : null}

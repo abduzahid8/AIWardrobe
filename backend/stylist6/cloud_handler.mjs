@@ -1,0 +1,582 @@
+/**
+ * Isolated Stylist 6 cloud staging handler (Node/Vercel).
+ *
+ * Runs the VERIFIED local Stylist 6 fashion engine server-side:
+ * server-fetched catalog inventory, cached visual-profile hydration,
+ * recommendFashionDeck ranking, and the hosted NVIDIA visual critic with
+ * the same admission rules as the local dev bridge.
+ *
+ * The Stylist 5 compute route is untouched; this handler answers only the
+ * new isolated `stylist6-generate-outfits` route and reports a truthful
+ * `stylist-6-*` generation version. It never runs as Stylist 5 and never
+ * relabels deterministic ranking as provider judgment.
+ *
+ * Admission order (fail-closed, exactly-once billing):
+ *   transport size/HMAC -> user JWT -> rate bucket -> quota debit (once,
+ *   before planning; planning failures keep the debit, mirroring prod) ->
+ *   server-side inventory -> ranking -> response.
+ *
+ * Client-supplied inventory is NEVER authoritative: any `catalogRows` in
+ * the request body are ignored and reported as ignored. Wardrobe rows
+ * always come from `clothing_items` filtered by the verified JWT user;
+ * shop rows always come from the server-side discovery RPC.
+ */
+import { createHash } from 'node:crypto';
+import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
+import { recommendFashionDeck } from './fashion_deck.mjs';
+import { referenceFirstBriefs } from './lookbook_briefs.mjs';
+import { currentVisual } from '../../src/domain/visualFashion.ts';
+import { resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
+import {
+  createHostedVisualCritic,
+  NVIDIA_VISION_MODEL,
+  VISUAL_PROVIDER_TIMEOUT_MS,
+  VISUAL_TIMEOUT_MS,
+} from './visual_critic_hosted.mjs';
+import { HOST_ALLOWLIST } from '../../scripts/stylist6/image_access.mjs';
+import { verifyStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
+import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46.json' with { type: 'json' };
+
+export const STYLIST6_CLOUD_VERSION = 'stylist-6-cloud-staging-1';
+const QUOTA_FEATURE = 'aiw-stylist6-staging';
+const RATE_LIMIT_PER_MINUTE = 10;
+const CATALOG_SLOTS = ['top', 'bottom', 'shoes', 'outerwear'];
+const CATALOG_PER_SLOT = 100;
+const WARDROBE_PAGE = 500;
+const VISUAL_PROFILE_CHUNK = 100;
+const PRODUCT_FETCH_TIMEOUT_MS = 8000;
+const MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
+const REQUEST_TIMEOUT_MS = 55_000;
+
+const fail = (code, status, extra = {}) => ({
+  status,
+  body: { success: false, outfits: [], code, error: code, generationVersion: STYLIST6_CLOUD_VERSION, ...extra },
+});
+
+const hostOf = (value) => {
+  try {
+    const url = new URL(String(value));
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return '';
+    return url.hostname;
+  } catch {
+    return '';
+  }
+};
+
+const seasonOf = (temp) => (temp >= 25 ? 'summer' : temp < 12 ? 'winter' : 'autumn');
+
+const normalizeSourceMode = (mode) => {
+  const normalized = String(mode || 'catalog').toLowerCase();
+  if (normalized === 'shop' || normalized === 'catalog') return 'catalog';
+  if (normalized === 'wardrobe' || normalized === 'mixed') return normalized;
+  return null;
+};
+
+/** Slot projection for owned wardrobe rows (S5-proven EN+RU keyword mapping). */
+const WARDROBE_SLOT_RULES = [
+  ['shoes', /кроссовк|кеды|туфл|ботинок|ботинки|лофер|сапог|мокасин|сандал|shoes?|sneakers?|boots?|loafers?|sandals?|heels?|trainers?|derb|footwear|brogue|oxford(?!\s*shirt)/],
+  ['outerwear', /жилет|куртк|пальто|пиджак|жакет|кардиган|свитер|худи|толстовк|blazer|overcoat|topcoat|trench|parka|puffer|windbreaker|bomber|coats?|jackets?|cardigans?|sweaters?|hoodies?|vests?|pullovers?|fleece|outerwear/],
+  ['bottom', /джинс|брюк|шорт|юбк|леггинс|\b(pants?|trousers?|jeans|chinos?|slacks?|joggers?|shorts?|skirts?|sweatpants?|bottoms?)\b/],
+  ['top', /футболк|рубашк|блуз|майк|платье|\b(t-shirts?|tshirts?|tees?|polos?|blouses?|shirts?|tops?|dresses?)\b|upper[_ ]?body/],
+];
+
+const WARDROBE_SUBTYPE_RULES = [
+  ['shirt', /\b(shirts?|рубашк|блуз)\b/],
+  ['blazer', /\b(blazers?|пиджак|жакет)\b/],
+  ['fine_knit', /\b(knit|sweaters?|pullovers?|cardigans?|свитер|кардиган|водолазк|гольф)\b/],
+  ['polo', /\b(polos?|поло)\b/],
+  ['jeans', /\b(jeans?|джинс)\b/],
+  ['tailored_trouser', /\b(trousers?|slacks?|chinos?|брюк)\b/],
+  ['chino', /\b(chinos?|чинос)\b/],
+  ['loafer', /\b(loafers?|moccasins?|лофер|мокасин)\b/],
+  ['derby', /\b(derb|brogues?|oxfords?|дерби|броги|оксфорд)\b/],
+  ['minimal_sneaker', /\b(sneakers?|trainers?|кроссовк|кеды)\b/],
+  ['overshirt', /\b(overshirts?|s?tuleikas?)\b/],
+];
+
+export function projectWardrobeItem(row) {
+  if (!row || typeof row !== 'object') return null;
+  const id = String(row.id || '').trim();
+  if (!id) return null;
+  const blob = `${row.category || ''} ${row.type || ''} ${row.sub_category || ''} ${row.name || ''}`.toLowerCase();
+  const slot = (WARDROBE_SLOT_RULES.find(([, re]) => re.test(blob)) || [])[0] || null;
+  if (!slot) return null;
+  const imageUrl = String(row.image_url || '');
+  if (!imageUrl.startsWith('https://')) return null;
+  const subtype = (WARDROBE_SUBTYPE_RULES.find(([, re]) => re.test(blob)) || [])[0] || 'unknown';
+  const color = String(
+    (Array.isArray(row.color) ? row.color.join(', ') : row.primary_color || row.color) || 'neutral',
+  ).slice(0, 64);
+  return Object.freeze({
+    id,
+    name: String(row.name || row.type || row.category || 'Wardrobe item').slice(0, 160),
+    brand: String(row.brand || '').slice(0, 80),
+    macroCategory: slot,
+    subtype,
+    color,
+    texture: 'unknown',
+    imageUrl,
+    shopUrl: null,
+    price: null,
+    currency: null,
+    isShopItem: false,
+    visualEvidenceVerified: false,
+    projection: { kind: 'owned_wardrobe', evidence: [`wardrobe:${slot}/${subtype}`] },
+  });
+}
+
+/**
+ * Fit raw image bytes to the hosted critic contract without a native
+ * toolchain: pass through bytes that are already small JPEGs, otherwise
+ * abstain honestly. Never invents pixels.
+ */
+export function fitVisualBytesCloud(bytes) {
+  if (!Buffer.isBuffer(bytes) || bytes.length < 128 || bytes.length > MAX_VISUAL_IMAGE_BYTES) return null;
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  return bytes;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = PRODUCT_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Server-side IO for the cloud handler. The default implementation talks
+ * to Supabase over HTTPS; tests inject fakes. No client-supplied rows are
+ * ever read here.
+ */
+export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
+  const authHeaders = (key) => ({ apikey: key, 'Content-Type': 'application/json' });
+  const check = async (response, what) => {
+    if (!response.ok) throw new Error(what);
+    return response.json();
+  };
+  return {
+    async verifyUser(jwt) {
+      const { createClient } = supabaseJs;
+      const client = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { data, error } = await client.auth.getUser(jwt);
+      if (error || !data?.user?.id) throw new Error('stylist6_unauthorized');
+      return data.user.id;
+    },
+    async admitQuota(userId) {
+      const { createClient } = supabaseJs;
+      const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+      const nowMs = Date.now();
+      const bucketMs = Math.floor(nowMs / 60_000) * 60_000;
+      const bucket = await admin.rpc('increment_rate_bucket', {
+        p_user: userId, p_feature: `rl:${QUOTA_FEATURE}:${bucketMs}`,
+      });
+      if (bucket.error || !Number.isSafeInteger(bucket.data) || bucket.data < 1) {
+        throw new Error('stylist6_rate_unavailable');
+      }
+      if (bucket.data > RATE_LIMIT_PER_MINUTE) {
+        const denied = new Error('stylist6_rate_limited');
+        denied.code = 'rate_limited';
+        throw denied;
+      }
+      // Same paid outfit-generation bucket as production: no new entitlement
+      // surface, no migration, exactly-once debit on admission.
+      const quota = await admin.rpc('consume_edge_quota', { p_user: userId, p_endpoint: 'generate-outfits' });
+      if (quota.error || typeof quota.data !== 'boolean') throw new Error('stylist6_rate_unavailable');
+      if (!quota.data) {
+        const denied = new Error('stylist6_quota_exhausted');
+        denied.code = 'feature_limit_reached';
+        throw denied;
+      }
+    },
+    async fetchShopRows() {
+      const rows = new Map();
+      for (const slot of CATALOG_SLOTS) {
+        const response = await fetch(`${url}/rest/v1/rpc/catalog_discovery_candidates`, {
+          method: 'POST',
+          headers: { ...authHeaders(serviceKey), Authorization: `Bearer ${serviceKey}` },
+          body: JSON.stringify({ p_slot: slot, p_search: '', p_seed: `s6cloud:${slot}`, p_limit: CATALOG_PER_SLOT, p_offset: 0 }),
+        });
+        const data = await check(response, 'stylist6_catalog_unavailable');
+        for (const row of Array.isArray(data) ? data : []) {
+          if (row && row.id && !rows.has(String(row.id))) rows.set(String(row.id), row);
+        }
+      }
+      return [...rows.values()];
+    },
+    async fetchWardrobeRows(userId) {
+      const rows = [];
+      const pageSize = WARDROBE_PAGE;
+      for (let offset = 0; ; offset += pageSize) {
+        const params = new URLSearchParams({
+          select: 'id,type,category,sub_category,color,primary_color,brand,name,description,image_url',
+          user_id: `eq.${userId}`,
+          order: 'id.asc',
+          offset: String(offset),
+          limit: String(pageSize),
+        });
+        const response = await fetch(`${url}/rest/v1/clothing_items?${params}`, {
+          headers: { ...authHeaders(serviceKey), Authorization: `Bearer ${serviceKey}` },
+        });
+        const data = await check(response, 'stylist6_wardrobe_unavailable');
+        if (!Array.isArray(data) || !data.length) break;
+        rows.push(...data);
+        if (data.length < pageSize) break;
+      }
+      return rows;
+    },
+    async fetchVisualProfiles(ids) {
+      const profiles = [];
+      for (let offset = 0; offset < ids.length; offset += VISUAL_PROFILE_CHUNK) {
+        const chunk = ids.slice(offset, offset + VISUAL_PROFILE_CHUNK);
+        const params = new URLSearchParams({
+          select: 'product_id,source_hash,image_url,profile',
+          version: 'eq.1',
+          product_id: `in.(${chunk.map((id) => `"${String(id).replace(/"/g, '')}"`).join(',')})`,
+        });
+        const response = await fetch(`${url}/rest/v1/catalog_visual_fashion?${params}`, {
+          headers: { ...authHeaders(serviceKey), Authorization: `Bearer ${serviceKey}` },
+        });
+        const data = await check(response, 'stylist6_catalog_unavailable');
+        if (Array.isArray(data)) profiles.push(...data);
+      }
+      return profiles;
+    },
+  };
+}
+
+function hydrateProfiles(rows, profiles) {
+  const byId = new Map(profiles.map((entry) => [String(entry.product_id), entry]));
+  let attached = 0, drifted = 0;
+  for (const row of rows) {
+    const entry = byId.get(String(row?.id));
+    if (!entry || entry.version !== 1 || !entry.profile) continue;
+    if (entry.image_url !== row.image_url || entry.source_hash !== sourceHash(row)) {
+      drifted += 1;
+      continue;
+    }
+    if (!currentVisual({ ...row, imageUrl: row.image_url, visualFashion: entry.profile, visualSourceHash: entry.source_hash })) {
+      drifted += 1;
+      continue;
+    }
+    row.visual_fashion = entry.profile;
+    row.visual_source_hash = entry.source_hash;
+    attached += 1;
+  }
+  return { fetched: profiles.length, attached, drifted };
+}
+
+function mapDeckItem(item, rankScore) {
+  return {
+    id: String(item.id),
+    type: item.type || item.macroCategory,
+    macroCategory: item.macroCategory,
+    color: item.color || 'unknown',
+    name: item.name,
+    brand: item.brand || '',
+    description: item.description || item.name,
+    imageUrl: item.imageUrl,
+    image: item.imageUrl,
+    recommendation: `Stylist 6 rank · score ${Number(rankScore).toFixed(2)}`,
+    isShopItem: item.isShopItem === true,
+    price: item.price ?? null,
+    currency: item.currency || null,
+    shopUrl: item.shopUrl || null,
+  };
+}
+
+/** Same truth table as the local bridge: never relabels ranking as NVIDIA. */
+export function mapCloudVisualStatus(deck) {
+  const verdict = deck?.diagnostics?.visualVerdict;
+  if (verdict === 'JUDGED') {
+    const applied = (deck?.outfits || []).some((look) => look.visualEvidence);
+    return applied ? 'NVIDIA_APPLIED' : 'NVIDIA_EVALUATED_NO_CHANGE';
+  }
+  if (verdict === 'ABSTAINED') return 'NVIDIA_ABSTAINED';
+  return 'NVIDIA_NOT_RUN';
+}
+
+async function resolveProductAsset(imageUrl, cache) {
+  const url = String(imageUrl || '');
+  // Network reachability is NOT inference authorization: only allowlisted
+  // merchant hosts are fetched, exactly like the local bridge.
+  if (!HOST_ALLOWLIST.has(hostOf(url))) throw new Error('product_host_not_allowlisted');
+  if (cache.has(url)) return cache.get(url);
+  const response = await fetchWithTimeout(url, {
+    redirect: 'follow', headers: { 'User-Agent': 'AIWardrobe-Stylist6-Cloud/1.0', Accept: 'image/*,*/*;q=0.8' },
+  });
+  if (!response.ok) throw new Error('product_image_unresolved');
+  const raw = Buffer.from(await response.arrayBuffer());
+  if (raw.length > MAX_PRODUCT_IMAGE_BYTES) throw new Error('image_size_invalid');
+  const fitted = fitVisualBytesCloud(raw);
+  if (!fitted) throw new Error('image_toolchain_unavailable');
+  const asset = { bytes: fitted, sha256: createHash('sha256').update(fitted).digest('hex') };
+  cache.set(url, asset);
+  return asset;
+}
+
+/**
+ * Reference bytes are licensed media and never ship with the bundle. When
+ * the owner stages them in a private Supabase Storage bucket
+ * (STYLIST6_REFERENCE_BUCKET), reference-guided judging becomes available;
+ * otherwise reference admission fails honestly to NOT_RUN.
+ */
+async function resolveReferenceAsset(env, url, referenceId) {
+  const bucket = String(env.STYLIST6_REFERENCE_BUCKET || '').trim();
+  if (!bucket || !/^[a-zA-Z0-9_-]{1,64}$/.test(referenceId)) throw new Error('reference_unresolved');
+  const entry = (referenceIndex?.images || []).find((item) => item.id === referenceId);
+  const filename = entry?.filename ? String(entry.filename).split('/').pop() : '';
+  if (!filename || filename.includes('..')) throw new Error('reference_unresolved');
+  const response = await fetch(
+    `${url}/storage/v1/object/${bucket}/${encodeURIComponent(filename)}`,
+    { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } },
+  );
+  if (!response.ok) throw new Error('reference_unresolved');
+  const raw = Buffer.from(await response.arrayBuffer());
+  const fitted = fitVisualBytesCloud(raw);
+  if (!fitted) throw new Error('reference_unresolved');
+  return { bytes: fitted, sha256: createHash('sha256').update(fitted).digest('hex') };
+}
+
+/**
+ * Authenticated Stylist 6 cloud generation. `io` performs all Supabase IO
+ * (injectable fakes in tests); `env` carries server-only configuration.
+ * Returns {status, body} with an edge-shaped payload.
+ */
+export async function handleStylist6CloudGenerate({ method, headers, bodyText, env, io }) {
+  const secret = env.STYLIST_NODE_SHARED_SECRET || '';
+  if (!secret || secret.length < 32) return fail('stylist_compute_unconfigured', 503);
+  if (method !== 'POST') return fail('method_not_allowed', 405);
+  const body = String(bodyText || '');
+  if (new TextEncoder().encode(body).byteLength > STYLIST_TRANSPORT_MAX_BODY_BYTES) {
+    return fail('invalid_generation_request', 413);
+  }
+  const authorized = await verifyStylistTransport({
+    secret, body, authorization: headers.authorization || '',
+    timestamp: headers['x-aiw-timestamp'], nonce: headers['x-aiw-nonce'], signature: headers['x-aiw-signature'],
+  });
+  if (!authorized) return fail('unauthorized', 401);
+
+  let payload;
+  try {
+    payload = JSON.parse(body);
+  } catch {
+    return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
+  }
+  const request = payload?.request || {};
+  const { style, occasion } = request;
+  if (typeof style !== 'string' || !style || typeof occasion !== 'string' || !occasion) {
+    return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
+  }
+  const sourceMode = normalizeSourceMode(request.sourceMode);
+  if (!sourceMode) return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
+  const budget = request.budget?.amount && request.budget?.currency ? request.budget : undefined;
+  if (budget && !/^[A-Z]{3}$/.test(String(budget.currency))) {
+    return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
+  }
+  const requiredIds = [...new Set((Array.isArray(request.requiredIds) ? request.requiredIds : [])
+    .map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 8);
+  const excludedIds = [...new Set((Array.isArray(request.excludeItemIds) ? request.excludeItemIds : [])
+    .map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 64);
+  const clientInventoryIgnored = Array.isArray(payload?.catalogRows) && payload.catalogRows.length > 0;
+
+  // JWT first: no user, no inventory, no quota touch.
+  const authorization = headers.authorization || '';
+  const jwt = /^Bearer\s+(\S+)$/i.exec(authorization)?.[1] || '';
+  let userId;
+  try {
+    userId = await io.verifyUser(jwt);
+  } catch {
+    return fail('unauthorized', 401, { stage: 'stylist6_admission' });
+  }
+
+  // Rate + quota exactly once on admission (planning failures keep the
+  // debit, mirroring production semantics).
+  try {
+    await io.admitQuota(userId);
+  } catch (error) {
+    if (error?.code === 'rate_limited') return fail('rate_limited', 429, { stage: 'stylist6_admission' });
+    if (error?.code === 'feature_limit_reached') return fail('feature_limit_reached', 403, { stage: 'stylist6_admission' });
+    return fail('rate_limit_unavailable', 503, { stage: 'stylist6_admission' });
+  }
+
+  const started = Date.now();
+  const deadline = () => {
+    if (Date.now() - started > REQUEST_TIMEOUT_MS) throw new Error('stylist6_timeout');
+  };
+  try {
+    // Server-side inventory only. Shop rows come from the discovery RPC;
+    // wardrobe rows come from clothing_items filtered by the verified user.
+    const [shopRows, wardrobeRows] = await Promise.all([
+      sourceMode === 'wardrobe' ? [] : io.fetchShopRows(),
+      sourceMode === 'catalog' ? [] : io.fetchWardrobeRows(userId),
+    ]);
+    deadline();
+    const visualHydration = await io.fetchVisualProfiles(shopRows.map((row) => row.id))
+      .then((profiles) => hydrateProfiles(shopRows, profiles));
+    deadline();
+    const { items: shopItems } = adaptCatalog(shopRows);
+    const wardrobeItems = wardrobeRows.map(projectWardrobeItem).filter(Boolean);
+    const pool = sourceMode === 'catalog' ? shopItems
+      : sourceMode === 'wardrobe' ? wardrobeItems
+        : [...wardrobeItems, ...shopItems];
+    if (!pool.length) {
+      return fail('stylist6_empty_catalog', 502, { stage: 'catalog_adaptation', serverInventory: true, clientInventoryIgnored });
+    }
+    // Locked anchors are validated against the server pool, never dropped.
+    const poolIds = new Set(pool.map((item) => String(item.id)));
+    const missingAnchors = requiredIds.filter((id) => !poolIds.has(id));
+    if (missingAnchors.length) {
+      return fail('anchor_not_found', 422, { stage: 'stylist6_admission', missingAnchors, serverInventory: true });
+    }
+    // Owned wardrobe pieces are free; shop pieces need same-currency prices
+    // when budgeted (cross-currency looks cannot be priced honestly here).
+    const feasible = budget
+      ? pool.filter((item) => item.isShopItem !== true || item.currency === budget.currency)
+      : pool;
+    if (!feasible.length) {
+      return fail('stylist6_no_feasible_looks', 502, { stage: 'stylist6_ranking', serverInventory: true });
+    }
+    const weather = resolveStylistWeather(request.brief || '', request.weather || {});
+    const temp = Number(weather?.temp);
+    const refs = referenceFirstBriefs(referenceIndex, {
+      style, occasion, season: Number.isFinite(temp) ? seasonOf(temp) : undefined,
+    });
+    // Same metadata-reference match the local bridge uses: the reference is
+    // an input common to both engines, only when the shortlist contains the
+    // requested style and occasion.
+    const norm = (v) => String(v || '').toLowerCase().replaceAll(' ', '_');
+    const reference = refs.find(({ referenceId }) => {
+      const ref = (referenceIndex?.images || []).find((entry) => entry.id === referenceId);
+      return Array.isArray(ref?.styles) && Array.isArray(ref?.occasions)
+        && ref.styles.includes(style) && ref.occasions.includes(norm(occasion));
+    }) || null;
+    const input = {
+      brief: request.brief || '',
+      weather,
+      referenceId: reference?.referenceId,
+      recentSignatures: Array.isArray(request.recentSignatures) ? request.recentSignatures.slice(-32) : [],
+      excludedIds,
+      requiredIds,
+      sourceMode,
+      budget,
+      style,
+      occasion,
+      optionalLayer: true,
+      preferences: request.preferences && typeof request.preferences === 'object' ? request.preferences : {},
+    };
+    // Hosted NVIDIA review: strictly opt-in, server-side key only, bounded
+    // to the critic's own batch limits. Reference-guided judging needs
+    // staged reference bytes; without them admission fails honestly and the
+    // deck completes deterministically as NOT_RUN.
+    let visualCritic, canJudgeOutfit;
+    const visualEvents = [];
+    const visualAsked = request.enableVisual === true;
+    const nvidiaKey = env.NVIDIA_API_KEY || '';
+    const photoCache = new Map();
+    if (visualAsked && nvidiaKey.startsWith('nvapi-')) {
+      visualCritic = createHostedVisualCritic({
+        provider: 'nvidia',
+        apiKey: nvidiaKey,
+        model: NVIDIA_VISION_MODEL,
+        timeoutMs: VISUAL_TIMEOUT_MS,
+        providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
+        resolveReference: (id) => resolveReferenceAsset(env, env.SUPABASE_URL, id),
+        resolveProduct: (product) => resolveProductAsset(product.imageUrl || product.image_url, photoCache),
+        onEvent: (event) => {
+          visualEvents.push({
+            outcome: event.outcome,
+            dispatched: event.dispatched === true,
+            reason: event.reason || null,
+            httpStatus: event.httpStatus ?? null,
+            latencyMs: Math.round(event.latencyMs || event.providerMs || 0),
+            ...(event.usage && typeof event.usage === 'object' ? { usage: event.usage } : {}),
+          });
+        },
+      });
+      canJudgeOutfit = async (look) => (look?.items || []).every((item) =>
+        HOST_ALLOWLIST.has(hostOf(item.imageUrl || item.image_url)));
+    }
+    deadline();
+    const deck = await recommendFashionDeck({
+      request: input,
+      catalog: feasible,
+      referenceBriefs: refs,
+      hardGate: async (items) => devLookFeasibility(items),
+      priceToBudgetCurrency: (item, currency) => (item.currency === currency ? item.price : NaN),
+      ...(visualCritic ? { visualCritic, canJudgeOutfit } : {}),
+    });
+    const visualStatus = mapCloudVisualStatus(deck);
+    if ((deck.status !== 'complete' && deck.status !== 'partial') || !deck.outfits.length) {
+      return fail('stylist6_no_feasible_looks', 502, {
+        stage: 'stylist6_ranking',
+        engineVersion: STYLIST6_CLOUD_VERSION,
+        visualStatus,
+        serverInventory: true,
+        clientInventoryIgnored,
+        diagnostics: deck.diagnostics || null,
+      });
+    }
+    const excluded = new Set(excludedIds);
+    const previousDeckOverlapBySlot = { top: 0, outerwear: 0, bottom: 0, shoes: 0 };
+    for (const look of deck.outfits) {
+      for (const item of look.items) {
+        if (excluded.has(String(item.id)) && previousDeckOverlapBySlot[item.macroCategory] !== undefined) {
+          previousDeckOverlapBySlot[item.macroCategory] += 1;
+        }
+      }
+    }
+    return {
+      status: 200,
+      body: {
+        success: true,
+        generationVersion: STYLIST6_CLOUD_VERSION,
+        source: 'stylist-6-cloud-staging',
+        compositionProtocol: 'optional-layer-v1',
+        deckTarget: 3,
+        status: deck.status,
+        sourceMode,
+        serverInventory: true,
+        clientInventoryIgnored,
+        previousDeckOverlapBySlot,
+        visualHydration,
+        visualStatus,
+        visualReceipt: {
+          model: visualAsked ? NVIDIA_VISION_MODEL : null,
+          requested: visualAsked,
+          providerCalls: visualEvents.filter((event) => event.dispatched).length,
+          validVerdicts: visualEvents.filter((event) => event.outcome === 'judged').length,
+          abstentions: visualEvents.filter((event) => event.outcome === 'abstain').length,
+          totalTokens: visualEvents.reduce((sum, event) =>
+            sum + (Number.isFinite(event.usage?.total_tokens) ? event.usage.total_tokens : 0), 0) || null,
+          events: visualEvents,
+        },
+        diagnostics: deck.diagnostics || null,
+        outfits: deck.outfits.map((look) => ({
+          id: look.id,
+          items: look.items.map((item) => mapDeckItem(item, look.fashion?.score)),
+          description: look.description,
+          concept: { id: look.concept?.id, title: look.concept?.title, story: '', score: look.fashion?.score },
+          stylingTips: [],
+          confidence: look.fashion?.score,
+          matchScore: look.fashion?.score,
+          engineVersion: STYLIST6_CLOUD_VERSION,
+          fashionDiagnostics: {
+            score: look.fashion?.score,
+            referenceMetadata: look.fashion?.referenceMetadata || null,
+            visualVerdict: deck.diagnostics?.visualVerdict || 'NOT_RUN',
+            imageSupportedItems: look.fashion?.imageSupportedItems ?? null,
+          },
+        })),
+      },
+    };
+  } catch (error) {
+    if (error?.message === 'stylist6_timeout') {
+      return fail('stylist6_ranking_failed', 504, { stage: 'stylist6_ranking' });
+    }
+    return fail('stylist6_ranking_failed', 500, { stage: 'stylist6_ranking' });
+  }
+}

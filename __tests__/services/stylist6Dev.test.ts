@@ -180,3 +180,26 @@ describe('stylist6 dev bridge client', () => {
     expect(data.outfits[0].items[0]).toMatchObject({ id: 'shop_1', price: 50, currency: 'USD' });
   });
 });
+
+describe('stylist6 cloud staging client', () => {
+  test('cloud versions are recognized only with the stylist-6-cloud prefix', () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const mod = loadDevModule();
+    expect(mod.isStylist6CloudVersion('stylist-6-cloud-staging-1')).toBe(true);
+    expect(mod.isStylist6CloudVersion('stylist-6-dev-local-20261111-r2')).toBe(false);
+    expect(mod.isStylist6CloudVersion('stylist-5-editorial-v2-rc-20261109-r2')).toBe(false);
+    expect(mod.isStylist6CloudVersion(null)).toBe(false);
+  });
+
+  test('cloud invoke refuses without the dev gate, never touching the network', async () => {
+    (globalThis as any).__DEV__ = false;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const mod = loadDevModule();
+    const spy = jest.spyOn(globalThis, 'fetch' as any);
+    await expect(mod.invokeStylist6Cloud({
+      request: { style: 'classic', occasion: 'Work', brief: '' },
+    })).rejects.toMatchObject({ code: 'stylist6_dev_disabled' });
+    expect(spy).not.toHaveBeenCalled();
+  });
+});

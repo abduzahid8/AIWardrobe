@@ -71,6 +71,7 @@ test/
 tests/
 !backend/mobile-vton-service/tests/
 !backend/api/tests/
+!backend/stylist-node/test/
 /dist*/
 
 # One-off test/demo files

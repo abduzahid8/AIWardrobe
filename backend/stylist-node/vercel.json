@@ -10,6 +10,9 @@
     },
     "api/stylist6-vision-test.ts": {
       "maxDuration": 60
+    },
+    "api/stylist6-generate-outfits.ts": {
+      "maxDuration": 60
     }
   },
   "outputDirectory": "public"

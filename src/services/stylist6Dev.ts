@@ -17,7 +17,7 @@ import { OutfitGenerationFailure } from './outfitGenerationFailure';
 export const STYLIST6_DEV_ENABLED =
   __DEV__ && process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE === 'true';
 
-export type DevEngine = 'stylist5' | 'stylist6';
+export type DevEngine = 'stylist5' | 'stylist6' | 'stylist6cloud';
 
 const devPort = (): number => {
   const raw = Number(process.env.EXPO_PUBLIC_STYLIST6_DEV_PORT || 3127);
@@ -97,6 +97,85 @@ export async function invokeStylist6Bridge(
 /** True only for decks genuinely produced by the local Stylist 6 bridge. */
 export function isStylist6DevVersion(generationVersion: unknown): boolean {
   return typeof generationVersion === 'string' && generationVersion.startsWith('stylist-6-dev-');
+}
+
+/** True only for decks genuinely produced by Stylist 6 cloud staging. */
+export function isStylist6CloudVersion(generationVersion: unknown): boolean {
+  return typeof generationVersion === 'string' && generationVersion.startsWith('stylist-6-cloud-');
+}
+
+export interface Stylist6CloudRequest {
+  style: string;
+  occasion: string;
+  brief: string;
+  weather?: { temp: number; condition: string };
+  budget?: { amount: number; currency: string };
+  preferences?: unknown;
+  recentSignatures?: string[];
+  excludeItemIds?: string[];
+  requiredIds?: string[];
+  sourceMode?: 'wardrobe' | 'catalog' | 'mixed';
+  /** Dev-only opt-in: run the hosted NVIDIA visual review on the backend. */
+  enableVisual?: boolean;
+}
+
+function failureForCloud(code: unknown, stage = 'stylist6_cloud'): OutfitGenerationFailure {
+  const known: Record<string, 'outfitMaker.generateFailed' | 'outfitMaker.noMatchingClothing' | 'outfitMaker.catalogUnavailable' | 'outfitMaker.requestTooLarge' | 'outfitMaker.invalidRequest'> = {
+    stylist6_no_feasible_looks: 'outfitMaker.noMatchingClothing',
+    stylist6_empty_catalog: 'outfitMaker.catalogUnavailable',
+    stylist6_ranking_failed: 'outfitMaker.generateFailed',
+    invalid_stylist6_request: 'outfitMaker.invalidRequest',
+    invalid_generation_request: 'outfitMaker.requestTooLarge',
+    anchor_not_found: 'outfitMaker.invalidRequest',
+    unauthorized: 'outfitMaker.generateFailed',
+    rate_limited: 'outfitMaker.generateFailed',
+    feature_limit_reached: 'outfitMaker.generateFailed',
+    staging_transport_unconfigured: 'outfitMaker.generateFailed',
+    staging_compute_unavailable: 'outfitMaker.generateFailed',
+  };
+  const key = typeof code === 'string' && code in known ? known[code] : 'outfitMaker.generateFailed';
+  return new OutfitGenerationFailure(key, typeof code === 'string' ? code : 'stylist6_ranking_failed', stage);
+}
+
+/**
+ * POST the staging request to the isolated Stylist 6 cloud path
+ * (authenticated Supabase staging proxy -> signed Vercel Node compute ->
+ * server-side Stylist 6 engine). No client inventory is sent: the server
+ * fetches shop and wardrobe rows itself. Failures surface intact and are
+ * never replaced with a Stylist 5 deck.
+ */
+export async function invokeStylist6Cloud(
+  body: { request: Stylist6CloudRequest },
+): Promise<Record<string, any>> {
+  if (!STYLIST6_DEV_ENABLED) {
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_dev_disabled', 'stylist6_cloud');
+  }
+  const { supabase } = await import('../../lib/supabase');
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData?.session?.access_token;
+  if (!token) {
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'unauthorized', 'stylist6_cloud');
+  }
+  let data: Record<string, any> | null = null;
+  let invokeError: unknown = null;
+  try {
+    const result = await supabase.functions.invoke('aiw-stylist6-node-staging', {
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    });
+    data = result.data as Record<string, any> | null;
+    invokeError = result.error;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error;
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'staging_compute_unavailable', 'stylist6_cloud');
+  }
+  if (invokeError || !data || data?.success !== true || !Array.isArray(data?.outfits)) {
+    throw failureForCloud((data as any)?.code ?? (invokeError as any)?.message);
+  }
+  if (!isStylist6CloudVersion(data.generationVersion)) {
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_wrong_engine', 'stylist6_cloud');
+  }
+  return data;
 }
 
 export interface Stylist6DevAcceptance {

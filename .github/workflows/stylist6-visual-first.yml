@@ -113,12 +113,14 @@ jobs:
         run: node --test backend/stylist6/fashion_deck.test.mjs backend/stylist6/lookbook_briefs.test.mjs backend/stylist6/nvidia_integration.test.mjs
       - name: Verify prototype quality-floor regression (diversity plus maintained quality)
         run: node --test backend/stylist6/prototype.test.mjs
+      - name: Verify Stylist 6 cloud handler (server inventory, anchors, budgets, fakes only)
+        run: node --test backend/stylist6/cloud_handler.test.mjs
       - name: Build Node compute bundle (tests import dist/)
         run: npm --prefix backend/stylist-node run build
       - name: Verify signed Node transport and staging proxy admission (offline)
-        run: node --test backend/stylist-node/test/transport.test.mjs backend/stylist-node/test/transport-health.test.mjs backend/stylist-node/test/handler.test.mjs backend/stylist-node/test/health.test.mjs backend/stylist-node/test/proxy.test.mjs backend/stylist-node/test/staging.test.mjs
+        run: node --test backend/stylist-node/test/transport.test.mjs backend/stylist-node/test/transport-health.test.mjs backend/stylist-node/test/handler.test.mjs backend/stylist-node/test/health.test.mjs backend/stylist-node/test/proxy.test.mjs backend/stylist-node/test/staging.test.mjs backend/stylist-node/test/stylist6-route.test.mjs
       - name: Verify client budget and original-currency formatting
-        run: npx jest __tests__/utils/outfitBudget.test.ts __tests__/utils/uzsPrice.test.ts __tests__/platform/budgets.test.ts
+        run: npx jest __tests__/utils/outfitBudget.test.ts __tests__/utils/uzsPrice.test.ts __tests__/platform/budgets.test.ts __tests__/services/stylist6Dev.test.ts
       - name: TypeScript has no errors
         run: npx tsc --noEmit
       - name: ESLint has no errors
