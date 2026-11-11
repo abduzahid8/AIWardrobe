@@ -50,9 +50,9 @@ Rollback: stop/delete only the isolated S6 function or revert its staging pin/co
 
 ## Verified repaired transport (continuation)
 
-Final repaired compute: `dpl_3D87thVhyGCi5xBsNQj81UiywcpJ`, READY Preview, immutable URL `https://aiwardrobe-stylist-compute-j0r1t0yea-abduzahid8s-projects.vercel.app`, compute SHA `52c82c79082d4495c878e7b4884c540ddf6fc3dd`. GET returns application-level 405 with `stylist-6-cloud-staging-1`.
+Pre-attempt transport-repaired compute: `dpl_3D87thVhyGCi5xBsNQj81UiywcpJ`, READY Preview, immutable URL `https://aiwardrobe-stylist-compute-j0r1t0yea-abduzahid8s-projects.vercel.app`, compute SHA `52c82c79082d4495c878e7b4884c540ddf6fc3dd`. GET returns application-level 405 with `stylist-6-cloud-staging-1`.
 
-Current Supabase S6 Edge Function: **v8 ACTIVE**, `verify_jwt=true`, bundle SHA-256 `81a308955af6be4da8494c5b2be8149c3151c3adbc44529608d40a794d1b3d46`. Proxy pins the repaired immutable Preview above. The redeploys were limited to this isolated proxy and required by verified credential/environment failures and immutable-target updates; no migration was reapplied.
+Pre-attempt Supabase S6 Edge Function: **v8 ACTIVE**, `verify_jwt=true`, bundle SHA-256 `81a308955af6be4da8494c5b2be8149c3151c3adbc44529608d40a794d1b3d46`. At that point the proxy pinned the transport-repaired Preview above; the final catalog-repair pin is recorded below. The redeploys were limited to this isolated proxy and required by verified credential/environment failures and immutable-target updates; no migration was reapplied.
 
 Real Supabase-to-Vercel malformed-body probe now returns **400** `invalid_stylist6_request`, stage `stylist6_admission`, exact `stylist-6-cloud-staging-1`. It passes the gateway using the public legacy project JWT, protection and S6 HMAC, and reaches the configured handler before rejecting the body. This proves server transport/configuration; it does not prove a valid end-user generation.
 
@@ -82,6 +82,18 @@ Fixed only the S6 trusted server-RPC boundary to restore the active-row contract
 
 Latest general CI quality job `130676343837` ended **cancelled** after multiple actual failing suites and its 15-minute limit; database/RLS/concurrent quotas job `130676344460` passed. Dedicated S6 workflow `43064675424` passed on `52c82c7`. Full general CI remains a release blocker.
 
-**STAGING NO-GO**: the first authenticated iOS request failed; no successful remote outfit, admitted quota delta of one, HTTP replay behavior or rendered cloud result has been demonstrated. A future metered attempt requires fresh explicit authorization, after the repaired server artifact is deployed and non-metered checks pass.
+**STAGING NO-GO**: the first authenticated iOS request failed; no successful remote outfit, admitted quota delta of one, HTTP replay behavior or rendered cloud result has been demonstrated. A future metered attempt requires fresh explicit authorization. The repaired server artifact and non-metered checks are recorded below; they do not satisfy positive acceptance.
 
 A non-metered live metadata-only check fetched 400 discovery rows: the original projection produced **0 items / 400 inactive skips**; the repaired server normalization produced **400 items / 0 skips**. It performed no generation, image fetch or inference.
+
+## Final deployed catalog repair
+
+Compute SHA: **0133f1fdb78f23a31742582971524ebe30c12f41**. Deployment **dpl_FbG2BVM1Y2DhC7x4dRfaWiydoBB2**, READY Preview. Current immutable target: **https://aiwardrobe-stylist-compute-5tlso6mbt-abduzahid8s-projects.vercel.app**, route `/api/stylist6-generate-outfits`. GET returns application 405 and exact S6 identity.
+
+Supabase **aiw-stylist6-node-staging v9 ACTIVE**, `verify_jwt=true`, bundle SHA-256 **2cc3fe89a15d6bbc7f1b07320a26478440447a85a2730e6932fc96acf985a866**. This is the final current pin; prior v8/URL values above are test history.
+
+Final real protected Supabase-to-Vercel malformed-body probe: **400 invalid_stylist6_request**, `stage=stylist6_admission`, `generationVersion=stylist-6-cloud-staging-1`. No generation is possible for that body. Final account readback remains usage **1**, S6 claims **0**.
+
+Dedicated S6 workflow **43070655262** passed **both jobs** on the catalog-repair SHA. Local **132 tests**, TypeScript, worktree secret scan and diff check passed. New general CI **43070670050** is still running and is not counted as a pass. No further metered attempt, HTTP replay, native build, outfit screenshot or inference was performed after the failed iOS request.
+
+The final proxy/report-only commit does not change compute code; the deployed repaired compute remains pinned intentionally. Publication of these operational details was explicitly approved by the owner.
