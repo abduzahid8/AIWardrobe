@@ -115,6 +115,10 @@ scripts/out/
 *.pth
 *.bin
 !backend/api/blank_mannequin.jpg
+# Web export mannequin placeholders (small first-party stand-ins referenced
+# by app.json; must stay tracked despite the scratch *.jpg rule above).
+!assets/images/mannequin_front.jpg
+!assets/images/mannequin_side.jpg
 # First-party splash assets must stay tracked (overrides the scratch *.png rule).
 !assets/splash-logo.png
 !android/app/src/main/res/drawable-*/splash_logo.png

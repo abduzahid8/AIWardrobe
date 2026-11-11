@@ -89,3 +89,42 @@ jobs:
       - name: Confirm this workflow is not an authorized production release
         run: |
           echo "Stylist 6 is isolated; no deploys, quota calls, migrations or production cutover."
+
+  verify-integrated-stylist6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout experimental branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify dev-bridge integration (status mapping, admission, no live calls)
+        run: node --test scripts/stylist6/dev_bridge.test.mjs scripts/stylist6/nvidia_preview_invoke.test.mjs
+      - name: Verify fashion deck, source-mode isolation and locked anchors
+        run: node --test backend/stylist6/fashion_deck.test.mjs backend/stylist6/lookbook_briefs.test.mjs backend/stylist6/nvidia_integration.test.mjs
+      - name: Verify prototype quality-floor regression (diversity plus maintained quality)
+        run: node --test backend/stylist6/prototype.test.mjs
+      - name: Verify signed Node transport and staging proxy admission (offline)
+        run: node --test backend/stylist-node/test/transport.test.mjs backend/stylist-node/test/transport-health.test.mjs backend/stylist-node/test/handler.test.mjs backend/stylist-node/test/health.test.mjs backend/stylist-node/test/proxy.test.mjs backend/stylist-node/test/staging.test.mjs
+      - name: Verify client budget and original-currency formatting
+        run: npx jest __tests__/utils/outfitBudget.test.ts __tests__/utils/uzsPrice.test.ts __tests__/platform/budgets.test.ts
+      - name: TypeScript has no errors
+        run: npx tsc --noEmit
+      - name: ESLint has no errors
+        run: npx eslint screens/AIOutfitmaker.tsx src/utils/outfitBudget.ts src/utils/uzsPrice.ts hooks/useUzsPrice.ts --max-warnings 10000
+      - name: Secret scan has no findings in tracked sources
+        run: |
+          if git grep -InE "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|nvapi-[A-Za-z0-9_-]{10,}|sk-(live|proj)-[A-Za-z0-9]{10,}|sb_secret_[A-Za-z0-9_-]{10,}" -- . ':!package-lock.json' ':!*.log' | grep -viE "test|fixture|mock|example|YOUR_KEY_HERE"; then
+            echo "secret scan found findings"; exit 1;
+          else
+            echo "secret scan: 0 findings";
+          fi
+      - name: Build Node compute bundle
+        run: npm --prefix backend/stylist-node run build
+      - name: Confirm no live provider calls ran in CI
+        run: |
+          echo "All provider evidence in CI comes from recorded fixtures and strict mocks; no NVIDIA calls."

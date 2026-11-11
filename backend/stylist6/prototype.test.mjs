@@ -148,9 +148,18 @@ test('review slots preserve the seed and cover distinct products from the same b
   const alternatives=shortlist.filter(({briefId})=>briefId===brief.id).slice(0,3);
   assert.equal(alternatives.length,3);
   assert.ok(alternatives[0].items.every(({color})=>color==='navy'));
-  // The second and third strongest seeds can differ by at most one palette
-  // match, so limited inventory may require some reuse of the seed pieces.
-  assert.ok(new Set(alternatives.flatMap(({items})=>items.map(({id})=>id))).size===8);
+  // Diversity: the allocator must cover distinct products across the three
+  // alternatives instead of converging on one reused hero set.
+  const distinct=new Set(alternatives.flatMap(({items})=>items.map(({id})=>id)));
+  assert.ok(distinct.size>=8, `expected broad product coverage, saw ${distinct.size}`);
+  // Quality floor: every alternative is a full look scored within a bounded
+  // gap of the strongest seed, never a decisively worse filler.
+  const best=Math.max(...alternatives.map(({seedScore})=>seedScore));
+  for(const alternative of alternatives){
+    assert.equal(alternative.items.length,4);
+    assert.ok(Number.isFinite(alternative.seedScore));
+    assert.ok(alternative.seedScore>=best-0.25, `seed ${alternative.seedScore} too far below best ${best}`);
+  }
 });
 
 

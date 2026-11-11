@@ -24,13 +24,7 @@ name: s6_oldmoney_visual
       - waitForAnimationToEnd:
           timeout: 3000
 - tapOn:
-    point: "58%,92%"
-- waitForAnimationToEnd:
-    timeout: 8000
-- tapOn: ".*(Shop|Магазин|Do'kon).*"
-- waitForAnimationToEnd:
-    timeout: 8000
-- tapOn: ".*(Personal stylist|Персональный стилист|Shaxsiy stilist).*"
+    point: "50%,75%"
 - waitForAnimationToEnd:
     timeout: 10000
 - tapOn:

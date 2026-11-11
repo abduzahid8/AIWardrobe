@@ -13,7 +13,7 @@ import {stylingContext} from '../src/domain/stylingContext';
 import { BetaFeedbackButton } from '../components/BetaFeedbackButton';
 import { stylistCalendarItems } from '../features/calendar/outfitSlots';
 import {formatUzsPrice} from '../src/utils/uzsPrice';
-import { useUzsDisplayRates, useUzsPrice } from '../hooks/useUzsPrice';
+import { useUzsDisplayRates } from '../hooks/useUzsPrice';
 import { resolveStylistWeather } from '../src/domain/outfitComposition';
 import { getBudgetRates } from '../src/services/budgetRates';
 import { budgetFxContext, fitsBudgetAmount, type BudgetFxSnapshot } from '../src/domain/budgetFx';
@@ -402,7 +402,12 @@ const SlotCell = React.memo(function SlotCell({
   textPrimary: string;
   onBuy: (url: string) => void;
 }) {
-  const displayPrice = useUzsPrice(price, priceCurrency);
+  // Cards always show the original listing price and currency. Never convert
+  // per-card prices: a converted guess would mislabel the listing, and
+  // mixed-currency outfits have no valid combined total.
+  const displayPrice = typeof price === 'number' && price > 0 && priceCurrency
+    ? formatMoney(price, priceCurrency)
+    : null;
   const handleBuy = React.useCallback(() => onBuy(buyUrl), [onBuy, buyUrl]);
   const [imgFailed, setImgFailed] = React.useState(false);
   React.useEffect(() => { setImgFailed(false); }, [imageUri, slotKey]);
@@ -422,7 +427,7 @@ const SlotCell = React.memo(function SlotCell({
         <ScaledText style={[slotStyles.name, { color: textPrimary }]} numberOfLines={1}>{name}</ScaledText>
         {typeof price === 'number' && price > 0 && priceCurrency ? (
           <ScaledText style={slotStyles.price} numberOfLines={1}>
-            {displayPrice || '— UZS'}
+            {displayPrice || '—'}
           </ScaledText>
         ) : null}
         {showBuyButton ? (
