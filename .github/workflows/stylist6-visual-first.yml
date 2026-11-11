@@ -113,6 +113,8 @@ jobs:
         run: node --test backend/stylist6/fashion_deck.test.mjs backend/stylist6/lookbook_briefs.test.mjs backend/stylist6/nvidia_integration.test.mjs
       - name: Verify prototype quality-floor regression (diversity plus maintained quality)
         run: node --test backend/stylist6/prototype.test.mjs
+      - name: Build Node compute bundle (tests import dist/)
+        run: npm --prefix backend/stylist-node run build
       - name: Verify signed Node transport and staging proxy admission (offline)
         run: node --test backend/stylist-node/test/transport.test.mjs backend/stylist-node/test/transport-health.test.mjs backend/stylist-node/test/handler.test.mjs backend/stylist-node/test/health.test.mjs backend/stylist-node/test/proxy.test.mjs backend/stylist-node/test/staging.test.mjs
       - name: Verify client budget and original-currency formatting
@@ -128,8 +130,6 @@ jobs:
           else
             echo "secret scan: 0 findings";
           fi
-      - name: Build Node compute bundle
-        run: npm --prefix backend/stylist-node run build
       - name: Confirm no live provider calls ran in CI
         run: |
           echo "All provider evidence in CI comes from recorded fixtures and strict mocks; no NVIDIA calls."
