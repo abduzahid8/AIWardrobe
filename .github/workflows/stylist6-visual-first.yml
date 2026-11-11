@@ -102,8 +102,13 @@ jobs:
           node-version: 22
       - name: Install root dependencies
         run: npm ci --no-audit --no-fund
-      - name: Verify dev-bridge integration (status mapping, admission, no live calls)
-        run: node --test scripts/stylist6/dev_bridge.test.mjs scripts/stylist6/nvidia_preview_invoke.test.mjs
+      - name: Verify dev-bridge status mapping (pure contract, no live calls)
+        run: |
+          node --test --test-name-pattern="visual statuses" scripts/stylist6/dev_bridge.test.mjs
+          node --test scripts/stylist6/nvidia_preview_invoke.test.mjs
+      # The reference-admission test in dev_bridge.test.mjs requires the
+      # owner-provided lookbook photos (image-teaste/, gitignored licensed
+      # media). It runs in the local dev gate, never in public CI.
       - name: Verify fashion deck, source-mode isolation and locked anchors
         run: node --test backend/stylist6/fashion_deck.test.mjs backend/stylist6/lookbook_briefs.test.mjs backend/stylist6/nvidia_integration.test.mjs
       - name: Verify prototype quality-floor regression (diversity plus maintained quality)
