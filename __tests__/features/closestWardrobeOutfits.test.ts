@@ -1,4 +1,5 @@
 import { closestWardrobeOutfits, closestAvailableOutfits } from '../../features/outfit-generator/utils/closestWardrobeOutfits';
+import { productIdentityKeys } from '../../src/domain/outfitDiversity';
 import { outfitStructureReason } from '../../backend/supabase/functions/_shared/outfitStructure';
 import { outfitVisualSignature } from '../../src/domain/outfitVisualSignature';
 
@@ -40,7 +41,10 @@ test.each(pool)('shop alternatives preserve an owned $macroCategory anchor witho
 });
 
 test('shop fallback rejects over-budget proposals before choosing alternatives', () => {
-  const cheapShoes = { ...shopPool[3], id: 'cheap-shoes', price: 10 };
+  // Redesign: catalog rows with the same name and photo are ONE physical
+  // product ("alias listings"), so the cheaper alternative must be a genuinely
+  // different product — a different name and image — to be selectable.
+  const cheapShoes = { ...shopPool[3], id: 'cheap-shoes', name: 'Canvas budget sneakers', imageUrl: 'https://test/cheap-shoes.png', price: 10 };
   const looks = closestAvailableOutfits([...shopPool, cheapShoes], {
     source: 'shop', style: 'minimalist', occasion: 'everyday',
     accepts: parts => parts.reduce((total, item) => total + (item.price || 0), 0) <= 310,
@@ -48,6 +52,20 @@ test('shop fallback rejects over-budget proposals before choosing alternatives',
   expect(looks).toHaveLength(1);
   expect(looks[0].items.find(item => item.macroCategory === 'shoes')?.id).toBe('cheap-shoes');
   expect(looks[0].items.every(item => item.currency === 'USD')).toBe(true);
+});
+
+test('an alias duplicate row is one product: its cheaper copy cannot satisfy the budget', () => {
+  const aliasShoes = { ...shopPool[3], id: 'cheap-shoes', price: 10 };
+  // Same name + same photo = one physical product. The budget gate still runs
+  // during proposal selection: with only the full-price listing selectable,
+  // the capped request honestly gets no deck instead of a repriced product.
+  expect(productIdentityKeys(aliasShoes).filter(key => key !== 'id:cheap-shoes'))
+    .toEqual(expect.arrayContaining(productIdentityKeys(shopPool[3]).filter(key => key !== 'id:shoes')));
+  const looks = closestAvailableOutfits([...shopPool, aliasShoes], {
+    source: 'shop', style: 'minimalist', occasion: 'everyday',
+    accepts: parts => parts.reduce((total, item) => total + (item.price || 0), 0) <= 310,
+  });
+  expect(looks).toEqual([]);
 });
 
 test('shop mode without an anchor uses only catalog items', () => {

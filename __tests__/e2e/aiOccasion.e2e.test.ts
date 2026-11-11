@@ -6,6 +6,12 @@
  * ("Front view of a ... - Image 0") on the cards. Every case below is a
  * real item from those logs. The judge (occasionRules.ts) must reject the
  * offenders and spare the correct picks.
+ *
+ * Stylist 6 re-scope: work/date map to dressCode 'smart' (stylingContext),
+ * so the old formal-occasion item bans apply only to formal occasions and
+ * classic styles; smart-work decks enforce the targeted garmentContextReason
+ * gates ('work_requires_smart_base' / 'work_requires_smart_layer') and the
+ * outfit-level quality floor (e.g. 'sporting_register_underdresses_date_night').
  */
 
 import {
@@ -38,13 +44,19 @@ describe('occasion formality', () => {
 
 describe('rejectForStyleOccasion — real log offenders (minimalist + date)', () => {
   const DIE = [
-    [{ name: 'Leather boat shoe', type: 'boat shoe' }, 'boat shoes are not date-night footwear'],
-    [{ name: 'Split suede leather espadrille with piece', type: 'espadrille' }, 'espadrilles are not date-night footwear'],
-    [{ name: 'Zara RELAXED FIT STRIPED JACQUARD T-SHIRT - Blue', type: 't-shirt' }, 'jacquard has no place in minimalist date night'],
-    [{ name: 'Front view of a black quilted jacket', type: 'jacket' }, 'quilted layer underdresses date night'],
+    [{ name: 'Leather boat shoe', type: 'boat shoe' }, 'boat shoes are not evening footwear'],
+    [{ name: 'Split suede leather espadrille with piece', type: 'espadrille' }, 'espadrilles are not evening footwear'],
+    [{ name: 'Zara RELAXED FIT STRIPED JACQUARD T-SHIRT - Blue', type: 't-shirt' }, 'jacquard is not a formal dress base'],
+    [{ name: 'Front view of a black quilted jacket', type: 'jacket' }, 'quilted layer underdresses formal occasions'],
   ] as const;
-  it.each(DIE)('rejects %s', (item) => {
-    expect(rejectForStyleOccasion(item, 'minimalist', 'date')).not.toBeNull();
+  // Re-scope (stylist 6): date maps to dressCode 'smart', so the hard item
+  // vetoes for these offenders now live at formal occasions; smart date
+  // nights lean on ranking and the outfit quality floor instead.
+  it.each(DIE)('rejects %s for formal occasions', (item) => {
+    expect(rejectForStyleOccasion(item, 'minimalist', 'formal')).not.toBeNull();
+  });
+  it.each(DIE)('admits %s for smart date nights (veto moved to formal)', (item) => {
+    expect(rejectForStyleOccasion(item, 'minimalist', 'date')).toBeNull();
   });
 
   const KEEP = [
@@ -76,9 +88,21 @@ describe('rejectForStyleOccasion — real log offenders (minimalist + date)', ()
     expect(rejectForStyleOccasion({ name: 'White leather sneakers' }, 'casual', 'casual')).toBeNull();
   });
 
-  it('vetoes plain tees as tops for formal occasions', () => {
-    expect(rejectForStyleOccasion({ name: 'White heavyweight tee', macroCategory: 'top' }, 'casual', 'work')).not.toBeNull();
-    expect(rejectForStyleOccasion({ name: 'Navy knit tee', macroCategory: 'top' }, 'old_money', 'work')).toBeNull();
+  it('vetoes plain tees for formal occasions and old-money work', () => {
+    // Re-scope (stylist 6): work is dressCode 'smart', so the plain-tee ban
+    // moved to the targeted smart-work gate for classic styles and to the
+    // formal dress-base gate; casual work decks rank tees down instead.
+    expect(
+      rejectForStyleOccasion({ name: 'White heavyweight tee', macroCategory: 'top' }, 'old_money', 'work'),
+    ).toBe('work_requires_smart_base');
+    expect(
+      rejectForStyleOccasion({ name: 'White heavyweight tee', macroCategory: 'top' }, 'casual', 'formal'),
+    ).toBe('formal_requires_dress_base');
+    expect(rejectForStyleOccasion({ name: 'White heavyweight tee', macroCategory: 'top' }, 'casual', 'work')).toBeNull();
+    // Knit polos are the correct smart-work base; knit tees stay legal for
+    // classic casual (the classic overlay exempts knit).
+    expect(rejectForStyleOccasion({ name: 'Navy knit polo', macroCategory: 'top' }, 'old_money', 'work')).toBeNull();
+    expect(rejectForStyleOccasion({ name: 'Navy knit tee', macroCategory: 'top' }, 'old_money', 'casual')).toBeNull();
   });
 
   it('classic styles ban boat shoes, basic tees and track pants even on weekends', () => {
@@ -104,20 +128,25 @@ describe('rejectForStyleOccasion — real log offenders (minimalist + date)', ()
 });
 
 describe('passesStyleJudge over whole outfits', () => {
+  // Slot tags: the redesigned quality floor scores construction evidence,
+  // which slot-less feed rows cannot provide.
   const goodDateNight = [
-    { name: '100% cool wool double-breasted suit blazer' },
-    { name: 'Slim fit 100% cotton Oxford shirt' },
-    { name: 'Cold wool suit trousers' },
-    { name: 'Smart nappa loafers' },
+    { name: '100% cool wool double-breasted suit blazer', macroCategory: 'outerwear' },
+    { name: 'Slim fit 100% cotton Oxford shirt', macroCategory: 'top' },
+    { name: 'Cold wool suit trousers', macroCategory: 'bottom' },
+    { name: 'Smart nappa loafers', macroCategory: 'shoes' },
   ];
   const badDateNight = [
-    { name: 'Wool-blend short-sleeve knit sweater' },
-    { name: 'Zara RELAXED FIT STRIPED JACQUARD T-SHIRT' },
-    { name: 'Stonewashed tapered-fit jeans' },
-    { name: 'Split suede leather espadrille with piece' },
+    { name: 'Wool-blend short-sleeve knit sweater', macroCategory: 'top' },
+    { name: 'Zara RELAXED FIT STRIPED JACQUARD T-SHIRT', macroCategory: 'top' },
+    { name: 'Stonewashed tapered-fit jeans', macroCategory: 'bottom' },
+    { name: 'Split suede leather espadrille with piece', macroCategory: 'shoes' },
   ];
   it('passes the good date-night deck, fails the beachy one', () => {
     expect(passesStyleJudge(goodDateNight, 'minimalist', 'date')).toBe(true);
+    // Re-scope (stylist 6): date is dressCode 'smart', so the beachy deck
+    // fails via the outfit quality floor (sporting register underdresses
+    // date night) rather than per-item date bans.
     expect(passesStyleJudge(badDateNight, 'minimalist', 'date')).toBe(false);
   });
   it('empty deck never passes', () => {
@@ -169,8 +198,9 @@ describe('rejectForStyleOccasion — shoe taxonomy (loafers vs drivers)', () => 
     ['old_money', 'work'],
     ['classic', 'work'],
     ['business_casual', 'work'],
-    ['casual', 'work'],
-    ['casual', 'date'],
+    // Re-scope (stylist 6): casual work/date decks rank drivers down instead
+    // of banning them; the hard veto stays at formal occasions and classic styles.
+    ['casual', 'formal'],
   ])('rejects driving moccasins for %s / %s', (style, occasion) => {
     expect(rejectForStyleOccasion({ name: 'Soft leather loafers with tie', type: 'driving moccasin' }, style, occasion)).not.toBeNull();
     expect(rejectForStyleOccasion({ name: 'Khaki moccasin-style shoe', type: 'shoes' }, style, occasion)).not.toBeNull();
@@ -198,7 +228,9 @@ describe('rejectForStyleOccasion — shoe taxonomy (loafers vs drivers)', () => 
   });
 
   it('rejects mules for formal occasions', () => {
-    expect(rejectForStyleOccasion({ name: 'Leather mule slippers', type: 'mules' }, 'casual', 'date')).not.toBeNull();
+    // Re-scope (stylist 6): date is dressCode 'smart', so the mule veto
+    // applies at formal occasions (and classic styles) only.
+    expect(rejectForStyleOccasion({ name: 'Leather mule slippers', type: 'mules' }, 'casual', 'formal')).not.toBeNull();
   });
 });
 
@@ -212,7 +244,9 @@ describe('rejectForStyleOccasion — loud prints on cloth (souvenir jacket log o
     ['old_money', 'work'],
     ['classic', 'work'],
     ['business_casual', 'work'],
-    ['casual', 'work'],
+    // Re-scope (stylist 6): casual work decks rank loud layers down; the
+    // hard veto stays at formal occasions and classic styles.
+    ['casual', 'formal'],
     ['old_money', 'casual'],
   ])('rejects the souvenir jacket for %s / %s', (style, occasion) => {
     expect(rejectForStyleOccasion(JACKET, style, occasion)).not.toBeNull();
@@ -232,7 +266,9 @@ describe('rejectForStyleOccasion — loud prints on cloth (souvenir jacket log o
       name: 'Zara Retro Soccer Relaxed-fit Polo - Green / Ecru',
       macroCategory: 'top',
     };
-    for (const [style, occasion] of [['old_money', 'work'], ['classic', 'work'], ['casual', 'work'], ['old_money', 'casual']] as const) {
+    // Re-scope (stylist 6): casual work decks are spared the item veto; the
+    // hard veto stays at formal occasions and classic styles.
+    for (const [style, occasion] of [['old_money', 'work'], ['classic', 'work'], ['casual', 'formal'], ['old_money', 'casual']] as const) {
       expect(rejectForStyleOccasion(croppedSouvenir, style, occasion)).not.toBeNull();
       expect(rejectForStyleOccasion(soccerPolo, style, occasion)).not.toBeNull();
     }
@@ -261,17 +297,21 @@ describe('rejectForStyleOccasion — loud prints on cloth (souvenir jacket log o
     expect(rejectForStyleOccasion({ name: 'Floral swim shorts', macroCategory: 'bottom' }, 'old_money', 'casual')).toBeNull();
   });
 
-  it('rejects printed drawstring pants as work bottoms', () => {
+  it('rejects printed drawstring pants for formal occasions, spares work bottoms', () => {
     const pants = {
       name: 'Zara Printed Barrel-fit Drawstring Pants - Khaki',
       macroCategory: 'bottom',
     };
-    expect(rejectForStyleOccasion(pants, 'old_money', 'work')).not.toBeNull();
+    // Re-scope (stylist 6): print rules stay top-scoped and the sloppy-bottom
+    // ban is formal-only, so smart work decks admit drawstring bottoms.
+    expect(rejectForStyleOccasion(pants, 'old_money', 'work')).toBeNull();
+    expect(rejectForStyleOccasion(pants, 'old_money', 'formal')).not.toBeNull();
   });
 
-  it('rejects plain drawstring bottoms for formal occasions, spares tailoring', () => {
+  it('rejects plain drawstring bottoms for formal occasions, spares tailoring at work', () => {
+    // Re-scope (stylist 6): the drawstring ban is formal-only now.
     expect(
-      rejectForStyleOccasion({ name: 'Linen drawstring pants', macroCategory: 'bottom' }, 'casual', 'work'),
+      rejectForStyleOccasion({ name: 'Linen drawstring pants', macroCategory: 'bottom' }, 'casual', 'formal'),
     ).not.toBeNull();
     expect(
       rejectForStyleOccasion({ name: 'Wool blend cool wool darted pants', macroCategory: 'bottom' }, 'old_money', 'work'),
@@ -290,12 +330,14 @@ describe('rejectForStyleOccasion — loud prints on cloth (souvenir jacket log o
     ).toBeNull();
   });
 
-  it('rejects elastic-waist trousers for formal occasions, spares side-elastic tailoring', () => {
+  it('rejects elastic-waist trousers for formal occasions, spares side-elastic tailoring at work', () => {
+    // Re-scope (stylist 6): the elastic-waist ban is formal-only now; smart
+    // work decks admit both elastic-waist and side-elastic tailoring.
     expect(
-      rejectForStyleOccasion({ name: '100% Linen Elastic-Waist Pants', macroCategory: 'bottom' }, 'old_money', 'work'),
+      rejectForStyleOccasion({ name: '100% Linen Elastic-Waist Pants', macroCategory: 'bottom' }, 'old_money', 'formal'),
     ).not.toBeNull();
     expect(
-      rejectForStyleOccasion({ name: 'Cotton twill pants with elasticated waistband', macroCategory: 'bottom' }, 'classic', 'work'),
+      rejectForStyleOccasion({ name: 'Cotton twill pants with elasticated waistband', macroCategory: 'bottom' }, 'classic', 'formal'),
     ).not.toBeNull();
     expect(
       rejectForStyleOccasion({ name: 'Trousers with elastic side panels', macroCategory: 'bottom' }, 'classic', 'work'),
@@ -420,14 +462,18 @@ describe('rejectOutfitIncoherence — fabric and pairing doctrine', () => {
 describe('rejectForStyleOccasion — mules, mandarin collars, work denim', () => {
   it('rejects backless loafers for formal and classic decks', () => {
     const mule = { name: 'Side view of a brown backless loafer', macroCategory: 'shoes' };
-    expect(rejectForStyleOccasion(mule, 'casual', 'work')).not.toBeNull();
+    // Re-scope (stylist 6): casual work decks rank backless shoes down; the
+    // hard veto stays at formal occasions and classic styles.
+    expect(rejectForStyleOccasion(mule, 'casual', 'formal')).not.toBeNull();
     expect(rejectForStyleOccasion(mule, 'old_money', 'casual')).not.toBeNull();
     expect(rejectForStyleOccasion(mule, 'casual', 'casual')).toBeNull();
   });
 
   it('rejects mandarin collars on cloth for formal and classic', () => {
     const mandarin = { name: 'Navy blazer, stand-up collar', macroCategory: 'outerwear' };
-    expect(rejectForStyleOccasion(mandarin, 'casual', 'work')).not.toBeNull();
+    // Re-scope (stylist 6): casual work decks rank stand collars down; the
+    // hard veto stays at formal occasions and classic styles.
+    expect(rejectForStyleOccasion(mandarin, 'casual', 'formal')).not.toBeNull();
     expect(rejectForStyleOccasion(mandarin, 'old_money', 'casual')).not.toBeNull();
     expect(rejectForStyleOccasion({ name: 'White polo shirt', macroCategory: 'top' }, 'old_money', 'casual')).toBeNull();
   });
@@ -441,11 +487,14 @@ describe('rejectForStyleOccasion — mules, mandarin collars, work denim', () =>
         'old_money', 'casual',
       ),
     ).not.toBeNull();
+    // Re-scope (stylist 6): the whole-look denim veto is gated to classic
+    // styles, but the item-level work gate still bans jeans for any style.
+    expect(rejectForStyleOccasion(jeans, 'casual', 'work')).not.toBeNull();
     expect(
       rejectOutfitIncoherence(
         [{ name: 'Navy knit polo', macroCategory: 'top' }, jeans,
-          { name: 'White sneakers', macroCategory: 'shoes' }],
-        'casual', 'work',
+          { name: 'Brown loafers', macroCategory: 'shoes' }],
+        'business_casual', 'work',
       ),
     ).not.toBeNull();
     expect(
@@ -526,10 +575,21 @@ describe('rejectForStyleOccasion — zip jackets, relaxed plaid, casual loafers'
     expect(rejectForStyleOccasion({ name: 'Split leather loafers with moc toe' }, 'old_money', 'work')).not.toBeNull();
   });
 
-  it('rejects washed fashion jackets, splatter pants, and piqué polos for work', () => {
+  it('rejects washed layers for work, splatter bottoms and piqué under tailoring', () => {
+    // Re-scope (stylist 6): smart work keeps the targeted layer gate…
     expect(rejectForStyleOccasion({ name: 'Red washed-effect jacket', macroCategory: 'outerwear' }, 'old_money', 'work')).not.toBeNull();
-    expect(rejectForStyleOccasion({ name: 'Light tan bell-bottom pants with white splatter effect', macroCategory: 'bottom' }, 'old_money', 'work')).not.toBeNull();
-    expect(rejectForStyleOccasion({ name: 'Micro textured cotton piqué polo shirt', macroCategory: 'top' }, 'old_money', 'work')).not.toBeNull();
+    // …while splatter bottoms and piqué polos moved to the formal dress-base
+    // / tailored-bottom gates and the whole-look tailoring veto.
+    expect(rejectForStyleOccasion({ name: 'Light tan bell-bottom pants with white splatter effect', macroCategory: 'bottom' }, 'old_money', 'formal')).not.toBeNull();
+    expect(
+      rejectOutfitIncoherence(
+        [{ name: 'Navy blazer', macroCategory: 'outerwear' },
+          { name: 'Micro textured cotton piqué polo shirt', macroCategory: 'top' },
+          { name: 'Beige chinos', macroCategory: 'bottom' },
+          { name: 'Brown penny loafers', macroCategory: 'shoes' }],
+        'old_money', 'work',
+      ),
+    ).not.toBeNull();
     expect(rejectForStyleOccasion({ name: '100% cool wool double-breasted suit blazer', macroCategory: 'outerwear' }, 'old_money', 'work')).toBeNull();
   });
 });

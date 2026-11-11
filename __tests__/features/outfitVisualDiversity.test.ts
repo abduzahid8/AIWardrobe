@@ -456,7 +456,15 @@ describe('J. uniqueness outranks a small quality difference', () => {
             target: 2,
         });
         expect(result.deck).toHaveLength(2);
-        expect(result.deck.map((entry) => entry.id)).toEqual(['best', 'unique']);
+        // Redesign: the deck is chosen as a COMBINATION and quality gaps inside
+        // MMR_QUALITY_BAND (0.08) are a tie, so the variety term — not the 0.01
+        // score edge — decides which of the two shared-blazer looks survives.
+        // Uniqueness still outranks quality: the two looks sharing the navy
+        // blazer can never coexist even though together they outscore every
+        // valid pair, and the fully-unique look keeps its place.
+        const sharedBlazerSurvivors = result.deck.filter((entry) => entry.id === 'best' || entry.id === 'near');
+        expect(sharedBlazerSurvivors).toHaveLength(1);
+        expect(result.deck.map((entry) => entry.id)).toContain('unique');
         expect(result.productDiversity.nonAnchorProductReuseCount).toBe(0);
     });
 });

@@ -257,9 +257,14 @@ describe('sloppy bottoms rejected regardless of jogger phrasing', () => {
       .toContain('minimalist discipline');
   });
 
-  it('rejects it on a formal occasion too (formal branch fires first)', () => {
+  it('rejects it at work (classic branch) and on formal occasions (dress-code gate)', () => {
+    // Stylist 5 redesign: work is a 'smart' dress code, so the formal-branch
+    // 'sloppy bottoms underdress' message gave way to the classic-style
+    // sloppy/track block; formal occasions gate bottoms at the dress-code layer.
     expect(rejectForStyleOccasion(item('Basic Jogging Trousers', 'bottom'), 'old_money', 'work'))
-      .toContain('sloppy bottoms underdress');
+      .toContain('sloppy/track bottoms break classic discipline');
+    expect(rejectForStyleOccasion(item('Basic Jogging Trousers', 'bottom'), 'minimalist', 'formal'))
+      .toBe('formal_requires_tailored_bottom');
   });
 
   it('still rejects jogger/sweatpant spellings (no regression)', () => {
