@@ -13,16 +13,17 @@ const top = (name: string, type = 'Shirt') => ({
 });
 
 describe('minimalist print discipline', () => {
-  it('rejects a palm-print camp shirt for minimalist work (formal branch)', () => {
-    // Work is a polished occasion, so the formal branch fires first — the
-    // point is the palm token is now detected at all (it previously passed).
+  it('rejects a palm-print camp shirt for minimalist work (minimalist branch)', () => {
+    // Shipped engine maps work to the smart dress code, so the formal branch
+    // no longer fires; the minimalist overlay rejects the palm print directly.
+    // The point stands: the palm token is detected at all (it previously passed).
     expect(
       rejectForStyleOccasion(
         top('Ginger Brown Fan Palm Camp Collar Shirt'),
         'minimalist',
         'work',
       ),
-    ).toBe('loud prints clash with a polished evening look');
+    ).toBe('loud prints break minimalist discipline');
   });
 
   it('rejects a palm-print shirt for minimalist weekend (minimalist branch)', () => {
@@ -31,10 +32,12 @@ describe('minimalist print discipline', () => {
     ).toBe('loud prints break minimalist discipline');
   });
 
-  it('rejects a floral shirt for a minimalist date (formal branch)', () => {
+  it('rejects a floral shirt for a minimalist date (minimalist branch)', () => {
+    // Shipped engine maps date to the smart dress code, so the shared
+    // loud-print detector rejects via the minimalist overlay.
     expect(
       rejectForStyleOccasion(top('White Floral Print Linen Shirt'), 'minimalist', 'date'),
-    ).toBe('loud prints clash with a polished evening look');
+    ).toBe('loud prints break minimalist discipline');
   });
 
   it('rejects a souvenir jacket layer for minimalist travel', () => {

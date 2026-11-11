@@ -13,7 +13,17 @@ test.each(['geox-u44q6d00043c6009','geox-u56q6a00022c6372'])('recognizes the obs
  const p=look();p[3]={...p[3],id:'shop_'+id,name:'Moner W 2Fit Leather Loafers'};
  expect(describeGarment(p[3]).casualSole).toBe(true);
  expect(assessOutfitQuality(p,'old_money','Work').acceptance.passed).toBe(false);
- expect(assessOutfitQuality(p,'casual','Casual').acceptance.passed).toBe(true);
+ // Redesign re-scope: the quality floor now treats a verified comfort sole
+ // under a blazer + tailored trousers as a whole-look register conflict in
+ // EVERY style (outfitQualityFloor keeps only chinos, technical travel sets,
+ // summer linen drawstrings and slim rubber dress soles available).
+ const tailored=assessOutfitQuality(p,'casual','Casual').acceptance;
+ expect(tailored.passed).toBe(false);
+ expect(tailored.reason).toBe('hybrid_or_comfort_sole_conflicts_with_dress_trousers');
+ // No generic leather-loafer ban: the same verified comfort-sole loafer still
+ // passes a genuinely casual pairing (chinos, no tailored trousers).
+ const relaxed=[...p];relaxed[2]={...p[2],id:'quality-chinos',name:'Beige regular cotton chinos'};
+ expect(assessOutfitQuality(relaxed,'casual','Casual').acceptance.passed).toBe(true);
  expect(describeGarment({...p[3],id:'other',name:'Dress penny loafers with slim rubber sole'}).casualSole).toBe(false);
 });
 test('blocks the actual technical leisure family in refined Work but keeps performance wool and Casual',()=>{

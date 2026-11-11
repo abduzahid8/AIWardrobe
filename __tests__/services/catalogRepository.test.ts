@@ -1,7 +1,11 @@
 /** @jest-environment node */
 const mockFrom = jest.fn();
+const mockRpc = jest.fn();
 jest.mock('../../lib/supabase', () => ({
-  supabase: { from: (...args: unknown[]) => mockFrom(...args) },
+  supabase: {
+    from: (...args: unknown[]) => mockFrom(...args),
+    rpc: (...args: unknown[]) => mockRpc(...args),
+  },
 }));
 import {
   createFixtureCatalogRepository,
@@ -33,7 +37,10 @@ function query(result: unknown) {
     q[method] = jest.fn(() => q);
   return q;
 }
-beforeEach(() => mockFrom.mockReset());
+beforeEach(() => {
+  mockFrom.mockReset();
+  mockRpc.mockReset();
+});
 test('live search filters before bounded paging, deduplicates concurrent reads and retains exact IDs', async () => {
   const q = query({
     data: [
@@ -87,16 +94,37 @@ test('offline search uses bundled rows, preserves filters and does not cache a f
   expect(mockFrom).toHaveBeenCalledTimes(3);
 });
 test('verified empty and provenance-filtered results do not turn into fake inventory', async () => {
+  // Redesign re-scope: unfiltered search reads the shared discovery RPC; the
+  // bundled fixture catalog is only the offline fallback. Both a verified
+  // empty page and a page whose rows fail product-only provenance must stay
+  // empty on the live path (origin 'live'), never padded with fixture rows.
+  const repository = createSupabaseCatalogRepository(
+    createFixtureCatalogRepository(() => [fixture])
+  );
+  mockRpc.mockReturnValue({
+    abortSignal: () => Promise.resolve({ data: [], error: null }),
+  });
+  const verifiedEmpty = await repository.search({ query: '' });
+  expect(verifiedEmpty.items).toEqual([]);
+  expect(verifiedEmpty.origin).toBe('live');
+  mockRpc.mockReturnValue({
+    abortSignal: () =>
+      Promise.resolve({
+        data: [{ id: 'person-photo', name: 'Shirt', description: 'model wearing shirt' }],
+        error: null,
+      }),
+  });
+  const provenanceFiltered = await repository.search({ query: 'summer' });
+  expect(provenanceFiltered.items).toEqual([]);
+  expect(provenanceFiltered.origin).toBe('live');
+  // Variant lookup still walks the legacy row path, where the same
+  // provenance filter must keep person-photo rows out of inventory.
   mockFrom.mockReturnValue(
     query({
       data: [{ id: 'person-photo', name: 'Shirt', description: 'model wearing shirt' }],
       error: null,
     })
   );
-  const repository = createSupabaseCatalogRepository(
-    createFixtureCatalogRepository(() => [fixture])
-  );
-  expect((await repository.search({ query: '' })).items).toEqual([]);
   expect(await repository.getVariant('person-photo')).toBeNull();
 });
 
