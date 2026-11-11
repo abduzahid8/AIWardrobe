@@ -98,6 +98,12 @@ export async function POST(request: Request): Promise<Response> {
     STYLIST6_REFERENCE_BUCKET: envOf('STYLIST6_REFERENCE_BUCKET'),
   };
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    // Owner-only runtime diagnostics: presence flags, never credentials.
+    console.error('stylist6_configuration_missing', {
+      supabaseUrl: !env.SUPABASE_URL,
+      supabaseAnon: !env.SUPABASE_ANON_KEY,
+      supabaseService: !env.SUPABASE_SERVICE_ROLE_KEY,
+    });
     return errorResponse('stylist_compute_unconfigured', 503);
   }
 
