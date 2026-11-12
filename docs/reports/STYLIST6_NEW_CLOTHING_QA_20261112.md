@@ -140,3 +140,5 @@ string to a fresh code deployment. No NVIDIA inference was run.
 
 Follow-up: inspect exact CI results on final SHA and run independent
 visual/merchant feasibility review before production.
+
+Version marker for new local proof: `stylist-6-dev-local-20261112-r3`; an R2 banner after pulling means the dev bridge process was not restarted.
