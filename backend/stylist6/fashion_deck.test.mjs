@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, singleCurrencyBonus } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, singleCurrencyBonus } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 
@@ -437,5 +437,48 @@ test('pinned anchor survives exploration and remains in every suggested directio
     assert.ok(look.items.some(x=>x.id==='shirt-white'));
     assert.ok(look.items.reduce((total,item)=>total+item.price,0)<=300);
     assert.ok(look.direction);
+  }
+});
+
+
+test('owner 2026-11-12: minimalist smart date excludes resort towelling tee and retro leather trainers', async () => {
+  const smartDate = fashionStylingContext({style:'minimalist',occasion:'Date night',
+    sourceMode:'catalog',weather:{},optionalLayer:true,preferences:{}});
+  assert.equal(smartDate.dressCode,'smart');
+  const casualDate = {...smartDate,dressCode:'casual'};
+  const resortTee = garment('real-resort-tee',
+    'Blue Turquoise Terry Towelling T-Shirt','top','t-shirt');
+  const retroTrainer = garment('real-retro-shoe',
+    'RETRO LEATHER TRAINERS','shoes','minimal-sneaker');
+  const cleanSneaker = garment('quiet-low-top',
+    'Clean White Low-Top Leather Sneakers','shoes','minimal-sneaker');
+  assert.equal(rejectForUnsuitableDateNight(
+    {slot:'top',subtype:'t-shirt'},smartDate,resortTee),true);
+  assert.equal(rejectForUnsuitableDateNight(
+    {slot:'shoes',subtype:'minimal-sneaker',athletic:false},smartDate,retroTrainer),true);
+  assert.equal(rejectForUnsuitableDateNight(
+    {slot:'shoes',subtype:'minimal-sneaker',athletic:false},smartDate,cleanSneaker),false);
+  assert.equal(rejectForUnsuitableDateNight(
+    {slot:'top',subtype:'t-shirt'},casualDate,resortTee),false);
+  assert.equal(rejectForUnsuitableDateNight(
+    {slot:'shoes',subtype:'minimal-sneaker'},casualDate,retroTrainer),false);
+  assert.equal(rejectUnpolishedDateNightLook([garment('tee','Plain White T-Shirt','top','t-shirt'),
+    garment('chino','Grey Cotton Chinos','bottom','chino'),cleanSneaker],smartDate),true);
+  assert.equal(rejectUnpolishedDateNightLook([garment('knit','Fine Merino Knit Sweater','top','fine-knit'),
+    garment('chino','Grey Cotton Chinos','bottom','chino'),cleanSneaker],smartDate),false);
+  assert.equal(rejectUnpolishedDateNightLook([garment('tee','Plain White T-Shirt','top','t-shirt'),
+    garment('chino','Grey Cotton Chinos','bottom','chino'),cleanSneaker],casualDate),false);
+
+  const catalog = [...products,resortTee,retroTrainer,cleanSneaker,
+    garment('grey-knit','Fine Merino Knit Sweater Grey','top','fine-knit')];
+  const result = await recommendFashionDeck({
+    ...base,catalog,
+    request:{sourceMode:'catalog',style:'minimalist',occasion:'Date night',
+      weather:{},optionalLayer:true,preferences:{},requiredIds:[]},
+  });
+  assert.ok(result.outfits.length > 0);
+  for(const look of result.outfits) {
+    assert.ok(look.items.every(item=>!['real-resort-tee','real-retro-shoe'].includes(item.id)));
+    assert.equal(rejectUnpolishedDateNightLook(look.items,smartDate),false);
   }
 });
