@@ -214,6 +214,59 @@ export function rejectUnpolishedDateNightLook(items, context) {
 }
 
 /**
+ * Footwear-register tie-back for elevated occasions (bounded, never a gate).
+ *
+ * Deck reviews repeatedly show trainer-only footwear losing the shoe-register
+ * read at quiet styles worn to dressed occasions, even though equally
+ * coherent dress shoes exist in the same catalog. The elevated register is a
+ * property of the PAIR: a quiet/elevated style (constant table below) at an
+ * occasion whose register expects shoes (constant table below — the
+ * smart-work set the shared context already recognises, plus the conference /
+ * gallery / dinner evening occasions from the reviews). Casual styles,
+ * travel, weekends and athletic contexts are deliberately untouched, and
+ * warm-weather layering behavior is out of scope here.
+ *
+ * The penalty is a tiny bounded score adjustment (FOOTWEAR_REGISTER_PENALTY,
+ * about half the 0.025 near-tie margin): it reorders near-ties toward dress
+ * shoes, never rejects, and is skipped entirely unless the retrieval's
+ * admitted shoe pool demonstrably contains a non-trainer option that passed
+ * every hard gate for this context — when the only feasible shoes are
+ * trainers, nothing fires. A sleek minimal/low-top sneaker keeps the quiet
+ * register, mirroring the documented smart date-night boundary.
+ */
+export const FOOTWEAR_REGISTER_PENALTY = 0.015;
+const ELEVATED_REGISTER_STYLES = ['old_money', 'classic', 'semi_classic'];
+const ELEVATED_REGISTER_OCCASIONS =
+  /\b(conference|gallery|exhibition|museum|dinner|business|meeting|work|office)\b/i;
+const SLEEK_SNEAKER = /\b(minimal|clean|plain|sleek|low[ -]?top)\b/i;
+
+export function elevatedFootwearRegisterContext(context) {
+  return ELEVATED_REGISTER_STYLES.includes(context?.style) &&
+    ELEVATED_REGISTER_OCCASIONS.test(String(context?.occasion || ''));
+}
+
+export function trainerFootwearDescriptor(descriptor, item) {
+  if (descriptor?.slot !== 'shoes') return false;
+  if (descriptor.athletic === true ||
+      ['sport-sneaker', 'sneaker'].includes(descriptor.subtype)) return true;
+  // The shared descriptor classifies any "leather trainers" listing as a
+  // minimal sneaker; without minimal/clean/low-top evidence that listing is
+  // still a generic trainer (same boundary as the smart date-night gate).
+  return descriptor.subtype === 'minimal-sneaker' &&
+    !SLEEK_SNEAKER.test(String(item?.name || ''));
+}
+
+export function footwearRegisterPenaltyForLook(items, descriptors, context, nonTrainerShoeFeasible) {
+  if (nonTrainerShoeFeasible !== true || !elevatedFootwearRegisterContext(context)) return 0;
+  const shoes = (descriptors || []).flatMap((descriptor, index) =>
+    descriptor?.slot === 'shoes' && items?.[index]?.macroCategory === 'shoes'
+      ? [[descriptor, items[index]]] : []);
+  return shoes.length > 0 &&
+    shoes.every(([descriptor, item]) => trainerFootwearDescriptor(descriptor, item))
+    ? FOOTWEAR_REGISTER_PENALTY : 0;
+}
+
+/**
  * Single-currency preference for one look: all-shown-currency decks total
  * honestly and shop simply. Tie-break scale only — never overrides fit.
  * Exported for tests.
@@ -276,6 +329,11 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
   const taste = personalTaste(context.preferences);
   const feedbackTaste = extras.feedbackTaste?.active ? extras.feedbackTaste : null;
   const lockedIds = new Set((extras.requiredIds || []).map(String));
+  // Evidence about this retrieval's admitted shoe pool, collected during
+  // prepare() before any look is ranked: the footwear-register tie-back may
+  // only fire when at least one non-trainer shoe survived every admission
+  // gate for this context, so a trainer-only feasible pool pays nothing.
+  const shoePool = { trainer: 0, nonTrainer: 0 };
   return {
     prepare(item) {
       if (visualAdmissionReason(item) || isNonOutfitItem(item)) return null;
@@ -286,6 +344,9 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           rejectForUnsuitableDateNight(descriptor, context, prepared) ||
           rejectQuietSmartLeisureLayer(descriptor, context, prepared) ||
           rejectPolishedContextMismatch(descriptor, context, prepared)) return null;
+      if (descriptor.slot === 'shoes') {
+        shoePool[trainerFootwearDescriptor(descriptor, prepared) ? 'trainer' : 'nonTrainer'] += 1;
+      }
       const personal = evaluatePersonalItem(prepared, descriptor, taste);
       const feedback = evaluateFeedbackItem(prepared, feedbackTaste);
       // An explicitly locked owned item is a direct user instruction. Brand
@@ -353,6 +414,11 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       // toward verifiably recent price evidence, never a gate.
       const freshness = priceFreshnessPenaltyForLook(items);
       const descriptions = items.map(describeGarment);
+      // Elevated-register footwear tie-back: a tiny, evidence-checked nudge
+      // toward dress shoes at quiet styles on dressed occasions, only when
+      // non-trainer shoes demonstrably passed admission for this context.
+      const registerPenalty = footwearRegisterPenaltyForLook(
+        items, descriptions, context, shoePool.nonTrainer > 0);
       const personal = evaluatePersonalLook(
         items.map((item, index) => ({ item, descriptor: descriptions[index] })), taste);
       // Explicit-feedback taste (gate D): a capped, decayed adjustment from
@@ -374,12 +440,14 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       const result = {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
           personal.adjustment + editorial.adjustment + feedback.adjustment -
-          recentStylingPenalty(items, recentSignatures) - pricing.penalty - freshness,
+          recentStylingPenalty(items, recentSignatures) - pricing.penalty - freshness -
+          registerPenalty,
         dimensions: { ...dimensions, palette },
-        evidence: pricing.flagged || freshness > 0
+        evidence: pricing.flagged || freshness > 0 || registerPenalty > 0
           ? [...assessment.evidence,
             ...(pricing.flagged ? ['unbudgeted_premium_selection_dampened'] : []),
-            ...(freshness > 0 ? ['stale_price_evidence_dampened'] : [])]
+            ...(freshness > 0 ? ['stale_price_evidence_dampened'] : []),
+            ...(registerPenalty > 0 ? ['trainer_footwear_register_dampened'] : [])]
           : assessment.evidence,
         referenceMetadata: affinity,
         editorial,

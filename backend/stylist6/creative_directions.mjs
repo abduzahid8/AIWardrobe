@@ -11,11 +11,26 @@
  */
 import { editorialDirectionEligible } from './editorial_quality.mjs';
 
-export const DIRECTION_VERSION = 's6-three-directions-editorial-v2';
+export const DIRECTION_VERSION = 's6-three-directions-editorial-v3';
 const MAX_POOL = 72;
 const QUALITY_WINDOW = 0.16;
 const EPS = 1e-9;
 const SLOT_NAMES = ['top', 'outerwear', 'bottom', 'shoes'];
+// Deck brand-monotony tie-break. Three cards that all draw from the same
+// house read like one capsule repeated, which is exactly the "duplicate
+// upper_body / same brand everywhere" complaint a varied catalog should
+// answer. Same bounded-magnitude convention as the footwear-variety
+// tie-break below: a look whose brands were all already drawn earlier in
+// the deck pays at most -0.035 (scaled by the share of its brands that are
+// repeats), and introducing a brand the deck has not used yet earns the
+// small +0.012 nudge. The worst-case deck-level swing (2 x 0.035 across the
+// refresh+discovery pair) therefore matches the existing footwear
+// convention's deck-level swing: enough to decide a near-tie, never enough
+// to override a clear quality winner, and a constant (no-op) offset on a
+// single-brand catalog.
+const BRAND_REPEAT_PENALTY_MAX = 0.035;
+const BRAND_NOVELTY_BONUS = 0.012;
+const normalizeBrand = (value) => String(value || '').trim().toLowerCase();
 
 const known = (x) => typeof x === 'string' && !!x &&
   x !== 'unknown' && x !== 'neutral' && x !== 'missing';
@@ -91,6 +106,26 @@ export function footwearVarietyAdjustment(candidate, chosen, overlap) {
   return earlier.some(item => overlap({items:shoe},{items:[item]}) > 0) ? -0.035 : 0.012;
 }
 
+/**
+ * Deck brand-monotony tie-break. Brand evidence comes only from catalog
+ * metadata (item.brand): a look with no known brands stays neutral, so a
+ * sparse or brand-less catalog can never be penalized on invented claims.
+ * Proportional to the overlap between this look's brand set and the union
+ * of the brand sets already chosen for the deck: full repeat -0.035, partial
+ * repeat scaled by the repeat share, all-new brand set +0.012. Exported for
+ * tests.
+ */
+export function brandVarietyAdjustment(candidate, chosen) {
+  const brands = new Set((candidate?.items || [])
+    .map((item) => normalizeBrand(item?.brand)).filter(Boolean));
+  if (!brands.size) return 0;
+  const earlier = new Set((chosen || []).flatMap((look) =>
+    (look?.items || []).map((item) => normalizeBrand(item?.brand))).filter(Boolean));
+  if (!earlier.size) return 0;
+  const repeats = [...brands].filter((brand) => earlier.has(brand)).length;
+  return repeats ? -BRAND_REPEAT_PENALTY_MAX * repeats / brands.size : BRAND_NOVELTY_BONUS;
+}
+
 function pick(pool, chosen, overlap, predicate, rank) {
   let best = null, utility = -Infinity;
   for (const look of pool) {
@@ -99,7 +134,8 @@ function pick(pool, chosen, overlap, predicate, rank) {
     const evidence = chosen.map(other => rank.diff(other, look));
     if (!predicate(look, evidence)) continue;
     const value = rank.value(look, evidence) +
-      footwearVarietyAdjustment(look, chosen, overlap);
+      footwearVarietyAdjustment(look, chosen, overlap) +
+      brandVarietyAdjustment(look, chosen);
     if (value > utility + EPS || (Math.abs(value - utility) <= EPS &&
       String(look.id).localeCompare(String(best?.id || '')) < 0)) {
       best = look; utility = value;
@@ -160,8 +196,10 @@ export function selectCreativeDirectionDeck(shortlist, {
     if (!discovered) continue;
     const joint = refreshedRank.value(fresh, [firstDiff]) +
       footwearVarietyAdjustment(fresh, [signature], overlap) +
+      brandVarietyAdjustment(fresh, [signature]) +
       discoveredRank.value(discovered, [diff(signature,discovered),diff(fresh,discovered)]) +
-      footwearVarietyAdjustment(discovered, [signature,fresh], overlap);
+      footwearVarietyAdjustment(discovered, [signature,fresh], overlap) +
+      brandVarietyAdjustment(discovered, [signature,fresh]);
     if (joint > bestPairValue + EPS || (Math.abs(joint-bestPairValue)<=EPS &&
       `${fresh.id}|${discovered.id}`.localeCompare(
         plannedPair ? `${plannedPair[0].id}|${plannedPair[1].id}` : '') < 0)) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -317,6 +317,98 @@ test('single-currency looks earn the consistency preference, mixed looks do not'
   assert.equal(singleCurrencyBonus(null), 0);
 });
 
+// ---------------------------------------------------------------------------
+// Elevated-register footwear tie-back: a bounded 0.015 score adjustment for
+// trainer-only shoes at quiet styles on dressed occasions, only while the
+// retrieval's admitted pool demonstrably contains a non-trainer option.
+// Near-tie reorder only — never a reject, never casual/travel contexts.
+// ---------------------------------------------------------------------------
+
+test('elevated footwear register is an explicit quiet-style x dressed-occasion table', () => {
+  const context = (style, occasion) => ({ style, occasion });
+  assert.equal(elevatedFootwearRegisterContext(context('old_money', 'Gallery opening')), true);
+  assert.equal(elevatedFootwearRegisterContext(context('classic', 'Conference')), true);
+  assert.equal(elevatedFootwearRegisterContext(context('semi_classic', 'Dinner')), true);
+  assert.equal(elevatedFootwearRegisterContext(context('old_money', 'Business meeting')), true);
+  assert.equal(elevatedFootwearRegisterContext(context('classic', 'Work')), true);
+  assert.equal(elevatedFootwearRegisterContext(context('old_money', 'Travel')), false);
+  assert.equal(elevatedFootwearRegisterContext(context('old_money', 'Weekend')), false);
+  assert.equal(elevatedFootwearRegisterContext(context('casual', 'Conference')), false);
+  assert.equal(elevatedFootwearRegisterContext(context('minimalist', 'Dinner')), false);
+  assert.equal(elevatedFootwearRegisterContext(context('streetwear', 'Business meeting')), false);
+  assert.equal(elevatedFootwearRegisterContext(null), false);
+  assert.equal(elevatedFootwearRegisterContext(context('old_money', null)), false);
+});
+
+test('trainer detection keeps the documented sleek low-top boundary', () => {
+  const item = (name, subtype) => garment('shoe', name, 'shoes', subtype);
+  assert.equal(trainerFootwearDescriptor({ slot: 'shoes', subtype: 'sneaker' }, item('Canvas Trainers', 'sneaker')), true);
+  assert.equal(trainerFootwearDescriptor({ slot: 'shoes', subtype: 'sport-sneaker', athletic: true }, item('Running Sneakers', 'sport-sneaker')), true);
+  // A generic "leather trainers" listing is still a trainer despite the
+  // descriptor's minimal-sneaker aliasing.
+  assert.equal(trainerFootwearDescriptor({ slot: 'shoes', subtype: 'minimal-sneaker' }, item('Casual Leather Trainers', 'minimal-sneaker')), true);
+  // A deliberately minimal/clean/low-top silhouette keeps the quiet register.
+  assert.equal(trainerFootwearDescriptor({ slot: 'shoes', subtype: 'minimal-sneaker' }, item('Clean White Low-Top Leather Sneakers', 'minimal-sneaker')), false);
+  assert.equal(trainerFootwearDescriptor({ slot: 'shoes', subtype: 'loafer' }, item('Suede Loafers', 'loafer')), false);
+  assert.equal(trainerFootwearDescriptor({ slot: 'shoes', subtype: 'derby' }, item('Leather Derby Shoes', 'derby')), false);
+  assert.equal(trainerFootwearDescriptor({ slot: 'bottom', subtype: 'sneaker' }, item('Joggers', 'sneaker')), false);
+});
+
+test('footwear register penalty is bounded and skipped without feasible dress shoes', () => {
+  const trainer = garment('trainer-generic', 'Casual Leather Trainers', 'shoes', 'minimal-sneaker');
+  const sleek = garment('trainer-sleek', 'Clean White Low-Top Leather Sneakers', 'shoes', 'minimal-sneaker');
+  const derby = garment('derby-brown', 'Brown Leather Derby Shoes', 'shoes', 'derby');
+  const descriptorOf = (item) => ({ slot: item.macroCategory, subtype: item.subtype });
+  const gallery = { style: 'old_money', occasion: 'Gallery opening' };
+  // Trainer-only look at an elevated register with dress shoes feasible: the
+  // bounded penalty fires (half the near-tie margin, never more).
+  assert.equal(footwearRegisterPenaltyForLook([trainer], [descriptorOf(trainer)], gallery, true), FOOTWEAR_REGISTER_PENALTY);
+  assert.ok(FOOTWEAR_REGISTER_PENALTY > 0 && FOOTWEAR_REGISTER_PENALTY < 0.025);
+  // A sleek low-top is not treated as a trainer.
+  assert.equal(footwearRegisterPenaltyForLook([sleek], [descriptorOf(sleek)], gallery, true), 0);
+  assert.equal(footwearRegisterPenaltyForLook([derby], [descriptorOf(derby)], gallery, true), 0);
+  // The only feasible shoes are trainers: nothing fires.
+  assert.equal(footwearRegisterPenaltyForLook([trainer], [descriptorOf(trainer)], gallery, false), 0);
+  // Casual styles and non-elevated occasions are outside the register.
+  assert.equal(footwearRegisterPenaltyForLook([trainer], [descriptorOf(trainer)],
+    { style: 'casual', occasion: 'Conference' }, true), 0);
+  assert.equal(footwearRegisterPenaltyForLook([trainer], [descriptorOf(trainer)],
+    { style: 'old_money', occasion: 'Travel' }, true), 0);
+});
+
+test('elevated-register deck keeps trainer looks eligible but visibly dampened and reordered', async () => {
+  const catalog = [...products,
+    garment('trainer-generic', 'Casual Leather Trainers', 'shoes', 'minimal-sneaker'),
+    garment('trainer-canvas', 'Court Canvas Sneakers', 'shoes', 'sneaker')];
+  // Semi-classic at a dressed occasion: trainers still pass the shared hard
+  // gates (old_money/classic contexts reject sneaker subtypes outright), so
+  // the register tie-back is the remaining near-tie correction.
+  const request = { ...base.request, style: 'semi_classic', occasion: 'Conference',
+    weather: { temp: 19 }, requiredIds: [], preferences: {}, budget: undefined };
+  const result = await recommendFashionDeck({ ...base, catalog, request });
+  assert.ok(result.outfits.length > 0);
+  let trainerLooks = 0, dressLooks = 0;
+  for (const look of result.outfits) {
+    const shoes = look.items.filter(({ macroCategory }) => macroCategory === 'shoes');
+    const allTrainer = shoes.length > 0 && shoes.every((shoe) =>
+      trainerFootwearDescriptor({ slot: 'shoes', subtype: shoe.subtype }, shoe));
+    assert.equal(look.fashion.evidence.includes('trainer_footwear_register_dampened'), allTrainer,
+      'register evidence must match the actual footwear');
+    if (allTrainer) trainerLooks += 1; else dressLooks += 1;
+  }
+  assert.ok(dressLooks >= 1, 'dress-shoe looks stay eligible and competitive');
+  assert.ok(trainerLooks + dressLooks === result.outfits.length);
+  // A trainer-only feasible pool (no dress shoes at all) pays nothing.
+  const trainersOnly = [...products.filter(({ macroCategory }) => macroCategory !== 'shoes'),
+    garment('trainer-generic', 'Casual Leather Trainers', 'shoes', 'minimal-sneaker'),
+    garment('trainer-canvas', 'Court Canvas Sneakers', 'shoes', 'sneaker')];
+  const sparse = await recommendFashionDeck({ ...base, catalog: trainersOnly, request });
+  assert.ok(sparse.outfits.length > 0);
+  for (const look of sparse.outfits) {
+    assert.equal(look.fashion.evidence.includes('trainer_footwear_register_dampened'), false);
+  }
+});
+
 test('the exclusion quality floor prefers a smaller honest deck over a much worse outfit', () => {
   const look = (id, score) => ({ id, fashion: { score } });
   const selected = [look('a', 0.85), look('b', 0.83), look('c', 0.50)];
@@ -478,7 +570,7 @@ test('short onboarding explores adjacent ideas without changing the requested dr
   });
   assert.ok(result.outfits.length > 0);
   assert.equal(result.diagnostics.neighborBriefs,2);
-  assert.equal(result.diagnostics.directionVersion,'s6-three-directions-editorial-v2');
+  assert.equal(result.diagnostics.directionVersion,'s6-three-directions-editorial-v3');
   assert.equal(result.outfits[0].direction.id,'signature');
   for(const outfit of result.outfits){
     assert.ok(['signature','refresh','discovery','alternative'].includes(outfit.direction.id));

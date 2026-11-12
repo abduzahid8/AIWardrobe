@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DIRECTION_VERSION,
+  brandVarietyAdjustment,
   directionDifference,
   footwearVarietyAdjustment,
   labelCreativeDirections,
@@ -205,4 +206,66 @@ test('within comparable quality, creative second pick prefers non-reused footwea
   assert.equal(result.looks[0].id,'lead');
   assert.equal(result.looks[1].id,'rotated');
   assert.ok(result.directions[1].id==='refresh');
+});
+
+// ---------------------------------------------------------------------------
+// Deck brand-monotony tie-break (s6-three-directions-editorial-v3). Same
+// bounded-magnitude convention as the footwear-variety tie-break: a look
+// whose whole brand set was already drawn pays at most -0.035 (scaled by the
+// repeat share), a new brand set earns +0.012; brand-less looks stay neutral.
+// ---------------------------------------------------------------------------
+
+test('brand variety adjustment is proportional, bounded and neutral without brand evidence',()=>{
+  const branded=(id,quality,brands)=>({
+    id,items:brands.map((brand,index)=>({id:id+'-item-'+index,brand})),fashion:{score:quality},
+  });
+  const lead=branded('lead',.94,['alpha','beta']);
+  // Full brand-set repeat pays exactly the footwear-repeat magnitude.
+  assert.equal(brandVarietyAdjustment(branded('same',.92,['beta','alpha']),[lead]),-.035);
+  // Partial repeat scales with the repeat share.
+  assert.equal(brandVarietyAdjustment(branded('half',.92,['alpha','gamma']),[lead]),-.0175);
+  // An all-new brand set earns the same nudge as a new physical shoe.
+  assert.equal(brandVarietyAdjustment(branded('new',.92,['gamma','delta']),[lead]),.012);
+  // No earlier looks, or no known brands on either side: neutral, never invented.
+  assert.equal(brandVarietyAdjustment(branded('fresh',.92,['alpha']),[]),0);
+  assert.equal(brandVarietyAdjustment(branded('unbranded',.92,['','  ',null]),[lead]),0);
+  assert.equal(brandVarietyAdjustment(branded('named',.92,['alpha']),
+    [branded('anon',.93,['',''])]),0);
+  // Alias-normalized house names count as the same brand.
+  assert.equal(brandVarietyAdjustment(branded('alias',.92,[' ALPHA ','beta']),[lead]),-.035);
+});
+
+test('within comparable quality a deck that repeats one brand house loses the near-tie',()=>{
+  const branded=(id,quality,features,brands)=>{
+    const result=look(id,quality,features,[id+'-top',id+'-bottom',id+'-shoes']);
+    result.items.forEach((item,index)=>{
+      item.macroCategory=['top','bottom','shoes'][index];
+      item.brand=brands[index];
+    });
+    return result;
+  };
+  const lead=branded('lead',.94,SHIRT,['alpha','alpha','alpha']);
+  const repeated=branded('repeated',.922,FRESH,['alpha','alpha','alpha']);
+  const varied=branded('varied',.917,FRESH,['gamma','alpha','alpha']);
+  // Quality gap .922 vs .917 is inside the tie-break window: the deck that
+  // repeats the same brand set everywhere must lose to the varied look.
+  const result=selectCreativeDirectionDeck([lead,repeated,varied],metrics);
+  assert.equal(result.looks[1].id,'varied');
+  // But a clear quality winner is never overridden: a candidate .018 above
+  // the varied alternative still takes the refresh slot despite paying the
+  // full same-brand penalty, and the highest-quality look always keeps the
+  // signature card (the tie-break never applies to the lead).
+  const clearWinner=branded('clear',.935,FRESH,['alpha','alpha','alpha']);
+  const clearResult=selectCreativeDirectionDeck([lead,clearWinner,varied],metrics);
+  assert.equal(clearResult.looks[0].id,'lead');
+  assert.equal(clearResult.looks[1].id,'clear');
+  const topResult=selectCreativeDirectionDeck([lead,repeated,
+    branded('stronger',.95,FRESH,['alpha','alpha','alpha'])],metrics);
+  assert.equal(topResult.looks[0].id,'stronger');
+  // A single-brand catalog pays a constant offset: relative order is intact.
+  const mono=selectCreativeDirectionDeck([
+    branded('m-lead',.94,SHIRT,['alpha','alpha','alpha']),
+    branded('m-second',.922,FRESH,['alpha','alpha','alpha']),
+  ],metrics);
+  assert.equal(mono.looks[1].id,'m-second');
 });
