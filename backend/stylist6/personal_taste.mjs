@@ -17,10 +17,10 @@ const list = (value) => Array.isArray(value)
 const included = (choices, value) => value && choices.has(norm(value));
 const canonicalPattern = (value) => {
   const word = norm(value);
-  if (/\\b(stripes?|striped|pinstripes?|pinstriped)\\b/.test(word)) return 'stripe';
-  if (/\\b(check|checked|plaid|tartan|gingham|houndstooth|windowpane)\\b/.test(word)) return 'check';
-  if (/\\b(herringbone|tweed|jacquard|textured|texture)\\b/.test(word)) return 'texture';
-  if (/\\b(print|printed|graphic|floral|logo|camo|patterned)\\b/.test(word)) return 'print';
+  if (/\b(stripes?|striped|pinstripes?|pinstriped)\b/.test(word)) return 'stripe';
+  if (/\b(check|checked|plaid|tartan|gingham|houndstooth|windowpane)\b/.test(word)) return 'check';
+  if (/\b(herringbone|tweed|jacquard|textured|texture)\b/.test(word)) return 'texture';
+  if (/\b(print|printed|graphic|floral|logo|camo|patterned)\b/.test(word)) return 'print';
   return word;
 };
 
