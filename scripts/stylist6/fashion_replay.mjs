@@ -15,8 +15,16 @@ import { garmentContextReason } from '../../src/domain/garmentContext.ts';
 import { hasColdLayerIntent, resolveOutfitComposition, resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
 import { rejectForClimate } from '../../src/domain/occasionRules.ts';
 
-const [snapshot, destination] = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const [snapshot, destination] = argv;
 if (!snapshot || !destination) throw new Error('expected catalog snapshot and output path');
+const onlyIndex = argv.indexOf('--only');
+// Fast schema/pipeline validation: run a named subset (comma separated ids)
+// instead of the full deck. Missing ids fail loudly so typos cannot silently
+// shrink the evaluation.
+const only = onlyIndex > 0
+  ? argv[onlyIndex + 1].split(',').map((id) => id.trim()).filter(Boolean)
+  : null;
 const root = path.resolve(import.meta.dirname, '../..');
 const bytes = fs.readFileSync(snapshot);
 const raw = JSON.parse(bytes.toString('utf8'));
@@ -26,7 +34,15 @@ const byId = new Map(items.map((item) => [item.id, prepareGarment(item)]));
 const slotById = new Map(items.map((item) => [item.id, item.macroCategory]));
 if (byId.size !== items.length) throw new Error('duplicate_catalog_sku');
 const index = JSON.parse(fs.readFileSync(path.join(root, 'benchmarks/stylist6/references/image_teaste_46.json')));
-const base = JSON.parse(fs.readFileSync(path.join(root, 'benchmarks/stylist6/scenarios.json'))).scenarios;
+// Version 1 files keep every scenario in `scenarios`; version 2 splits them
+// into `development` and `heldOutEvaluation`. Concatenation order preserves
+// the original index-based weather/preference rotation for unchanged rows.
+const scenariosDoc = JSON.parse(fs.readFileSync(path.join(root, 'benchmarks/stylist6/scenarios.json')));
+const base = [
+  ...(scenariosDoc.scenarios ?? []),
+  ...(scenariosDoc.development ?? []),
+  ...(scenariosDoc.heldOutEvaluation ?? []),
+];
 const temperatures = [23, 28, 17, 9, 21];
 const preferences = [
   { favoriteColors: ['navy', 'cream'] },
@@ -35,14 +51,25 @@ const preferences = [
 ];
 const scenarios = base.map((scenario, i) => ({
   id: scenario.id, style: scenario.style, occasion: scenario.occasion, budget: scenario.budget,
-  weather: { temp: temperatures[i % temperatures.length] },
-  preferences: preferences[i % preferences.length], sourceMode: 'catalog', optionalLayer: true, brief: '',
+  // Scenario-level overrides (version 2) win; version 1 rows keep the
+  // deterministic index rotation below.
+  weather: scenario.weather ?? { temp: temperatures[i % temperatures.length] },
+  preferences: scenario.preferences ?? preferences[i % preferences.length],
+  sourceMode: 'catalog', optionalLayer: true, brief: scenario.brief ?? '',
 })).concat([
   { id: 'S6-F36', style: 'streetwear', occasion: 'Weekend', weather: { temp: 16 }, preferences: { fitPreference: 'relaxed' } },
   { id: 'S6-F37', style: 'streetwear', occasion: 'Casual', weather: { temp: 29 }, preferences: { avoidColors: ['black'] }, budget: { amount: 4_000_000, currency: 'UZS' } },
   { id: 'S6-F38', style: 'classic', occasion: 'Formal dinner', weather: { temp: 20 }, preferences: { dislikedPatterns: ['print'] }, budget: { amount: 12_000_000, currency: 'UZS' } },
   { id: 'S6-F39', style: 'smart_casual', occasion: 'Date night', weather: { temp: 27 }, preferences: { favoriteColors: ['brown'] }, brief: 'No outerwear' },
 ].map((scenario) => ({ sourceMode: 'catalog', optionalLayer: true, brief: '', ...scenario })));
+const selected = only
+  ? scenarios.filter(({ id }) => only.includes(id))
+  : scenarios;
+if (only) {
+  const missing = only.filter((id) => !scenarios.some(({ id: known }) => known === id));
+  if (missing.length) throw new Error(`unknown_scenario_ids: ${missing.join(', ')}`);
+  if (!selected.length) throw new Error('empty_scenario_selection');
+}
 
 globalThis.fetch = () => { throw new Error('fashion replay is offline'); };
 const v5 = await bundleV5();
@@ -68,7 +95,7 @@ const summarizeLook = (ids, context, reference) => {
   };
 };
 const results = [];
-for (const scenario of scenarios) {
+for (const scenario of selected) {
   const weather = resolveStylistWeather(scenario.brief, scenario.weather);
   const context = stylingContext({ ...scenario, weather, request: scenario.brief });
   const refs = referenceFirstBriefs(index, { ...scenario, season: weather.temp >= 25 ? 'summer' : weather.temp < 12 ? 'winter' : 'autumn' });

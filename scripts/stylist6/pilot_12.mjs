@@ -55,7 +55,14 @@ const scenarios = JSON.parse(fs.readFileSync(path.join(root, 'benchmarks/stylist
 const index = JSON.parse(fs.readFileSync(
   path.join(root, 'benchmarks/stylist6/references/image_teaste_46.json'), 'utf8'));
 
-const byId = new Map(scenarios.scenarios.map((s) => [s.id, s]));
+// Version 1 manifests keep `scenarios`; version 2 splits into
+// `development` + `heldOutEvaluation` (same row schema, additive read).
+const flatScenarios = [
+  ...(scenarios.scenarios ?? []),
+  ...(scenarios.development ?? []),
+  ...(scenarios.heldOutEvaluation ?? []),
+];
+const byId = new Map(flatScenarios.map((s) => [s.id, s]));
 for (const id of scenarioIds) {
   if (!byId.has(id)) throw new Error(`unknown_scenario:${id}`);
 }
