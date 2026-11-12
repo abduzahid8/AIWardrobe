@@ -254,12 +254,17 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       const descriptions = items.map(describeGarment);
       const personal = evaluatePersonalLook(
         items.map((item, index) => ({ item, descriptor: descriptions[index] })), taste);
-      const editorial = evaluateEditorialQuality({
-        dimensions: { ...dimensions, palette },
-        descriptors: descriptions,
-        context,
-        hasLayer: !unlayered,
-      });
+      // This phase is explicitly for New Clothing. Do not perturb owned
+      // wardrobe or mixed-source ranking until their source-mix and anchor
+      // acceptance gates have dedicated editorial calibration.
+      const editorial = context.sourceMode === 'catalog'
+        ? evaluateEditorialQuality({
+            dimensions: { ...dimensions, palette },
+            descriptors: descriptions,
+            context,
+            hasLayer: !unlayered,
+          })
+        : { score: null, adjustment: 0, evidence: [], version: EDITORIAL_QUALITY_VERSION };
       const result = {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
           personal.adjustment + editorial.adjustment - recentStylingPenalty(items, recentSignatures) - pricing.penalty,
