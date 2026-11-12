@@ -47,6 +47,7 @@ jobs:
         run: >-
           node --import tsx --test
           backend/stylist6/personal_taste.test.mjs
+          backend/stylist6/creative_directions.test.mjs
           backend/stylist6/fashion_deck.test.mjs
           backend/stylist6/cloud_handler.test.mjs
 
