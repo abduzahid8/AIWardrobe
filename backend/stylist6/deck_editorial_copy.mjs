@@ -63,11 +63,11 @@ function focusDescription(part, direction) {
   for (const slot of structured) {
     const d = part[slot];
     const itemName = role(d);
-    if (itemName) return `The ${itemName} changes the outfit construction.`;
+    if (itemName) return `Choosing ${itemName} changes the styling direction.`;
   }
   for (const slot of palette) {
     const d = part[slot];
-    if (known(d?.color) && role(d)) return `The ${d.color} ${role(d)} shift the palette.`;
+    if (known(d?.color) && role(d)) return `Using ${d.color} ${role(d)} shifts the palette.`;
   }
   return '';
 }
