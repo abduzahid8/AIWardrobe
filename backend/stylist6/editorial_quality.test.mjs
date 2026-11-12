@@ -54,7 +54,8 @@ test('discovery requires absolute and relative editorial quality; refresh and fa
   assert.equal(editorialDirectionEligible(make(.91),make(.82),'discovery'),false);
   assert.equal(editorialDirectionEligible(make(.91),make(.87),'discovery'),true);
   assert.equal(editorialDirectionEligible(make(.91),make(.84),'refresh'),true);
-  assert.equal(editorialDirectionEligible(make(.91),make(.77),'alternative'),false);
+  assert.equal(editorialDirectionEligible(make(.91),make(.77),'alternative'),true);
+  assert.equal(editorialDirectionEligible(make(.91),make(.65),'alternative'),false);
   assert.equal(editorialDirectionEligible(make(.70),make(.68),'discovery'),false);
   assert.equal(editorialDirectionEligible(make(.90),{fashion:{}},'discovery'),false);
   assert.equal(editorialDirectionEligible({fashion:{}},{fashion:{}},'discovery'),true);
