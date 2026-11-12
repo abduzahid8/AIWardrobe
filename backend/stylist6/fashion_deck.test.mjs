@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, singleCurrencyBonus } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, singleCurrencyBonus } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 
@@ -396,5 +396,46 @@ test('explicitly locked owned item overrides only its own brand exclusion', asyn
   for(const look of result.outfits){
     assert.ok(look.items.some(i=>i.id==='shirt-white'));
     assert.ok(look.items.every(i=>i.brand!=='Avoided Label'||i.id==='shirt-white'));
+  }
+});
+
+
+test('short onboarding explores adjacent ideas without changing the requested dress code', async () => {
+  assert.deepEqual(adjacentCreativeStyles('old_money','smart'),['semi_classic','minimalist']);
+  assert.deepEqual(adjacentCreativeStyles('classic','formal'),[]);
+  assert.deepEqual(adjacentCreativeStyles('casual','athletic'),[]);
+  assert.deepEqual(adjacentCreativeStyles('unknown','smart'),[]);
+  const result = await recommendFashionDeck({
+    ...base,request:{
+      ...base.request,style:'old_money',occasion:'Work',
+      requiredIds:[],budget:{amount:400,currency:'UZS'},
+      preferences:{}, // no large form, no guessed favorite colors/brands
+    },
+  });
+  assert.ok(result.outfits.length > 0);
+  assert.equal(result.diagnostics.neighborBriefs,2);
+  assert.equal(result.diagnostics.directionVersion,'s6-three-directions-v1');
+  assert.equal(result.outfits[0].direction.id,'signature');
+  for(const outfit of result.outfits){
+    assert.ok(['signature','refresh','discovery','alternative'].includes(outfit.direction.id));
+    assert.ok(outfit.items.every(item=>item.id!=='snow-parka'&&item.id!=='training-shoe'));
+    assert.ok(outfit.items.reduce((total,item)=>total+item.price,0)<=400);
+    if(outfit.direction.id==='discovery'){
+      assert.ok(outfit.direction.qualified);
+      assert.ok(outfit.direction.evidence.structuralSlots.length>0 ||
+        outfit.direction.evidence.paletteSlots.length>=3);
+    }
+  }
+});
+
+test('pinned anchor survives exploration and remains in every suggested direction', async()=>{
+  const result=await recommendFashionDeck({
+    ...base, request:{...base.request,preferences:{},requiredIds:['shirt-white']},
+  });
+  assert.ok(result.outfits.length>0);
+  for(const look of result.outfits){
+    assert.ok(look.items.some(x=>x.id==='shirt-white'));
+    assert.ok(look.items.reduce((total,item)=>total+item.price,0)<=300);
+    assert.ok(look.direction);
   }
 });
