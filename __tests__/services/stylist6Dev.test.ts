@@ -316,4 +316,28 @@ describe('stylist6 cloud staging client', () => {
     // Structure is still enforced exactly like the local bridge deck.
     expect(acceptStylist6CloudDeck([look(shop('a', 'top'), shop('b', 'top'), shop('c', 'bottom'))], 'catalog').rejections).toMatchObject({ structure: 1 });
   });
+  test('owner reproduction: complete three-look cloud catalog deck survives unchanged', () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const { acceptStylist6CloudDeck } = loadDevModule();
+    const roles = ['top', 'outerwear', 'bottom', 'shoes'];
+    const outfits = ['a', 'b', 'c'].map((lookId) => ({
+      id: `stylist6-${lookId}`,
+      items: roles.map(role => ({
+        id: `sku-${lookId}-${role}`, macroCategory: role,
+        name: `${lookId} ${role}`, imageUrl: `https://merchant.example/${lookId}/${role}.jpg`,
+        isShopItem: true, isWardrobe: false,
+        shopUrl: `https://merchant.example/product/${lookId}-${role}`,
+        price: 100, currency: 'UZS',
+      })),
+    }));
+    const result = acceptStylist6CloudDeck(outfits, 'catalog');
+    expect(result.rejections).toEqual({});
+    expect(result.accepted).toHaveLength(3);
+    expect(result.accepted).toEqual(outfits);
+    expect(result.accepted.map((look: any) => look.items.map((item: any) => item.id))).toEqual(
+      outfits.map(look => look.items.map(item => item.id)),
+    );
+  });
+
 });
