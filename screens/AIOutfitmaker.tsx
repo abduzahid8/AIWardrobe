@@ -1,5 +1,5 @@
 import {validateOutfitGenerationRequest,OutfitRequestError} from '../src/domain/outfitGenerationRequest';
-import {outfitDescription,outfitConceptTitle,distinctStylingTips,resolveSelectionSource,selectionBadgeKey} from '../src/services/stylingCopy';
+import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveSelectionSource,selectionBadgeKey} from '../src/services/stylingCopy';
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
@@ -2164,7 +2164,7 @@ const AIOutfitGenerator = () => {
                   </View>
                 )}
                 {outfit.concept && <ScaledText style={[styles.outfitDesc,{fontWeight:'700',fontSize:20,marginBottom:12}]}>
-                  {outfitConceptTitle(outfit.concept.id, outfit.concept.title)}
+                  {outfitConceptDisplayTitle(outfit.concept.id, outfit.concept.title, outfit.engineVersion)}
                 </ScaledText>}
                 {(() => {
                   const evidence = outfit.fashionDiagnostics?.personalization?.matches;
