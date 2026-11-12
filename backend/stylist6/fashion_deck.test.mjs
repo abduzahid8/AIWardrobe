@@ -517,3 +517,19 @@ test('editorial v1 is isolated to New Clothing and does not rewrite mixed-source
   assert.ok(fromShop.outfits.every(x=>Number.isFinite(x.fashion.editorial?.score)));
   assert.ok(mixed.outfits.every(x=>x.fashion.editorial.score===null&&x.fashion.editorial.adjustment===0));
 });
+
+test('Stylist 6 end-to-end returns three meaningfully named cards with short grounded reasoning',async()=>{
+  const deck=await recommendFashionDeck(base);
+  assert.equal(deck.diagnostics.deckCopyVersion,'s6-grounded-deck-copy-v1');
+  assert.equal(deck.status,'complete');
+  assert.equal(deck.outfits.length,3);
+  assert.equal(new Set(deck.outfits.map(x=>x.concept.title.toLowerCase())).size,3);
+  assert.ok(deck.outfits.every(x=>typeof x.description==='string'&&x.description.length>=35&&x.description.length<=300));
+  assert.ok(deck.outfits.every(x=>!/(we saw your photo|your body type|perfect fit|guaranteed stock)/i.test(x.description)));
+  assert.ok(deck.outfits[0].description.includes('Closest to your'));
+  for(const card of deck.outfits.slice(1)){
+    if(card.direction.id==='discovery') assert.ok(card.description.includes('new styling direction'));
+    if(card.direction.id==='refresh') assert.ok(card.description.includes('different interpretation'));
+    if(card.direction.id==='alternative') assert.ok(card.description.includes('not a separate discovery direction'));
+  }
+});
