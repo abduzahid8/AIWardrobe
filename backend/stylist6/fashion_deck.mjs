@@ -10,7 +10,8 @@ import { lookConcept, outfitConcepts } from '../../src/domain/outfitConcepts.ts'
 import { isDateNightOccasion, stylingContext } from '../../src/domain/stylingContext.ts';
 import { hasColdLayerIntent, resolveOutfitComposition, resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
 import { outfitStylingFeatures, recentStylingPenalty, stylingFeatureDistance } from '../../src/domain/outfitVisualSignature.ts';
-import { colorTokensOf, patternOf } from '../../src/domain/outfitDiversity.ts';
+import { colorTokensOf } from '../../src/domain/outfitDiversity.ts';
+import { personalTaste, evaluatePersonalItem, evaluatePersonalLook } from './personal_taste.mjs';
 import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitStructure.ts';
 import { rejectForClimate, rejectForStyleOccasion } from '../../src/domain/occasionRules.ts';
 import { groundedLookExplanation } from '../../src/domain/lookExplanation.ts';
@@ -141,8 +142,9 @@ export function applyExclusionQualityFloor(selected, best, exclusionsApplied) {
 }
 
 function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
-  const contextScores = new WeakMap(), coherent = new Map();
-  const likedPatterns = new Set((context.preferences?.likedPatterns || []).map((pattern) => patternOf({ pattern })));
+  const contextScores = new WeakMap(), personalScores = new WeakMap(), coherent = new Map();
+  const taste = personalTaste(context.preferences);
+  const lockedIds = new Set((extras.requiredIds || []).map(String));
   return {
     prepare(item) {
       if (visualAdmissionReason(item) || isNonOutfitItem(item)) return null;
@@ -151,7 +153,13 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           garmentContextReason(prepared, context) || rejectForClimate(prepared, context.weather) ||
           rejectForStyleOccasion(prepared, context.style, context.occasion) ||
           rejectForUnsuitableDateNight(descriptor, context)) return null;
-      contextScores.set(prepared, scoreGarmentForContext(prepared, context) + (known(descriptor.pattern) && likedPatterns.has(descriptor.pattern) ? .035 : 0));
+      const personal = evaluatePersonalItem(prepared, descriptor, taste);
+      // An explicitly locked owned item is a direct user instruction. Brand
+      // avoidance must not silently discard that anchor. All other garments
+      // respect opted-in brand exclusions before ranking.
+      if (personal.blocked && !lockedIds.has(String(prepared.id))) return null;
+      contextScores.set(prepared, scoreGarmentForContext(prepared, context));
+      personalScores.set(prepared, personal.score);
       return prepared;
     },
     family(item) {
@@ -167,7 +175,8 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       return (brief.roles[item.macroCategory].includes(normalized(item.subtype)) ||
           brief.roles[item.macroCategory].includes(normalized(d.subtype)) ? 0.55 : 0)
         + 0.30 * contextScores.get(item)
-        + (brief.palette.includes(normalized(d.color)) ? 0.15 : 0);
+        + (brief.palette.includes(normalized(d.color)) ? 0.15 : 0)
+        + 0.70 * (personalScores.get(item) || 0);
     },
     rankLook(items) {
       const identity = JSON.stringify(items.map(({ id }) => id).sort());
@@ -204,13 +213,21 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       // never a reject. Budgeted requests already hard-filter in admit().
       const pricing = extras.budgeted || !extras.priceProfile ? { penalty: 0, flagged: 0 }
         : pricePenaltyForLook(items, extras.priceProfile);
+      const personal = evaluatePersonalLook(
+        items.map((item) => ({ item, descriptor: describeGarment(item) })), taste);
       const result = {
-        score: .68 * compatibility + .22 * weakLink + .10 * referenceFit - recentStylingPenalty(items, recentSignatures) - pricing.penalty,
+        score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
+          personal.adjustment - recentStylingPenalty(items, recentSignatures) - pricing.penalty,
         dimensions: { ...dimensions, palette },
         evidence: pricing.flagged ? [...assessment.evidence, 'unbudgeted_premium_selection_dampened'] : assessment.evidence,
         referenceMetadata: affinity,
         imageSupportedItems: items.filter((item) =>
           describeGarment(item).evidence.some((entry) => entry.startsWith('image:'))).length,
+        personalization: {
+          adjustment: personal.adjustment,
+          matchedItems: personal.matchedItems,
+          matches: personal.matches,
+        },
       };
       coherent.set(identity, result);
       return result;
@@ -302,6 +319,7 @@ export async function recommendFashionDeck({
     creativeDirector: async () => briefs,
     options: { fashion: makeFashionScorer(context, reference, Array.isArray(request.recentSignatures) ? request.recentSignatures.slice(-32) : [], {
       priceProfile, budgeted: !!request.budget, layerOptional: context.optionalLayer === true && !forceLayer,
+      requiredIds,
     }), perRole: 8, perBrief: 100, maxVisual: 72 },
   });
   const layerMix = { three: 0, four: 0 };
