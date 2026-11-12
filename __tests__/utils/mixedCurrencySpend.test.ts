@@ -46,8 +46,8 @@ test('show exact per-currency subtotals, not a fake mixed-currency sum',()=>{
     const items=[local,imported,{...imported,id:'shop_import_2',price:5},{id:'owned',isWardrobe:true,isShopItem:false}];
     const actual=outfitCurrencySubtotals(items);
     expect(actual).toEqual([{currency:'USD',price:25},{currency:'UZS',price:100000}]);
-    expect(items[0].price).toBe(100000);
-    expect(items[1].currency).toBe('USD');
+    expect(local.price).toBe(100000);
+    expect(imported.currency).toBe('USD');
 });
 test('unquoted shop entries cannot be silently left out of visible mixed-currency subtotals',()=>{
     expect(outfitCurrencySubtotals([local,{...imported,currency:null}],[])).toEqual([]);
