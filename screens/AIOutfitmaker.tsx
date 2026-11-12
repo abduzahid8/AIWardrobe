@@ -96,6 +96,10 @@ interface GeneratedOutfit {
   compositionProtocol?: 'optional-layer-v1';
   explanationVersion?: number;
   concept?: {id:string;title:string;story:string;score?:number};
+  /** Catalog-grounded directions, not a cosmetic "three styles" claim. */
+  direction?: {id:'signature'|'refresh'|'discovery'|'alternative';qualified:boolean; evidence?:{
+    changedSlots?: string[];structuralSlots?:string[];paletteSlots?:string[];distance?:number;
+  }};
   /** Only positive matches against actual selected SKU evidence. No raw profile. */
   fashionDiagnostics?: {personalization?: {
     adjustment?: number;
@@ -2146,6 +2150,19 @@ const AIOutfitGenerator = () => {
                   </ScaledText>
                 ) : null}
 
+                {outfit.direction && ['signature','refresh','discovery','alternative'].includes(outfit.direction.id) && (
+                  <View testID={`stylistDirection-${index}`} style={{marginBottom:9}}>
+                    <View style={{flexDirection:'row',alignItems:'center',gap:6,marginBottom:3}}>
+                      <Ionicons name={outfit.direction.id==='discovery'?'compass-outline':'sparkles-outline'} size={15} color={D.accent}/>
+                      <ScaledText style={{color:D.accent,fontSize:12,fontWeight:'700'}}>
+                        {t(`outfitMaker.direction_${outfit.direction.id}`)}
+                      </ScaledText>
+                    </View>
+                    <ScaledText style={[styles.outfitDesc,{fontSize:12,marginBottom:0}]} minScale={0.75}>
+                      {t(`outfitMaker.directionExplain_${outfit.direction.id}`)}
+                    </ScaledText>
+                  </View>
+                )}
                 {outfit.concept && <ScaledText style={[styles.outfitDesc,{fontWeight:'700',fontSize:20,marginBottom:12}]}>
                   {outfitConceptTitle(outfit.concept.id, outfit.concept.title)}
                 </ScaledText>}
