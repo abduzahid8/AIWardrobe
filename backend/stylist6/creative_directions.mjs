@@ -113,40 +113,64 @@ export function selectCreativeDirectionDeck(shortlist, {
   const differentBrief = (a,b) => a?.briefId !== b?.briefId ? 0.012 : 0;
   const signature = eligible[0];
   const chosen = [signature];
-  const refreshed = pick(eligible, chosen, overlap,
-    (look, distances) => refreshWorthShowing(distances[0]),
-    {
-      diff,
-      value: (look, [d]) => score(look) + bonus(look) +
-        0.11 * d.distance - 0.06 * Math.abs(d.distance - 0.35) +
-        differentBrief(signature, look),
-    });
-  if (refreshed) chosen.push(refreshed);
-  else {
-    const fallback = pick(eligible, chosen, overlap, () => true, {
-      diff,
-      value: (look, [d]) => score(look) + bonus(look) + .07 * d.distance,
-    });
-    if (fallback) chosen.push(fallback);
-  }
-  if (chosen.length === 2) {
-    const discovered = pick(eligible, chosen, overlap,
+  const refreshedRank = {
+    diff,
+    value: (look, [d]) => score(look) + bonus(look) +
+      0.11 * d.distance - 0.06 * Math.abs(d.distance - 0.35) -
+      0.20 * Math.max(0, d.distance - 0.42) +
+      differentBrief(signature, look),
+  };
+  const discoveredRank = {
+    diff,
+    value: (look, [d1,d2]) => score(look) + bonus(look) +
+      .16 * Math.min(d1.distance,d2.distance) +
+      .025 * Math.min(d1.structuralSlots.length,2) +
+      differentBrief(signature,look),
+  };
+  // Plan the second and third directions JOINTLY. Greedy selection would
+  // spend the only distinctive silhouette as "refresh" and leave three
+  // visually similar results. The bounded 72x72 search preserves quality.
+  let plannedPair = null, bestPairValue = -Infinity;
+  for (const fresh of eligible) {
+    if (fresh.id === signature.id || !allowedTogether(signature, fresh, overlap)) continue;
+    const firstDiff = diff(signature, fresh);
+    if (!refreshWorthShowing(firstDiff)) continue;
+    const discovered = pick(eligible, [signature, fresh], overlap,
       (look, [d1,d2]) => discoveryWorthShowing(d1,d2),
-      {
-        diff,
-        value: (look, [d1,d2]) => score(look) + bonus(look) +
-          .16 * Math.min(d1.distance,d2.distance) +
-          .025 * Math.min(d1.structuralSlots.length,2) +
-          differentBrief(signature,look),
-      });
-    if (discovered) chosen.push(discovered);
+      discoveredRank);
+    if (!discovered) continue;
+    const joint = refreshedRank.value(fresh, [firstDiff]) +
+      discoveredRank.value(discovered, [diff(signature,discovered),diff(fresh,discovered)]);
+    if (joint > bestPairValue + EPS || (Math.abs(joint-bestPairValue)<=EPS &&
+      `${fresh.id}|${discovered.id}`.localeCompare(
+        plannedPair ? `${plannedPair[0].id}|${plannedPair[1].id}` : '') < 0)) {
+      plannedPair = [fresh,discovered]; bestPairValue = joint;
+    }
+  }
+  if (plannedPair) chosen.push(...plannedPair);
+  else {
+    const refreshed = pick(eligible, chosen, overlap,
+      (look, distances) => refreshWorthShowing(distances[0]), refreshedRank);
+    if (refreshed) chosen.push(refreshed);
     else {
       const fallback = pick(eligible, chosen, overlap, () => true, {
         diff,
-        value: (look, d) => score(look) + bonus(look) +
-          .11 * Math.min(...d.map(x => x.distance)),
+        value: (look, [d]) => score(look) + bonus(look) + .07 * d.distance,
       });
       if (fallback) chosen.push(fallback);
+    }
+    if (chosen.length === 2) {
+      const discovered = pick(eligible, chosen, overlap,
+        (look, [d1,d2]) => discoveryWorthShowing(d1,d2), discoveredRank);
+      if (discovered) chosen.push(discovered);
+      else {
+        const fallback = pick(eligible, chosen, overlap, () => true, {
+          diff,
+          value: (look, d) => score(look) + bonus(look) +
+            .11 * Math.min(...d.map(x => x.distance)),
+        });
+        if (fallback) chosen.push(fallback);
+      }
     }
   }
   const directions = labelCreativeDirections(chosen,{featuresOf: features,featureDistance});
