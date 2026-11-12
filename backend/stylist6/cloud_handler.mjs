@@ -721,6 +721,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             referenceMetadata: look.fashion?.referenceMetadata || null,
             visualVerdict: deck.diagnostics?.visualVerdict || 'NOT_RUN',
             imageSupportedItems: look.fashion?.imageSupportedItems ?? null,
+            // Only catalog-grounded positive matches; never expose the full
+            // preference profile or assert body/fit facts without evidence.
+            personalization: look.fashion?.personalization || null,
           },
         })),
       },
