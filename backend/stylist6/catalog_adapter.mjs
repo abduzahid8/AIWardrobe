@@ -172,7 +172,22 @@ export function projectCatalogItem(row) {
     return { skipped: 'bad_currency', id };
   }
   const name = String(row.name || id);
-  const hint = liveHint(row);
+  // The broad source category is authoritative for unmistakable physical
+  // roles. A colorway such as "Trench Coat Khaki" on *chino trousers* can
+  // poison the text-derived intelligence slot with outerwear/coat; never
+  // put trousers in an outfit's coat slot (or footwear in another slot).
+  // Tops remain flexible: the source labels blazers/cardigans as "tops".
+  const category = String(row.category || '').toLowerCase();
+  const garmentType = String(row.garment_type || '').toLowerCase();
+  const nativeLockedSlot = category === 'bottoms' || garmentType === 'lower_body'
+    ? 'bottom'
+    : category === 'shoes' || garmentType === 'shoes' || garmentType === 'footwear'
+      ? 'shoes'
+      : null;
+  const live = liveHint(row);
+  const hint = nativeLockedSlot && live && live.macroCategory !== nativeLockedSlot
+    ? null
+    : live;
   const roleProjected = pulloverBaseLayer(row, hint);
   if (roleProjected) {
     return Object.freeze({
@@ -211,9 +226,6 @@ export function projectCatalogItem(row) {
     });
   }
   const text = `${name} ${row.description || ''}`.toLowerCase();
-  const category = String(row.category || '').toLowerCase();
-  const garmentType = String(row.garment_type || '').toLowerCase();
-
   let macroCategory = null;
   let subtype = null;
   let projection = null;
