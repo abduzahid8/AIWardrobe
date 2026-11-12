@@ -80,6 +80,53 @@ test('bottoms and shoes map natively', () => {
   assert.equal(derby.subtype, 'derby');
 });
 
+
+test('source bottoms and shoes cannot become outerwear because of colorway words in live taxonomy', () => {
+  // Verified 2026-11-12 catalog regression: Everlane Performance Chino /
+  // "Trench Coat Khaki" was falsely classified as outerwear/coat by
+  // catalog_garment_intelligence despite BOTH native fields saying bottoms.
+  const mislabeledChino = row({
+    id: 'everlane-7539353845846',
+    name: 'The Performance Chino | Uniform | Trench Coat Khaki | Slim',
+    category: 'bottoms', garment_type: 'lower_body',
+    fashion_slot: 'outerwear', fashion_subtype: 'coat',
+  });
+  const chino = projectCatalogItem(mislabeledChino);
+  assert.equal(chino.macroCategory, 'bottom');
+  assert.equal(chino.subtype, 'chino');
+  assert.equal(chino.projection.kind, 'native_category');
+  const adapted = adaptCatalog([mislabeledChino]);
+  assert.equal(adapted.bySlotSubtype['bottom/chino'], 1);
+  assert.equal(adapted.bySlotSubtype['outerwear/coat'], undefined);
+
+  const shoe = projectCatalogItem(row({
+    id: 'shoe-colorway-conflict', name: 'Black Penny Loafers | Trench Coat Beige',
+    category: 'shoes', garment_type: 'footwear',
+    fashion_slot: 'outerwear', fashion_subtype: 'coat',
+  }));
+  assert.equal(shoe.macroCategory, 'shoes');
+  assert.equal(shoe.subtype, 'loafer');
+
+  // A valid matching live hint remains authoritative.
+  const correct = projectCatalogItem(row({
+    id: 'correct-chino', name: 'Cotton chino trousers',
+    category: 'bottoms', garment_type: 'lower_body',
+    fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser',
+  }));
+  assert.equal(correct.macroCategory, 'bottom');
+  assert.equal(correct.subtype, 'tailored-trouser');
+  assert.equal(correct.projection.kind, 'live_intelligence');
+
+  // Real blazers are stored as source tops: do not ban their live outerwear role.
+  const blazer = projectCatalogItem(row({
+    id: 'legit-blazer', name: 'Single Breasted Tailored Blazer',
+    category: 'tops', garment_type: 'upper_body',
+    fashion_slot: 'outerwear', fashion_subtype: 'blazer',
+  }));
+  assert.equal(blazer.macroCategory, 'outerwear');
+  assert.equal(blazer.subtype, 'blazer');
+});
+
 test('unshoppable rows are counted, never admitted', () => {
   const adapted = adaptCatalog([
     row({ id: 'ok' }),
