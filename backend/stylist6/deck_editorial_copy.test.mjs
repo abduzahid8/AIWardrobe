@@ -37,7 +37,7 @@ test('three cards have distinct, deterministic, evidence-grounded headings',()=>
   const native=lookConcept(looks[0].items,context).concept;
   const firstPass=editorialDeckCopy(looks,context,directions);
   const secondPass=editorialDeckCopy(looks,context,directions);
-  assert.equal(DECK_COPY_VERSION,'s6-grounded-deck-copy-v2');
+  assert.equal(DECK_COPY_VERSION,'s6-grounded-deck-copy-v3');
   assert.deepEqual(firstPass,secondPass);
   assert.equal(firstPass[0].concept.title,native.title);
   assert.equal(new Set(firstPass.map(x=>x.concept.title.toLowerCase())).size,3);
@@ -85,4 +85,17 @@ test('title and explanation never mutate selected products, native concepts or u
   editorialDeckCopy(looks,context,directions);
   assert.equal(JSON.stringify(looks),input);
   assert.equal(JSON.stringify(context),ctx);
+});
+
+test('descriptions compare known garment facts, not vague unproved changes',()=>{
+  const descriptions=editorialDeckCopy(looks,context,directions).map(x=>x.description);
+  assert.match(descriptions[1],/shifts from White to Cream/i);
+  assert.match(descriptions[2],/sweater replaces the dress shirt/i);
+  assert.ok(!descriptions.some(x=>/changes the silhouette or texture|overall mix is appropriate/.test(x)));
+});
+
+test('date night is described as date night, not Date',()=>{
+  const dateContext=stylingContext({style:'old_money',occasion:'date',optionalLayer:true});
+  const output=editorialDeckCopy([looks[0]],dateContext,[directions[0]]);
+  assert.match(output[0].description,/date night/);
 });
