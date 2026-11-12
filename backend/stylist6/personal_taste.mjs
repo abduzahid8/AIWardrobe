@@ -15,7 +15,14 @@ const list = (value) => Array.isArray(value)
   ? [...new Set(value.slice(0, 32).map(norm).filter((x) => x.length >= 2))].slice(0, 16)
   : [];
 const included = (choices, value) => value && choices.has(norm(value));
-const own = (object, key) => Object.prototype.hasOwnProperty.call(object || {}, key);
+const canonicalPattern = (value) => {
+  const word = norm(value);
+  if (/\\b(stripes?|striped|pinstripes?|pinstriped)\\b/.test(word)) return 'stripe';
+  if (/\\b(check|checked|plaid|tartan|gingham|houndstooth|windowpane)\\b/.test(word)) return 'check';
+  if (/\\b(herringbone|tweed|jacquard|textured|texture)\\b/.test(word)) return 'texture';
+  if (/\\b(print|printed|graphic|floral|logo|camo|patterned)\\b/.test(word)) return 'print';
+  return word;
+};
 
 export function personalTaste(preferences) {
   const source = preferences && typeof preferences === 'object' &&
@@ -23,7 +30,7 @@ export function personalTaste(preferences) {
   const favoriteColors = new Set(list(source.favoriteColors));
   const favoriteBrands = new Set(list(source.favoriteBrands));
   const avoidBrands = new Set(list(source.avoidBrands));
-  const likedPatterns = new Set(list(source.likedPatterns));
+  const likedPatterns = new Set(list(source.likedPatterns).map(canonicalPattern));
   const fit = norm(source.fitPreference);
   // The app's persisted default is "balanced": never claim the user chose
   // it or quietly bias the engine without explicit fit evidence.
@@ -38,7 +45,7 @@ export function personalTaste(preferences) {
 function itemSignals(item, descriptor, taste) {
   const brand = norm(item?.brand);
   const color = norm(descriptor?.color || item?.color);
-  const pattern = norm(descriptor?.pattern);
+  const pattern = canonicalPattern(descriptor?.pattern);
   const fit = norm(descriptor?.volume);
   const productId = String(item?.id || '');
   if (included(taste.avoidBrands, brand)) {
