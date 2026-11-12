@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, singleCurrencyBonus } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 
@@ -556,4 +556,37 @@ test('classic work deck avoids explicit technical leisure shells, but still retu
   const deck=await recommendFashionDeck({...base,request,catalog});
   assert.ok(deck.outfits.length>0);
   assert.ok(deck.outfits.every(look=>!look.items.some(item=>item.id===tech.id)));
+});
+
+test('quiet-style smart requests reject known clunky soles and unsolicited denim only where appropriate',()=>{
+  const date={sourceMode:'catalog',style:'old_money',dressCode:'smart',occasion:'Date night',request:''};
+  const work={...date,style:'semi_classic',occasion:'Work'};
+  const jean={slot:'bottom',subtype:'jeans',casualSole:false};
+  const loafer={slot:'shoes',subtype:'loafer',casualSole:true,soleProfile:'comfort'};
+  const derby={slot:'shoes',subtype:'derby',casualSole:false,soleProfile:'dress'};
+  assert.equal(rejectPolishedContextMismatch(jean,date,{}),true);
+  assert.equal(rejectPolishedContextMismatch(jean,{...date,request:'Wear dark jeans'},{}),false);
+  assert.equal(rejectPolishedContextMismatch(jean,{...date,style:'casual'},{}),false);
+  assert.equal(rejectPolishedContextMismatch(loafer,date,{}),true);
+  assert.equal(rejectPolishedContextMismatch(loafer,work,{}),true);
+  assert.equal(rejectPolishedContextMismatch(derby,date,{}),false);
+  assert.equal(rejectPolishedContextMismatch(loafer,{...date,dressCode:'casual'},{}),false);
+  assert.equal(rejectPolishedContextMismatch(loafer,{...work,sourceMode:'wardrobe'},{}),false);
+  assert.equal(rejectPolishedContextMismatch(loafer,{...work,request:'chunky loafers please'},{}),false);
+});
+
+test('Old Money smart date does not recommend known casual-soled shoes or unrequested jeans', async()=>{
+  const catalog=[
+    ...products,
+    garment('jeans-green','Dark green straight denim jeans','bottom','jeans'),
+    garment('geox-u66mac0009bc9999','Flextride Plus Leather Loafers','shoes','loafer'),
+  ];
+  const result=await recommendFashionDeck({
+    ...base,catalog,
+    request:{...base.request,style:'old_money',occasion:'Date night',brief:'Date night',
+      requiredIds:[],preferences:{},budget:undefined},
+  });
+  assert.ok(result.outfits.length>=1);
+  assert.ok(result.outfits.every(look => look.items.every(
+    item => !['jeans-green','geox-u66mac0009bc9999'].includes(item.id))));
 });
