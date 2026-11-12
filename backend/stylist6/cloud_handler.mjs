@@ -712,6 +712,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           items: look.items.map((item) => mapDeckItem(item, look.fashion?.score)),
           description: look.description,
           concept: { id: look.concept?.id, title: look.concept?.title, story: '', score: look.fashion?.score },
+          // Actual evidence from the selected SKU deck, never a cosmetic
+          // variant label or a promise that the catalog has every direction.
+          direction: look.direction ?? null,
           stylingTips: [],
           confidence: look.fashion?.score,
           matchScore: look.fashion?.score,
