@@ -11,7 +11,7 @@
 import { describeGarment } from '../../src/domain/garmentDescriptor.ts';
 import { lookConcept } from '../../src/domain/outfitConcepts.ts';
 
-export const DECK_COPY_VERSION = 's6-grounded-deck-copy-v2';
+export const DECK_COPY_VERSION = 's6-grounded-deck-copy-v3';
 const slotOrder = ['top','outerwear','bottom','shoes'];
 const known = x => typeof x === 'string' && !!x &&
   !['unknown','neutral','missing'].includes(x.toLowerCase());
@@ -56,21 +56,37 @@ function actualRelationship(part) {
   }
   if (part.outerwear && part.top)
     return 'The outer layer and base form the upper-body combination.';
-  return 'The overall mix is appropriate for the selected occasion.';
+  return ''; // Unverified occasion-fit praise would add no garment evidence.
 }
 
-function focusDescription(part, direction) {
+/**
+ * Specific comparisons require knowledge of both the lead and alternative.
+ * Never claim a change in shape or texture just because two SKU names differ.
+ */
+function focusDescription(basePart, part, direction) {
   const evidence = direction?.evidence || {};
-  const structured = Array.isArray(evidence.structuralSlots) ? evidence.structuralSlots : [];
+  const structural = Array.isArray(evidence.structuralSlots) ? evidence.structuralSlots : [];
   const palette = Array.isArray(evidence.paletteSlots) ? evidence.paletteSlots : [];
-  for (const slot of structured) {
-    const d = part[slot];
-    const itemName = role(d);
-    if (itemName) return `Compared with the first look, ${itemName} changes the silhouette or texture.`;
+  const clean = value => known(value) ? titleCase(value) : '';
+  for (const slot of structural) {
+    const before = basePart?.[slot], after = part?.[slot];
+    if (!before && after && role(after)) return `This version adds ${role(after)} as a layer.`;
+    if (before && !after && role(before)) return `This version removes the ${role(before)} layer.`;
+    if (!before || !after) continue;
+    const from = role(before), to = role(after);
+    if (from && to && from !== to) return `The ${to} replaces the ${from}, changing the outfit structure.`;
+    if (from && known(before.volume) && known(after.volume) && before.volume !== after.volume)
+      return `The ${from} changes from a ${clean(before.volume)} to a ${clean(after.volume)} silhouette.`;
+    if (from && known(before.texture) && known(after.texture) && before.texture !== after.texture)
+      return `The ${from} changes from ${clean(before.texture)} to ${clean(after.texture)} texture.`;
+    if (from && known(before.pattern) && known(after.pattern) && before.pattern !== after.pattern)
+      return `The ${from} changes from ${clean(before.pattern)} to ${clean(after.pattern)} patterning.`;
   }
   for (const slot of palette) {
-    const d = part[slot];
-    if (known(d?.color) && role(d)) return `Compared with the first look, ${d.color} ${role(d)} shifts the palette.`;
+    const before = basePart?.[slot], after = part?.[slot];
+    if (before && after && known(before.color) && known(after.color) &&
+        before.color !== after.color && role(after))
+      return `The ${role(after)} shifts from ${clean(before.color)} to ${clean(after.color)}.`;
   }
   return '';
 }
@@ -99,9 +115,9 @@ function headlineCandidates(part, direction) {
   return [...new Set(result)];
 }
 
-function shortCopy(part, context, direction) {
+function shortCopy(basePart, part, context, direction) {
   const style = known(context?.style) ? titleCase(context.style) : 'your selected style';
-  const occasion = known(context?.occasion) ? titleCase(context.occasion) : 'your occasion';
+  const occasion = known(context?.occasion) ? (/^date(?:[_ -]night)?$/i.test(context.occasion) ? 'date night' : titleCase(context.occasion)) : 'your occasion';
   const prefix = direction?.id === 'signature'
     ? `Closest to your ${style} direction for ${occasion}.`
     : direction?.id === 'refresh'
@@ -110,7 +126,7 @@ function shortCopy(part, context, direction) {
         ? `A new styling direction that still fits ${occasion}.`
         : `Another compatible option for ${occasion}; not a separate discovery direction.`;
   const change = direction?.qualified && direction?.id !== 'signature'
-    ? focusDescription(part,direction) : '';
+    ? focusDescription(basePart,part,direction) : '';
   return [prefix,change,actualRelationship(part)].filter(Boolean).join(' ');
 }
 
@@ -130,7 +146,7 @@ export function editorialDeckCopy(looks, context, directions) {
     seen.add(title.toLowerCase());
     return {
       concept: {id:native.id,title,referenceId:look.referenceId??null},
-      description: shortCopy(part,context,direction),
+      description: shortCopy(details(looks[0]?.items || []),part,context,direction),
     };
   });
 }
