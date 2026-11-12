@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { editorialDeckCopy, DECK_COPY_VERSION } from './deck_editorial_copy.mjs';
+import { editorialDeckCopy, DECK_COPY_VERSION, groundedNativeHeadline } from './deck_editorial_copy.mjs';
 import { stylingContext } from '../../src/domain/stylingContext.ts';
 import { lookConcept } from '../../src/domain/outfitConcepts.ts';
 
@@ -98,4 +98,13 @@ test('date night is described as date night, not Date',()=>{
   const dateContext=stylingContext({style:'old_money',occasion:'date',optionalLayer:true});
   const output=editorialDeckCopy([looks[0]],dateContext,[directions[0]]);
   assert.match(output[0].description,/date night/);
+});
+
+test('unlayered knit polo never gets a fake layering headline',()=>{
+  const part={top:{slot:'top',subtype:'knit-polo'},outerwear:null,
+    bottom:{slot:'bottom',subtype:'chino'}};
+  assert.equal(groundedNativeHeadline('Smart knit layering',part),'Knit Polo & Chinos');
+  assert.equal(groundedNativeHeadline('Refined Tailoring',part),'Refined Tailoring');
+  assert.equal(groundedNativeHeadline('Smart knit layering',
+    {...part,outerwear:{slot:'outerwear',subtype:'cardigan'}}),'Smart knit layering');
 });
