@@ -687,10 +687,12 @@ const AIOutfitGenerator = () => {
   // Development-only engine choice. The picker renders only when
   // STYLIST6_DEV_ENABLED, so release builds can never select Stylist 6.
   const [devEngine, setDevEngine] = useState<DevEngine>(STYLIST6_DEV_ENABLED ? 'stylist6cloud' : 'stylist5');
-  // Dev-only opt-in: hosted NVIDIA visual review for Stylist 6 (local
-  // backend only, bounded to one small batch per deck). Off by default so
-  // ordinary taps stay fast and free-tier calls stay bounded.
-  const [nvidiaVisual, setNvidiaVisual] = useState(false);
+  // Hosted NVIDIA visual review for Stylist 6, on by default so the cloud
+  // staging request (enableVisual) defaults to true when the client supports
+  // it. The review is bounded to one small batch per deck and degrades to an
+  // honest NVIDIA_NOT_RUN when the server kill-switch or a missing key
+  // blocks it; the toggle below is the opt-out.
+  const [nvidiaVisual, setNvidiaVisual] = useState(true);
   // Actual engine that produced the visible deck (or null before/after).
   const [lastEngineVersion, setLastEngineVersion] = useState<string | null>(null);
   const [lastEngineDetail, setLastEngineDetail] = useState<string | null>(null);

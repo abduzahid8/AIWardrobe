@@ -127,6 +127,43 @@ test('the lead is visually confirmed alone when no close alternative is admissib
 });
 
 
+test('the critic judges a deck with no reference brief purely on product images', async () => {
+  // No referenceBriefs and no request.referenceId: the visual review must
+  // still run (reference-optional staging). The mock mirrors the hosted
+  // critic's reference-less verdict shape: no referenceFidelity score, no
+  // reference claims, marked referenceless.
+  let seenReferenceIds = [], seenCalls = 0;
+  const judged = await recommendFashionDeck({
+    ...base,
+    referenceBriefs: [],
+    request: { ...base.request, referenceId: undefined },
+    canJudgeOutfit: (look, referenceId) => {
+      seenReferenceIds.push(referenceId);
+      return true;
+    },
+    visualCritic: async (candidates) => {
+      seenCalls += 1;
+      return candidates.map(({ id }) => ({
+        candidateId: id, referenceless: true, visualCohesion: .9, styleFit: .9,
+        occasionFit: .9, formalityFit: .9, confidence: .9, reject: false,
+        evidence: ['mock top and trouser contrast', 'mock shoe relationship', 'mock layer relationship'],
+      }));
+    },
+  });
+  assert.equal(seenCalls, 1);
+  assert.ok(seenReferenceIds.every((id) => id === null), 'reference-less gate passes null reference id');
+  assert.equal(judged.diagnostics.visualVerdict, 'JUDGED');
+  assert.equal(judged.outfits.filter(({ visualEvidence }) => visualEvidence).length, 1);
+  for (const outfit of judged.outfits) {
+    assert.equal(outfit.concept.referenceId, null);
+    assert.equal(outfit.fashion.referenceMetadata, null);
+  }
+  // Honest evidence: no reference claim without a reference asset.
+  for (const line of judged.outfits.flatMap(({ visualEvidence }) => visualEvidence || [])) {
+    assert.doesNotMatch(line, /\breferences?\b/i);
+  }
+});
+
 test('an unspecified wedding uses formal composition while a beach wedding or explicit code stays distinct', async () => {
   const request = { ...base.request, occasion: 'Wedding', weather: { temp: 21 }, budget: { amount: 400, currency: 'UZS' } };
   assert.equal(fashionStylingContext(request).dressCode, 'formal');

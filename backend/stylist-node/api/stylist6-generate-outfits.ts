@@ -96,6 +96,9 @@ export async function POST(request: Request): Promise<Response> {
     SUPABASE_SERVICE_ROLE_KEY: envOf('SUPABASE_SERVICE_ROLE_KEY'),
     NVIDIA_API_KEY: envOf('NVIDIA_API_KEY'),
     STYLIST6_REFERENCE_BUCKET: envOf('STYLIST6_REFERENCE_BUCKET'),
+    // Owner kill-switch: any truthy value ('1'/'true') forces an honest
+    // NVIDIA_NOT_RUN for the hosted visual review, whatever the client asks.
+    STYLIST6_VISUAL_DISABLED: envOf('STYLIST6_VISUAL_DISABLED'),
   };
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
     // Owner-only runtime diagnostics: presence flags, never credentials.

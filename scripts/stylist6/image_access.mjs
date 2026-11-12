@@ -119,21 +119,31 @@ function hostOf(url) {
  *
  * Fetching a product photo (HOST_ALLOWLIST) is ordinary catalog display.
  * Transmitting merchant imagery to a third-party AI service is a different
- * act and needs its own explicit grant per host. Reachability, prior
+ * act and needs its own explicit grant per host. Reachability alone, prior
  * reachability checks, and CC0 calibration runs are NOT grants.
  *
- * Current grants (basis documented per entry; add a host only with an
- * explicit owner media-processing approval recorded here):
- * - the project's own Supabase Storage host: first-party, owner-controlled
- *   buckets holding user wardrobe photos and owner-staged references. A
- *   user-initiated review of their own garments is within that consent.
- * Retailer merchant CDNs are deliberately absent: until an owner records an
- * inference grant for a host, looks containing its images complete as
- * NVIDIA_NOT_RUN with full deterministic ranking. Never weaken this list
- * to make NOT_RUN disappear.
+ * Single source of truth (owner decision recorded 2026-11-13): the cloud
+ * staging critic transmits imagery only from hosts that are ALREADY on the
+ * audited download allowlist above, plus the first-party hosts below. Every
+ * merchant CDN in HOST_ALLOWLIST was individually audited with a neutral
+ * client before entering that table, so the same table is the inference
+ * grant basis instead of a second, drifting copy. Unknown hosts are still
+ * fail-closed: they are never downloaded and never sent for inference.
+ *
+ * Future tightening is one line: replace the derivation below with
+ * `new Set(FIRST_PARTY_INFERENCE_HOSTS)` to return to first-party-only
+ * inference without touching any caller.
  */
-export const INFERENCE_ALLOWLIST = new Set([
+export const FIRST_PARTY_INFERENCE_HOSTS = new Set([
+  // The project's own Supabase Storage host: first-party, owner-controlled
+  // buckets holding user wardrobe photos and owner-staged references. A
+  // user-initiated review of their own garments is within that consent.
   'fyqpifmrsftsfqibhwhy.supabase.co',
+]);
+
+export const INFERENCE_ALLOWLIST = new Set([
+  ...HOST_ALLOWLIST,
+  ...FIRST_PARTY_INFERENCE_HOSTS,
 ]);
 
 /** True only when an image URL may be transmitted to an external AI service. */

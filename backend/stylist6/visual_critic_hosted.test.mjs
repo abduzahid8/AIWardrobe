@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createHostedVisualCritic, NVIDIA_VISION_MODEL } from './visual_critic_hosted.mjs';
+import { createHostedVisualCritic, NVIDIA_VISION_MODEL, validVisualVerdict } from './visual_critic_hosted.mjs';
 
 const apiKey = 'test-api-key-0123456789abcdef';
 function asset(fill = 7, width = 16) {
@@ -110,7 +110,6 @@ test('invalid, mismatched, truncated and oversized provider replies abstain with
   for (const respond of [
     () => new Response('bad JSON'),
     () => new Response('x'.repeat(65537)),
-    () => new Response(null, { status: 503 }),
     () => nvidiaResponse({ ...verdict, candidateId: 'other' }),
     () => nvidiaResponse({ ...verdict, referenceFidelity: undefined }),
     () => nvidiaResponse({ ...verdict, reject: undefined }),
@@ -124,6 +123,47 @@ test('invalid, mismatched, truncated and oversized provider replies abstain with
     assert.deepEqual(await critic([candidate]), []);
     assert.equal(calls, 1);
   }
+});
+
+test('a transient 5xx or dropped connection retries exactly once with the same provider deadline', async () => {
+  for (const [index, firstFailure] of [
+    [0, () => new Response(null, { status: 503 })],
+    [1, () => { throw new TypeError('terminated'); }],
+  ]) {
+    const events = [];
+    let calls = 0;
+    // Unique bytes per iteration: a retry that succeeds judges (and caches)
+    // a verdict, so each case needs its own cache key.
+    const critic = createHostedVisualCritic({
+      provider: 'nvidia', apiKey,
+      resolveReference: () => asset(100 + index * 2),
+      resolveProduct: () => asset(101 + index * 2),
+      fetchImpl: async () => {
+        calls++;
+        return calls === 1 ? firstFailure() : nvidiaResponse(verdict);
+      },
+      onEvent: (event) => events.push(event),
+    });
+    const [judged] = await critic([candidate]);
+    assert.equal(calls, 2);
+    assert.equal(judged.candidateId, candidate.id);
+    assert.equal(events[0].retried, true);
+    assert.equal(events[0].outcome, 'judged');
+  }
+});
+
+test('a 5xx that fails twice abstains with the retry recorded', async () => {
+  const events = [];
+  let calls = 0;
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey, resolveReference: () => asset(), resolveProduct: () => asset(),
+    fetchImpl: async () => { calls++; return new Response(null, { status: 502 }); },
+    onEvent: (event) => events.push(event),
+  });
+  assert.deepEqual(await critic([candidate]), []);
+  assert.equal(calls, 2);
+  assert.equal(events[0].retried, true);
+  assert.equal(events[0].outcome, 'abstain');
 });
 
 test('429 stops further dispatch and never exceeds two in flight', async () => {
@@ -243,10 +283,15 @@ test('well-formed scores cannot pass with single-garment or contradictory outfit
 
 test('separate provider deadline releases a worker with no retry and every candidate traced', async () => {
   const calls = [], events = [];
-  const payload = Array.from({ length: 4 }, (_, i) => ({ ...candidate, id: 'look-' + i }));
+  // Distinct image bytes per candidate: the in-process verdict cache must
+  // not mask the per-candidate dispatch tracing this test proves.
+  const payload = Array.from({ length: 4 }, (_, i) => ({
+    ...candidate, id: 'look-' + i,
+    products: candidate.products.map((p) => ({ ...p, id: `${p.slot}-${i}` })),
+  }));
   const critic = createHostedVisualCritic({
     provider: 'nvidia', apiKey, timeoutMs: 250, providerTimeoutMs: 25,
-    resolveReference: () => asset(), resolveProduct: () => asset(),
+    resolveReference: () => asset(9), resolveProduct: ({ id }) => asset(10 + Number(id.split('-')[1])),
     fetchImpl: async (url, { body }) => {
       const id = JSON.parse(body).messages[0].content[0].text.match(/exactly "(look-\d)"/)[1];
       calls.push(id);
@@ -269,21 +314,27 @@ test('caller cancellation labels queued candidates and aborts active calls', asy
   let calls = 0;
   const critic = createHostedVisualCritic({
     provider: 'nvidia', apiKey, signal: controller.signal,
-    resolveReference: () => asset(), resolveProduct: () => asset(),
+    resolveReference: () => asset(19),
+    resolveProduct: ({ id }) => asset(20 + Number(id.split('-')[1])),
     fetchImpl: async () => {
       if (++calls === 2) controller.abort();
       return new Promise(() => {});
     },
     onEvent: (event) => events.push(event),
   });
-  await critic(Array.from({ length: 4 }, (_, i) => ({ ...candidate, id: 'cancel-' + i })));
+  await critic(Array.from({ length: 4 }, (_, i) => ({
+    ...candidate, id: 'cancel-' + i,
+    products: candidate.products.map((p) => ({ ...p, id: `${p.slot}-${i}` })),
+  })));
   assert.equal(calls, 2);
   assert.equal(events.length, 4);
   assert.ok(events.every(({ reason }) => reason === 'cancelled'));
 });
 
 test('verified exact reference photos cannot be counted as model-observed differences', async () => {
-  const ref = asset(1), photo = asset(2), events = [];
+  const ref = asset(1);
+  let photo = asset(2);
+  const events = [];
   let content, result = verdict;
   const critic = createHostedVisualCritic({
     provider: 'nvidia', apiKey,
@@ -299,6 +350,9 @@ test('verified exact reference photos cannot be counted as model-observed differ
   assert.deepEqual(judged.verifiedSharedSlots, ['outerwear']);
   assert.match(content[0].text, /"verifiedIdenticalReferenceSlots":\["outerwear"\]/);
   assert.doesNotMatch(content[0].text, new RegExp(photo.sha256));
+  // Fresh bytes for the second phase so the verdict cache (keyed on image
+  // digests) does not replay the first phase's judged verdict.
+  photo = asset(22);
   result = { ...verdict, relationships: verdict.relationships.map((link) =>
     link.kind === 'reference' ? { ...link, slots: ['outerwear'], observation: 'The candidate adds trim absent from the reference.' } : link) };
   assert.deepEqual(await critic([candidate]), []);
@@ -306,7 +360,7 @@ test('verified exact reference photos cannot be counted as model-observed differ
 });
 
 test('an unbound reference manifest cannot declare any identical slots', async () => {
-  const ref = asset(1), photo = asset(2);
+  const ref = asset(31), photo = asset(32);
   const critic = createHostedVisualCritic({
     provider: 'nvidia', apiKey,
     resolveReference: () => ({ ...ref, components: { referenceSha256: photo.sha256, slotSha256: { top: photo.sha256 } } }),
@@ -346,11 +400,11 @@ test('reference-only outerwear is an outfit difference even when all three candi
 });
 
 test('access denial stops later scheduling while recording every candidate', async () => {
-  for (const status of [401, 403]) {
+  for (const [status, refFill, photoFill] of [[401, 41, 42], [403, 43, 44]]) {
     const events = [];
     let calls = 0;
     const critic = createHostedVisualCritic({
-      provider: 'nvidia', apiKey, resolveReference: () => asset(), resolveProduct: () => asset(),
+      provider: 'nvidia', apiKey, resolveReference: () => asset(refFill), resolveProduct: () => asset(photoFill),
       fetchImpl: async () => { calls++; return new Response(null, { status }); },
       onEvent: (event) => events.push(event),
     });
@@ -361,3 +415,127 @@ test('access denial stops later scheduling while recording every candidate', asy
     assert.ok(events.every(({ reason }) => reason === 'provider_access_denied'));
   }
 });
+
+const referencelessVerdict = (id) => ({
+  slotObservations: { top: 'light striped shirt', outerwear: 'short dark jacket', bottom: 'grey straight trousers', shoes: 'dark round toe shoes' },
+  candidateId: id, visualCohesion: 0.9, styleFit: 0.88, occasionFit: 0.91, formalityFit: 0.93,
+  confidence: 0.95, reject: false,
+  relationships: [
+    { kind: 'outfit', slots: ['top', 'outerwear'], observation: 'mock top and layer match' },
+    { kind: 'outfit', slots: ['bottom', 'shoes'], observation: 'mock footwear repeats bottom color' },
+    { kind: 'outfit', slots: ['top', 'shoes'], observation: 'mock belt line echoes the shoe tone' },
+  ],
+});
+
+test('a candidate without a reference id is judged purely on its product images', async () => {
+  const events = [];
+  const photos = candidate.products.map((_, i) => asset(60 + i));
+  let sent;
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey,
+    resolveReference: () => { throw new Error('reference resolver must never run without a reference id'); },
+    resolveProduct: ({ slot }) => photos[candidate.products.findIndex((p) => p.slot === slot)],
+    fetchImpl: async (url, init) => {
+      sent = JSON.parse(init.body);
+      return nvidiaResponse(referencelessVerdict(candidate.id));
+    },
+    onEvent: (event) => events.push(event),
+  });
+  const [judged] = await critic([{ ...candidate, referenceId: undefined }], { style: 'casual', occasion: 'Work' });
+  assert.equal(judged.referenceless, true);
+  assert.equal(judged.referenceFidelity, undefined);
+  assert.ok(validVisualVerdict(judged, candidate.id));
+  assert.equal(sent.messages[0].content.filter((part) => part.type === 'image_url').length, 4);
+  assert.match(sent.messages[0].content[0].text, /No reference image is supplied/);
+  assert.doesNotMatch(sent.messages[0].content[0].text, /Reference outfit image/);
+  assert.deepEqual(events[0].images, 4);
+  assert.equal(events[0].outcome, 'judged');
+  // Every relationship is outfit-internal: no reference comparison exists.
+  assert.ok(judged.relationships.every((link) => link.kind === 'outfit'));
+  assert.ok(judged.evidence.every((line) => !/\breferences?\b/i.test(line)));
+});
+
+test('reference-less verdicts never claim a reference comparison', async () => {
+  const photos = candidate.products.map((_, i) => asset(70 + i));
+  for (const badRow of [
+    { ...referencelessVerdict(candidate.id), relationships: [
+        { kind: 'outfit', slots: ['top', 'bottom'], observation: 'mock top and trouser match' },
+        { kind: 'outfit', slots: ['bottom', 'shoes'], observation: 'mock footwear repeats bottom color' },
+        { kind: 'reference', slots: ['top'], observation: 'palette follows the reference' },
+      ] },
+    { ...referencelessVerdict(candidate.id), relationships: [
+        { kind: 'outfit', slots: ['top', 'outerwear'], observation: 'mock top and layer match' },
+        { kind: 'outfit', slots: ['bottom', 'shoes'], observation: 'mock footwear repeats bottom color' },
+        { kind: 'outfit', slots: ['top', 'shoes'], observation: 'the shoe tone mirrors the reference palette' },
+      ] },
+  ]) {
+    const critic = createHostedVisualCritic({
+      provider: 'nvidia', apiKey,
+      resolveReference: () => { throw new Error('never called'); },
+      resolveProduct: ({ slot }) => photos[candidate.products.findIndex((p) => p.slot === slot)],
+      fetchImpl: async () => nvidiaResponse(badRow),
+    });
+    assert.deepEqual(await critic([{ ...candidate, referenceId: null }]), []);
+  }
+  // An unsolicited referenceFidelity score from the model is dropped: the
+  // reference-less verdict carries no reference dimension at all.
+  const unsolicited = createHostedVisualCritic({
+    provider: 'nvidia', apiKey,
+    resolveReference: () => { throw new Error('never called'); },
+    resolveProduct: ({ slot }) => photos[candidate.products.findIndex((p) => p.slot === slot)],
+    fetchImpl: async () => nvidiaResponse({ ...referencelessVerdict(candidate.id), referenceFidelity: 0.9 }),
+  });
+  const [row] = await unsolicited([{ ...candidate, referenceId: null }]);
+  assert.equal(row.referenceless, true);
+  assert.equal(row.referenceFidelity, undefined);
+});
+
+test('validVisualVerdict accepts reference-less rows and still requires referenceFidelity otherwise', () => {
+  const row = { ...referencelessVerdict(candidate.id), referenceless: true, evidence: referencelessVerdict(candidate.id).relationships.map((l) => l.observation) };
+  delete row.relationships;
+  assert.equal(validVisualVerdict(row, candidate.id), true);
+  assert.equal(validVisualVerdict({ ...row, referenceless: false }, candidate.id), false);
+  assert.equal(validVisualVerdict({ ...row, referenceFidelity: 0.9, referenceless: false }, candidate.id), true);
+});
+
+test('the verdict cache reuses a judged look without another provider dispatch', async () => {
+  const events = [];
+  const photos = candidate.products.map((_, i) => asset(80 + i));
+  let calls = 0;
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey,
+    resolveReference: () => asset(89),
+    resolveProduct: ({ slot }) => photos[candidate.products.findIndex((p) => p.slot === slot)],
+    fetchImpl: async () => { calls++; return nvidiaResponse({ ...verdict, candidateId: 'fresh-id' }); },
+    onEvent: (event) => events.push(event),
+  });
+  const other = { ...candidate, id: 'fresh-id' };
+  const [first] = await critic([other]);
+  assert.equal(calls, 1);
+  const [second] = await critic([other]);
+  assert.equal(calls, 1);
+  assert.equal(second.candidateId, 'fresh-id');
+  assert.deepEqual(second.evidence, first.evidence);
+  assert.equal(second.latencyMs <= first.latencyMs + 5, true);
+  const hit = events.find(({ cacheHit }) => cacheHit === true);
+  assert.equal(hit.outcome, 'judged');
+  assert.equal(hit.dispatched, false);
+  // A changed reference id or changed image bytes never hits the cache.
+  const changedReference = { ...candidate, id: 'fresh-id', referenceId: 'rt_002' };
+  await critic([changedReference]);
+  assert.equal(calls, 2);
+});
+
+test('abstentions and failures are never cached; only valid judged verdicts are', async () => {
+  let calls = 0;
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia', apiKey,
+    resolveReference: () => asset(91), resolveProduct: () => asset(92),
+    fetchImpl: async () => { calls++; return nvidiaResponse({ ...verdict, candidateId: 'other' }); },
+  });
+  assert.deepEqual(await critic([candidate]), []);
+  assert.equal(calls, 1);
+  assert.deepEqual(await critic([candidate]), []);
+  assert.equal(calls, 2, 'an abstained candidate must not poison the verdict cache');
+});
+

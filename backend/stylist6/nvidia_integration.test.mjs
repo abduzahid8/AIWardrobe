@@ -42,6 +42,14 @@ const jpeg = Buffer.alloc(256, 7);
 Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0, 8, 8, 0, 16, 0, 16, 3]).copy(jpeg);
 jpeg.writeUInt16BE(0xffd9, jpeg.length - 2);
 const asset = { bytes: jpeg, sha256: createHash('sha256').update(jpeg).digest('hex') };
+/** A distinct valid JPEG per fill byte, so the verdict cache never merges
+ * different products under one digest. */
+function distinctAsset(fill) {
+  const bytes = Buffer.alloc(256, fill);
+  Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0, 8, 8, 0, 16, fill >> 8, fill & 255, 3]).copy(bytes);
+  bytes.writeUInt16BE(0xffd9, bytes.length - 2);
+  return { bytes, sha256: createHash('sha256').update(bytes).digest('hex') };
+}
 
 test('NVIDIA verdict reverses the feasible seed winner; rejected and unknown looks never surface', async () => {
   const base = {
@@ -57,11 +65,18 @@ test('NVIDIA verdict reverses the feasible seed winner; rejected and unknown loo
   const [first, second, third] = retrieval.shortlist;
   assert.ok(first && second && third);
   const seen = [];
+  // Distinct bytes per product: the in-process verdict cache keys on image
+  // digests, and this test must observe three real provider dispatches.
+  const productAssets = new Map();
+  const assetFor = (id) => {
+    if (!productAssets.has(id)) productAssets.set(id, distinctAsset(productAssets.size + 4));
+    return productAssets.get(id);
+  };
   const critic = createHostedVisualCritic({
     apiKey: 'test-nvidia-key-0123456789abcdef', provider: 'nvidia',
     resolveProduct: ({ id }) => {
       assert.notEqual(id, 'top-fine-knit-1');
-      return asset;
+      return assetFor(id);
     },
     resolveReference: (id) => { assert.equal(id, 'rt_005'); return asset; },
     fetchImpl: async (url, init) => {

@@ -443,10 +443,14 @@ export async function recommendFashionDeck({
     selected, ordered[0] ?? NaN, (retrieval.diagnostics.exclusions?.requested || 0) > 0);
   selected = floor.kept;
   let visualVerdict = 'NOT_RUN', visualWinner;
+  // Reference-optional review: a deck with no matching reference brief is
+  // still visually judged on its product images alone (the critic marks such
+  // verdicts referenceless and never claims a reference comparison). With a
+  // reference, behavior is unchanged.
   const permitted = async (look) => {
-    try { return await canJudgeOutfit(look, reference.referenceId) === true; } catch { return false; }
+    try { return await canJudgeOutfit(look, reference?.referenceId ?? null) === true; } catch { return false; }
   };
-  if (selected.length >= 1 && reference && typeof visualCritic === 'function' && typeof canJudgeOutfit === 'function' && await permitted(selected[0])) {
+  if (selected.length >= 1 && typeof visualCritic === 'function' && typeof canJudgeOutfit === 'function' && await permitted(selected[0])) {
     const lead = selected[0];
     const alternatives = retrieval.shortlist.filter((candidate) =>
       !selected.includes(candidate) && Math.abs(candidate.fashion.score - lead.fashion.score) <= TIE_MARGIN &&

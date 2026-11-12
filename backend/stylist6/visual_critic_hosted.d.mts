@@ -7,6 +7,8 @@ export const MAX_VISUAL_IMAGE_BYTES: number;
 export const VISUAL_TIMEOUT_MS: number;
 export const VISUAL_PROVIDER_TIMEOUT_MS: number;
 export const VISUAL_CONCURRENCY: number;
+export const VERDICT_CACHE_TTL_MS: number;
+export const VERDICT_CACHE_MAX_ENTRIES: number;
 
 export interface VisualImage {
   bytes: Buffer;
@@ -24,7 +26,10 @@ export interface HostedVisualVerdict {
   verifiedReferenceOnlySlots?: HostedVisualProduct['slot'][];
   relationships?: { kind: 'outfit' | 'reference'; slots: HostedVisualProduct['slot'][]; observation: string }[];
   visualCohesion: number;
-  referenceFidelity: number;
+  /** Present only when a reference image was actually supplied and judged. */
+  referenceFidelity?: number;
+  /** True when the verdict was produced without any reference asset. */
+  referenceless?: boolean;
   styleFit: number;
   occasionFit: number;
   formalityFit: number;
@@ -81,6 +86,12 @@ export function createHostedVisualCritic(options: {
     validationMs?: number;
     httpStatus?: number;
     finishReason?: string;
+    /** Number of images (reference + products) resolved for the candidate. */
+    images?: number;
+    /** True when the verdict came from the bounded in-process cache. */
+    cacheHit?: boolean;
+    /** True when one transient transport retry was consumed. */
+    retried?: boolean;
     usage?: Partial<Record<'prompt_tokens' | 'completion_tokens' | 'total_tokens', number>>;
   }) => void;
 }): (payload: HostedVisualCandidate[], request?: HostedVisualRequest) => Promise<HostedVisualVerdict[]>;

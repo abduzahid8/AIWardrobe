@@ -609,13 +609,17 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // Hosted NVIDIA review: strictly opt-in, server-side key only, bounded
     // to the critic's own batch limits. Reference-guided judging needs
     // staged reference bytes; without them admission fails honestly and the
-    // deck completes deterministically as NOT_RUN.
+    // deck completes deterministically as NOT_RUN. Looks without a matching
+    // reference are judged purely on product images (reference-optional).
+    // STYLIST6_VISUAL_DISABLED=1 (or true) is the owner kill-switch: it
+    // forces an honest NOT_RUN even when the client asks for review.
     let visualCritic, canJudgeOutfit;
     const visualEvents = [];
     const visualAsked = request.enableVisual === true;
+    const visualDisabled = ['1', 'true'].includes(String(env.STYLIST6_VISUAL_DISABLED || '').trim().toLowerCase());
     const nvidiaKey = env.NVIDIA_API_KEY || '';
     const photoCache = new Map();
-    if (visualAsked && nvidiaKey.startsWith('nvapi-')) {
+    if (visualAsked && !visualDisabled && nvidiaKey.startsWith('nvapi-')) {
       visualCritic = createHostedVisualCritic({
         provider: 'nvidia',
         apiKey: nvidiaKey,
@@ -634,6 +638,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             reason: event.reason || null,
             httpStatus: event.httpStatus ?? null,
             latencyMs: Math.round(event.latencyMs || event.providerMs || 0),
+            ...(Number.isSafeInteger(event.images) ? { images: event.images } : {}),
+            ...(event.cacheHit === true ? { cacheHit: true } : {}),
+            ...(event.retried === true ? { retried: true } : {}),
             ...(event.usage && typeof event.usage === 'object' ? { usage: event.usage } : {}),
           });
         },
@@ -697,9 +704,16 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         visualHydration,
         visualStatus,
         visualReceipt: {
-          model: visualAsked ? NVIDIA_VISION_MODEL : null,
+          // Cost metering is tokens-based only: no per-call pricing table
+          // exists in this codebase, so no currency estimate is invented.
+          model: visualCritic ? NVIDIA_VISION_MODEL : null,
           requested: visualAsked,
+          serverDisabled: visualAsked && visualDisabled,
           providerCalls: visualEvents.filter((event) => event.dispatched).length,
+          imagesSent: visualEvents.reduce((sum, event) =>
+            sum + (event.dispatched && Number.isSafeInteger(event.images) ? event.images : 0), 0),
+          cacheHits: visualEvents.filter((event) => event.cacheHit === true).length,
+          retriedCalls: visualEvents.filter((event) => event.retried === true).length,
           validVerdicts: visualEvents.filter((event) => event.outcome === 'judged').length,
           abstentions: visualEvents.filter((event) => event.outcome === 'abstain').length,
           totalTokens: visualEvents.reduce((sum, event) =>

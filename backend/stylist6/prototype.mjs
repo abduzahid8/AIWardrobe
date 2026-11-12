@@ -293,8 +293,13 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
   }
   for(const id of duplicates)valid.delete(id);
   for(const [id,c] of valid){
-    const quality=0.30*c.visualCohesion+0.30*c.referenceFidelity+
-      0.15*c.styleFit+0.15*c.occasionFit+0.10*c.formalityFit;
+    // Reference-less verdicts carry no referenceFidelity dimension: the
+    // quality re-weights to cohesion-led with the same 0-1 scale, so a
+    // missing reference can never read as a perfect or failed reference fit.
+    const quality=c.referenceless===true
+      ? 0.45*c.visualCohesion+0.20*c.styleFit+0.20*c.occasionFit+0.10*c.formalityFit
+      : 0.30*c.visualCohesion+0.30*c.referenceFidelity+
+        0.15*c.styleFit+0.15*c.occasionFit+0.10*c.formalityFit;
     if(c.confidence>=0.6&&quality>=minVisualQuality&&!c.reject)accepted.set(id,{...c,quality});
   }
   const eligible=shortlist.filter(c=>accepted.has(c.id));
@@ -322,7 +327,7 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
     status:selected.length===target?'complete':selected.length?'distinct_inventory_limited':'no_verified_looks',
     outfits:selected.map(c=>({id:c.id,concept:{id:c.brief.id,title:c.brief.name,referenceId:c.brief.referenceId||null},
       items:c.items,visualQuality:accepted.get(c.id).quality,
-      referenceFidelity:accepted.get(c.id).referenceFidelity,evidence:accepted.get(c.id).evidence})),
+      referenceFidelity:accepted.get(c.id).referenceFidelity??null,evidence:accepted.get(c.id).evidence})),
     diagnostics:{...diagnostics,visualVerdict:valid.size?'JUDGED':shortlist.length?'ABSTAINED':'NOT_RUN',
       visualAttempted:shortlist.length,visualValid:valid.size,visualAbstained:shortlist.length-valid.size,
       visualRejected:[...valid.values()].filter(row=>row.reject).length,

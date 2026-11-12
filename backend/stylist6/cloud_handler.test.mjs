@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { signStylistTransport } from '../stylist-node/transport/signature.mjs';
 import {
   handleStylist6CloudGenerate,
@@ -9,6 +10,7 @@ import {
   STYLIST6_CLOUD_VERSION,
   canonicalRequestFingerprint,
 } from './cloud_handler.mjs';
+import { HOST_ALLOWLIST, INFERENCE_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/image_access.mjs';
 
 const SECRET = 'cloud-test-shared-secret-0123456789abcdef';
 const JWT = 'good-jwt-token';
@@ -656,4 +658,229 @@ test('server discovery projection without fashion_subtype restores the intellige
   // boundary.
   const rawAdapted = adaptCatalog(liveProjection.map((row) => ({ ...row, is_active: true })));
   assert.equal(rawAdapted.items.find(item => item.id === 'shoes-1').projection.kind, 'native_category');
+});
+
+// ---------------------------------------------------------------------------
+// Cloud-staging visual review: inference allowlist unification, kill-switch,
+// verdict cache and honest degradation.
+// ---------------------------------------------------------------------------
+
+test('inference authorization covers every audited download host plus first-party storage', () => {
+  for (const host of HOST_ALLOWLIST) {
+    assert.equal(isInferenceAuthorized(`https://${host}/img.jpg`), true, host);
+    assert.ok(INFERENCE_ALLOWLIST.has(host), host);
+  }
+  assert.equal(isInferenceAuthorized('https://fyqpifmrsftsfqibhwhy.supabase.co/storage/v1/object/x.jpg'), true);
+  assert.equal(isInferenceAuthorized('https://unknown-merchant.example/img.jpg'), false);
+  assert.equal(isInferenceAuthorized('http://static.zara.net/img.jpg'), false, 'non-https never authorized');
+  assert.equal(isInferenceAuthorized('https://static.zara.net:8443/img.jpg'), false, 'ports never authorized');
+});
+
+/** Deterministic 8x8 JPEG with a test-unique fill, valid for the critic. */
+const smokeJpeg = (fill) => Buffer.concat([
+  Buffer.from([0xff, 0xd8]),
+  Buffer.from([0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]),
+  Buffer.from([0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x08, 0x00, 0x08, 0x01, 0x01, 0x11, 0x00]),
+  Buffer.from([0xff, 0xfe, 0x00, 0xca, ...new Array(200).fill(fill)]),
+  Buffer.from([0xff, 0xd9]),
+]);
+
+/** Merchant-host catalog fixture; every SKU gets distinct image bytes. */
+const merchantShop = (salt, host = 'static.zara.net') => {
+  const slots = { top: 2, outerwear: 1, bottom: 2, shoes: 2 };
+  const rows = [];
+  for (const [slot, count] of Object.entries(slots)) {
+    for (let index = 0; index < count; index++) {
+      const id = `m-${slot}-${index}`;
+      const fill = createHash('sha256').update(`${salt}:${id}`).digest()[0] % 200 + 20;
+      rows.push({
+        id, name: `${slot} merchant garment ${index}`, category: { top: 'tops', bottom: 'bottoms', shoes: 'shoes', outerwear: 'tops' }[slot],
+        garment_type: slot === 'bottom' ? 'lower_body' : slot === 'shoes' ? 'shoes' : 'upper_body',
+        price: 120 + index * 10, currency: 'UZS',
+        image_url: `https://${host}/images/${id}.jpg`, source_url: `https://example.com/shop/${id}`,
+        is_active: true, brand: 'Test',
+      });
+    }
+  }
+  return rows;
+};
+
+/**
+ * Builds a critic-valid verdict for the prompt the critic actually sent:
+ * parses the slot list from the context JSON, then returns three grounded
+ * relationships (outfit-only when the run is reference-less, never claiming
+ * a reference comparison that did not happen).
+ */
+function verdictForPrompt(promptText, candidateId) {
+  const contextLine = promptText.split('\n').find((line) => line.startsWith('{"style"'));
+  const { imageSlots } = JSON.parse(contextLine);
+  const referenceless = promptText.includes('No reference image is supplied');
+  const slotObservations = Object.fromEntries(imageSlots.map((slot) => [slot, `visible ${slot} garment with clean trim`]));
+  const relationships = [
+    { kind: 'outfit', slots: [imageSlots[0], imageSlots[1]], observation: 'the upper garments keep one tone line' },
+    { kind: 'outfit', slots: [imageSlots[1], imageSlots[2] ?? imageSlots[0]], observation: 'the lower pieces repeat the darker tone' },
+    referenceless
+      ? { kind: 'outfit', slots: [imageSlots[0], imageSlots.at(-1)], observation: 'the trim echoes the leading garment' }
+      : { kind: 'reference', slots: [imageSlots[0]], observation: 'the palette follows the reference' },
+  ];
+  const row = {
+    candidateId, slotObservations, visualCohesion: 0.9, styleFit: 0.9,
+    occasionFit: 0.9, formalityFit: 0.9, confidence: 0.95, reject: false, relationships,
+  };
+  if (!referenceless) row.referenceFidelity = 0.9;
+  return row;
+}
+
+/** Media stub: merchant/first-party hosts get deterministic JPEG bytes, the
+ * NVIDIA endpoint gets a grounded verdict derived from the sent prompt. */
+function makeVisualFetchStub(salt, recorder = { prompts: [], hosts: new Set() }) {
+  return async (url, options = {}) => {
+    const parsed = new URL(String(url));
+    recorder.hosts.add(parsed.hostname);
+    if (parsed.hostname === 'integrate.api.nvidia.com') {
+      const content = JSON.parse(options.body).messages[0].content;
+      const prompt = content[0].text;
+      recorder.prompts.push(prompt);
+      const id = prompt.match(/candidateId must be exactly "([^"]+)"/)[1];
+      return new Response(JSON.stringify({
+        choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(verdictForPrompt(prompt, id)) } }],
+        usage: { prompt_tokens: 900, completion_tokens: 60, total_tokens: 960 },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    const fill = createHash('sha256').update(`${salt}:${String(url)}`).digest()[0] % 200 + 20;
+    return new Response(smokeJpeg(fill), { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+  };
+}
+
+async function cloudVisualCall(request, { salt, env: envExtra = {}, fetchStub } = {}) {
+  const harness = makeIo({ shopRows: merchantShop(salt) });
+  const body = JSON.stringify({ request });
+  const authorization = `Bearer ${JWT}`;
+  const signature = await signStylistTransport({ secret: SECRET, body, authorization });
+  const result = await handleStylist6CloudGenerate({
+    method: 'POST', headers: { authorization, ...signature }, bodyText: body,
+    env: { ...env, NVIDIA_API_KEY: 'nvapi-test-key-0123456789abcdef', ...envExtra },
+    io: harness.io, fetchImpl: fetchStub,
+  });
+  return result;
+}
+
+test('allowlisted merchant imagery reaches the hosted critic and the deck reports applied evidence', async () => {
+  const recorder = { prompts: [], hosts: new Set() };
+  const result = await cloudVisualCall(
+    { ...baseRequest, enableVisual: true, generationRequestId: 'visual-merchant-1' },
+    { salt: 'merchant-activation', env: { STYLIST6_REFERENCE_BUCKET: 'staged-references' }, fetchStub: makeVisualFetchStub('merchant-activation', recorder) },
+  );
+  assert.equal(result.status, 200);
+  assert.equal(result.body.visualStatus, 'NVIDIA_APPLIED');
+  const receipt = result.body.visualReceipt;
+  assert.ok(receipt.providerCalls >= 1, 'the critic must dispatch at least one provider call');
+  assert.ok(receipt.imagesSent >= receipt.providerCalls, 'images sent must be metered');
+  assert.ok(receipt.validVerdicts >= 1);
+  assert.equal(receipt.retriedCalls, 0);
+  assert.equal(receipt.cacheHits, 0);
+  assert.equal(receipt.serverDisabled, false);
+  assert.equal(receipt.model, 'nvidia/nemotron-3.5-super-vl-120b-a12b');
+  assert.ok(receipt.totalTokens >= 1, 'tokens-based cost accounting is present');
+  // Transmission gate: only the merchant CDN, NVIDIA and first-party
+  // Supabase storage were ever contacted.
+  for (const host of recorder.hosts) {
+    assert.ok(
+      host === 'integrate.api.nvidia.com' || host.endsWith('.supabase.co') || host === 'static.zara.net',
+      `unexpected host ${host}`,
+    );
+  }
+  assert.ok(result.body.outfits.some((look) => Array.isArray(look.items) && look.items.length >= 3));
+  assert.equal(result.body.diagnostics.visualVerdict, 'JUDGED');
+});
+
+test('staging without a reference bucket judges reference-less looks and never claims a reference', async () => {
+  const recorder = { prompts: [], hosts: new Set() };
+  // style 'casual' matches no reference metadata in the committed index, so
+  // no reference id is attached and STYLIST6_REFERENCE_BUCKET is absent.
+  const result = await cloudVisualCall(
+    { ...baseRequest, style: 'casual', occasion: 'Work', enableVisual: true, generationRequestId: 'visual-refless-1' },
+    { salt: 'refless-activation', fetchStub: makeVisualFetchStub('refless-activation', recorder) },
+  );
+  assert.equal(result.status, 200);
+  assert.ok(['NVIDIA_APPLIED', 'NVIDIA_EVALUATED_NO_CHANGE'].includes(result.body.visualStatus),
+    `expected a judged deck, got ${result.body.visualStatus}`);
+  assert.ok(recorder.prompts.length >= 1);
+  // Every dispatched prompt that lacked a reference is the reference-less
+  // contract; no prompt ever scores a reference that was not supplied.
+  for (const prompt of recorder.prompts) {
+    if (prompt.includes('No reference image is supplied')) {
+      assert.ok(!prompt.includes('referenceFidelity'));
+      assert.ok(!prompt.includes('The first image is the reference'));
+    }
+  }
+  assert.ok(result.body.visualReceipt.validVerdicts >= 1);
+  for (const look of result.body.outfits) {
+    if (look.items?.length) {
+      assert.equal(look.concept?.referenceId ?? null, null);
+    }
+  }
+});
+
+test('STYLIST6_VISUAL_DISABLED forces an honest NOT_RUN with zero provider calls', async () => {
+  const recorder = { prompts: [], hosts: new Set() };
+  const result = await cloudVisualCall(
+    { ...baseRequest, enableVisual: true, generationRequestId: 'visual-killed-1' },
+    { salt: 'kill-switch', env: { STYLIST6_VISUAL_DISABLED: '1', STYLIST6_REFERENCE_BUCKET: 'staged-references' }, fetchStub: makeVisualFetchStub('kill-switch', recorder) },
+  );
+  assert.equal(result.status, 200);
+  assert.equal(result.body.visualStatus, 'NVIDIA_NOT_RUN');
+  const receipt = result.body.visualReceipt;
+  assert.equal(receipt.requested, true);
+  assert.equal(receipt.serverDisabled, true);
+  assert.equal(receipt.providerCalls, 0);
+  assert.equal(receipt.imagesSent, 0);
+  assert.equal(receipt.model, null);
+  assert.equal(recorder.hosts.size, 0, 'no outbound traffic at all under the kill-switch');
+});
+
+test('a repeated staging request with identical media reuses cached verdicts without another provider call', async () => {
+  const recorder = { prompts: [], hosts: new Set() };
+  const fetchStub = makeVisualFetchStub('cache-hit-path', recorder);
+  const first = await cloudVisualCall(
+    { ...baseRequest, enableVisual: true, generationRequestId: 'visual-cache-1' },
+    { salt: 'cache-hit-path', env: { STYLIST6_REFERENCE_BUCKET: 'staged-references' }, fetchStub },
+  );
+  assert.equal(first.status, 200);
+  assert.ok(first.body.visualReceipt.providerCalls >= 1);
+  const firstIds = first.body.outfits.map((look) => look.items.map((item) => item.id).sort().join('+')).join('|');
+  const second = await cloudVisualCall(
+    { ...baseRequest, enableVisual: true, generationRequestId: 'visual-cache-2' },
+    { salt: 'cache-hit-path', env: { STYLIST6_REFERENCE_BUCKET: 'staged-references' }, fetchStub },
+  );
+  assert.equal(second.status, 200);
+  assert.equal(second.body.visualReceipt.providerCalls, 0, 'identical media must not pay a second provider call');
+  assert.ok(second.body.visualReceipt.cacheHits >= 1);
+  assert.ok(second.body.visualReceipt.validVerdicts >= 1);
+  assert.equal(second.body.diagnostics.visualVerdict, first.body.diagnostics.visualVerdict);
+  const secondIds = second.body.outfits.map((look) => look.items.map((item) => item.id).sort().join('+')).join('|');
+  assert.equal(secondIds, firstIds, 'the cached run reproduces the same deck');
+  const providerCallsAfterSecondRequest = recorder.prompts.length;
+  assert.ok(providerCallsAfterSecondRequest >= 1);
+});
+
+test('enableVisual without a server key completes the deterministic deck with an honest empty receipt', async () => {
+  const recorder = { prompts: [], hosts: new Set() };
+  const harness = makeIo({ shopRows: merchantShop('no-key') });
+  const body = JSON.stringify({ request: { ...baseRequest, enableVisual: true } });
+  const authorization = `Bearer ${JWT}`;
+  const signature = await signStylistTransport({ secret: SECRET, body, authorization });
+  const result = await handleStylist6CloudGenerate({
+    method: 'POST', headers: { authorization, ...signature }, bodyText: body,
+    env: { ...env }, io: harness.io, fetchImpl: makeVisualFetchStub('no-key', recorder),
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.visualStatus, 'NVIDIA_NOT_RUN');
+  assert.deepEqual(result.body.visualReceipt, {
+    model: null, requested: true, serverDisabled: false,
+    providerCalls: 0, imagesSent: 0, cacheHits: 0, retriedCalls: 0,
+    validVerdicts: 0, abstentions: 0, totalTokens: null, events: [],
+  });
+  assert.equal(recorder.hosts.size, 0, 'no key means no outbound provider traffic');
+  assert.equal(harness.calls.debitQuota, 1);
 });

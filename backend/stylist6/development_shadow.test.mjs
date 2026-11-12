@@ -6,21 +6,33 @@ import { compareAuthenticatedPlan } from './development_shadow.mjs';
 
 const now = Date.parse('2026-11-10T12:00:00Z');
 const slots = ['top', 'outerwear', 'bottom', 'shoes'];
-function fixture() {
-  const bytes = Buffer.alloc(256, 5);
-  Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0, 8, 8, 0, 16, 0, 16, 3]).copy(bytes);
-  bytes.writeUInt16BE(0xffd9, bytes.length - 2);
-  const sha256 = createHash('sha256').update(bytes).digest('hex');
+function fixture(salt) {
+  // A distinct valid JPEG per asset, seeded by the test's salt: the hosted
+  // critic's in-process verdict cache keys on image digests, so looks must
+  // not share bytes across candidates OR across tests, or the per-look
+  // dispatch expectations below would silently collapse into cache hits.
+  const jpeg = (seed) => {
+    const comment = Buffer.from(`shadow-fixture-${seed}`, 'ascii');
+    const bytes = Buffer.concat([
+      Buffer.from([0xff, 0xd8]),
+      Buffer.from([0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]),
+      Buffer.from([0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x08, 0x00, 0x08, 0x01, 0x01, 0x11, 0x00]),
+      Buffer.concat([Buffer.from([0xff, 0xfe, 0x00, 0xca]), comment, Buffer.alloc(200 - comment.length, 0)]),
+      Buffer.from([0xff, 0xd9]),
+    ]);
+    return { bytes, sha256: createHash('sha256').update(bytes).digest('hex') };
+  };
   const catalog = new Map(), photos = new Map(), offers = [], assets = [];
+  const referenceAsset = jpeg(`${salt}:ref`);
   const grant = {
     rightsHolder: 'Fixture owner', reviewedBy: 'Fixture reviewer', status: 'active',
     validFrom: '2026-01-01T00:00:00Z', expiresAt: null,
-    evidence: { reference: 'test', sha256 },
+    evidence: { reference: 'test', sha256: referenceAsset.sha256 },
     nvidiaTrial: { submit: true, territory: 'global', providerServiceImprovement: true,
       terms: 'nvidia-api-trial', purposes: ['internal_outfit_evaluation'] },
   };
-  const reference = { id: 'ref', bytes, sha256, sourceUrl: 'https://example.test/ref' };
-  assets.push({ ...grant, kind: 'reference', id: reference.id, sha256, sourceUrl: reference.sourceUrl });
+  const reference = { id: 'ref', ...referenceAsset, sourceUrl: 'https://example.test/ref' };
+  assets.push({ ...grant, kind: 'reference', id: reference.id, sha256: referenceAsset.sha256, sourceUrl: reference.sourceUrl });
   const candidates = Array.from({ length: 4 }, (_, index) => ({
     id: 'look-' + index,
     concept: { id: 'concept-' + index },
@@ -28,6 +40,7 @@ function fixture() {
       const sku = slot + '-' + index;
       const imageUrl = 'https://example.test/' + sku + '.jpg';
       const url = 'https://example.test/' + sku;
+      const { bytes, sha256 } = jpeg(`${salt}:${sku}`);
       catalog.set(sku, { id: sku, source_url: url, image_url: imageUrl, is_active: true, price: 90, currency: 'UZS' });
       photos.set(sku, { bytes, sha256 });
       assets.push({ ...grant, kind: 'product', id: sku, sha256, sourceUrl: imageUrl });
@@ -70,7 +83,7 @@ function mock(responseIds, rejects = []) {
 }
 
 test('shadow judges only rights-cleared, purchase-verified exact looks and reuses original looks', async () => {
-  const input = fixture(), calls = [];
+  const input = fixture('dispatch-clears'), calls = [];
   input.offers.find(({ sku }) => sku === 'top-0').stock = 'out_of_stock';
   const result = await compareAuthenticatedPlan({ ...input, fetchImpl: mock(calls) });
   assert.deepEqual(new Set(calls), new Set(['look-1', 'look-2', 'look-3']));
@@ -80,7 +93,7 @@ test('shadow judges only rights-cleared, purchase-verified exact looks and reuse
 });
 
 test('shadow withholds incomplete, unlicensed and over-budget decks without replacing the baseline', async () => {
-  const input = fixture(), calls = [];
+  const input = fixture('withholds'), calls = [];
   const incomplete = await compareAuthenticatedPlan({ ...input, fetchImpl: mock(calls, ['look-0', 'look-1']) });
   assert.equal(incomplete.reason, 'no_complete_visual_deck');
   assert.equal(calls.length, 4);
@@ -95,7 +108,7 @@ test('shadow withholds incomplete, unlicensed and over-budget decks without repl
 });
 
 test('changed merchant prices or switched photo URLs cannot be shown as exact verified offers', async () => {
-  const input = fixture(), calls = [];
+  const input = fixture('price-change'), calls = [];
   input.offers.find(({ sku }) => sku === 'top-0').price = 95;
   input.plan.candidates[1].items[0].imageUrl = 'https://example.test/different-variant.jpg';
   const result = await compareAuthenticatedPlan({ ...input, fetchImpl: mock(calls) });
@@ -106,7 +119,7 @@ test('changed merchant prices or switched photo URLs cannot be shown as exact ve
 
 
 test('only one admitted shadow call can judge a plan with the same run identity', async () => {
-  const input = fixture(), seen = new Set(), calls = [];
+  const input = fixture('run-claim'), seen = new Set(), calls = [];
   input.claimRun = (id) => {
     if (seen.has(id)) return false;
     seen.add(id);
@@ -137,7 +150,7 @@ function privateExport(input, modify = () => {}) {
 }
 
 test('one-merchant one-destination synthetic feed supports a verified three-look shadow deck', async () => {
-  const input = fixture(), calls = [];
+  const input = fixture('synthetic-feed'), calls = [];
   const merchantSnapshot = privateExport(input, ({ variants }) => {
     variants.find(({ sku }) => sku === 'top-0').stock = 'out_of_stock';
   });
@@ -154,7 +167,7 @@ test('one-merchant one-destination synthetic feed supports a verified three-look
 });
 
 test('merchant export preserves separate inference and reviewer grants, rejects stale and conflicting evidence', () => {
-  const input = fixture();
+  const input = fixture('rights-grants');
   const row = input.rights.assets.find(({ id }) => id === 'top-3');
   row.privateReview = { redistribute: true, audience: 'assigned_independent_reviewers' };
   delete row.nvidiaTrial;
@@ -176,7 +189,7 @@ test('merchant export preserves separate inference and reviewer grants, rejects 
 });
 
 test('shadow abstains on wrong merchant photo bytes and does not retry a provider timeout', async () => {
-  const input = fixture(), calls = [], events = [];
+  const input = fixture('wrong-bytes'), calls = [], events = [];
   const merchantSnapshot = privateExport(input);
   input.photos.set('top-0', { ...input.photos.get('top-0'), bytes: Buffer.alloc(256) });
   const healthy = mock(calls);
