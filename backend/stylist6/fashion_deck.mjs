@@ -100,16 +100,49 @@ function referenceAffinity(items, reference) {
 }
 
 /**
- * Date-night register (backend ranker only): shorts and athletic bottoms
- * read daytime-casual under smart/formal evening dress codes, even when the
- * catalog files them as bottoms. Casual dress codes and daytime wear keep
- * them — this is a context rejection, never a garment ban.
+ * Date-night register for NEW CLOTHING. "Discovery" may explore silhouettes
+ * but cannot turn a smart date into resort / training wear. The shared visual
+ * descriptor currently treats any "leather trainers" as minimal sneakers;
+ * an explicit retro/training silhouette is still athletic/casual evidence.
+ * Only scope these exclusions to smart/formal date nights. Casual occasions,
+ * daywear and an explicit casual dress code retain their original freedom.
  */
-function rejectForUnsuitableDateNight(descriptor, context) {
-  if (descriptor.slot !== 'bottom') return false;
+export function rejectForUnsuitableDateNight(descriptor, context, item) {
   if (context.dressCode !== 'smart' && context.dressCode !== 'formal') return false;
   if (!isDateNightOccasion(context.occasion) && !isDateNightOccasion(context.request)) return false;
-  return descriptor.subtype === 'shorts' || descriptor.athletic === true;
+  const name = String(item?.name || '').toLowerCase();
+  if (descriptor.slot === 'bottom') {
+    return descriptor.subtype === 'shorts' || descriptor.athletic === true;
+  }
+  if (descriptor.slot === 'top') {
+    // A known resort towelling tee is daytime leisure, not an elevated date
+    // base. Do not prohibit every cotton T-shirt or every linen shirt.
+    return descriptor.subtype === 't-shirt' &&
+      /\b(resort|towell?ing|terry|beachwear)\b/.test(name);
+  }
+  if (descriptor.slot === 'shoes') {
+    if (descriptor.athletic || descriptor.subtype === 'sport-sneaker') return true;
+    if (/\b(retro|running|training|trail|basketball|skate)\b/.test(name) &&
+      /\b(sneakers?|trainers?)\b/.test(name)) return true;
+    // "Leather" alone is not evidence of a minimal shoe. A deliberately
+    // sleek low-top remains eligible, subject to whole-look suitability.
+    if (['sneaker', 'minimal-sneaker'].includes(descriptor.subtype) &&
+      !/\b(minimal|clean|plain|sleek|low[ -]?top)\b/.test(name)) return true;
+  }
+  return false;
+}
+
+/** A smart date outfit needs polish even when every individual SKU is valid. */
+export function rejectUnpolishedDateNightLook(items, context) {
+  if (context.dressCode !== 'smart' && context.dressCode !== 'formal') return false;
+  if (!isDateNightOccasion(context.occasion) && !isDateNightOccasion(context.request)) return false;
+  const top = items.find(item => item.macroCategory === 'top');
+  const shoe = items.find(item => item.macroCategory === 'shoes');
+  const hasLayer = items.some(item => item.macroCategory === 'outerwear');
+  if (!top || !shoe || hasLayer) return false;
+  const base = describeGarment(top), footwear = describeGarment(shoe);
+  return base.subtype === 't-shirt' &&
+    ['sneaker','minimal-sneaker','sport-sneaker'].includes(footwear.subtype);
 }
 
 /**
@@ -152,7 +185,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       if (descriptor.slot !== item.macroCategory || descriptor.productKind === 'complete-suit' ||
           garmentContextReason(prepared, context) || rejectForClimate(prepared, context.weather) ||
           rejectForStyleOccasion(prepared, context.style, context.occasion) ||
-          rejectForUnsuitableDateNight(descriptor, context)) return null;
+          rejectForUnsuitableDateNight(descriptor, context, prepared)) return null;
       const personal = evaluatePersonalItem(prepared, descriptor, taste);
       // An explicitly locked owned item is a direct user instruction. Brand
       // avoidance must not silently discard that anchor. All other garments
@@ -182,7 +215,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       const identity = JSON.stringify(items.map(({ id }) => id).sort());
       if (coherent.has(identity)) return coherent.get(identity);
       const assessment = outfitCoherence(items, context);
-      if (!assessment.valid || outfitStructureReason(items, false) ||
+      if (!assessment.valid || rejectUnpolishedDateNightLook(items, context) || outfitStructureReason(items, false) ||
           items.some((item, index) => items.slice(0, index).some((other) => sameProduct(item, other)))) {
         coherent.set(identity, null);
         return null;
