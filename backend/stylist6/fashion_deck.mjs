@@ -6,7 +6,7 @@ import { describeGarment, prepareGarment } from '../../src/domain/garmentDescrip
 import { currentVisual, visualAdmissionReason } from '../../src/domain/visualFashion.ts';
 import { outfitCoherence } from '../../src/domain/outfitCoherence.ts';
 import { garmentContextReason, scoreGarmentForContext } from '../../src/domain/garmentContext.ts';
-import { lookConcept, outfitConcepts } from '../../src/domain/outfitConcepts.ts';
+import { outfitConcepts } from '../../src/domain/outfitConcepts.ts';
 import { isDateNightOccasion, stylingContext } from '../../src/domain/stylingContext.ts';
 import { hasColdLayerIntent, resolveOutfitComposition, resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
 import { outfitStylingFeatures, recentStylingPenalty, stylingFeatureDistance } from '../../src/domain/outfitVisualSignature.ts';
@@ -16,7 +16,7 @@ import { DIRECTION_VERSION, selectCreativeDirectionDeck, labelCreativeDirections
 import { EDITORIAL_QUALITY_VERSION, evaluateEditorialQuality } from './editorial_quality.mjs';
 import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitStructure.ts';
 import { rejectForClimate, rejectForStyleOccasion } from '../../src/domain/occasionRules.ts';
-import { groundedLookExplanation } from '../../src/domain/lookExplanation.ts';
+import { editorialDeckCopy, DECK_COPY_VERSION } from './deck_editorial_copy.mjs';
 
 const slots = ['top', 'outerwear', 'bottom', 'shoes'];
 const normalized = (value) => String(value || '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -428,13 +428,13 @@ export async function recommendFashionDeck({
     }
   }
   const directions = labelCreativeDirections(selected, creativeMetrics(context));
+  const copy = editorialDeckCopy(selected, context, directions);
   return {
     status: selected.length === 3 ? 'complete' : selected.length ? 'partial' : 'no_feasible_looks',
     outfits: selected.map((look, index) => {
-      const { id, title } = lookConcept(look.items, context).concept;
       return {
-        id: look.id, items: look.items, description: groundedLookExplanation(look.items, context),
-        concept: { id, title, referenceId: reference?.referenceId ?? null },
+        id: look.id, items: look.items, description: copy[index].description,
+        concept: { ...copy[index].concept, referenceId: reference?.referenceId ?? null },
         direction: directions[index],
         fashion: look.fashion,
         ...(visualWinner?.id === look.id ? { visualEvidence: visualWinner.evidence } : {}),
@@ -443,6 +443,7 @@ export async function recommendFashionDeck({
     diagnostics: { ...retrieval.diagnostics, visualVerdict,
       directionVersion: DIRECTION_VERSION,
       editorialQualityVersion: EDITORIAL_QUALITY_VERSION,
+      deckCopyVersion: DECK_COPY_VERSION,
       directions: directions.map((d) => d.id),
       qualifiedDirections: directions.filter((d) => d.qualified).length,
       neighborBriefs: neighborHouse.length,
