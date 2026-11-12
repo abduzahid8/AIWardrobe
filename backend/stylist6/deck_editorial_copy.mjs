@@ -11,7 +11,7 @@
 import { describeGarment } from '../../src/domain/garmentDescriptor.ts';
 import { lookConcept } from '../../src/domain/outfitConcepts.ts';
 
-export const DECK_COPY_VERSION = 's6-grounded-deck-copy-v1';
+export const DECK_COPY_VERSION = 's6-grounded-deck-copy-v2';
 const slotOrder = ['top','outerwear','bottom','shoes'];
 const known = x => typeof x === 'string' && !!x &&
   !['unknown','neutral','missing'].includes(x.toLowerCase());
@@ -49,11 +49,14 @@ function actualRelationship(part) {
     return 'The cardigan creates an open layer over the base.';
   if (part.outerwear?.subtype === 'blazer' && part.bottom?.structured)
     return 'A blazer and structured trousers keep the tailoring consistent.';
-  if (part.top && part.bottom && known(part.top.color) && known(part.bottom.color))
-    return `The ${part.top.color} top and ${part.bottom.color} trousers establish the palette.`;
+  if (part.top && part.bottom && known(part.top.color) && known(part.bottom.color)) {
+    const top = role(part.top) || 'top';
+    const bottom = role(part.bottom) || 'bottom';
+    return `A ${part.top.color} ${top} with ${part.bottom.color} ${bottom} defines the palette.`;
+  }
   if (part.outerwear && part.top)
     return 'The outer layer and base form the upper-body combination.';
-  return 'The pieces have passed the outfit compatibility checks.';
+  return 'The overall mix is appropriate for the selected occasion.';
 }
 
 function focusDescription(part, direction) {
@@ -63,11 +66,11 @@ function focusDescription(part, direction) {
   for (const slot of structured) {
     const d = part[slot];
     const itemName = role(d);
-    if (itemName) return `Choosing ${itemName} changes the styling direction.`;
+    if (itemName) return `Compared with the first look, ${itemName} changes the silhouette or texture.`;
   }
   for (const slot of palette) {
     const d = part[slot];
-    if (known(d?.color) && role(d)) return `Using ${d.color} ${role(d)} shifts the palette.`;
+    if (known(d?.color) && role(d)) return `Compared with the first look, ${d.color} ${role(d)} shifts the palette.`;
   }
   return '';
 }
