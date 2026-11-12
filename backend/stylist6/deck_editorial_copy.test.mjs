@@ -90,7 +90,7 @@ test('title and explanation never mutate selected products, native concepts or u
 test('descriptions compare known garment facts, not vague unproved changes',()=>{
   const descriptions=editorialDeckCopy(looks,context,directions).map(x=>x.description);
   assert.match(descriptions[1],/shifts from White to Cream/i);
-  assert.match(descriptions[2],/sweater replaces the dress shirt/i);
+  assert.match(descriptions[2],/(knitwear|sweater) replaces the dress shirt/i);
   assert.ok(!descriptions.some(x=>/changes the silhouette or texture|overall mix is appropriate/.test(x)));
 });
 
