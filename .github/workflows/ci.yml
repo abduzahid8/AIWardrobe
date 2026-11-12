@@ -43,6 +43,13 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      - name: Stylist 6 personalized ranking and cloud contract
+        run: >-
+          node --import tsx --test
+          backend/stylist6/personal_taste.test.mjs
+          backend/stylist6/fashion_deck.test.mjs
+          backend/stylist6/cloud_handler.test.mjs
+
       - name: Unit tests (CPU-budgeted hosted suites, uncontended)
         # The backend hosted suites run a wall-clock-budgeted planner: when
         # worker processes compete for cores the evaluation budget collapses
