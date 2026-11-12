@@ -62,6 +62,7 @@ import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, P
 import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, outfitTotalQuote, formatMoney, budgetCandidatesFromText, budgetInCurrency, resolveShopQuote, withOutfitBudget, mixedCurrencyPriced, outfitCurrencySubtotals } from '../src/utils/outfitBudget';
 import { getShopDestination } from '../src/utils/shopDestination';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
+import { reconcileStylistBriefWithChips } from '../features/outfit-generator/utils/stylistBriefSelection';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
@@ -704,6 +705,14 @@ const AIOutfitGenerator = () => {
   // money") must not override a later Casual/Formal chip — Maestro and
   // humans both hit this after a previous generate.
   const commentEditedRef = React.useRef(false);
+  const reconcilePromptForChips = (style: string | undefined, occasion: string | undefined) => {
+    const current = String(promptRef.current || userPrompt || '');
+    const next = reconcileStylistBriefWithChips(current, style, occasion);
+    if (next !== current) {
+      promptRef.current = next;
+      setUserPrompt(next);
+    }
+  };
   // Per-tap nonce so every Generate press rotates pool picks differently.
   // Without this, deterministic (i+offset)%len returns the SAME 3 outfits
   // on every tap — the "every time the same outfit" bug.
@@ -1348,9 +1357,13 @@ const AIOutfitGenerator = () => {
     let fallbackHistory: Awaited<ReturnType<typeof getRotationHistory>> | undefined;
     let displayedScope: string | undefined;
     let displayedRequestId: string | undefined;
-    const promptText = String(promptRef.current || userPrompt || '');
-    const commentIntent = parseStylistIntent(promptText);
     const useCommentIntent = commentEditedRef.current;
+    // A manual chip change must not leak "work, classic" into a new
+    // Old Money / Date request. Preserve actual free-form preferences.
+    const originalText = String(promptRef.current || userPrompt || '');
+    const promptText = useCommentIntent ? originalText
+      : reconcileStylistBriefWithChips(originalText, selectedStyle, selectedOccasion);
+    const commentIntent = parseStylistIntent(promptText);
     const occasionToUse = (useCommentIntent && commentIntent.occasion) || selectedOccasion;
     const styleToUse = overrideStyle || (useCommentIntent && commentIntent.style) || selectedStyle;
     if (useCommentIntent && commentIntent.style && commentIntent.style !== selectedStyle && !overrideStyle) {
@@ -2624,7 +2637,9 @@ const AIOutfitGenerator = () => {
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         setError('');
-                        setSelectedOccasion(on ? undefined : (occ.id as string));
+                        const nextOccasion = on ? undefined : (occ.id as string);
+                        reconcilePromptForChips(selectedStyle, nextOccasion);
+                        setSelectedOccasion(nextOccasion);
                         commentEditedRef.current = false;
                       }}
                       style={[styles.bigTile, on && styles.bigTileSelected]}
@@ -2716,6 +2731,7 @@ const AIOutfitGenerator = () => {
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         setError('');
+                        reconcilePromptForChips(activeStyle.id, selectedOccasion);
                         setSelectedStyle(activeStyle.id);
                         commentEditedRef.current = false;
                       }}
@@ -2775,6 +2791,7 @@ const AIOutfitGenerator = () => {
                               isSelected,
                               () => {
                                 setError('');
+                                reconcilePromptForChips(styleObj.id, selectedOccasion);
                                 setSelectedStyle(styleObj.id);
                                 commentEditedRef.current = false;
                               },
