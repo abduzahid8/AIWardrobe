@@ -453,6 +453,9 @@ test('owner 2026-11-12: minimalist smart date excludes resort towelling tee and 
   const cleanSneaker = garment('quiet-low-top',
     'Clean White Low-Top Leather Sneakers','shoes','minimal-sneaker');
   assert.equal(rejectForUnsuitableDateNight(
+    {slot:'bottom',subtype:'jeans',athletic:false},smartDate,
+    garment('mislabelled-shorts','Blue denim shorts','bottom','jeans')),true);
+  assert.equal(rejectForUnsuitableDateNight(
     {slot:'top',subtype:'t-shirt'},smartDate,resortTee),true);
   assert.equal(rejectForUnsuitableDateNight(
     {slot:'shoes',subtype:'minimal-sneaker',athletic:false},smartDate,retroTrainer),true);
