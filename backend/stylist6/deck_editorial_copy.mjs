@@ -91,6 +91,18 @@ function focusDescription(basePart, part, direction) {
   return '';
 }
 
+/**
+ * The native concept may describe an optional knit layer even when the
+ * final three-slot outfit contains only a polo or sweater. Do not display
+ * "layering" unless there is actually an outer layer in the selected SKUs.
+ */
+export function groundedNativeHeadline(nativeTitle, part) {
+  const title = String(nativeTitle || '');
+  if (part?.outerwear || !/\blayer(?:s|ing)?\b/i.test(title)) return title;
+  const top = role(part?.top), bottom = role(part?.bottom);
+  return top && bottom ? `${titleCase(top)} & ${titleCase(bottom)}` : 'Clean separates';
+}
+
 function headlineCandidates(part, direction) {
   const e = direction?.evidence || {};
   const focusSlots = [...new Set([
@@ -138,11 +150,12 @@ export function editorialDeckCopy(looks, context, directions) {
     const native = lookConcept(look.items,context).concept;
     const direction = directions?.[index] || {id:index?'alternative':'signature'};
     const part = details(look.items);
+    const truthfulNative = groundedNativeHeadline(native.title, part);
     const options = index === 0
-      ? [native.title]
-      : [...headlineCandidates(part,direction),native.title];
+      ? [truthfulNative]
+      : [...headlineCandidates(part,direction),truthfulNative];
     let title = options.find(s=>s&& !seen.has(s.toLowerCase()));
-    if (!title) title = `${native.title} · Option ${index+1}`;
+    if (!title) title = `${truthfulNative} · Option ${index+1}`;
     seen.add(title.toLowerCase());
     return {
       concept: {id:native.id,title,referenceId:look.referenceId??null},
