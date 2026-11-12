@@ -134,3 +134,43 @@ test('low quality or missing candidate metadata cannot force a third direction',
   assert.ok(result.looks.every(x=>x.id!=='danger'&&x.id!=='bad'));
   assert.equal(result.directions[1].id,'refresh');
 });
+
+test('third direction must be an editorial-quality discovery, not just a different look',()=>{
+  const scored=(id,rank,features,editorial)=>{
+    const result=look(id,rank,features);
+    result.fashion.editorial={score:editorial};
+    return result;
+  };
+  const pool=[
+    scored('anchor',.95,SHIRT,.92),
+    scored('refresh',.94,FRESH,.89),
+    scored('flashy-but-poor',.935,EXPLORE,.63),
+    scored('thoughtful',.91,[
+      slot('fine-knit','taupe','regular','knit'),null,
+      slot('chino','brown','regular','textured'),slot('loafer','oxblood')
+    ],.88),
+  ];
+  const result=selectCreativeDirectionDeck(pool,metrics);
+  assert.deepEqual(result.looks.map(x=>x.id),['anchor','refresh','thoughtful']);
+  assert.deepEqual(result.directions.map(x=>x.id),['signature','refresh','discovery']);
+  assert.equal(result.diagnostics.qualified,3);
+});
+
+test('an eligible but weaker third look is not mislabelled Discovery',()=>{
+  const scored=(id,rank,features,quality)=>{
+    const result=look(id,rank,features);
+    result.fashion.editorial={score:quality};
+    return result;
+  };
+  const result=selectCreativeDirectionDeck([
+    scored('anchor',.95,SHIRT,.91),
+    scored('refresh',.93,FRESH,.87),
+    scored('weak-different',.92,EXPLORE,.65),
+  ],metrics);
+  assert.equal(result.looks.length,2);
+  assert.deepEqual(result.directions.map(x=>x.id),['signature','refresh']);
+  assert.deepEqual(labelCreativeDirections([
+    scored('anchor',.95,SHIRT,.91),
+    scored('weak-different',.92,EXPLORE,.65),
+  ],metrics).map(x=>x.id),['signature','alternative']);
+});
