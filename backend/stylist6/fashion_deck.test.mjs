@@ -332,3 +332,69 @@ test('a confident visual rejection removes the lead even when the other candidat
   assert.equal(result.outfits.length, 3);
   assert.ok(result.outfits.every(({ id, visualEvidence }) => id !== baseline.outfits[0].id && !visualEvidence));
 });
+
+
+test('New Clothing respects explicitly avoided brands without weakening structure and budget', async () => {
+  const forbidden = garment('shirt-explicitly-avoided', 'white cotton shirt', 'top', 'shirt',
+    {brand: 'Not My Brand'});
+  const result = await recommendFashionDeck({
+    ...base, catalog: [...products, forbidden],
+    request: {
+      ...base.request,
+      preferences: {avoidColors: ['black'], avoidBrands: ['not my brand']},
+    },
+  });
+  assert.equal(result.status, 'complete');
+  for (const look of result.outfits) {
+    assert.ok(look.items.every(i => i.brand !== 'Not My Brand'));
+    assert.ok(look.items.some(i => i.id === 'shirt-white'));
+    assert.ok(look.items.reduce((sum,i) => sum + i.price, 0) <= 300);
+  }
+});
+
+test('New Clothing emits product-grounded taste evidence for an explicit favorite', async () => {
+  const catalog = products.map(i => i.id === 'shirt-white' ? {...i,brand:'Preferred House'} : i);
+  const result = await recommendFashionDeck({
+    ...base, catalog,
+    request: {
+      ...base.request,
+      preferences: {
+        favoriteColors: ['white'],
+        favoriteBrands: ['PREFERRED HOUSE'],
+        fitPreference: 'balanced',
+        avoidColors: ['black'],
+      },
+    },
+  });
+  assert.equal(result.status, 'complete');
+  for (const look of result.outfits) {
+    assert.ok(look.items.some(i=>i.id==='shirt-white'));
+    assert.ok(look.fashion.personalization.adjustment > 0);
+    assert.equal(look.fashion.personalization.matchedItems >= 1, true);
+    assert.ok(look.fashion.personalization.matches.some(m=>
+      m.productId==='shirt-white' && m.type==='favorite_brand'));
+    assert.ok(look.fashion.personalization.matches.every(m=>
+      look.items.some(i=>i.id===m.productId)));
+    assert.ok(look.fashion.personalization.adjustment<=.085);
+  }
+});
+
+test('explicitly locked owned item overrides only its own brand exclusion', async () => {
+  const owned = garment('shirt-white', 'white cotton shirt', 'top', 'shirt', {
+    brand:'Avoided Label',isShopItem:false,isWardrobe:true,price:null,currency:null,
+  });
+  const catalog = [...products.filter(i=>i.id!=='shirt-white'),owned];
+  const result = await recommendFashionDeck({
+    ...base,catalog,
+    request:{
+      ...base.request,sourceMode:'mixed',requiredIds:['shirt-white'],
+      preferences:{avoidBrands:['avoided label']},
+      budget:undefined,
+    },
+  });
+  assert.equal(result.status,'complete');
+  for(const look of result.outfits){
+    assert.ok(look.items.some(i=>i.id==='shirt-white'));
+    assert.ok(look.items.every(i=>i.brand!=='Avoided Label'||i.id==='shirt-white'));
+  }
+});
