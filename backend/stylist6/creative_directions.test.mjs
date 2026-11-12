@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   DIRECTION_VERSION,
   directionDifference,
+  footwearVarietyAdjustment,
   labelCreativeDirections,
   selectCreativeDirectionDeck,
 } from './creative_directions.mjs';
@@ -173,4 +174,35 @@ test('an eligible but weaker third look is not mislabelled Discovery',()=>{
     scored('anchor',.95,SHIRT,.91),
     scored('weak-different',.92,EXPLORE,.65),
   ],metrics).map(x=>x.id),['signature','alternative']);
+});
+
+test('footwear variety favors distinct physical shoes without blocking sparse catalogs',()=>{
+  const make=(id,shoe)=>({
+    id,items:[{id:id+'-top',macroCategory:'top'}, {id:shoe,macroCategory:'shoes'}],
+    fashion:{score:.90},
+  });
+  const base=make('base','black-derby');
+  const same=make('same','black-derby');
+  const different=make('different','brown-loafer');
+  assert.equal(footwearVarietyAdjustment(same,[base],metrics.overlap),-.035);
+  assert.equal(footwearVarietyAdjustment(different,[base],metrics.overlap),.012);
+  assert.equal(footwearVarietyAdjustment(base,[],metrics.overlap),0);
+  assert.equal(footwearVarietyAdjustment({id:'missing',items:[{id:'top',macroCategory:'top'}]},[base],metrics.overlap),0);
+});
+
+test('within comparable quality, creative second pick prefers non-reused footwear',()=>{
+  const withShoe=(id,quality,features,shoeId)=>{
+    const result=look(id,quality,features,[id+'-top',id+'-bottom',shoeId]);
+    result.items[0].macroCategory='top';
+    result.items[1].macroCategory='bottom';
+    result.items[2].macroCategory='shoes';
+    return result;
+  };
+  const lead=withShoe('lead',.94,SHIRT,'shoes-one');
+  const repeated=withShoe('repeated',.922,FRESH,'shoes-one');
+  const rotated=withShoe('rotated',.917,FRESH,'shoes-two');
+  const result=selectCreativeDirectionDeck([lead,repeated,rotated],metrics);
+  assert.equal(result.looks[0].id,'lead');
+  assert.equal(result.looks[1].id,'rotated');
+  assert.ok(result.directions[1].id==='refresh');
 });
