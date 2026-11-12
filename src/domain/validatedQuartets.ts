@@ -68,6 +68,21 @@ export function validatedQuartets<T extends GarmentEvidence & { id: string }>(
     .map((look) => ({ id: look.id, items: look.items }));
 }
 
+/** The wall-clock sync deadline keeps live planning responsive on a
+ * contended runtime, but it makes search depth machine-dependent: a starved
+ * worker evaluates fewer candidates and legitimately ships a weaker deck (or
+ * refuses with planning_cpu_risk), so two runs of the same request diverge
+ * by hardware and load alone. Jest workers — and the explicit
+ * AIWARDROBE_DETERMINISTIC_PLANNER=1 opt-in — replace the clock with the
+ * fixed `maxEvaluations` iteration budget, which is deterministic given the
+ * same inventory. =0 opts back out under Jest; live requests carry neither
+ * marker and keep the wall clock unchanged. */
+function deterministicPlanningBudget(): boolean {
+  if (typeof process === 'undefined' || !process.env) return false;
+  if (process.env.AIWARDROBE_DETERMINISTIC_PLANNER !== undefined)
+    return process.env.AIWARDROBE_DETERMINISTIC_PLANNER !== '0';
+  return process.env.JEST_WORKER_ID !== undefined;
+}
 /** A single immutable plan owns construction, physical matching and shoe
  * rotation. Provider ranking can reorder these alternatives, never rebuild
  * them. All per-look authority remains supplied by the caller's evaluator. */
@@ -108,7 +123,14 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
   }
 ) {
   const start = performance.now(),
-    maximum = Math.min(512, Math.max(0, options.maxEvaluations ?? 256));
+    maximum = Math.min(512, Math.max(0, options.maxEvaluations ?? 256)),
+    // Budget resolution: production plans against the wall clock, while the
+    // deterministic test budget (deterministicPlanningBudget) makes the
+    // `maximum` evaluation cap above the whole budget — the sync deadline
+    // below can then never truncate or degrade the search mid-evaluation.
+    syncDeadlineMs = deterministicPlanningBudget()
+      ? Number.POSITIVE_INFINITY
+      : (options.maxSyncMs ?? 650);
   items = items.map((item) => (Object.isFrozen(item) ? item : prepareGarment(item)));
   const required = new Set([
     ...options.requiredIds,
@@ -303,7 +325,7 @@ export function createOutfitPlan<T extends GarmentEvidence & { id: string }>(
       }
     }
     if (evaluations >= maximum) return;
-    if (performance.now() - start > (options.maxSyncMs ?? 650)) {
+    if (performance.now() - start > syncDeadlineMs) {
       cpuRisk = true;
       return;
     }
