@@ -48,7 +48,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
 dotenv.config({ path: path.join(root, '.env') });
 
-export const STYLIST6_DEV_ENGINE_VERSION = 'stylist-6-dev-local-20261111-r2';
+export const STYLIST6_DEV_ENGINE_VERSION = 'stylist-6-dev-local-20261112-r3';
 const DEFAULT_PORT = 3127;
 const MAX_BODY_BYTES = 12 * 1024 * 1024;
 const MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024;
