@@ -59,6 +59,31 @@ export function mixedCurrencyPriced(
     return false;
 }
 
+/**
+ * Exact listed-price subtotals, grouped by currency. Never present their sum
+ * as a converted value: the UI can render e.g. "$100 + 350000 UZS" without
+ * pretending an FX rate or concealing some of the purchase cost.
+ * Returns [] if an individual shop item is not fully quoted; partially
+ * reported subtotals would falsely suggest complete coverage.
+ */
+export function outfitCurrencySubtotals(
+    items: Array<QuoteItem | null | undefined>,
+    catalog?: QuoteItem[],
+): Array<{currency: string; price: number}> {
+    const totals = new Map<string,number>();
+    let priced = 0;
+    for(const item of items || []) {
+        if(!item || (item.isWardrobe === true && item.isShopItem !== true)) continue;
+        const quote = resolveShopQuote(item,catalog);
+        if(!quote || !quote.currency || !(Number.isFinite(quote.price) && quote.price > 0)) return [];
+        totals.set(quote.currency,(totals.get(quote.currency) || 0) + quote.price);
+        priced++;
+    }
+    if(!priced) return [];
+    return [...totals].sort(([a],[b])=>a.localeCompare(b))
+        .map(([currency,price])=>({currency,price}));
+}
+
 /** First non-empty item currency, upper-cased (e.g. 'UZS'). */
 export function catalogCurrencyOf(
     items: Array<{ currency?: string | null } | null | undefined> | null | undefined,
