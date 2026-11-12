@@ -161,6 +161,35 @@ export function rejectQuietSmartLeisureLayer(descriptor, context, item) {
   return /\b(technical[ -]?leisure|track jacket|training jacket|running jacket|sport[s]? jacket)\b/i.test(name);
 }
 
+/**
+ * Quiet-style fit is a product-level gate for a smart outfit, not a blanket
+ * ban on denim or comfort shoes. These are identifiable mismatches from
+ * actual catalog metadata/validated descriptors, before shortlist ranking:
+ *
+ *  - Old Money date night should not default to jeans, unless requested.
+ *  - Classic/Semi-Classic/Old Money smart work and Old Money smart dates
+ *    should not default to a visibly athletic, chunky or rugged sole.
+ *
+ * Casual, travel, athletic, user-requested items, and all owned wardrobe
+ * modes are outside this catalog-only editorial rule.
+ */
+export function rejectPolishedContextMismatch(descriptor, context, item) {
+  if (context.sourceMode !== 'catalog' || context.dressCode !== 'smart') return false;
+  const quiet = ['classic', 'semi_classic', 'old_money'].includes(context.style);
+  if (!quiet) return false;
+  const dateNight = isDateNightOccasion(context.occasion);
+  const work = /\b(work|office|business)\b/i.test(String(context.occasion || ''));
+  const userBrief = String(context.request || '');
+  if (context.style === 'old_money' && dateNight && descriptor.slot === 'bottom' &&
+      descriptor.subtype === 'jeans' && !/\b(jeans?|denim)\b/i.test(userBrief)) return true;
+  if (descriptor.slot !== 'shoes' || (!work && !dateNight)) return false;
+  if (/\b(chunky|lug[ -]?sole|rugged|sport[ -]?sole|comfort[ -]?sole)\b/i.test(userBrief))
+    return false;
+  // No rejection on unknown soles: never infer actual shoe construction
+  // from leather, price, brand or store alone.
+  return descriptor.casualSole === true;
+}
+
 /** A smart date outfit needs polish even when every individual SKU is valid. */
 export function rejectUnpolishedDateNightLook(items, context) {
   if (context.dressCode !== 'smart' && context.dressCode !== 'formal') return false;
@@ -215,7 +244,8 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           garmentContextReason(prepared, context) || rejectForClimate(prepared, context.weather) ||
           rejectForStyleOccasion(prepared, context.style, context.occasion) ||
           rejectForUnsuitableDateNight(descriptor, context, prepared) ||
-          rejectQuietSmartLeisureLayer(descriptor, context, prepared)) return null;
+          rejectQuietSmartLeisureLayer(descriptor, context, prepared) ||
+          rejectPolishedContextMismatch(descriptor, context, prepared)) return null;
       const personal = evaluatePersonalItem(prepared, descriptor, taste);
       // An explicitly locked owned item is a direct user instruction. Brand
       // avoidance must not silently discard that anchor. All other garments
