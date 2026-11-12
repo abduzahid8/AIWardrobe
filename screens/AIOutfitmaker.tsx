@@ -2229,16 +2229,14 @@ const AIOutfitGenerator = () => {
                   if (!mixedCurrencyPriced(outfit.items as any[], liveShopMapped)) return null;
                   const subtotals = outfitCurrencySubtotals(outfit.items as any[], liveShopMapped);
                   return (
-                    <View style={[styles.priceRow, {alignItems:'flex-start',gap:10}]}>
-                      <ScaledText style={[styles.priceRowLabel,{flex:1}]}>
+                    <View style={[styles.priceRow, {flexDirection:'column',alignItems:'stretch',gap:6}]}>
+                      <ScaledText style={styles.priceRowLabel}>
                         {t('outfitMaker.outfitTotalUnavailable', {defaultValue: 'Total unavailable — items are listed in different currencies'})}
                       </ScaledText>
                       {subtotals.length >= 2 && (
-                        <View style={{alignItems:'flex-end', flex:1}}>
-                          <ScaledText style={styles.priceRowValue} minScale={0.6}>
-                            {subtotals.map(({currency,price})=>formatMoney(price,currency)).join(' + ')}
-                          </ScaledText>
-                        </View>
+                        <ScaledText style={[styles.priceRowValue, {textAlign:'left'}]} minScale={0.75}>
+                          {subtotals.map(({currency,price})=>formatMoney(price,currency)).join(' + ')}
+                        </ScaledText>
                       )}
                     </View>
                   );
