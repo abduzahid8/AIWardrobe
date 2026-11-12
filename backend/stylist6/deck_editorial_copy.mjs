@@ -86,7 +86,7 @@ function focusDescription(basePart, part, direction) {
     const before = basePart?.[slot], after = part?.[slot];
     if (before && after && known(before.color) && known(after.color) &&
         before.color !== after.color && role(after))
-      return `The ${role(after)} shifts from ${clean(before.color)} to ${clean(after.color)}.`;
+      return `The ${role(after)} ${role(after).endsWith('s') ? 'shift' : 'shifts'} from ${clean(before.color)} to ${clean(after.color)}.`;
   }
   return '';
 }
