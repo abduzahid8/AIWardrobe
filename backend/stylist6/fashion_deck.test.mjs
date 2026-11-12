@@ -507,3 +507,13 @@ test('complete fashion decks expose a bounded whole-outfit assessment before Dis
   assert.deepEqual(rerun.outfits.map(x=>({id:x.id,quality:x.fashion.editorial})),
     result.outfits.map(x=>({id:x.id,quality:x.fashion.editorial})));
 });
+
+test('editorial v1 is isolated to New Clothing and does not rewrite mixed-source ranking', async()=>{
+  const fromShop=await recommendFashionDeck(base);
+  const mixed=await recommendFashionDeck({
+    ...base, request:{...base.request,sourceMode:'mixed'},
+  });
+  assert.ok(fromShop.outfits.length>0&&mixed.outfits.length>0);
+  assert.ok(fromShop.outfits.every(x=>Number.isFinite(x.fashion.editorial?.score)));
+  assert.ok(mixed.outfits.every(x=>x.fashion.editorial.score===null&&x.fashion.editorial.adjustment===0));
+});
