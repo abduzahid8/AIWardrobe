@@ -22,7 +22,7 @@ jobs:
       - name: Syntax-check independent creative planner
         run: node --check backend/stylist6/prototype.mjs
       - name: Test real-SKU grounding and fail-closed contracts (mock providers, NO API calls)
-        run: node --test backend/stylist6/prototype.test.mjs backend/stylist6/fashion_deck.test.mjs backend/stylist6/creative_directions.test.mjs backend/stylist6/editorial_quality.test.mjs
+        run: node --test backend/stylist6/prototype.test.mjs backend/stylist6/fashion_deck.test.mjs backend/stylist6/creative_directions.test.mjs backend/stylist6/editorial_quality.test.mjs backend/stylist6/deck_editorial_copy.test.mjs
       - name: Verify benchmark scenarios contain 35 unique requests
         run: |
           node --input-type=module -e '
@@ -110,7 +110,7 @@ jobs:
       # owner-provided lookbook photos (image-teaste/, gitignored licensed
       # media). It runs in the local dev gate, never in public CI.
       - name: Verify fashion deck, source-mode isolation and locked anchors
-        run: node --test backend/stylist6/fashion_deck.test.mjs backend/stylist6/creative_directions.test.mjs backend/stylist6/editorial_quality.test.mjs backend/stylist6/personal_taste.test.mjs backend/stylist6/lookbook_briefs.test.mjs backend/stylist6/nvidia_integration.test.mjs
+        run: node --test backend/stylist6/fashion_deck.test.mjs backend/stylist6/creative_directions.test.mjs backend/stylist6/editorial_quality.test.mjs backend/stylist6/deck_editorial_copy.test.mjs backend/stylist6/personal_taste.test.mjs backend/stylist6/lookbook_briefs.test.mjs backend/stylist6/nvidia_integration.test.mjs
       - name: Verify prototype quality-floor regression (diversity plus maintained quality)
         run: node --test backend/stylist6/prototype.test.mjs
       - name: Verify Stylist 6 cloud handler (server inventory, anchors, budgets, fakes only)
