@@ -9,7 +9,9 @@
  * This module is pure: the caller supplies previously validated looks,
  * canonical product overlap and evidence-based styling features.
  */
-export const DIRECTION_VERSION = 's6-three-directions-v1';
+import { editorialDirectionEligible } from './editorial_quality.mjs';
+
+export const DIRECTION_VERSION = 's6-three-directions-editorial-v2';
 const MAX_POOL = 72;
 const QUALITY_WINDOW = 0.16;
 const EPS = 1e-9;
@@ -134,9 +136,9 @@ export function selectCreativeDirectionDeck(shortlist, {
   for (const fresh of eligible) {
     if (fresh.id === signature.id || !allowedTogether(signature, fresh, overlap)) continue;
     const firstDiff = diff(signature, fresh);
-    if (!refreshWorthShowing(firstDiff)) continue;
+    if (!refreshWorthShowing(firstDiff) || !editorialDirectionEligible(signature, fresh, 'refresh')) continue;
     const discovered = pick(eligible, [signature, fresh], overlap,
-      (look, [d1,d2]) => discoveryWorthShowing(d1,d2),
+      (look, [d1,d2]) => discoveryWorthShowing(d1,d2) && editorialDirectionEligible(signature, look, 'discovery'),
       discoveredRank);
     if (!discovered) continue;
     const joint = refreshedRank.value(fresh, [firstDiff]) +
@@ -150,10 +152,10 @@ export function selectCreativeDirectionDeck(shortlist, {
   if (plannedPair) chosen.push(...plannedPair);
   else {
     const refreshed = pick(eligible, chosen, overlap,
-      (look, distances) => refreshWorthShowing(distances[0]), refreshedRank);
+      (look, distances) => refreshWorthShowing(distances[0]) && editorialDirectionEligible(signature, look, 'refresh'), refreshedRank);
     if (refreshed) chosen.push(refreshed);
     else {
-      const fallback = pick(eligible, chosen, overlap, () => true, {
+      const fallback = pick(eligible, chosen, overlap, (look) => editorialDirectionEligible(signature, look, 'alternative'), {
         diff,
         value: (look, [d]) => score(look) + bonus(look) + .07 * d.distance,
       });
@@ -161,10 +163,10 @@ export function selectCreativeDirectionDeck(shortlist, {
     }
     if (chosen.length === 2) {
       const discovered = pick(eligible, chosen, overlap,
-        (look, [d1,d2]) => discoveryWorthShowing(d1,d2), discoveredRank);
+        (look, [d1,d2]) => discoveryWorthShowing(d1,d2) && editorialDirectionEligible(signature, look, 'discovery'), discoveredRank);
       if (discovered) chosen.push(discovered);
       else {
-        const fallback = pick(eligible, chosen, overlap, () => true, {
+        const fallback = pick(eligible, chosen, overlap, (look) => editorialDirectionEligible(signature, look, 'alternative'), {
           diff,
           value: (look, d) => score(look) + bonus(look) +
             .11 * Math.min(...d.map(x => x.distance)),
@@ -199,8 +201,9 @@ export function labelCreativeDirections(looks, {featuresOf, featureDistance}) {
       ? directionDifference(looks[1], look, featuresOf, featureDistance)
       : null;
     const qualified = index === 1
-      ? refreshWorthShowing(fromSignature)
-      : discoveryWorthShowing(fromSignature, fromRefresh);
+      ? refreshWorthShowing(fromSignature) && editorialDirectionEligible(looks[0], look, 'refresh')
+      : discoveryWorthShowing(fromSignature, fromRefresh) &&
+        editorialDirectionEligible(looks[0], look, 'discovery');
     return {
       id:qualified ? (index === 1 ? 'refresh' : 'discovery') : 'alternative',
       qualified,
