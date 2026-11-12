@@ -414,7 +414,7 @@ test('short onboarding explores adjacent ideas without changing the requested dr
   });
   assert.ok(result.outfits.length > 0);
   assert.equal(result.diagnostics.neighborBriefs,2);
-  assert.equal(result.diagnostics.directionVersion,'s6-three-directions-v1');
+  assert.equal(result.diagnostics.directionVersion,'s6-three-directions-editorial-v2');
   assert.equal(result.outfits[0].direction.id,'signature');
   for(const outfit of result.outfits){
     assert.ok(['signature','refresh','discovery','alternative'].includes(outfit.direction.id));
@@ -484,4 +484,26 @@ test('owner 2026-11-12: minimalist smart date excludes resort towelling tee and 
     assert.ok(look.items.every(item=>!['real-resort-tee','real-retro-shoe'].includes(item.id)));
     assert.equal(rejectUnpolishedDateNightLook(look.items,smartDate),false);
   }
+});
+
+
+test('complete fashion decks expose a bounded whole-outfit assessment before Discovery selection', async()=>{
+  const result = await recommendFashionDeck(base);
+  assert.ok(result.outfits.length>=2);
+  assert.equal(result.diagnostics.editorialQualityVersion,'s6-editorial-quality-v1');
+  const lead=result.outfits[0];
+  assert.ok(Number.isFinite(lead.fashion.editorial?.score));
+  assert.ok(lead.fashion.editorial.score>=0 && lead.fashion.editorial.score<=1);
+  for(const outfit of result.outfits) {
+    const quality=outfit.fashion.editorial;
+    assert.ok(quality&&Number.isFinite(quality.score));
+    assert.ok(quality.adjustment>=-.08 && quality.adjustment<=.04);
+    if(outfit.direction.id==='discovery'){
+      assert.ok(quality.score>=.71);
+      assert.ok(quality.score>=lead.fashion.editorial.score-.055);
+    }
+  }
+  const rerun = await recommendFashionDeck(base);
+  assert.deepEqual(rerun.outfits.map(x=>({id:x.id,quality:x.fashion.editorial})),
+    result.outfits.map(x=>({id:x.id,quality:x.fashion.editorial})));
 });
