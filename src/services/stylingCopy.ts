@@ -112,6 +112,20 @@ export function outfitConceptTitle(id: string, fallbackTitle?: string): string {
   return fallback || String(i18n.t('outfitMaker.styledLook', {defaultValue:'Styled look'}));
 }
 
+/**
+ * The Stylist 6 server returns item-specific, unique titles. A known native
+ * concept ID must not overwrite that title with its generic translation
+ * ("Refined Tailoring" on multiple cards). Legacy engines keep the existing
+ * localized concept name; absent S6 server copy keeps the normal fallback.
+ */
+export function outfitConceptDisplayTitle(
+  id: string, suppliedTitle?: string, engineVersion?: string,
+): string {
+  const title = typeof suppliedTitle === 'string' ? suppliedTitle.trim() : '';
+  if (/^stylist-6-/i.test(String(engineVersion || '')) && title) return title;
+  return outfitConceptTitle(id, suppliedTitle);
+}
+
 /** Advice that adds information beyond the description: no empties, no
  * case/whitespace-only duplicates, and never the description restated. */
 export function distinctStylingTips(description: string, tips: readonly unknown[]): string[] {
