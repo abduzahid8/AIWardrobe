@@ -24,11 +24,11 @@ test('an account change while the quota gate is pending cannot publish the deck'
  // Redesign v209 moved the quota gate post-success into generateOutfits: approval now sits on the
  // same line as an isCurrentGeneration re-check, so a switched account can never publish.
  if(!gateBlock)throw new Error('quota gate statement not found in screens/AIOutfitmaker.tsx');
- const startGate=(ownerRef,consume)=>{
+ const startGate=(ownerRef,consume,cloud=false)=>{
   const cancelSignal=undefined;
   const guardState={cancelSignal,isMounted:{current:true},generationNonce:{current:1},tapNonce:1,generationOwner:ownerRef.name,generationRevision:ownerRef.revision,authEvents:{getUserId:()=>ownerRef.name,getRevision:()=>ownerRef.revision}};
   const isCurrentGeneration=make(expressions.isCurrentGeneration,guardState);
-  const pub={setResultBudget:jest.fn(),shopBudget:{amount:120,currency:'USD'},setInventoryNote:jest.fn(),data:{generationVersion:'stylist-5-test'},t:key=>key,setLastEngineVersion:jest.fn(),setLastEngineDetail:jest.fn(),s6Active:false,s6CloudActive:false,shownOutfits:[{items:['look']}],setOutfits:jest.fn(),recordDisplayedDeck:jest.fn(async()=>{}),scope:'anonymous',requestId:'req-1',console,recordShownOutfits:jest.fn(),recencyScope:'anonymous',__DEV__:false,setLoading:jest.fn()};
+  const pub={setResultBudget:jest.fn(),shopBudget:{amount:120,currency:'USD'},setInventoryNote:jest.fn(),data:{generationVersion:'stylist-5-test'},t:key=>key,setLastEngineVersion:jest.fn(),setLastEngineDetail:jest.fn(),s6Active:false,s6CloudActive:cloud,shownOutfits:[{items:['look']}],setOutfits:jest.fn(),recordDisplayedDeck:jest.fn(async()=>{}),scope:'anonymous',requestId:'req-1',console,recordShownOutfits:jest.fn(),recencyScope:'anonymous',__DEV__:false,setLoading:jest.fn()};
   const pending=makeBlock(gateBlock,{consumeOrPaywall:consume,cancelSignal,isCurrentGeneration,...pub})();
   return{pub,pending};
  };
@@ -44,7 +44,7 @@ test('an account change while the quota gate is pending cannot publish the deck'
   expect(pub.setResultBudget).toHaveBeenCalled();expect(pub.setOutfits).toHaveBeenCalledWith([{items:['look']}]);expect(pub.setLoading).toHaveBeenLastCalledWith(false);}
  // cloud already debits the authoritative server quota; its successful deck
  // must publish without a second client usage RPC.
- {const count=jest.fn(async()=>true);const{pub,pending}=startGate({name:'owner',revision:1},count);pub.s6CloudActive=true;await pending;
+ {const count=jest.fn(async()=>true);const{pub,pending}=startGate({name:'owner',revision:1},count,true);await pending;
   expect(count).not.toHaveBeenCalled();expect(pub.setOutfits).toHaveBeenCalledWith([{items:['look']}]);}
 });
 test('same-owner generation still proceeds when the feature gate passes',async()=>{
