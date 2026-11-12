@@ -164,3 +164,6 @@ style_references_private/
 # Original licensed fashion lookbook source files: never publish them in Git
 /image-teaste/
 **/image-teaste/
+
+# Vercel CLI link artifacts
+.vercel/

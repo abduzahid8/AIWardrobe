@@ -5,11 +5,28 @@ simulator app without deploying anything.
 
 ## Start
 
+One command — validates `.env`, starts the ranker bridge on :3127, then Metro:
+
+```sh
+npm run dev:stylist6
+```
+
+- The default engine becomes `Stylist 6 (cloud staging)` because `.env` sets
+  `EXPO_PUBLIC_STYLIST6_DEV_BRIDGE=true`. The picker still allows `Stylist 5`
+  and `Stylist 6 (local)`.
+- Add a clean Metro cache when the bundler state looks corrupted:
+  `npm run dev:stylist6 -- -- --clear`
+- Rebuild/install the simulator app only when native `ios/` files changed:
+  `npx expo run:ios` (it reuses the Metro started above). The bridge and
+  Metro keep running otherwise; the installed app connects to :8081.
+
+Manual equivalent (two terminals):
+
 ```sh
 # Terminal 1 — ranker (leave running; plain Node, zero npm deps)
 node scripts/stylist6/dev_bridge.mjs --port=3127
 
-# Terminal 2 — app (Dev Client on the simulator)
+# Terminal 2 — app (bare dev build on the simulator)
 EXPO_PUBLIC_STYLIST6_DEV_BRIDGE=true \
 EXPO_PUBLIC_STYLIST_DIAGNOSTICS=true \
 npx expo run:ios
@@ -36,11 +53,11 @@ ignore them: the engine switch requires `__DEV__` AND the opt-in flag.
   network or NVIDIA is needed.
 - `src/services/stylist6Dev.ts` — dev-only app client. Throws unless the
   dev gate is open; surfaces bridge failures with their Stylist 6 codes.
-- `screens/AIOutfitmaker.tsx` — dev-only `Stylist 5 / Stylist 6 (local)`
-  picker, exact-deck pipeline (rendering-contract acceptance, no
-  re-diversification, no recovery fill), and the actual-engine banner +
-  per-card version labels. Failures show a dev-only `code:` line with the
-  real failure key.
+- `screens/AIOutfitmaker.tsx` — dev-only `Stylist 5 / Stylist 6 (local) /
+  Stylist 6 (cloud)` picker, exact-deck pipeline (rendering-contract
+  acceptance, no re-diversification, no recovery fill), and the
+  actual-engine banner + per-card version labels. Failures show a dev-only
+  `code:` line with the real failure key.
 - `__tests__/services/stylist6Dev.test.ts` — gate, identity,
   exact-deck acceptance and no-fallback coverage.
 
