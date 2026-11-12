@@ -112,7 +112,11 @@ export function rejectForUnsuitableDateNight(descriptor, context, item) {
   if (!isDateNightOccasion(context.occasion) && !isDateNightOccasion(context.request)) return false;
   const name = String(item?.name || '').toLowerCase();
   if (descriptor.slot === 'bottom') {
-    return descriptor.subtype === 'shorts' || descriptor.athletic === true;
+    // Feed taxonomy can label "Blue denim shorts" as jeans because denim
+    // matches before shorts. Physical short inseams remain inappropriate
+    // regardless of that imperfect subtype ordering.
+    return descriptor.subtype === 'shorts' || descriptor.athletic === true ||
+      /\b(shorts?|bermudas?)\b/.test(name);
   }
   if (descriptor.slot === 'top') {
     // A known resort towelling tee is daytime leisure, not an elevated date
