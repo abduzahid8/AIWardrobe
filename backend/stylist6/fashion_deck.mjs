@@ -13,6 +13,7 @@ import { outfitStylingFeatures, recentStylingPenalty, stylingFeatureDistance } f
 import { colorTokensOf } from '../../src/domain/outfitDiversity.ts';
 import { personalTaste, evaluatePersonalItem, evaluatePersonalLook } from './personal_taste.mjs';
 import { DIRECTION_VERSION, selectCreativeDirectionDeck, labelCreativeDirections } from './creative_directions.mjs';
+import { EDITORIAL_QUALITY_VERSION, evaluateEditorialQuality } from './editorial_quality.mjs';
 import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitStructure.ts';
 import { rejectForClimate, rejectForStyleOccasion } from '../../src/domain/occasionRules.ts';
 import { groundedLookExplanation } from '../../src/domain/lookExplanation.ts';
@@ -250,14 +251,22 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       // never a reject. Budgeted requests already hard-filter in admit().
       const pricing = extras.budgeted || !extras.priceProfile ? { penalty: 0, flagged: 0 }
         : pricePenaltyForLook(items, extras.priceProfile);
+      const descriptions = items.map(describeGarment);
       const personal = evaluatePersonalLook(
-        items.map((item) => ({ item, descriptor: describeGarment(item) })), taste);
+        items.map((item, index) => ({ item, descriptor: descriptions[index] })), taste);
+      const editorial = evaluateEditorialQuality({
+        dimensions: { ...dimensions, palette },
+        descriptors: descriptions,
+        context,
+        hasLayer: !unlayered,
+      });
       const result = {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
-          personal.adjustment - recentStylingPenalty(items, recentSignatures) - pricing.penalty,
+          personal.adjustment + editorial.adjustment - recentStylingPenalty(items, recentSignatures) - pricing.penalty,
         dimensions: { ...dimensions, palette },
         evidence: pricing.flagged ? [...assessment.evidence, 'unbudgeted_premium_selection_dampened'] : assessment.evidence,
         referenceMetadata: affinity,
+        editorial,
         imageSupportedItems: items.filter((item) =>
           describeGarment(item).evidence.some((entry) => entry.startsWith('image:'))).length,
         personalization: {
@@ -428,6 +437,7 @@ export async function recommendFashionDeck({
     }),
     diagnostics: { ...retrieval.diagnostics, visualVerdict,
       directionVersion: DIRECTION_VERSION,
+      editorialQualityVersion: EDITORIAL_QUALITY_VERSION,
       directions: directions.map((d) => d.id),
       qualifiedDirections: directions.filter((d) => d.qualified).length,
       neighborBriefs: neighborHouse.length,
