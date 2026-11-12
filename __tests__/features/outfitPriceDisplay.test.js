@@ -12,7 +12,11 @@ for(const node of ast.statements){
 }
 function build(code,scope){if(!code)throw Error('Missing production price component');return Function(...Object.keys(scope),ts.transpile(code,{target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.React})+';return value;')(...Object.values(scope));}
 const react={...React,useMemo:fn=>fn(),useCallback:fn=>fn,useState:()=>[false,()=>{}],useEffect:()=>{}};
-const cell=build(cellCode,{React:react,View:'View',ExpoImage:'Image',ScaledText:'Text',TouchableOpacity:'Button',Ionicons:'Icon',slotStyles:{},formatMoney,useUzsPrice:(price,currency)=>formatUzsPrice(price,currency,makeReferenceSnapshot())});
+const {ImageUnavailablePlaceholder,usableProductImageUri}=require('../../src/components/ProductImageFallback');
+// Price-display tests run the extracted cell outside a renderer, so the real
+// retry hook cannot run its React state machine here; a ready-state stub
+// keeps the image branch identical without exercising the fallback state.
+const cell=build(cellCode,{React:react,View:'View',ExpoImage:'Image',ScaledText:'Text',TouchableOpacity:'Button',Ionicons:'Icon',slotStyles:{},formatMoney,ImageUnavailablePlaceholder,useProductImageRetry:raw=>({phase:'ready',activeUri:usableProductImageUri(raw),onImageError:()=>{}}),useUzsPrice:(price,currency)=>formatUzsPrice(price,currency,makeReferenceSnapshot())});
 const grid=build(gridCode,{React:react,View:'View',SlotCell:'Cell',useDesignTokens:()=>({}),useTranslation:()=>({t:(_key,fallback)=>fallback}),useCallback:fn=>fn,canonicalizeMacroCategory:x=>x,getSlotImageSource:()=>({uri:'https://fixture.invalid/coat.jpg'}),getShopDestination:()=>'',slotStyles:{},resolveShopQuote});
 function text(node){if(!node)return[];if(Array.isArray(node))return node.flatMap(text);if(typeof node==='string')return[node];return text(node.props?.children);}
 it('the actual grid and cell show the matching EUR quote at its original listing price and never relabel the amount',()=>{

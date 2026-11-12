@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ScaledText } from './ui/ScaledText';
 import { getShopDestination } from '../src/utils/shopDestination';
 import { ExpoImage } from '../src/components/MediaImage';
+import { ImageUnavailablePlaceholder, useProductImageRetry } from '../src/components/ProductImageFallback';
 
 
 export interface ShopSheetItem {
@@ -71,10 +72,30 @@ const getCategoryLabel = (item: ShopSheetItem): string => {
   return raw ? String(raw) : 'Item';
 };
 
+// Image honesty: a missing URL or a failed load renders an explicit labeled
+// 'photo unavailable' tile — never a silent thumb pretending to be the
+// product photo. One bounded cache-busting retry absorbs transient CDN hiccups.
+const SheetThumb = ({ rawImage, unavailableLabel }: { rawImage: string; unavailableLabel: string }) => {
+  const { phase, activeUri, onImageError } = useProductImageRetry(rawImage);
+  if (phase === 'unavailable' || !activeUri) {
+    return <ImageUnavailablePlaceholder label={unavailableLabel} style={styles.thumb} />;
+  }
+  return (
+    <ExpoImage
+      source={{ uri: activeUri }}
+      style={styles.thumb}
+      contentFit="cover"
+      cachePolicy="memory-disk"
+      onError={onImageError}
+    />
+  );
+};
+
 
 export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: OutfitShopSheetProps) => {
   const { t, i18n } = useTranslation();
   const displayRates = useUzsDisplayRates(visible);
+  const photoUnavailableLabel = t('common.photoUnavailable', 'Photo unavailable');
 
   const openShopUrl = useCallback(async (url?: string, itemName?: string) => {
     if (!url && !itemName) return;
@@ -120,13 +141,7 @@ export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: Ou
               return (
                 <View key={String(item.id ?? `${name}-${index}`)} style={styles.row}>
                   <View style={styles.thumbWrap}>
-                    {image ? (
-                      <ExpoImage source={{ uri: image }} style={styles.thumb} contentFit="cover" cachePolicy="memory-disk" />
-                    ) : (
-                      <View style={[styles.thumb, styles.thumbPlaceholder]}>
-                        <Ionicons name="shirt-outline" size={22} color="#8A97A8" />
-                      </View>
-                    )}
+                    <SheetThumb rawImage={image} unavailableLabel={photoUnavailableLabel} />
                   </View>
                   <View style={styles.rowInfo}>
                     <ScaledText style={styles.rowCategory}>{getCategoryLabel(item).toUpperCase()}</ScaledText>
@@ -255,11 +270,6 @@ const styles = StyleSheet.create({
   thumb: {
     width: '100%',
     height: '100%',
-  },
-  thumbPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EEF2F7',
   },
   rowInfo: {
     flex: 1,

@@ -288,6 +288,33 @@ describe('stylist6 cloud staging client', () => {
     expect(options?.signal).toBe(controller.signal);
   });
 
+  test('stylist6Language normalizes the active i18n locale to a supported copy language', () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const { stylist6Language } = loadDevModule();
+    expect(stylist6Language('en')).toBe('en');
+    expect(stylist6Language('ru')).toBe('ru');
+    expect(stylist6Language('uz')).toBe('uz');
+    expect(stylist6Language('ru-RU')).toBe('ru');
+    expect(stylist6Language('en-US')).toBe('en');
+    expect(stylist6Language(undefined)).toBe('en');
+    expect(stylist6Language('de')).toBe('en');
+    expect(stylist6Language(42)).toBe('en');
+  });
+
+  test('the cloud request forwards the active language for localized deck copy', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const { invokeStylist6Cloud } = loadDevModule();
+    mockInvoke.mockResolvedValue({ data: { success: true, generationVersion: 'stylist-6-cloud-staging-1', outfits: [] }, error: null });
+    await invokeStylist6Cloud({
+      request: { style: 'classic', occasion: 'Work', brief: '', language: 'ru' },
+    });
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    const [, invokeOptions] = mockInvoke.mock.calls[0];
+    expect(invokeOptions?.body?.request?.language).toBe('ru');
+  });
+
   test('cloud deck acceptance is source-aware and never repairs', () => {
     (globalThis as any).__DEV__ = true;
     process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';

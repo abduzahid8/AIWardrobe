@@ -37,7 +37,7 @@ test('three cards have distinct, deterministic, evidence-grounded headings',()=>
   const native=lookConcept(looks[0].items,context).concept;
   const firstPass=editorialDeckCopy(looks,context,directions);
   const secondPass=editorialDeckCopy(looks,context,directions);
-  assert.equal(DECK_COPY_VERSION,'s6-grounded-deck-copy-v3');
+  assert.equal(DECK_COPY_VERSION,'s6-grounded-deck-copy-v4');
   assert.deepEqual(firstPass,secondPass);
   assert.equal(firstPass[0].concept.title,native.title);
   assert.equal(new Set(firstPass.map(x=>x.concept.title.toLowerCase())).size,3);
@@ -107,4 +107,105 @@ test('unlayered knit polo never gets a fake layering headline',()=>{
   assert.equal(groundedNativeHeadline('Refined Tailoring',part),'Refined Tailoring');
   assert.equal(groundedNativeHeadline('Smart knit layering',
     {...part,outerwear:{slot:'outerwear',subtype:'cardigan'}}),'Smart knit layering');
+});
+
+// ── Localization (v4): ru + uz template tables ──────────────────────────
+const CYRILLIC = /[А-Яа-яёЁ]/;
+const LATIN = /[A-Za-z]/;
+/** A card string never mixes languages: it is written entirely in one script. */
+const monolingual = s => !s || !(CYRILLIC.test(s) && LATIN.test(s));
+const contextFor = (language, overrides = {}) => stylingContext({
+  style:'classic', occasion:'Work', request:'', optionalLayer:true, language, ...overrides,
+});
+
+const allNativeTitles = [
+  'Refined Ivy','Textured tailoring','Smart knit layering','Precise office tailoring',
+  'Classic separates','Tonal evening','Soft evening texture','Modern evening separates',
+  'Easy transit','Soft utility','Relaxed knit layers','Active layers','Formal tailoring',
+  'Clean lines','Quiet knit texture','Tonal modern separates','Ivy Knit','Soft Tailoring',
+  'Relaxed Layers','Tailored','Soft Knit Layers','Refined Tailoring','Relaxed Denim Ease',
+  'Clean separates','Clean transit','Soft separates','Textured separates',
+];
+
+test('ru and uz decks keep the same uniqueness, determinism and grounding rules',()=>{
+  const native=lookConcept(looks[0].items,context).concept;
+  for (const language of ['ru','uz']) {
+    const localizedContext = contextFor(language);
+    const firstPass = editorialDeckCopy(looks,localizedContext,directions);
+    const secondPass = editorialDeckCopy(looks,localizedContext,directions);
+    assert.deepEqual(firstPass,secondPass);
+    assert.equal(firstPass.length,3);
+    // Same uniqueness rule per language: three distinct evidence-led headlines.
+    assert.equal(new Set(firstPass.map(x=>x.concept.title.toLowerCase())).size,3);
+    // The first card keeps the (localized) native concept headline.
+    assert.equal(firstPass[0].concept.title,groundedNativeHeadline(native.title,{},language));
+    // Grounding survives translation: the dress-shoe fact is stated, never
+    // vague praise; the refresh card carries the measured color change.
+    assert.ok(firstPass.every(x=>!/comfort|skin|body shape|photo|100%|cashmere/i.test(x.description)));
+    assert.match(firstPass[0].description,/Классическая обувь|klassik poyabzal/i);
+    assert.match(firstPass[1].description,/Цвет .* меняется|rangi .* o'zgaradi/i);
+    // Every title and description is written in exactly one language.
+    for (const card of firstPass) {
+      assert.ok(monolingual(card.concept.title),`mixed-language title: ${card.concept.title}`);
+      assert.ok(monolingual(card.description),`mixed-language description: ${card.description}`);
+    }
+    // ru is fully Cyrillic, uz fully Latin — a localized deck reads native.
+    const script = language === 'ru' ? CYRILLIC : LATIN;
+    const wrongScript = language === 'ru' ? LATIN : CYRILLIC;
+    for (const card of firstPass) {
+      assert.ok(script.test(card.concept.title));
+      assert.ok(!wrongScript.test(card.concept.title));
+      assert.ok(!wrongScript.test(card.description));
+    }
+  }
+});
+
+test('an en deck never picks up Cyrillic from the localized tables',()=>{
+  const copy=editorialDeckCopy(looks,context,directions);
+  for (const card of copy) {
+    assert.ok(!CYRILLIC.test(card.concept.title));
+    assert.ok(!CYRILLIC.test(card.description));
+    assert.ok(monolingual(card.description));
+  }
+});
+
+test('every native concept title has a ru and uz translation, so no card mixes scripts',()=>{
+  const outerwearPart={top:{slot:'top',subtype:'shirt'},outerwear:{slot:'outerwear',subtype:'blazer'},
+    bottom:{slot:'bottom',subtype:'trouser'},shoes:{slot:'shoes',subtype:'loafer'}};
+  for (const title of allNativeTitles) {
+    for (const language of ['ru','uz']) {
+      const localized=groundedNativeHeadline(title,outerwearPart,language);
+      assert.notEqual(localized,title,`missing ${language} concept title: ${title}`);
+      assert.ok(monolingual(localized));
+    }
+  }
+});
+
+test('a missing localized template falls back to English per string, never to a mix',()=>{
+  // 'Garden party' has no ru occasion template: the description must be the
+  // full English sentence, not a ru/en hybrid.
+  const gardenContext=contextFor('ru',{occasion:'Garden party'});
+  const copy=editorialDeckCopy([looks[0]],gardenContext,[directions[0]]);
+  assert.match(copy[0].description,/Closest to your Classic direction/);
+  assert.ok(!CYRILLIC.test(copy[0].description));
+  // The description stays monolingual even though the title is localized.
+  assert.ok(monolingual(copy[0].description));
+});
+
+test('unlocalizable facts fall back to English per string, without inventing words',()=>{
+  // Descriptor colors are always normalized family tokens, so the practical
+  // per-string fallback surfaces are unknown occasions and unknown concept
+  // titles. Both must yield a complete English string, never a ru/en hybrid.
+  const uzGarden=contextFor('uz',{occasion:'Garden party'});
+  const uzCopy=editorialDeckCopy([looks[0]],uzGarden,[directions[0]]);
+  assert.match(uzCopy[0].description,/Closest to your Classic direction/);
+  assert.ok(!CYRILLIC.test(uzCopy[0].description));
+  assert.ok(monolingual(uzCopy[0].description));
+  // A native title outside the concept table keeps its (English) title —
+  // monolingual — instead of transliterating or mixing.
+  const outerwearPart={top:{slot:'top',subtype:'shirt'},outerwear:{slot:'outerwear',subtype:'blazer'},
+    bottom:{slot:'bottom',subtype:'trouser'},shoes:{slot:'shoes',subtype:'loafer'}};
+  const fallbackTitle=groundedNativeHeadline('Unmapped concept name',outerwearPart,'ru');
+  assert.equal(fallbackTitle,'Unmapped concept name');
+  assert.ok(monolingual(fallbackTitle));
 });

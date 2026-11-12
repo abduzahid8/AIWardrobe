@@ -25,9 +25,21 @@ export interface StylingContext {
   uncertainty: string[];
   /** Private aggregate concept preferences; soft and bounded, never admission. */
   conceptFeedback?: Readonly<Record<string, number>>;
+  /** Display language the produced copy (deck headlines/descriptions) must
+   * be written in. Anything unsupported degrades to English. */
+  language?: 'en' | 'ru' | 'uz';
 }
 export function isDateNightOccasion(occasion?: string | null): boolean {
   return /\bdate\b|свидан/i.test(String(occasion || '').replace(/[_-]+/g, ' '));
+}
+/** The copy languages the deck editorials support. Anything else — including
+ * regional variants like 'ru-RU' — degrades to English rather than mixing. */
+const STYLIST_COPY_LANGUAGES = ['en', 'ru', 'uz'] as const;
+export type StylistCopyLanguage = typeof STYLIST_COPY_LANGUAGES[number];
+export function normalizeStylistLanguage(value: unknown): StylistCopyLanguage {
+  const raw = String(value || '').trim().toLowerCase();
+  return (STYLIST_COPY_LANGUAGES as readonly string[]).find((lng) => raw === lng || raw.startsWith(`${lng}-`)) as StylistCopyLanguage | undefined
+    || 'en';
 }
 export function stylingContext(input: {
   optionalLayer?: boolean;
@@ -39,6 +51,7 @@ export function stylingContext(input: {
   sourceMode?: StylingContext['sourceMode'];
   budget?: StylingContext['budget'];
   preferences?: StylingPreferences;
+  language?: StylistCopyLanguage | string | null;
 }): StylingContext {
   const occasion = (input.occasion || '').toLowerCase().trim();
   const request = input.request || '';
@@ -63,6 +76,7 @@ export function stylingContext(input: {
     weather,
     anchorId: input.anchorId || null,
     sourceMode: input.sourceMode || 'mixed',
+    language: normalizeStylistLanguage(input.language),
     budget: input.budget,
     preferences: input.preferences
       ? {

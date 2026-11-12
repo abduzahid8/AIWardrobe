@@ -3,7 +3,7 @@ import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveS
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, stylist6Language, type DevEngine} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -72,6 +72,7 @@ import { SHOP_CATALOG_ITEMS } from '../data/shopCatalogItems';
 import { CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import { Image, ExpoImage } from '../src/components/MediaImage';
+import { ImageUnavailablePlaceholder, useProductImageRetry } from '../src/components/ProductImageFallback';
 
 
 const { width, height } = Dimensions.get('window');
@@ -394,6 +395,7 @@ const SlotCell = React.memo(function SlotCell({
   buyUrl,
   showBuyButton,
   buyLabel,
+  photoUnavailableLabel,
   textSecondary,
   textPrimary,
   onBuy,
@@ -409,6 +411,7 @@ const SlotCell = React.memo(function SlotCell({
   buyUrl: string;
   showBuyButton: boolean;
   buyLabel: string;
+  photoUnavailableLabel: string;
   textSecondary: string;
   textPrimary: string;
   onBuy: (url: string) => void;
@@ -420,19 +423,31 @@ const SlotCell = React.memo(function SlotCell({
     ? formatMoney(price, priceCurrency)
     : null;
   const handleBuy = React.useCallback(() => onBuy(buyUrl), [onBuy, buyUrl]);
-  const [imgFailed, setImgFailed] = React.useState(false);
-  React.useEffect(() => { setImgFailed(false); }, [imageUri, slotKey]);
+  // Image honesty: a missing URL or a failed load becomes an explicit
+  // labeled 'photo unavailable' tile — never a silent grey box posing as the
+  // product photo. One bounded cache-busting retry absorbs CDN hiccups.
+  const bundledSource = typeof imageSource === 'number' ? imageSource : null;
+  const { phase, activeUri, onImageError } = useProductImageRetry(bundledSource === null ? imageUri : null);
+  const imageUnavailable = bundledSource === null && (phase === 'unavailable' || !activeUri);
   return (
     <View key={slotKey} style={slotStyles.cell}>
-      <ExpoImage
-        source={imgFailed ? undefined : imageSource}
-        placeholderContentFit="contain"
-        style={[slotStyles.image, { backgroundColor: '#EEF3F8' }]}
-        contentFit="contain"
-        cachePolicy="memory-disk"
-        recyclingKey={`${slotKey}-${itemId ?? ''}-${imageUri ?? ''}-${imgFailed ? 'fb' : 'src'}`}
-        onError={() => setImgFailed(true)}
-      />
+      {imageUnavailable ? (
+        <ImageUnavailablePlaceholder
+          testID={`slot-photo-unavailable-${slotKey}`}
+          label={photoUnavailableLabel}
+          style={slotStyles.image}
+        />
+      ) : (
+        <ExpoImage
+          source={bundledSource ?? { uri: activeUri }}
+          placeholderContentFit="contain"
+          style={[slotStyles.image, { backgroundColor: '#EEF3F8' }]}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+          recyclingKey={`${slotKey}-${itemId ?? ''}-${activeUri}`}
+          onError={bundledSource === null ? onImageError : undefined}
+        />
+      )}
       <View style={slotStyles.labelWrap}>
         <ScaledText style={[slotStyles.label, { color: textSecondary }]}>{label}</ScaledText>
         <ScaledText style={[slotStyles.name, { color: textPrimary }]} numberOfLines={1}>{name}</ScaledText>
@@ -481,6 +496,7 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
   }, []);
 
   const buyLabel = t('outfitMaker.buy', 'Buy');
+  const photoUnavailableLabel = t('common.photoUnavailable', 'Photo unavailable');
   return (
     <View style={slotStyles.grid}>
       {slotConfig.filter((slot) => !!slot.item?.id && !!slot.item?.name).map((slot) => {
@@ -505,6 +521,7 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
             buyUrl={buyUrl}
             showBuyButton={showBuyButtons && slot.item.isWardrobe !== true}
             buyLabel={buyLabel}
+            photoUnavailableLabel={photoUnavailableLabel}
             textSecondary={D.textSecondary}
             textPrimary={D.textPrimary}
             onBuy={handleBuy}
@@ -1675,6 +1692,9 @@ const AIOutfitGenerator = () => {
               : baseItemId ? 'mixed' : 'catalog') as 'wardrobe' | 'catalog' | 'mixed',
             enableVisual: nvidiaVisual === true,
             generationRequestId: requestId,
+            // Deck copy (headlines/descriptions) is written in the active
+            // app language; the server falls back to English per string.
+            language: stylist6Language(i18n.language),
           },
         };
         try {

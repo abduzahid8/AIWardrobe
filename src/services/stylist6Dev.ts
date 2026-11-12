@@ -1,4 +1,5 @@
 import { OutfitGenerationFailure } from './outfitGenerationFailure';
+import { normalizeStylistLanguage } from '../domain/stylingContext';
 
 /**
  * Development-only Stylist 6 path for the iOS simulator.
@@ -119,6 +120,15 @@ export interface Stylist6CloudRequest {
   enableVisual?: boolean;
   /** Idempotency identity: redelivery replays the recorded outcome. */
   generationRequestId?: string;
+  /** Active app locale: the server writes deck copy in this language
+   * (unsupported values degrade to English server-side). */
+  language?: 'en' | 'ru' | 'uz';
+}
+
+/** Normalized copy language for a Stylist 6 request, from the active i18n
+ * locale (e.g. i18n.language). Unsupported/missing values map to 'en'. */
+export function stylist6Language(locale: unknown): 'en' | 'ru' | 'uz' {
+  return normalizeStylistLanguage(locale);
 }
 
 function failureForCloud(code: unknown, stage = 'stylist6_cloud'): OutfitGenerationFailure {
