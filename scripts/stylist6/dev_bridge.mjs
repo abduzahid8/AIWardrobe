@@ -35,6 +35,7 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { adaptCatalog, DEV_PURCHASE_EVIDENCE, devLookFeasibility, sourceHash } from '../../backend/stylist6/catalog_adapter.mjs';
 import { recommendFashionDeck } from '../../backend/stylist6/fashion_deck.mjs';
+import { feedbackTasteModel } from '../../backend/stylist6/feedback_taste.mjs';
 import { referenceFirstBriefs } from '../../backend/stylist6/lookbook_briefs.mjs';
 import { HOST_ALLOWLIST } from './image_access.mjs';
 import {
@@ -285,6 +286,15 @@ function mapDeckItem(item, rankScore) {
 
 async function handleGenerate(payload) {
   const { request = {}, catalogRows = [] } = payload || {};
+  // Dev-only feedback fixture (gate D local testing): the bridge has no
+  // database, so an optional `feedbackTaste` request array of
+  // stylist_look_feedback-shaped rows feeds the same pure model the cloud
+  // handler builds from real reads. Never persisted, never used outside
+  // this dev process; production reads feedback only in the cloud handler.
+  const feedbackTaste = feedbackTasteModel(
+    Array.isArray(payload?.feedbackTaste) ? payload.feedbackTaste.slice(0, 60) : [],
+    Date.now(),
+  );
   const { style, occasion } = request;
   if (typeof style !== 'string' || !style || typeof occasion !== 'string' || !occasion) {
     return { status: 400, body: { success: false, code: 'invalid_stylist6_request', stage: 'stylist6_admission' } };
@@ -378,6 +388,7 @@ async function handleGenerate(payload) {
     // merchant offer, price/currency, identity) — never an open gate.
     hardGate: async (items) => devLookFeasibility(items),
     priceToBudgetCurrency: (item, currency) => (item.currency === currency ? item.price : NaN),
+    feedbackTaste,
     ...(visualCritic ? { visualCritic, canJudgeOutfit } : {}),
   });
   const visualStatus = mapDevVisualStatus(deck);
@@ -426,14 +437,17 @@ async function handleGenerate(payload) {
       compositionProtocol: 'optional-layer-v1',
       deckTarget: 3,
       status: deck.status,
+      feedbackTasteActive: feedbackTaste.active === true,
       previousDeckOverlapBySlot,
       visualHydration,
       visualStatus,
       visualReceipt,
       purchaseEvidence: DEV_PURCHASE_EVIDENCE,
       diagnostics: deck.diagnostics || null,
-      outfits: deck.outfits.map((look) => ({
-        id: look.id,
+      outfits: deck.outfits.map((look, index) => ({
+        // Same positional id convention as the cloud handler and the S5 edge,
+        // so locally-served decks carry feedback-attributable look ids too.
+        id: `outfit_${index + 1}`,
         items: look.items.map((item) => mapDeckItem(item, look.fashion?.score)),
         description: look.description,
         concept: { id: look.concept?.id, title: look.concept?.title, story: '', score: look.fashion?.score },

@@ -42,7 +42,7 @@ const WARDROBE = [
 function makeIo(overrides = {}) {
   const calls = {
     verifyUser: 0, checkRate: 0, debitQuota: 0, claimRequest: 0, finishRequest: 0,
-    fetchShopRows: 0, fetchWardrobeRows: 0, fetchVisualProfiles: 0,
+    fetchShopRows: 0, fetchWardrobeRows: 0, fetchVisualProfiles: 0, fetchFeedbackTaste: 0,
   };
   const claims = new Map();
   return {
@@ -97,6 +97,15 @@ function makeIo(overrides = {}) {
       async fetchVisualProfiles() {
         calls.fetchVisualProfiles += 1;
         return [];
+      },
+      // Gate D taste source: newest-first explicit thumbs rows for the JWT
+      // user (service-role read in production). Tests inject fixtures or
+      // failures through overrides.
+      async fetchFeedbackTaste(userId) {
+        calls.fetchFeedbackTaste += 1;
+        assert.equal(userId, USER);
+        if (overrides.feedbackFail) throw new Error('stylist6_feedback_unavailable');
+        return overrides.feedbackRows ?? [];
       },
     },
   };
@@ -883,4 +892,128 @@ test('enableVisual without a server key completes the deterministic deck with an
   });
   assert.equal(recorder.hosts.size, 0, 'no key means no outbound provider traffic');
   assert.equal(harness.calls.debitQuota, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Gate D: explicit taste feedback changes ranking deterministically, without
+// touching quality floors, hard gates or admission semantics.
+// ---------------------------------------------------------------------------
+
+/** Two likes saturate a ±1 tally at any age under the 30-day half-life, so
+ * the deck flip below is exact regardless of wall-clock drift. */
+const ratedAt = new Date(Date.now() - 86_400_000).toISOString();
+const feedbackRow = (rating, itemIds, conceptId, direction, requestId) => ({
+  rating, concept_id: conceptId, item_ids: itemIds,
+  look_signature: { version: 1, direction, signature: null, features: [] },
+  created_at: ratedAt, request_id: requestId,
+});
+// User A liked the refined-ivy lead (top-1/bottom-1/shoes-1) twice across two
+// decks and disliked the top-2 alternative twice; user B is the exact inverse.
+const A_LIKED = ['top-1', 'bottom-1', 'shoes-1'];
+const A_DISLIKED = ['top-2'];
+const likedSet = (rating, requestIdPrefix) => [
+  feedbackRow(rating, A_LIKED, 'refined-ivy', 'signature', `${requestIdPrefix}-a`),
+  feedbackRow(rating, A_LIKED, 'refined-ivy', 'signature', `${requestIdPrefix}-b`),
+  feedbackRow(-rating, A_DISLIKED, 'refined-ivy', 'signature', `${requestIdPrefix}-c`),
+  feedbackRow(-rating, A_DISLIKED, 'refined-ivy', 'signature', `${requestIdPrefix}-d`),
+];
+const deckOf = (result) => result.body.outfits
+  .map((look) => look.items.map((item) => item.id).sort().join('+')).join('|');
+
+test('gate D: opposite explicit feedback flips the deck over the same inventory', async () => {
+  const userA = await signedCall({ request: baseRequest }, {}, { feedbackRows: likedSet(1, 'like') });
+  const userB = await signedCall({ request: baseRequest }, {}, { feedbackRows: likedSet(-1, 'dislike') });
+  assert.equal(userA.status, 200);
+  assert.equal(userB.status, 200);
+  const deckA = deckOf(userA);
+  const deckB = deckOf(userB);
+  assert.notEqual(deckA, deckB, 'taste feedback must change ranking');
+  // A's signature look is the liked lead and never the disliked alternative;
+  // B's signature look is exactly the inverse over the SAME shop inventory.
+  const signatureA = userA.body.outfits[0].items.map((item) => item.id);
+  const signatureB = userB.body.outfits[0].items.map((item) => item.id);
+  for (const id of A_LIKED) {
+    assert.ok(signatureA.includes(id), `A signature must keep liked ${id}`);
+    assert.ok(!signatureB.includes(id), `B signature must drop ${id}`);
+  }
+  assert.ok(signatureB.includes('top-2'), 'B signature surfaces the item A disliked');
+  assert.ok(!signatureA.includes('top-2'), 'A signature drops the disliked alternative');
+  // Quality/hard constraints survive the adjustment unchanged.
+  for (const result of [userA, userB]) {
+    assert.equal(result.body.status, 'complete');
+    for (const outfit of result.body.outfits) {
+      assert.ok(outfit.items.length >= 3 && outfit.items.length <= 4);
+      for (const item of outfit.items) {
+        assert.ok(SHOP.some((row) => row.id === item.id), 'server inventory only');
+        assert.equal(item.isShopItem, true);
+      }
+    }
+    assert.equal(result.calls.debitQuota, 1);
+  }
+  // The read receipt is honest, and the adjustment is visible in per-look
+  // diagnostics bounded to the feedback cap.
+  assert.deepEqual(userA.body.feedbackTaste, {
+    status: 'ok', rows: 4, active: true, version: 's6-feedback-taste-v1',
+  });
+  const diagnostics = userA.body.outfits
+    .map((outfit) => outfit.fashionDiagnostics?.personalization?.feedback)
+    .filter(Boolean);
+  assert.ok(diagnostics.length >= 1, 'feedback adjustment must appear in scoring diagnostics');
+  for (const entry of diagnostics) {
+    assert.equal(entry.version, 's6-feedback-taste-v1');
+    assert.ok(Math.abs(entry.adjustment) <= 0.06);
+  }
+  assert.ok(diagnostics.some((entry) => entry.adjustment > 0));
+});
+
+test('gate D: zero feedback reproduces the exact legacy ranking', async () => {
+  const empty = await signedCall({ request: baseRequest }, {}, { feedbackRows: [] });
+  // An io without the new method (older harness) is a not_wired read, not a
+  // failure — and must rank exactly like an empty feedback set.
+  const harness = makeIo();
+  delete harness.io.fetchFeedbackTaste;
+  const body = JSON.stringify({ request: baseRequest });
+  const authorization = `Bearer ${JWT}`;
+  const signature = await signStylistTransport({ secret: SECRET, body, authorization });
+  const notWired = await handleStylist6CloudGenerate({
+    method: 'POST', headers: { authorization, ...signature }, bodyText: body, env, io: harness.io,
+  });
+  assert.equal(deckOf(empty), deckOf(notWired));
+  assert.equal(empty.body.feedbackTaste.status, 'ok');
+  assert.equal(empty.body.feedbackTaste.active, false);
+  assert.equal(notWired.body.feedbackTaste.status, 'not_wired');
+  assert.equal(notWired.body.feedbackTaste.active, false);
+  for (const result of [empty, notWired]) {
+    for (const outfit of result.body.outfits) {
+      assert.equal(outfit.fashionDiagnostics?.personalization?.feedback, undefined);
+    }
+    assert.equal(result.body.diagnostics.feedbackTasteActive, false);
+    assert.equal(result.body.diagnostics.feedbackTasteVersion, 's6-feedback-taste-v1');
+  }
+});
+
+test('gate D: a feedback read failure degrades honestly and never fails the deck', async () => {
+  const result = await signedCall({ request: baseRequest }, {}, { feedbackFail: true });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.deepEqual(result.body.feedbackTaste, {
+    status: 'read_failed', rows: 0, active: false, version: 's6-feedback-taste-v1',
+  });
+  assert.equal(result.body.outfits.length, 3);
+  assert.equal(result.calls.debitQuota, 1);
+});
+
+test('gate D: uniform dislikes cannot empty the deck or block any item outright', async () => {
+  // Every catalog item disliked twice over: strong negative adjustment only —
+  // the engine must still produce a valid, complete deck from the same pool.
+  const allDisliked = ['top-1', 'top-2', 'bottom-1', 'bottom-2', 'shoes-1', 'shoes-2', 'outer-1']
+    .flatMap((id) => [
+      feedbackRow(-1, [id], 'refined-ivy', 'signature', `neg-${id}-1`),
+      feedbackRow(-1, [id], 'refined-ivy', 'signature', `neg-${id}-2`),
+    ]);
+  const result = await signedCall({ request: baseRequest }, {}, { feedbackRows: allDisliked });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.status, 'complete');
+  assert.ok(result.body.outfits.length === 3);
+  assert.equal(result.body.feedbackTaste.active, true);
 });

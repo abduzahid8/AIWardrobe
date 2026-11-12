@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
+import { feedbackTasteModel } from './feedback_taste.mjs';
 
 function garment(id, name, macroCategory, subtype, extra = {}) {
   return { id, name, macroCategory, subtype, isShopItem: true, currency: 'UZS', price: 100,
@@ -626,4 +627,86 @@ test('Old Money smart date does not recommend known casual-soled shoes or unrequ
   assert.ok(result.outfits.length>=1);
   assert.ok(result.outfits.every(look => look.items.every(
     item => !['jeans-green','geox-u66mac0009bc9999'].includes(item.id))));
+});
+
+// ---------------------------------------------------------------------------
+// Gate D: explicit feedback taste (s6-feedback-taste-v1). The adjustment is
+// capped, decayed and applied after every hard gate; without it the deck is
+// byte-identical legacy ranking.
+// ---------------------------------------------------------------------------
+
+test('feedback adjustment surfaces in scoring diagnostics only when explicit rows exist', async () => {
+  const now = Date.now();
+  const ratedAt = new Date(now - 86_400_000).toISOString();
+  const rows = [
+    { rating: 1, item_ids: ['shirt-navy', 'trouser-grey', 'derby-navy'], concept_id: 'precise-office', direction: 'signature', created_at: ratedAt },
+    { rating: 1, item_ids: ['shirt-navy', 'trouser-grey', 'derby-navy'], concept_id: 'precise-office', direction: 'signature', created_at: ratedAt },
+    { rating: -1, item_ids: ['shirt-white'], concept_id: 'precise-office', direction: 'signature', created_at: ratedAt },
+    { rating: -1, item_ids: ['shirt-white'], concept_id: 'precise-office', direction: 'signature', created_at: ratedAt },
+  ];
+  const request = { ...base.request, requiredIds: [] };
+  const run = (rows) => recommendFashionDeck({ ...base, request, ...(rows ? { feedbackTaste: feedbackTasteModel(rows, now) } : {}) });
+  const baseline = await run(null);
+  const liked = await run(rows);
+  assert.equal(baseline.diagnostics.feedbackTasteActive, false);
+  assert.equal(baseline.diagnostics.feedbackTasteVersion, 's6-feedback-taste-v1');
+  for (const look of baseline.outfits) {
+    assert.equal(look.fashion.personalization.feedback, undefined);
+  }
+  assert.equal(liked.diagnostics.feedbackTasteActive, true);
+  const diagnostics = liked.outfits.map((look) => look.fashion.personalization.feedback).filter(Boolean);
+  assert.ok(diagnostics.length >= 1, 'the adjustment must be visible per look');
+  for (const entry of diagnostics) {
+    assert.equal(entry.version, 's6-feedback-taste-v1');
+    assert.ok(Math.abs(entry.adjustment) <= 0.06);
+    assert.ok(entry.matches.every((match) => match.type === 'feedback_item'));
+  }
+  // Signature selection follows the liked lead without breaking any deck
+  // invariant: complete deck, budgeted, same-currency, feasible garments.
+  assert.equal(liked.status, 'complete');
+  const signature = liked.outfits[0].items;
+  assert.ok(signature.some(({ id }) => id === 'shirt-navy'), 'the liked shirt leads');
+  assert.ok(signature.every(({ id }) => id !== 'shirt-white'), 'the twice-disliked shirt is avoided');
+  assert.ok(signature.reduce((sum, { price }) => sum + price, 0) <= 300);
+});
+
+test('opposite feedback flips deck ordering over the identical catalog', async () => {
+  const now = Date.now();
+  const ratedAt = new Date(now - 86_400_000).toISOString();
+  const row = (rating, ids) => ({ rating, item_ids: ids, concept_id: 'precise-office', direction: 'signature', created_at: ratedAt });
+  const liked = [row(1, ['shirt-white', 'trouser-grey']), row(1, ['shirt-white', 'trouser-grey'])];
+  const disliked = [row(-1, ['shirt-white', 'trouser-grey']), row(-1, ['shirt-white', 'trouser-grey'])];
+  const request = { ...base.request, requiredIds: [] };
+  const run = (rows) => recommendFashionDeck({ ...base, request, feedbackTaste: feedbackTasteModel(rows, now) });
+  const a = await run(liked);
+  const b = await run(disliked);
+  const serial = (result) => result.outfits.map((look) => look.items.map(({ id }) => id).join('+')).join('|');
+  assert.notEqual(serial(a), serial(b), 'reversed taste must reorder the deck');
+});
+
+test('feedback is adjustment-only: a locked anchor survives a doubled dislike', async () => {
+  const now = Date.now();
+  const ratedAt = new Date(now - 86_400_000).toISOString();
+  const rows = [
+    { rating: -1, item_ids: ['shirt-white'], created_at: ratedAt },
+    { rating: -1, item_ids: ['shirt-white'], created_at: ratedAt },
+  ];
+  const result = await recommendFashionDeck({
+    ...base, feedbackTaste: feedbackTasteModel(rows, now),
+  });
+  assert.equal(result.status, 'complete');
+  for (const look of result.outfits) {
+    assert.ok(look.items.some(({ id }) => id === 'shirt-white'), 'locked anchor dropped');
+  }
+  // The dislike is still honestly visible in the anchor look's diagnostics.
+  const anchorFeedback = result.outfits[0].fashion.personalization.feedback;
+  assert.ok(anchorFeedback && anchorFeedback.adjustment < 0);
+});
+
+test('inert or malformed feedback models never perturb ranking', async () => {
+  const baseline = await recommendFashionDeck(base);
+  for (const feedbackTaste of [null, undefined, {}, { active: false }, feedbackTasteModel([], Date.now())]) {
+    const result = await recommendFashionDeck({ ...base, feedbackTaste });
+    assert.deepEqual(result.outfits, baseline.outfits);
+  }
 });

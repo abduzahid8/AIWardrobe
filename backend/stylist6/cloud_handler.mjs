@@ -24,6 +24,7 @@
 import { createHash } from 'node:crypto';
 import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
+import { feedbackTasteModel, FEEDBACK_TASTE_VERSION, FEEDBACK_TASTE_MAX_ROWS } from './feedback_taste.mjs';
 import { referenceFirstBriefs } from './lookbook_briefs.mjs';
 import { currentVisual } from '../../src/domain/visualFashion.ts';
 import { resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
@@ -319,6 +320,24 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       }
       return profiles;
     },
+    // Gate D taste source: this user's own explicit thumbs rows, newest
+    // first, bounded to the pure module's row cap. One indexed query on
+    // feedback_owner_recent (user_id, created_at desc) — plus deterministic
+    // request/look tiebreakers so the same rows always rank the same way.
+    // Service-role key: the caller is the verified JWT user (RLS unaffected).
+    async fetchFeedbackTaste(userId) {
+      const params = new URLSearchParams({
+        select: 'rating,concept_id,item_ids,look_signature,created_at',
+        user_id: `eq.${userId}`,
+        order: 'created_at.desc,request_id.desc,look_id.desc',
+        limit: String(FEEDBACK_TASTE_MAX_ROWS),
+      });
+      const response = await fetch(`${url}/rest/v1/stylist_look_feedback?${params}`, {
+        headers: { ...authHeaders(serviceKey), Authorization: `Bearer ${serviceKey}` },
+      });
+      const data = await check(response, 'stylist6_feedback_unavailable');
+      return Array.isArray(data) ? data : [];
+    },
   };
 }
 
@@ -578,6 +597,24 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       await finish(502, 'stylist6_no_feasible_looks');
       return fail('stylist6_no_feasible_looks', 502, { stage: 'stylist6_ranking', serverInventory: true });
     }
+    // Gate D taste: one bounded, indexed read of this user's explicit thumbs
+    // feedback, then a pure, decayed, capped model. This sits on the ranking
+    // latency path (a single feedback_owner_recent query); ANY failure here
+    // — transport, schema, io shape, missing io method — degrades to an
+    // empty set plus an honest diagnostic field, never a failed generation.
+    let feedbackRows = [];
+    let feedbackTasteStatus = 'ok';
+    try {
+      if (typeof io.fetchFeedbackTaste === 'function') {
+        feedbackRows = (await io.fetchFeedbackTaste(userId)).slice(0, FEEDBACK_TASTE_MAX_ROWS);
+      } else {
+        feedbackTasteStatus = 'not_wired';
+      }
+    } catch {
+      feedbackRows = [];
+      feedbackTasteStatus = 'read_failed';
+    }
+    const feedbackTaste = feedbackTasteModel(feedbackRows, Date.now());
     const weather = resolveStylistWeather(request.brief || '', request.weather || {});
     const temp = Number(weather?.temp);
     const refs = referenceFirstBriefs(referenceIndex, {
@@ -658,6 +695,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       referenceBriefs: refs,
       hardGate: async (items) => devLookFeasibility(items),
       priceToBudgetCurrency: (item, currency) => (item.currency === currency ? item.price : NaN),
+      feedbackTaste,
       ...(visualCritic ? { visualCritic, canJudgeOutfit } : {}),
     });
     const visualStatus = mapCloudVisualStatus(deck);
@@ -721,8 +759,19 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           events: visualEvents,
         },
         diagnostics: deck.diagnostics || null,
-        outfits: deck.outfits.map((look) => ({
-          id: look.id,
+        // Gate D read receipt: the bounded feedback read this ranking used
+        // (or honestly did not use). Never a taste profile, only a status.
+        feedbackTaste: {
+          status: feedbackTasteStatus,
+          rows: feedbackRows.length,
+          active: feedbackTaste.active === true,
+          version: FEEDBACK_TASTE_VERSION,
+        },
+        outfits: deck.outfits.map((look, index) => ({
+          // Same positional id convention as the S5 edge (`outfit_${index+1}`):
+          // the stylist_look_feedback constraint and the app's feedback guard
+          // require it, so a thumbs write can attribute this exact deck.
+          id: `outfit_${index + 1}`,
           items: look.items.map((item) => mapDeckItem(item, look.fashion?.score)),
           description: look.description,
           concept: { id: look.concept?.id, title: look.concept?.title, story: '', score: look.fashion?.score },

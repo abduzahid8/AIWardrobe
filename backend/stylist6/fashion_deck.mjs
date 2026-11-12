@@ -12,6 +12,9 @@ import { hasColdLayerIntent, resolveOutfitComposition, resolveStylistWeather } f
 import { outfitStylingFeatures, recentStylingPenalty, stylingFeatureDistance } from '../../src/domain/outfitVisualSignature.ts';
 import { colorTokensOf } from '../../src/domain/outfitDiversity.ts';
 import { personalTaste, evaluatePersonalItem, evaluatePersonalLook } from './personal_taste.mjs';
+import {
+  FEEDBACK_TASTE_VERSION, evaluateFeedbackItem, evaluateFeedbackLook,
+} from './feedback_taste.mjs';
 import { DIRECTION_VERSION, selectCreativeDirectionDeck, labelCreativeDirections } from './creative_directions.mjs';
 import { EDITORIAL_QUALITY_VERSION, evaluateEditorialQuality } from './editorial_quality.mjs';
 import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitStructure.ts';
@@ -33,6 +36,13 @@ const EXCLUSION_QUALITY_GAP = 0.25;
 // Minimum per-currency samples before an unbudgeted premium dampener may
 // apply. Below this there is no evidence for what "expensive" means here.
 const PRICE_SAMPLE_MINIMUM = 8;
+// Explicit thumbs-feedback retrieval seed. The saturated per-item tally from
+// feedback_taste.mjs (±1) is weighted like the strongest single personal-
+// taste item seed (0.70 * personal cap 0.12 ≈ 0.08): enough to reorder
+// near-tie candidates when alternatives exist, never a block or a gate — a
+// disliked item can still appear when the inventory genuinely cannot supply
+// another eligible piece.
+const FEEDBACK_ITEM_SEED_WEIGHT = 0.08;
 
 /**
  * Per slot-and-currency typical-price bands over the admitted pool. Pure
@@ -234,7 +244,9 @@ export function applyExclusionQualityFloor(selected, best, exclusionsApplied) {
 
 function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
   const contextScores = new WeakMap(), personalScores = new WeakMap(), coherent = new Map();
+  const feedbackScores = new WeakMap();
   const taste = personalTaste(context.preferences);
+  const feedbackTaste = extras.feedbackTaste?.active ? extras.feedbackTaste : null;
   const lockedIds = new Set((extras.requiredIds || []).map(String));
   return {
     prepare(item) {
@@ -247,12 +259,14 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           rejectQuietSmartLeisureLayer(descriptor, context, prepared) ||
           rejectPolishedContextMismatch(descriptor, context, prepared)) return null;
       const personal = evaluatePersonalItem(prepared, descriptor, taste);
+      const feedback = evaluateFeedbackItem(prepared, feedbackTaste);
       // An explicitly locked owned item is a direct user instruction. Brand
       // avoidance must not silently discard that anchor. All other garments
       // respect opted-in brand exclusions before ranking.
       if (personal.blocked && !lockedIds.has(String(prepared.id))) return null;
       contextScores.set(prepared, scoreGarmentForContext(prepared, context));
       personalScores.set(prepared, personal.score);
+      feedbackScores.set(prepared, feedback.score);
       return prepared;
     },
     family(item) {
@@ -269,9 +283,10 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           brief.roles[item.macroCategory].includes(normalized(d.subtype)) ? 0.55 : 0)
         + 0.30 * contextScores.get(item)
         + (brief.palette.includes(normalized(d.color)) ? 0.15 : 0)
-        + 0.70 * (personalScores.get(item) || 0);
+        + 0.70 * (personalScores.get(item) || 0)
+        + FEEDBACK_ITEM_SEED_WEIGHT * (feedbackScores.get(item) || 0);
     },
-    rankLook(items) {
+    rankLook(items, brief) {
       const identity = JSON.stringify(items.map(({ id }) => id).sort());
       if (coherent.has(identity)) return coherent.get(identity);
       const assessment = outfitCoherence(items, context);
@@ -309,6 +324,11 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       const descriptions = items.map(describeGarment);
       const personal = evaluatePersonalLook(
         items.map((item, index) => ({ item, descriptor: descriptions[index] })), taste);
+      // Explicit-feedback taste (gate D): a capped, decayed adjustment from
+      // this user's own thumbs rows, applied AFTER every hard gate. The
+      // candidate's generating brief id is the native concept slug the deck
+      // displays, which is exactly the concept id feedback is written under.
+      const feedback = evaluateFeedbackLook(items, brief?.id, feedbackTaste);
       // This phase is explicitly for New Clothing. Do not perturb owned
       // wardrobe or mixed-source ranking until their source-mix and anchor
       // acceptance gates have dedicated editorial calibration.
@@ -322,7 +342,8 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
         : { score: null, adjustment: 0, evidence: [], version: EDITORIAL_QUALITY_VERSION };
       const result = {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
-          personal.adjustment + editorial.adjustment - recentStylingPenalty(items, recentSignatures) - pricing.penalty,
+          personal.adjustment + editorial.adjustment + feedback.adjustment -
+          recentStylingPenalty(items, recentSignatures) - pricing.penalty,
         dimensions: { ...dimensions, palette },
         evidence: pricing.flagged ? [...assessment.evidence, 'unbudgeted_premium_selection_dampened'] : assessment.evidence,
         referenceMetadata: affinity,
@@ -333,6 +354,16 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           adjustment: personal.adjustment,
           matchedItems: personal.matchedItems,
           matches: personal.matches,
+          // Present only when explicit feedback actually influences this look.
+          ...(feedback.adjustment !== 0 || feedback.matches.length ? {
+            feedback: {
+              version: FEEDBACK_TASTE_VERSION,
+              adjustment: feedback.adjustment,
+              likedItems: feedback.likedItems,
+              dislikedItems: feedback.dislikedItems,
+              matches: feedback.matches,
+            },
+          } : {}),
         },
       };
       coherent.set(identity, result);
@@ -392,6 +423,9 @@ export function fashionStylingContext(request) {
 
 export async function recommendFashionDeck({
   request, catalog, referenceBriefs = [], hardGate, priceToBudgetCurrency, visualCritic, canJudgeOutfit,
+  // Optional prebuilt model from feedback_taste.mjs (explicit thumbs rows).
+  // Absent/inert model = byte-identical legacy ranking (back-compat).
+  feedbackTaste,
 }) {
   const context = fashionStylingContext(request);
   const weather = context.weather;
@@ -432,7 +466,7 @@ export async function recommendFashionDeck({
     creativeDirector: async () => briefs,
     options: { fashion: makeFashionScorer(context, reference, Array.isArray(request.recentSignatures) ? request.recentSignatures.slice(-32) : [], {
       priceProfile, budgeted: !!request.budget, layerOptional: context.optionalLayer === true && !forceLayer,
-      requiredIds,
+      requiredIds, feedbackTaste,
     }), perRole: 8, perBrief: 100, maxVisual: 72 },
   });
   const layerMix = { three: 0, four: 0 };
@@ -503,6 +537,8 @@ export async function recommendFashionDeck({
       directionVersion: DIRECTION_VERSION,
       editorialQualityVersion: EDITORIAL_QUALITY_VERSION,
       deckCopyVersion: DECK_COPY_VERSION,
+      feedbackTasteVersion: FEEDBACK_TASTE_VERSION,
+      feedbackTasteActive: !!(feedbackTaste && feedbackTaste.active),
       directions: directions.map((d) => d.id),
       qualifiedDirections: directions.filter((d) => d.qualified).length,
       neighborBriefs: neighborHouse.length,
