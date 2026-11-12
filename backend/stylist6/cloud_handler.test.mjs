@@ -135,7 +135,14 @@ test('authenticated cloud response returns only product-grounded personal style 
     assert.ok(personalization.matches.every(x=>
       outfit.items.some(item=>item.id===x.productId)));
     assert.equal(outfit.preferences,undefined);
+    assert.ok(['signature','refresh','discovery','alternative'].includes(outfit.direction?.id));
+    if(outfit.direction.id === 'discovery') {
+      assert.ok(outfit.direction.qualified);
+      assert.ok(outfit.direction.evidence.structuralSlots.length > 0 ||
+        outfit.direction.evidence.paletteSlots.length >= 3);
+    }
   }
+  assert.equal(result.body.outfits[0].direction.id,'signature');
 });
 
 test('missing transport secret fails closed without touching auth or quota', async () => {
