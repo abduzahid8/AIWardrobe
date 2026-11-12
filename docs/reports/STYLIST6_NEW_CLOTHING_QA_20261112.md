@@ -57,7 +57,7 @@ The Vercel READY Preview pinned before this remediation also predates it.
 6. **Sparse catalog and wardrobe/mixed modes**: no invented stock, products,
    body details or additional onboarding; truthful partial results are allowed.
 7. **Staging identity**: verify commit-specific Preview URL and
-   `diagnostics.deckCopyVersion = s6-grounded-deck-copy-v2` before interpreting
+   `diagnostics.deckCopyVersion = s6-grounded-deck-copy-v3` before interpreting
    owner screenshots as evidence of the new algorithm.
 8. **Security**: no client inventory trust, no secrets, no unauthenticated
    quota use, no forced NVIDIA evaluation, no production migration.
@@ -82,3 +82,61 @@ Provide exact GitHub commit, test run URLs, staging function version,
 verified Vercel deployment SHA, 3x scenario screenshots, and item-level notes
 about any underdressed/overpriced/repeated selections. **Do not claim
 production readiness from deterministic unit tests alone.**
+
+## Owner second screenshot round — 22:32–22:34 (+0500)
+
+**Observed origin:** `Client 5d2d1950c510+dirty`, engine
+`stylist-6-dev-local-20261111-r2`, `NVIDIA_NOT_RUN`.
+These are local bridge screenshots, not evidence of cloud staging v16 changes.
+
+### Reproductions
+
+- Classic / Work: cards 1 and 3 both display “Refined Tailoring” even
+  with different items. Root cause: React Native
+  `outfitConceptTitle(nativeConceptId, suppliedEditorialTitle)` always
+  retranslated the native concept ID, masking the unique server title.
+- Classic / Work: first two looks share blue suede lug-style loafers.
+  Footwear rotation is deliberately a *soft* preference; improvement
+  remains subject to available better-quality, distinct shoes and visual
+  sole evidence.
+- Semi-Classic / Work: an oversized shirt, blue trousers and chunky
+  comfort-sole footwear are questionable for polished office use.
+- Old Money / Date: the first screenshot pairs a white dress-style shirt
+  with green jeans and chunky slip-ons — a register mismatch.
+- Old Money / Date setup: the comment still reads `work, classic` after
+  the user selected Old Money and Date chips. Even when chip authority
+  wins, old comment tags may contaminate ranking and styling explanations.
+- An unlayered short-sleeve knit polo look is titled “Smart knit layering”,
+  without an actual outer layer.
+- Mobile mixed-currency breakdown has a cramped two-column layout. Sums
+  themselves are correct exact original-currency subtotals, not FX totals.
+
+### Remediation committed for next test
+
+1. Preserve the *S6-specific* server concept title at render time; S5
+   retains its localized legacy concept translation.
+2. When a chip selection changes, discard only standalone conflicting
+   style/occasion tags (e.g. `work, classic`) and preserve other free
+   constraints (e.g. `avoid neon`, budget). The generator sanitizes the
+   effective prompt as a second safety net.
+3. In catalog-only smart refined looks, exclude evidenced casual/chunky
+   shoe soles, and exclude unsolicited jeans in Old Money smart dates.
+   Unknown soles stay unknown; Casual, Travel, wardrobe and explicitly
+   requested styling are unaffected.
+4. Explain actual role, volume, texture or palette changes from the lead
+   rather than claiming an unspecified silhouette change. Do not claim
+   a mix is appropriate without evidence.
+5. When there is no outerwear, replace native “layering” headlines with
+   real garment roles from the displayed outfit.
+6. Display mixed-currency totals vertically on mobile.
+7. Add Jest and Node regression tests for titles, chip transitions, dress
+   register, grounded descriptions, unlayered headings.
+
+**Release restriction:** The local bridge must restart to load this
+GitHub revision; the client must rebuild/reload to see updated title and
+comment behavior. The Supabase v16 staging proxy has **not** been repointed
+by these commits. Do not attribute an unchanged local engine-version
+string to a fresh code deployment. No NVIDIA inference was run.
+
+Follow-up: inspect exact CI results on final SHA and run independent
+visual/merchant feasibility review before production.
