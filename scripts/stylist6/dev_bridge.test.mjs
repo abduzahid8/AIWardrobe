@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mapDevVisualStatus, referenceFileFor } from './dev_bridge.mjs';
+import { mapDevVisualStatus, referenceFileFor, STYLIST6_DEV_ENGINE_VERSION } from './dev_bridge.mjs';
 
 test('visual statuses distinguish applied, unchanged, abstained and not-run decks', () => {
   assert.equal(mapDevVisualStatus({ diagnostics: { visualVerdict: 'NOT_RUN' }, outfits: [] }), 'NVIDIA_NOT_RUN');
@@ -22,4 +22,8 @@ test('reference admission requires a real local photo, not a metadata entry', ()
   // Unknown ids (metadata without bytes) fail admission honestly.
   assert.equal(referenceFileFor('rt_999'), null);
   assert.equal(referenceFileFor(''), null);
+});
+
+test('local bridge engine identity is bumped after screenshot-driven remediation',()=>{
+  assert.equal(STYLIST6_DEV_ENGINE_VERSION,'stylist-6-dev-local-20261112-r3');
 });
