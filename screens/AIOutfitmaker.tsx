@@ -59,7 +59,7 @@ import {
     type DiversitySlot,
 } from '../features/outfit-generator/utils/outfitDiversity';
 import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
-import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, outfitTotalQuote, formatMoney, budgetCandidatesFromText, budgetInCurrency, resolveShopQuote, withOutfitBudget, mixedCurrencyPriced } from '../src/utils/outfitBudget';
+import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, outfitTotalQuote, formatMoney, budgetCandidatesFromText, budgetInCurrency, resolveShopQuote, withOutfitBudget, mixedCurrencyPriced, outfitCurrencySubtotals } from '../src/utils/outfitBudget';
 import { getShopDestination } from '../src/utils/shopDestination';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
@@ -2210,13 +2210,25 @@ const AIOutfitGenerator = () => {
                     </View>
                     );
                   }
-                  // A combined total across currencies would be invented
-                  // arithmetic: say so explicitly instead of hiding it.
-                  return mixedCurrencyPriced(outfit.items as any[], liveShopMapped) ? (
-                    <View style={styles.priceRow}>
-                      <ScaledText style={styles.priceRowLabel}>{t('outfitMaker.outfitTotalUnavailable', {defaultValue: 'Total unavailable — items are listed in different currencies'})}</ScaledText>
+                  // Mixed listed currencies cannot be summed or converted
+                  // without a verified reference rate. Preserve an honest
+                  // purchasing breakdown rather than hide every subtotal.
+                  if (!mixedCurrencyPriced(outfit.items as any[], liveShopMapped)) return null;
+                  const subtotals = outfitCurrencySubtotals(outfit.items as any[], liveShopMapped);
+                  return (
+                    <View style={[styles.priceRow, {alignItems:'flex-start',gap:10}]}>
+                      <ScaledText style={[styles.priceRowLabel,{flex:1}]}>
+                        {t('outfitMaker.outfitTotalUnavailable', {defaultValue: 'Total unavailable — items are listed in different currencies'})}
+                      </ScaledText>
+                      {subtotals.length >= 2 && (
+                        <View style={{alignItems:'flex-end', flex:1}}>
+                          <ScaledText style={styles.priceRowValue} minScale={0.6}>
+                            {subtotals.map(({currency,price})=>formatMoney(price,currency)).join(' + ')}
+                          </ScaledText>
+                        </View>
+                      )}
                     </View>
-                  ) : null;
+                  );
                 })()}
 
                 <ScaledText style={styles.outfitDesc} minScale={0.65}>{outfit.description}</ScaledText>
