@@ -75,6 +75,22 @@ function allowedTogether(a, b, overlap) {
   return Math.max(a.items.length, b.items.length) - shared >= 2;
 }
 
+/**
+ * A deck with the same shoes in every card can feel like one outfit repeated.
+ * Favor a different actual shoe SKU only within the existing quality window;
+ * never invent a new pair, fail a valid sparse-catalog deck, or override an
+ * explicitly pinned user anchor. Canonical overlap is caller-supplied so
+ * catalog aliases/photos count as the same product.
+ */
+export function footwearVarietyAdjustment(candidate, chosen, overlap) {
+  const shoe = candidate?.items?.filter(item => item?.macroCategory === 'shoes') || [];
+  if (!shoe.length || typeof overlap !== 'function') return 0;
+  const earlier = (chosen || []).flatMap(look =>
+    (look?.items || []).filter(item => item?.macroCategory === 'shoes'));
+  if (!earlier.length) return 0;
+  return earlier.some(item => overlap({items:shoe},{items:[item]}) > 0) ? -0.035 : 0.012;
+}
+
 function pick(pool, chosen, overlap, predicate, rank) {
   let best = null, utility = -Infinity;
   for (const look of pool) {
@@ -82,7 +98,8 @@ function pick(pool, chosen, overlap, predicate, rank) {
       !allowedTogether(other, look, overlap))) continue;
     const evidence = chosen.map(other => rank.diff(other, look));
     if (!predicate(look, evidence)) continue;
-    const value = rank.value(look, evidence);
+    const value = rank.value(look, evidence) +
+      footwearVarietyAdjustment(look, chosen, overlap);
     if (value > utility + EPS || (Math.abs(value - utility) <= EPS &&
       String(look.id).localeCompare(String(best?.id || '')) < 0)) {
       best = look; utility = value;
@@ -142,7 +159,9 @@ export function selectCreativeDirectionDeck(shortlist, {
       discoveredRank);
     if (!discovered) continue;
     const joint = refreshedRank.value(fresh, [firstDiff]) +
-      discoveredRank.value(discovered, [diff(signature,discovered),diff(fresh,discovered)]);
+      footwearVarietyAdjustment(fresh, [signature], overlap) +
+      discoveredRank.value(discovered, [diff(signature,discovered),diff(fresh,discovered)]) +
+      footwearVarietyAdjustment(discovered, [signature,fresh], overlap);
     if (joint > bestPairValue + EPS || (Math.abs(joint-bestPairValue)<=EPS &&
       `${fresh.id}|${discovered.id}`.localeCompare(
         plannedPair ? `${plannedPair[0].id}|${plannedPair[1].id}` : '') < 0)) {
