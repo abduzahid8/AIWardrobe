@@ -117,6 +117,27 @@ const baseRequest = {
   sourceMode: 'catalog', preferences: {}, recentSignatures: [], excludeItemIds: [],
 };
 
+test('authenticated cloud response returns only product-grounded personal style evidence', async () => {
+  const request = { ...baseRequest,
+    preferences: {favoriteBrands:['Test'],fitPreference:'balanced'},
+  };
+  const result = await signedCall({request});
+  assert.equal(result.status, 200);
+  assert.equal(result.body.status, 'complete');
+  assert.equal(result.body.generationVersion, STYLIST6_CLOUD_VERSION);
+  assert.equal(result.calls.debitQuota, 1);
+  assert.equal(result.body.outfits.length,3);
+  for (const outfit of result.body.outfits) {
+    const personalization = outfit.fashionDiagnostics?.personalization;
+    assert.ok(personalization);
+    assert.ok(personalization.adjustment>0 && personalization.adjustment<=0.085);
+    assert.ok(personalization.matches.some(x=>x.type==='favorite_brand' && x.value==='Test'));
+    assert.ok(personalization.matches.every(x=>
+      outfit.items.some(item=>item.id===x.productId)));
+    assert.equal(outfit.preferences,undefined);
+  }
+});
+
 test('missing transport secret fails closed without touching auth or quota', async () => {
   const { calls, io } = makeIo();
   const result = await handleStylist6CloudGenerate({
