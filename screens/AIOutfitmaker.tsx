@@ -96,6 +96,12 @@ interface GeneratedOutfit {
   compositionProtocol?: 'optional-layer-v1';
   explanationVersion?: number;
   concept?: {id:string;title:string;story:string;score?:number};
+  /** Only positive matches against actual selected SKU evidence. No raw profile. */
+  fashionDiagnostics?: {personalization?: {
+    adjustment?: number;
+    matchedItems?: number;
+    matches?: {type:string;value:string;productId:string}[];
+  }};
   selectionSource?: string;
   generationRequestId?:string;
   engineVersion?:string;
@@ -2143,6 +2149,28 @@ const AIOutfitGenerator = () => {
                 {outfit.concept && <ScaledText style={[styles.outfitDesc,{fontWeight:'700',fontSize:20,marginBottom:12}]}>
                   {outfitConceptTitle(outfit.concept.id, outfit.concept.title)}
                 </ScaledText>}
+                {(() => {
+                  const evidence = outfit.fashionDiagnostics?.personalization?.matches;
+                  if (!Array.isArray(evidence) || !evidence.length) return null;
+                  const selectedIds = new Set(outfit.items.map((item) => String(item.id)));
+                  const acceptedTypes = new Set(['favorite_color','favorite_brand','liked_pattern','preferred_fit']);
+                  const details = [...new Set(evidence
+                    .filter((entry) => entry && acceptedTypes.has(entry.type) &&
+                      selectedIds.has(String(entry.productId)) &&
+                      typeof entry.value === 'string' && entry.value.trim().length > 0)
+                    .map((entry) => entry.type === 'preferred_fit'
+                      ? t(entry.value === 'wide' ? 'outfitMaker.personalizedFitWide' : 'outfitMaker.personalizedFitSlim')
+                      : entry.value.trim()))].slice(0, 3);
+                  if (!details.length) return null;
+                  return (
+                    <View testID={`personalStylistReason-${index}`} style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:12}}>
+                      <Ionicons name="sparkles-outline" size={15} color={D.accent} />
+                      <ScaledText style={[styles.outfitDesc,{fontSize:13,flex:1,marginBottom:0}]}>
+                        {t('outfitMaker.personalizedForYou')}: {details.join(' · ')}
+                      </ScaledText>
+                    </View>
+                  );
+                })()}
                 <OutfitSlotGrid
                   items={outfit.items}
                   weather={outfit.weather}
