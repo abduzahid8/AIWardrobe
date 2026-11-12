@@ -137,6 +137,30 @@ export function rejectForUnsuitableDateNight(descriptor, context, item) {
   return false;
 }
 
+/**
+ * Catalog-only quiet-smart layer guard. A known leisure/technical sport shell
+ * has a different visual register from classic office and old-money evening
+ * tailoring. The name must explicitly identify the leisure/training purpose:
+ * technical fabric alone is not evidence of an unsuitable garment.
+ *
+ * This is not a global jacket ban: casual/travel, user-directed sportswear,
+ * wardrobe items, and normal minimalist layering are unaffected.
+ */
+export function rejectQuietSmartLeisureLayer(descriptor, context, item) {
+  if (context.sourceMode !== 'catalog' ||
+      !['classic','old_money','semi_classic'].includes(context.style) ||
+      !['smart','formal'].includes(context.dressCode) ||
+      descriptor.slot !== 'outerwear' ||
+      !/\b(work|office|business|date|dinner|evening)\b/i.test(
+        `${context.occasion || ''} ${context.request || ''}`)) return false;
+  // A user explicitly choosing sporty outerwear outranks stylist aesthetics,
+  // without waiving the existing physical safety or budget gates.
+  if (/\b(technical leisure|sporty jacket|track jacket|training jacket)\b/i
+    .test(context.request || '')) return false;
+  const name = String(item?.name || '');
+  return /\b(technical[ -]?leisure|track jacket|training jacket|running jacket|sport[s]? jacket)\b/i.test(name);
+}
+
 /** A smart date outfit needs polish even when every individual SKU is valid. */
 export function rejectUnpolishedDateNightLook(items, context) {
   if (context.dressCode !== 'smart' && context.dressCode !== 'formal') return false;
@@ -190,7 +214,8 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       if (descriptor.slot !== item.macroCategory || descriptor.productKind === 'complete-suit' ||
           garmentContextReason(prepared, context) || rejectForClimate(prepared, context.weather) ||
           rejectForStyleOccasion(prepared, context.style, context.occasion) ||
-          rejectForUnsuitableDateNight(descriptor, context, prepared)) return null;
+          rejectForUnsuitableDateNight(descriptor, context, prepared) ||
+          rejectQuietSmartLeisureLayer(descriptor, context, prepared)) return null;
       const personal = evaluatePersonalItem(prepared, descriptor, taste);
       // An explicitly locked owned item is a direct user instruction. Brand
       // avoidance must not silently discard that anchor. All other garments
