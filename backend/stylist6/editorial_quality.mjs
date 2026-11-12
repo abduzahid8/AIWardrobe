@@ -95,7 +95,10 @@ export function editorialDirectionEligible(signature, candidate, mode = 'discove
   const baseline = scoreOf(signature), proposed = scoreOf(candidate);
   if (baseline === null) return proposed === null;
   if (proposed === null) return false;
-  const floor = mode === 'discovery' ? 0.71 : mode === 'refresh' ? 0.66 : 0.62;
-  const maxDrop = mode === 'discovery' ? 0.055 : mode === 'refresh' ? 0.09 : 0.12;
+  // A fallback is not advertised as new. Permit a broader range among
+  // already-admitted candidates so sparse catalog evidence does not erase
+  // complete, usable decks. Discovery remains independently strict.
+  const floor = mode === 'discovery' ? 0.71 : mode === 'refresh' ? 0.66 : 0.56;
+  const maxDrop = mode === 'discovery' ? 0.055 : mode === 'refresh' ? 0.09 : 0.22;
   return proposed >= floor && proposed >= baseline - maxDrop;
 }
