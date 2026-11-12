@@ -28,6 +28,7 @@ import { feedbackTasteModel, FEEDBACK_TASTE_VERSION, FEEDBACK_TASTE_MAX_ROWS } f
 import { referenceFirstBriefs } from './lookbook_briefs.mjs';
 import { currentVisual } from '../../src/domain/visualFashion.ts';
 import { resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
+import { normalizeStylistLanguage } from '../../src/domain/stylingContext.ts';
 import {
   createHostedVisualCritic,
   NVIDIA_VISION_MODEL,
@@ -381,6 +382,14 @@ function mapDeckItem(item, rankScore) {
     price: item.price ?? null,
     currency: item.currency || null,
     shopUrl: item.shopUrl || null,
+    // Merchant-offer price freshness (gate F): when the server last saw this
+    // listing price, as days and a bounded tier. Null/unknown when the row
+    // carries no last_seen_at — never an invented recency claim. Owned
+    // wardrobe pieces carry no merchant offer and stay unknown.
+    priceAgeDays: Number.isFinite(item.priceAgeDays) ? item.priceAgeDays : null,
+    priceFreshness: typeof item.priceFreshness === 'string' && item.isShopItem === true
+      ? item.priceFreshness
+      : null,
   };
 }
 
@@ -482,6 +491,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
   }
   const sourceMode = normalizeSourceMode(request.sourceMode);
   if (!sourceMode) return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
+  // Display language for the deck's editorial copy. Never an admission
+  // error: an unsupported value degrades to English per output string.
+  const language = normalizeStylistLanguage(request.language);
   if (request.budget != null && (typeof request.budget !== 'object' ||
       typeof request.budget.amount !== 'number' || !Number.isFinite(request.budget.amount) ||
       request.budget.amount <= 0 || !/^[A-Z]{3}$/.test(String(request.budget.currency)))) {
@@ -642,6 +654,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       occasion,
       optionalLayer: true,
       preferences: request.preferences && typeof request.preferences === 'object' ? request.preferences : {},
+      // Language pass-through: fashionStylingContext spreads the request into
+      // the styling context, so deck_editorial_copy reads it from there. The
+      // fingerprint includes it — copy language is request content.
+      language,
     };
     // Hosted NVIDIA review: strictly opt-in, server-side key only, bounded
     // to the critic's own batch limits. Reference-guided judging needs

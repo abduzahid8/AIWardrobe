@@ -155,6 +155,69 @@ const finitePrice = (value) =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 
 /**
+ * UZS price-plausibility bands per outfit slot (merchant-offer sanity gate).
+ *
+ * Provenance: computed from the frozen UZS snapshot (sha256 b4bb7ae0…,
+ * built 2026-11-13, 384 rows) — per-slot percentiles over admitted prices:
+ *   top:       p0.5=228,564   p50=649,900    p95=9,013,729  p99.5=17,799,356  (min 219,900, max 24,252,000)
+ *   outerwear: p0.5=323,978   p50=888,092    p95=5,035,875  p99.5=21,185,987  (min 258,000, max 28,545,957)
+ *   bottom:    p0.5=396,902   p50=849,900    p95=8,641,261  p99.5=11,098,060  (min 396,902, max 13,051,283)
+ *   shoes:     p0.5=549,900   p50=1,768,340  p95=2,732,889  p99.5=2,893,648   (min 549,900, max 2,893,648)
+ *
+ * Construction: the fixed floors sit far below each slot's observed cheap
+ * end and the fixed ceilings sit just above each slot's observed legit
+ * premium end (a 2.5M UZS or even 28.5M Canali cashmere outerwear passes),
+ * so the quota-sampled snapshot can never become a rejection wall for
+ * live-catalog items outside its sampled range. What the bands catch is
+ * offer corruption: x100 minor-unit magnification (e.g. a GANT polo stored
+ * at 24,252,000 UZS where the brand's entire segment is ~2M) and currency/
+ * unit misparses that land an adult garment below any plausible retail
+ * floor. Non-UZS rows have no committed evidence base, so the gate abstains
+ * for them — no bounds are invented from FX. Excluded rows are counted
+ * truthfully as `price_implausible`, never silently altered.
+ */
+export const PRICE_PLAUSIBILITY_UZS = Object.freeze({
+  top: Object.freeze({ floor: 100_000, ceiling: 20_000_000 }),
+  outerwear: Object.freeze({ floor: 100_000, ceiling: 30_000_000 }),
+  bottom: Object.freeze({ floor: 100_000, ceiling: 20_000_000 }),
+  shoes: Object.freeze({ floor: 150_000, ceiling: 15_000_000 }),
+});
+
+/**
+ * Truthful price-plausibility verdict for one projected offer. Applies only
+ * where committed evidence exists (native UZS rows in a known outfit slot);
+ * everything else abstains. Returns the diagnostic reason or null.
+ */
+export function priceImplausibilityReason(macroCategory, currency, price) {
+  if (currency !== 'UZS') return null;
+  const band = PRICE_PLAUSIBILITY_UZS[macroCategory];
+  if (!band) return null;
+  return price >= band.floor && price <= band.ceiling ? null : 'price_implausible';
+}
+
+/**
+ * Merchant-offer price freshness. `priceAgeDays` derives from
+ * `last_seen_at` when the row carries one and is null otherwise (~4.4k live
+ * rows lack timestamps — absence stays honest `unknown`, never guessed).
+ */
+export const PRICE_FRESHNESS_FRESH_MAX_DAYS = 7;
+export const PRICE_FRESHNESS_RECENT_MAX_DAYS = 45;
+
+export function priceAgeDays(row, nowMs = Date.now()) {
+  const seen = Date.parse(String(row?.last_seen_at || ''));
+  if (!Number.isFinite(seen)) return null;
+  return Math.max(0, Math.floor((nowMs - seen) / 86_400_000));
+}
+
+/** Bounded staleness tier: fresh ≤7d, recent ≤45d, stale >45d, unknown. */
+export function priceFreshness(ageDays) {
+  if (!Number.isFinite(ageDays)) return 'unknown';
+  if (ageDays <= PRICE_FRESHNESS_FRESH_MAX_DAYS) return 'fresh';
+  if (ageDays <= PRICE_FRESHNESS_RECENT_MAX_DAYS) return 'recent';
+  return 'stale';
+}
+
+/**
  * Project one committed snapshot row to a prototype item, or null when the
  * row cannot serve as a shoppable pilot candidate. Never throws for data
  * rows; unusable rows are counted, not hidden.
@@ -172,6 +235,8 @@ export function projectCatalogItem(row) {
     return { skipped: 'bad_currency', id };
   }
   const name = String(row.name || id);
+  const ageDays = priceAgeDays(row);
+  const priceFreshnessTier = priceFreshness(ageDays);
   // The broad source category is authoritative for unmistakable physical
   // roles. A colorway such as "Trench Coat Khaki" on *chino trousers* can
   // poison the text-derived intelligence slot with outerwear/coat; never
@@ -190,6 +255,9 @@ export function projectCatalogItem(row) {
     : live;
   const roleProjected = pulloverBaseLayer(row, hint);
   if (roleProjected) {
+    if (priceImplausibilityReason(roleProjected.macroCategory, row.currency, row.price)) {
+      return { skipped: 'price_implausible', id };
+    }
     return Object.freeze({
       id,
       name,
@@ -204,10 +272,15 @@ export function projectCatalogItem(row) {
       brand: row.brand || null,
       isShopItem: true,
       visualEvidenceVerified: false,
+      priceAgeDays: ageDays,
+      priceFreshness: priceFreshnessTier,
       projection: { kind: roleProjected.via, evidence: roleProjected.evidence },
     });
   }
   if (hint) {
+    if (priceImplausibilityReason(hint.macroCategory, row.currency, row.price)) {
+      return { skipped: 'price_implausible', id };
+    }
     return Object.freeze({
       id,
       name,
@@ -222,6 +295,8 @@ export function projectCatalogItem(row) {
       brand: row.brand || null,
       isShopItem: true,
       visualEvidenceVerified: false,
+      priceAgeDays: ageDays,
+      priceFreshness: priceFreshnessTier,
       projection: { kind: 'live_intelligence', evidence: [`intelligence:${hint.macroCategory}/${hint.subtype}`] },
     });
   }
@@ -265,6 +340,9 @@ export function projectCatalogItem(row) {
   } else {
     return { skipped: 'non_outfit_category', id };
   }
+  if (priceImplausibilityReason(macroCategory, row.currency, row.price)) {
+    return { skipped: 'price_implausible', id };
+  }
 
   return Object.freeze({
     id,
@@ -280,6 +358,8 @@ export function projectCatalogItem(row) {
     brand: row.brand || null,
     isShopItem: true,
     visualEvidenceVerified: false,
+    priceAgeDays: ageDays,
+    priceFreshness: priceFreshnessTier,
     projection,
   });
 }
@@ -319,9 +399,9 @@ export const DEV_PURCHASE_EVIDENCE = Object.freeze({
  * Development-safe per-look feasibility gate. Reuses the same admission
  * predicates as `projectCatalogItem`/`safeCatalogItem` (known slot,
  * reachable photo, merchant URL present, finite price, 3-letter currency,
- * non-empty identity) so the dev bridge no longer needs an unconditional
- * stub. Returns `{ ok, reason?, evidence, stock }`; never throws for data
- * rows. Passing means the listing is well-formed — see
+ * non-empty identity, UZS price plausibility) so the dev bridge no longer
+ * needs an unconditional stub. Returns `{ ok, reason?, evidence, stock }`;
+ * never throws for data rows. Passing means the listing is well-formed — see
  * DEV_PURCHASE_EVIDENCE: it is not a stock, size or delivery confirmation.
  */
 const KNOWN_SLOTS = new Set(['top', 'outerwear', 'bottom', 'shoes']);
@@ -334,6 +414,12 @@ export function devLookFeasibility(items) {
     if (item.isShopItem === true) {
       if (!isHttps(item.shopUrl || item.sourceUrl || item.source_url)) return fail('missing_merchant_offer');
       if (!finitePrice(item.price) || !/^[A-Z]{3}$/.test(item.currency || '')) return fail('unpriced_or_currency');
+      // Price sanity: a UZS offer far outside its slot's committed plausibility
+      // band is offer corruption (unit/currency misparse), not a bargain. The
+      // look is excluded truthfully; the offer is never silently re-priced.
+      if (priceImplausibilityReason(item.macroCategory, item.currency, item.price)) {
+        return fail('price_implausible');
+      }
     }
   }
   return { ok: true, evidence: DEV_PURCHASE_EVIDENCE.level, stock: 'not_checked' };

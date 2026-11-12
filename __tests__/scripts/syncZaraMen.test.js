@@ -4,7 +4,9 @@ const {
     buildSimilarityKey,
     categoryToGarmentType,
     isSupportedMensClothing,
+    mapItem,
     normalizeText,
+    resolveItemCurrency,
 } = require('../../scripts/sync-zara-men.js');
 
 describe('sync-zara-men helpers', () => {
@@ -196,5 +198,39 @@ describe('sync-zara-men helpers', () => {
             garment_type: 'shoes',
             category: 'shoes',
         });
+    });
+
+    it('resolves currency from the source config, never a default currency', () => {
+        // The old `|| 'USD'` fallback mislabeled UZS amounts as USD
+        // (849,900 rendered as "$849,900"). The zara.com/uz source is UZS.
+        expect(resolveItemCurrency({})).toBe('UZS');
+        expect(resolveItemCurrency({ currency: '' })).toBe('UZS');
+        // An unusable scraper value is not trusted either.
+        expect(resolveItemCurrency({ currency: 'us' })).toBe('UZS');
+        expect(resolveItemCurrency({ currency: '12' })).toBe('UZS');
+        // A valid scraper-reported 3-letter code stays trusted data.
+        expect(resolveItemCurrency({ currency: 'usd' })).toBe('USD');
+        expect(resolveItemCurrency({ currency: 'UZS' })).toBe('UZS');
+    });
+
+    it('maps a currency-less UZS amount to an honest UZS catalog row', () => {
+        const syncedAt = '2026-11-13T00:00:00.000Z';
+        const row = mapItem(
+            {
+                name: 'WOOL BLEND OVERCOAT',
+                price: 849900,
+                image_urls: ['https://static.zara.net/photos///e1/2026/1/20/p/0/40/11/040110001_1_1_1.jpg'],
+                category_name: 'coats',
+            },
+            0,
+            0,
+            'Coats',
+            'https://www.zara.com/uz/en/man-coats-l623.html',
+            syncedAt,
+        );
+        expect(row).not.toBeNull();
+        expect(row.currency).toBe('UZS');
+        expect(row.price).toBe(849900);
+        expect(row.last_seen_at).toBe(syncedAt);
     });
 });

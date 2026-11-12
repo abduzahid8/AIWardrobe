@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
 
 function garment(id, name, macroCategory, subtype, extra = {}) {
-  return { id, name, macroCategory, subtype, isShopItem: true, currency: 'UZS', price: 100,
+  return { id, name, macroCategory, subtype, isShopItem: true, currency: 'UZS', price: 250000,
     imageUrl: 'https://catalog.example/image/' + id + '.jpg', shopUrl: 'https://catalog.example/' + id, ...extra };
 }
 const products = [
@@ -27,7 +27,7 @@ const base = {
   catalog: products, referenceBriefs: refs, hardGate: async () => ({ ok: true }),
   priceToBudgetCurrency: (item, currency) => item.currency === currency ? item.price : NaN,
   request: { sourceMode: 'catalog', style: 'classic', occasion: 'Work', weather: { temp: 28 },
-    optionalLayer: true, referenceId: 'rt_001', budget: { amount: 300, currency: 'UZS' },
+    optionalLayer: true, referenceId: 'rt_001', budget: { amount: 750000, currency: 'UZS' },
     preferences: { avoidColors: ['black'] }, requiredIds: ['shirt-white'] },
 };
 
@@ -39,18 +39,18 @@ test('warm work outfits keep the exact anchor, avoid excluded colors and omit th
     assert.equal(look.items.length, 3);
     assert.ok(look.items.some(({ id }) => id === 'shirt-white'));
     assert.ok(look.items.every(({ id }) => !id.includes('black') && id !== 'training-shoe'));
-    assert.ok(look.items.reduce((sum, { price }) => sum + price, 0) <= 300);
+    assert.ok(look.items.reduce((sum, { price }) => sum + price, 0) <= 750000);
     assert.ok(Number.isFinite(look.fashion.referenceMetadata.slotColorFit));
   }
   assert.ok(new Set(result.outfits.flatMap(({ items }) => items.map(({ id }) => id))).size >= 7);
 });
 
 test('cold looks retain layers and an infeasible budget never gains a fallback outfit', async () => {
-  const request = { ...base.request, weather: { temp: 9 }, budget: { amount: 400, currency: 'UZS' } };
+  const request = { ...base.request, weather: { temp: 9 }, budget: { amount: 1000000, currency: 'UZS' } };
   const cold = await recommendFashionDeck({ ...base, request });
   assert.equal(cold.status, 'complete');
   assert.ok(cold.outfits.every(({ items }) => items.length === 4 && items.some(({ id }) => id === 'shirt-white')));
-  const impossible = await recommendFashionDeck({ ...base, request: { ...request, budget: { amount: 399, currency: 'UZS' } } });
+  const impossible = await recommendFashionDeck({ ...base, request: { ...request, budget: { amount: 997500, currency: 'UZS' } } });
   assert.deepEqual(impossible.outfits, []);
 });
 
@@ -166,7 +166,7 @@ test('the critic judges a deck with no reference brief purely on product images'
 });
 
 test('an unspecified wedding uses formal composition while a beach wedding or explicit code stays distinct', async () => {
-  const request = { ...base.request, occasion: 'Wedding', weather: { temp: 21 }, budget: { amount: 400, currency: 'UZS' } };
+  const request = { ...base.request, occasion: 'Wedding', weather: { temp: 21 }, budget: { amount: 1000000, currency: 'UZS' } };
   assert.equal(fashionStylingContext(request).dressCode, 'formal');
   assert.equal(fashionStylingContext({ ...request, brief: 'A beach wedding' }).dressCode, 'casual');
   assert.equal(fashionStylingContext({ ...request, dressCode: 'smart' }).dressCode, 'smart');
@@ -208,7 +208,7 @@ test('excluding every bottom relaxes gracefully instead of failing the deck', as
 });
 
 test('an unbudgeted premium anchor completes with disclosed dampening, never a rejection', async () => {
-  const premium = garment('derby-premium', 'black leather derby shoes', 'shoes', 'derby', { price: 50000 });
+  const premium = garment('derby-premium', 'black leather derby shoes', 'shoes', 'derby', { price: 2500000 });
   const extra = ['vi', 'vii', 'viii'].map((color) => garment(`derby-${color}`, `${color} leather derby shoes`, 'shoes', 'derby'));
   const result = await recommendFashionDeck({
     ...base,
@@ -249,6 +249,32 @@ test('price bands are per slot and currency, need evidence and cap the dampener'
     [{ ...shoe('a', 100000) }, { ...shoe('b', 90000) }, { ...shoe('c', 80000) }], profile);
   assert.equal(capped.penalty, 0.06);
   assert.deepEqual(pricePenaltyForLook([{ ...shoe('usp', 100000) }], {}), { penalty: 0, flagged: 0 });
+});
+
+test('price freshness dampener is bounded, shoppable-only and tier-scaled', () => {
+  const offer = (priceFreshness, isShopItem = true) => ({
+    id: 's', isShopItem, price: 100, currency: 'UZS', macroCategory: 'shoes', priceFreshness,
+  });
+  // Fresh and recent offers pay nothing; legacy items without the field pay nothing.
+  assert.equal(priceFreshnessPenaltyForLook([offer('fresh')]), 0);
+  assert.equal(priceFreshnessPenaltyForLook([offer('recent')]), 0);
+  assert.equal(priceFreshnessPenaltyForLook([{ id: 'legacy', isShopItem: true }]), 0);
+  // Stale and unknown offers pay a small, tier-scaled cost.
+  const stale = priceFreshnessPenaltyForLook([offer('stale')]);
+  const unknown = priceFreshnessPenaltyForLook([offer('unknown')]);
+  assert.equal(stale, 0.0125);
+  assert.equal(unknown, 0.007);
+  assert.ok(stale > unknown);
+  // Owned wardrobe pieces carry no merchant offer and pay nothing.
+  assert.equal(priceFreshnessPenaltyForLook([offer('stale', false)]), 0);
+  // Sum over a four-piece look is capped: beyond the near-tie margin, far
+  // below the coherence weight, never enough to rescue a bad look.
+  const fourStale = priceFreshnessPenaltyForLook(
+    [offer('stale'), offer('stale'), offer('stale'), offer('stale')]);
+  assert.equal(fourStale, PRICE_FRESHNESS_PENALTY_MAX);
+  assert.equal(PRICE_FRESHNESS_PENALTY_MAX, 0.035);
+  assert.ok(PRICE_FRESHNESS_PENALTY_MAX > 0.025, 'can reorder a near-tie');
+  assert.ok(PRICE_FRESHNESS_PENALTY_MAX < 0.68 * 0.1, 'far below the coherence weight');
 });
 
 test('cached visual profiles attach only on exact SKU and source-hash match', () => {
@@ -336,7 +362,7 @@ test('optional briefs keep three-piece candidates in the shortlist beside layere
   });
   const retrieval = await shortlistRetrievalDeck({
     request: { sourceMode: 'catalog', style: 'classic', occasion: 'Work', weather: {},
-      optionalLayer: true, preferences: {}, budget: { amount: 10000, currency: 'UZS' } },
+      optionalLayer: true, preferences: {}, budget: { amount: 25000000, currency: 'UZS' } },
     catalog: products,
     hardGate: async () => ({ ok: true }),
     priceToBudgetCurrency: (item, currency) => (item.currency === currency ? item.price : NaN),
@@ -386,7 +412,7 @@ test('New Clothing respects explicitly avoided brands without weakening structur
   for (const look of result.outfits) {
     assert.ok(look.items.every(i => i.brand !== 'Not My Brand'));
     assert.ok(look.items.some(i => i.id === 'shirt-white'));
-    assert.ok(look.items.reduce((sum,i) => sum + i.price, 0) <= 300);
+    assert.ok(look.items.reduce((sum,i) => sum + i.price, 0) <= 750000);
   }
 });
 
@@ -446,7 +472,7 @@ test('short onboarding explores adjacent ideas without changing the requested dr
   const result = await recommendFashionDeck({
     ...base,request:{
       ...base.request,style:'old_money',occasion:'Work',
-      requiredIds:[],budget:{amount:400,currency:'UZS'},
+      requiredIds:[],budget:{amount:1000000,currency:'UZS'},
       preferences:{}, // no large form, no guessed favorite colors/brands
     },
   });
@@ -457,7 +483,7 @@ test('short onboarding explores adjacent ideas without changing the requested dr
   for(const outfit of result.outfits){
     assert.ok(['signature','refresh','discovery','alternative'].includes(outfit.direction.id));
     assert.ok(outfit.items.every(item=>item.id!=='snow-parka'&&item.id!=='training-shoe'));
-    assert.ok(outfit.items.reduce((total,item)=>total+item.price,0)<=400);
+    assert.ok(outfit.items.reduce((total,item)=>total+item.price,0)<=1000000);
     if(outfit.direction.id==='discovery'){
       assert.ok(outfit.direction.qualified);
       assert.ok(outfit.direction.evidence.structuralSlots.length>0 ||
@@ -473,7 +499,7 @@ test('pinned anchor survives exploration and remains in every suggested directio
   assert.ok(result.outfits.length>0);
   for(const look of result.outfits){
     assert.ok(look.items.some(x=>x.id==='shirt-white'));
-    assert.ok(look.items.reduce((total,item)=>total+item.price,0)<=300);
+    assert.ok(look.items.reduce((total,item)=>total+item.price,0)<=750000);
     assert.ok(look.direction);
   }
 });
@@ -558,7 +584,7 @@ test('editorial v1 is isolated to New Clothing and does not rewrite mixed-source
 
 test('Stylist 6 end-to-end returns three meaningfully named cards with short grounded reasoning',async()=>{
   const deck=await recommendFashionDeck(base);
-  assert.equal(deck.diagnostics.deckCopyVersion,'s6-grounded-deck-copy-v3');
+  assert.equal(deck.diagnostics.deckCopyVersion,'s6-grounded-deck-copy-v4');
   assert.equal(deck.status,'complete');
   assert.equal(deck.outfits.length,3);
   assert.equal(new Set(deck.outfits.map(x=>x.concept.title.toLowerCase())).size,3);
@@ -590,7 +616,7 @@ test('quiet smart styling declines explicit technical leisure outerwear, without
 test('classic work deck avoids explicit technical leisure shells, but still returns valid looks',async()=>{
   const tech = garment('tech','Navy Technical Leisure Jacket','outerwear','jacket');
   const catalog=[...products,tech];
-  const request={...base.request,weather:{temp:15},budget:{amount:500,currency:'UZS'},optionalLayer:false};
+  const request={...base.request,weather:{temp:15},budget:{amount:1250000,currency:'UZS'},optionalLayer:false};
   const deck=await recommendFashionDeck({...base,request,catalog});
   assert.ok(deck.outfits.length>0);
   assert.ok(deck.outfits.every(look=>!look.items.some(item=>item.id===tech.id)));
@@ -667,7 +693,7 @@ test('feedback adjustment surfaces in scoring diagnostics only when explicit row
   const signature = liked.outfits[0].items;
   assert.ok(signature.some(({ id }) => id === 'shirt-navy'), 'the liked shirt leads');
   assert.ok(signature.every(({ id }) => id !== 'shirt-white'), 'the twice-disliked shirt is avoided');
-  assert.ok(signature.reduce((sum, { price }) => sum + price, 0) <= 300);
+  assert.ok(signature.reduce((sum, { price }) => sum + price, 0) <= 750000);
 });
 
 test('opposite feedback flips deck ordering over the identical catalog', async () => {

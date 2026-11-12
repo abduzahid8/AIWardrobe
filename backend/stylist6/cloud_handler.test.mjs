@@ -16,7 +16,7 @@ const SECRET = 'cloud-test-shared-secret-0123456789abcdef';
 const JWT = 'good-jwt-token';
 const USER = 'user-1';
 
-const shopRow = (id, slot, price = 100, currency = 'UZS') => ({
+const shopRow = (id, slot, price = 250000, currency = 'UZS') => ({
   id, name: `${slot} garment ${id}`, category: { top: 'tops', bottom: 'bottoms', shoes: 'shoes', outerwear: 'tops' }[slot],
   garment_type: slot === 'bottom' ? 'lower_body' : slot === 'shoes' ? 'shoes' : 'upper_body',
   price, currency,
@@ -25,10 +25,10 @@ const shopRow = (id, slot, price = 100, currency = 'UZS') => ({
   is_active: true, brand: 'Test',
 });
 const SHOP = [
-  shopRow('top-1', 'top', 100), shopRow('top-2', 'top', 150),
-  shopRow('bottom-1', 'bottom', 200), shopRow('bottom-2', 'bottom', 120),
-  shopRow('shoes-1', 'shoes', 300), shopRow('shoes-2', 'shoes', 180),
-  shopRow('outer-1', 'outerwear', 500),
+  shopRow('top-1', 'top', 100000), shopRow('top-2', 'top', 150000),
+  shopRow('bottom-1', 'bottom', 200000), shopRow('bottom-2', 'bottom', 120000),
+  shopRow('shoes-1', 'shoes', 300000), shopRow('shoes-2', 'shoes', 180000),
+  shopRow('outer-1', 'outerwear', 500000),
 ];
 const WARDROBE = [
   { id: 'w-top-1', type: 'shirt', category: 'tops', color: 'white', brand: '', name: 'white cotton shirt', image_url: 'https://example.com/w/t1.jpg' },
@@ -385,6 +385,64 @@ test('client-supplied inventory is ignored, server SKUs rule', async () => {
   assert.ok(ids.every((id) => SHOP.some((row) => row.id === id)));
 });
 
+test('language pass-through writes deck copy in the requested language, never a mix', async () => {
+  const CYRILLIC = /[А-Яа-яёЁ]/;
+  const LATIN = /[A-Za-z]/;
+  for (const language of ['ru', 'uz']) {
+    const result = await signedCall({ request: { ...baseRequest, language } });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.outfits.length, 3);
+    // Same uniqueness rule in every language: three distinct headlines.
+    assert.equal(new Set(result.body.outfits.map(x => (x.concept?.title || '').toLowerCase())).size, 3);
+    for (const outfit of result.body.outfits) {
+      const title = outfit.concept?.title || '';
+      const description = String(outfit.description || '');
+      // Monolingual strings only: a card never mixes languages within one string.
+      assert.ok(!(CYRILLIC.test(title) && LATIN.test(title)), `mixed title: ${title}`);
+      assert.ok(!(CYRILLIC.test(description) && LATIN.test(description)), `mixed description: ${description}`);
+      if (language === 'ru') {
+        assert.ok(CYRILLIC.test(description), `en description leaked into ru deck: ${description}`);
+        assert.ok(!LATIN.test(title) && !LATIN.test(description));
+      } else {
+        assert.ok(!CYRILLIC.test(title) && !CYRILLIC.test(description));
+        assert.ok(LATIN.test(description));
+      }
+    }
+  }
+  // An explicit 'en' request keeps the established English copy.
+  const english = await signedCall({ request: { ...baseRequest, language: 'en' } });
+  assert.equal(english.status, 200);
+  for (const outfit of english.body.outfits) {
+    assert.ok(!CYRILLIC.test(String(outfit.description || '')));
+    assert.match(String(outfit.description), /[a-z]/i);
+  }
+});
+
+test('an unsupported language value degrades to English instead of failing admission', async () => {
+  const result = await signedCall({ request: { ...baseRequest, language: 'de-DE' } });
+  assert.equal(result.status, 200);
+  assert.match(String(result.body.outfits[0].description), /[a-z]/i);
+  assert.ok(!/[А-Яа-яёЁ]/.test(String(result.body.outfits[0].description)));
+});
+
+test('every cloud look satisfies the client thumbs-write (stylist_look_feedback) contract', async () => {
+  // Mirrors src/services/stylistFeedback.ts canRecordLookFeedback so the
+  // screen's thumbs up/down on this exact deck reaches stylist_look_feedback
+  // with the server-issued outfit_N look id, request id, concept slug and
+  // engine version — plus the per-item ids the Gate-D ranker links against.
+  const result = await signedCall({ request: baseRequest });
+  assert.equal(result.status, 200);
+  assert.ok(result.body.outfits.length >= 1);
+  for (const outfit of result.body.outfits) {
+    assert.match(outfit.id, /^outfit_[1-3]$/);
+    assert.match(outfit.concept?.id || '', /^[a-z][a-z0-9-]{0,63}$/);
+    assert.ok(typeof result.body.generationRequestId === 'string' && result.body.generationRequestId.length >= 1);
+    assert.ok(typeof outfit.engineVersion === 'string'
+      && outfit.engineVersion.length >= 1 && outfit.engineVersion.length <= 80);
+    assert.ok(outfit.items.every((item) => typeof item.id === 'string' && item.id.trim().length > 0));
+  }
+});
+
 test('wardrobe mode leaks no shop inventory', async () => {
   const result = await signedCall({ request: { ...baseRequest, sourceMode: 'wardrobe' } });
   assert.equal(result.status, 200);
@@ -418,19 +476,75 @@ test('present anchor survives in every outfit', async () => {
 
 test('UZS budget keeps same-currency shop totals under the cap', async () => {
   const variance = [
-    shopRow('top-1', 'top', 100, 'UZS'), shopRow('top-2', 'top', 50, 'USD'),
-    shopRow('bottom-1', 'bottom', 200, 'UZS'), shopRow('bottom-2', 'bottom', 60, 'USD'),
-    shopRow('shoes-1', 'shoes', 300, 'UZS'), shopRow('shoes-2', 'shoes', 70, 'USD'),
+    shopRow('top-1', 'top', 100000, 'UZS'), shopRow('top-2', 'top', 50, 'USD'),
+    shopRow('bottom-1', 'bottom', 200000, 'UZS'), shopRow('bottom-2', 'bottom', 60, 'USD'),
+    shopRow('shoes-1', 'shoes', 300000, 'UZS'), shopRow('shoes-2', 'shoes', 70, 'USD'),
   ];
   const result = await signedCall(
-    { request: { ...baseRequest, budget: { amount: 1000, currency: 'UZS' } } }, {}, { shopRows: variance });
+    { request: { ...baseRequest, budget: { amount: 1000000, currency: 'UZS' } } }, {}, { shopRows: variance });
   assert.equal(result.status, 200);
   for (const outfit of result.body.outfits) {
     const uzs = outfit.items.filter((item) => item.currency === 'UZS');
     const subtotal = uzs.reduce((sum, item) => sum + item.price, 0);
-    assert.ok(subtotal <= 1000, `over budget: ${subtotal}`);
+    assert.ok(subtotal <= 1000000, `over budget: ${subtotal}`);
     assert.ok(!outfit.items.some((item) => item.isShopItem && item.currency && item.currency !== 'UZS'));
   }
+});
+
+test('a UZS budget over a mixed-currency pool still returns a complete UZS-only deck when one is feasible', async () => {
+  // Every slot exists in BOTH currencies: the same-currency pre-filter drops
+  // the USD offers, but a full UZS inventory remains — the engine must
+  // complete, not abstain.
+  const mixed = [
+    shopRow('m-top-1', 'top', 400000, 'UZS'), shopRow('m-top-2', 'top', 420000, 'UZS'), shopRow('m-top-usd', 'top', 30, 'USD'),
+    shopRow('m-bottom-1', 'bottom', 450000, 'UZS'), shopRow('m-bottom-2', 'bottom', 480000, 'UZS'), shopRow('m-bottom-usd', 'bottom', 40, 'USD'),
+    shopRow('m-shoes-1', 'shoes', 500000, 'UZS'), shopRow('m-shoes-2', 'shoes', 520000, 'UZS'), shopRow('m-shoes-usd', 'shoes', 60, 'USD'),
+    shopRow('m-outer-1', 'outerwear', 700000, 'UZS'), shopRow('m-outer-usd', 'outerwear', 90, 'USD'),
+  ];
+  const result = await signedCall(
+    { request: { ...baseRequest, budget: { amount: 5000000, currency: 'UZS' } } }, {}, { shopRows: mixed });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.status, 'complete');
+  assert.equal(result.body.outfits.length, 3);
+  for (const outfit of result.body.outfits) {
+    for (const item of outfit.items) {
+      if (item.isShopItem !== true) continue;
+      assert.equal(item.currency, 'UZS', 'cross-currency shop offer leaked into a UZS deck');
+    }
+  }
+  const shownIds = new Set(result.body.outfits.flatMap((o) => o.items.map((i) => i.id)));
+  for (const id of ['m-top-usd', 'm-bottom-usd', 'm-shoes-usd', 'm-outer-usd']) {
+    assert.ok(!shownIds.has(id), `USD offer ${id} shown in a UZS deck`);
+  }
+});
+
+test('merchant offer freshness rides the deck items and stays honest without timestamps', async () => {
+  const now = Date.now();
+  const iso = (days) => new Date(now - days * 86400000).toISOString();
+  const rows = [
+    { ...shopRow('fresh-1', 'top', 400000), last_seen_at: iso(2) },
+    { ...shopRow('stale-1', 'bottom', 450000), last_seen_at: iso(60) },
+    shopRow('unknown-1', 'shoes', 500000), // no last_seen_at: ~4.4k live rows look like this
+  ];
+  const result = await signedCall({ request: baseRequest }, {}, { shopRows: rows });
+  assert.equal(result.status, 200);
+  const items = result.body.outfits.flatMap((outfit) => outfit.items);
+  const byTier = (tier) => items.filter((item) => item.priceFreshness === tier);
+  assert.ok(byTier('fresh').length > 0);
+  assert.ok(byTier('stale').length > 0);
+  assert.ok(byTier('unknown').length > 0);
+  const fresh = byTier('fresh')[0];
+  assert.ok(Number.isFinite(fresh.priceAgeDays) && fresh.priceAgeDays >= 2);
+  for (const item of items) {
+    if (item.priceFreshness === 'unknown') assert.equal(item.priceAgeDays, null);
+    if (item.priceFreshness === 'stale') assert.ok(item.priceAgeDays > 45);
+  }
+  // Rendering contract: the cloud acceptance tolerates the extra fields.
+  globalThis.__DEV__ = globalThis.__DEV__ ?? true;
+  const { acceptStylist6CloudDeck } = await import('../../src/services/stylist6Dev.ts');
+  const acceptance = acceptStylist6CloudDeck(result.body.outfits, 'catalog');
+  assert.equal(acceptance.accepted.length, result.body.outfits.length);
+  assert.deepEqual(acceptance.rejections, {});
 });
 
 test('requested visual review without admissible media stays NOT_RUN with zero provider calls', async () => {
@@ -505,7 +619,7 @@ test('authorized media flows end to end through the critic with strict mocks', a
     id: `auth-${slot}-${index}`,
     name: `${slot} authorized garment`, category: { top: 'tops', bottom: 'bottoms', shoes: 'shoes' }[slot],
     garment_type: slot === 'bottom' ? 'lower_body' : slot === 'shoes' ? 'shoes' : 'upper_body',
-    price: 100 + index, currency: 'UZS',
+    price: 250000 + index * 50000, currency: 'UZS',
     image_url: `${sbHost}/${slot}.jpg`, source_url: `https://example.com/shop/${slot}`,
     is_active: true, brand: 'Test',
   }));
@@ -705,7 +819,7 @@ const merchantShop = (salt, host = 'static.zara.net') => {
       rows.push({
         id, name: `${slot} merchant garment ${index}`, category: { top: 'tops', bottom: 'bottoms', shoes: 'shoes', outerwear: 'tops' }[slot],
         garment_type: slot === 'bottom' ? 'lower_body' : slot === 'shoes' ? 'shoes' : 'upper_body',
-        price: 120 + index * 10, currency: 'UZS',
+        price: 250000 + index * 50000, currency: 'UZS',
         image_url: `https://${host}/images/${id}.jpg`, source_url: `https://example.com/shop/${id}`,
         is_active: true, brand: 'Test',
       });

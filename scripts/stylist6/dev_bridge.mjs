@@ -281,6 +281,11 @@ function mapDeckItem(item, rankScore) {
     price: item.price,
     currency: item.currency,
     shopUrl: item.shopUrl,
+    // Gate F price freshness, identical to the cloud contract: when the
+    // adapter last saw this listing price, honestly unknown when the catalog
+    // row carries no last_seen_at.
+    priceAgeDays: Number.isFinite(item.priceAgeDays) ? item.priceAgeDays : null,
+    priceFreshness: typeof item.priceFreshness === 'string' ? item.priceFreshness : null,
   };
 }
 

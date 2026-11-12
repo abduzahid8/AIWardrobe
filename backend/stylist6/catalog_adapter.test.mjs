@@ -7,6 +7,13 @@ import {
   baseProductId,
   inferColor,
   inferTexture,
+  devLookFeasibility,
+  priceAgeDays,
+  priceFreshness,
+  priceImplausibilityReason,
+  PRICE_PLAUSIBILITY_UZS,
+  PRICE_FRESHNESS_FRESH_MAX_DAYS,
+  PRICE_FRESHNESS_RECENT_MAX_DAYS,
   CATALOG_ADAPTER_VERSION,
 } from './catalog_adapter.mjs';
 
@@ -200,4 +207,123 @@ test('knit pullovers keep their top role under live hints; cardigans do not', as
   assert.equal(item.macroCategory, 'top');
   assert.equal(item.subtype, 'fine-knit');
   assert.equal(item.projection.kind, 'live_intelligence_role_projection');
+});
+
+// UZS fixture prices live near the observed cheap end of the frozen snapshot
+// (Zara tops from 219,900 UZS); EUR fixtures are untouched by the UZS-only gate.
+const uzsRow = (over = {}) => row({ price: 649_900, currency: 'UZS', ...over });
+
+test('UZS prices outside the slot plausibility band are excluded as price_implausible, never altered', () => {
+  // x100 minor-unit magnification on a GANT polo (real snapshot corruption).
+  const magnified = projectCatalogItem(uzsRow({
+    id: 'gant-polo-x100', name: 'Striped Waffle Texture Polo Shirt',
+    price: 24_252_000, fashion_slot: 'top', fashion_subtype: 'polo',
+  }));
+  assert.deepEqual(magnified, { skipped: 'price_implausible', id: 'gant-polo-x100' });
+
+  // Currency/unit misparse landing below any plausible retail floor.
+  const misparse = projectCatalogItem(uzsRow({
+    id: 'shoes-misparse', name: 'Brown Suede Penny Loafer', category: 'shoes',
+    garment_type: 'shoes', price: 2490,
+  }));
+  assert.deepEqual(misparse, { skipped: 'price_implausible', id: 'shoes-misparse' });
+
+  const adapted = adaptCatalog([
+    uzsRow({ id: 'ok-top', name: 'White Collared Shirt', description: 'cotton' }),
+    uzsRow({ id: 'bad-top', name: 'Striped Polo Shirt', price: 24_252_000 }),
+  ]);
+  assert.equal(adapted.items.length, 1);
+  assert.equal(adapted.items[0].id, 'ok-top');
+  assert.equal(adapted.skipped.price_implausible, 1);
+});
+
+test('plausibility bands pass legit premium items and boundary prices', () => {
+  // Legit premium: 2.5M UZS outerwear and a 28.5M Canali cashmere cardigan.
+  assert.equal(projectCatalogItem(uzsRow({
+    id: 'premium-1', name: 'Camel Double-Breasted Overcoat', price: 2_500_000,
+  })).price, 2_500_000);
+  assert.equal(projectCatalogItem(uzsRow({
+    id: 'premium-2', name: 'Burgundy Cashmere Shawl Cardigan', price: 28_545_957,
+    fashion_slot: 'outerwear', fashion_subtype: 'cardigan',
+  })).price, 28_545_957);
+  // Exact boundary prices on every slot pass (floor and ceiling inclusive).
+  for (const [slot, { floor, ceiling }] of Object.entries(PRICE_PLAUSIBILITY_UZS)) {
+    assert.equal(priceImplausibilityReason(slot, 'UZS', floor), null, `${slot} floor`);
+    assert.equal(priceImplausibilityReason(slot, 'UZS', ceiling), null, `${slot} ceiling`);
+    assert.equal(priceImplausibilityReason(slot, 'UZS', floor - 1), 'price_implausible');
+    assert.equal(priceImplausibilityReason(slot, 'UZS', ceiling + 1), 'price_implausible');
+  }
+  // Committed provenance: bands derive from the frozen snapshot percentiles.
+  assert.deepEqual(PRICE_PLAUSIBILITY_UZS.top, { floor: 100_000, ceiling: 20_000_000 });
+  assert.deepEqual(PRICE_PLAUSIBILITY_UZS.outerwear, { floor: 100_000, ceiling: 30_000_000 });
+  assert.deepEqual(PRICE_PLAUSIBILITY_UZS.bottom, { floor: 100_000, ceiling: 20_000_000 });
+  assert.deepEqual(PRICE_PLAUSIBILITY_UZS.shoes, { floor: 150_000, ceiling: 15_000_000 });
+});
+
+test('plausibility gate abstains outside its evidence base (non-UZS, unknown slots)', () => {
+  // No committed evidence for EUR prices — no invented FX bounds.
+  assert.equal(priceImplausibilityReason('top', 'EUR', 29), null);
+  assert.equal(priceImplausibilityReason('top', 'EUR', 0.01), null);
+  assert.equal(projectCatalogItem(row({ price: 29, currency: 'EUR' })).price, 29);
+  // Accessories never resolve to an outfit slot, so no band applies.
+  assert.equal(priceImplausibilityReason('accessory', 'UZS', 1), null);
+});
+
+test('devLookFeasibility rejects UZS offers outside the band with price_implausible', () => {
+  const base = {
+    id: 'sku-uzs', macroCategory: 'top', subtype: 'shirt',
+    imageUrl: 'https://example.com/i.jpg', shopUrl: 'https://example.com/p',
+    isShopItem: true, currency: 'UZS',
+  };
+  assert.equal(devLookFeasibility([{ ...base, price: 649_900 }]).ok, true);
+  assert.equal(devLookFeasibility([{ ...base, price: 24_252_000 }]).ok, false);
+  assert.equal(devLookFeasibility([{ ...base, price: 24_252_000 }]).reason, 'price_implausible');
+  assert.equal(devLookFeasibility([{ ...base, price: 99_999 }]).reason, 'price_implausible');
+  // Non-UZS offers abstain; wardrobe pieces (no currency) abstain.
+  assert.equal(devLookFeasibility([{ ...base, currency: 'EUR', price: 29 }]).ok, true);
+  assert.equal(devLookFeasibility([{
+    id: 'w1', macroCategory: 'top', subtype: 'shirt',
+    imageUrl: 'https://example.com/w.jpg', isShopItem: false, price: null, currency: null,
+  }]).ok, true);
+});
+
+test('priceAgeDays derives from last_seen_at and stays unknown without a timestamp', () => {
+  const now = Date.parse('2026-11-13T12:00:00.000Z');
+  assert.equal(priceAgeDays({ last_seen_at: '2026-11-13T00:00:00.000Z' }, now), 0);
+  assert.equal(priceAgeDays({ last_seen_at: '2026-11-06T00:00:00.000Z' }, now), 7);
+  assert.equal(priceAgeDays({ last_seen_at: '2026-11-05T00:00:00.000Z' }, now), 8);
+  assert.equal(priceAgeDays({ last_seen_at: '2026-09-29T00:00:00.000Z' }, now), 45);
+  assert.equal(priceAgeDays({ last_seen_at: '2026-09-28T00:00:00.000Z' }, now), 46);
+  // Future timestamps never report negative age.
+  assert.equal(priceAgeDays({ last_seen_at: '2026-12-01T00:00:00.000Z' }, now), 0);
+  // ~4.4k live rows lack the column entirely: honest unknown, never guessed.
+  assert.equal(priceAgeDays({}), null);
+  assert.equal(priceAgeDays({ last_seen_at: 'not-a-date' }), null);
+  assert.equal(priceAgeDays(null), null);
+});
+
+test('priceFreshness tiers are bounded: fresh ≤7d, recent ≤45d, stale beyond, unknown absent', () => {
+  assert.equal(PRICE_FRESHNESS_FRESH_MAX_DAYS, 7);
+  assert.equal(PRICE_FRESHNESS_RECENT_MAX_DAYS, 45);
+  assert.equal(priceFreshness(0), 'fresh');
+  assert.equal(priceFreshness(7), 'fresh');
+  assert.equal(priceFreshness(8), 'recent');
+  assert.equal(priceFreshness(45), 'recent');
+  assert.equal(priceFreshness(46), 'stale');
+  assert.equal(priceFreshness(400), 'stale');
+  assert.equal(priceFreshness(null), 'unknown');
+  assert.equal(priceFreshness(undefined), 'unknown');
+  // Projected items carry the tier on the payload from the row timestamp.
+  const fresh = projectCatalogItem(uzsRow({
+    id: 'fresh-1', last_seen_at: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+  }));
+  assert.equal(fresh.priceFreshness, 'fresh');
+  assert.ok(Number.isFinite(fresh.priceAgeDays));
+  const stale = projectCatalogItem(uzsRow({
+    id: 'stale-1', last_seen_at: new Date(Date.now() - 60 * 86_400_000).toISOString(),
+  }));
+  assert.equal(stale.priceFreshness, 'stale');
+  const unknown = projectCatalogItem(uzsRow({ id: 'unknown-1' }));
+  assert.equal(unknown.priceAgeDays, null);
+  assert.equal(unknown.priceFreshness, 'unknown');
 });

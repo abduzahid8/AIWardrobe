@@ -225,6 +225,34 @@ export function singleCurrencyBonus(items) {
 }
 
 /**
+ * Merchant-offer price freshness honesty (gate F). A stale or untimestamped
+ * merchant offer must not outrank an equally coherent candidate whose price
+ * was verifiably seen recently, but staleness is evidence about the OFFER,
+ * never about the garment: the penalty is bounded at 0.035 total — about one
+ * tie margin beyond the 0.025 near-tie threshold and ~5% of the 0.68
+ * coherence weight — so it reorders near-ties toward verifiable recency and
+ * can never rescue an incoherent look or override any hard gate.
+ *
+ * Per selected item: stale 0.0125, unknown 0.007, fresh/recent 0, summed
+ * then capped at PRICE_FRESHNESS_PENALTY_MAX. Only shoppable pieces pay:
+ * owned wardrobe items carry no merchant offer and no staleness claim.
+ * Items that predate the freshness contract (no `priceFreshness` field) pay
+ * nothing — the penalty is never invented from missing data the producer
+ * never claimed. Exported for tests.
+ */
+export const PRICE_FRESHNESS_PENALTY_MAX = 0.035;
+const PRICE_FRESHNESS_TIER_PENALTY = { fresh: 0, recent: 0, stale: 0.0125, unknown: 0.007 };
+
+export function priceFreshnessPenaltyForLook(items) {
+  let penalty = 0;
+  for (const item of items || []) {
+    if (item?.isShopItem !== true) continue;
+    penalty += PRICE_FRESHNESS_TIER_PENALTY[item?.priceFreshness] || 0;
+  }
+  return Math.min(PRICE_FRESHNESS_PENALTY_MAX, penalty);
+}
+
+/**
  * Exclusion quality floor: when previously displayed products were excluded
  * and a selected look scores decisively below the shortlist best, prefer a
  * smaller honest deck over a substantially worse outfit. Never empties the
@@ -321,6 +349,9 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       // never a reject. Budgeted requests already hard-filter in admit().
       const pricing = extras.budgeted || !extras.priceProfile ? { penalty: 0, flagged: 0 }
         : pricePenaltyForLook(items, extras.priceProfile);
+      // Bounded merchant-offer staleness dampener (gate F): reorders near-ties
+      // toward verifiably recent price evidence, never a gate.
+      const freshness = priceFreshnessPenaltyForLook(items);
       const descriptions = items.map(describeGarment);
       const personal = evaluatePersonalLook(
         items.map((item, index) => ({ item, descriptor: descriptions[index] })), taste);
@@ -343,9 +374,13 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       const result = {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
           personal.adjustment + editorial.adjustment + feedback.adjustment -
-          recentStylingPenalty(items, recentSignatures) - pricing.penalty,
+          recentStylingPenalty(items, recentSignatures) - pricing.penalty - freshness,
         dimensions: { ...dimensions, palette },
-        evidence: pricing.flagged ? [...assessment.evidence, 'unbudgeted_premium_selection_dampened'] : assessment.evidence,
+        evidence: pricing.flagged || freshness > 0
+          ? [...assessment.evidence,
+            ...(pricing.flagged ? ['unbudgeted_premium_selection_dampened'] : []),
+            ...(freshness > 0 ? ['stale_price_evidence_dampened'] : [])]
+          : assessment.evidence,
         referenceMetadata: affinity,
         editorial,
         imageSupportedItems: items.filter((item) =>
