@@ -49,6 +49,7 @@ jobs:
           backend/stylist6/personal_taste.test.mjs
           backend/stylist6/creative_directions.test.mjs
           backend/stylist6/editorial_quality.test.mjs
+          backend/stylist6/deck_editorial_copy.test.mjs
           backend/stylist6/fashion_deck.test.mjs
           backend/stylist6/cloud_handler.test.mjs
 
