@@ -24,7 +24,7 @@ function visit(node) {
         node.name.elements.some(e => e.name.getText(ast) === 'assembledOutfits')) {
       deckSelection = node.initializer?.getText(ast);
     }
-    if (node.name.getText(ast) === 'devEngine') defaultEngine = node.initializer?.getText(ast);
+    if (ts.isArrayBindingPattern(node.name) && node.name.elements.some(e => e.name.getText(ast) === 'devEngine')) defaultEngine = node.initializer?.getText(ast);
   }
   if (ts.isIfStatement(node)) {
     if (node.thenStatement.getText(ast).includes("throw new Error('client_rotation_overlap')")) {
@@ -38,9 +38,9 @@ function visit(node) {
 }
 visit(ast);
 
-function compiled(expression, args) {
+function compiled(expression, args, asynchronous = false) {
   if (!expression) throw new Error('Expected screen expression is missing');
-  const js = ts.transpileModule('return (' + expression + ');', {
+  const js = ts.transpileModule(asynchronous ? 'return (async () => (' + expression + '))();' : 'return (' + expression + ');', {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
   }).outputText;
   return Function(...Object.keys(args), js)(...Object.values(args));
@@ -91,7 +91,7 @@ test('server-admitted cloud success does not trigger a second client quota consu
   const evaluate = (cloud, isCurrent) => compiled(quotaCondition, {
     s6CloudActive: cloud, cancelSignal: undefined,
     consumeOrPaywall: quota, isCurrentGeneration: () => isCurrent,
-  });
+  }, true);
   expect(await evaluate(true, true)).toBe(false);
   expect(quota).not.toHaveBeenCalled();
   expect(await evaluate(true, false)).toBe(true); // still fail-closed after an account/session switch
