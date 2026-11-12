@@ -12,6 +12,7 @@ import { hasColdLayerIntent, resolveOutfitComposition, resolveStylistWeather } f
 import { outfitStylingFeatures, recentStylingPenalty, stylingFeatureDistance } from '../../src/domain/outfitVisualSignature.ts';
 import { colorTokensOf } from '../../src/domain/outfitDiversity.ts';
 import { personalTaste, evaluatePersonalItem, evaluatePersonalLook } from './personal_taste.mjs';
+import { DIRECTION_VERSION, selectCreativeDirectionDeck, labelCreativeDirections } from './creative_directions.mjs';
 import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitStructure.ts';
 import { rejectForClimate, rejectForStyleOccasion } from '../../src/domain/occasionRules.ts';
 import { groundedLookExplanation } from '../../src/domain/lookExplanation.ts';
@@ -24,7 +25,6 @@ const sameProduct = (a, b) => baseProductId(a.id) === baseProductId(b.id) ||
   (!!image(a) && image(a) === image(b)) ||
   (!!currentVisual(a)?.imageSha256 && currentVisual(a).imageSha256 === currentVisual(b)?.imageSha256);
 const overlaps = (a, b) => a.items.filter((item) => b.items.some((other) => sameProduct(item, other))).length;
-const SEARCH_DECK_LIMIT = 20;
 const TIE_MARGIN = 0.025;
 // A selected look this far below the shortlist best is decisively off the
 // pace (10x the near-tie margin), not a close alternative worth showing.
@@ -235,46 +235,41 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
   };
 }
 
+// Keep the exact same budget / coherence / identity-admitted candidates.
+// Selection, rather than cosmetic labels, now owns three styling directions.
+function creativeMetrics(context) {
+  return {
+    featuresOf: (look) => outfitStylingFeatures(look.items, context.anchorId),
+    featureDistance: stylingFeatureDistance,
+    overlap: overlaps,
+    singleCurrencyBonus,
+  };
+}
+
 function chooseDeck(shortlist, context, excluded = new Set()) {
-  const pool = shortlist.filter(({ id }) => !excluded.has(id))
-    .sort((a, b) => b.fashion.score - a.fashion.score || a.id.localeCompare(b.id)).slice(0, SEARCH_DECK_LIMIT);
-  const features = pool.map(({ items }) => outfitStylingFeatures(items, context.anchorId));
-  const pairs = pool.map((a, i) => pool.map((b, j) => {
-    const shared = overlaps(a, b);
-    if (Math.max(a.items.length, b.items.length) - shared < 2) return null;
-    return .18 * stylingFeatureDistance(features[i], features[j]) - .05 * shared;
-  }));
-  let best = [], utility = -Infinity;
-  // Tie-break toward distinct styling concepts: looks assembled from
-  // different briefs represent different ideas even when they share a hero
-  // item. Bounded well below the coherence scale so it never overrides fit.
-  const briefBonus = (indices) => {
-    if (indices.length < 2) return 0;
-    return 0.025 * (new Set(indices.map((i) => pool[i].briefId)).size - 1);
+  return selectCreativeDirectionDeck(
+    shortlist.filter(({ id }) => !excluded.has(id)),
+    creativeMetrics(context),
+  ).looks;
+}
+
+/**
+ * One gentle step beyond the quiz choice, no extra onboarding questions.
+ * Neighbor concepts are suggestions, never independent style overrides:
+ * every SKU still passes the ORIGINAL requested style, occasion, dress code,
+ * weather, and budget hard gates.
+ */
+export function adjacentCreativeStyles(style, dressCode) {
+  if (dressCode === 'formal' || dressCode === 'athletic') return [];
+  const neighbors = {
+    old_money: ['semi_classic', 'minimalist'],
+    classic: ['semi_classic', 'minimalist'],
+    semi_classic: ['old_money', 'minimalist'],
+    minimalist: ['semi_classic', 'casual'],
+    casual: ['minimalist', 'semi_classic'],
+    business_casual: ['minimalist', 'old_money'],
   };
-  const consider = (indices, score) => {
-    // Single-currency looks total honestly and shop simply. Per-look bonus
-    // so one mixed look cannot hide inside an otherwise consistent deck.
-    const total = score + briefBonus(indices)
-      + indices.reduce((sum, i) => sum + singleCurrencyBonus(pool[i].items), 0);
-    if (indices.length > best.length || (indices.length === best.length && total > utility)) {
-      best = indices;
-      utility = total;
-    }
-  };
-  for (let i = 0; i < pool.length; i++) {
-    consider([i], pool[i].fashion.score);
-    for (let j = i + 1; j < pool.length; j++) {
-      if (pairs[i][j] === null) continue;
-      const two = pool[i].fashion.score + pool[j].fashion.score + pairs[i][j];
-      consider([i, j], two);
-      for (let k = j + 1; k < pool.length; k++) {
-        if (pairs[i][k] === null || pairs[j][k] === null) continue;
-        consider([i, j, k], two + pool[k].fashion.score + pairs[i][k] + pairs[j][k]);
-      }
-    }
-  }
-  return best.map((index) => pool[index]);
+  return neighbors[style] || [];
 }
 
 export function fashionStylingContext(request) {
@@ -310,8 +305,20 @@ export async function recommendFashionDeck({
     roles: Object.fromEntries(slots.map((slot, index) => [slot, [...(concept.slots[index] || [])].slice(0, 10)])),
     layerPolicy: concept.layerRole === 'absent' ? 'absent' : context.optionalLayer && !forceLayer ? 'optional' : 'required',
   }));
+  const neighborHouse = adjacentCreativeStyles(context.style, context.dressCode)
+    .flatMap((style) => outfitConcepts({ ...context, style, optionalLayer: noLayer })
+      .slice(0, 1).map((concept) => ({
+        id: `adjacent-${style}-${concept.id}`,
+        name: concept.title,
+        palette: [...concept.palette],
+        silhouette: concept.silhouette,
+        roles: Object.fromEntries(slots.map((slot,index) =>
+          [slot,[...(concept.slots[index] || [])].slice(0,10)])),
+        layerPolicy: concept.layerRole === 'absent' ? 'absent'
+          : context.optionalLayer && !forceLayer ? 'optional' : 'required',
+      })));
   const references = [reference, ...referenceBriefs.filter((brief) => brief !== reference)].filter(Boolean);
-  const briefs = [...house, ...references].map(adaptLayer).filter(Boolean).slice(0, 10);
+  const briefs = [...house, ...neighborHouse, ...references].map(adaptLayer).filter(Boolean).slice(0, 10);
   if (!briefs.length) return { status: 'no_feasible_looks', outfits: [], diagnostics: { visualVerdict: 'NOT_RUN' } };
   const priceProfile = buildPriceProfile(catalog);
   const retrieval = await shortlistRetrievalDeck({
@@ -369,18 +376,24 @@ export async function recommendFashionDeck({
       }
     }
   }
+  const directions = labelCreativeDirections(selected, creativeMetrics(context));
   return {
     status: selected.length === 3 ? 'complete' : selected.length ? 'partial' : 'no_feasible_looks',
-    outfits: selected.map((look) => {
+    outfits: selected.map((look, index) => {
       const { id, title } = lookConcept(look.items, context).concept;
       return {
         id: look.id, items: look.items, description: groundedLookExplanation(look.items, context),
         concept: { id, title, referenceId: reference?.referenceId ?? null },
+        direction: directions[index],
         fashion: look.fashion,
         ...(visualWinner?.id === look.id ? { visualEvidence: visualWinner.evidence } : {}),
       };
     }),
     diagnostics: { ...retrieval.diagnostics, visualVerdict,
+      directionVersion: DIRECTION_VERSION,
+      directions: directions.map((d) => d.id),
+      qualifiedDirections: directions.filter((d) => d.qualified).length,
+      neighborBriefs: neighborHouse.length,
       shortlistMix: { ...layerMix, best: ordered[0] ?? null, top20cutoff: ordered[19] ?? null },
       ...(floor.limited ? { exclusionQualityLimited: true } : {}) },
   };
