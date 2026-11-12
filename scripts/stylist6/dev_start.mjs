@@ -5,6 +5,7 @@ import { spawn, execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isCurrentStylistBridgeHealth, STYLIST6_DEV_ENGINE_VERSION } from './engine_identity.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
@@ -48,7 +49,7 @@ const healthy = async () => {
     const res = await fetch(healthUrl, { signal: AbortSignal.timeout(2000) });
     if (!res.ok) return false;
     const body = await res.json();
-    return typeof body?.engine === 'string';
+    return isCurrentStylistBridgeHealth(body);
   } catch {
     return false;
   }
@@ -64,7 +65,7 @@ const portInUse = () => {
 
 let bridge = null;
 if (await healthy()) {
-  console.log(`[dev:stylist6] bridge already healthy on :${port}, reusing it`);
+  console.log(`[dev:stylist6] current bridge ${STYLIST6_DEV_ENGINE_VERSION} healthy on :${port}, reusing it`);
 } else {
   const pids = portInUse();
   if (pids.length) {
