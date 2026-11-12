@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, singleCurrencyBonus } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, fashionStylingContext, pricePenaltyForLook, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, singleCurrencyBonus } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 
@@ -532,4 +532,28 @@ test('Stylist 6 end-to-end returns three meaningfully named cards with short gro
     if(card.direction.id==='refresh') assert.ok(card.description.includes('different interpretation'));
     if(card.direction.id==='alternative') assert.ok(card.description.includes('not a separate discovery direction'));
   }
+});
+
+test('quiet smart styling declines explicit technical leisure outerwear, without a global jacket ban',()=>{
+  const jacket = garment('tech','Navy Technical Leisure Jacket','outerwear','jacket');
+  const ordinary = garment('blazer','Navy Technical Wool Blazer','outerwear','blazer');
+  const desc = {slot:'outerwear',subtype:'jacket'};
+  const quiet = {sourceMode:'catalog', style:'classic', dressCode:'smart',
+    occasion:'Work',request:''};
+  assert.equal(rejectQuietSmartLeisureLayer(desc,quiet,jacket),true);
+  assert.equal(rejectQuietSmartLeisureLayer(desc,quiet,ordinary),false);
+  assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,style:'old_money',occasion:'Date night'},jacket),true);
+  assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,style:'casual',occasion:'Travel'},jacket),false);
+  assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,sourceMode:'wardrobe'},jacket),false);
+  assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,request:'I want a technical leisure jacket'},jacket),false);
+  assert.equal(rejectQuietSmartLeisureLayer({slot:'bottom'},quiet,jacket),false);
+});
+
+test('classic work deck avoids explicit technical leisure shells, but still returns valid looks',async()=>{
+  const tech = garment('tech','Navy Technical Leisure Jacket','outerwear','jacket');
+  const catalog=[...products,tech];
+  const request={...base.request,weather:{temp:15},budget:{amount:500,currency:'UZS'},optionalLayer:false};
+  const deck=await recommendFashionDeck({...base,request,catalog});
+  assert.ok(deck.outfits.length>0);
+  assert.ok(deck.outfits.every(look=>!look.items.some(item=>item.id===tech.id)));
 });
