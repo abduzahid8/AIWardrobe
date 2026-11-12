@@ -1,5 +1,8 @@
 import React from 'react';
-import { FlatList, Image, TouchableOpacity, StyleSheet } from 'react-native';
+// Catalog thumbnails route through the owner-aware media boundary like every
+// other rendered image; remote public URLs pass through untouched.
+import { FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from '../src/components/MediaImage';
 import { useTranslation } from 'react-i18next';
 import type { ShopCatalogItem } from '../src/types/shop';
 import { catalogTitleColor } from '../src/utils/catalogIdentity';
