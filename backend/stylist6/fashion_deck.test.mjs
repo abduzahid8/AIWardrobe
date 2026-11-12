@@ -520,7 +520,7 @@ test('editorial v1 is isolated to New Clothing and does not rewrite mixed-source
 
 test('Stylist 6 end-to-end returns three meaningfully named cards with short grounded reasoning',async()=>{
   const deck=await recommendFashionDeck(base);
-  assert.equal(deck.diagnostics.deckCopyVersion,'s6-grounded-deck-copy-v1');
+  assert.equal(deck.diagnostics.deckCopyVersion,'s6-grounded-deck-copy-v2');
   assert.equal(deck.status,'complete');
   assert.equal(deck.outfits.length,3);
   assert.equal(new Set(deck.outfits.map(x=>x.concept.title.toLowerCase())).size,3);
