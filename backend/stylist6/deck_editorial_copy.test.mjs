@@ -37,7 +37,7 @@ test('three cards have distinct, deterministic, evidence-grounded headings',()=>
   const native=lookConcept(looks[0].items,context).concept;
   const firstPass=editorialDeckCopy(looks,context,directions);
   const secondPass=editorialDeckCopy(looks,context,directions);
-  assert.equal(DECK_COPY_VERSION,'s6-grounded-deck-copy-v1');
+  assert.equal(DECK_COPY_VERSION,'s6-grounded-deck-copy-v2');
   assert.deepEqual(firstPass,secondPass);
   assert.equal(firstPass[0].concept.title,native.title);
   assert.equal(new Set(firstPass.map(x=>x.concept.title.toLowerCase())).size,3);
