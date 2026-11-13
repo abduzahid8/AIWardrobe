@@ -425,7 +425,13 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       // this user's own thumbs rows, applied AFTER every hard gate. The
       // candidate's generating brief id is the native concept slug the deck
       // displays, which is exactly the concept id feedback is written under.
-      const feedback = evaluateFeedbackLook(items, brief?.id, feedbackTaste);
+      const feedback = evaluateFeedbackLook(
+        items, brief?.id, feedbackTaste,
+        // The client already persists this versioned semantic five-field
+        // vector for every rated outfit. Transfer an explicit preference to
+        // similarly styled replacement SKUs instead of overfitting to ids.
+        feedbackTaste?.active ? outfitStylingFeatures(items, context.anchorId) : undefined,
+      );
       // This phase is explicitly for New Clothing. Do not perturb owned
       // wardrobe or mixed-source ranking until their source-mix and anchor
       // acceptance gates have dedicated editorial calibration.
