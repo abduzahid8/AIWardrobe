@@ -122,7 +122,7 @@ jobs:
       - name: Verify server-side catalog observation identity, staleness and bounded reads
         run: node --test backend/stylist6/catalog_observation.test.mjs
       - name: Verify UZ merchant variants and footwear curation (offline, no database writes)
-        run: node --test scripts/stylist6/fr_variant_stock.test.mjs scripts/stylist6/curate_uz_footwear.test.mjs
+        run: node --test scripts/stylist6/fr_variant_stock.test.mjs scripts/stylist6/curate_uz_footwear.test.mjs scripts/stylist6/collection_leads.test.mjs
       - name: Verify Stylist 6 cloud handler (server inventory, anchors, budgets, fakes only)
         # --import tsx: the contract tests import client TS validators
         # (src/services/stylist6Dev.ts); plain node --test cannot resolve them.

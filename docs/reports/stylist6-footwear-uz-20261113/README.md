@@ -148,3 +148,42 @@ feed is needed for those brands.
 the absence of locally verifiable Derby/Oxford selections. The human visual
 comparison gate and image use permissions are still missing. Stylist 6 remains
 production NO-GO; Supabase `shop_catalog` is unchanged.
+
+## Additional authorized-brand sourcing leads — Mango UZ collection
+
+The **official Uzbek Mango men's formal shoes category** (not individual
+product pages) displays eight distinct article+color collection entries. We
+captured only the publicly indexed model reference, name, color, listed UZS
+price and displayed EU size range. The strict, offline, review-only additions
+are in:
+
+- `benchmarks/stylist6/MANGO_UZ_COLLECTION_LEADS_20261113.json`
+- `scripts/stylist6/collection_leads.mjs`
+- `scripts/stylist6/collection_leads.test.mjs`
+
+Eight article/color references across **five merchant article numbers**:
+
+| Family | Color variants | Indexed UZS prices |
+| --- | --- | --- |
+| Oxford leather | black / brown | 2,299,000 each |
+| Derby/Blucher | black / brown | 1,299,000 each |
+| Double monk strap | black / brown | 2,999,000 each |
+| Formal shoe | brown split leather / black leather | 1,999,000 / 1,799,000 |
+
+These **eight are leads, not eight additional verified products**. A category
+size range is not stock at a specific size. They lack deep product links,
+photos, licensed use and seller variant confirmations. The current local
+Mango product pages returned HTTP 429 security checkpoints, and Zara and
+Massimo Dutti returned HTTP 403 in Chrome. Do not bypass those barriers.
+Some leads may overlap previously searched models; the exact product/color
+identity must be verified before joining them with shop_catalog.
+
+This is useful sourcing evidence for **Derby/Oxford/monk**, missing in the
+current locally linked footwear pool, without weakening the admission gate.
+The original 16-product candidate batch and seven directly size-checked
+Tommy listings remain unchanged. A combined 24 references is **not** a claim
+that 24 items can be purchased or published.
+
+Command: `node --test scripts/stylist6/collection_leads.test.mjs`. No seller
+network, DB write, product photography or NVIDIA invocation is performed by
+that test.
