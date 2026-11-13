@@ -85,8 +85,9 @@ function makeIo(overrides = {}) {
         calls.finishRequest += 1;
         claims.set(requestId, { ...claims.get(requestId), status, code });
       },
-      async fetchShopRows() {
+      async fetchShopRows(seed) {
         calls.fetchShopRows += 1;
+        overrides.onShopSeed?.(seed);
         return overrides.shopRows ?? SHOP;
       },
       async fetchWardrobeRows(userId) {
@@ -724,6 +725,53 @@ test('changed contents under one logical id conflict without a second debit', as
   assert.equal(harness.calls.debitQuota,1);
 });
 
+
+
+test('new unanchored requests rotate the shop seed privately while retries remain deterministic', async () => {
+  const received = [];
+  const request = { ...baseRequest, generationRequestId: 'seed-case-a' };
+  const payload = { request };
+  const body = JSON.stringify(payload);
+  const expected = createHash('sha256').update(USER).update('|').update(body).digest('hex').slice(0, 16);
+  const first = await signedCall(payload, {}, { onShopSeed: seed => received.push(seed) });
+  assert.equal(first.status, 200);
+  assert.deepEqual(received, [expected]);
+  const again = await signedCall(payload, {}, { onShopSeed: seed => received.push(seed) });
+  assert.equal(again.status, 200); // new isolated io, same bytes => same seed
+  assert.deepEqual(received, [expected, expected]);
+  const changed = await signedCall({ request: { ...request, generationRequestId: 'seed-case-b' } },
+    {}, { onShopSeed: seed => received.push(seed) });
+  assert.equal(changed.status, 200);
+  assert.match(received[2], /^[a-f0-9]{16}$/);
+  assert.notEqual(received[2], expected);
+});
+
+test('explicit user anchor keeps the original catalog sampling route', async () => {
+  const seeds = [];
+  const result = await signedCall({
+    request: { ...baseRequest, requiredIds: ['top-1'], generationRequestId: 'locked-anchor' },
+  }, {}, { onShopSeed: seed => seeds.push(seed) });
+  assert.equal(result.status, 200);
+  assert.deepEqual(seeds, [null]);
+  assert.ok(result.body.outfits.every(look => look.items.some(item => item.id === 'top-1')));
+});
+
+test('catalog discovery RPC accepts only validated hex seed and stays within 100 per slot', async (t) => {
+  const { createCloudIo } = await import('./cloud_handler.mjs');
+  const seen = [];
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    seen.push(JSON.parse(options.body));
+    return new Response('[]', { status: 200 });
+  });
+  const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'server', supabaseJs: {} });
+  const hex = 'a1b2c3d4e5f60708';
+  assert.deepEqual(await io.fetchShopRows(hex), []);
+  assert.equal(seen.length, 4);
+  assert.ok(seen.every(row => row.p_seed.endsWith(':' + hex) && row.p_limit === 100));
+  seen.length = 0;
+  await io.fetchShopRows('x'.repeat(256));
+  assert.ok(seen.every(row => /^s6cloud:(top|bottom|shoes|outerwear)$/.test(row.p_seed)));
+});
 
 test('server discovery projection without is_active remains usable; explicit inactive rows stay rejected', async (t) => {
   const { createCloudIo } = await import('./cloud_handler.mjs');
