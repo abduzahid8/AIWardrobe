@@ -712,6 +712,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       hardGate: async (items) => devLookFeasibility(items),
       priceToBudgetCurrency: (item, currency) => (item.currency === currency ? item.price : NaN),
       feedbackTaste,
+      // Staging-only visual-first quality pass: review every admissible card
+      // in one bounded batch, not just the first selection.
+      visualDeckReview: true,
       ...(visualCritic ? { visualCritic, canJudgeOutfit } : {}),
     });
     const visualStatus = mapCloudVisualStatus(deck);
