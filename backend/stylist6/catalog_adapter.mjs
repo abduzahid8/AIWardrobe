@@ -207,7 +207,9 @@ export const PRICE_FRESHNESS_RECENT_MAX_DAYS = 45;
 export function priceAgeDays(row, nowMs = Date.now()) {
   const seen = Date.parse(String(row?.last_seen_at || ''));
   if (!Number.isFinite(seen)) return null;
-  return Math.max(0, Math.floor((nowMs - seen) / 86_400_000));
+  // A future import timestamp is not proof that the listing was seen today.
+  if (seen > nowMs) return null;
+  return Math.floor((nowMs - seen) / 86_400_000);
 }
 
 /** Bounded staleness tier: fresh ≤7d, recent ≤45d, stale >45d, unknown. */

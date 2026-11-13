@@ -295,7 +295,7 @@ test('priceAgeDays derives from last_seen_at and stays unknown without a timesta
   assert.equal(priceAgeDays({ last_seen_at: '2026-09-29T00:00:00.000Z' }, now), 45);
   assert.equal(priceAgeDays({ last_seen_at: '2026-09-28T00:00:00.000Z' }, now), 46);
   // Future timestamps never report negative age.
-  assert.equal(priceAgeDays({ last_seen_at: '2026-12-01T00:00:00.000Z' }, now), 0);
+  assert.equal(priceAgeDays({ last_seen_at: '2026-12-01T00:00:00.000Z' }, now), null);
   // ~4.4k live rows lack the column entirely: honest unknown, never guessed.
   assert.equal(priceAgeDays({}), null);
   assert.equal(priceAgeDays({ last_seen_at: 'not-a-date' }), null);

@@ -23,6 +23,7 @@
  */
 import { createHash } from 'node:crypto';
 import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
+import { hydrateCatalogObservations } from './catalog_observation.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
 import { feedbackTasteModel, FEEDBACK_TASTE_VERSION, FEEDBACK_TASTE_MAX_ROWS } from './feedback_taste.mjs';
 import { referenceFirstBriefs } from './lookbook_briefs.mjs';
@@ -285,7 +286,13 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
           }
         }
       }
-      return [...rows.values()];
+      // catalog_discovery_candidates projects the catalog SKU but omits the
+      // last feed-import observation. Reread only selected IDs, bounded and
+      // read-only; changed/deactivated rows are dropped. A failed REST read
+      // retains UNKNOWN recency (never a fabricated current price).
+      return hydrateCatalogObservations({
+        rows: [...rows.values()], url, serviceKey,
+      });
     },
     async fetchWardrobeRows(userId) {
       const rows = [];

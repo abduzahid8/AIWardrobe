@@ -773,6 +773,38 @@ test('catalog discovery RPC accepts only validated hex seed and stays within 100
   assert.ok(seen.every(row => /^s6cloud:(top|bottom|shoes|outerwear)$/.test(row.p_seed)));
 });
 
+test('cloud discovery attaches bounded live import observations to matching SKU metadata', async (t) => {
+  const { createCloudIo } = await import('./cloud_handler.mjs');
+  const { adaptCatalog } = await import('./catalog_adapter.mjs');
+  const observed = '2026-10-26T00:00:00Z';
+  const calls = { discovery: 0, observations: 0 };
+  const rpcRows = SHOP.map(({ is_active, ...rest }) => rest);
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    const endpoint = new URL(String(url));
+    if (endpoint.pathname === '/rest/v1/rpc/catalog_discovery_candidates') {
+      calls.discovery++;
+      assert.equal(options.method, 'POST');
+      return Response.json(rpcRows);
+    }
+    if (endpoint.pathname === '/rest/v1/shop_catalog') {
+      calls.observations++;
+      assert.equal(options.method, 'GET');
+      const ids = endpoint.searchParams.get('id').replace(/^in\.\(/, '').replace(/\)$/, '').split(',');
+      return Response.json(SHOP.filter(item => ids.includes(item.id))
+        .map(row => ({ ...row, last_seen_at: observed })));
+    }
+    assert.fail('unexpected network endpoint ' + endpoint.pathname);
+  });
+  const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon',
+    serviceKey: 'server', supabaseJs: {} });
+  const rows = await io.fetchShopRows();
+  assert.equal(calls.discovery, 4);
+  assert.equal(calls.observations, 1);
+  assert.equal(rows.length, SHOP.length);
+  assert.ok(rows.every(row => row.last_seen_at === observed));
+  assert.ok(adaptCatalog(rows).items.every(item => item.priceFreshness === 'recent'));
+});
+
 test('server discovery projection without is_active remains usable; explicit inactive rows stay rejected', async (t) => {
   const { createCloudIo } = await import('./cloud_handler.mjs');
   const { adaptCatalog } = await import('./catalog_adapter.mjs');

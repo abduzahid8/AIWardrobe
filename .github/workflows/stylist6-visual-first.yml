@@ -119,6 +119,8 @@ jobs:
         run: node --test backend/stylist6/fashion_deck.test.mjs backend/stylist6/creative_directions.test.mjs backend/stylist6/editorial_quality.test.mjs backend/stylist6/deck_editorial_copy.test.mjs backend/stylist6/personal_taste.test.mjs backend/stylist6/feedback_taste.test.mjs backend/stylist6/lookbook_briefs.test.mjs backend/stylist6/nvidia_integration.test.mjs
       - name: Verify prototype quality-floor regression (diversity plus maintained quality)
         run: node --test backend/stylist6/prototype.test.mjs
+      - name: Verify server-side catalog observation identity, staleness and bounded reads
+        run: node --test backend/stylist6/catalog_observation.test.mjs
       - name: Verify Stylist 6 cloud handler (server inventory, anchors, budgets, fakes only)
         # --import tsx: the contract tests import client TS validators
         # (src/services/stylist6Dev.ts); plain node --test cannot resolve them.
