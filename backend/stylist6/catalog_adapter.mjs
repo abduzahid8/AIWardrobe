@@ -20,8 +20,9 @@
 
 import { createHash } from 'node:crypto';
 import { assessCatalogCategory } from './catalog_category_integrity.mjs';
+import { frColorFromCanonicalUrl } from './merchant_color_fallback.mjs';
 
-export const CATALOG_ADAPTER_VERSION = 'catalog-adapter-v2-category-evidence';
+export const CATALOG_ADAPTER_VERSION = 'catalog-adapter-v3-merchant-color';
 
 const has = (text, re) => re.test(text);
 
@@ -93,6 +94,12 @@ export function inferColor(name) {
     if (has(text, re)) return color;
   }
   return 'unknown';
+}
+
+export function inferCatalogColor(row) {
+  const fromTitle = inferColor(row?.name);
+  return fromTitle !== 'unknown' ? fromTitle
+    : frColorFromCanonicalUrl(row?.source_url) || 'unknown';
 }
 
 export function inferTexture(name) {
@@ -270,7 +277,7 @@ export function projectCatalogItem(row) {
       name,
       macroCategory: roleProjected.macroCategory,
       subtype: roleProjected.subtype,
-      color: inferColor(name),
+      color: inferCatalogColor(row),
       texture: inferTexture(name),
       imageUrl: row.image_url,
       shopUrl: row.source_url,
@@ -293,7 +300,7 @@ export function projectCatalogItem(row) {
       name,
       macroCategory: hint.macroCategory,
       subtype: hint.subtype,
-      color: inferColor(name),
+      color: inferCatalogColor(row),
       texture: inferTexture(name),
       imageUrl: row.image_url,
       shopUrl: row.source_url,
@@ -356,7 +363,7 @@ export function projectCatalogItem(row) {
     name,
     macroCategory,
     subtype,
-    color: inferColor(name),
+    color: inferCatalogColor(row),
     texture: inferTexture(name),
     imageUrl: row.image_url,
     shopUrl: row.source_url,

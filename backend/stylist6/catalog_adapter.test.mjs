@@ -15,6 +15,7 @@ import {
   PRICE_FRESHNESS_FRESH_MAX_DAYS,
   PRICE_FRESHNESS_RECENT_MAX_DAYS,
   CATALOG_ADAPTER_VERSION,
+  inferCatalogColor,
 } from './catalog_adapter.mjs';
 
 const row = (over = {}) => ({
@@ -168,7 +169,7 @@ test('color and texture inference covers reference palette words', () => {
 });
 
 test('adapter version is pinned for pilot provenance', () => {
-  assert.equal(CATALOG_ADAPTER_VERSION, 'catalog-adapter-v2-category-evidence');
+  assert.equal(CATALOG_ADAPTER_VERSION, 'catalog-adapter-v3-merchant-color');
 });
 
 test('live intelligence hints are honored with provenance, never remapped', async () => {
