@@ -10,13 +10,13 @@
  *
  * Linking contract: a row is usable when it carries rating ±1 plus at least
  * one of (a) the item ids of the rated look, (b) the concept id + direction
- * label it was displayed under. Rows missing both degrade to no-op; unknown
- * or malformed fields never crash and never guess.
+ * label it was displayed under, or (c) a detailed versioned styling signature.
+ * The new cross-SKU transfer is soft and evidence-gated, never a hard filter.
  *
  * No I/O; no persistence; do not log taste. Capped, decayed and typed so 60
  * hostile rows cannot amplify feedback over safety/quality.
  */
-export const FEEDBACK_TASTE_VERSION = 's6-feedback-taste-v1';
+export const FEEDBACK_TASTE_VERSION = 's6-feedback-taste-v2';
 // Exponential recency decay: a rating loses half of its influence every 30
 // days. Rows carry only their created_at; `nowMs` is injected so the math is
 // fully deterministic for a fixed input set.
@@ -30,6 +30,9 @@ export const FEEDBACK_TASTE_LOOK_CAP = 0.06;
 // the look's items, plus the direction-weighted concept/direction transfer.
 const ITEM_COMPONENT_SCALE = 0.045;
 const PAIR_COMPONENT_SCALE = 0.03;
+const FEATURE_COMPONENT_SCALE = 0.02;
+const STYLE_FEATURE_WEIGHTS = [0.35, 0.2, 0.2, 0.15, 0.1];
+const MIN_STYLE_SIMILARITY = 0.72;
 // Item ids are opaque server keys: trimmed and length-bounded, never
 // case-folded (two ids differing in case are two products).
 const MAX_ITEM_ID_LENGTH = 128;
@@ -72,13 +75,64 @@ function rowField(row, snake, camel) {
   return row[camel];
 }
 
+
+/** Validated client sq1 styling features: four slots, five semantic fields.
+ * Unknown metadata is not evidence; no body, skin, or user identity inference.
+ */
+function normalizeFeatureMatrix(raw) {
+  if (!Array.isArray(raw) || raw.length !== 4) return null;
+  let present = 0;
+  const features = raw.map(slot => {
+    if (slot === null) return null;
+    if (!Array.isArray(slot) || slot.length !== 5) return false;
+    const fields = slot.map(value => {
+      if (value === null || value === undefined) return null;
+      if (typeof value !== 'string' || value.length > MAX_TOKEN_LENGTH) return false;
+      const word = value.normalize('NFKC').trim().toLowerCase().replace(/\s+/g, '_');
+      return !word || ['unknown', 'neutral', 'missing'].includes(word) ? null : word;
+    });
+    if (fields.includes(false)) return false;
+    if (fields[0]) present++;
+    return fields;
+  });
+  return features.includes(false) || present < 2 ? null : features;
+}
+function signedFeedbackFeatures(raw) {
+  return raw && typeof raw === 'object' && !Array.isArray(raw) && raw.version === 1
+    ? normalizeFeatureMatrix(raw.features) : null;
+}
+// Cross-SKU transfer needs two matching garment subtypes in their own slots
+// and enough comparable whole-look evidence. One color or garment alone
+// cannot create an inferred preference or an exclusion.
+function styleSimilarity(a, b) {
+  if (!a || !b) return 0;
+  let evidence = 0, agreements = 0, sharedSlots = 0, matchingTypes = 0;
+  for (let slot = 0; slot < 4; slot++) {
+    const x = a[slot], y = b[slot];
+    if (!x || !y) continue;
+    let compared = 0;
+    for (let field = 0; field < 5; field++) {
+      if (!x[field] || !y[field]) continue;
+      const weight = STYLE_FEATURE_WEIGHTS[field];
+      evidence += weight;
+      compared++;
+      if (x[field] === y[field]) agreements += weight;
+    }
+    if (compared >= 2) sharedSlots++;
+    if (x[0] && y[0] && x[0] === y[0]) matchingTypes++;
+  }
+  if (sharedSlots < 2 || matchingTypes < 2 || evidence < 1.2) return 0;
+  const similarity = agreements / evidence;
+  return similarity >= MIN_STYLE_SIMILARITY
+    ? Math.min(1, (similarity - MIN_STYLE_SIMILARITY) / (1 - MIN_STYLE_SIMILARITY)) : 0;
+}
+
 /**
  * Normalized, decayed model over the user's explicit feedback rows. Accepts
  * the DB projection ({rating, concept_id, item_ids, look_signature,
  * created_at}) and the camelCase test/fixture spelling alike. The styling
- * signature document is accepted in the row contract but never scored: only
- * explicit ratings, item ids, concept ids and direction labels influence
- * ranking. Returns an inert model (active:false) for empty/hostile input.
+ * signature document transfers only high-similarity cross-SKU evidence
+ * at a small weight. Returns an inert model for empty or hostile input.
  */
 export function feedbackTasteModel(rows, nowMs = Date.now()) {
   const model = {
@@ -88,6 +142,7 @@ export function feedbackTasteModel(rows, nowMs = Date.now()) {
     rows: 0,
     itemTally: new Map(),
     pairTally: new Map(),
+    featureEvidence: [],
   };
   if (!Array.isArray(rows)) return model;
   const now = typeof nowMs === 'number' && Number.isFinite(nowMs) ? nowMs : Date.now();
@@ -111,6 +166,8 @@ export function feedbackTasteModel(rows, nowMs = Date.now()) {
         contributed = true;
       }
     }
+    const features = signedFeedbackFeatures(rowField(row, 'look_signature', 'lookSignature'));
+    if (features) { model.featureEvidence.push({ features, weight }); contributed = true; }
     const concept = token(rowField(row, 'concept_id', 'conceptId'));
     const direction = token(rowField(row, 'direction', 'directionLabel'));
     if (concept && direction && DIRECTION_TRANSFER[direction] !== undefined) {
@@ -130,7 +187,8 @@ export function feedbackTasteModel(rows, nowMs = Date.now()) {
     const tally = clamp(sum, -1, 1);
     if (tally !== 0) model.pairTally.set(key, tally);
   }
-  model.active = model.itemTally.size > 0 || model.pairTally.size > 0;
+  model.active = model.itemTally.size > 0 || model.pairTally.size > 0 ||
+    model.featureEvidence.length > 0;
   return model;
 }
 
@@ -152,7 +210,7 @@ export function evaluateFeedbackItem(item, model) {
  * generating brief id (the native concept slug the deck displays). Malformed
  * items and unknown concepts contribute zero. Pure and deterministic.
  */
-export function evaluateFeedbackLook(items, conceptId, model) {
+export function evaluateFeedbackLook(items, conceptId, model, stylingFeatures) {
   const inert = {
     adjustment: 0, matches: [], likedItems: 0, dislikedItems: 0, conceptId: token(conceptId),
   };
@@ -179,8 +237,17 @@ export function evaluateFeedbackLook(items, conceptId, model) {
     }
   }
   const pairComponent = clamp(pairRaw, -1, 1);
+  const candidateFeatures = normalizeFeatureMatrix(stylingFeatures);
+  const featureRaw = candidateFeatures && Array.isArray(model.featureEvidence)
+    ? model.featureEvidence.reduce((sum, row) =>
+        sum + row.weight * styleSimilarity(row.features, candidateFeatures), 0) : 0;
+  const featureComponent = clamp(featureRaw, -1, 1);
+  if (featureComponent !== 0) matches.push({
+    type: 'feedback_style', value: featureComponent > 0 ? 'liked' : 'disliked',
+  });
   const adjustment = clamp(
-    ITEM_COMPONENT_SCALE * itemComponent + PAIR_COMPONENT_SCALE * pairComponent,
+    ITEM_COMPONENT_SCALE * itemComponent + PAIR_COMPONENT_SCALE * pairComponent +
+      FEATURE_COMPONENT_SCALE * featureComponent,
     -FEEDBACK_TASTE_LOOK_CAP, FEEDBACK_TASTE_LOOK_CAP,
   );
   return {
