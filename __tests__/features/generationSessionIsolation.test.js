@@ -28,7 +28,7 @@ test('an account change while the quota gate is pending cannot publish the deck'
   const cancelSignal=undefined;
   const guardState={cancelSignal,isMounted:{current:true},generationNonce:{current:1},tapNonce:1,generationOwner:ownerRef.name,generationRevision:ownerRef.revision,authEvents:{getUserId:()=>ownerRef.name,getRevision:()=>ownerRef.revision}};
   const isCurrentGeneration=make(expressions.isCurrentGeneration,guardState);
-  const pub={setResultBudget:jest.fn(),shopBudget:{amount:120,currency:'USD'},setInventoryNote:jest.fn(),data:{generationVersion:'stylist-5-test'},t:key=>key,setLastEngineVersion:jest.fn(),setLastEngineDetail:jest.fn(),stylist6VisualDiagnostic:jest.fn(()=>null),s6Active:false,s6CloudActive:cloud,shownOutfits:[{items:['look']}],setOutfits:jest.fn(),recordDisplayedDeck:jest.fn(async()=>{}),scope:'anonymous',requestId:'req-1',console,recordShownOutfits:jest.fn(),recencyScope:'anonymous',__DEV__:false,setLoading:jest.fn()};
+  const pub={setResultBudget:jest.fn(),shopBudget:{amount:120,currency:'USD'},setInventoryNote:jest.fn(),s6VerifiedPartial:false,data:{generationVersion:'stylist-5-test'},t:key=>key,setLastEngineVersion:jest.fn(),setLastEngineDetail:jest.fn(),stylist6VisualDiagnostic:jest.fn(()=>null),s6Active:false,s6CloudActive:cloud,shownOutfits:[{items:['look']}],setOutfits:jest.fn(),recordDisplayedDeck:jest.fn(async()=>{}),scope:'anonymous',requestId:'req-1',console,recordShownOutfits:jest.fn(),recencyScope:'anonymous',__DEV__:false,setLoading:jest.fn()};
   const pending=makeBlock(gateBlock,{consumeOrPaywall:consume,cancelSignal,isCurrentGeneration,...pub})();
   return{pub,pending};
  };
