@@ -23,16 +23,22 @@ jobs:
         run: node --check backend/stylist6/prototype.mjs
       - name: Test real-SKU grounding and fail-closed contracts (mock providers, NO API calls)
         run: node --test backend/stylist6/prototype.test.mjs backend/stylist6/fashion_deck.test.mjs backend/stylist6/creative_directions.test.mjs backend/stylist6/editorial_quality.test.mjs backend/stylist6/deck_editorial_copy.test.mjs
-      - name: Verify benchmark scenarios contain 35 unique requests
+      - name: Verify benchmark scenarios contain 68 unique requests (v2 dev/held-out split)
         run: |
           node --input-type=module -e '
             import fs from "node:fs";
             import assert from "node:assert/strict";
             const f=JSON.parse(fs.readFileSync("benchmarks/stylist6/scenarios.json","utf8"));
-            assert.equal(f.scenarios.length,35);
-            assert.equal(new Set(f.scenarios.map(x=>x.id)).size,35);
+            assert.equal(f.version,2);
+            const dev=f.development||[], held=f.heldOutEvaluation||[];
+            const all=[...dev,...held];
+            assert.equal(dev.length,45);
+            assert.equal(held.length,23);
+            assert.equal(all.length,68);
+            assert.equal(new Set(all.map(x=>x.id)).size,68);
             assert.equal(f.testsNotRun,true);
-            console.log("35 A/B scenarios defined; no live API tests executed");
+            for(const id of ["S6-01","S6-30","S6-B01","S6-B05"]) assert.ok(all.some(x=>x.id===id), "legacy scenario preserved: "+id);
+            console.log("68 A/B scenarios defined (45 development + 23 held-out); no live API tests executed");
           '
       - name: Verify owner-authorized Instagram dataset importer (synthetic archive only)
         run: python3 -m unittest scripts/style_references/test_import_instagram_archive.py -v
@@ -114,7 +120,9 @@ jobs:
       - name: Verify prototype quality-floor regression (diversity plus maintained quality)
         run: node --test backend/stylist6/prototype.test.mjs
       - name: Verify Stylist 6 cloud handler (server inventory, anchors, budgets, fakes only)
-        run: node --test backend/stylist6/cloud_handler.test.mjs
+        # --import tsx: the contract tests import client TS validators
+        # (src/services/stylist6Dev.ts); plain node --test cannot resolve them.
+        run: node --import tsx --test backend/stylist6/cloud_handler.test.mjs
       - name: Build Node compute bundle (tests import dist/)
         run: npm --prefix backend/stylist-node run build
       - name: Verify signed Node transport and staging proxy admission (offline)
