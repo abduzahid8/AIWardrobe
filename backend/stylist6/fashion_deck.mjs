@@ -535,6 +535,9 @@ export async function recommendFashionDeck({
   // Optional prebuilt model from feedback_taste.mjs (explicit thumbs rows).
   // Absent/inert model = byte-identical legacy ranking (back-compat).
   feedbackTaste,
+  // Cloud staging can opt into reviewing all three displayed looks in one
+  // bounded provider batch. The isolated local / offline paths stay unchanged.
+  visualDeckReview = false,
 }) {
   const context = fashionStylingContext(request);
   const weather = context.weather;
@@ -586,6 +589,8 @@ export async function recommendFashionDeck({
     selected, ordered[0] ?? NaN, (retrieval.diagnostics.exclusions?.requested || 0) > 0);
   selected = floor.kept;
   let visualVerdict = 'NOT_RUN', visualWinner;
+  const visualEvidenceById = new Map();
+  let visualReviewCoverage = null;
   // Reference-optional review: a deck with no matching reference brief is
   // still visually judged on its product images alone (the critic marks such
   // verdicts referenceless and never claims a reference comparison). With a
@@ -593,7 +598,66 @@ export async function recommendFashionDeck({
   const permitted = async (look) => {
     try { return await canJudgeOutfit(look, reference?.referenceId ?? null) === true; } catch { return false; }
   };
-  if (selected.length >= 1 && typeof visualCritic === 'function' && typeof canJudgeOutfit === 'function' && await permitted(selected[0])) {
+  if (visualDeckReview && selected.length && typeof visualCritic === 'function' &&
+      typeof canJudgeOutfit === 'function') {
+    // Budgeted, source-verified finalist set: no model can nominate a SKU or
+    // skip the original hard gates. Judge all authorised displayed looks, not
+    // only the lead; one near-tie challenger fits the existing 4-call cap.
+    const candidates = [];
+    for (const look of selected) {
+      if (await permitted(look)) candidates.push(look);
+    }
+    const lead = selected[0];
+    if (candidates.length < 4) {
+      const extras = retrieval.shortlist
+        .filter(look => !selected.some(chosen => chosen.id === look.id) &&
+          Math.abs(look.fashion.score - lead.fashion.score) <= TIE_MARGIN &&
+          selected.slice(1).every(other =>
+            Math.max(other.items.length, look.items.length) - overlaps(other, look) >= 2))
+        .sort((a, b) => b.fashion.score - a.fashion.score ||
+          String(a.id).localeCompare(String(b.id)));
+      for (const alternate of extras) {
+        if (await permitted(alternate)) { candidates.push(alternate); break; }
+      }
+    }
+    if (candidates.length) {
+      const reviewed = await evaluateVisualShortlist(
+        { ...retrieval, shortlist: candidates }, request, visualCritic,
+        { target: Math.min(3, candidates.length) },
+      );
+      visualVerdict = reviewed.diagnostics.visualValid > 0 ? 'JUDGED' : 'ABSTAINED';
+      const rejected = new Set(reviewed.diagnostics.rejectedCandidateIds);
+      for (const look of reviewed.outfits) {
+        if (look.evidence) visualEvidenceById.set(look.id, look.evidence);
+      }
+      if (rejected.size) {
+        // A confident visual veto excludes only that feasible candidate.
+        // Reselect from the same gated pool; replacements never inherit an
+        // NVIDIA verdict they were not shown to the model.
+        selected = applyExclusionQualityFloor(
+          chooseDeck(retrieval.shortlist, context, rejected),
+          ordered[0] ?? NaN, true,
+        ).kept;
+      } else {
+        const winnerId = reviewed.outfits[0]?.id;
+        const winner = candidates.find(look => look.id === winnerId);
+        if (winner && winner.id !== lead.id &&
+            Math.abs(winner.fashion.score - lead.fashion.score) <= TIE_MARGIN &&
+            selected.slice(1).every(other => other.id === winner.id ||
+              Math.max(other.items.length, winner.items.length) - overlaps(other, winner) >= 2)) {
+          selected = [winner, ...selected.filter(look => look.id !== winner.id)]
+            .slice(0, 3);
+        }
+      }
+      visualReviewCoverage = {
+        mode: 'displayed_deck',
+        attempted: reviewed.diagnostics.visualAttempted,
+        valid: reviewed.diagnostics.visualValid,
+        rejected: rejected.size,
+        displayedEvidence: selected.filter(look => visualEvidenceById.has(look.id)).length,
+      };
+    }
+  } else if (selected.length >= 1 && typeof visualCritic === 'function' && typeof canJudgeOutfit === 'function' && await permitted(selected[0])) {
     const lead = selected[0];
     const alternatives = retrieval.shortlist.filter((candidate) =>
       !selected.includes(candidate) && Math.abs(candidate.fashion.score - lead.fashion.score) <= TIE_MARGIN &&
@@ -639,7 +703,9 @@ export async function recommendFashionDeck({
         concept: { ...copy[index].concept, referenceId: reference?.referenceId ?? null },
         direction: directions[index],
         fashion: look.fashion,
-        ...(visualWinner?.id === look.id ? { visualEvidence: visualWinner.evidence } : {}),
+        ...(visualEvidenceById.has(look.id)
+          ? { visualEvidence: visualEvidenceById.get(look.id) }
+          : visualWinner?.id === look.id ? { visualEvidence: visualWinner.evidence } : {}),
       };
     }),
     diagnostics: { ...retrieval.diagnostics, visualVerdict,
@@ -648,6 +714,7 @@ export async function recommendFashionDeck({
       deckCopyVersion: DECK_COPY_VERSION,
       feedbackTasteVersion: FEEDBACK_TASTE_VERSION,
       feedbackTasteActive: !!(feedbackTaste && feedbackTaste.active),
+      ...(visualReviewCoverage ? { visualReviewCoverage } : {}),
       directions: directions.map((d) => d.id),
       qualifiedDirections: directions.filter((d) => d.qualified).length,
       neighborBriefs: neighborHouse.length,
