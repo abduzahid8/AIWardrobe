@@ -21,13 +21,13 @@
 import { signStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 
 // Pinned Stylist 6 staging deployment (branch codex/stylist6-visual-first-20261110).
-// Isolated READY Preview pinned to commit f53505fa73eeb5cfcb0edebd784e5b95eb11eb6b.
+// Isolated READY Preview pinned to commit 26394a8eeeb0d026b8ca64b82f4d80f565129e99.
 // Includes source-role guard, personal-taste ranking and three qualified
 // creative directions; no production routing or paid inference changes.
 // Keep the JWT + HMAC transport and quotas unchanged; no production routing.
 // Fail-closed idempotency + RLS migration included.
 // Repoint ONLY to another verified Stylist 6 staging Preview, never to production.
-const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-paak76te1-abduzahid8s-projects.vercel.app';
+const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-gf9bzeo6x-abduzahid8s-projects.vercel.app';
 const NODE_ROUTE = '/api/stylist6-generate-outfits';
 const CORS = {
   'Access-Control-Allow-Origin':'*',
