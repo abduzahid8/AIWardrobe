@@ -147,6 +147,8 @@ jobs:
         run: node --test backend/stylist-node/test/transport.test.mjs backend/stylist-node/test/transport-health.test.mjs backend/stylist-node/test/handler.test.mjs backend/stylist-node/test/health.test.mjs backend/stylist-node/test/proxy.test.mjs backend/stylist-node/test/staging.test.mjs backend/stylist-node/test/stylist6-route.test.mjs
       - name: Verify client budget and original-currency formatting
         run: npx jest __tests__/utils/outfitBudget.test.ts __tests__/utils/uzsPrice.test.ts __tests__/platform/budgets.test.ts __tests__/services/stylist6Dev.test.ts
+      - name: Verify the isolated Stylist 6 Supabase proxy pins validated compute (zero paid calls)
+        run: node --import tsx --test backend/stylist-node/test/stylist6-staging.test.mjs
       - name: TypeScript has no errors
         run: npx tsc --noEmit
       - name: ESLint has no errors

@@ -21,14 +21,15 @@
 import { signStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 
 // Pinned Stylist 6 staging deployment (branch codex/stylist6-visual-first-20261110).
-// Isolated READY Preview pinned to commit c14fb14ac03e0177abb73c370c75f04bb63c4dbb.
-// Includes no-reference product-only visual review when reference storage is
-// unconfigured, bounded JPEG/PNG/WebP/AVIF decoding, existing full-deck
-// assessment and request-scoped catalog rotation. Production S5 unchanged.
+// Isolated READY Preview pinned to commit fd9aa399428711410969ba84247761975f7622f1.
+// Full-deck NVIDIA decision is authoritative, honest verified partial decks,
+// individual reviewed-look provenance and bounded diverse challenger.
+// Source commit 1de1721 only adds a local test harness to this compute code.
+// Production Stylist 5 remains untouched.
 // Keep the JWT + HMAC transport and quotas unchanged; no production routing.
 // Fail-closed idempotency + RLS migration included.
 // Repoint ONLY to another verified Stylist 6 staging Preview, never to production.
-const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-4j4645qbs-abduzahid8s-projects.vercel.app';
+const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-lmkb64erp-abduzahid8s-projects.vercel.app';
 const NODE_ROUTE = '/api/stylist6-generate-outfits';
 const CORS = {
   'Access-Control-Allow-Origin':'*',
