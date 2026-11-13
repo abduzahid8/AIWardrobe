@@ -11,7 +11,7 @@
  */
 import { editorialDirectionEligible } from './editorial_quality.mjs';
 
-export const DIRECTION_VERSION = 's6-three-directions-editorial-v3';
+export const DIRECTION_VERSION = 's6-three-directions-editorial-v4';
 const MAX_POOL = 72;
 const QUALITY_WINDOW = 0.16;
 const EPS = 1e-9;
@@ -107,6 +107,28 @@ export function footwearVarietyAdjustment(candidate, chosen, overlap) {
 }
 
 /**
+ * Owner iOS live fashion QA, 2026-11-13: a deck can change tops and
+ * jackets yet recycle the same trousers AND shoes in multiple cards.
+ * This is a bounded *tie-break*, not a feasibility rule. The existing
+ * 2-SKU difference hard gate is unchanged. A single repeated shoe or
+ * trouser incurs NO extra penalty (sparse catalog / pinned anchors).
+ * Canonical overlap is delegated to the caller (aliases/photos match).
+ */
+export function lowerBodyPairRepeatAdjustment(candidate, chosen, overlap) {
+  if (!Array.isArray(candidate?.items) || typeof overlap !== 'function') return 0;
+  const of = (look, slot) => look?.items?.find(item=>item?.macroCategory===slot) || null;
+  const bottom = of(candidate, 'bottom'), shoe = of(candidate, 'shoes');
+  if (!bottom || !shoe) return 0;
+  for (const old of chosen || []) {
+    const prevBottom = of(old, 'bottom'), prevShoe = of(old, 'shoes');
+    if (!prevBottom || !prevShoe) continue;
+    if (overlap({items:[bottom]},{items:[prevBottom]})>0 &&
+        overlap({items:[shoe]},{items:[prevShoe]})>0) return -0.025;
+  }
+  return 0;
+}
+
+/**
  * Deck brand-monotony tie-break. Brand evidence comes only from catalog
  * metadata (item.brand): a look with no known brands stays neutral, so a
  * sparse or brand-less catalog can never be penalized on invented claims.
@@ -135,6 +157,7 @@ function pick(pool, chosen, overlap, predicate, rank) {
     if (!predicate(look, evidence)) continue;
     const value = rank.value(look, evidence) +
       footwearVarietyAdjustment(look, chosen, overlap) +
+      lowerBodyPairRepeatAdjustment(look, chosen, overlap) +
       brandVarietyAdjustment(look, chosen);
     if (value > utility + EPS || (Math.abs(value - utility) <= EPS &&
       String(look.id).localeCompare(String(best?.id || '')) < 0)) {
@@ -196,9 +219,11 @@ export function selectCreativeDirectionDeck(shortlist, {
     if (!discovered) continue;
     const joint = refreshedRank.value(fresh, [firstDiff]) +
       footwearVarietyAdjustment(fresh, [signature], overlap) +
+      lowerBodyPairRepeatAdjustment(fresh, [signature], overlap) +
       brandVarietyAdjustment(fresh, [signature]) +
       discoveredRank.value(discovered, [diff(signature,discovered),diff(fresh,discovered)]) +
       footwearVarietyAdjustment(discovered, [signature,fresh], overlap) +
+      lowerBodyPairRepeatAdjustment(discovered, [signature,fresh], overlap) +
       brandVarietyAdjustment(discovered, [signature,fresh]);
     if (joint > bestPairValue + EPS || (Math.abs(joint-bestPairValue)<=EPS &&
       `${fresh.id}|${discovered.id}`.localeCompare(
@@ -242,6 +267,10 @@ export function selectCreativeDirectionDeck(shortlist, {
       candidateCount:pool.length,
       qualityEligible:eligible.length,
       selected:directions.map(d=>d.id),
+      // Measurable output QA: lower-body combinations repeated across
+      // rendered looks, regardless of whether sparse inventory forced them.
+      repeatedLowerPairs: chosen.slice(1).filter((look,index)=>
+        lowerBodyPairRepeatAdjustment(look,chosen.slice(0,index+1),overlap)<0).length,
     },
   };
 }

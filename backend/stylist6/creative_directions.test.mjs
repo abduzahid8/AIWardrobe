@@ -5,6 +5,7 @@ import {
   brandVarietyAdjustment,
   directionDifference,
   footwearVarietyAdjustment,
+  lowerBodyPairRepeatAdjustment,
   labelCreativeDirections,
   selectCreativeDirectionDeck,
 } from './creative_directions.mjs';
@@ -208,8 +209,51 @@ test('within comparable quality, creative second pick prefers non-reused footwea
   assert.ok(result.directions[1].id==='refresh');
 });
 
+test('owner QA: near-tie must prefer another trouser SKU when shoe is held constant',()=>{
+  const features=[
+    slot('fine-knit','cream','regular','knit'), null,
+    slot('tailored-trouser','navy','slim'),slot('loafer','brown'),
+  ];
+  const make=(id,quality,shape,bottom,shoe)=>{
+    const result=look(id,quality,shape,
+      [id+'-top',bottom,shoe]);
+    result.items.forEach((item,i)=>{item.macroCategory=['top','bottom','shoes'][i]});
+    return result;
+  };
+  const lead=make('lead',.950,SHIRT,'navy-trouser','brown-loafer');
+  const repeated=make('repeated',.927,features,'navy-trouser','brown-loafer');
+  const alternate=make('alternate',.922,features,'other-navy-trouser','brown-loafer');
+  assert.equal(lowerBodyPairRepeatAdjustment(repeated,[lead],metrics.overlap),-.025);
+  assert.equal(lowerBodyPairRepeatAdjustment(alternate,[lead],metrics.overlap),0);
+  assert.equal(lowerBodyPairRepeatAdjustment(lead,[],metrics.overlap),0);
+  // Both upper-body refreshes lack distinct Discovery evidence; the
+  // selector must not invent a third qualified direction merely to fill
+  // a slot. It should still select the genuinely varied trouser.
+  assert.deepEqual(selectCreativeDirectionDeck([lead,repeated,alternate],metrics)
+    .looks.map(x=>x.id),['lead','alternate']);
+  // No hard ban: the adjustment itself is finite, not a failed hard
+  // gate. A two-look catalog may still return only the signature when
+  // editorial discovery is too weak; do not manufacture a third look.
+  const sparse=selectCreativeDirectionDeck([lead,repeated],metrics);
+  assert.deepEqual(sparse.looks.map(x=>x.id),['lead']);
+  assert.equal(sparse.diagnostics.repeatedLowerPairs,0);
+});
+
+test('pair-repeat evidence is neutral if only one lower slot repeats or metadata missing',()=>{
+  const make=(id,bottom,shoe)=>({
+    id,items:[{id:'top-'+id,macroCategory:'top'},
+      ...(bottom?[{id:bottom,macroCategory:'bottom'}]:[]),
+      ...(shoe?[{id:shoe,macroCategory:'shoes'}]:[])],
+  });
+  const lead=make('a','bottom-a','shoe-a');
+  assert.equal(lowerBodyPairRepeatAdjustment(make('b','bottom-b','shoe-a'),[lead],metrics.overlap),0);
+  assert.equal(lowerBodyPairRepeatAdjustment(make('b','bottom-a','shoe-b'),[lead],metrics.overlap),0);
+  assert.equal(lowerBodyPairRepeatAdjustment(make('b',null,'shoe-a'),[lead],metrics.overlap),0);
+  assert.equal(lowerBodyPairRepeatAdjustment(null,[lead],metrics.overlap),0);
+});
+
 // ---------------------------------------------------------------------------
-// Deck brand-monotony tie-break (s6-three-directions-editorial-v3). Same
+// Deck brand-monotony tie-break (s6-three-directions-editorial-v4). Same
 // bounded-magnitude convention as the footwear-variety tie-break: a look
 // whose whole brand set was already drawn pays at most -0.035 (scaled by the
 // repeat share), a new brand set earns +0.012; brand-less looks stay neutral.

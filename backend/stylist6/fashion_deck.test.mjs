@@ -637,7 +637,7 @@ test('short onboarding explores adjacent ideas without changing the requested dr
   });
   assert.ok(result.outfits.length > 0);
   assert.equal(result.diagnostics.neighborBriefs,2);
-  assert.equal(result.diagnostics.directionVersion,'s6-three-directions-editorial-v3');
+  assert.equal(result.diagnostics.directionVersion,'s6-three-directions-editorial-v4');
   assert.equal(result.outfits[0].direction.id,'signature');
   for(const outfit of result.outfits){
     assert.ok(['signature','refresh','discovery','alternative'].includes(outfit.direction.id));

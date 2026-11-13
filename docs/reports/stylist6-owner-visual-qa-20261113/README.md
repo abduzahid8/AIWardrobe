@@ -129,3 +129,72 @@ destination data. Size availability and image-use rights remain unverified.
 No additional real NVIDIA calls were made to build/test these changes.
 Full live fashion/merchant acceptance and owner-approved deployment are
 still pending. Production Stylist 5 unchanged.
+
+## Second owner iOS test — 22:09–22:11 2026-11-13, cloud v21
+
+Screenshots show local client `c14fb14a` but the isolated Supabase
+staging Edge function (v21) was **still pinned to Vercel compute
+`56402783`**. Never attribute these cloud pictures or NVIDIA receipt
+counts to the local client's SHA. Both services used separate versions.
+
+- Old Money / Work: `NVIDIA_APPLIED c4/v4/a0` (four valid candidate
+  assessments, not automatically three displayed approvals).
+- Classic / Work: `NVIDIA_APPLIED c4/v3/a1`, `provider_deadline`
+  (three valid candidate assessments; one provider deadline).
+- A single `Failed to send a request to the Edge Function` banner
+  also appeared. Supabase `function_edge_logs` showed three subsequent
+  successful `POST 200` responses between 17:09–17:11 UTC; the failed
+  call is not visible in that function's logs. This suggests an
+  intermittent client-to-Supabase transport problem, **not** proof of
+  an Edge Function defect. Do not auto-retry an uncertain paid request.
+
+Fashion inspection (not model scoring): the Old Money result sometimes
+looks refined (check shirt, navy blazer, walnut trousers, oxford shoes),
+but the bright yellow sweater/cream cardigan with grey pants is arguably
+outside a quiet office brief. Classic Work repeats the *same grey loose
+trousers and same black dress shoes* in two displayed outfits, only
+changing the upper garments. Bounded `footwearVarietyAdjustment` already
+exists but does not specifically discourage an identical trouser+shoe
+pair. Existing ECCO Helsinki/Spherica SKUs remain in catalog and appear
+in recommendations; this report does not delete inventory or silently
+change merchant brand policies.
+
+### Applied deployment
+
+GitHub general CI for `c14fb14a` and isolated S6 CI were successful;
+Vercel compute `4j4645qbs` was READY. Commit `e33dc6cc` changed only
+the staging proxy's pinned Vercel URL/commit comment, checked byte-for-byte
+against its prior source. Supabase `aiw-stylist6-node-staging` was
+updated to **v22 ACTIVE** with `verify_jwt=true`, retaining original HMAC
+signing, security limits, and quota. `generate-outfits` production is
+still **v209 ACTIVE (Stylist 5)**. No real NVIDIA inference was triggered
+by the deployment or its verification.
+
+### Code-only follow-up (unreleased)
+
+A bounded, evidence-based 0.025 ranking adjustment now discourages
+identical *bottom AND shoes* pairs across a three-look deck if
+comparably good alternatives exist. Existing exact feasibility, budget,
+identity, physical-SKU overlap and editorial-quality gates stay intact.
+A sparse catalog may still return fewer than three credible directions.
+Selector diagnostics report `repeatedLowerPairs` to measure this
+quality problem rather than rename the cards. No paid calls made;
+version `s6-three-directions-editorial-v4` is **branch only** until
+separate staging deployment and owner visual acceptance.
+
+### Real frozen-catalog regression, read-only, no NVIDIA
+
+Replayed the same 384-row frozen live UZS sample, eight scenarios,
+reference-first and creative-first arms (42 displayed looks) using
+`pilot_12.mjs --skip-v5 true`. The previous archived baseline had **0**
+repeated exact trousers+shoes pairs. The new selector also had **0**,
+with **0/42** look identity changes. This is a useful *non-regression*,
+not evidence that the new tie-break improves real buyer preference:
+that frozen sample simply did not contain the owner-observed failure.
+A focused 3-candidate deterministic test *does* reproduce the lower-pair
+near-tie and verifies the new alternative ordering. No hosted fashion
+judgments, user images, remote inference or merchant writes were made.
+
+Do not report a live fashion win until an actual owner scenario finds
+an eligible equivalent-quality alternative, the selector uses it, and
+independent reviewers prefer the resulting complete outfit deck.
