@@ -38,10 +38,18 @@ if (!output || !Number.isInteger(PER_SLOT) || PER_SLOT < 1) {
 }
 
 const dotenv = await import('dotenv');
-const env = dotenv.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../../.env')));
+const envPath = process.env.AIW_S6_ENV_FILE || path.resolve(import.meta.dirname, '../../.env');
+const env = dotenv.parse(fs.readFileSync(envPath));
 const BASE = env.EXPO_PUBLIC_SUPABASE_URL;
 const KEY = env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 if (!BASE || !KEY) throw new Error('missing public Supabase reader configuration');
+// Offline experiments must never silently query an unrelated project, or
+// widen credentials beyond the existing RLS-governed anon key.
+const origin = new URL(BASE);
+if (origin.protocol !== 'https:' || origin.hostname !== 'fyqpifmrsftsfqibhwhy.supabase.co' ||
+    origin.username || origin.password || origin.port || origin.pathname !== '/') {
+  throw new Error('unexpected_stylist6_supabase_project');
+}
 const headers = { apikey: KEY, Authorization: `Bearer ${KEY}` };
 
 const SLOTS = ['top', 'outerwear', 'bottom', 'shoes'];

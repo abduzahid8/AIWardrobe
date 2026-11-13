@@ -456,12 +456,18 @@ async function main() {
   }
 
   fs.writeFileSync(path.join(outDir, 'pilot-private.json'), JSON.stringify(privateOut, null, 2), { mode: 0o600 });
-  fs.writeFileSync(
-    path.join(root, 'benchmarks/stylist6/pilot_12_report.json'),
-    JSON.stringify(report, null, 2) + '\n');
+  // For real-catalog private A/B experiments, send the metrics to the
+  // operator's private experiment folder rather than dirtying the tracked
+  // historical benchmark. Default unchanged for old CI/pilot callers.
+  const reportFile = args['report-out']
+    ? path.resolve(args['report-out'])
+    : path.join(root, 'benchmarks/stylist6/pilot_12_report.json');
+  fs.mkdirSync(path.dirname(reportFile), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(reportFile, JSON.stringify(report, null, 2) + '\n',
+    { mode: args['report-out'] ? 0o600 : 0o666 });
   console.log(JSON.stringify({
     scenarios: report.scenarios.length,
-    outDir, reportFile: 'benchmarks/stylist6/pilot_12_report.json',
+    outDir, reportFile,
     v5: v5api ? 'ran' : `NOT_RUN(${v5error || 'skipped'})`,
   }));
 }
