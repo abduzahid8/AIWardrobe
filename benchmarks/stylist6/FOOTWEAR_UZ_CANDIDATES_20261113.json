@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T10:37:01.780Z",
-  "note": "Review-only. No customer availability, no tested size stock, no image display/inference rights; NEVER upsert directly to shop_catalog.",
+  "generatedAt": "2026-11-13T10:57:26.848Z",
+  "note": "Review-only. Some site-reported, time-limited EU size quantities; no confirmed checkout, landed delivery price or image display/inference rights. NEVER upsert directly to shop_catalog.",
   "dataSources": [
     "https://frgroup.uz/ru/store/man/obuv/tommy-hilfiger",
     "official brand UZ product search pages"
@@ -15,11 +15,14 @@
   },
   "readyToPublish": 0,
   "withDirectMerchantEvidence": 7,
+  "merchantReportedSizeEvidence": 7,
   "needDirectRecheck": 9,
   "requiresOfferAndImageRights": 16,
   "previouslyArchived": 3,
   "netNewCandidates": 13,
   "eligibleInactiveShopPreview": 4,
+  "reportedSizeVariantCount": 26,
+  "reportedUnitsInSnapshot": 40,
   "items": [
     {
       "brand": "MANGO",
@@ -137,16 +140,41 @@
       "merchant": "FR Group",
       "merchantSku": "FM0FM06276",
       "source": "frgroup-uz-mens-shoes",
-      "observedAt": "2026-11-13T10:36:55.646Z",
-      "evidenceSha256": "e9615d5c96753d135adb4d6dabe4a32267adb055992bf0fdf95f9e46625dc1e0",
+      "observedAt": "2026-11-13T10:57:24.017Z",
+      "evidenceSha256": "e79f68569cfc6a235ec44c54ad3d07c97b12234c09aaf4972b00e84a2054bdf7",
       "priceEvidence": "direct_merchant_product_jsonld",
       "listingInStock": true,
       "shippingToUz": true,
-      "sizeStockStatus": "unverified",
+      "sizeStockStatus": "merchant_reported_by_size",
       "deliveredTotalStatus": "unverified",
       "imageDisplayRights": "unverified",
       "imageNvidiaRights": "not_authorized",
       "stage": "review_required",
+      "variantEvidence": {
+        "status": "merchant_reported_by_size",
+        "merchant": "FR Group",
+        "modelId": 171935,
+        "checkedAt": "2026-11-13T10:57:24.017Z",
+        "refreshBefore": "2026-11-13T11:27:24.017Z",
+        "priceMatched": true,
+        "publicEndpoint": "https://frgroup.uz/ru/catalog/get-product-info",
+        "responseSha256": "39f91ec8ac97f86f7286026ceae1e6738958427d51fe3398552c417a9091410b",
+        "availableSizes": [
+          {
+            "euSize": "45",
+            "variantId": 493718,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "46",
+            "variantId": 494571,
+            "merchantReportedQty": 1
+          }
+        ],
+        "totalMerchantReportedUnits": 2,
+        "exactCheckoutAvailability": "unverified",
+        "deliveryCharge": "unverified"
+      },
       "inventoryAction": "new_review_only",
       "existingCatalogId": null
     },
@@ -162,16 +190,61 @@
       "merchant": "FR Group",
       "merchantSku": "FM0FM05387",
       "source": "frgroup-uz-mens-shoes",
-      "observedAt": "2026-11-13T10:36:55.646Z",
-      "evidenceSha256": "ce5f12321ec87c2f69f5b7ab4e784a8840e1c89fbf1d29ddbbfe01940c09d93a",
+      "observedAt": "2026-11-13T10:57:24.017Z",
+      "evidenceSha256": "889788808bb08c0def4c228f094783bb47adef86dd63cec629b353403cea25e6",
       "priceEvidence": "direct_merchant_product_jsonld",
       "listingInStock": true,
       "shippingToUz": true,
-      "sizeStockStatus": "unverified",
+      "sizeStockStatus": "merchant_reported_by_size",
       "deliveredTotalStatus": "unverified",
       "imageDisplayRights": "unverified",
       "imageNvidiaRights": "not_authorized",
       "stage": "review_required",
+      "variantEvidence": {
+        "status": "merchant_reported_by_size",
+        "merchant": "FR Group",
+        "modelId": 171927,
+        "checkedAt": "2026-11-13T10:57:24.017Z",
+        "refreshBefore": "2026-11-13T11:27:24.017Z",
+        "priceMatched": true,
+        "publicEndpoint": "https://frgroup.uz/ru/catalog/get-product-info",
+        "responseSha256": "028477efd9b161ed1a9f37989ffad70961f5e07c494e4e255ff2b076aec277b4",
+        "availableSizes": [
+          {
+            "euSize": "40",
+            "variantId": 494799,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "41",
+            "variantId": 493844,
+            "merchantReportedQty": 2
+          },
+          {
+            "euSize": "42",
+            "variantId": 494423,
+            "merchantReportedQty": 2
+          },
+          {
+            "euSize": "43",
+            "variantId": 493815,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "44",
+            "variantId": 493683,
+            "merchantReportedQty": 2
+          },
+          {
+            "euSize": "45",
+            "variantId": 493712,
+            "merchantReportedQty": 1
+          }
+        ],
+        "totalMerchantReportedUnits": 9,
+        "exactCheckoutAvailability": "unverified",
+        "deliveryCharge": "unverified"
+      },
       "inventoryAction": "review_archived_existing_row",
       "existingCatalogId": "fr-tommy-171927",
       "oldPriceUZS": 2189000
@@ -188,16 +261,61 @@
       "merchant": "FR Group",
       "merchantSku": "FM0FM06085",
       "source": "frgroup-uz-mens-shoes",
-      "observedAt": "2026-11-13T10:36:55.646Z",
-      "evidenceSha256": "9ab214d3244de2d8ef8acae684ac64d8d62a9ed5c13050e6f231a3a9b9d62661",
+      "observedAt": "2026-11-13T10:57:24.017Z",
+      "evidenceSha256": "39b5ec0698f5966d6e34ab2019c9bcc7ca4a4732c4d29dbd76047d6d40c3136f",
       "priceEvidence": "direct_merchant_product_jsonld",
       "listingInStock": true,
       "shippingToUz": true,
-      "sizeStockStatus": "unverified",
+      "sizeStockStatus": "merchant_reported_by_size",
       "deliveredTotalStatus": "unverified",
       "imageDisplayRights": "unverified",
       "imageNvidiaRights": "not_authorized",
       "stage": "review_required",
+      "variantEvidence": {
+        "status": "merchant_reported_by_size",
+        "merchant": "FR Group",
+        "modelId": 174797,
+        "checkedAt": "2026-11-13T10:57:24.017Z",
+        "refreshBefore": "2026-11-13T11:27:24.017Z",
+        "priceMatched": true,
+        "publicEndpoint": "https://frgroup.uz/ru/catalog/get-product-info",
+        "responseSha256": "6cedd0ad80379ab0f8bdca987feb1553dc9a8d5b4700b26b02a9686d139fb0bb",
+        "availableSizes": [
+          {
+            "euSize": "40",
+            "variantId": 507300,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "41",
+            "variantId": 506678,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "42",
+            "variantId": 507377,
+            "merchantReportedQty": 5
+          },
+          {
+            "euSize": "43",
+            "variantId": 506409,
+            "merchantReportedQty": 5
+          },
+          {
+            "euSize": "44",
+            "variantId": 506532,
+            "merchantReportedQty": 2
+          },
+          {
+            "euSize": "45",
+            "variantId": 506616,
+            "merchantReportedQty": 1
+          }
+        ],
+        "totalMerchantReportedUnits": 15,
+        "exactCheckoutAvailability": "unverified",
+        "deliveryCharge": "unverified"
+      },
       "inventoryAction": "new_review_only",
       "existingCatalogId": null
     },
@@ -213,16 +331,46 @@
       "merchant": "FR Group",
       "merchantSku": "FM0FM06085",
       "source": "frgroup-uz-mens-shoes",
-      "observedAt": "2026-11-13T10:36:55.646Z",
-      "evidenceSha256": "f3a8cf82aae149e12f29d35f8cedaac8281baa5669ce6e23eba63e487b7102ae",
+      "observedAt": "2026-11-13T10:57:24.017Z",
+      "evidenceSha256": "a46db16ade306d70d4f135a9a69cc39f0bd13c6ec10efe483fb1ed8c58da0276",
       "priceEvidence": "direct_merchant_product_jsonld",
       "listingInStock": true,
       "shippingToUz": true,
-      "sizeStockStatus": "unverified",
+      "sizeStockStatus": "merchant_reported_by_size",
       "deliveredTotalStatus": "unverified",
       "imageDisplayRights": "unverified",
       "imageNvidiaRights": "not_authorized",
       "stage": "review_required",
+      "variantEvidence": {
+        "status": "merchant_reported_by_size",
+        "merchant": "FR Group",
+        "modelId": 174815,
+        "checkedAt": "2026-11-13T10:57:24.017Z",
+        "refreshBefore": "2026-11-13T11:27:24.017Z",
+        "priceMatched": true,
+        "publicEndpoint": "https://frgroup.uz/ru/catalog/get-product-info",
+        "responseSha256": "b910129ef95ef0f9c4c0d5f1b3e73848035c00ab7717659203d716fa2ba2cee6",
+        "availableSizes": [
+          {
+            "euSize": "42",
+            "variantId": 507399,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "43",
+            "variantId": 506426,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "44",
+            "variantId": 506565,
+            "merchantReportedQty": 1
+          }
+        ],
+        "totalMerchantReportedUnits": 3,
+        "exactCheckoutAvailability": "unverified",
+        "deliveryCharge": "unverified"
+      },
       "inventoryAction": "new_review_only",
       "existingCatalogId": null
     },
@@ -238,16 +386,46 @@
       "merchant": "FR Group",
       "merchantSku": "FM0FM05891",
       "source": "frgroup-uz-mens-shoes",
-      "observedAt": "2026-11-13T10:36:55.646Z",
-      "evidenceSha256": "4addda56859e9df43a0ff16a5f22b1583b38cb9e75cd188b8bc05920d2ac726f",
+      "observedAt": "2026-11-13T10:57:24.017Z",
+      "evidenceSha256": "2b3854c59707f00339d8eb713d305b55c0b8d21e1055fca9f0b78c890dc8fe71",
       "priceEvidence": "direct_merchant_product_jsonld",
       "listingInStock": true,
       "shippingToUz": true,
-      "sizeStockStatus": "unverified",
+      "sizeStockStatus": "merchant_reported_by_size",
       "deliveredTotalStatus": "unverified",
       "imageDisplayRights": "unverified",
       "imageNvidiaRights": "not_authorized",
       "stage": "review_required",
+      "variantEvidence": {
+        "status": "merchant_reported_by_size",
+        "merchant": "FR Group",
+        "modelId": 164544,
+        "checkedAt": "2026-11-13T10:57:24.017Z",
+        "refreshBefore": "2026-11-13T11:27:24.017Z",
+        "priceMatched": true,
+        "publicEndpoint": "https://frgroup.uz/ru/catalog/get-product-info",
+        "responseSha256": "77bc0bfe38e9def2efba8878ecc8f643f8b6ad223195788c110fcc0ece44ed89",
+        "availableSizes": [
+          {
+            "euSize": "43",
+            "variantId": 438597,
+            "merchantReportedQty": 2
+          },
+          {
+            "euSize": "44",
+            "variantId": 437165,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "45",
+            "variantId": 437190,
+            "merchantReportedQty": 1
+          }
+        ],
+        "totalMerchantReportedUnits": 4,
+        "exactCheckoutAvailability": "unverified",
+        "deliveryCharge": "unverified"
+      },
       "inventoryAction": "new_review_only",
       "existingCatalogId": null
     },
@@ -263,16 +441,56 @@
       "merchant": "FR Group",
       "merchantSku": "FM0FM05940",
       "source": "frgroup-uz-mens-shoes",
-      "observedAt": "2026-11-13T10:36:55.646Z",
-      "evidenceSha256": "eaabf15759ec15db520c8ef00be462fc46cd03d2451fe403ac9f17e5c0d77a0e",
+      "observedAt": "2026-11-13T10:57:24.017Z",
+      "evidenceSha256": "3f39484d7da83a87aee869332afa7b76b9b7e477dc59c683f5d15812f58ee224",
       "priceEvidence": "direct_merchant_product_jsonld",
       "listingInStock": true,
       "shippingToUz": true,
-      "sizeStockStatus": "unverified",
+      "sizeStockStatus": "merchant_reported_by_size",
       "deliveredTotalStatus": "unverified",
       "imageDisplayRights": "unverified",
       "imageNvidiaRights": "not_authorized",
       "stage": "review_required",
+      "variantEvidence": {
+        "status": "merchant_reported_by_size",
+        "merchant": "FR Group",
+        "modelId": 171923,
+        "checkedAt": "2026-11-13T10:57:24.017Z",
+        "refreshBefore": "2026-11-13T11:27:24.017Z",
+        "priceMatched": true,
+        "publicEndpoint": "https://frgroup.uz/ru/catalog/get-product-info",
+        "responseSha256": "295152de634c3660714cee7b41a300f83b1f36a020877ba2f526c74a208bcc1e",
+        "availableSizes": [
+          {
+            "euSize": "41",
+            "variantId": 493848,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "42",
+            "variantId": 494418,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "43",
+            "variantId": 495018,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "44",
+            "variantId": 493685,
+            "merchantReportedQty": 1
+          },
+          {
+            "euSize": "46",
+            "variantId": 494568,
+            "merchantReportedQty": 1
+          }
+        ],
+        "totalMerchantReportedUnits": 5,
+        "exactCheckoutAvailability": "unverified",
+        "deliveryCharge": "unverified"
+      },
       "inventoryAction": "review_archived_existing_row",
       "existingCatalogId": "fr-tommy-171923",
       "oldPriceUZS": 2929000
@@ -289,16 +507,36 @@
       "merchant": "FR Group",
       "merchantSku": "FM0FM05782",
       "source": "frgroup-uz-mens-shoes",
-      "observedAt": "2026-11-13T10:36:55.646Z",
-      "evidenceSha256": "9b5e71d6ce9c7468b0fb2bccb9a0a3a041f57604450dab40e11a7d047bd483bd",
+      "observedAt": "2026-11-13T10:57:24.017Z",
+      "evidenceSha256": "068a7e978b9b6f0010181f97c8316bf9ab4044598d2fa30e7caa6d3e4ee7d623",
       "priceEvidence": "direct_merchant_product_jsonld",
       "listingInStock": true,
       "shippingToUz": true,
-      "sizeStockStatus": "unverified",
+      "sizeStockStatus": "merchant_reported_by_size",
       "deliveredTotalStatus": "unverified",
       "imageDisplayRights": "unverified",
       "imageNvidiaRights": "not_authorized",
       "stage": "review_required",
+      "variantEvidence": {
+        "status": "merchant_reported_by_size",
+        "merchant": "FR Group",
+        "modelId": 152421,
+        "checkedAt": "2026-11-13T10:57:24.017Z",
+        "refreshBefore": "2026-11-13T11:27:24.017Z",
+        "priceMatched": true,
+        "publicEndpoint": "https://frgroup.uz/ru/catalog/get-product-info",
+        "responseSha256": "5e0b8a596e8358eb3eca9dc8b56d907a672b48f412306f03aa404b4074d532a1",
+        "availableSizes": [
+          {
+            "euSize": "43",
+            "variantId": 394609,
+            "merchantReportedQty": 2
+          }
+        ],
+        "totalMerchantReportedUnits": 2,
+        "exactCheckoutAvailability": "unverified",
+        "deliveryCharge": "unverified"
+      },
       "inventoryAction": "review_archived_existing_row",
       "existingCatalogId": "fr-tommy-152421",
       "oldPriceUZS": 1384500

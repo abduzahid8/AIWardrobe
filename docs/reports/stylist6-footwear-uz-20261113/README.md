@@ -32,10 +32,12 @@ archived merchandise, run paid AI, or make a production deployment.
   observed seller product and an image; the other 9 need a direct recheck.
   `FOOTWEAR_UZ_INACTIVE_PREVIEW_20261113.json` is a **four-row,
   `is_active=false` DB-shaped preview**, never an upsert instruction.
-- **0** proven ready-to-publish purchase offers: all items lack verified
-  size-specific stock and image display/inference permission. Listings and
-  HTTP 200 are NOT enough. Country-wide delivery claims are not a
-  confirmed checkout for a specific item, size, address or landed price.
+- **0** proven ready-to-publish purchase offers: seven Tommy Hilfiger listings
+  now carry time-limited **merchant-reported size-specific quantities**,
+  but *none* has checkout-reserved stock or image display/inference
+  permission. Listings and HTTP 200 are NOT enough. Country-wide delivery
+  claims are not a confirmed checkout for a specific item, size, address
+  or landed price.
 
 The seven product images from FR Group returned HTTP 200 with `image/webp`
 and were read via HEAD. **Bytes were not downloaded, hosted or supplied to
@@ -47,6 +49,11 @@ NVIDIA.** The seller's imaging availability is not a rights grant.
   evidence collector; `node scripts/stylist6/curate_uz_footwear.mjs` updates
   the review package using fresh merchant detail pages (serial max 12).
   It deliberately has **no write/--apply path** to Supabase.
+- `scripts/stylist6/fr_variant_stock.mjs` — exact model-ID / variant-ID
+  read from the public merchant `GET /ru/catalog/get-product-info?productId=`
+  endpoint; validates price, status, per-size quantity and expiry.
+- `scripts/stylist6/fr_variant_stock.test.mjs` — no-network malformed
+  merchant JSON, stale size evidence and API allowlist tests.
 - `scripts/stylist6/curate_uz_footwear.test.mjs` — no-network CI tests for
   source host and currency allowlists, disallowed brands, scope honesty,
   SKUs, dedupe, inactive preview, offline slot feasibility, image rights and
@@ -81,15 +88,63 @@ Explicitly ignored:
 node scripts/stylist6/curate_uz_footwear.mjs
 
 # No network, no store access, no mutations:
-node --test scripts/stylist6/curate_uz_footwear.test.mjs
+node --test scripts/stylist6/fr_variant_stock.test.mjs scripts/stylist6/curate_uz_footwear.test.mjs
 node --test backend/stylist6/catalog_adapter.test.mjs
 ```
 
 Before any subsequent activation the review must establish **per exact
 merchant SKU and color:** current correct seller price/currency, size
-availability (not only listing-level InStock), checkout/delivery into UZ,
+availability rechecked just before checkout (site-reported quantities are not
+reserved), checkout/delivery into UZ,
 licensed product image display and separate image-inference rights, merchant
 refresh cadence, stable ID reconciliation and zero duplication. Run a strict
 staging dry-run against the full immutable catalog and human-reviewed
 three-look scenarios. Production Stylist 5 and shared active shop_catalog
 must not change without a separate owner-approved rollout/rollback plan.
+
+## Direct public stock API check (2026-11-13)
+
+The FR Group product page sets a numeric `productId`. After normal page load,
+its storefront issues a read-only `GET /ru/catalog/get-product-info?productId=…`
+which returns `modelId`, `salePrice`, `canBePurchased`, `isOutOfStock`,
+`skuSortedList`, and `sizes[]` with EU size, precise SKU-variant ID and a
+merchant-reported quantity. All seven previously shortlisted Tommy colorways
+passed **model ID AND listing price matching** against that public response.
+
+| Merchant model | Family | EU sizes reported | Seller-reported units |
+| --- | --- | --- | ---: |
+| FM0FM06276 / 171935 | boat shoe | 45, 46 | 2 |
+| FM0FM05387 / 171927 | boat shoe | 40–45 | 9 |
+| FM0FM06085 / 174797 | chukka, black | 40–45 | 15 |
+| FM0FM06085 / 174815 | chukka, brown | 42–44 | 3 |
+| FM0FM05891 / 164544 | leather tassel loafer | 43–45 | 4 |
+| FM0FM05940 / 171923 | suede tassel loafer | 41–44, 46 | 5 |
+| FM0FM05782 / 152421 | suede loafer | 43 | 2 |
+| **Total** | **7 colorways** | **26 size variants** | **40 reported units** |
+
+**Do not treat 40 as reserved or guaranteed stock.** Evidence includes a
+30-minute refresh deadline; after it expires `assessFrVariantSize()` returns
+`unknown_or_expired` until the product is checked again. Five tests check
+malformed/mismatched model IDs, prices, unavailable flags, out-of-domain
+endpoints and negative quantities. The collector retains a listing as
+`unverified` if this endpoint fails. There is **no cart action, payment, or
+purchase request**.
+
+### Other approved brands: access / provenance blockers
+
+Read-only direct requests to the nine previously search-curated URLs were made
+on 2026-11-13. Mango's three pages returned **HTTP 429** and a Vercel
+Security Checkpoint. Zara's five pages served only non-product bootstrap HTML;
+a normal, unauthenticated Chrome attempt on one Zara listing returned
+**HTTP 403 Access Denied**. Massimo Dutti's one page served a non-product
+bootstrap page; a normal Chrome attempt returned **HTTP 403 Access Denied**.
+The nine records intentionally retain `needs_direct_merchant_recheck`, NULL
+freshness, and NULL product images. Do **not** attempt to bypass merchant
+protection, invent item sizes/prices/photos, or reactivate stock because a
+search result was indexed. An authorized official product export or seller
+feed is needed for those brands.
+
+**Quality implication:** adding seven variant-bearing colorways does not fix
+the absence of locally verifiable Derby/Oxford selections. The human visual
+comparison gate and image use permissions are still missing. Stylist 6 remains
+production NO-GO; Supabase `shop_catalog` is unchanged.

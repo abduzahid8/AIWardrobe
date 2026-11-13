@@ -102,6 +102,13 @@ test('all candidate URLs are unique and evidence has not been converted into sto
   assert.equal(new Set(staged.items.map(x=>x.id)).size,16);
   assert.equal(new Set(staged.items.map(x=>x.productUrl)).size,16);
   assert.equal(staged.items.filter(x=>x.priceEvidence==='direct_merchant_product_jsonld').length,7);
+  assert.equal(staged.items.filter(x=>x.sizeStockStatus==='merchant_reported_by_size').length,7);
   assert.equal(staged.items.filter(x=>x.priceEvidence==='official_search_result_needs_direct_recheck').length,9);
-  assert.ok(staged.items.every(x=>x.sizeStockStatus==='unverified' && x.deliveredTotalStatus==='unverified'));
+  assert.ok(staged.items.every(x=>x.deliveredTotalStatus==='unverified'));
+  assert.ok(staged.items.filter(x=>x.brand==='Tommy Hilfiger').every(x=>
+    x.sizeStockStatus==='merchant_reported_by_size' &&
+    x.variantEvidence?.availableSizes?.length>0 &&
+    x.variantEvidence?.exactCheckoutAvailability==='unverified'));
+  assert.ok(staged.items.filter(x=>x.brand!=='Tommy Hilfiger').every(x=>
+    x.sizeStockStatus==='unverified' && !x.variantEvidence));
 });

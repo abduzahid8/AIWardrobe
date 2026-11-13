@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fetchFrSizeEvidence, FR_PRODUCT_INFO_ENDPOINT, FR_VARIANT_SNAPSHOT_MAX_AGE_MS } from './fr_variant_stock.mjs';
 
 export const ALLOWED_BRANDS = Object.freeze(['Tommy Hilfiger', 'Zara', 'MANGO', 'Massimo Dutti']);
 export const DISALLOWED_BRANDS = Object.freeze(['ECCO', 'Cabani', 'Basconi']);
@@ -117,7 +118,25 @@ export async function collectFrCandidates({ fetchImpl = fetch, observedAt = new 
     const candidate = projectFrCandidate(match, {
       observedAt, evidenceHash: page.evidenceHash,
     });
-    if (candidate) rows.push(candidate);
+    if (candidate) {
+      // The listing's JSON-LD InStock alone does not establish any usable EU
+      // size. Only the public, model-ID-bound merchant variant endpoint can
+      // provide a size-specific *claim*, and it must match the page price.
+      let variantEvidence = null;
+      try {
+        variantEvidence = await fetchFrSizeEvidence({
+          html: page.html, expectedPrice: candidate.price,
+          fetchImpl, collectedAt: observedAt,
+        });
+      } catch {
+        // Fail safely: preserve the product for review, but do not assert
+        // size availability or change the last-observed merchant price.
+      }
+      rows.push(variantEvidence ? {
+        ...candidate, sizeStockStatus: 'merchant_reported_by_size',
+        variantEvidence,
+      } : candidate);
+    }
   }
   return rows;
 }
@@ -201,7 +220,7 @@ export function projectInactiveCatalogPreview(items) {
     id: item.id, brand: item.brand, name: item.name, price: item.price,
     currency: 'UZS', category: 'shoes', garment_type: 'shoes',
     image_url: item.imageUrl, source_url: item.productUrl,
-    description: 'Merchant product record for offline review only; size-specific stock and image display/inference rights unverified.',
+    description: 'Merchant product record for offline review only. Site-reported size quantities may expire; checkout, delivery charge, image display and inference rights remain unverified.',
     source: 'frgroup-uz-review-not-active', external_id: item.merchantSku,
     is_active: false, sort_order: i, last_seen_at: item.observedAt,
   }));
@@ -230,7 +249,33 @@ export function validateReviewBatch(items) {
           row.shippingToUz !== null || row.priceEvidence !== 'official_search_result_needs_direct_recheck')
         errors.push('nonlive_row_claiming_live:' + row.id);
     } else errors.push('unknown_stage:' + row.id);
-    if (row.sizeStockStatus !== 'unverified' || row.deliveredTotalStatus !== 'unverified' ||
+    if (row.sizeStockStatus === 'merchant_reported_by_size') {
+      const v = row.variantEvidence;
+      if (row.stage !== 'review_required' ||
+        v?.status !== 'merchant_reported_by_size' ||
+        v?.exactCheckoutAvailability !== 'unverified' ||
+        v?.deliveryCharge !== 'unverified' ||
+        v?.priceMatched !== true ||
+        !Number.isSafeInteger(v.modelId) || v.modelId <= 0 ||
+        v.merchant !== 'FR Group' || v.publicEndpoint !== FR_PRODUCT_INFO_ENDPOINT ||
+        !/^[a-f0-9]{64}$/.test(v.responseSha256 || '') ||
+        v.checkedAt !== row.observedAt ||
+        !Number.isFinite(Date.parse(v.checkedAt)) ||
+        v.refreshBefore !== new Date(Date.parse(v.checkedAt) + FR_VARIANT_SNAPSHOT_MAX_AGE_MS).toISOString() ||
+        !Array.isArray(v.availableSizes) || !v.availableSizes.length ||
+        v.availableSizes.length > 55 ||
+        new Set(v.availableSizes.map(s => s.variantId)).size !== v.availableSizes.length ||
+        new Set(v.availableSizes.map(s => s.euSize)).size !== v.availableSizes.length ||
+        v.availableSizes.some(s => !/^(3[8-9]|4[0-9]|50)(?:[.]5)?$/.test(s.euSize) ||
+          !Number.isSafeInteger(s.variantId) || s.variantId <= 0 ||
+          !Number.isSafeInteger(s.merchantReportedQty) || s.merchantReportedQty < 1 || s.merchantReportedQty > 99) ||
+        v.totalMerchantReportedUnits !== v.availableSizes.reduce((total, s) => total + s.merchantReportedQty, 0)) {
+        errors.push('invalid_size_evidence:' + row.id);
+      }
+    } else if (row.sizeStockStatus !== 'unverified' || row.variantEvidence) {
+      errors.push('untrusted_size_status:' + row.id);
+    }
+    if (row.deliveredTotalStatus !== 'unverified' ||
       row.imageNvidiaRights !== 'not_authorized' || row.imageDisplayRights !== 'unverified')
       errors.push('inaccurate_purchase_or_image_rights:' + row.id);
   }
@@ -238,6 +283,8 @@ export function validateReviewBatch(items) {
   return { checked: items.length, byBrand: Object.fromEntries(ALLOWED_BRANDS.map(name =>
     [name, items.filter(x => x.brand === name).length])), readyToPublish: 0,
     withDirectMerchantEvidence: items.filter(x => x.stage === 'review_required').length,
+    merchantReportedSizeEvidence: items.filter(x =>
+      x.sizeStockStatus === 'merchant_reported_by_size').length,
     needDirectRecheck: items.filter(x => x.stage === 'needs_direct_merchant_recheck').length,
     requiresOfferAndImageRights: items.length };
 }
@@ -252,12 +299,14 @@ async function main() {
   const inactiveShopRows = projectInactiveCatalogPreview(all);
   const artifact = {
     version: 1, generatedAt: new Date().toISOString(),
-    note: 'Review-only. No customer availability, no tested size stock, no image display/inference rights; NEVER upsert directly to shop_catalog.',
+    note: 'Review-only. Some site-reported, time-limited EU size quantities; no confirmed checkout, landed delivery price or image display/inference rights. NEVER upsert directly to shop_catalog.',
     dataSources: [FR_MENS_SHOES_URL, 'official brand UZ product search pages'],
     ...report,
     previouslyArchived: all.filter(row => row.inventoryAction === 'review_archived_existing_row').length,
     netNewCandidates: all.filter(row => row.inventoryAction === 'new_review_only').length,
     eligibleInactiveShopPreview: inactiveShopRows.length,
+    reportedSizeVariantCount: all.reduce((n, row) => n + (row.variantEvidence?.availableSizes?.length || 0), 0),
+    reportedUnitsInSnapshot: all.reduce((n, row) => n + (row.variantEvidence?.totalMerchantReportedUnits || 0), 0),
     items: all,
   };
   const output = path.join(dataDir,'FOOTWEAR_UZ_CANDIDATES_20261113.json');
