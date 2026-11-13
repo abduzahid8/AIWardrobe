@@ -81,6 +81,73 @@ test('denied image review leaves the catalog-ranked deck intact with zero critic
   assert.equal(result.diagnostics.visualVerdict, 'NOT_RUN');
 });
 
+
+const admittedVisualVerdict = (candidate, overrides = {}) => ({
+  candidateId: candidate.id, visualCohesion: 0.9, referenceFidelity: 0.9,
+  styleFit: 0.9, occasionFit: 0.9, formalityFit: 0.9, confidence: 0.9, reject: false,
+  evidence: ['shirt and trousers proportion', 'layer/palette balance', 'footwear register'],
+  ...overrides,
+});
+
+test('cloud full-deck review judges every authorized displayed card in one bounded batch', async () => {
+  const baseline = await recommendFashionDeck(base);
+  let reviewCalls = 0, reviewed = [];
+  const result = await recommendFashionDeck({
+    ...base, visualDeckReview: true, canJudgeOutfit: async () => true,
+    visualCritic: async (candidates) => {
+      reviewCalls++;
+      reviewed = candidates;
+      return candidates.map(candidate => admittedVisualVerdict(candidate));
+    },
+  });
+  assert.equal(reviewCalls, 1);
+  assert.ok(reviewed.length >= baseline.outfits.length && reviewed.length <= 4);
+  assert.ok(baseline.outfits.every(({ id }) => reviewed.some(candidate => candidate.id === id)));
+  assert.equal(result.diagnostics.visualVerdict, 'JUDGED');
+  assert.equal(result.diagnostics.visualReviewCoverage.mode, 'displayed_deck');
+  assert.equal(result.diagnostics.visualReviewCoverage.attempted, reviewed.length);
+  assert.equal(result.diagnostics.visualReviewCoverage.valid, reviewed.length);
+  assert.ok(result.outfits.some(look => Array.isArray(look.visualEvidence)));
+  assert.ok(result.outfits.every(look =>
+    look.items.every(item => item.price === 250000) &&
+    look.items.some(item => item.id === 'shirt-white')));
+});
+
+test('cloud full-deck review does not send any item from denied image hosts', async () => {
+  const baseline = await recommendFashionDeck(base);
+  const authorizedId = baseline.outfits[1].id;
+  let reviewed = [];
+  const result = await recommendFashionDeck({
+    ...base, visualDeckReview: true,
+    canJudgeOutfit: async (look) => look.id === authorizedId,
+    visualCritic: async (candidates) => {
+      reviewed = candidates;
+      return candidates.map(candidate => admittedVisualVerdict(candidate));
+    },
+  });
+  assert.deepEqual(reviewed.map(c => c.id), [authorizedId]);
+  assert.equal(result.diagnostics.visualReviewCoverage.attempted, 1);
+  assert.equal(result.diagnostics.visualReviewCoverage.valid, 1);
+  assert.equal(result.outfits.length, 3);
+  assert.ok(result.outfits.every(look => !look.visualEvidence || look.id === authorizedId));
+});
+
+test('cloud full-deck veto removes a rejected secondary look without laundering visual evidence', async () => {
+  const baseline = await recommendFashionDeck(base);
+  const badId = baseline.outfits[1].id;
+  const result = await recommendFashionDeck({
+    ...base, visualDeckReview: true, canJudgeOutfit: async () => true,
+    visualCritic: async (candidates) => candidates.map(candidate => admittedVisualVerdict(
+      candidate, candidate.id === badId ? { reject: true, visualCohesion: 0.2 } : {},
+    )),
+  });
+  assert.ok(result.diagnostics.visualReviewCoverage.rejected >= 1);
+  assert.ok(result.outfits.every(look => look.id !== badId));
+  assert.ok(result.outfits.every(look => !look.visualEvidence ||
+    !result.diagnostics.visualReviewCoverage.rejectedCandidateIds?.includes(look.id)));
+  assert.ok(result.outfits.every(look => look.items.some(item => item.id === 'shirt-white')));
+});
+
 test('authorized close contenders use at most two visual judgments and retain the complete deck', async () => {
   const baseline = await recommendFashionDeck(base);
   let reviewed = [];
