@@ -214,3 +214,94 @@ test('the bounded read cap keeps 60+ rows from growing the influence', () => {
   assert.equal(model.itemTally.has('item-60'), false);
   assert.equal(model.itemTally.has('item-199'), false);
 });
+
+
+test('cross-SKU fashion taste: a liked combination transfers without the same product IDs', () => {
+  const features = [
+    ['shirt', 'regular', 'cream', 'linen', 'plain'],
+    ['blazer', 'relaxed', 'brown', 'wool', 'plain'],
+    ['trousers', 'regular', 'taupe', 'wool', 'plain'],
+    ['derby', 'regular', 'brown', 'leather', 'plain'],
+  ];
+  const model = feedbackTasteModel([{
+    rating: 1,
+    item_ids: ['old-1', 'old-2', 'old-3', 'old-4'],
+    created_at: daysAgo(0),
+    look_signature: { version: 1, direction: 'signature', features },
+  }], NOW);
+  const newItems = [item('new-1'), item('new-2'), item('new-3'), item('new-4')];
+  const result = evaluateFeedbackLook(newItems, 'unseen-concept', model, features);
+  assert.ok(result.adjustment > 0 && result.adjustment <= 0.02);
+  assert.equal(result.likedItems, 0, 'no legacy SKU matched');
+  assert.deepEqual(result.matches, [{ type: 'feedback_style', value: 'liked' }]);
+  assert.equal(evaluateFeedbackLook(newItems, 'unseen-concept', model).adjustment, 0,
+    'old callers without semantic vector retain byte-identical behavior');
+});
+
+test('cross-SKU dislike transfers softly, cancels with a like and obeys recency', () => {
+  const features = [
+    ['shirt', 'regular', 'cream', 'linen', 'plain'],
+    null,
+    ['trousers', 'regular', 'taupe', 'wool', 'plain'],
+    ['derby', 'regular', 'brown', 'leather', 'plain'],
+  ];
+  const row = (rating, created_at) => ({
+    rating, created_at, look_signature: { version: 1, features },
+  });
+  const look = [item('x'), item('y'), item('z')];
+  const dislike = feedbackTasteModel([row(-1, daysAgo(0))], NOW);
+  assert.ok(evaluateFeedbackLook(look, '', dislike, features).adjustment < 0);
+  const cancelled = feedbackTasteModel([row(1, daysAgo(0)), row(-1, daysAgo(0))], NOW);
+  assert.equal(evaluateFeedbackLook(look, '', cancelled, features).adjustment, 0);
+  const old = feedbackTasteModel([row(1, daysAgo(30))], NOW);
+  assert.ok(Math.abs(evaluateFeedbackLook(look, '', old, features).adjustment - 0.01) < 1e-9);
+  assert.ok(Math.abs(evaluateFeedbackLook(look, '', dislike, features).adjustment) <= 0.02);
+});
+
+test('cross-SKU evidence never follows an unrelated silhouette, invalid or sparse signature', () => {
+  const good = [
+    ['shirt', 'regular', 'cream', 'linen', 'plain'],
+    ['blazer', 'relaxed', 'brown', 'wool', 'plain'],
+    ['trousers', 'regular', 'taupe', 'wool', 'plain'],
+    ['derby', 'regular', 'brown', 'leather', 'plain'],
+  ];
+  const veryDifferent = [
+    ['hoodie', 'oversized', 'red', 'jersey', 'graphic'],
+    good[1],
+    ['jeans', 'baggy', 'blue', 'denim', 'washed'],
+    good[3],
+  ];
+  const model = feedbackTasteModel([{
+    rating: 1, created_at: daysAgo(0),
+    lookSignature: { version: 1, features: good },
+  }], NOW);
+  assert.equal(evaluateFeedbackLook([item('a'), item('b')], '', model, veryDifferent).adjustment, 0);
+  assert.equal(evaluateFeedbackLook([item('a'), item('b')], '', model,
+    Array(4).fill(['unknown', 'unknown', 'unknown', 'unknown', 'unknown'])).adjustment, 0);
+  for (const bad of [
+    { version: 2, features: good }, { version: 1, features: [good[0]] },
+    { version: 1, features: Array(4).fill({ dangerous: true }) },
+    { version: 1, features: [good[0], null, null, null] },
+  ]) {
+    const invalid = feedbackTasteModel([{ rating: 1, created_at: daysAgo(0), look_signature: bad }], NOW);
+    assert.equal(invalid.active, false);
+    assert.equal(invalid.rows, 0);
+  }
+});
+
+test('feature-only feedback remains below the existing look quality cap', () => {
+  const features = [
+    ['shirt', 'regular', 'cream', 'linen', 'plain'],
+    null,
+    ['trousers', 'regular', 'taupe', 'wool', 'plain'],
+    ['derby', 'regular', 'brown', 'leather', 'plain'],
+  ];
+  const rows = Array.from({ length: 100 }, () => ({
+    rating: 1, created_at: daysAgo(0), look_signature: { version: 1, features },
+  }));
+  const model = feedbackTasteModel(rows, NOW);
+  assert.equal(model.rows, 60);
+  const result = evaluateFeedbackLook([item('a'), item('b'), item('c')], '', model, features);
+  assert.equal(result.adjustment, 0.02);
+  assert.ok(result.adjustment < FEEDBACK_TASTE_LOOK_CAP);
+});
