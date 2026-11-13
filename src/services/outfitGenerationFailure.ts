@@ -25,7 +25,7 @@ const messages = {
 } as const;
 type MessageKey = typeof messages[keyof typeof messages] | 'outfitMaker.generateFailed'
   | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut' | 'outfitMaker.connectionFailed'
-  | 'outfitMaker.requestTimeout';
+  | 'outfitMaker.requestTimeout' | 'outfitMaker.visualQualityUnmet';
 
 export class OutfitGenerationFailure extends Error {
   constructor(readonly translationKey: MessageKey = 'outfitMaker.generateFailed', readonly code?:string, readonly stage?:string) {

@@ -15,7 +15,7 @@ import { personalTaste, evaluatePersonalItem, evaluatePersonalLook } from './per
 import {
   FEEDBACK_TASTE_VERSION, evaluateFeedbackItem, evaluateFeedbackLook,
 } from './feedback_taste.mjs';
-import { DIRECTION_VERSION, selectCreativeDirectionDeck, labelCreativeDirections } from './creative_directions.mjs';
+import { DIRECTION_VERSION, directionDifference, selectCreativeDirectionDeck, labelCreativeDirections } from './creative_directions.mjs';
 import { EDITORIAL_QUALITY_VERSION, evaluateEditorialQuality } from './editorial_quality.mjs';
 import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitStructure.ts';
 import { rejectForClimate, rejectForStyleOccasion } from '../../src/domain/occasionRules.ts';
@@ -30,6 +30,11 @@ const sameProduct = (a, b) => baseProductId(a.id) === baseProductId(b.id) ||
   (!!currentVisual(a)?.imageSha256 && currentVisual(a).imageSha256 === currentVisual(b)?.imageSha256);
 const overlaps = (a, b) => a.items.filter((item) => b.items.some((other) => sameProduct(item, other))).length;
 const TIE_MARGIN = 0.025;
+// The hosted critic receives only one spare slot after the three intended
+// directions. The fourth must be a *different viable fashion direction*,
+// not just the most similarly scored clone of the lead. Keep it inside the
+// same .16 deterministic quality window used for creative-direction planning.
+const VISUAL_CHALLENGER_QUALITY_WINDOW = 0.16;
 // A selected look this far below the shortlist best is decisively off the
 // pace (10x the near-tie margin), not a close alternative worth showing.
 const EXCLUSION_QUALITY_GAP = 0.25;
@@ -614,13 +619,25 @@ export async function recommendFashionDeck({
     }
     const lead = selected[0];
     if (candidates.length < 4) {
+      const metrics = creativeMetrics(context);
+      const leadScore = lead.fashion?.score ?? -Infinity;
       const extras = retrieval.shortlist
         .filter(look => !selected.some(chosen => chosen.id === look.id) &&
-          Math.abs(look.fashion.score - lead.fashion.score) <= TIE_MARGIN &&
-          selected.slice(1).every(other =>
+          Number.isFinite(look.fashion?.score) &&
+          look.fashion.score >= leadScore - VISUAL_CHALLENGER_QUALITY_WINDOW &&
+          selected.every(other =>
             Math.max(other.items.length, look.items.length) - overlaps(other, look) >= 2))
-        .sort((a, b) => b.fashion.score - a.fashion.score ||
-          String(a.id).localeCompare(String(b.id)));
+        .map(look => ({
+          look,
+          // A genuinely distinct alternative expands the visual critic's
+          // choice set. Same SKU identity, original hard gates and budget.
+          difference: Math.min(...selected.map(other =>
+            directionDifference(other, look, metrics.featuresOf, metrics.featureDistance).distance)),
+        }))
+        .sort((a, b) => b.difference - a.difference ||
+          b.look.fashion.score - a.look.fashion.score ||
+          String(a.look.id).localeCompare(String(b.look.id)))
+        .map(({ look }) => look);
       for (const alternate of extras) {
         if (await permitted(alternate)) { candidates.push(alternate); break; }
       }
@@ -628,38 +645,48 @@ export async function recommendFashionDeck({
     if (candidates.length) {
       const reviewed = await evaluateVisualShortlist(
         { ...retrieval, shortlist: candidates }, request, visualCritic,
-        { target: Math.min(3, candidates.length) },
+        // The deterministic creative selector already enforced distinct
+        // physical SKUs and qualified fashion directions. The visual
+        // prototype's 0.30 discovery-only threshold is stricter and would
+        // discard valid signature/refresh looks without a quality reason.
+        // Use the same 0.12 minimum as the editorial refresh boundary;
+        // a zero-novelty (same physical look) is still always rejected.
+        { target: Math.min(3, candidates.length), minNovelty: 0.12 },
       );
       visualVerdict = reviewed.diagnostics.visualValid > 0 ? 'JUDGED' : 'ABSTAINED';
       const rejected = new Set(reviewed.diagnostics.rejectedCandidateIds);
-      for (const look of reviewed.outfits) {
-        if (look.evidence) visualEvidenceById.set(look.id, look.evidence);
-      }
-      if (rejected.size) {
-        // A confident visual veto excludes only that feasible candidate.
-        // Reselect from the same gated pool; replacements never inherit an
-        // NVIDIA verdict they were not shown to the model.
-        selected = applyExclusionQualityFloor(
-          chooseDeck(retrieval.shortlist, context, rejected),
-          ordered[0] ?? NaN, true,
-        ).kept;
-      } else {
-        const winnerId = reviewed.outfits[0]?.id;
-        const winner = candidates.find(look => look.id === winnerId);
-        if (winner && winner.id !== lead.id &&
-            Math.abs(winner.fashion.score - lead.fashion.score) <= TIE_MARGIN &&
-            selected.slice(1).every(other => other.id === winner.id ||
-              Math.max(other.items.length, winner.items.length) - overlaps(other, winner) >= 2)) {
-          selected = [winner, ...selected.filter(look => look.id !== winner.id)]
-            .slice(0, 3);
+      // The hosted critic has already applied visual quality, confidence,
+      // explicit veto and cross-look novelty gates to its <=4 candidates.
+      // Its approved *deck*, not just its lead, is the authoritative result.
+      // Previously the fashion caller ignored that verdict deck and showed
+      // original items (or a fresh, unjudged replacement after a veto).
+      // That made NVIDIA_APPLIED true while the user's actual third look
+      // could have failed visual evaluation. Never launder that evidence.
+      //
+      // A successful partial review yields an honestly partial deck. If all
+      // returned verdicts fail the visual quality gate, return no looks:
+      // server reports quality failure rather than reinstating an unsafe
+      // deterministic outfit. If the provider returns no valid verdict at
+      // all, retain deterministic recommendations with ABSTAINED status,
+      // so a media/network outage does not become a false fashion veto.
+      const byId = new Map(candidates.map(look => [look.id, look]));
+      for (const approved of reviewed.outfits) {
+        if (Array.isArray(approved.evidence)) {
+          visualEvidenceById.set(approved.id, approved.evidence);
         }
+      }
+      if (reviewed.diagnostics.visualValid > 0) {
+        selected = reviewed.outfits.map(({ id }) => byId.get(id)).filter(Boolean);
       }
       visualReviewCoverage = {
         mode: 'displayed_deck',
         attempted: reviewed.diagnostics.visualAttempted,
         valid: reviewed.diagnostics.visualValid,
         rejected: rejected.size,
+        approved: reviewed.diagnostics.visualApproved,
+        // Only an approved, actually displayed look has review evidence.
         displayedEvidence: selected.filter(look => visualEvidenceById.has(look.id)).length,
+        fallbackUnreviewed: reviewed.diagnostics.visualValid === 0,
       };
     }
   } else if (selected.length >= 1 && typeof visualCritic === 'function' && typeof canJudgeOutfit === 'function' && await permitted(selected[0])) {

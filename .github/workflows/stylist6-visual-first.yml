@@ -125,6 +125,16 @@ jobs:
         run: node --test backend/stylist6/prototype.test.mjs
       - name: Verify server-side catalog observation identity, staleness and bounded reads
         run: node --test backend/stylist6/catalog_observation.test.mjs
+      - name: Enforce evidence-driven release gate contract (synthetic fixtures, NO external calls)
+        run: |
+          node --test scripts/stylist6/release_candidate_gate.test.mjs
+          set +e
+          node scripts/stylist6/release_candidate_gate.mjs > /tmp/stylist6-gate-no-evidence.log 2>&1
+          status=$?
+          set -e
+          test "$status" -eq 2
+          grep -q 'NO_GO: supply a valid' /tmp/stylist6-gate-no-evidence.log
+          echo "Release gate correctly refuses missing evidence"
       - name: Verify UZ merchant variants, footwear leads, and private live replay contracts
         run: node --test scripts/stylist6/fr_variant_stock.test.mjs scripts/stylist6/curate_uz_footwear.test.mjs scripts/stylist6/collection_leads.test.mjs scripts/stylist6/live_footwear_replay.test.mjs
       - name: Verify Stylist 6 cloud handler (server inventory, anchors, budgets, fakes only)

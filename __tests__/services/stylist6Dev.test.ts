@@ -20,6 +20,47 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+describe('stylist6 cloud completion safety', () => {
+  test('three server-owned looks retain their existing complete contract', () => {
+    const { stylist6CloudCompletion } = loadDevModule();
+    expect(stylist6CloudCompletion({
+      success: true, generationVersion: 'stylist-6-cloud-staging-1',
+      status: 'complete', outfits: [{}, {}, {}],
+    })).toBe('complete');
+  });
+  test('one or two model-approved displayed looks may render honestly, never three invented looks', () => {
+    const { stylist6CloudCompletion } = loadDevModule();
+    const partial = {
+      success: true, generationVersion: 'stylist-6-cloud-staging-1',
+      status: 'partial', visualStatus: 'NVIDIA_APPLIED',
+      outfits: [{ id: 'look1', fashionDiagnostics: { visualVerdict: 'JUDGED' } },
+        { id: 'look2', fashionDiagnostics: { visualVerdict: 'JUDGED' } }],
+      visualReceipt: { displayedJudged: 2, displayedLooks: 2, visualApproval: 'verified_partial' },
+    };
+    expect(stylist6CloudCompletion(partial)).toBe('verified_partial');
+    expect(stylist6CloudCompletion({ ...partial, visualReceipt: {
+      displayedJudged: 1, displayedLooks: 2, visualApproval: 'verified_partial',
+    } })).toBeNull();
+    expect(stylist6CloudCompletion({ ...partial, outfits: [{ id: 'unreviewed' },
+      partial.outfits[1]] })).toBeNull();
+    expect(stylist6CloudCompletion({ ...partial, visualReceipt: {
+      displayedJudged: 2, displayedLooks: 2, visualApproval: 'unverified_fallback',
+    } })).toBeNull();
+    expect(stylist6CloudCompletion({ ...partial, visualStatus: 'NVIDIA_ABSTAINED' })).toBeNull();
+    expect(stylist6CloudCompletion({ ...partial, outfits: [{}, {}, {}],
+      visualReceipt: { displayedJudged: 3, displayedLooks: 3 } })).toBeNull();
+  });
+  test('wrong engine, unsuccessful response and missing receipt cannot masquerade as cloud results', () => {
+    const { stylist6CloudCompletion } = loadDevModule();
+    expect(stylist6CloudCompletion({ success: true, generationVersion: 'stylist-5-v2',
+      status: 'complete', outfits: [{}, {}, {}] })).toBeNull();
+    expect(stylist6CloudCompletion({ success: false, generationVersion: 'stylist-6-cloud-staging-1',
+      status: 'complete', outfits: [{}, {}, {}] })).toBeNull();
+    expect(stylist6CloudCompletion({ success: true, generationVersion: 'stylist-6-cloud-staging-1',
+      status: 'partial', visualStatus: 'NVIDIA_APPLIED', outfits: [{}] })).toBeNull();
+  });
+});
+
 describe('stylist6 dev bridge client', () => {
   test('gate is off without the explicit dev opt-in, even in dev bundles', () => {
     (globalThis as any).__DEV__ = true;

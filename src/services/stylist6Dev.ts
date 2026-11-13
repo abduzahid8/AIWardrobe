@@ -48,8 +48,9 @@ export function buildStylist6BridgeBody(args: {
 }
 
 function failureForBridge(code: unknown, stage = 'stylist6_ranking'): OutfitGenerationFailure {
-  const known: Record<string, 'outfitMaker.generateFailed' | 'outfitMaker.noMatchingClothing' | 'outfitMaker.catalogUnavailable' | 'outfitMaker.requestTooLarge' | 'outfitMaker.invalidRequest'> = {
+  const known: Record<string, 'outfitMaker.generateFailed' | 'outfitMaker.noMatchingClothing' | 'outfitMaker.visualQualityUnmet' | 'outfitMaker.catalogUnavailable' | 'outfitMaker.requestTooLarge' | 'outfitMaker.invalidRequest'> = {
     stylist6_no_feasible_looks: 'outfitMaker.noMatchingClothing',
+    stylist6_visual_quality_unmet: 'outfitMaker.visualQualityUnmet',
     stylist6_empty_catalog: 'outfitMaker.catalogUnavailable',
     stylist6_ranking_failed: 'outfitMaker.generateFailed',
     invalid_stylist6_request: 'outfitMaker.invalidRequest',
@@ -197,8 +198,9 @@ export function stylist6Language(locale: unknown): 'en' | 'ru' | 'uz' {
 }
 
 function failureForCloud(code: unknown, stage = 'stylist6_cloud'): OutfitGenerationFailure {
-  const known: Record<string, 'outfitMaker.generateFailed' | 'outfitMaker.noMatchingClothing' | 'outfitMaker.catalogUnavailable' | 'outfitMaker.requestTooLarge' | 'outfitMaker.invalidRequest'> = {
+  const known: Record<string, 'outfitMaker.generateFailed' | 'outfitMaker.noMatchingClothing' | 'outfitMaker.visualQualityUnmet' | 'outfitMaker.catalogUnavailable' | 'outfitMaker.requestTooLarge' | 'outfitMaker.invalidRequest'> = {
     stylist6_no_feasible_looks: 'outfitMaker.noMatchingClothing',
+    stylist6_visual_quality_unmet: 'outfitMaker.visualQualityUnmet',
     stylist6_empty_catalog: 'outfitMaker.catalogUnavailable',
     stylist6_ranking_failed: 'outfitMaker.generateFailed',
     invalid_stylist6_request: 'outfitMaker.invalidRequest',
@@ -287,6 +289,28 @@ export async function invokeStylist6Cloud(
     throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_wrong_engine', 'stylist6_cloud');
   }
   return data;
+}
+
+/**
+ * Cloud completion contract: an honestly partial result is only admissible
+ * when each shown card has its own model-approved visual evidence. The
+ * authoritative backend cannot charge the user and then ask the client to
+ * invent a third outfit. A normal full deck retains the existing contract.
+ */
+export function stylist6CloudCompletion(response: unknown): 'complete' | 'verified_partial' | null {
+  if (!response || typeof response !== 'object') return null;
+  const body = response as Record<string, any>;
+  if (body.success !== true || !isStylist6CloudVersion(body.generationVersion) ||
+      !Array.isArray(body.outfits)) return null;
+  if (body.status === 'complete' && body.outfits.length === 3) return 'complete';
+  if (body.status !== 'partial' || body.outfits.length < 1 ||
+      body.outfits.length > 2 || body.visualStatus !== 'NVIDIA_APPLIED') return null;
+  const receipt = body.visualReceipt;
+  return receipt && receipt.visualApproval === 'verified_partial' &&
+    receipt.displayedJudged === body.outfits.length &&
+    receipt.displayedLooks === body.outfits.length &&
+    body.outfits.every((look: any) => look?.fashionDiagnostics?.visualVerdict === 'JUDGED')
+    ? 'verified_partial' : null;
 }
 
 export interface Stylist6DevAcceptance {

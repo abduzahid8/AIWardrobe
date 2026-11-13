@@ -3,7 +3,7 @@ import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveS
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, stylist6Language, stylist6VisualDiagnostic, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, stylist6CloudCompletion, stylist6Language, stylist6VisualDiagnostic, type DevEngine} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -1739,11 +1739,14 @@ const AIOutfitGenerator = () => {
         if (invokeError instanceof OutfitGenerationFailure) throw invokeError;
         throw await outfitGenerationFailure(data, invokeError);
       }
-      // The server may return HTTP 200 with a partial deck. That is NOT a
-      // successful three-look acceptance: preserve the real engine identity
-      // and surface an explicit client-side completeness failure.
-      if (s6CloudActive && data?.success === true &&
-          (data.status !== 'complete' || !Array.isArray(data.outfits) || data.outfits.length !== 3)) {
+      // Stylist 6 only returns a partial deck after a valid visual critique
+      // admits fewer than three *approved* final looks. Unlike the historical
+      // three-or-fail path, show those actual approved looks instead of
+      // surfacing an artificial error after the backend has already charged
+      // the user's one generation. Never accept an unverified partial deck.
+      const s6CloudAcceptance = s6CloudActive ? stylist6CloudCompletion(data) : null;
+      const s6VerifiedPartial = s6CloudAcceptance === 'verified_partial';
+      if (s6CloudActive && data?.success === true && !s6CloudAcceptance) {
         throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing', 'stylist6_incomplete_cloud_deck', 'stylist6_render');
       }
 
@@ -2016,7 +2019,10 @@ const AIOutfitGenerator = () => {
           const inCap = finalOutfits.filter((o) => fitsCap(o.items as any[]));
           const overCap = finalOutfits.filter((o) => !fitsCap(o.items as any[]));
           const shownOutfits = inCap.slice(0, 3);
-          if (shownOutfits.length !== 3 && !(/^stylist-5-/.test(String(data.generationVersion||'')) && data.inventoryReason==='distinct_editorial_inventory_limited' && shownOutfits.length>0)) {
+          if (shownOutfits.length !== 3 && !(s6VerifiedPartial &&
+              shownOutfits.length === data.outfits.length) &&
+              !(/^stylist-5-/.test(String(data.generationVersion||'')) &&
+                data.inventoryReason==='distinct_editorial_inventory_limited' && shownOutfits.length>0)) {
             if (s6CloudActive) throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing', 'stylist6_client_deck_rejected', 'stylist6_render');
             throw new Error('incomplete_outfit_deck');
           }
@@ -2042,7 +2048,14 @@ const AIOutfitGenerator = () => {
           // aiOutfits counter. Keep the session/nonce guard for every engine.
           if ((!s6CloudActive && !(await consumeOrPaywall('aiOutfits', {cancelSignal}))) || !isCurrentGeneration()) return;
           setResultBudget(shopBudget);
-          setInventoryNote(data.inventoryReason==='distinct_editorial_inventory_limited' ? t('outfitMaker.distinctInventoryLimited') : '');
+          const incompleteVisualReview = s6CloudActive && data?.visualReceipt?.requested === true &&
+            (data?.visualReceipt?.displayedJudged ?? 0) < shownOutfits.length;
+          setInventoryNote(s6VerifiedPartial
+            ? t('outfitMaker.visualApprovedPartial', { count: shownOutfits.length })
+            : incompleteVisualReview
+              ? t('outfitMaker.visualReviewUnavailable')
+              : data.inventoryReason==='distinct_editorial_inventory_limited'
+                ? t('outfitMaker.distinctInventoryLimited') : '');
           // Record the ACTUAL engine that produced this deck for dev display.
           setLastEngineVersion(String(data.generationVersion || 'unknown'));
           setLastEngineDetail(stylist6VisualDiagnostic(data) || (data?.diagnostics?.visualVerdict ? `visual ${String(data.diagnostics.visualVerdict)}` : (s6Active ? 'local bridge' : null)));

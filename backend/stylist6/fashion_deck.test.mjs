@@ -128,8 +128,11 @@ test('cloud full-deck review does not send any item from denied image hosts', as
   assert.deepEqual(reviewed.map(c => c.id), [authorizedId]);
   assert.equal(result.diagnostics.visualReviewCoverage.attempted, 1);
   assert.equal(result.diagnostics.visualReviewCoverage.valid, 1);
-  assert.equal(result.outfits.length, 3);
-  assert.ok(result.outfits.every(look => !look.visualEvidence || look.id === authorizedId));
+  assert.equal(result.outfits.length, 1, 'one verified look must not acquire two unreviewed companions');
+  assert.equal(result.status, 'partial');
+  assert.deepEqual(result.outfits.map(look => look.id), [authorizedId]);
+  assert.ok(result.outfits.every(look => Array.isArray(look.visualEvidence)));
+  assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence, 1);
 });
 
 test('cloud full-deck veto removes a rejected secondary look without laundering visual evidence', async () => {
@@ -146,6 +149,82 @@ test('cloud full-deck veto removes a rejected secondary look without laundering 
   assert.ok(result.outfits.every(look => !look.visualEvidence ||
     !result.diagnostics.visualReviewCoverage.rejectedCandidateIds?.includes(look.id)));
   assert.ok(result.outfits.every(look => look.items.some(item => item.id === 'shirt-white')));
+});
+
+test('visual-first selection is controlled by the complete MODEL-APPROVED deck, not the original lead', async () => {
+  const initial = await recommendFashionDeck(base);
+  let candidateIds = [];
+  const result = await recommendFashionDeck({
+    ...base, visualDeckReview: true, canJudgeOutfit: async () => true,
+    visualCritic: async (candidates) => {
+      candidateIds = candidates.map(x => x.id);
+      return candidates.map((candidate, index) =>
+        admittedVisualVerdict(candidate, {
+          visualCohesion: index === 0 ? 0.74 : 0.98,
+          referenceFidelity: index === 0 ? 0.74 : 0.98,
+          styleFit: index === 0 ? 0.74 : 0.98,
+          occasionFit: index === 0 ? 0.74 : 0.98,
+          formalityFit: index === 0 ? 0.74 : 0.98,
+        }));
+    },
+  });
+  assert.ok(candidateIds.length >= 3 && candidateIds.length <= 4);
+  assert.equal(result.status, 'complete');
+  assert.notEqual(result.outfits[0].id, initial.outfits[0].id,
+    'the model must be able to change which outfit is displayed first');
+  assert.equal(result.outfits.length, 3);
+  assert.ok(result.outfits.every(look => Array.isArray(look.visualEvidence)));
+  assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence, 3);
+  assert.ok(result.outfits.every(look => look.items.some(item => item.id === 'shirt-white')));
+});
+
+test('two visually approved looks produce a truthful partial result, no unreviewed third', async () => {
+  let candidates = [];
+  const result = await recommendFashionDeck({
+    ...base, visualDeckReview: true, canJudgeOutfit: async () => true,
+    visualCritic: async (batch) => {
+      candidates = batch;
+      return batch.map((candidate, i) => admittedVisualVerdict(candidate,
+        i < 2 ? {} : { visualCohesion: 0.2, referenceFidelity: 0.2,
+          styleFit: 0.2, occasionFit: 0.2, formalityFit: 0.2, reject: false }));
+    },
+  });
+  assert.ok(candidates.length >= 3);
+  assert.equal(result.status, 'partial');
+  assert.equal(result.outfits.length, 2);
+  assert.deepEqual(new Set(result.outfits.map(look => look.id)),
+    new Set(candidates.slice(0, 2).map(candidate => candidate.id)));
+  assert.equal(result.diagnostics.visualReviewCoverage.approved, 2);
+  assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence, 2);
+  assert.ok(result.outfits.every(look => look.items.every(item => item.price > 0)));
+});
+
+test('valid visual verdicts rejecting every finalist fail closed rather than showing weak outfits', async () => {
+  const result = await recommendFashionDeck({
+    ...base, visualDeckReview: true, canJudgeOutfit: async () => true,
+    visualCritic: async candidates => candidates.map(candidate =>
+      admittedVisualVerdict(candidate, {
+        visualCohesion: 0.15, referenceFidelity: 0.15, styleFit: 0.15,
+        occasionFit: 0.15, formalityFit: 0.15, confidence: 0.95,
+      })),
+  });
+  assert.equal(result.status, 'no_feasible_looks');
+  assert.deepEqual(result.outfits, []);
+  assert.equal(result.diagnostics.visualVerdict, 'JUDGED');
+  assert.equal(result.diagnostics.visualReviewCoverage.approved, 0);
+});
+
+test('invalid or timed-out visual verdicts never claim review and keep deterministic fallback explicit', async () => {
+  const baseline = await recommendFashionDeck(base);
+  const result = await recommendFashionDeck({
+    ...base, visualDeckReview: true, canJudgeOutfit: async () => true,
+    visualCritic: async () => [],
+  });
+  assert.equal(result.status, baseline.status);
+  assert.deepEqual(result.outfits, baseline.outfits);
+  assert.equal(result.diagnostics.visualVerdict, 'ABSTAINED');
+  assert.equal(result.diagnostics.visualReviewCoverage.fallbackUnreviewed, true);
+  assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence, 0);
 });
 
 test('authorized close contenders use at most two visual judgments and retain the complete deck', async () => {

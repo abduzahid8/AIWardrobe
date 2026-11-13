@@ -933,7 +933,8 @@ function verdictForPrompt(promptText, candidateId) {
 
 /** Media stub: merchant/first-party hosts get deterministic JPEG bytes, the
  * NVIDIA endpoint gets a grounded verdict derived from the sent prompt. */
-function makeVisualFetchStub(salt, recorder = { prompts: [], hosts: new Set() }, mediaFormat = 'jpeg') {
+function makeVisualFetchStub(salt, recorder = { prompts: [], hosts: new Set() },
+  mediaFormat = 'jpeg', transformVerdict = (row) => row) {
   return async (url, options = {}) => {
     const parsed = new URL(String(url));
     recorder.hosts.add(parsed.hostname);
@@ -943,7 +944,8 @@ function makeVisualFetchStub(salt, recorder = { prompts: [], hosts: new Set() },
       recorder.prompts.push(prompt);
       const id = prompt.match(/candidateId must be exactly "([^"]+)"/)[1];
       return new Response(JSON.stringify({
-        choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(verdictForPrompt(prompt, id)) } }],
+        choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(
+          transformVerdict(verdictForPrompt(prompt, id))) } }],
         usage: { prompt_tokens: 900, completion_tokens: 60, total_tokens: 960 },
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
@@ -982,6 +984,12 @@ test('allowlisted merchant imagery reaches the hosted critic and the deck report
   assert.equal(result.status, 200);
   assert.equal(result.body.visualStatus, 'NVIDIA_APPLIED');
   const receipt = result.body.visualReceipt;
+  assert.ok(['full_three_verified','verified_partial'].includes(receipt.visualApproval));
+  assert.equal(receipt.displayedJudged, receipt.displayedLooks,
+    'selected looks must have their own verdict');
+  for (const look of result.body.outfits) {
+    assert.equal(look.fashionDiagnostics.visualVerdict, 'JUDGED');
+  }
   assert.ok(receipt.providerCalls >= 1, 'the critic must dispatch at least one provider call');
   assert.ok(receipt.imagesSent >= receipt.providerCalls, 'images sent must be metered');
   assert.ok(receipt.validVerdicts >= 1);
@@ -1000,6 +1008,49 @@ test('allowlisted merchant imagery reaches the hosted critic and the deck report
   }
   assert.ok(result.body.outfits.some((look) => Array.isArray(look.items) && look.items.length >= 3));
   assert.equal(result.body.diagnostics.visualVerdict, 'JUDGED');
+});
+
+test('cloud rejects all low-quality assessed outfits without charging AGAIN or laundering unjudged replacements', async()=>{
+  const recorder={prompts:[],hosts:new Set()};
+  const degrade = row => ({
+    ...row, visualCohesion:0.1, styleFit:0.1,
+    occasionFit:0.1, formalityFit:0.1, referenceFidelity:0.1,
+    reject:false, confidence:0.95,
+  });
+  const result=await cloudVisualCall(
+    { ...baseRequest, enableVisual:true, generationRequestId:'s6-visual-quality-zero-1' },
+    {salt:'quality-zero',fetchStub:makeVisualFetchStub('quality-zero',recorder,'jpeg',degrade)},
+  );
+  assert.equal(result.status,502);
+  assert.equal(result.body.code,'stylist6_visual_quality_unmet');
+  assert.equal(result.body.visualStatus,'NVIDIA_EVALUATED_NO_CHANGE');
+  assert.deepEqual(result.body.outfits,[]);
+  assert.equal(result.body.diagnostics.visualReviewCoverage.approved,0);
+  assert.ok(recorder.prompts.length>0);
+});
+
+test('cloud returns real two-look partial with per-look NVIDIA approvals rather than three fake looks', async()=>{
+  const recorder={prompts:[],hosts:new Set()};
+  let call=0;
+  const degradeLater = row => {
+    call++;
+    return call<=2 ? row : {
+      ...row, visualCohesion:0.1, styleFit:0.1, occasionFit:0.1,
+      formalityFit:0.1, referenceFidelity:0.1, confidence:0.95,
+    };
+  };
+  const result=await cloudVisualCall(
+    {...baseRequest,enableVisual:true,generationRequestId:'s6-visual-two-approved-1'},
+    {salt:'two-approved',fetchStub:makeVisualFetchStub('two-approved',recorder,'jpeg',degradeLater)},
+  );
+  assert.equal(result.status,200);
+  assert.equal(result.body.status,'partial');
+  assert.equal(result.body.outfits.length,2);
+  assert.equal(result.body.visualStatus,'NVIDIA_APPLIED');
+  assert.equal(result.body.visualReceipt.visualApproval,'verified_partial');
+  assert.equal(result.body.visualReceipt.displayedLooks,2);
+  assert.equal(result.body.visualReceipt.displayedJudged,2);
+  assert.ok(result.body.outfits.every(x=>x.fashionDiagnostics.visualVerdict==='JUDGED'));
 });
 
 test('valid retail PNG/WebP get in-memory conversion and real critic verdicts',async()=>{
@@ -1107,7 +1158,7 @@ test('enableVisual without a server key completes the deterministic deck with an
     model: null, requested: true, serverDisabled: false, referenceBucketConfigured: false,
     providerCalls: 0, imagesSent: 0, cacheHits: 0, retriedCalls: 0,
     validVerdicts: 0, abstentions: 0, displayedLooks: result.body.outfits.length, displayedJudged: 0,
-    totalTokens: null, events: [],
+    visualApproval: 'unavailable', totalTokens: null, events: [],
   });
   assert.equal(recorder.hosts.size, 0, 'no key means no outbound provider traffic');
   assert.equal(harness.calls.debitQuota, 1);

@@ -811,8 +811,14 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     });
     const visualStatus = mapCloudVisualStatus(deck);
     if ((deck.status !== 'complete' && deck.status !== 'partial') || !deck.outfits.length) {
-      await finish(502, 'stylist6_no_feasible_looks');
-      return fail('stylist6_no_feasible_looks', 502, {
+      // Distinguish a real feasibility shortage from an actual visual
+      // rejection. A valid AI verdict that approves zero outfits must not
+      // silently reopen the originally feasible (but rejected) catalog deck.
+      const qualityFailed = (deck.diagnostics?.visualReviewCoverage?.valid ?? 0) > 0 &&
+        (deck.diagnostics?.visualReviewCoverage?.approved ?? 0) === 0;
+      const failureCode = qualityFailed ? 'stylist6_visual_quality_unmet' : 'stylist6_no_feasible_looks';
+      await finish(502, failureCode);
+      return fail(failureCode, 502, {
         stage: 'stylist6_ranking',
         engineVersion: STYLIST6_CLOUD_VERSION,
         visualStatus,
@@ -872,6 +878,18 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           abstentions: visualEvents.filter((event) => event.outcome === 'abstain').length,
           displayedLooks: deck.outfits.length,
           displayedJudged: deck.outfits.filter((look) => !!look.visualEvidence).length,
+          // Explicitly separate a reviewed deck from a successful request,
+          // and full 3-card proof from merely having at least one verdict.
+          visualApproval: !visualAsked ? 'not_requested'
+            : visualDisabled ? 'disabled'
+              : !visualCritic ? 'unavailable'
+            : deck.outfits.length === 3 &&
+                deck.outfits.every((look) => Array.isArray(look.visualEvidence))
+              ? 'full_three_verified'
+              : deck.outfits.length > 0 &&
+                  deck.outfits.every((look) => Array.isArray(look.visualEvidence))
+                ? 'verified_partial'
+                : 'unverified_fallback',
           totalTokens: visualEvents.reduce((sum, event) =>
             sum + (Number.isFinite(event.usage?.total_tokens) ? event.usage.total_tokens : 0), 0) || null,
           events: visualEvents,
@@ -903,7 +921,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           fashionDiagnostics: {
             score: look.fashion?.score,
             referenceMetadata: look.fashion?.referenceMetadata || null,
-            visualVerdict: deck.diagnostics?.visualVerdict || 'NOT_RUN',
+            // Verdict of THIS displayed look, not a global batch verdict
+            // that may refer to a rejected or non-displayed challenger.
+            visualVerdict: Array.isArray(look.visualEvidence)
+              ? 'JUDGED' : deck.diagnostics?.visualVerdict === 'JUDGED'
+                ? 'NOT_JUDGED' : deck.diagnostics?.visualVerdict || 'NOT_RUN',
             imageSupportedItems: look.fashion?.imageSupportedItems ?? null,
             // Only catalog-grounded positive matches; never expose the full
             // preference profile or assert body/fit facts without evidence.

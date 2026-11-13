@@ -976,6 +976,9 @@
       }
     },
     "distinctInventoryLimited": "Bu so‘rov uchun topilgan eng yaxshi, bir-biridan farqli to‘liq obrazlar ko‘rsatilgan.",
+    "visualApprovedPartial": "Vizual tekshiruvdan o‘tgan obrazlar soni: {{count}}. Uchta qilish uchun tekshirilmagan variantlar qo‘shilmadi.",
+    "visualReviewUnavailable": "AI vizual tekshiruvi mavjud emas. Bu katalogga asoslangan takliflar, suratlar bilan tasdiqlanmagan.",
+    "visualQualityUnmet": "Tanlangan obrazlar vizual sifat tekshiruvidan o‘tmadi. Boshqa uslub yoki vaziyatni sinab ko‘ring. Tekshirilmagan variant qo‘shilmadi.",
     "editorialColors": {
       "black": "qora",
       "white": "oq",

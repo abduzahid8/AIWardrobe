@@ -961,6 +961,9 @@
       }
     },
     "distinctInventoryLimited": "These are the strongest distinct, complete options found for this request.",
+    "visualApprovedPartial": "Only {{count}} outfit(s) passed visual quality review. Unverified looks were not added to reach three.",
+    "visualReviewUnavailable": "Visual AI review was unavailable. These are catalog-based suggestions, not visually approved outfits.",
+    "visualQualityUnmet": "The available outfits did not pass visual quality review. Try a different style or occasion; no unverified replacement was added.",
     "editorialColors": {
       "black": "black",
       "white": "white",
