@@ -253,8 +253,8 @@ export function evaluateFeedbackLook(items, conceptId, model, stylingFeatures) {
   return {
     adjustment,
     matches: matches.slice(0, 8),
-    likedItems: matches.filter((entry) => entry.value === 'liked').length,
-    dislikedItems: matches.filter((entry) => entry.value === 'disliked').length,
+    likedItems: matches.filter((entry) => entry.type === 'feedback_item' && entry.value === 'liked').length,
+    dislikedItems: matches.filter((entry) => entry.type === 'feedback_item' && entry.value === 'disliked').length,
     conceptId: concept,
   };
 }
