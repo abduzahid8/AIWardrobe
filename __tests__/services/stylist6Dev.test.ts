@@ -200,6 +200,23 @@ describe('safe visual receipt reporting for owner iOS screenshots',()=>{
     expect(stylist6VisualDiagnostic(received)).toBe('NVIDIA_ABSTAINED c0/v0/a4 · reference_unresolved');
   });
 
+  test('partial NVIDIA_APPLIED names how many displayed looks actually have evidence',()=>{
+    (globalThis as any).__DEV__=true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE='true';
+    const {stylist6VisualDiagnostic}=loadDevModule();
+    const response={
+      visualStatus:'NVIDIA_APPLIED',
+      visualReceipt:{
+        providerCalls:3, validVerdicts:2, abstentions:2,
+        displayedLooks:3, displayedJudged:1,
+        events:[{reason:'product_image_unresolved',mediaSlot:'outerwear',
+          mediaFailure:'http_403',source:'Bearer PRIVATE_TOKEN',url:'https://private.example'}],
+      },
+    };
+    expect(stylist6VisualDiagnostic(response)).toBe(
+      'NVIDIA_APPLIED c3/v2/a2 · shown1/3 · product_image_unresolved (outerwear/http_403)');
+  });
+
   test('unknown server strings are never echoed or treated as a verdict',()=>{
     (globalThis as any).__DEV__ = true;
     process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';

@@ -85,3 +85,47 @@ avoid automatic paid retries. Before an owner-approved production
 release, independently evaluate taste and diversity with complete
 outfit cards, actual merchant availability and owner-approved
 image-inference permissions. Production Stylist 5 is untouched.
+
+## Follow-up Owner Cloud Test (21:33-21:35, 2026-11-13)
+
+User-provided iOS screenshots: client SHA 94dd603e1344, cloud stage v21
+pinned to READY Vercel compute 56402783. NVIDIA now returns actual
+NVIDIA_APPLIED verdicts, unlike the prior universal NVIDIA_ABSTAINED.
+
+| Scenario | Provider calls | Valid verdicts | Abstentions | Failure |
+| --- | ---: | ---: | ---: | --- |
+| Old Money / Work | 3 | 2 | 1 | provider_deadline |
+| Classic / Work | 3 | 2 | 2 | product_image_unresolved |
+| Semi-Classic / Romantic Date | 2 | 2 | 1 | product_image_unresolved |
+
+These are attempted critic candidate counts (including a possible
+challenger), NOT the number of displayed looks that passed visual review.
+NVIDIA_APPLIED does not mean all three displayed cards were judged.
+The one provider deadline has not been declared fixed.
+
+Visible fashion defects: repeated merchant shoe SKU and burgundy merino
+top across looks; extremely bright zip-front "Rust Reversible Resort Jacket"
+paired with tailored date-night clothes and black loafers; mixed EUR/USD/
+UZS price totals remain unconvertible without trustworthy FX and seller
+destination data. Size availability and image-use rights remain unverified.
+
+### Engineering follow-up
+
+- Request-scoped in-flight photo Promise deduplication: shared footwear
+  cannot issue duplicate concurrent downloads to the same retailer CDN.
+  Failed photo requests are also shared (no 403/429 download storm).
+  No cache crosses user requests or persists to database.
+- Deadline now covers HTTP response streaming (not only headers).
+  Image body streamed with 4 MiB cap; blocked redirects fail closed.
+- Safe visual diagnostics: bounded media slot and HTTP failure category,
+  with no raw URL, user data, auth token or arbitrary error echo.
+- Separate displayedJudged/displayedLooks counters from all NVIDIA
+  attempts. Dev UI explicitly says shownN/3.
+- Narrow semantic admission: a new-clothing quiet smart romantic date
+  rejects only an explicitly named reversible resort jacket/blouson,
+  not ordinary jackets, casual contexts, owned pieces, or user-requested
+  resort/technical layering.
+
+No additional real NVIDIA calls were made to build/test these changes.
+Full live fashion/merchant acceptance and owner-approved deployment are
+still pending. Production Stylist 5 unchanged.

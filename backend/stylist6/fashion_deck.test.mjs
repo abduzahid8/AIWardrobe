@@ -772,6 +772,22 @@ test('quiet smart styling declines explicit technical leisure outerwear, without
   assert.equal(rejectQuietSmartLeisureLayer({slot:'bottom'},quiet,jacket),false);
 });
 
+test('owner 2026-11-13: semi-classic smart date excludes clearly named reversible resort shell',()=>{
+  const shell=garment('rust-resort','Rust Reversible Resort Jacket','outerwear','jacket');
+  const tailored=garment('resort-blazer','Unstructured Resort Linen Blazer','outerwear','blazer');
+  const reversibleTailored=garment('reversible-tailoring','Reversible Wool Tailored Blazer','outerwear','blazer');
+  const descriptor={slot:'outerwear',subtype:'jacket'};
+  const date={sourceMode:'catalog',style:'semi_classic',dressCode:'smart',
+    occasion:'Romantic Date',request:''};
+  assert.equal(rejectQuietSmartLeisureLayer(descriptor,date,shell),true);
+  assert.equal(rejectQuietSmartLeisureLayer(descriptor,date,tailored),false);
+  assert.equal(rejectQuietSmartLeisureLayer(descriptor,date,reversibleTailored),false);
+  assert.equal(rejectQuietSmartLeisureLayer(descriptor,{...date,style:'casual'},shell),false);
+  assert.equal(rejectQuietSmartLeisureLayer(descriptor,{...date,dressCode:'casual'},shell),false);
+  assert.equal(rejectQuietSmartLeisureLayer(descriptor,{...date,sourceMode:'wardrobe'},shell),false);
+  assert.equal(rejectQuietSmartLeisureLayer(descriptor,{...date,request:'I want a reversible resort jacket'},shell),false);
+});
+
 test('classic work deck avoids explicit technical leisure shells, but still returns valid looks',async()=>{
   const tech = garment('tech','Navy Technical Leisure Jacket','outerwear','jacket');
   const catalog=[...products,tech];

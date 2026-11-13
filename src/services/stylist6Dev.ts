@@ -145,13 +145,29 @@ export function stylist6VisualDiagnostic(response: unknown): string | null {
   const abstained = boundedReceiptCount(r.abstentions);
   const counters = calls !== null && valid !== null && abstained !== null
     ? ` c${calls}/v${valid}/a${abstained}` : '';
+  const shown = boundedReceiptCount(r.displayedLooks);
+  const judged = boundedReceiptCount(r.displayedJudged);
+  // A valid verdict for an alternate or later-rejected look is not proof
+  // that all *displayed* outfits were reviewed. Keep those counts distinct.
+  const coverage = shown !== null && shown > 0 && judged !== null && judged <= shown
+    ? ` · shown${judged}/${shown}` : '';
   const events = Array.isArray(r.events) ? r.events.slice(0, 4) : [];
-  const firstKnownReason = events.map(x =>
-    x && typeof x === 'object' ? (x as Record<string, unknown>).reason : null,
-  ).find(reason => typeof reason === 'string' && Object.hasOwn(VISUAL_REASON_LABELS, reason));
-  const reason = typeof firstKnownReason === 'string'
-    ? ` · ${VISUAL_REASON_LABELS[firstKnownReason]}` : '';
-  return `${status}${counters}${reason}`;
+  const failure = events.find(x =>
+    !!x && typeof x === 'object' &&
+    Object.hasOwn(VISUAL_REASON_LABELS, (x as Record<string, unknown>).reason as string));
+  const entry = failure && typeof failure === 'object'
+    ? failure as Record<string, unknown> : null;
+  const reason = entry && typeof entry.reason === 'string'
+    ? ` · ${VISUAL_REASON_LABELS[entry.reason]}` : '';
+  const slot = ['top', 'outerwear', 'bottom', 'shoes'].includes(String(entry?.mediaSlot || ''))
+    ? String(entry!.mediaSlot) : null;
+  const cause = [
+    'http_401', 'http_403', 'http_404', 'http_429', 'http_5xx',
+    'invalid_media','oversize','decode_failed','fetch_failed','host_not_allowlisted',
+  ].includes(String(entry?.mediaFailure || '')) ? String(entry!.mediaFailure) : null;
+  const media = entry?.reason === 'product_image_unresolved' &&
+    (slot || cause) ? ` (${[slot, cause].filter(Boolean).join('/')})` : '';
+  return `${status}${counters}${coverage}${reason}${media}`;
 }
 
 export interface Stylist6CloudRequest {

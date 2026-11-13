@@ -310,6 +310,7 @@ export function createHostedVisualCritic({
       // (only meaningful once resolved) and retried marks a transient
       // transport retry that was consumed for this candidate.
       let images = [], retried = false;
+      let mediaFailure = null, mediaSlot = null;
       const telemetry = () => {
         const ended = performance.now();
         return {
@@ -361,7 +362,19 @@ export function createHostedVisualCritic({
         reason = 'product_image_unresolved';
         for (const product of candidate.products) {
           signal.throwIfAborted();
-          images.push(verifiedVisualImage(await abortable(resolveProduct(product, signal), signal)));
+          try {
+            images.push(verifiedVisualImage(await abortable(resolveProduct(product, signal), signal)));
+          } catch (error) {
+            // Explicit limited codes only. Never include seller URL,
+            // request tokens, product ID or raw CDN response in receipts.
+            mediaSlot = GARMENT_SLOTS.includes(product.slot) ? product.slot : null;
+            mediaFailure = [
+              'http_401','http_403','http_404','http_429','http_5xx',
+              'invalid_media','oversize','decode_failed','fetch_failed',
+              'host_not_allowlisted',
+            ].includes(error?.mediaFailure) ? error.mediaFailure : 'invalid_media';
+            throw error;
+          }
         }
         signal.throwIfAborted();
         if (admissionStop) {
@@ -530,7 +543,10 @@ export function createHostedVisualCritic({
               : reason;
         emit({ candidateId: candidate.id, outcome: 'abstain', dispatched,
           ...(dispatched ? { images: images.length } : {}),
-          ...(retried ? { retried: true } : {}), reason: failure, ...telemetry() });
+          ...(retried ? { retried: true } : {}), reason: failure,
+          ...(failure === 'product_image_unresolved' && mediaSlot
+            ? { mediaSlot, mediaFailure } : {}),
+          ...telemetry() });
       } finally {
         clearTimeout(providerTimer);
       }

@@ -1106,7 +1106,8 @@ test('enableVisual without a server key completes the deterministic deck with an
   assert.deepEqual(result.body.visualReceipt, {
     model: null, requested: true, serverDisabled: false, referenceBucketConfigured: false,
     providerCalls: 0, imagesSent: 0, cacheHits: 0, retriedCalls: 0,
-    validVerdicts: 0, abstentions: 0, totalTokens: null, events: [],
+    validVerdicts: 0, abstentions: 0, displayedLooks: result.body.outfits.length, displayedJudged: 0,
+    totalTokens: null, events: [],
   });
   assert.equal(recorder.hosts.size, 0, 'no key means no outbound provider traffic');
   assert.equal(harness.calls.debitQuota, 1);

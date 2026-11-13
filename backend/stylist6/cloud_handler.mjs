@@ -142,13 +142,10 @@ export function fitVisualBytesCloud(bytes) {
 }
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = PRODUCT_FETCH_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
+  // Keep the signal alive while the response body streams; cancelling it
+  // immediately after headers allowed slow/hung CDN bodies to consume the
+  // entire 18s visual budget despite the advertised 8s merchant timeout.
+  return fetch(url, { ...options, signal: options.signal || AbortSignal.timeout(timeoutMs) });
 }
 
 /**
@@ -416,26 +413,96 @@ export function mapCloudVisualStatus(deck) {
   return 'NVIDIA_NOT_RUN';
 }
 
-async function resolveProductAsset(imageUrl, cache, fetchFn) {
+const IMAGE_FAILURE_CLASSES = new Set([
+  'http_401','http_403','http_404','http_429','http_5xx',
+  'invalid_media','oversize','decode_failed','fetch_failed',
+  'host_not_allowlisted',
+]);
+
+function mediaFailure(code) {
+  const error = new Error('product_image_unresolved');
+  error.mediaFailure = IMAGE_FAILURE_CLASSES.has(code) ? code : 'fetch_failed';
+  return error;
+}
+
+/** Memory-bounded streaming reader: hostile Content-Length is not trusted. */
+export async function readBoundedProductImage(response, maxBytes = MAX_PRODUCT_IMAGE_BYTES) {
+  if (!response || !Number.isSafeInteger(maxBytes) || maxBytes < 128 ||
+    maxBytes > MAX_PRODUCT_IMAGE_BYTES) throw mediaFailure('invalid_media');
+  const header = response.headers?.get?.('content-length');
+  if (header && /^\d+$/.test(header) && Number(header) > maxBytes) {
+    void response.body?.cancel?.().catch(() => {});
+    throw mediaFailure('oversize');
+  }
+  if (!response.body?.getReader) throw mediaFailure('invalid_media');
+  const reader = response.body.getReader();
+  const parts = [];
+  let length = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value?.byteLength) continue;
+      length += value.byteLength;
+      if (length > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw mediaFailure('oversize');
+      }
+      parts.push(Buffer.from(value));
+    }
+    if (length < 128) throw mediaFailure('invalid_media');
+    return Buffer.concat(parts, length);
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * One request's in-flight and successful photo fetches are shared by URL.
+ * Two concurrent looks using the same shoes no longer double-fetch the
+ * merchant CDN; a failed response is shared too (no retry storm/429).
+ * The cache is created INSIDE the generation handler, never persisted or
+ * shared across users, requests or merchant price windows.
+ */
+export async function resolveProductAsset(imageUrl, cache, fetchFn) {
   const url = String(imageUrl || '');
-  // Network reachability is NOT inference authorization: only allowlisted
-  // merchant hosts are fetched, exactly like the local bridge.
-  if (!HOST_ALLOWLIST.has(hostOf(url))) throw new Error('product_host_not_allowlisted');
+  if (!HOST_ALLOWLIST.has(hostOf(url))) throw mediaFailure('host_not_allowlisted');
+  if (!(cache instanceof Map)) throw new Error('request_image_cache_required');
   if (cache.has(url)) return cache.get(url);
-  const get = fetchFn || fetchWithTimeout;
-  const response = await get(url, {
-    // Never follow a whitelisted CDN's redirect to an arbitrary other host.
-    // Seller infrastructure must serve approved origin bytes directly.
-    redirect: 'error', headers: { 'User-Agent': 'AIWardrobe-Stylist6-Cloud/1.0', Accept: 'image/*,*/*;q=0.8' },
-  });
-  if (!response.ok) throw new Error('product_image_unresolved');
-  const raw = Buffer.from(await response.arrayBuffer());
-  if (raw.length > MAX_PRODUCT_IMAGE_BYTES) throw new Error('image_size_invalid');
-  const fitted = await prepareCloudVisualMedia(raw);
-  if (!fitted) throw new Error('image_toolchain_unavailable');
-  const asset = { bytes: fitted, sha256: createHash('sha256').update(fitted).digest('hex') };
-  cache.set(url, asset);
-  return asset;
+  const task = (async () => {
+    const get = fetchFn || fetchWithTimeout;
+    let response;
+    try {
+      response = await get(url, {
+        redirect: 'error',
+        headers: { 'User-Agent': 'AIWardrobe-Stylist6-Cloud/1.0', Accept: 'image/*,*/*;q=0.8' },
+        // Covers both HTTP headers and the image body. Injected test stubs
+        // receive the same request shape with an abortable deadline.
+        signal: AbortSignal.timeout(PRODUCT_FETCH_TIMEOUT_MS),
+      });
+    } catch {
+      throw mediaFailure('fetch_failed');
+    }
+    if (!response?.ok) {
+      const code = Number(response?.status);
+      const failure = [401,403,404,429].includes(code) ? `http_${code}`
+        : code >= 500 ? 'http_5xx' : 'fetch_failed';
+      void response?.body?.cancel?.().catch(() => {});
+      throw mediaFailure(failure);
+    }
+    let raw;
+    try {
+      raw = await readBoundedProductImage(response);
+    } catch (error) {
+      if (IMAGE_FAILURE_CLASSES.has(error?.mediaFailure)) throw error;
+      throw mediaFailure('fetch_failed');
+    }
+    const fitted = await prepareCloudVisualMedia(raw);
+    if (!fitted) throw mediaFailure('decode_failed');
+    return { bytes: fitted, sha256: createHash('sha256').update(fitted).digest('hex') };
+  })();
+  cache.set(url, task);
+  return task;
 }
 
 /**
@@ -712,6 +779,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             outcome: event.outcome,
             dispatched: event.dispatched === true,
             reason: event.reason || null,
+            ...(event.mediaSlot ? { mediaSlot: event.mediaSlot } : {}),
+            ...(event.mediaFailure ? { mediaFailure: event.mediaFailure } : {}),
             httpStatus: event.httpStatus ?? null,
             latencyMs: Math.round(event.latencyMs || event.providerMs || 0),
             ...(Number.isSafeInteger(event.images) ? { images: event.images } : {}),
@@ -801,6 +870,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           retriedCalls: visualEvents.filter((event) => event.retried === true).length,
           validVerdicts: visualEvents.filter((event) => event.outcome === 'judged').length,
           abstentions: visualEvents.filter((event) => event.outcome === 'abstain').length,
+          displayedLooks: deck.outfits.length,
+          displayedJudged: deck.outfits.filter((look) => !!look.visualEvidence).length,
           totalTokens: visualEvents.reduce((sum, event) =>
             sum + (Number.isFinite(event.usage?.total_tokens) ? event.usage.total_tokens : 0), 0) || null,
           events: visualEvents,

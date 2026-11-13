@@ -165,10 +165,15 @@ export function rejectQuietSmartLeisureLayer(descriptor, context, item) {
         `${context.occasion || ''} ${context.request || ''}`)) return false;
   // A user explicitly choosing sporty outerwear outranks stylist aesthetics,
   // without waiving the existing physical safety or budget gates.
-  if (/\b(technical leisure|sporty jacket|track jacket|training jacket)\b/i
+  if (/\b(technical leisure|sporty jacket|track jacket|training jacket|reversible resort jacket)\b/i
     .test(context.request || '')) return false;
   const name = String(item?.name || '');
-  return /\b(technical[ -]?leisure|track jacket|training jacket|running jacket|sport[s]? jacket)\b/i.test(name);
+  return /\b(technical[ -]?leisure|track jacket|training jacket|running jacket|sport[s]? jacket)\b/i.test(name) ||
+    // Owner iOS screenshot: a bright zip-front REVER-SIBLE RESORT shell
+    // replaced tailoring in a semi-classic romantic-date outfit. Both
+    // words must be explicit SKU evidence: an ordinary resort blazer,
+    // reversible *tailored* jacket or plain cotton jacket is NOT banned.
+    /\breversible\s+resort\s+(?:jacket|blouson)\b/i.test(name);
 }
 
 /**

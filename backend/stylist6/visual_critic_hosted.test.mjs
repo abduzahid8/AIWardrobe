@@ -143,7 +143,7 @@ test('missing, mismatched and oversized media abstains with zero outbound I/O', 
     assert.equal(calls, 0);
     const [{ mediaMs, queueMs, ...event }] = events;
     assert.ok(mediaMs >= 0 && queueMs >= 0);
-    assert.deepEqual(event, { candidateId: candidate.id, outcome: 'abstain', dispatched: false, reason: 'product_image_unresolved' });
+    assert.deepEqual(event, { candidateId: candidate.id, outcome: 'abstain', dispatched: false, reason: 'product_image_unresolved', mediaSlot:'top', mediaFailure:'invalid_media' });
   }
 });
 
