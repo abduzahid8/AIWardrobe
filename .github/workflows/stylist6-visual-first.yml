@@ -19,6 +19,10 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
+      - name: Install locked test dependencies (including native image decoder)
+        run: npm ci --no-audit --no-fund
+      - name: Verify isolated cloud image decoder resolves in clean CI
+        run: node --input-type=module -e 'import sharp from "sharp"; if (typeof sharp !== "function") process.exit(1); console.log("sharp_decoder_ready")'
       - name: Syntax-check independent creative planner
         run: node --check backend/stylist6/prototype.mjs
       - name: Test real-SKU grounding and fail-closed contracts (mock providers, NO API calls)
