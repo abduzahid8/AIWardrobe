@@ -105,6 +105,55 @@ export function isStylist6CloudVersion(generationVersion: unknown): boolean {
   return typeof generationVersion === 'string' && generationVersion.startsWith('stylist-6-cloud-');
 }
 
+/**
+ * Developer-only receipt summary for manual iOS visual reviews.
+ *
+ * The cloud has always returned the visual provider's bounded receipt, but
+ * the simulator previously displayed only "NVIDIA_ABSTAINED", hiding whether
+ * the cause was an unavailable reference, an image format, a deadline or an
+ * actual provider response. Never render product URLs, JWTs, image bytes,
+ * arbitrary error strings, token billing metadata or request fingerprints.
+ */
+const VISUAL_REASON_LABELS: Record<string, string> = {
+  reference_unresolved: 'reference_unresolved',
+  product_image_unresolved: 'product_image_unresolved',
+  image_toolchain_unavailable: 'image_toolchain_unavailable',
+  image_format_or_dimensions_invalid: 'image_format',
+  provider_transport: 'provider_transport',
+  provider_deadline: 'provider_deadline',
+  batch_deadline_media: 'batch_deadline_media',
+  batch_deadline_in_flight: 'batch_deadline_in_flight',
+  batch_deadline_queued: 'batch_deadline_queued',
+  batch_budget_before_dispatch: 'batch_budget',
+  invalid_candidate: 'invalid_candidate',
+};
+const boundedReceiptCount = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 12
+    ? value : null;
+
+export function stylist6VisualDiagnostic(response: unknown): string | null {
+  if (!response || typeof response !== 'object') return null;
+  const body = response as Record<string, unknown>;
+  const status = typeof body.visualStatus === 'string' && /^NVIDIA_(?:ABSTAINED|APPLIED|NOT_RUN|EVALUATED_NO_CHANGE)$/.test(body.visualStatus)
+    ? body.visualStatus : null;
+  if (!status) return null;
+  const receipt = body.visualReceipt;
+  if (!receipt || typeof receipt !== 'object') return status;
+  const r = receipt as Record<string, unknown>;
+  const calls = boundedReceiptCount(r.providerCalls);
+  const valid = boundedReceiptCount(r.validVerdicts);
+  const abstained = boundedReceiptCount(r.abstentions);
+  const counters = calls !== null && valid !== null && abstained !== null
+    ? ` c${calls}/v${valid}/a${abstained}` : '';
+  const events = Array.isArray(r.events) ? r.events.slice(0, 4) : [];
+  const firstKnownReason = events.map(x =>
+    x && typeof x === 'object' ? (x as Record<string, unknown>).reason : null,
+  ).find(reason => typeof reason === 'string' && Object.hasOwn(VISUAL_REASON_LABELS, reason));
+  const reason = typeof firstKnownReason === 'string'
+    ? ` · ${VISUAL_REASON_LABELS[firstKnownReason]}` : '';
+  return `${status}${counters}${reason}`;
+}
+
 export interface Stylist6CloudRequest {
   style: string;
   occasion: string;

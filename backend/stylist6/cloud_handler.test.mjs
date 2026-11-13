@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import sharp from 'sharp';
 import { signStylistTransport } from '../stylist-node/transport/signature.mjs';
 import {
   handleStylist6CloudGenerate,
@@ -578,13 +579,12 @@ test('retailer imagery without inference grants never reaches the provider', asy
 });
 
 test('authorized media flows end to end through the critic with strict mocks', async () => {
-  const jpeg = Buffer.concat([
-    Buffer.from([0xff, 0xd8]),
-    Buffer.from([0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]),
-    Buffer.from([0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x08, 0x00, 0x08, 0x01, 0x01, 0x11, 0x00]),
-    Buffer.from([0xff, 0xfe, 0x00, 0xca, ...new Array(200).fill(0x2a)]),
-    Buffer.from([0xff, 0xd9]),
-  ]);
+  // A real decoder-valid JPEG, not merely a header/EOI marker mock. The
+  // cloud now does genuine pixel decoding before a provider dispatch.
+  const jpeg = await sharp({
+    create: { width: 128, height: 128, channels: 3,
+      background: { r: 42, g: 42, b: 42 } },
+  }).jpeg({ quality: 82 }).toBuffer();
   const verdictRow = {
     candidateId: 'someone-else',
     slotObservations: {
@@ -879,14 +879,11 @@ test('inference authorization covers every audited download host plus first-part
   assert.equal(isInferenceAuthorized('https://static.zara.net:8443/img.jpg'), false, 'ports never authorized');
 });
 
-/** Deterministic 8x8 JPEG with a test-unique fill, valid for the critic. */
-const smokeJpeg = (fill) => Buffer.concat([
-  Buffer.from([0xff, 0xd8]),
-  Buffer.from([0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]),
-  Buffer.from([0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x08, 0x00, 0x08, 0x01, 0x01, 0x11, 0x00]),
-  Buffer.from([0xff, 0xfe, 0x00, 0xca, ...new Array(200).fill(fill)]),
-  Buffer.from([0xff, 0xd9]),
-]);
+/** Decoder-valid 128x128 JPEG, deterministic per fill with no metadata. */
+const smokeJpeg = async (fill) => sharp({
+  create: { width: 128, height: 128, channels: 3,
+    background: { r: fill, g: fill, b: fill } },
+}).jpeg({ quality: 80 }).toBuffer();
 
 /** Merchant-host catalog fixture; every SKU gets distinct image bytes. */
 const merchantShop = (salt, host = 'static.zara.net') => {
@@ -936,7 +933,7 @@ function verdictForPrompt(promptText, candidateId) {
 
 /** Media stub: merchant/first-party hosts get deterministic JPEG bytes, the
  * NVIDIA endpoint gets a grounded verdict derived from the sent prompt. */
-function makeVisualFetchStub(salt, recorder = { prompts: [], hosts: new Set() }) {
+function makeVisualFetchStub(salt, recorder = { prompts: [], hosts: new Set() }, mediaFormat = 'jpeg') {
   return async (url, options = {}) => {
     const parsed = new URL(String(url));
     recorder.hosts.add(parsed.hostname);
@@ -951,7 +948,15 @@ function makeVisualFetchStub(salt, recorder = { prompts: [], hosts: new Set() })
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     const fill = createHash('sha256').update(`${salt}:${String(url)}`).digest()[0] % 200 + 20;
-    return new Response(smokeJpeg(fill), { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+    const pixel = sharp({
+      create:{width:256,height:192,channels:3,background:{r:fill,g:fill,b:fill}},
+    });
+    const bytes=mediaFormat === 'png' ? await pixel.png().toBuffer()
+      : mediaFormat === 'webp' ? await pixel.webp().toBuffer()
+      : await smokeJpeg(fill);
+    return new Response(bytes, { status: 200, headers: { 'Content-Type':
+      mediaFormat === 'webp' ? 'image/webp' : mediaFormat === 'png' ? 'image/png' : 'image/jpeg',
+    } });
   };
 }
 
@@ -995,6 +1000,25 @@ test('allowlisted merchant imagery reaches the hosted critic and the deck report
   }
   assert.ok(result.body.outfits.some((look) => Array.isArray(look.items) && look.items.length >= 3));
   assert.equal(result.body.diagnostics.visualVerdict, 'JUDGED');
+});
+
+test('valid retail PNG/WebP get in-memory conversion and real critic verdicts',async()=>{
+  for(const format of ['png','webp']) {
+    const recorder={prompts:[],hosts:new Set()};
+    const result=await cloudVisualCall(
+      {...baseRequest,enableVisual:true,generationRequestId:'visual-format-'+format},
+      {salt:'media-format-'+format,fetchStub:makeVisualFetchStub('media-format-'+format,recorder,format)},
+    );
+    assert.equal(result.status,200,format);
+    assert.ok(['NVIDIA_APPLIED','NVIDIA_EVALUATED_NO_CHANGE'].includes(result.body.visualStatus),
+      format+' status '+result.body.visualStatus+' receipt '+JSON.stringify(result.body.visualReceipt));
+    assert.ok(result.body.visualReceipt.validVerdicts>0);
+    assert.ok(result.body.visualReceipt.providerCalls>0);
+    assert.ok(result.body.visualReceipt.imagesSent>=3);
+    assert.equal(result.body.visualReceipt.referenceBucketConfigured,false);
+    assert.ok(recorder.prompts.some(x=>x.includes('No reference image is supplied')));
+    assert.ok(recorder.hosts.has('integrate.api.nvidia.com'));
+  }
 });
 
 test('staging without a reference bucket judges reference-less looks and never claims a reference', async () => {
@@ -1080,7 +1104,7 @@ test('enableVisual without a server key completes the deterministic deck with an
   assert.equal(result.status, 200);
   assert.equal(result.body.visualStatus, 'NVIDIA_NOT_RUN');
   assert.deepEqual(result.body.visualReceipt, {
-    model: null, requested: true, serverDisabled: false,
+    model: null, requested: true, serverDisabled: false, referenceBucketConfigured: false,
     providerCalls: 0, imagesSent: 0, cacheHits: 0, retriedCalls: 0,
     validVerdicts: 0, abstentions: 0, totalTokens: null, events: [],
   });

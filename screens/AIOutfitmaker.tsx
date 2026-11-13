@@ -3,7 +3,7 @@ import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveS
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, stylist6Language, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, stylist6Language, stylist6VisualDiagnostic, type DevEngine} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -2045,7 +2045,7 @@ const AIOutfitGenerator = () => {
           setInventoryNote(data.inventoryReason==='distinct_editorial_inventory_limited' ? t('outfitMaker.distinctInventoryLimited') : '');
           // Record the ACTUAL engine that produced this deck for dev display.
           setLastEngineVersion(String(data.generationVersion || 'unknown'));
-          setLastEngineDetail(typeof data?.visualStatus === 'string' ? String(data.visualStatus) : (data?.diagnostics?.visualVerdict ? `visual ${String(data.diagnostics.visualVerdict)}` : (s6Active ? 'local bridge' : null)));
+          setLastEngineDetail(stylist6VisualDiagnostic(data) || (data?.diagnostics?.visualVerdict ? `visual ${String(data.diagnostics.visualVerdict)}` : (s6Active ? 'local bridge' : null)));
           setOutfits(shownOutfits);
           // History persistence must not turn already rendered success into
           // an error (or charge a use for a screen cleared by a cache failure).

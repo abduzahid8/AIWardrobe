@@ -37,6 +37,7 @@ import {
   VISUAL_TIMEOUT_MS,
 } from './visual_critic_hosted.mjs';
 import { HOST_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/image_access.mjs';
+import { prepareCloudVisualMedia } from './cloud_visual_media.mjs';
 import { verifyStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46.json' with { type: 'json' };
 
@@ -423,12 +424,14 @@ async function resolveProductAsset(imageUrl, cache, fetchFn) {
   if (cache.has(url)) return cache.get(url);
   const get = fetchFn || fetchWithTimeout;
   const response = await get(url, {
-    redirect: 'follow', headers: { 'User-Agent': 'AIWardrobe-Stylist6-Cloud/1.0', Accept: 'image/*,*/*;q=0.8' },
+    // Never follow a whitelisted CDN's redirect to an arbitrary other host.
+    // Seller infrastructure must serve approved origin bytes directly.
+    redirect: 'error', headers: { 'User-Agent': 'AIWardrobe-Stylist6-Cloud/1.0', Accept: 'image/*,*/*;q=0.8' },
   });
   if (!response.ok) throw new Error('product_image_unresolved');
   const raw = Buffer.from(await response.arrayBuffer());
   if (raw.length > MAX_PRODUCT_IMAGE_BYTES) throw new Error('image_size_invalid');
-  const fitted = fitVisualBytesCloud(raw);
+  const fitted = await prepareCloudVisualMedia(raw);
   if (!fitted) throw new Error('image_toolchain_unavailable');
   const asset = { bytes: fitted, sha256: createHash('sha256').update(fitted).digest('hex') };
   cache.set(url, asset);
@@ -456,7 +459,7 @@ async function resolveReferenceAsset(env, url, referenceId, fetchFn) {
   );
   if (!response.ok) throw new Error('reference_unresolved');
   const raw = Buffer.from(await response.arrayBuffer());
-  const fitted = fitVisualBytesCloud(raw);
+  const fitted = await prepareCloudVisualMedia(raw);
   if (!fitted) throw new Error('reference_unresolved');
   return { bytes: fitted, sha256: createHash('sha256').update(fitted).digest('hex') };
 }
@@ -693,6 +696,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         provider: 'nvidia',
         apiKey: nvidiaKey,
         model: NVIDIA_VISION_MODEL,
+        // Referenceless visual critique is allowed only when the entire
+        // reference bucket was never configured. If an explicitly configured
+        // bucket cannot serve the selected reference, the critic abstains.
+        referenceMediaConfigured: Boolean(String(env.STYLIST6_REFERENCE_BUCKET || '').trim()),
         timeoutMs: VISUAL_TIMEOUT_MS,
         providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
         ...(fetchImpl ? { fetchImpl } : {}),
@@ -782,6 +789,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           model: visualCritic ? NVIDIA_VISION_MODEL : null,
           requested: visualAsked,
           serverDisabled: visualAsked && visualDisabled,
+          // Owner reference storage is optional; without it the critic may
+          // still judge actual product images, but never score "reference
+          // fidelity". This metadata is non-sensitive and explicitly names
+          // the evidence mode of the attempt.
+          referenceBucketConfigured: Boolean(String(env.STYLIST6_REFERENCE_BUCKET || '').trim()),
           providerCalls: visualEvents.filter((event) => event.dispatched).length,
           imagesSent: visualEvents.reduce((sum, event) =>
             sum + (event.dispatched && Number.isSafeInteger(event.images) ? event.images : 0), 0),

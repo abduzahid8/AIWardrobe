@@ -11,7 +11,8 @@
     "test": "node --experimental-strip-types --test test/*.test.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.45.4"
+    "@supabase/supabase-js": "2.45.4",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "esbuild": "0.25.9",

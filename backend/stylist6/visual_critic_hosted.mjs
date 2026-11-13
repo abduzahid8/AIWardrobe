@@ -263,6 +263,10 @@ export function createHostedVisualCritic({
   signal: callerSignal,
   resolveReference,
   resolveProduct,
+  // Only set this false when the owner intentionally did NOT configure any
+  // reference media bucket. A configured-but-missing reference stays a
+  // failure, never a silent reference-less downgrade.
+  referenceMediaConfigured = true,
   onEvent,
 } = {}) {
   if (!['gemini', 'nvidia'].includes(provider)) throw new Error('unsupported_visual_critic_provider');
@@ -270,6 +274,7 @@ export function createHostedVisualCritic({
   if (typeof resolveReference !== 'function' || typeof resolveProduct !== 'function') {
     throw new Error('trusted_media_resolvers_required');
   }
+  if (typeof referenceMediaConfigured !== 'boolean') throw new Error('invalid_reference_media_configuration');
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > VISUAL_TIMEOUT_MS) {
     throw new Error('invalid_visual_timeout');
   }
@@ -330,7 +335,9 @@ export function createHostedVisualCritic({
         // judged purely on its product images; an id must still be a valid
         // token, and an invalid one never degrades into a reference-less run.
         const referenceId = candidate.referenceId || null;
-        const referenceless = !referenceId;
+        const useReference = !!referenceId && referenceMediaConfigured;
+        const referenceless = !useReference;
+        const evidenceReferenceId = useReference ? referenceId : null;
         if (!/^[a-zA-Z0-9_-]{1,64}$/.test(candidate.id)
             || (referenceId && !/^[a-zA-Z0-9_-]{1,64}$/.test(referenceId))
             || ![3, 4].includes(candidate.products.length)
@@ -373,7 +380,9 @@ export function createHostedVisualCritic({
         // a hit implies the exact same transmitted bytes as the cached run.
         const cacheKey = verdictCacheKey({
           model: `${provider}/${selectedModel}`,
-          referenceId,
+          // The model did not see reference bytes when no owner bucket is
+          // configured. Cache identity and prompt must both reflect THAT.
+          referenceId: evidenceReferenceId,
           referenceSha256: reference?.sha256,
           slots: candidate.products.map(({ slot }) => slot),
           items: candidate.products.map((product, index) =>

@@ -181,6 +181,37 @@ describe('stylist6 dev bridge client', () => {
   });
 });
 
+describe('safe visual receipt reporting for owner iOS screenshots',()=>{
+  test('NVIDIA_ABSTAINED exposes bounded cause and counts without leaking provider data',()=>{
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const {stylist6VisualDiagnostic}=loadDevModule();
+    const received={
+      visualStatus:'NVIDIA_ABSTAINED',
+      visualReceipt:{
+        providerCalls:0,validVerdicts:0,abstentions:4,
+        events:[{
+          reason:'reference_unresolved',outcome:'abstain',
+          candidateId:'PRIVATE-SKU', imageUrl:'https://seller.example/private.jpg',
+          jwt:'PRIVATE-JWT',apiKey:'PRIVATE-KEY',
+        }],
+      },
+    };
+    expect(stylist6VisualDiagnostic(received)).toBe('NVIDIA_ABSTAINED c0/v0/a4 · reference_unresolved');
+  });
+
+  test('unknown server strings are never echoed or treated as a verdict',()=>{
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const {stylist6VisualDiagnostic}=loadDevModule();
+    expect(stylist6VisualDiagnostic({visualStatus:'NVIDIA_ABSTAINED',visualReceipt:{
+      events:[{reason:'Bearer secret-key'}],providerCalls:-100,validVerdicts:0,abstentions:20,
+    }})).toBe('NVIDIA_ABSTAINED');
+    expect(stylist6VisualDiagnostic({visualStatus:'arbitrary_server_echo'})).toBeNull();
+    expect(stylist6VisualDiagnostic({visualStatus:'NVIDIA_NOT_RUN'})).toBe('NVIDIA_NOT_RUN');
+  });
+});
+
 describe('stylist6 cloud staging client', () => {
   const mockInvoke = jest.fn();
   beforeEach(() => {

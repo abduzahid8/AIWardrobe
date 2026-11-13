@@ -89,6 +89,47 @@ test('Gemini 3.8 retains multimodal JSON contract without removed sampling param
   assert.equal(sent.contents[0].parts.filter((p) => p.inlineData).length, 5);
 });
 
+test('unconfigured owner reference bucket uses product-only critique without fake reference claims',async()=>{
+  const captures=[];
+  const critic=createHostedVisualCritic({
+    provider:'nvidia',apiKey,
+    referenceMediaConfigured:false,
+    resolveReference:()=>{throw new Error('must not fetch absent owner reference bucket')},
+    resolveProduct:()=>asset(),
+    fetchImpl:async(url, init)=>{
+      captures.push(JSON.parse(init.body));
+      return nvidiaResponse(referencelessVerdict(candidate.id));
+    },
+  });
+  const result=await critic([candidate],{style:'classic',occasion:'Work'});
+  assert.equal(result.length,1);
+  assert.equal(result[0].referenceless,true);
+  assert.equal(result[0].referenceFidelity,undefined);
+  assert.equal(captures.length,1);
+  const images=captures[0].messages[0].content.filter(item=>item.type==='image_url');
+  assert.equal(images.length,4,'products only; no missing reference slot');
+  assert.match(captures[0].messages[0].content[0].text,/No reference image is supplied/);
+});
+
+test('configured owner reference bucket failure never silently downgrades to product-only',async()=>{
+  let calls=0;const events=[];
+  const critic=createHostedVisualCritic({
+    provider:'nvidia',apiKey,referenceMediaConfigured:true,
+    resolveReference:()=>{throw new Error('staged_owner_reference_missing')},
+    resolveProduct:()=>asset(),
+    onEvent:e=>events.push(e),
+    fetchImpl:async()=>{calls++;throw Error('must_not_call_provider')},
+  });
+  assert.deepEqual(await critic([candidate]),[]);
+  assert.equal(calls,0);
+  assert.equal(events[0].reason,'reference_unresolved');
+  assert.equal(events[0].dispatched,false);
+  assert.throws(()=>createHostedVisualCritic({
+    apiKey,resolveReference:()=>asset(),resolveProduct:()=>asset(),
+    referenceMediaConfigured:'false',
+  }),/invalid_reference_media_configuration/);
+});
+
 test('missing, mismatched and oversized media abstains with zero outbound I/O', async () => {
   for (const product of [null, { ...asset(), sha256: '0'.repeat(64) }, asset(8, 3000), { bytes: Buffer.alloc(524289) }]) {
     const events = [];
