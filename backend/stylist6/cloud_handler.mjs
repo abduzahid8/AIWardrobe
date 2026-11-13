@@ -250,13 +250,17 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         return false;
       }
     },
-    async fetchShopRows() {
+    async fetchShopRows(seed = null) {
       const rows = new Map();
+      // An unanchored fresh request gets a stable but rotated bounded catalog
+      // window. Keep legacy sampling for explicit anchors (no missing locked
+      // product due to a random discovery page). No client-supplied raw seed.
+      const safeSeed = typeof seed === 'string' && /^[a-f0-9]{16}$/.test(seed) ? seed : null;
       for (const slot of CATALOG_SLOTS) {
         const response = await fetch(`${url}/rest/v1/rpc/catalog_discovery_candidates`, {
           method: 'POST',
           headers: { ...authHeaders(serviceKey), Authorization: `Bearer ${serviceKey}` },
-          body: JSON.stringify({ p_slot: slot, p_search: '', p_seed: `s6cloud:${slot}`, p_limit: CATALOG_PER_SLOT, p_offset: 0 }),
+          body: JSON.stringify({ p_slot: slot, p_search: '', p_seed: safeSeed ? `s6cloud:${slot}:${safeSeed}` : `s6cloud:${slot}`, p_limit: CATALOG_PER_SLOT, p_offset: 0 }),
         });
         const data = await check(response, 'stylist6_catalog_unavailable');
         for (const row of Array.isArray(data) ? data : []) {
@@ -542,8 +546,13 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
   try {
     // Server-side inventory only. Shop rows come from the discovery RPC;
     // wardrobe rows come from clothing_items filtered by the verified user.
+    // Stable over retries of identical request bytes, different on fresh
+    // requests (including a new client request id), private user scope; no
+    // extra RPCs or cross-user data. Keep anchored inventory stable.
+    const discoverySeed = requiredIds.length ? null : createHash('sha256')
+      .update(userId).update('|').update(body).digest('hex').slice(0, 16);
     const [shopRows, wardrobeRows] = await Promise.all([
-      sourceMode === 'wardrobe' ? [] : io.fetchShopRows(),
+      sourceMode === 'wardrobe' ? [] : io.fetchShopRows(discoverySeed),
       sourceMode === 'catalog' ? [] : io.fetchWardrobeRows(userId),
     ]);
     deadline();
