@@ -1067,14 +1067,14 @@ test('gate D: opposite explicit feedback flips the deck over the same inventory'
   // The read receipt is honest, and the adjustment is visible in per-look
   // diagnostics bounded to the feedback cap.
   assert.deepEqual(userA.body.feedbackTaste, {
-    status: 'ok', rows: 4, active: true, version: 's6-feedback-taste-v1',
+    status: 'ok', rows: 4, active: true, version: 's6-feedback-taste-v2',
   });
   const diagnostics = userA.body.outfits
     .map((outfit) => outfit.fashionDiagnostics?.personalization?.feedback)
     .filter(Boolean);
   assert.ok(diagnostics.length >= 1, 'feedback adjustment must appear in scoring diagnostics');
   for (const entry of diagnostics) {
-    assert.equal(entry.version, 's6-feedback-taste-v1');
+    assert.equal(entry.version, 's6-feedback-taste-v2');
     assert.ok(Math.abs(entry.adjustment) <= 0.06);
   }
   assert.ok(diagnostics.some((entry) => entry.adjustment > 0));
@@ -1102,7 +1102,7 @@ test('gate D: zero feedback reproduces the exact legacy ranking', async () => {
       assert.equal(outfit.fashionDiagnostics?.personalization?.feedback, undefined);
     }
     assert.equal(result.body.diagnostics.feedbackTasteActive, false);
-    assert.equal(result.body.diagnostics.feedbackTasteVersion, 's6-feedback-taste-v1');
+    assert.equal(result.body.diagnostics.feedbackTasteVersion, 's6-feedback-taste-v2');
   }
 });
 
@@ -1111,7 +1111,7 @@ test('gate D: a feedback read failure degrades honestly and never fails the deck
   assert.equal(result.status, 200);
   assert.equal(result.body.success, true);
   assert.deepEqual(result.body.feedbackTaste, {
-    status: 'read_failed', rows: 0, active: false, version: 's6-feedback-taste-v1',
+    status: 'read_failed', rows: 0, active: false, version: 's6-feedback-taste-v2',
   });
   assert.equal(result.body.outfits.length, 3);
   assert.equal(result.calls.debitQuota, 1);
