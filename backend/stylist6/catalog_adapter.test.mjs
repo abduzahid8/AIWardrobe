@@ -168,7 +168,7 @@ test('color and texture inference covers reference palette words', () => {
 });
 
 test('adapter version is pinned for pilot provenance', () => {
-  assert.equal(CATALOG_ADAPTER_VERSION, 'catalog-adapter-v1');
+  assert.equal(CATALOG_ADAPTER_VERSION, 'catalog-adapter-v2-category-evidence');
 });
 
 test('live intelligence hints are honored with provenance, never remapped', async () => {

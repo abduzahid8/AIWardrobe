@@ -19,8 +19,9 @@
  */
 
 import { createHash } from 'node:crypto';
+import { assessCatalogCategory } from './catalog_category_integrity.mjs';
 
-export const CATALOG_ADAPTER_VERSION = 'catalog-adapter-v1';
+export const CATALOG_ADAPTER_VERSION = 'catalog-adapter-v2-category-evidence';
 
 const has = (text, re) => re.test(text);
 
@@ -233,6 +234,10 @@ export function projectCatalogItem(row) {
   }
   if (typeof row.currency !== 'string' || !/^[A-Z]{3}$/.test(row.currency)) {
     return { skipped: 'bad_currency', id };
+  }
+  const integrity = assessCatalogCategory(row);
+  if (integrity.status === 'confirmed_category_conflict' || integrity.status === 'native_role_conflict') {
+    return { skipped: 'catalog_category_conflict', id };
   }
   const name = String(row.name || id);
   const ageDays = priceAgeDays(row);
