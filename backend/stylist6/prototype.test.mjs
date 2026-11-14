@@ -163,6 +163,25 @@ test('review slots preserve the seed and cover distinct products from the same b
 });
 
 
+test('the third reviewed look needs material architectural diversity rather than only a new SKU',()=>{
+  const slots=['top','bottom','shoes'];
+  const looks=['a','b','c'].map((id,i)=>({
+    id,briefId:'brief-'+id,brief:{id:'brief-'+id,name:'Sample'},
+    items:slots.map(slot=>({id:slot+'-'+id,macroCategory:slot,
+      subtype:slot==='top'?'shirt':slot==='bottom'?'trouser':'loafer',
+      color:slot==='top'?['sky','white','ivory'][i]:'navy',texture:'cotton'})),
+  }));
+  const critiques=looks.map(({id})=>({candidateId:id,visualCohesion:.95,referenceFidelity:.95,
+    styleFit:.95,occasionFit:.95,formalityFit:.95,confidence:.95,reject:false,
+    evidence:['top and bottom balance','shoes ground color','texture cohesion']}));
+  const input={generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}};
+  const plain=selectVisualDeck(input,critiques,{target:3,minNovelty:.01});
+  const guarded=selectVisualDeck(input,critiques,{target:3,minNovelty:.01,requireDistinctArchitectures:true});
+  assert.equal(plain.outfits.length,3);
+  assert.equal(guarded.outfits.length,2);
+  assert.equal(guarded.status,'distinct_inventory_limited');
+});
+
 test('joint selection keeps the strongest first look and avoids a second look that blocks a full deck',()=>{
   const slots=['top','outerwear','bottom','shoes'];
   const looks=[[0,0,0,0],[1,2,0,0],[1,1,0,0],[1,2,0,1]].map((keys,index)=>({

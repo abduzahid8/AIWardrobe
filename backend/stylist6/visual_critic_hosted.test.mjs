@@ -111,6 +111,39 @@ test('unconfigured owner reference bucket uses product-only critique without fak
   assert.match(captures[0].messages[0].content[0].text,/No reference image is supplied/);
 });
 
+test('curated text blueprint guides styleFit while reference fidelity remains unavailable',async()=>{
+  const blueprint={id:'rt_001',name:'Grey tailored utility',palette:['grey','ivory'],
+    garments:{top:'ivory mockneck',outerwear:'grey wool overshirt',bottom:'tailored black trousers',shoes:'white minimal sneakers'},
+    evidenceMode:'textual_editorial_brief_not_visual_reference'};
+  const seen=[];
+  const critic=createHostedVisualCritic({
+    provider:'nvidia',apiKey,referenceMediaConfigured:false,
+    referenceBlueprints:new Map([['rt_001',blueprint]]),
+    resolveReference:()=>{throw Error('rights unverified; no photographic reference is sent')},
+    resolveProduct:()=>asset(130),
+    fetchImpl:async(url,init)=>{seen.push(JSON.parse(init.body));return nvidiaResponse(referencelessVerdict(candidate.id));},
+  });
+  const first=(await critic([candidate],{style:'classic',occasion:'Work'}))[0];
+  assert.equal(first.referenceless,true);
+  assert.equal(first.referenceMode,'textual_editorial_blueprint');
+  assert.equal(first.referenceFidelity,undefined);
+  assert.equal(seen.length,1);
+  const body=seen[0],prompt=body.messages[0].content[0].text;
+  assert.match(prompt,/editorial TEXT BLUEPRINT/);
+  assert.match(prompt,/grey wool overshirt/);
+  assert.match(prompt,/never claim photographic reference fidelity/);
+  assert.equal(body.messages[0].content.filter(x=>x.type==='image_url').length,4);
+  const altered=createHostedVisualCritic({
+    provider:'nvidia',apiKey,referenceMediaConfigured:false,
+    referenceBlueprints:new Map([['rt_001',{...blueprint,palette:['tan','burgundy']}]]),
+    resolveReference:()=>{throw Error('must not fetch image')},
+    resolveProduct:()=>asset(130),
+    fetchImpl:async(url,init)=>{seen.push(JSON.parse(init.body));return nvidiaResponse(referencelessVerdict(candidate.id));},
+  });
+  assert.equal((await altered([candidate]))[0].referenceMode,'textual_editorial_blueprint');
+  assert.equal(seen.length,2,'changing blueprint invalidates cached provider verdict');
+});
+
 test('configured owner reference bucket failure never silently downgrades to product-only',async()=>{
   let calls=0;const events=[];
   const critic=createHostedVisualCritic({
