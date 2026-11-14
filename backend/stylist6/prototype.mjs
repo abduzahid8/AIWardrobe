@@ -279,6 +279,43 @@ export async function evaluateVisualShortlist(retrieval,request,visualCritic,opt
   return selectVisualDeck({...retrieval,shortlist},critiques,options,criticFailed);
 }
 
+/**
+ * A visually reviewed deck needs garment-architecture contrast, not merely
+ * renamed SKUs. Explicit subtype, texture and known color differences are
+ * catalog evidence; unknown attributes never fabricate a positive claim.
+ */
+export function independentOutfitDirection(a, b, requiredIds = []) {
+  const roles = ['top', 'outerwear', 'bottom', 'shoes'];
+  const anchored = new Set((requiredIds || []).map(String));
+  const valid = value => typeof value === 'string' && value.trim() &&
+    !['unknown','neutral','none','smooth','missing'].includes(value.trim().toLowerCase());
+  const nameColor = item => {
+    const name = String(item?.name || '').toLowerCase();
+    const match = name.match(/\b(?:navy|white|cream|grey|gray|beige|brown|black|tan|burgundy|charcoal|olive|blue|red)\b/);
+    return match?.[0] === 'gray' ? 'grey' : match?.[0];
+  };
+  const get = (look, slot) => (look?.items || []).find(x => x.macroCategory === slot);
+  let structure = 0, texture = 0, palette = 0, comparable = 0;
+  for (const role of roles) {
+    const x = get(a, role), y = get(b, role);
+    if (role === 'outerwear' && Boolean(x) !== Boolean(y)) { structure++; comparable++; continue; }
+    if (!x || !y) continue;
+    const subA = text(x.subtype), subB = text(y.subtype);
+    if (role !== 'shoes' && valid(subA) && valid(subB)) {
+      comparable++;
+      if (subA !== subB) structure++;
+    }
+    const texA = text(x.texture), texB = text(y.texture);
+    if (role !== 'shoes' && valid(texA) && valid(texB) && texA !== texB) texture++;
+    if (anchored.has(String(x.id)) && anchored.has(String(y.id))) continue;
+    const colA = text(valid(x.color) ? x.color : nameColor(x));
+    const colB = text(valid(y.color) ? y.color : nameColor(y));
+    if (valid(colA) && valid(colB) && colA !== colB) palette++;
+  }
+  if (!comparable) return true; // lack of metadata is not a veto
+  return structure > 0 || texture >= 2 || palette >= (anchored.size ? 2 : 3);
+}
+
 /** Replay verdicts against the exact judged candidate set without provider I/O. */
 export function selectVisualDeck({generationVersion,shortlist,diagnostics},critiques,options={},criticFailed=false){
   assert(shortlist.length<=MAX_VISUAL_CANDIDATES,'invalid_visual_limit');
@@ -338,6 +375,8 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
     if(deck.length===target)return;
     for(const c of eligible){
       if(deck.includes(c))continue;
+      if(options.requireDistinctArchitectures===true && deck.length>=2 &&
+          deck.some(other=>!independentOutfitDirection(c,other,options.requiredIds)))continue;
       const difference=Math.min(...deck.map(other=>novelty(c,other)));
       if(difference<(options.minNovelty??0.30)||difference===0)continue;
       const repeats=deck.some(other=>other.briefId===c.briefId);

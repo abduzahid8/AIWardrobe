@@ -20,6 +20,7 @@ import { EDITORIAL_QUALITY_VERSION, evaluateEditorialQuality } from './editorial
 import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitStructure.ts';
 import { rejectForClimate, rejectForStyleOccasion } from '../../src/domain/occasionRules.ts';
 import { editorialDeckCopy, DECK_COPY_VERSION } from './deck_editorial_copy.mjs';
+import { editorialRegisterVeto, EDITORIAL_REGISTER_VERSION } from './editorial_register.mjs';
 
 const slots = ['top', 'outerwear', 'bottom', 'shoes'];
 const normalized = (value) => String(value || '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -638,11 +639,20 @@ export async function recommendFashionDeck({
       requiredIds, feedbackTaste,
     }), perRole: 8, perBrief: 100, maxVisual: 72 },
   });
+  // A single cross-slot veto applies to both selection and hosted review.
+  // Never swap a pinned user item without asking; show fewer looks instead.
+  const editorialVetoes = {};
+  const selectable = retrieval.shortlist.filter((look) => {
+    const reason = editorialRegisterVeto(look, context);
+    if (!reason) return true;
+    editorialVetoes[reason] = (editorialVetoes[reason] || 0) + 1;
+    return false;
+  });
   const layerMix = { three: 0, four: 0 };
-  for (const candidate of retrieval.shortlist) layerMix[candidate.items.length === 3 ? 'three' : 'four'] += 1;
-  const ordered = retrieval.shortlist.map((c) => c.fashion?.score).filter(Number.isFinite).sort((a, b) => b - a);
+  for (const candidate of selectable) layerMix[candidate.items.length === 3 ? 'three' : 'four'] += 1;
+  const ordered = selectable.map((c) => c.fashion?.score).filter(Number.isFinite).sort((a, b) => b - a);
   const deckContext = { ...context, requiredIds };
-  let selected = chooseDeck(retrieval.shortlist, deckContext);
+  let selected = chooseDeck(selectable, deckContext);
   const floor = applyExclusionQualityFloor(
     selected, ordered[0] ?? NaN, (retrieval.diagnostics.exclusions?.requested || 0) > 0);
   selected = floor.kept;
@@ -670,7 +680,7 @@ export async function recommendFashionDeck({
     if (candidates.length < 4) {
       const metrics = creativeMetrics(deckContext);
       const leadScore = lead.fashion?.score ?? -Infinity;
-      const extras = retrieval.shortlist
+      const extras = selectable
         .filter(look => !candidates.some(chosen => chosen.id === look.id) &&
           Number.isFinite(look.fashion?.score) &&
           look.fashion.score >= leadScore - VISUAL_CHALLENGER_QUALITY_WINDOW &&
@@ -693,7 +703,7 @@ export async function recommendFashionDeck({
     if (candidates.length) {
       const reviewed = await evaluateVisualShortlist(
         { ...retrieval, shortlist: candidates }, request, visualCritic,
-        { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds },
+        { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds, requireDistinctArchitectures: true },
       );
       visualVerdict = reviewed.diagnostics.visualValid > 0 ? 'JUDGED' : 'ABSTAINED';
       const rejected = new Set(reviewed.diagnostics.rejectedCandidateIds);
@@ -733,7 +743,7 @@ export async function recommendFashionDeck({
     }
   } else if (selected.length >= 1 && typeof visualCritic === 'function' && typeof canJudgeOutfit === 'function' && await permitted(selected[0])) {
     const lead = selected[0];
-    const alternatives = retrieval.shortlist.filter((candidate) =>
+    const alternatives = selectable.filter((candidate) =>
       !selected.includes(candidate) && Math.abs(candidate.fashion.score - lead.fashion.score) <= TIE_MARGIN &&
       selected.slice(1).every((look) => Math.max(look.items.length, candidate.items.length) - overlaps(look, candidate) >= 2))
       .sort((a, b) => b.fashion.score - a.fashion.score);
@@ -747,7 +757,7 @@ export async function recommendFashionDeck({
         visualWinner = result.outfits[0];
         if (visualWinner.id === alternate.id) selected = [alternate, ...selected.slice(1)];
       } else if (rejected.has(lead.id)) {
-        selected = chooseDeck(retrieval.shortlist, context, rejected);
+        selected = chooseDeck(selectable, context, rejected);
       }
       judged = true;
       break;
@@ -763,7 +773,7 @@ export async function recommendFashionDeck({
       if (visualVerdict === 'JUDGED' && result.outfits[0]) {
         visualWinner = result.outfits[0];
       } else if (rejected.has(lead.id)) {
-        selected = chooseDeck(retrieval.shortlist, context, rejected);
+        selected = chooseDeck(selectable, context, rejected);
       }
     }
   }
@@ -782,7 +792,7 @@ export async function recommendFashionDeck({
           : visualWinner?.id === look.id ? { visualEvidence: visualWinner.evidence } : {}),
       };
     }),
-    diagnostics: { ...retrieval.diagnostics, visualVerdict,
+    diagnostics: { ...retrieval.diagnostics, editorialRegister: { version: EDITORIAL_REGISTER_VERSION, rejected: editorialVetoes, eligible: selectable.length }, visualVerdict,
       directionVersion: DIRECTION_VERSION,
       editorialQualityVersion: EDITORIAL_QUALITY_VERSION,
       deckCopyVersion: DECK_COPY_VERSION,
