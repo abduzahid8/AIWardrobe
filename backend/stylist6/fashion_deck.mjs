@@ -658,6 +658,7 @@ export async function recommendFashionDeck({
   selected = floor.kept;
   let visualVerdict = 'NOT_RUN', visualWinner;
   const visualEvidenceById = new Map();
+  const visualReferenceModeById = new Map();
   let visualReviewCoverage = null;
   // Reference-optional review: a deck with no matching reference brief is
   // still visually judged on its product images alone (the critic marks such
@@ -725,6 +726,7 @@ export async function recommendFashionDeck({
       for (const approved of reviewed.outfits) {
         if (Array.isArray(approved.evidence)) {
           visualEvidenceById.set(approved.id, approved.evidence);
+          if (approved.referenceMode) visualReferenceModeById.set(approved.id, approved.referenceMode);
         }
       }
       if (reviewed.diagnostics.visualValid > 0) {
@@ -787,6 +789,8 @@ export async function recommendFashionDeck({
         concept: { ...copy[index].concept, referenceId: reference?.referenceId ?? null },
         direction: directions[index],
         fashion: look.fashion,
+        ...(visualReferenceModeById.has(look.id)
+          ? { visualReferenceMode: visualReferenceModeById.get(look.id) } : {}),
         ...(visualEvidenceById.has(look.id)
           ? { visualEvidence: visualEvidenceById.get(look.id) }
           : visualWinner?.id === look.id ? { visualEvidence: visualWinner.evidence } : {}),
