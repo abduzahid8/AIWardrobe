@@ -1,4 +1,4 @@
-import { resolveOutfitSelectionSource, offerCaveatLabel } from '../../src/services/stylingCopy';
+import { resolveOutfitSelectionSource, offerCaveatLabel, shopCardActionMode, shopCardHasDirectListing } from '../../src/services/stylingCopy';
 
 describe('Stylist 6 per-look visual & merchant offer truth helpers', () => {
   test('only grants ai badge to individually JUDGED Stylist 6 looks when deck is NVIDIA_APPLIED', () => {
@@ -24,6 +24,18 @@ describe('Stylist 6 per-look visual & merchant offer truth helpers', () => {
     expect(resolveOutfitSelectionSource({}, { source: 'ai' })).toBe('ai');
     expect(resolveOutfitSelectionSource({}, { source: 'hybrid' })).toBe('hybrid');
     expect(resolveOutfitSelectionSource({}, { source: 'legacy' })).toBe('deterministic_fallback');
+  });
+
+  test('merchant listings never promise checkout and never link to a different product',()=>{
+    expect(shopCardActionMode({offerVerification:{offerStatus:'unverified_catalog_listing'}})).toBe('view_store');
+    expect(shopCardActionMode({offerVerification:{offerStatus:'merchant_reported_live'}})).toBe('view_store');
+    expect(shopCardActionMode({offerVerification:null})).toBe('buy');
+    expect(shopCardHasDirectListing({shopUrl:'https://frgroup.uz/ru/store/item-a',
+      offerVerification:{purchaseUrlValid:true,purchaseUrl:'https://frgroup.uz/ru/store/item-a'}})).toBe(true);
+    expect(shopCardHasDirectListing({shopUrl:'https://frgroup.uz/ru/store/item-a',
+      offerVerification:{purchaseUrlValid:true,purchaseUrl:'https://frgroup.uz/ru/store/item-b'}})).toBe(false);
+    expect(shopCardHasDirectListing({shopUrl:'',offerVerification:{purchaseUrlValid:false}})).toBe(false);
+    expect(shopCardHasDirectListing({shopUrl:'',offerVerification:null})).toBe(true);
   });
 
   test('renders honest offer caveats for shop items with unverified size/stock or stale pricing', () => {

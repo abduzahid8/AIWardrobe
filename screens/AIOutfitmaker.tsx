@@ -1,5 +1,5 @@
 import {validateOutfitGenerationRequest,OutfitRequestError} from '../src/domain/outfitGenerationRequest';
-import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveOutfitSelectionSource,selectionBadgeKey,offerCaveatLabel} from '../src/services/stylingCopy';
+import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveOutfitSelectionSource,selectionBadgeKey,offerCaveatLabel,shopCardActionMode,shopCardHasDirectListing} from '../src/services/stylingCopy';
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
@@ -93,7 +93,7 @@ interface OutfitItem {
   price?: number;
   currency?: string;
   priceFreshness?: string | null;
-  offerVerification?: { sizeStockStatus?: string | null; limitations?: string[]; [key: string]: unknown } | null;
+  offerVerification?: { sizeStockStatus?: string | null; limitations?: string[]; purchaseUrl?: string | null; purchaseUrlValid?: boolean; [key: string]: unknown } | null;
 }
 
 interface GeneratedOutfit {
@@ -507,6 +507,7 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
   }, []);
 
   const buyLabel = t('outfitMaker.buy', 'Buy');
+  const viewStoreLabel = t('outfitMaker.viewProductAtStore', 'Check at store');
   const photoUnavailableLabel = t('common.photoUnavailable', 'Photo unavailable');
   return (
     <View style={slotStyles.grid}>
@@ -532,8 +533,8 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
             imageUri={typeof src === 'object' ? src.uri : undefined}
             itemId={slot.item?.id ? String(slot.item.id) : undefined}
             buyUrl={buyUrl}
-            showBuyButton={showBuyButtons && slot.item.isWardrobe !== true}
-            buyLabel={buyLabel}
+            showBuyButton={showBuyButtons && slot.item.isWardrobe !== true && shopCardHasDirectListing(slot.item)}
+            buyLabel={shopCardActionMode(slot.item) === 'view_store' ? viewStoreLabel : buyLabel}
             photoUnavailableLabel={photoUnavailableLabel}
             textSecondary={D.textSecondary}
             textPrimary={D.textPrimary}

@@ -144,6 +144,32 @@ export function offerCaveatLabel(
   return null;
 }
 
+/**
+ * A catalog listing is not a reservation or verified checkout. Stylist 6
+ * opens a direct SKU listing for final stock/size verification, never labels
+ * this action as an immediate purchase. Legacy Stylist 5 stays unchanged.
+ */
+export function shopCardActionMode(item: {
+  offerVerification?: unknown;
+} | null | undefined): 'view_store' | 'buy' {
+  return item?.offerVerification && typeof item.offerVerification === 'object' ? 'view_store' : 'buy';
+}
+
+/**
+ * No search-result redirect for an unverified cloud SKU. Only a validated
+ * direct merchant listing can carry the 'check at store' action.
+ */
+export function shopCardHasDirectListing(item: {
+  shopUrl?: unknown;
+  offerVerification?: { purchaseUrlValid?: unknown; purchaseUrl?: unknown } | null;
+} | null | undefined): boolean {
+  if (shopCardActionMode(item) === 'buy') return true;
+  const url = item?.shopUrl;
+  const evidence = item?.offerVerification;
+  return typeof url === 'string' && url.length > 0 &&
+    evidence?.purchaseUrlValid === true && evidence.purchaseUrl === url;
+}
+
 /** Card badge copy key. The AI badge renders for genuine provider acceptance
  * only; hybrid and fallback looks use the neutral curated label. */
 export function selectionBadgeKey(source: unknown): string {

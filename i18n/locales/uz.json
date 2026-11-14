@@ -1004,7 +1004,8 @@
       "mid": "o‘chirilgan tuslar",
       "cool-dark": "chuqur sovuq tuslar",
       "cool-mid": "sovuq tuslar"
-    }
+    },
+    "viewProductAtStore": "Do‘konda tekshirish"
   },
   "paywall": {
     "verifyingPurchase": "Xarid tekshirilmoqda",

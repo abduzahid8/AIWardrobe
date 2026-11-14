@@ -989,7 +989,8 @@
       "mid": "muted tones",
       "cool-dark": "deep cool tones",
       "cool-mid": "cool tones"
-    }
+    },
+    "viewProductAtStore": "Check at store"
   },
   "paywall": {
     "verifyingPurchase": "Verifying your purchase",
