@@ -1,5 +1,5 @@
 import {validateOutfitGenerationRequest,OutfitRequestError} from '../src/domain/outfitGenerationRequest';
-import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveSelectionSource,selectionBadgeKey} from '../src/services/stylingCopy';
+import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveOutfitSelectionSource,selectionBadgeKey} from '../src/services/stylingCopy';
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
@@ -92,6 +92,8 @@ interface OutfitItem {
   shopUrl?: string;
   price?: number;
   currency?: string;
+  priceFreshness?: string | null;
+  offerVerification?: { sizeStockStatus?: string | null; limitations?: string[]; [key: string]: unknown } | null;
 }
 
 interface GeneratedOutfit {
@@ -166,6 +168,8 @@ function mapShopCatalogRow(item: {
   sourceUrl?: string;
   price?: number;
   currency?: string;
+  priceFreshness?: string | null;
+  offerVerification?: { sizeStockStatus?: string | null; limitations?: string[]; [key: string]: unknown } | null;
 }): {
   id: string;
   image: string;
@@ -389,6 +393,7 @@ const SlotCell = React.memo(function SlotCell({
   name,
   price,
   priceCurrency,
+  offerCaveat,
   imageSource,
   imageUri,
   itemId,
@@ -405,6 +410,7 @@ const SlotCell = React.memo(function SlotCell({
   name: string;
   price?: number;
   priceCurrency?: string;
+  offerCaveat?: string | null;
   imageSource: number | { uri: string };
   imageUri?: string;
   itemId?: string;
@@ -454,6 +460,11 @@ const SlotCell = React.memo(function SlotCell({
         {typeof price === 'number' && price > 0 && priceCurrency ? (
           <ScaledText style={slotStyles.price} numberOfLines={1}>
             {displayPrice || '—'}
+          </ScaledText>
+        ) : null}
+        {showBuyButton && offerCaveat ? (
+          <ScaledText style={[slotStyles.offerCaveat, { color: textSecondary }]} numberOfLines={1}>
+            {offerCaveat}
           </ScaledText>
         ) : null}
         {showBuyButton ? (
@@ -507,6 +518,11 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
           name: slot.item?.name,
           shopUrl: slot.item?.shopUrl,
         });
+        const offerCaveat = !slot.item || slot.item.isWardrobe === true ? null
+          : slot.item.priceFreshness === 'stale' ? 'Price outdated · verify at store'
+          : slot.item.offerVerification?.sizeStockStatus === 'unverified' ? 'Check size & stock at store'
+          : Array.isArray(slot.item.offerVerification?.limitations) && slot.item.offerVerification.limitations.length > 0 ? 'Verify availability at store'
+          : null;
         return (
           <SlotCell
             key={slot.key}
@@ -515,6 +531,7 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
             name={slot.item?.name || ''}
             price={quote?.price}
             priceCurrency={quote?.currency || undefined}
+            offerCaveat={offerCaveat}
             imageSource={src}
             imageUri={typeof src === 'object' ? src.uri : undefined}
             itemId={slot.item?.id ? String(slot.item.id) : undefined}
@@ -583,6 +600,11 @@ const slotStyles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#1F6FEB',
+  },
+  offerCaveat: {
+    fontSize: 9,
+    marginTop: 1,
+    opacity: 0.85,
   },
   buyButton: {
     flexDirection: 'row',
@@ -1771,10 +1793,8 @@ const AIOutfitGenerator = () => {
           const baseScore = outfitCoherence(items, stylingContext({style:styleToUse, occasion:occasionToUse, request:effectivePrompt||promptText, weather:resolvedWeather})).score;
           return {
             ...outfit,
-            // Truthful provenance: only genuine provider acceptance is 'ai';
-            // a repaired ordering is 'hybrid'; everything else is fallback.
-            // The card pill shows the AI badge for 'ai' only.
-            selectionSource:resolveSelectionSource(data.source),
+            // Truthful per-look provenance: only genuine reviewed looks get 'ai'.
+            selectionSource:resolveOutfitSelectionSource(outfit, data),
             generationRequestId:data.generationRequestId,engineVersion:data.generationVersion,
             id: outfit.id || `look_${tapNonce}_${idx}`,
             description,

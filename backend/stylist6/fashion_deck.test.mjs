@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -394,6 +394,11 @@ test('price bands are per slot and currency, need evidence and cap the dampener'
   const capped = pricePenaltyForLook(
     [{ ...shoe('a', 100000) }, { ...shoe('b', 90000) }, { ...shoe('c', 80000) }], profile);
   assert.equal(capped.penalty, 0.06);
+  // Multiples beyond 2x continue differentiating instead of plateauing flat.
+  const triple = pricePenaltyForLook([{ ...shoe('x3', 300) }], profile);
+  const tenx = pricePenaltyForLook([{ ...shoe('x10', 1000) }], profile);
+  assert.equal(triple.flagged, 1);
+  assert.ok(tenx.penalty > triple.penalty && tenx.penalty <= 0.06);
   assert.deepEqual(pricePenaltyForLook([{ ...shoe('usp', 100000) }], {}), { penalty: 0, flagged: 0 });
 });
 
@@ -989,4 +994,19 @@ test('inert or malformed feedback models never perturb ranking', async () => {
     const result = await recommendFashionDeck({ ...base, feedbackTaste });
     assert.deepEqual(result.outfits, baseline.outfits);
   }
+});
+
+test('elevated register covers date nights and dampens unrequested henleys/tank tops cleanly', () => {
+  assert.equal(elevatedFootwearRegisterContext({ style: 'old_money', occasion: 'Date night' }), true);
+  assert.equal(elevatedFootwearRegisterContext({ style: 'smart_casual', occasion: 'Date night' }), true);
+  assert.equal(elevatedFootwearRegisterContext({ style: 'classic', occasion: 'Wedding' }), true);
+  const henley = garment('h1', 'Ribbed Long Sleeved Henley Shirt', 'top', 'shirt');
+  const tank = garment('t1', 'Ribbed High Neck Tank Top', 'top', 'top');
+  const poplin = garment('s1', 'Slim Fit Cotton Dress Shirt', 'top', 'shirt');
+  const biz = { sourceMode: 'catalog', style: 'classic', occasion: 'Business meeting', request: '' };
+  assert.equal(elevatedBasePolishPenaltyForLook([henley], [], biz), ELEVATED_BASE_POLISH_PENALTY);
+  assert.equal(elevatedBasePolishPenaltyForLook([poplin], [], biz), 0);
+  assert.equal(elevatedBasePolishPenaltyForLook([tank], [], { sourceMode: 'catalog', style: 'smart_casual', occasion: 'Date night', request: '' }), ELEVATED_BASE_POLISH_PENALTY);
+  assert.equal(elevatedBasePolishPenaltyForLook([tank], [], { sourceMode: 'catalog', style: 'smart_casual', occasion: 'Date night', request: 'layered tank top' }), 0);
+  assert.equal(elevatedBasePolishPenaltyForLook([henley], [], { sourceMode: 'wardrobe', style: 'classic', occasion: 'Business meeting', request: '' }), 0);
 });

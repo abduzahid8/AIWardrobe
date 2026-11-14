@@ -1007,7 +1007,7 @@ export interface OutfitQualityAssessment {
 }
 function isOldMoneyDate(style?:string|null,occasion?:string|null):boolean {
     return String(style||'').toLowerCase().replace(/[\s-]+/g,'_')==='old_money'
-        && /\bdate\b|свидани/i.test(occasion||'');
+        && /\b(date|gallery|exhibition|museum|cocktail|opera|theater|theatre|reception)\b|свидани|галере|выстав/i.test(occasion||'');
 }
 /** Context plus multiple garment cues, never a global one-word product ban. */
 export function refinedDateProductReason(item:JudgeableItem,style?:string|null,occasion?:string|null):string|null {

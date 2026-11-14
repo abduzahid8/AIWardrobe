@@ -75,6 +75,8 @@ export function buildPriceProfile(catalog) {
 /**
  * Soft, bounded dampener for unbudgeted requests: items priced above their
  * slot's typical price in the same currency cost up to 0.06 score in total.
+ * Within [0, 0.06], ultra-luxury multiples (>2x median) continue scaling
+ * logarithmically toward 10x instead of hitting a flat plateau at 2x.
  * It breaks near-ties toward representative prices but never rejects —
  * without a budget there is nothing to fail. A look is flagged only when an
  * item costs more than twice its slot median. Exported for tests.
@@ -84,8 +86,13 @@ export function pricePenaltyForLook(items, profile) {
   for (const item of items || []) {
     const band = item && profile ? profile[`${item.currency}|${item.macroCategory}`] : null;
     if (!band || !(item.price > band.median)) continue;
-    penalty += 0.06 * Math.min(1, (item.price - band.median) / band.median);
-    if (item.price > 2 * band.median) flagged += 1;
+    const ratio = item.price / band.median;
+    if (ratio <= 2) {
+      penalty += 0.03 * (ratio - 1);
+    } else {
+      flagged += 1;
+      penalty += 0.03 + 0.03 * Math.min(1, Math.log10(ratio / 2) / Math.log10(5));
+    }
   }
   return { penalty: Math.min(0.06, penalty), flagged };
 }
@@ -244,10 +251,10 @@ export function rejectUnpolishedDateNightLook(items, context) {
  * trainers, nothing fires. A sleek minimal/low-top sneaker keeps the quiet
  * register, mirroring the documented smart date-night boundary.
  */
-export const FOOTWEAR_REGISTER_PENALTY = 0.015;
-const ELEVATED_REGISTER_STYLES = ['old_money', 'classic', 'semi_classic'];
+export const FOOTWEAR_REGISTER_PENALTY = 0.024;
+const ELEVATED_REGISTER_STYLES = ['old_money', 'classic', 'semi_classic', 'business_casual', 'smart_casual'];
 const ELEVATED_REGISTER_OCCASIONS =
-  /\b(conference|gallery|exhibition|museum|dinner|business|meeting|work|office)\b/i;
+  /\b(conference|gallery|exhibition|museum|dinner|date(?:[\s_-]?night)?|cocktail|opera|theat(?:er|re)|wedding|business|meeting|work|office)\b/i;
 const SLEEK_SNEAKER = /\b(minimal|clean|plain|sleek|low[ -]?top)\b/i;
 
 export function elevatedFootwearRegisterContext(context) {
@@ -274,6 +281,42 @@ export function footwearRegisterPenaltyForLook(items, descriptors, context, nonT
   return shoes.length > 0 &&
     shoes.every(([descriptor, item]) => trainerFootwearDescriptor(descriptor, item))
     ? FOOTWEAR_REGISTER_PENALTY : 0;
+}
+
+/**
+ * Bounded polish tie-break for elevated catalog contexts: henleys in classic/old-money
+ * business tailoring and sleeveless tank tops as a primary top on elevated occasions
+ * yield to collared shirts, fine knits, or knit polos unless user-requested.
+ */
+export const ELEVATED_BASE_POLISH_PENALTY = 0.045;
+export function elevatedBasePolishPenaltyForLook(items, descriptors, context) {
+  if (context?.sourceMode !== 'catalog' || !context?.style || !context?.occasion) return 0;
+  const occasion = String(context.occasion || '');
+  const elevatedOccasion = ELEVATED_REGISTER_OCCASIONS.test(occasion);
+  if (!elevatedOccasion) return 0;
+  const elevatedStyle = ELEVATED_REGISTER_STYLES.includes(context.style) || context.style === 'minimalist';
+  if (!elevatedStyle) return 0;
+  const userReq = String(context?.request || '');
+  const tops = (items || []).filter((item) => item?.macroCategory === 'top');
+  for (const top of tops) {
+    const name = String(top?.name || '');
+    if (/\btank[\s-]*top\b/i.test(name) && !/\btank\b/i.test(userReq)) {
+      return ELEVATED_BASE_POLISH_PENALTY;
+    }
+    const formalStyle = ['old_money', 'classic', 'business_casual', 'semi_classic'].includes(context.style);
+    if (formalStyle && /\bhenley\b/i.test(name) && !/\bhenley\b/i.test(userReq) &&
+        /\b(work|office|business|meeting|conference|wedding|dinner|gallery)\b/i.test(occasion)) {
+      return ELEVATED_BASE_POLISH_PENALTY;
+    }
+  }
+  const hasEspadrille = (descriptors || []).some((d, idx) =>
+    d?.slot === 'shoes' && items?.[idx]?.macroCategory === 'shoes' &&
+    (d.subtype === 'espadrille' || d.subtype === 'boat-shoe'));
+  if (hasEspadrille && !/\b(espadrilles?|boat)\b/i.test(userReq) &&
+      /\b(work|office|business|meeting|conference|dinner|date(?:[\s_-]?night)?|cocktail|opera|theat(?:er|re)|wedding|gallery)\b/i.test(occasion)) {
+    return ELEVATED_BASE_POLISH_PENALTY;
+  }
+  return 0;
 }
 
 /**
@@ -429,6 +472,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       // non-trainer shoes demonstrably passed admission for this context.
       const registerPenalty = footwearRegisterPenaltyForLook(
         items, descriptions, context, shoePool.nonTrainer > 0);
+      const basePolishPenalty = elevatedBasePolishPenaltyForLook(items, descriptions, context);
       const personal = evaluatePersonalLook(
         items.map((item, index) => ({ item, descriptor: descriptions[index] })), taste);
       // Explicit-feedback taste (gate D): a capped, decayed adjustment from
@@ -457,13 +501,14 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
           personal.adjustment + editorial.adjustment + feedback.adjustment -
           recentStylingPenalty(items, recentSignatures) - pricing.penalty - freshness -
-          registerPenalty,
+          registerPenalty - basePolishPenalty,
         dimensions: { ...dimensions, palette },
-        evidence: pricing.flagged || freshness > 0 || registerPenalty > 0
+        evidence: pricing.flagged || freshness > 0 || registerPenalty > 0 || basePolishPenalty > 0
           ? [...assessment.evidence,
             ...(pricing.flagged ? ['unbudgeted_premium_selection_dampened'] : []),
             ...(freshness > 0 ? ['stale_price_evidence_dampened'] : []),
-            ...(registerPenalty > 0 ? ['trainer_footwear_register_dampened'] : [])]
+            ...(registerPenalty > 0 ? ['trainer_footwear_register_dampened'] : []),
+            ...(basePolishPenalty > 0 ? ['casual_base_elevated_context_dampened'] : [])]
           : assessment.evidence,
         referenceMetadata: affinity,
         editorial,
@@ -499,6 +544,7 @@ function creativeMetrics(context) {
     featureDistance: stylingFeatureDistance,
     overlap: overlaps,
     singleCurrencyBonus,
+    requiredIds: context.requiredIds || [],
   };
 }
 
@@ -524,6 +570,7 @@ export function adjacentCreativeStyles(style, dressCode) {
     minimalist: ['semi_classic', 'casual'],
     casual: ['minimalist', 'semi_classic'],
     business_casual: ['minimalist', 'old_money'],
+    smart_casual: ['semi_classic', 'minimalist'],
   };
   return neighbors[style] || [];
 }
@@ -594,7 +641,8 @@ export async function recommendFashionDeck({
   const layerMix = { three: 0, four: 0 };
   for (const candidate of retrieval.shortlist) layerMix[candidate.items.length === 3 ? 'three' : 'four'] += 1;
   const ordered = retrieval.shortlist.map((c) => c.fashion?.score).filter(Number.isFinite).sort((a, b) => b - a);
-  let selected = chooseDeck(retrieval.shortlist, context);
+  const deckContext = { ...context, requiredIds };
+  let selected = chooseDeck(retrieval.shortlist, deckContext);
   const floor = applyExclusionQualityFloor(
     selected, ordered[0] ?? NaN, (retrieval.diagnostics.exclusions?.requested || 0) > 0);
   selected = floor.kept;
@@ -612,26 +660,25 @@ export async function recommendFashionDeck({
       typeof canJudgeOutfit === 'function') {
     // Budgeted, source-verified finalist set: no model can nominate a SKU or
     // skip the original hard gates. Judge all authorised displayed looks, not
-    // only the lead; one near-tie challenger fits the existing 4-call cap.
+    // only the lead; fill remaining slots up to the 4-call cap so a single
+    // visual rejection or unresolved CDN host still yields a full 3-look deck.
     const candidates = [];
     for (const look of selected) {
       if (await permitted(look)) candidates.push(look);
     }
     const lead = selected[0];
     if (candidates.length < 4) {
-      const metrics = creativeMetrics(context);
+      const metrics = creativeMetrics(deckContext);
       const leadScore = lead.fashion?.score ?? -Infinity;
       const extras = retrieval.shortlist
-        .filter(look => !selected.some(chosen => chosen.id === look.id) &&
+        .filter(look => !candidates.some(chosen => chosen.id === look.id) &&
           Number.isFinite(look.fashion?.score) &&
           look.fashion.score >= leadScore - VISUAL_CHALLENGER_QUALITY_WINDOW &&
-          selected.every(other =>
+          (candidates.length ? candidates : selected).every(other =>
             Math.max(other.items.length, look.items.length) - overlaps(other, look) >= 2))
         .map(look => ({
           look,
-          // A genuinely distinct alternative expands the visual critic's
-          // choice set. Same SKU identity, original hard gates and budget.
-          difference: Math.min(...selected.map(other =>
+          difference: Math.min(...(candidates.length ? candidates : selected).map(other =>
             directionDifference(other, look, metrics.featuresOf, metrics.featureDistance).distance)),
         }))
         .sort((a, b) => b.difference - a.difference ||
@@ -639,19 +686,14 @@ export async function recommendFashionDeck({
           String(a.look.id).localeCompare(String(b.look.id)))
         .map(({ look }) => look);
       for (const alternate of extras) {
-        if (await permitted(alternate)) { candidates.push(alternate); break; }
+        if (candidates.length >= 4) break;
+        if (await permitted(alternate)) candidates.push(alternate);
       }
     }
     if (candidates.length) {
       const reviewed = await evaluateVisualShortlist(
         { ...retrieval, shortlist: candidates }, request, visualCritic,
-        // The deterministic creative selector already enforced distinct
-        // physical SKUs and qualified fashion directions. The visual
-        // prototype's 0.30 discovery-only threshold is stricter and would
-        // discard valid signature/refresh looks without a quality reason.
-        // Use the same 0.12 minimum as the editorial refresh boundary;
-        // a zero-novelty (same physical look) is still always rejected.
-        { target: Math.min(3, candidates.length), minNovelty: 0.12 },
+        { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds },
       );
       visualVerdict = reviewed.diagnostics.visualValid > 0 ? 'JUDGED' : 'ABSTAINED';
       const rejected = new Set(reviewed.diagnostics.rejectedCandidateIds);

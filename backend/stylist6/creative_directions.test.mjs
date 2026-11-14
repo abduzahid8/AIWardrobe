@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   DIRECTION_VERSION,
   brandVarietyAdjustment,
+  deckCategoryVarietyAdjustment,
   directionDifference,
   footwearVarietyAdjustment,
   lowerBodyPairRepeatAdjustment,
@@ -312,4 +313,54 @@ test('within comparable quality a deck that repeats one brand house loses the ne
     branded('m-second',.922,FRESH,['alpha','alpha','alpha']),
   ],metrics);
   assert.equal(mono.looks[1].id,'m-second');
+});
+
+test('category variety penalizes same shoe colorway/subtype and repeated bottom silhouette',()=>{
+  const lead = look('lead', .94, [
+    slot('shirt','white','slim'), slot('blazer','navy','regular'),
+    slot('tailored-trouser','grey','slim'), slot('loafer','brown'),
+  ], ['lead-top','lead-outer','lead-bot','lead-shoe']);
+  lead.items.forEach((it,i)=>{ it.macroCategory=['top','outerwear','bottom','shoes'][i]; });
+  lead.items[3].name = 'Massimiano Suede Loafers - Chocolate';
+
+  const sameShoeModel = look('same-shoe', .925, [
+    slot('polo','navy','regular'), null,
+    slot('chino','beige','regular'), slot('loafer','navy'),
+  ], ['s-top','s-bot','s-shoe']);
+  sameShoeModel.items.forEach((it,i)=>{ it.macroCategory=['top','bottom','shoes'][i]; });
+  sameShoeModel.items[2].name = 'Massimiano Suede Loafers - Navy';
+
+  const variedCategory = look('varied-cat', .920, [
+    slot('polo','navy','regular'), null,
+    slot('chino','beige','regular'), slot('derby','black'),
+  ], ['v-top','v-bot','v-shoe']);
+  variedCategory.items.forEach((it,i)=>{ it.macroCategory=['top','bottom','shoes'][i]; });
+  variedCategory.items[2].name = 'Helsinki Leather Derby - Black';
+
+  const explore = look('explore', .918, [
+    slot('fine-knit','cream','regular','knit'), null,
+    slot('trouser','olive','wide','textured'), slot('boot','brown'),
+  ], ['e-top','e-bot','e-shoe']);
+  explore.items.forEach((it,i)=>{ it.macroCategory=['top','bottom','shoes'][i]; });
+  explore.items[2].name = 'Chelsea Leather Boots - Brown';
+
+  assert.ok(
+    deckCategoryVarietyAdjustment(sameShoeModel, [lead], metrics.featuresOf) <
+    deckCategoryVarietyAdjustment(variedCategory, [lead], metrics.featuresOf),
+    'second colorway of the same loafer must lose to a distinct shoe subtype',
+  );
+  const picked = selectCreativeDirectionDeck([lead, sameShoeModel, variedCategory, explore], metrics);
+  assert.equal(picked.looks[1].id, 'varied-cat');
+
+  const crossRegSneaker = look('cross-sneaker', .925, [
+    slot('polo','navy','regular'), null,
+    slot('chino','beige','regular'), slot('sneaker','white'),
+  ], ['x-top','x-bot','x-shoe']);
+  crossRegSneaker.items.forEach((it,i)=>{ it.macroCategory=['top','bottom','shoes'][i]; });
+  crossRegSneaker.items[2].name = 'Canvas Court Trainers - White';
+  assert.ok(
+    deckCategoryVarietyAdjustment(crossRegSneaker, [lead], metrics.featuresOf) <
+    deckCategoryVarietyAdjustment(variedCategory, [lead], metrics.featuresOf),
+    'crossing dress -> sneaker register must never outrank a varied same-register dress shoe',
+  );
 });

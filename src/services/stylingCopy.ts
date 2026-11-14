@@ -93,6 +93,57 @@ export function resolveSelectionSource(
     : 'deterministic_fallback';
 }
 
+/**
+ * Per-look provenance across Stylist 5 and Stylist 6 payloads.
+ * Stylist 6 responses only carry the AI badge when BOTH deck visualStatus is
+ * 'NVIDIA_APPLIED' AND this specific displayed look carries 'JUDGED' evidence.
+ * Unreviewed fallback looks never wear an AI badge.
+ */
+export function resolveOutfitSelectionSource(
+  outfit: {
+    selectionSource?: unknown;
+    fashionDiagnostics?: { visualVerdict?: unknown } | null;
+  } | null | undefined,
+  data: { source?: unknown; visualStatus?: unknown } | null | undefined
+): 'ai' | 'hybrid' | 'deterministic_fallback' {
+  const isStylist6Envelope =
+    typeof data?.source === 'string' && data.source.startsWith('stylist-6')
+    || data?.visualStatus !== undefined
+    || outfit?.fashionDiagnostics?.visualVerdict !== undefined;
+  if (isStylist6Envelope) {
+    return data?.visualStatus === 'NVIDIA_APPLIED'
+      && outfit?.fashionDiagnostics?.visualVerdict === 'JUDGED'
+      && outfit?.selectionSource === 'ai'
+      ? 'ai'
+      : 'deterministic_fallback';
+  }
+  return resolveSelectionSource(data?.source);
+}
+
+/**
+ * Honest purchasing caveat for shop cards when live merchant size/stock
+ * or price recency cannot be asserted server-side.
+ */
+export function offerCaveatLabel(
+  item: {
+    isWardrobe?: boolean;
+    priceFreshness?: unknown;
+    offerVerification?: {
+      sizeStockStatus?: unknown;
+      deliveryEligible?: unknown;
+      limitations?: unknown;
+    } | null;
+  } | null | undefined
+): string | null {
+  if (!item || item.isWardrobe === true) return null;
+  if (item.priceFreshness === 'stale') return 'Price outdated · verify at store';
+  const ov = item.offerVerification;
+  if (!ov) return null;
+  if (ov.sizeStockStatus === 'unverified') return 'Check size & stock at store';
+  if (Array.isArray(ov.limitations) && ov.limitations.length > 0) return 'Verify availability at store';
+  return null;
+}
+
 /** Card badge copy key. The AI badge renders for genuine provider acceptance
  * only; hybrid and fallback looks use the neutral curated label. */
 export function selectionBadgeKey(source: unknown): string {

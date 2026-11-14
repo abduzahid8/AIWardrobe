@@ -7,6 +7,7 @@
  * backend adapter. Do not call it directly from mobile or replace production.
  */
 import {createHash} from 'node:crypto';
+import {canonicalProductKey} from '../../src/domain/outfitDiversity.ts';
 import {baseProductId} from './catalog_adapter.mjs';
 import {MAX_VISUAL_CANDIDATES,validVisualVerdict} from './visual_critic_hosted.mjs';
 export const STYLIST6_VERSION='stylist6-visual-first-prototype-4';
@@ -297,7 +298,7 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
     // quality re-weights to cohesion-led with the same 0-1 scale, so a
     // missing reference can never read as a perfect or failed reference fit.
     const quality=c.referenceless===true
-      ? 0.45*c.visualCohesion+0.20*c.styleFit+0.20*c.occasionFit+0.10*c.formalityFit
+      ? 0.45*c.visualCohesion+0.20*c.styleFit+0.20*c.occasionFit+0.15*c.formalityFit
       : 0.30*c.visualCohesion+0.30*c.referenceFidelity+
         0.15*c.styleFit+0.15*c.occasionFit+0.10*c.formalityFit;
     if(c.confidence>=0.6&&quality>=minVisualQuality&&!c.reject)accepted.set(id,{...c,quality});
@@ -306,6 +307,27 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
   const strongest=Math.max(...eligible.map(c=>accepted.get(c.id).quality));
   const first=eligible.find(c=>accepted.get(c.id).quality>=strongest-VISUAL_NEAR_TIE);
   let selected=first?[first]:[],bestUtility=-Infinity;
+  const anchorSet=new Set((options.requiredIds||[]).map(String));
+  const nonAnchorSlotKeys=(look,slot)=>new Set(
+    (look?.items||[])
+      .filter(it=>it&&it.macroCategory===slot&&!anchorSet.has(String(it.id)))
+      .map(it=>canonicalProductKey(it))
+      .filter(Boolean));
+  const diversityAdjustment=(look,deck)=>{
+    let adj=0;
+    for(const slot of ['top','bottom']){
+      const cur=nonAnchorSlotKeys(look,slot);
+      if(!cur.size)continue;
+      const prev=new Set(deck.flatMap(d=>[...nonAnchorSlotKeys(d,slot)]));
+      if([...cur].some(k=>prev.has(k)))adj-=0.04;
+    }
+    const shoeKeys=nonAnchorSlotKeys(look,'shoes');
+    if(shoeKeys.size){
+      const prevShoes=new Set(deck.flatMap(d=>[...nonAnchorSlotKeys(d,'shoes')]));
+      adj+=[...shoeKeys].some(k=>prevShoes.has(k))?-0.02:0.01;
+    }
+    return adj;
+  };
   // A greedy second pick can block the only viable third. The judged pool
   // is capped at four, so evaluate the small set of feasible continuations.
   function consider(deck,utility){
@@ -319,7 +341,7 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       const difference=Math.min(...deck.map(other=>novelty(c,other)));
       if(difference<(options.minNovelty??0.30)||difference===0)continue;
       const repeats=deck.some(other=>other.briefId===c.briefId);
-      consider([...deck,c],utility+accepted.get(c.id).quality+0.18*difference-(repeats?0.10:0));
+      consider([...deck,c],utility+accepted.get(c.id).quality+0.18*difference-(repeats?0.10:0)+diversityAdjustment(c,deck));
     }
   }
   if(first)consider([first],0);

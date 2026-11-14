@@ -21,10 +21,11 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
+import sharp from 'sharp';
 
-const MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
+const DEFAULT_MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
 const ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
-const PROVIDER_TIMEOUT_MS = 20000; // offline rater; the live engine keeps its own 8s budget
+const PROVIDER_TIMEOUT_MS = 45000; // offline rater; the live engine keeps its own deadline
 const PROVIDER_RETRY_TRANSIENT = 1;
 const MAX_IMAGE_BYTES = 512 * 1024;
 const IMAGE_DIR = '.private/blind-judge-images';
@@ -41,7 +42,7 @@ const flag = (name) => {
 const has = (name) => args.includes(`--${name}`);
 
 if (positional.length < 2 || has('help')) {
-  console.error('usage: blind_pair_judge.mjs <replay.json> <catalog.json> --out-dir <dir> [--only ids] [--limit N]');
+  console.error('usage: blind_pair_judge.mjs <replay.json> <catalog.json> --out-dir <dir> [--only ids] [--limit N] [--all] [--model <id>] [--samples N]');
   process.exit(has('help') ? 0 : 2);
 }
 
@@ -50,6 +51,10 @@ const catalogPath = positional[1];
 const outDir = flag('out-dir') || '.private/blind-judge';
 const onlyIds = (flag('only') || '').split(',').map((s) => s.trim()).filter(Boolean);
 const limit = Number(flag('limit') || 0);
+const includeAll = has('all');
+const MODEL = flag('model') || DEFAULT_MODEL;
+const SAMPLES_PER_DECK = Math.max(1, Math.min(3, Number(flag('samples') || 2)));
+const USE_COMPOSITE = has('composite') || !MODEL.includes('nemotron');
 
 const apiKey = (await (async () => {
   if (process.env.NVIDIA_API_KEY) return process.env.NVIDIA_API_KEY;
@@ -143,28 +148,84 @@ const RUBRIC_SYSTEM = `You are an independent fashion-quality rater. You will be
 const RUBRIC_USER_HINT = (style, occasion) =>
   `Intended aesthetic: ${style}. Occasion: ${occasion}. look_quality averages how strong the individual looks are; deck_cohesion rates whether the looks all serve the same aesthetic; deck_diversity rates whether the three looks offer genuinely different takes (near-identical looks score low); footwear_register rates whether the footwear formality matches each look and the occasion.`;
 
+async function composeLookImages(images) {
+  const byLook = new Map();
+  for (const img of images) {
+    const m = /^(Look \d+)\s+(.+)$/.exec(img.slot);
+    const lookKey = m ? m[1] : 'Look 1';
+    const slotName = m ? m[2] : img.slot;
+    if (!byLook.has(lookKey)) byLook.set(lookKey, []);
+    byLook.get(lookKey).push({ ...img, slotName });
+  }
+  const rows = [];
+  let maxW = 460;
+  const cellW = 110;
+  const cellH = 148;
+  const gap = 4;
+  const rowH = cellH + 26;
+  for (const [lookKey, parts] of [...byLook.entries()].slice(0, 3)) {
+    const rowW = parts.length * cellW + (parts.length + 1) * gap;
+    if (rowW > maxW) maxW = rowW;
+    rows.push({ lookKey, parts });
+  }
+  const height = rows.length * rowH + gap;
+  const overlays = [];
+  for (let rIdx = 0; rIdx < rows.length; rIdx += 1) {
+    const { lookKey, parts } = rows[rIdx];
+    const y0 = rIdx * rowH;
+    const label = `${lookKey}: ${parts.map((p) => p.slotName).join(' | ')}`;
+    overlays.push({
+      input: Buffer.from(
+        `<svg width="${maxW}" height="22"><text x="6" y="16" font-family="sans-serif" font-size="12" font-weight="bold" fill="#111">${label.replace(/[<>&]/g, '')}</text></svg>`,
+      ),
+      left: 0,
+      top: y0 + 2,
+    });
+    const tiles = await Promise.all(parts.map(async (p, idx) => {
+      const resized = await sharp(p.bytes)
+        .resize(cellW, cellH - 2, { fit: 'contain', background: { r: 245, g: 247, b: 250 } })
+        .jpeg({ quality: 72 })
+        .toBuffer();
+      return { input: resized, left: gap + idx * (cellW + gap), top: y0 + 24 };
+    }));
+    overlays.push(...tiles);
+  }
+  const sheet = await sharp({
+    create: { width: maxW, height, channels: 3, background: { r: 255, g: 255, b: 255 } },
+  }).composite(overlays).jpeg({ quality: 74 }).toBuffer();
+  return [{
+    id: 'deck_sheet',
+    slot: rows.map((r) => `${r.lookKey} (${r.parts.map((p) => p.slotName).join(', ')})`).join('; '),
+    bytes: sheet,
+  }];
+}
+
 async function judgeDeck(images, style, occasion, token) {
   if (images.length === 0) return { skipped: 'no_images' };
+  const judgeImages = USE_COMPOSITE ? await composeLookImages(images) : images;
   const content = [
-    { type: 'text', text: `${RUBRIC_USER_HINT(style, occasion)}\nSlot order: ${images.map((i) => i.slot).join(', ')}.` },
-    ...images.flatMap((img) => [
+    { type: 'text', text: `${RUBRIC_USER_HINT(style, occasion)}\nSlot order: ${judgeImages.map((i) => i.slot).join(', ')}.` },
+    ...judgeImages.flatMap((img) => [
       { type: 'text', text: `Photo: ${img.slot}` },
       { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${img.bytes.toString('base64')}` } },
     ]),
   ];
-  const body = JSON.stringify({
+  const payloadBody = {
     model: MODEL,
     temperature: 0.1,
     top_p: 0.95,
-    max_tokens: 400,
+    max_tokens: MODEL.includes('nemotron') ? 450 : 600,
     stream: false,
-    response_format: { type: 'json_object' },
-    chat_template_kwargs: { enable_thinking: false },
+    ...(MODEL.includes('nemotron') ? {
+      response_format: { type: 'json_object' },
+      chat_template_kwargs: { enable_thinking: false },
+    } : {}),
     messages: [
-      { role: 'system', content: RUBRIC_SYSTEM },
+      { role: 'system', content: `${RUBRIC_SYSTEM}${MODEL.includes('nemotron') ? '' : '\nKeep internal thinking under 80 words; output ONLY strict raw JSON immediately.'}` },
       { role: 'user', content },
     ],
-  });
+  };
+  const body = JSON.stringify(payloadBody);
   for (let attempt = 0; attempt <= PROVIDER_RETRY_TRANSIENT; attempt += 1) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
@@ -224,6 +285,7 @@ async function withBytes(images) {
 }
 
 function scenarioEligible(result) {
+  if (includeAll) return true;
   const id = result.scenario?.id || '';
   return HELD_OUT_PREFIXES.some((p) => id.startsWith(p));
 }
@@ -256,7 +318,6 @@ async function main() {
     key.scenarios[scenario.id] = { alpha: alphaIsCandidate ? CANDIDATE_ARM : BASELINE_ARM, beta: alphaIsCandidate ? BASELINE_ARM : CANDIDATE_ARM };
 
     const entry = { id: scenario.id, style: scenario.style, occasion: scenario.occasion, ALPHA: { images: alpha.length }, BETA: { images: beta.length } };
-    const SAMPLES_PER_DECK = 2;
     const judgeSide = async (images) => {
       const results = await Promise.all(Array.from({ length: SAMPLES_PER_DECK }, () => judgeDeck(images, scenario.style, scenario.occasion)));
       const verdicts = results.filter((r) => r.verdict).map((r) => r.verdict);

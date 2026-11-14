@@ -39,6 +39,8 @@ import {
 import { HOST_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/image_access.mjs';
 import { prepareCloudVisualMedia } from './cloud_visual_media.mjs';
 import { verifyStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
+import { verifyMerchantOffer, summarizeDeckOffers } from './merchant_offers.mjs';
+import { parseCbuBudgetRates, validateBudgetFxSnapshot, referenceAmount } from '../../src/domain/budgetFx.ts';
 import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46.json' with { type: 'json' };
 
 export const STYLIST6_CLOUD_VERSION = 'stylist-6-cloud-staging-1';
@@ -348,7 +350,38 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       const data = await check(response, 'stylist6_feedback_unavailable');
       return Array.isArray(data) ? data : [];
     },
+    async fetchBudgetFxSnapshot() {
+      return fetchCbuBudgetFxSnapshot();
+    },
   };
+}
+
+const CBU_FX_URL = 'https://cbu.uz/ru/arkhiv-kursov-valyut/json/';
+const CBU_FX_CACHE_TTL_MS = 60 * 60 * 1000;
+let cbuFxCache = { expiresAt: 0, snapshot: null };
+
+/**
+ * Fetches and validates the official Central Bank of Uzbekistan daily FX
+ * reference rates. Never invents rates; returns null when unavailable so
+ * budgeted requests fail closed or enforce same-currency pricing honestly.
+ */
+export async function fetchCbuBudgetFxSnapshot(fetchFn = fetch, now = Date.now()) {
+  if (cbuFxCache.snapshot && now < cbuFxCache.expiresAt) {
+    try {
+      return validateBudgetFxSnapshot(cbuFxCache.snapshot, now);
+    } catch {
+      cbuFxCache = { expiresAt: 0, snapshot: null };
+    }
+  }
+  const response = await fetchFn(CBU_FX_URL, {
+    headers: { Accept: 'application/json', 'User-Agent': 'AIWardrobe-Stylist6-Cloud/1.0' },
+    signal: AbortSignal.timeout(4000),
+  });
+  if (!response?.ok) throw new Error(`cbu_fx_http_${response?.status || 'failed'}`);
+  const payload = await response.json();
+  const snapshot = validateBudgetFxSnapshot(parseCbuBudgetRates(payload, now), now);
+  cbuFxCache = { expiresAt: now + CBU_FX_CACHE_TTL_MS, snapshot };
+  return snapshot;
 }
 
 function hydrateProfiles(rows, profiles) {
@@ -372,7 +405,7 @@ function hydrateProfiles(rows, profiles) {
   return { fetched: profiles.length, attached, drifted };
 }
 
-function mapDeckItem(item, rankScore) {
+function mapDeckItem(item, rankScore, offerVerification = null) {
   return {
     id: String(item.id),
     type: item.type || item.macroCategory,
@@ -399,6 +432,7 @@ function mapDeckItem(item, rankScore) {
     priceFreshness: typeof item.priceFreshness === 'string' && item.isShopItem === true
       ? item.priceFreshness
       : null,
+    ...(offerVerification ? { offerVerification } : {}),
   };
 }
 
@@ -683,17 +717,53 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       await finish(503, 'rate_limit_unavailable');
       return fail('rate_limit_unavailable', 503, { stage: 'stylist6_admission' });
     }
-    // Owned wardrobe pieces are free; shop pieces need same-currency prices
-    // when budgeted (cross-currency looks cannot be priced honestly here).
+    // Owned wardrobe pieces are free. When a budget is requested, cross-currency
+    // pricing uses only a validated CBU FX snapshot; without valid FX we never
+    // invent exchange rates and strictly admit same-currency shop items only.
+    let fxSnapshot = null;
+    let fxUnavailableReason = null;
+    if (budget) {
+      if (typeof io.fetchBudgetFxSnapshot === 'function') {
+        try {
+          fxSnapshot = validateBudgetFxSnapshot(await io.fetchBudgetFxSnapshot());
+        } catch {
+          fxSnapshot = null;
+          fxUnavailableReason = 'fx_unavailable';
+        }
+      } else {
+        fxUnavailableReason = 'fx_not_configured';
+      }
+    }
+    const currencyConversion = !budget
+      ? { active: false, reason: 'unbudgeted' }
+      : fxSnapshot
+        ? {
+            active: true,
+            source: fxSnapshot.source,
+            asOf: fxSnapshot.asOf,
+            snapshotId: fxSnapshot.id,
+            budgetCurrency: budget.currency,
+          }
+        : { active: false, reason: fxUnavailableReason || 'same_currency_only', budgetCurrency: budget.currency };
+    const priceToBudgetCurrency = fxSnapshot
+      ? (item, currency) => {
+          const converted = referenceAmount(item.price, item.currency, currency, fxSnapshot);
+          return Number.isFinite(converted) ? converted : NaN;
+        }
+      : (item, currency) => (item.currency === currency ? item.price : NaN);
     const feasible = budget
-      ? pool.filter((item) => item.isShopItem !== true || item.currency === budget.currency)
+      ? pool.filter((item) => item.isShopItem !== true || Number.isFinite(priceToBudgetCurrency(item, budget.currency)))
       : pool;
     if (!feasible.length) {
       // Terminal outcome of an already-claimed (and debited) request: record
       // it like the empty-deck path below so a redelivery replays 409 with
       // the real prior code instead of an unrecorded "processing" claim.
       await finish(502, 'stylist6_no_feasible_looks');
-      return fail('stylist6_no_feasible_looks', 502, { stage: 'stylist6_ranking', serverInventory: true });
+      return fail('stylist6_no_feasible_looks', 502, {
+        stage: 'stylist6_ranking',
+        serverInventory: true,
+        currencyConversion,
+      });
     }
     // Gate D taste: one bounded, indexed read of this user's explicit thumbs
     // feedback, then a pure, decayed, capped model. This sits on the ranking
@@ -759,7 +829,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const nvidiaKey = env.NVIDIA_API_KEY || '';
     const photoCache = new Map();
     if (visualAsked && !visualDisabled && nvidiaKey.startsWith('nvapi-')) {
-      visualCritic = createHostedVisualCritic({
+      const resolveProduct = (product) => resolveProductAsset(product.imageUrl || product.image_url, photoCache,
+        fetchImpl ? (prodUrl, prodOptions) => fetchImpl(prodUrl, prodOptions) : undefined);
+      const rawVisualCritic = createHostedVisualCritic({
         provider: 'nvidia',
         apiKey: nvidiaKey,
         model: NVIDIA_VISION_MODEL,
@@ -772,8 +844,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         ...(fetchImpl ? { fetchImpl } : {}),
         resolveReference: (id, signal) => resolveReferenceAsset(env, env.SUPABASE_URL, id,
           fetchImpl ? (refUrl, refOptions) => fetchImpl(refUrl, { ...refOptions, signal }) : undefined),
-        resolveProduct: (product) => resolveProductAsset(product.imageUrl || product.image_url, photoCache,
-          fetchImpl ? (prodUrl, prodOptions) => fetchImpl(prodUrl, prodOptions) : undefined),
+        resolveProduct,
         onEvent: (event) => {
           visualEvents.push({
             outcome: event.outcome,
@@ -790,6 +861,23 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           });
         },
       });
+      // Bounded concurrent media pre-warm before Wave 1 hits the strict NIM
+      // deadline so merchant CDN fetches never wait behind each other inside
+      // provider evaluation. Only touches URLs already permitted for inference.
+      visualCritic = async (candidates, ...rest) => {
+        const urls = [...new Set(
+          (Array.isArray(candidates) ? candidates : []).flatMap((look) =>
+            (look?.items || [])
+              .map((item) => item?.imageUrl || item?.image_url)
+              .filter((imageUrl) => isInferenceAuthorized(imageUrl)),
+          ),
+        )];
+        for (let i = 0; i < urls.length; i += 6) {
+          await Promise.allSettled(urls.slice(i, i + 6).map((imageUrl) =>
+            resolveProduct({ imageUrl }).catch(() => null)));
+        }
+        return rawVisualCritic(candidates, ...rest);
+      };
       // Transmission gate, separate from download eligibility: every product
       // image must carry explicit external-inference authorization, or the
       // look completes as NOT_RUN with full deterministic ranking.
@@ -802,7 +890,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       catalog: feasible,
       referenceBriefs: refs,
       hardGate: async (items) => devLookFeasibility(items),
-      priceToBudgetCurrency: (item, currency) => (item.currency === currency ? item.price : NaN),
+      priceToBudgetCurrency,
       feedbackTaste,
       // Staging-only visual-first quality pass: review every admissible card
       // in one bounded batch, not just the first selection.
@@ -837,6 +925,56 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         }
       }
     }
+    let liveOfferMap = null;
+    if (typeof io.fetchMerchantOffers === 'function') {
+      try {
+        const ids = [...new Set(deck.outfits.flatMap((look) => look.items.map((item) => String(item.id))))];
+        const fetched = await io.fetchMerchantOffers(ids);
+        liveOfferMap = fetched instanceof Map ? fetched : new Map(Object.entries(fetched || {}));
+      } catch {
+        liveOfferMap = null;
+      }
+    }
+    const mappedOutfits = deck.outfits.map((look, index) => {
+      const mappedItems = look.items.map((item) => mapDeckItem(
+        item,
+        look.fashion?.score,
+        verifyMerchantOffer(item, { offerRegistry: liveOfferMap, targetMarket: 'UZ' }),
+      ));
+      const lookVerified = Array.isArray(look.visualEvidence);
+      return {
+        // Same positional id convention as the S5 edge (`outfit_${index+1}`):
+        // the stylist_look_feedback constraint and the app's feedback guard
+        // require it, so a thumbs write can attribute this exact deck.
+        id: `outfit_${index + 1}`,
+        selectionSource: lookVerified ? 'ai' : 'deterministic_fallback',
+        items: mappedItems,
+        offerVerification: summarizeDeckOffers([{ items: mappedItems }]),
+        description: look.description,
+        concept: { id: look.concept?.id, title: look.concept?.title, story: '', score: look.fashion?.score },
+        // Actual evidence from the selected SKU deck, never a cosmetic
+        // variant label or a promise that the catalog has every direction.
+        direction: look.direction ?? null,
+        stylingTips: [],
+        confidence: look.fashion?.score,
+        matchScore: look.fashion?.score,
+        engineVersion: STYLIST6_CLOUD_VERSION,
+        fashionDiagnostics: {
+          score: look.fashion?.score,
+          referenceMetadata: look.fashion?.referenceMetadata || null,
+          // Verdict of THIS displayed look, not a global batch verdict
+          // that may refer to a rejected or non-displayed challenger.
+          visualVerdict: lookVerified
+            ? 'JUDGED' : deck.diagnostics?.visualVerdict === 'JUDGED'
+              ? 'NOT_JUDGED' : deck.diagnostics?.visualVerdict || 'NOT_RUN',
+          imageSupportedItems: look.fashion?.imageSupportedItems ?? null,
+          // Only catalog-grounded positive matches; never expose the full
+          // preference profile or assert body/fit facts without evidence.
+          personalization: look.fashion?.personalization || null,
+        },
+      };
+    });
+    const offerVerification = summarizeDeckOffers(mappedOutfits);
     const idempotencyRecorded = await finish(200, deck.status);
     return {
       status: 200,
@@ -853,6 +991,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         sourceMode,
         serverInventory: true,
         clientInventoryIgnored,
+        currencyConversion,
+        offerVerification,
         replayProtection: 'durable',
         idempotencyRecorded,
         previousDeckOverlapBySlot,
@@ -903,35 +1043,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           active: feedbackTaste.active === true,
           version: FEEDBACK_TASTE_VERSION,
         },
-        outfits: deck.outfits.map((look, index) => ({
-          // Same positional id convention as the S5 edge (`outfit_${index+1}`):
-          // the stylist_look_feedback constraint and the app's feedback guard
-          // require it, so a thumbs write can attribute this exact deck.
-          id: `outfit_${index + 1}`,
-          items: look.items.map((item) => mapDeckItem(item, look.fashion?.score)),
-          description: look.description,
-          concept: { id: look.concept?.id, title: look.concept?.title, story: '', score: look.fashion?.score },
-          // Actual evidence from the selected SKU deck, never a cosmetic
-          // variant label or a promise that the catalog has every direction.
-          direction: look.direction ?? null,
-          stylingTips: [],
-          confidence: look.fashion?.score,
-          matchScore: look.fashion?.score,
-          engineVersion: STYLIST6_CLOUD_VERSION,
-          fashionDiagnostics: {
-            score: look.fashion?.score,
-            referenceMetadata: look.fashion?.referenceMetadata || null,
-            // Verdict of THIS displayed look, not a global batch verdict
-            // that may refer to a rejected or non-displayed challenger.
-            visualVerdict: Array.isArray(look.visualEvidence)
-              ? 'JUDGED' : deck.diagnostics?.visualVerdict === 'JUDGED'
-                ? 'NOT_JUDGED' : deck.diagnostics?.visualVerdict || 'NOT_RUN',
-            imageSupportedItems: look.fashion?.imageSupportedItems ?? null,
-            // Only catalog-grounded positive matches; never expose the full
-            // preference profile or assert body/fit facts without evidence.
-            personalization: look.fashion?.personalization || null,
-          },
-        })),
+        outfits: mappedOutfits,
       },
     };
   } catch (error) {

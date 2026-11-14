@@ -109,6 +109,7 @@ function makeIo(overrides = {}) {
         if (overrides.feedbackFail) throw new Error('stylist6_feedback_unavailable');
         return overrides.feedbackRows ?? [];
       },
+      ...(overrides.fetchBudgetFxSnapshot ? { fetchBudgetFxSnapshot: overrides.fetchBudgetFxSnapshot } : {}),
     },
   };
 }
@@ -1286,4 +1287,53 @@ test('gate D: uniform dislikes cannot empty the deck or block any item outright'
   assert.equal(result.body.status, 'complete');
   assert.ok(result.body.outfits.length === 3);
   assert.equal(result.body.feedbackTaste.active, true);
+});
+
+test('verified FX enables honest cross-currency budgets while unavailable FX never invents rates', async () => {
+  const usdShop = SHOP.map((row) => ({ ...row, price: 60, currency: 'USD' }));
+  // Without FX: USD items cannot satisfy an UZS budget (fail closed, zero invented rates).
+  const withoutFx = await signedCall({
+    request: { ...baseRequest, budget: { amount: 2500000, currency: 'UZS' }, generationRequestId: 'fx-missing-1' },
+  }, {}, { shopRows: usdShop });
+  assert.equal(withoutFx.status, 502);
+  assert.equal(withoutFx.body.code, 'stylist6_no_feasible_looks');
+  assert.equal(withoutFx.body.currencyConversion.active, false);
+  assert.equal(withoutFx.body.currencyConversion.reason, 'fx_not_configured');
+
+  // With valid CBU FX snapshot: 3 * $60 * 12800 = 2,304,000 UZS <= 2,500,000 UZS passes cleanly.
+  const { parseCbuBudgetRates } = await import('../../src/domain/budgetFx.ts');
+  const now = Date.now();
+  const uzToday = new Date(now + 5 * 3600_000);
+  const dd = String(uzToday.getUTCDate()).padStart(2, '0');
+  const mm = String(uzToday.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = uzToday.getUTCFullYear();
+  const cbuDate = `${dd}.${mm}.${yyyy}`;
+  const validSnapshot = parseCbuBudgetRates([
+    { Ccy: 'USD', Nominal: '1', Rate: '12800', Date: cbuDate },
+    { Ccy: 'EUR', Nominal: '1', Rate: '13800', Date: cbuDate },
+    { Ccy: 'GBP', Nominal: '1', Rate: '16200', Date: cbuDate },
+  ], now);
+  const withFx = await signedCall({
+    request: { ...baseRequest, budget: { amount: 2500000, currency: 'UZS' }, generationRequestId: 'fx-valid-1' },
+  }, {}, { shopRows: usdShop, fetchBudgetFxSnapshot: async () => validSnapshot });
+  assert.equal(withFx.status, 200);
+  assert.equal(withFx.body.currencyConversion.active, true);
+  assert.equal(withFx.body.currencyConversion.source, 'CBU');
+  assert.equal(withFx.body.currencyConversion.asOf, validSnapshot.asOf);
+  assert.ok(withFx.body.offerVerification);
+  for (const outfit of withFx.body.outfits) {
+    assert.equal(outfit.selectionSource, 'deterministic_fallback');
+    assert.ok(outfit.offerVerification);
+  }
+
+  // Expired/tampered snapshot is rejected and falls back cleanly without inventing rates.
+  const expired = await signedCall({
+    request: { ...baseRequest, budget: { amount: 2500000, currency: 'UZS' }, generationRequestId: 'fx-expired-1' },
+  }, {}, {
+    shopRows: usdShop,
+    fetchBudgetFxSnapshot: async () => ({ ...validSnapshot, fetchedAt: new Date(now - 2 * 3_600_000).toISOString() }),
+  });
+  assert.equal(expired.status, 502);
+  assert.equal(expired.body.currencyConversion.active, false);
+  assert.equal(expired.body.currencyConversion.reason, 'fx_unavailable');
 });

@@ -253,6 +253,35 @@ function baseConcepts(context: StylingContext): readonly OutfitConcept[] {
     return [evening, softDate, { ...modern, layerPurpose: 'light-shell' }];
   if (context.style === 'semi_classic' || context.style === 'business_casual')
     return [separates, smartLayer, office];
+  if (context.style === 'smart_casual')
+    return [
+      {
+        ...separates,
+        id: 'smart-casual-tailored',
+        title: 'Tailored smart casual',
+        palette: ['navy', 'white', 'grey', 'brown'],
+        slots: [
+          ['shirt', 'fine-knit', 'dress-shirt'],
+          ['blazer', 'jacket'],
+          ['tailored-trouser', 'chino'],
+          ['loafer', 'derby', 'chelsea', 'minimal-sneaker'],
+        ],
+      },
+      smartLayer,
+      {
+        ...modern,
+        id: 'smart-casual-knit',
+        title: 'Refined casual separates',
+        palette: ['cream', 'beige', 'olive', 'brown'],
+        textures: ['knit', 'smooth', 'suede'],
+        slots: [
+          ['polo', 'knit-polo', 't-shirt'],
+          ['overshirt', 'jacket'],
+          ['chino', 'jeans', 'trouser'],
+          ['minimal-sneaker', 'loafer', 'sneaker'],
+        ],
+      },
+    ];
   if (context.style === 'casual' || /travel|trip|путеш/.test(context.occasion))
     return [travel, utility, weekend];
   return stylingFormulas(context).map((f) => ({
