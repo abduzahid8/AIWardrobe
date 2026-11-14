@@ -743,6 +743,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             asOf: fxSnapshot.asOf,
             snapshotId: fxSnapshot.id,
             budgetCurrency: budget.currency,
+            snapshot: fxSnapshot,
           }
         : { active: false, reason: fxUnavailableReason || 'same_currency_only', budgetCurrency: budget.currency };
     const priceToBudgetCurrency = fxSnapshot

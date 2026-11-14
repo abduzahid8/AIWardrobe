@@ -456,4 +456,43 @@ describe('stylist6 cloud staging client', () => {
     );
   });
 
+  test('applyStylist6CloudBudgetFx attaches valid CBU snapshot and fails closed on tampered snapshots', () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const { applyStylist6CloudBudgetFx } = loadDevModule();
+    const { parseCbuBudgetRates } = require('../../src/domain/budgetFx');
+    const now = Date.now();
+    const uzToday = new Date(now + 5 * 3600_000);
+    const dd = String(uzToday.getUTCDate()).padStart(2, '0');
+    const mm = String(uzToday.getUTCMonth() + 1).padStart(2, '0');
+    const cbuDate = `${dd}.${mm}.${uzToday.getUTCFullYear()}`;
+    const snapshot = parseCbuBudgetRates([
+      { Ccy: 'USD', Nominal: '1', Rate: '12800', Date: cbuDate },
+      { Ccy: 'EUR', Nominal: '1', Rate: '13800', Date: cbuDate },
+      { Ccy: 'GBP', Nominal: '1', Rate: '16200', Date: cbuDate },
+    ], now);
+    const budget = { amount: 2_500_000, currency: 'UZS' };
+
+    const enriched = applyStylist6CloudBudgetFx(budget, { active: true, snapshot });
+    expect(enriched?.fx?.snapshot.id).toBe(snapshot.id);
+
+    const inactive = applyStylist6CloudBudgetFx(budget, { active: false, reason: 'fx_unavailable' });
+    expect(inactive?.fx).toBeUndefined();
+
+    for (const badConv of [
+      { active: true },
+      { active: true, snapshot: { ...snapshot, id: 'CBU:tampered' } },
+    ]) {
+      let caught: any;
+      try {
+        applyStylist6CloudBudgetFx(budget, badConv);
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught?.name).toBe('OutfitGenerationFailure');
+      expect(caught?.translationKey).toBe('outfitMaker.budgetRatesUnavailable');
+      expect(caught?.code).toBe('budget_rates_unavailable');
+    }
+  });
+
 });

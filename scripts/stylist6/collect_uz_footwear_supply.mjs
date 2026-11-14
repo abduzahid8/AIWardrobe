@@ -294,6 +294,20 @@ export async function runCollector({ fetchImpl = fetch, writeOutput = true } = {
   const netNewFr = items.filter((item) => !activeCatalog.sourceUrls.has(item.productUrl));
   const withSizeStock = netNewFr.filter((item) => item.sizeStockStatus === 'merchant_reported_by_size');
   const inStockWithSizes = withSizeStock.filter((item) => item.availableEuSizes.length > 0 && item.deliveryUz);
+  const dressFamilies = new Set(['loafer', 'oxford', 'derby', 'monk', 'chelsea', 'chukka', 'dress_shoe', 'boot']);
+  const dressFrLeads = netNewFr.filter((item) => dressFamilies.has(item.family));
+  const dressFrWithSizeStock = inStockWithSizes.filter((item) => dressFamilies.has(item.family));
+  const sneakerFrLeads = netNewFr.filter((item) => !dressFamilies.has(item.family));
+  const sneakerFrWithSizeStock = inStockWithSizes.filter((item) => !dressFamilies.has(item.family));
+  // Purchasable offers require live size stock + delivery + fresh price + exact checkout + display/inference rights.
+  const verifiedPurchasableOffers = netNewFr.filter((item) =>
+    item.sizeStockStatus === 'merchant_reported_by_size'
+    && item.availableEuSizes.length > 0
+    && item.deliveryUz === true
+    && item.exactCheckoutAvailability !== 'unverified'
+    && item.deliveredTotalStatus !== 'unverified'
+    && item.imageDisplayRights === 'authorized'
+  );
 
   const byCategory = {};
   const byFamily = {};
@@ -307,7 +321,7 @@ export async function runCollector({ fetchImpl = fetch, writeOutput = true } = {
   const summary = {
     version: 1,
     generatedAt: observedAt,
-    note: 'Read-only live merchant observation artifact. Staging rows remain is_active=false; external inference, checkout fee, and display rights remain unverified.',
+    note: 'Read-only live merchant observation artifact. Staging rows remain is_active=false; external inference, checkout fee, and display rights remain unverified. Product leads are NOT purchasable offers.',
     existingActiveCatalogShoes: {
       source: activeCatalog.source,
       totalActive: activeCatalog.totalActive,
@@ -329,12 +343,20 @@ export async function runCollector({ fetchImpl = fetch, writeOutput = true } = {
       byFamily,
       byBrand,
     },
+    styleFootwearBreakdown: {
+      dressAndSmartFamilies: [...dressFamilies],
+      dressAndSmartLeads: dressFrLeads.length,
+      dressAndSmartWithSizeStock: dressFrWithSizeStock.length,
+      sneakerAndCasualLeads: sneakerFrLeads.length,
+      sneakerAndCasualWithSizeStock: sneakerFrWithSizeStock.length,
+    },
     combinedSupplyTotals: {
       existingActiveShoes: activeCatalog.totalActive,
       netNewLiveFrGroupShoes: netNewFr.length,
-      totalDistinctVerifiedFootwearLeads: activeCatalog.totalActive + netNewFr.length,
+      productLeadsTotal: activeCatalog.totalActive + netNewFr.length,
       totalWithVerifiedActiveOrSizeStock: activeCatalog.totalActive + inStockWithSizes.length,
-      meets200InitialSupplyObjective: (activeCatalog.totalActive + netNewFr.length) >= 200,
+      verifiedPurchasableOffers: verifiedPurchasableOffers.length,
+      meets200InitialSupplyObjective: verifiedPurchasableOffers.length >= 200,
     },
     limitations: [
       'imageNvidiaRights=not_authorized for newly collected FR Group imagery pending owner media-rights review',

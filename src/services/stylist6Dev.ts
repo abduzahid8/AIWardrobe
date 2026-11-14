@@ -1,5 +1,7 @@
 import { OutfitGenerationFailure } from './outfitGenerationFailure';
 import { normalizeStylistLanguage } from '../domain/stylingContext';
+import { budgetFxContext, validateBudgetFxSnapshot } from '../domain/budgetFx';
+import type { ParsedBudget } from '../utils/outfitBudget';
 
 /**
  * Development-only Stylist 6 path for the iOS simulator.
@@ -195,6 +197,31 @@ export interface Stylist6CloudRequest {
  * locale (e.g. i18n.language). Unsupported/missing values map to 'en'. */
 export function stylist6Language(locale: unknown): 'en' | 'ru' | 'uz' {
   return normalizeStylistLanguage(locale);
+}
+
+/**
+ * Reconciles the client's budget FX context with the server's validated CBU
+ * conversion snapshot so cross-currency cloud decks are validated against the
+ * exact server rates, and tampered or missing snapshots fail closed.
+ */
+export function applyStylist6CloudBudgetFx(
+  shopBudget: ParsedBudget | null | undefined,
+  currencyConversion: unknown,
+): ParsedBudget | null | undefined {
+  if (!shopBudget) return shopBudget;
+  const conv = currencyConversion && typeof currencyConversion === 'object'
+    ? (currencyConversion as { active?: unknown; snapshot?: unknown })
+    : null;
+  if (conv?.active !== true) return shopBudget;
+  if (!conv.snapshot) {
+    throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable', 'budget_rates_unavailable', 'stylist6_cloud');
+  }
+  try {
+    const validated = validateBudgetFxSnapshot(conv.snapshot);
+    return { ...shopBudget, fx: budgetFxContext(validated) };
+  } catch {
+    throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable', 'budget_rates_unavailable', 'stylist6_cloud');
+  }
 }
 
 function failureForCloud(code: unknown, stage = 'stylist6_cloud'): OutfitGenerationFailure {

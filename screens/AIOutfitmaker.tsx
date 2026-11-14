@@ -1,9 +1,9 @@
 import {validateOutfitGenerationRequest,OutfitRequestError} from '../src/domain/outfitGenerationRequest';
-import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveOutfitSelectionSource,selectionBadgeKey} from '../src/services/stylingCopy';
+import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveOutfitSelectionSource,selectionBadgeKey,offerCaveatLabel} from '../src/services/stylingCopy';
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, stylist6CloudCompletion, stylist6Language, stylist6VisualDiagnostic, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, stylist6CloudCompletion, stylist6Language, stylist6VisualDiagnostic, type DevEngine} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -518,11 +518,7 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
           name: slot.item?.name,
           shopUrl: slot.item?.shopUrl,
         });
-        const offerCaveat = !slot.item || slot.item.isWardrobe === true ? null
-          : slot.item.priceFreshness === 'stale' ? 'Price outdated · verify at store'
-          : slot.item.offerVerification?.sizeStockStatus === 'unverified' ? 'Check size & stock at store'
-          : Array.isArray(slot.item.offerVerification?.limitations) && slot.item.offerVerification.limitations.length > 0 ? 'Verify availability at store'
-          : null;
+        const offerCaveat = offerCaveatLabel(slot.item);
         return (
           <SlotCell
             key={slot.key}
@@ -1772,10 +1768,12 @@ const AIOutfitGenerator = () => {
         throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing', 'stylist6_incomplete_cloud_deck', 'stylist6_render');
       }
 
-      // The FX-snapshot equality guarantee only exists for engines that
-      // actually consume a rates snapshot (the hosted S5 edge). The S6 cloud
-      // engine enforces same-currency budgets server-side and never consumes
-      // FX, so there is no snapshot to compare and the check must not fire.
+      // Stylist 6 Cloud fetches and validates CBU FX server-side when a budget is
+      // requested. Attach the server-returned validated snapshot to shopBudget
+      // so client-side fitsCap checks match without failing cross-currency decks.
+      if (s6CloudActive && shopBudget && data?.success) {
+        shopBudget = applyStylist6CloudBudgetFx(shopBudget, data?.currencyConversion) ?? null;
+      }
       if (shopBudget?.fx && !s6CloudActive && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
       if (data && data.success && data.outfits && data.outfits.length > 0) {
         // Feed the rotation window BEFORE normalizing — the next tap must

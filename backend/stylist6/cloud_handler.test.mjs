@@ -1320,6 +1320,7 @@ test('verified FX enables honest cross-currency budgets while unavailable FX nev
   assert.equal(withFx.body.currencyConversion.active, true);
   assert.equal(withFx.body.currencyConversion.source, 'CBU');
   assert.equal(withFx.body.currencyConversion.asOf, validSnapshot.asOf);
+  assert.deepEqual(withFx.body.currencyConversion.snapshot, validSnapshot);
   assert.ok(withFx.body.offerVerification);
   for (const outfit of withFx.body.outfits) {
     assert.equal(outfit.selectionSource, 'deterministic_fallback');

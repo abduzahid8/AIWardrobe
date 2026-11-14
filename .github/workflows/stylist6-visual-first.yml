@@ -136,7 +136,7 @@ jobs:
           grep -q 'NO_GO: supply a valid' /tmp/stylist6-gate-no-evidence.log
           echo "Release gate correctly refuses missing evidence"
       - name: Verify UZ merchant variants, footwear leads, and private live replay contracts
-        run: node --test scripts/stylist6/fr_variant_stock.test.mjs scripts/stylist6/curate_uz_footwear.test.mjs scripts/stylist6/collection_leads.test.mjs scripts/stylist6/live_footwear_replay.test.mjs
+        run: node --test scripts/stylist6/fr_variant_stock.test.mjs scripts/stylist6/curate_uz_footwear.test.mjs scripts/stylist6/collection_leads.test.mjs scripts/stylist6/live_footwear_replay.test.mjs scripts/stylist6/collect_uz_footwear_supply.test.mjs scripts/stylist6/build_human_blind_package.test.mjs backend/stylist6/merchant_offers.test.mjs
       - name: Verify Stylist 6 cloud handler (server inventory, anchors, budgets, fakes only)
         # --import tsx: the contract tests import client TS validators
         # (src/services/stylist6Dev.ts); plain node --test cannot resolve them.
@@ -146,7 +146,7 @@ jobs:
       - name: Verify signed Node transport and staging proxy admission (offline)
         run: node --test backend/stylist-node/test/transport.test.mjs backend/stylist-node/test/transport-health.test.mjs backend/stylist-node/test/handler.test.mjs backend/stylist-node/test/health.test.mjs backend/stylist-node/test/proxy.test.mjs backend/stylist-node/test/staging.test.mjs backend/stylist-node/test/stylist6-route.test.mjs
       - name: Verify client budget and original-currency formatting
-        run: npx jest __tests__/utils/outfitBudget.test.ts __tests__/utils/uzsPrice.test.ts __tests__/platform/budgets.test.ts __tests__/services/stylist6Dev.test.ts
+        run: npx jest __tests__/utils/outfitBudget.test.ts __tests__/utils/uzsPrice.test.ts __tests__/platform/budgets.test.ts __tests__/services/stylist6Dev.test.ts __tests__/services/stylist6OfferTruth.test.ts
       - name: Verify the isolated Stylist 6 Supabase proxy pins validated compute (zero paid calls)
         run: node --import tsx --test backend/stylist-node/test/stylist6-staging.test.mjs
       - name: TypeScript has no errors

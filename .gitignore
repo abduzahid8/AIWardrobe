@@ -167,3 +167,6 @@ style_references_private/
 
 # Vercel CLI link artifacts
 .vercel/
+
+# Private staging evidence, probe credentials, env snapshots & cached images
+.private/
