@@ -11,6 +11,7 @@ import {
     Product
 } from '../src/services/shoppingService';
 import { Image } from '../src/components/MediaImage';
+import { ImageUnavailablePlaceholder, useProductImageRetry } from '../src/components/ProductImageFallback';
 
 
 const { width } = Dimensions.get('window');
@@ -156,6 +157,11 @@ const ProductCard = ({ product, onPress, onWishlist }: ProductCardProps) => {
     const discountPercent = hasDiscount
         ? Math.round((1 - product.price / product.originalPrice!) * 100)
         : 0;
+    // Image honesty: a missing URL or a failed load renders an explicit
+    // labeled 'photo unavailable' tile — never a blank card posing as the
+    // product photo. One bounded cache-busting retry absorbs CDN hiccups.
+    const { phase, activeUri, onImageError } = useProductImageRetry(product.imageUrl);
+    const photoUnavailable = phase === 'unavailable' || !activeUri;
 
     return (
         <TouchableOpacity
@@ -165,16 +171,19 @@ const ProductCard = ({ product, onPress, onWishlist }: ProductCardProps) => {
         >
             {/* Image */}
             <View style={styles.productImageContainer}>
-                {product.imageUrl ? (
-                    <Image
-                        source={{ uri: product.imageUrl }}
+                {photoUnavailable ? (
+                    <ImageUnavailablePlaceholder
+                        label={t('common.photoUnavailable')}
                         style={styles.productImage}
-                        resizeMode="cover"
+                        iconSize={28}
                     />
                 ) : (
-                    <View style={styles.productImagePlaceholder}>
-                        <Ionicons name="shirt-outline" size={32} color={COLORS.textSecondary} />
-                    </View>
+                    <Image
+                        source={{ uri: activeUri }}
+                        style={styles.productImage}
+                        resizeMode="cover"
+                        onError={onImageError}
+                    />
                 )}
 
                 {/* Wishlist button */}
@@ -386,11 +395,6 @@ const styles = StyleSheet.create({
     productImage: {
         width: '100%',
         height: '100%',
-    },
-    productImagePlaceholder: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     wishlistButton: {
         position: 'absolute',

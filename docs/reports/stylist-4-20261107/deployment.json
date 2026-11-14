@@ -1,0 +1,9 @@
+{
+  "slug": "generate-outfits",
+  "version": 199,
+  "status": "ACTIVE",
+  "verify_jwt": false,
+  "ezbr_sha256": "7fb651405c8cae469d796ab42b41eee3bc50dae2c78d4f543d2743cb73c36f19",
+  "sourceCommit": "14bdf90a704e3dfd64fc1b9683d1dd194049794f",
+  "branch": "codex/stylist-4-visual-intelligence-20261107"
+}

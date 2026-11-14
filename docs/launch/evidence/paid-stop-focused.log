@@ -1,0 +1,10 @@
+PASS __tests__/backend/paidWorkCoverage.test.js
+PASS __tests__/backend/rateLimit.test.js
+PASS __tests__/backend/tryOnContract.test.js
+PASS __tests__/services/outfitGenerationFailure.test.ts
+PASS __tests__/features/closestWardrobeOutfits.test.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       87 passed, 87 total
+Snapshots:   0 total
+Time:        1.126 s

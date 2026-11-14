@@ -24,9 +24,15 @@ function visit(node) {
 }
 visit(app);
 assert.ok(configInitializer, 'App linking route configuration exists');
-const config = Function(`return (${configInitializer})`)();
+// The real route config may contain TypeScript callback annotations. Compile
+// the extracted object before evaluating it, just as the application build does.
+const compiledConfig=ts.transpileModule(`exports.config = (${configInitializer});`,{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText;
+const configExports={};
+Function('exports',compiledConfig)(configExports);
+const config=configExports.config;
 
-for (const [name, path] of Object.entries(config.screens)) {
+for (const [name, routeConfig] of Object.entries(config.screens)) {
+  const path=typeof routeConfig==='string'?routeConfig:routeConfig.path;
   test(`app route ${name} parses and roundtrips`, () => {
     const state = getStateFromPath(path, config);
     assert.equal(state.routes.at(-1).name, name);
@@ -49,4 +55,14 @@ test('malformed percent input is processed by the installed parser', { timeout: 
   const state = getStateFromPath(`auth/callback?value=${'%FF'.repeat(20000)}`, config);
   assert.equal(state.routes.at(-1).name, 'AuthCallback');
   assert.ok(performance.now() - start < 1000, '60 KB malformed value should finish within one second');
+});
+
+
+test('purchase share parameters keep exact product text and remain bounded',()=>{
+ const input='https://merchant.test/products/shirt?variant=blue%2Bwhite';
+ const state=getStateFromPath(`buy-check?input=${encodeURIComponent(input)}`,config);
+ assert.equal(state.routes.at(-1).name,'PurchaseIntelligence');
+ assert.equal(state.routes.at(-1).params.input,input);
+ const oversized=getStateFromPath(`buy-check?input=${'x'.repeat(5000)}`,config);
+ assert.equal(oversized.routes.at(-1).params.input.length,4096);
 });

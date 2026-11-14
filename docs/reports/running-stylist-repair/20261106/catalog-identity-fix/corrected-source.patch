@@ -1,0 +1,15 @@
+--- a/backend/supabase/functions/generate-outfits/index.ts
++++ b/backend/supabase/functions/generate-outfits/index.ts
+@@ -1298,7 +1298,11 @@
+                     // that are definitively another slot — otherwise a knit
+                     // sweater lands in the pants slot. 'other' (ambiguous)
+                     // is allowed through to avoid starving thin slots.
+-                    if (eligibility && !eligibility({ ...row, type: row.garment_type || row.category || slot, color: inferShopColor(row), macroCategory: slot }, picks)) return false
++                    // Source gates must see the same catalog identity that
++                    // pushRow returns. Raw DB IDs have no shop_ prefix, so a
++                    // catalog-only context otherwise rejects every candidate.
++                    if (eligibility && !eligibility({ ...row, id: `shop_${row.id}`, isShopItem: true, isWardrobe: false,
++                        type: row.garment_type || row.category || slot, color: inferShopColor(row), macroCategory: slot }, picks)) return false
+                     if (styleKey === 'sport' && rejectForActivity({ ...row, macroCategory: slot }, 'workout')) return false
+                     const resolved = macroCategory(row.category || '', row.garment_type || '', row.name || '')
+                     if (resolved !== 'other' && resolved !== slot) return false

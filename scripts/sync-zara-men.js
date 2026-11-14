@@ -32,12 +32,22 @@ try {
 
 const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
+const { normalizeCatalogImageUrl } = require('./lib/catalogImageUrl');
 
 const APIFY_TOKEN  = process.env.APIFY_API_TOKEN;
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ACTOR_ID     = 'shahidirfan~zara-product-scraper';
 const SOURCE       = 'apify-zara-men-uz';
+// Gate F currency honesty: every category URL above is the Zara Uzbekistan
+// storefront (zara.com/uz/en), which lists in UZS. The scraper payload
+// usually omits its own currency field; the old `|| 'USD'` fallback mislabeled
+// those UZS amounts (849,900 rendered as "$849,900"). The source's real
+// currency is now explicit config: it fills an absent (or unusable) scraper
+// field, a valid 3-letter scraper code is trusted as-is, and a row with no
+// resolvable currency at all is skipped into the run report rather than
+// defaulting to an invented currency.
+const SOURCE_CURRENCY = 'UZS';
 
 const START_CATEGORIES = [
     { label: 'Basic T-Shirts',     url: 'https://www.zara.com/uz/en/man-tshirts-basics-l856.html' },
@@ -522,12 +532,13 @@ function pickImage(raw) {
         return score;
     };
 
-    const direct = pick(raw, 'image_url');
+    const direct = normalizeCatalogImageUrl(pick(raw, 'image_url'));
     const candidates = [];
     if (isRenderableImageUrl(direct)) candidates.push(direct);
 
     if (Array.isArray(raw.image_urls)) {
-        for (const url of raw.image_urls) {
+        for (const value of raw.image_urls) {
+            const url = normalizeCatalogImageUrl(value);
             if (isRenderableImageUrl(url)) candidates.push(url);
         }
     }
@@ -572,12 +583,23 @@ async function scrapeCategory(category) {
     return items;
 }
 
+function resolveItemCurrency(raw) {
+    const reported = pick(raw, 'currency').toUpperCase();
+    if (/^[A-Z]{3}$/.test(reported)) return reported;
+    return SOURCE_CURRENCY || null;
+}
+
 function mapItem(raw, categoryIndex, itemIndex, categoryLabel, sourceUrl, syncTimestamp) {
     if (!isSupportedMensClothing(raw, categoryLabel, sourceUrl)) return null;
 
     const name = pick(raw, 'name');
-    const imageUrl = pickImage(raw);
+    const imageUrl = normalizeCatalogImageUrl(pickImage(raw));
     if (!name || !imageUrl) return null;
+
+    // No resolvable currency: skip the row (counted in the run report as
+    // unsupported) instead of defaulting to an invented currency.
+    const currency = resolveItemCurrency(raw);
+    if (!currency) return null;
 
     const garmentInput = [
         raw.category_name,
@@ -594,7 +616,6 @@ function mapItem(raw, categoryIndex, itemIndex, categoryLabel, sourceUrl, syncTi
 
     const { garment_type, category } = categoryToGarmentType(garmentInput);
     const price = parsePrice(raw.price, raw.price_minor);
-    const currency = pick(raw, 'currency') || 'USD';
     const externalId = pick(raw, 'seo_product_id', 'product_reference', 'display_reference', 'product_id');
     const productUrl = pick(raw, 'product_url') || sourceUrl;
     const id = externalId
@@ -874,6 +895,8 @@ module.exports = {
     extractProductSlug,
     getSimilarityTokens,
     isSupportedMensClothing,
+    mapItem,
     normalizeText,
+    resolveItemCurrency,
     shouldReplaceRow,
 };

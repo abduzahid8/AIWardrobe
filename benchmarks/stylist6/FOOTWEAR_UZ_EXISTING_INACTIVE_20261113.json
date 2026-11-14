@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "verifiedAt": "2026-11-13",
+  "verifiedAtPrecision": "day",
+  "source": "Read-only public.shop_catalog Supabase equality lookup by exact source_url; archived rows are not merchant stock",
+  "matches": [
+    {
+      "id": "fr-tommy-171923",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/lofery-flex-hilfiger-sde-tassel-loafer-tommy-hilfiger-fm0fm05940-korichnevyj",
+      "is_active": false,
+      "old_price_uzs": 2929000
+    },
+    {
+      "id": "fr-tommy-152421",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/lofery-hilfiger-stitchdown-suede-loafer-tommy-hilfiger-fm0fm05782-bezhevyj",
+      "is_active": false,
+      "old_price_uzs": 1384500
+    },
+    {
+      "id": "fr-tommy-171927",
+      "brand": "Tommy Hilfiger",
+      "source_url": "https://frgroup.uz/ru/store/topsajdery-th-boat-shoe-core-suede-tommy-hilfiger-fm0fm05387-sinij",
+      "is_active": false,
+      "old_price_uzs": 2189000
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "checkedAt": "2026-11-07T08:30:50.563Z",
+  "version": 189,
+  "status": "ACTIVE",
+  "verify_jwt": false,
+  "ezbr_sha256": "8b0ea0c1008c014a088c0235c4abbf83d347d23a3179e602a84a02008482f0c7",
+  "downloadedOriginalSourceSha256": "3fddedc7a4adfc338b188981ef718b25b68eb4a2b64d008484f26d5fffa4387d",
+  "sourceMatchesArtifact": true,
+  "otherFunctionsUnchanged": true
+}

@@ -7,11 +7,17 @@
  *
  * Usage:
  *   npx tsx scripts/import-feed.ts --file ./feed.csv --source awin-zara
+ *   npx tsx scripts/import-feed.ts --file ./feed.csv --source awin-zara --currency UZS
  *   npx tsx scripts/import-feed.ts --file ./products.xml --source google-feed --dry-run
  *
  * CSV headers (case-insensitive; extra columns ignored):
  *   id, external_id, brand, name, price, currency, category, garment_type,
  *   description, image_url, source_url, sort_order
+ *
+ * Currency (gate F honesty): a per-row `currency` column is authoritative.
+ * Feeds without one must declare a single explicit `--currency ISO` for the
+ * whole run. A row with no resolvable currency is SKIPPED and counted in
+ * the run report — never defaulted to an invented currency.
  *
  * If `id` is omitted, id = slug(source + external_id) or slug(source + name + image_url).
  *
@@ -95,7 +101,9 @@ function mapCategoryToGarmentType(category: string): string {
 function normalizeRow(
     raw: Record<string, string>,
     source: string,
-    defaultSortBase: number
+    defaultSortBase: number,
+    declaredCurrency?: string,
+    skips?: Record<string, number>,
 ): Row | null {
     const get = (k: string) => {
         const key = Object.keys(raw).find((x) => normalizeHeader(x) === k);
@@ -118,7 +126,19 @@ function normalizeRow(
     }
 
     const price = parsePrice(get('price'));
-    const currency = (get('currency') || 'USD').toUpperCase().slice(0, 3);
+    // Gate F currency honesty: a valid per-row feed currency wins; otherwise
+    // the run's explicitly declared `--currency` applies; otherwise the row
+    // is skipped and counted — never defaulted to an invented currency.
+    const feedCurrency = get('currency').toUpperCase();
+    let currency: string;
+    if (/^[A-Z]{3}$/.test(feedCurrency)) {
+        currency = feedCurrency;
+    } else if (declaredCurrency && /^[A-Z]{3}$/.test(declaredCurrency)) {
+        currency = declaredCurrency;
+    } else {
+        if (skips) skips.currency_unknown = (skips.currency_unknown || 0) + 1;
+        return null;
+    }
     const description = get('description') || '';
     const source_url = get('source_url') || get('link') || get('product_url') || '';
     const sortOrderRaw = get('sort_order');
@@ -147,7 +167,14 @@ function normalizeRow(
     };
 }
 
-function parseCsv(filePath: string, source: string): Row[] {
+export { normalizeRow, parsePrice };
+
+function parseCsv(
+    filePath: string,
+    source: string,
+    declaredCurrency?: string,
+    skips?: Record<string, number>,
+): Row[] {
     const text = fs.readFileSync(filePath, 'utf8');
     const records = parse(text, {
         columns: (header: string[]) => header.map((h) => normalizeHeader(h)),
@@ -159,7 +186,7 @@ function parseCsv(filePath: string, source: string): Row[] {
     const rows: Row[] = [];
     let i = 0;
     for (const rec of records) {
-        const row = normalizeRow(rec as unknown as Record<string, string>, source, i * 10);
+        const row = normalizeRow(rec as unknown as Record<string, string>, source, i * 10, declaredCurrency, skips);
         if (row) rows.push(row);
         i++;
     }
@@ -202,7 +229,12 @@ function categoryFromProductType(raw: string): string {
     return 'tops';
 }
 
-function parseGoogleShoppingXml(filePath: string, source: string): Row[] {
+function parseGoogleShoppingXml(
+    filePath: string,
+    source: string,
+    declaredCurrency?: string,
+    skips?: Record<string, number>,
+): Row[] {
     const xml = fs.readFileSync(filePath, 'utf8');
     const parser = new XMLParser({
         ignoreAttributes: false,
@@ -243,7 +275,7 @@ function parseGoogleShoppingXml(filePath: string, source: string): Row[] {
             raw.price = parts[0];
             if (parts[1]) raw.currency = parts[1];
         }
-        const row = normalizeRow(raw, source, i * 10);
+        const row = normalizeRow(raw, source, i * 10, declaredCurrency, skips);
         if (row) rows.push(row);
         i++;
     }
@@ -278,11 +310,16 @@ async function main(): Promise<void> {
     const file = arg('--file');
     const source = arg('--source');
     const dryRun = hasFlag('--dry-run');
+    const declaredCurrency = arg('--currency')?.toUpperCase();
 
     if (!file || !source) {
         console.error(
-            'Usage: npx tsx scripts/import-feed.ts --file <path.csv|path.xml> --source <label> [--dry-run]'
+            'Usage: npx tsx scripts/import-feed.ts --file <path.csv|path.xml> --source <label> [--currency ISO] [--dry-run]'
         );
+        process.exit(1);
+    }
+    if (declaredCurrency && !/^[A-Z]{3}$/.test(declaredCurrency)) {
+        console.error('--currency must be a 3-letter ISO 4217 code (e.g. UZS).');
         process.exit(1);
     }
 
@@ -293,17 +330,24 @@ async function main(): Promise<void> {
     }
 
     const ext = path.extname(abs).toLowerCase();
+    const skips: Record<string, number> = {};
     let rows: Row[];
     if (ext === '.csv' || ext === '.tsv') {
-        rows = parseCsv(abs, source);
+        rows = parseCsv(abs, source, declaredCurrency, skips);
     } else if (ext === '.xml') {
-        rows = parseGoogleShoppingXml(abs, source);
+        rows = parseGoogleShoppingXml(abs, source, declaredCurrency, skips);
     } else {
         console.error('Unsupported extension. Use .csv, .tsv, or .xml');
         process.exit(1);
     }
 
     console.log(`Parsed ${rows.length} rows from ${path.basename(abs)} (source=${source})`);
+    if (skips.currency_unknown) {
+        console.log(
+            `Skipped ${skips.currency_unknown} row(s) without a resolvable currency ` +
+            '(no per-row currency column and no --currency declaration).'
+        );
+    }
 
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_KEY;
@@ -317,7 +361,19 @@ async function main(): Promise<void> {
     console.log(rows.length ? 'Done.' : 'Nothing to import.');
 }
 
-main().catch((e) => {
-    console.error(e);
-    process.exit(1);
-});
+// Tests import the pure helpers; only invoke the CLI when run directly
+// (same guard pattern as scripts/stylist-diversity-report.ts).
+const isMain = (() => {
+    try {
+        return require.main === module;
+    } catch {
+        return false;
+    }
+})();
+
+if (isMain) {
+    main().catch((e) => {
+        console.error(e);
+        process.exit(1);
+    });
+}

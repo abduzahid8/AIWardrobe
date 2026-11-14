@@ -1,3 +1,9 @@
+import {validatedQuartets} from '../domain/validatedQuartets';
+import {stylingContext} from '../domain/stylingContext';
+import {fourSlotOutfitReason} from '../domain/outfitStructure';
+import {passesStyleJudge,assessOutfitQuality} from '../domain/occasionRules';
+import {assembleDiverseDeck,productIdentityKeys,diversitySlotOf} from '../domain/outfitDiversity';
+import {stylingCopy} from './stylingCopy';
 /**
  * Suggestion Engine — Core outfit recommendation logic
  *
@@ -7,7 +13,7 @@
  * Architecture:
  *   1. TIER    — Assign formality tier (1–5) to every item
  *   2. FILTER  — Remove items incompatible with context (weather, occasion tier)
- *   3. COMBINE — Generate candidate outfits (top + bottom + shoes [+ outerwear])
+ *   3. COMBINE — Generate candidate outfits (TOP + LAYER + BOTTOM + SHOES through the shared domain kernel)
  *   4. SCORE   — Rank by formality(30%) + novelty(25%) + color_harmony(25%) + weather(20%)
  *   5. RETURN  — Top N candidates with reasoning
  *
@@ -272,18 +278,6 @@ function tiersCompatible(tierA: FormalityTier, tierB: FormalityTier): boolean {
     return false;
 }
 
-// ============================================
-// SEASON INFERENCE
-// ============================================
-
-function getCurrentSeason(): Season {
-    const month = new Date().getMonth(); // 0-11
-    if (month >= 2 && month <= 4) return 'spring';
-    if (month >= 5 && month <= 7) return 'summer';
-    if (month >= 8 && month <= 10) return 'fall';
-    return 'winter';
-}
-
 function tempToSeason(temp: number): Season[] {
     if (temp < 5) return ['winter'];
     if (temp < 15) return ['fall', 'winter', 'spring'];
@@ -323,7 +317,8 @@ function filterByOccasion(items: ClothingItem[], occasion: Occasion): ClothingIt
 }
 
 function filterBySeason(items: ClothingItem[], weather?: WeatherContext): ClothingItem[] {
-    const seasons = weather ? tempToSeason(weather.temp) : [getCurrentSeason()];
+    if(!weather)return items;
+    const seasons = tempToSeason(weather.temp);
 
     return items.filter((item) => {
         if (item.seasons && item.seasons.length > 0) {
@@ -396,102 +391,14 @@ function groupByCategory(items: ClothingItem[]): Record<ClothingCategory, Clothi
  * Cold weather adds outerwear if available.
  * anchorItemId forces every candidate to include that specific item.
  */
+function evidence(item:ClothingItem){return {...item,type:item.subCategory,macroCategory:item.category,color:item.primaryColor};}
 function generateCandidates(
-    groups: Record<ClothingCategory, ClothingItem[]>,
-    weather?: WeatherContext,
-    maxCandidates: number = 60,
-    anchorItemId?: string
-): string[][] {
-    const tops      = groups.top;
-    const bottoms   = groups.bottom;
-    const shoes     = groups.shoes;
-    const outerwear = groups.outerwear;
-
-    // Filter out shorts when paired with formal outerwear to prevent illogical combinations
-    // Formal outerwear: blazer, suit jacket, sport coat, overcoat, topcoat, trench, peacoat, tuxedo
-    const isFormalOuterwear = (item: ClothingItem): boolean => {
-        if (!item) return false;
-        const blob = `${item.subCategory || item.category || ''} ${item.name || ''}`.toLowerCase();
-        const macro = (item.category || '').toLowerCase();
-        const isOuter = macro === 'outerwear' || /jacket|coat|blazer|vest|outerwear/.test(blob);
-        if (!isOuter) return false;
-        return /\b(blazer|suit\s*jacket|sport\s*coat|sports\s*coat|overcoat|top\s*coat|topcoat|trench|peacoat|pea\s*coat|tuxedo)\b/.test(blob);
-    };
-
-    const isShorts = (item: ClothingItem): boolean => {
-        if (!item) return false;
-        const blob = `${item.subCategory || item.category || ''} ${item.name || ''}`.toLowerCase();
-        const macro = (item.category || '').toLowerCase();
-        const isBottom = macro === 'bottom' || /pant|trouser|jeans|bottom|shorts?|skirt/.test(blob);
-        if (!isBottom) return false;
-        return /\b(shorts?|bermudas?)\b/.test(blob);
-    };
-
-    // If formal outerwear exists, filter out shorts from bottoms
-    if (outerwear.some(isFormalOuterwear)) {
-        const filteredBottoms = bottoms.filter(b => !isShorts(b));
-        if (filteredBottoms.length > 0) {
-            bottoms.length = 0;
-            bottoms.push(...filteredBottoms);
-        }
-    }
-
-    // Minimum: need at least one top and one bottom
-    if (tops.length === 0 && bottoms.length === 0) return [];
-
-    // If only one category available, still return a partial outfit
-    const effectiveTops    = tops.length > 0    ? tops    : [{ id: '__missing_top__',    category: 'top'    } as ClothingItem];
-    const effectiveBottoms = bottoms.length > 0 ? bottoms : [{ id: '__missing_bottom__', category: 'bottom' } as ClothingItem];
-
-    const candidates: string[][] = [];
-    // Default to layered mode so outfits always have 4 slots:
-    // outerwear(layer) + top(main-top) + top(second-top) + bottom + shoes
-    const needsOuterwear = weather ? weather.temp < 18 : true;
-
-    for (const top of effectiveTops) {
-        for (const bottom of effectiveBottoms) {
-            // Skip tier-incompatible pairs (unless one is a placeholder)
-            if (!top.id.startsWith('__') && !bottom.id.startsWith('__')) {
-                if (!tiersCompatible(getFormalityTier(top), getFormalityTier(bottom))) continue;
-            }
-
-            const baseOutfit = [top.id, bottom.id].filter((id) => !id.startsWith('__'));
-
-            const shoeList = shoes.length > 0 ? shoes : [null];
-            const outerList = needsOuterwear && outerwear.length > 0 ? outerwear : [null];
-
-            for (const shoe of shoeList) {
-                if (shoe && !shoe.id.startsWith('__')) {
-                    if (!tiersCompatible(getFormalityTier(top.id.startsWith('__') ? ({ category: 'top', subCategory: '' } as ClothingItem) : top), getFormalityTier(shoe))) continue;
-                }
-                const withShoe = shoe ? [...baseOutfit, shoe.id] : baseOutfit;
-
-                for (const outer of outerList) {
-                    let full = outer ? [...withShoe, outer.id] : withShoe;
-
-                    // When layering (outerwear present), always add a second top
-                    // so the outfit has: layer + main-top + second-top + bottom + shoes
-                    if (outer && effectiveTops.length >= 2) {
-                        const secondTop = effectiveTops.find((t) => t.id !== top.id && !t.id.startsWith('__')) ?? (top.id.startsWith('__') ? undefined : effectiveTops[0]);
-                        if (secondTop && secondTop.id !== top.id) {
-                            full = [...full, secondTop.id];
-                        } else if (top.id.startsWith('__') === false) {
-                            // Clone the same top as second-top when only 1 top available
-                            full = [...full, top.id];
-                        }
-                    }
-
-                    // Enforce anchor constraint
-                    if (anchorItemId && !full.includes(anchorItemId)) continue;
-
-                    candidates.push(full);
-                    if (candidates.length >= maxCandidates) return candidates;
-                }
-            }
-        }
-    }
-
-    return candidates;
+    groups: Record<ClothingCategory, ClothingItem[]>,weather?: WeatherContext,maxCandidates=60,anchorItemId?:string,occasion?:Occasion,preferences?:UserPreferences,
+):string[][] {
+    const context=stylingContext({style:'casual',occasion,weather,sourceMode:'wardrobe',anchorId:anchorItemId,preferences:preferences?{favoriteColors:preferences.preferredColors,avoidColors:preferences.avoidColors}:undefined});
+    const pool=Object.values(groups).flat().map(evidence);
+    return validatedQuartets(pool,context,parts=>!fourSlotOutfitReason(parts)&&passesStyleJudge(parts,'casual',occasion,weather,anchorItemId,preferences),
+        {maximum:maxCandidates,searchLimit:3000,requiredIds:anchorItemId?[anchorItemId]:[]}).map(look=>look.items.map(item=>item.id));
 }
 
 // ============================================
@@ -685,143 +592,29 @@ function scoreFormality(
     return Math.max(0, Math.min(1, score));
 }
 
-/**
- * Generate human-readable reasoning string for a scored outfit.
- * Used in suggestion cards and AI chat context.
- */
-function generateReasoning(
-    itemIds: string[],
-    items: ClothingItem[],
-    breakdown: ScoredOutfit['breakdown'],
-    weather?: WeatherContext,
-    occasion?: Occasion
-): string {
-    const outfitItems = itemIds
-        .map((id) => items.find((i) => i.id === id))
-        .filter(Boolean) as ClothingItem[];
-    const parts: string[] = [];
-
-    if (weather) parts.push(`${Math.round(weather.temp)}°C · ${weather.condition}`);
-
-    if (breakdown.noveltyScore > 0.7 && outfitItems.length > 0) {
-        const leastWorn = outfitItems.reduce((a, b) => (a.wearCount < b.wearCount ? a : b));
-        parts.push(`surfaces your ${leastWorn.subCategory || leastWorn.category} (worn ${leastWorn.wearCount}×)`);
-    }
-
-    if (breakdown.harmonyScore > 0.7) {
-        const colors = outfitItems.map((i) => i.primaryColor).filter(Boolean).slice(0, 2);
-        if (colors.length >= 2) parts.push(`${colors[0]} + ${colors[1]} harmony`);
-    }
-
-    if (breakdown.formalityScore > 0.8) parts.push(`cohesive dress code`);
-
-    if (occasion) parts.push(OCCASION_LABEL[occasion as string] ?? occasion);
-
-    return parts.length > 0 ? parts.join(' · ') : 'A sharp look from your wardrobe';
-}
-
 // ============================================
 // MAIN: generateSuggestions
 // ============================================
 
 /**
  * Generate scored outfit suggestions from the user's wardrobe.
- * Never returns empty — falls back through progressive relaxation:
- *   1. Full filter (weather + occasion tier + season)
- *   2. Without season filter
- *   3. Without occasion tier filter
- *   4. Bare minimum: any top + any bottom
+ * Returns no outfit when four suitable distinct garments cannot be formed.
+ * Shared domain rules retain activity, layering and context at every fallback.
  */
 export function generateSuggestions(request: SuggestionRequest): ScoredOutfit[] {
-    const { items, wearLogs, occasion, weather, preferences, anchorItemId } = request;
-
-    if (items.length === 0) {
-        // Return one shopping suggestion outfit when wardrobe is empty
-        return [buildEmptyStateSuggestion(occasion)];
-    }
-
-    // Step 1: Filter with full constraints
-    let filtered = filterByWeather(items, weather);
-    filtered = filterByOccasion(filtered, occasion);
-    filtered = filterBySeason(filtered, weather);
-
-    let groups = groupByCategory(filtered);
-    let candidates = generateCandidates(groups, weather, 60, anchorItemId);
-
-    // Fallback 1: drop season filter
-    if (candidates.length === 0) {
-        filtered = filterByOccasion(items, occasion);
-        groups = groupByCategory(filtered);
-        candidates = generateCandidates(groups, weather, 60, anchorItemId);
-    }
-
-    // Fallback 2: drop occasion tier filter
-    if (candidates.length === 0) {
-        groups = groupByCategory(items);
-        candidates = generateCandidates(groups, weather, 60, anchorItemId);
-    }
-
-    // Fallback 3: bare minimum — any top + any bottom (guaranteed non-empty)
-    if (candidates.length === 0) {
-        groups = groupByCategory(items);
-        const allTops    = items.filter((i) => i.category === 'top');
-        const allBottoms = items.filter((i) => i.category === 'bottom');
-        if (allTops.length > 0 && allBottoms.length > 0) {
-            candidates = [[allTops[0].id, allBottoms[0].id]];
-        } else if (allTops.length > 0) {
-            candidates = [[allTops[0].id]];
-        } else if (allBottoms.length > 0) {
-            candidates = [[allBottoms[0].id]];
-        } else {
-            return [buildEmptyStateSuggestion(occasion)];
-        }
-    }
-
-    return scoreCandidates(candidates, items, wearLogs, weather, preferences, occasion);
+    const {items,wearLogs,occasion,weather,preferences,anchorItemId}=request;
+    if(!items.length)return [];
+    const filtered=filterBySeason(filterByOccasion(filterByWeather(items,weather),occasion),weather);
+    let candidates=generateCandidates(groupByCategory(filtered),weather,60,anchorItemId,occasion,preferences);
+    // Old tier estimates are soft. The shared hard judge still checks the full
+    // context when broader wardrobe evidence is needed; constraints never relax.
+    if(!candidates.length)candidates=generateCandidates(groupByCategory(items),weather,60,anchorItemId,occasion,preferences);
+    return scoreCandidates(candidates,items,wearLogs,weather,preferences,occasion,anchorItemId);
 }
 
-/** Build a placeholder suggestion outfit when the wardrobe is completely empty. */
-function buildEmptyStateSuggestion(occasion: Occasion): ScoredOutfit {
-    const tierRange = OCCASION_TIER_MAP[occasion as string] ?? [3, 4, 3];
-    const tier = tierRange[2] as FormalityTier;
-    return {
-        outfit: {
-            itemIds: [],
-            occasion,
-            generatedBy: 'ai' as const,
-            reasoning: 'Add items to your closet to get real suggestions',
-            style: FORMALITY_TIER_LABELS[tier].toLowerCase(),
-        },
-        score: 0,
-        reasoning: 'Add items to your closet to get real suggestions',
-        formalityTier: tier,
-        dressCode: DRESS_CODE_BADGE[tier],
-        occasionLabel: OCCASION_LABEL[occasion as string] ?? occasion,
-        shoppingSuggestions: buildShoppingSuggestions(occasion, ['top', 'bottom', 'shoes']),
-        breakdown: { preferenceScore: 0, weatherScore: 0, noveltyScore: 0, harmonyScore: 0, formalityScore: 0 },
-    };
-}
-
-/**
- * Returns true if the outfit has no duplicate categories EXCEPT 'top',
- * which is allowed to appear up to 2 times (for layering: base top + second top).
- * Bottoms, shoes, outerwear, etc. may still appear at most once.
- */
-function hasNoDuplicateCategories(itemIds: string[], items: ClothingItem[]): boolean {
-    const topIds: string[] = [];
-    const seen = new Set<string>();
-    for (const id of itemIds) {
-        const item = items.find((i) => i.id === id);
-        if (!item) continue;
-        if (item.category === 'top') {
-            topIds.push(id);
-            if (topIds.length > 2) return false; // max 2 tops for layering
-        } else {
-            if (seen.has(item.category)) return false;
-            seen.add(item.category);
-        }
-    }
-    return true;
+function hasNoDuplicateCategories(itemIds:string[],items:ClothingItem[]):boolean {
+    const parts=itemIds.map(id=>items.find(item=>item.id===id)).filter(Boolean) as ClothingItem[];
+    return parts.length===itemIds.length&&!fourSlotOutfitReason(parts.map(evidence));
 }
 
 function scoreCandidates(
@@ -830,7 +623,8 @@ function scoreCandidates(
     wearLogs: WearLog[],
     weather?: WeatherContext,
     preferences?: UserPreferences,
-    occasion?: Occasion
+    occasion?: Occasion,
+    anchorItemId?:string
 ): ScoredOutfit[] {
     const validCandidates = candidates.filter((ids) => hasNoDuplicateCategories(ids, items));
     const scored: ScoredOutfit[] = validCandidates.map((itemIds) => {
@@ -843,30 +637,23 @@ function scoreCandidates(
         // Compute outfit items once for layering bonus + tier + missing slots
         const outfitItems = itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as ClothingItem[];
 
-        // Layering bonus: outfits with outerwear + 2 tops get a small boost
-        // so the 4-slot format (layer + main-top + second-top + pants + shoes)
-        // is preferred over 3-slot (top + pants + shoes).
-        const topCount = outfitItems.filter((i) => i.category === 'top').length;
-        const hasOuterwear = outfitItems.some((i) => i.category === 'outerwear');
-        const layeringBonus = (hasOuterwear && topCount >= 2) ? 0.08 : 0;
-
-        const totalScore =
+        const legacyScore =
             formalityScore * WEIGHTS.formality +
             noveltyScore   * WEIGHTS.novelty   +
             harmonyScore   * WEIGHTS.harmony   +
-            weatherScore   * WEIGHTS.weather +
-            layeringBonus;
+            weatherScore   * WEIGHTS.weather;
 
+        const totalScore=assessOutfitQuality(outfitItems.map(evidence),'casual',occasion,weather,anchorItemId,preferences).score*.7+legacyScore*.3;
         const breakdown = { preferenceScore, weatherScore, noveltyScore, harmonyScore, formalityScore };
-        const reasoning = generateReasoning(itemIds, items, breakdown, weather, occasion);
+        const reasoning = stylingCopy(outfitItems.map(evidence),stylingContext({style:'casual',occasion,weather})).join(' ');
         const tiers = outfitItems.map(getFormalityTier);
         const avgTier = tiers.length > 0
             ? Math.round(tiers.reduce((a, b) => a + b, 0) / tiers.length)
             : 3;
-        const formalityTier = Math.max(1, Math.min(5, avgTier)) as FormalityTier;
+        const formalityTier = (occasion === 'sport' ? 5 : Math.max(1, Math.min(5, avgTier))) as FormalityTier;
 
         const ownedCategories = new Set(outfitItems.map((i) => i.category));
-        // 4-slot format: outerwear(layer) + top(main) + top(second) + bottom + shoes
+        // Exactly one TOP, LAYER, BOTTOM and SHOES.
         const requiredCats: ClothingCategory[] = ['top', 'bottom', 'shoes', 'outerwear'];
         const missing = requiredCats.filter((c) => !ownedCategories.has(c));
         const shoppingSuggestions = missing.length > 0
@@ -892,39 +679,8 @@ function scoreCandidates(
     });
 
     scored.sort((a, b) => b.score - a.score);
-    return diversifyResults(scored, 4);
-}
-
-function diversifyResults(scored: ScoredOutfit[], count: number): ScoredOutfit[] {
-    const result: ScoredOutfit[] = [];
-
-    for (const candidate of scored) {
-        if (result.length >= count) break;
-
-        // Check overlap with already selected outfits
-        const isDuplicate = result.some((selected) => {
-            const selectedIds = new Set(selected.outfit.itemIds);
-            const overlap = candidate.outfit.itemIds.filter((id) => selectedIds.has(id));
-            // If more than 60% overlap, skip
-            return overlap.length / candidate.outfit.itemIds.length > 0.6;
-        });
-
-        if (!isDuplicate) {
-            result.push(candidate);
-        }
-    }
-
-    // If we couldn't find enough diverse results, fill with top remaining
-    if (result.length < count) {
-        for (const candidate of scored) {
-            if (result.length >= count) break;
-            if (!result.includes(candidate)) {
-                result.push(candidate);
-            }
-        }
-    }
-
-    return result;
+    const anchor=items.find(item=>item.id===anchorItemId);
+    return assembleDiverseDeck({candidates:scored,itemsOf:look=>look.outfit.itemIds.map(id=>items.find(item=>item.id===id)!).map(evidence),qualityOf:look=>look.score,target:4,usedKeys:new Set(),poolItems:items.map(evidence),anchorKeys:anchor?new Set(productIdentityKeys(anchor)):undefined,anchorSlot:anchor?diversitySlotOf(evidence(anchor)):undefined}).deck;
 }
 
 // ============================================

@@ -1,6 +1,8 @@
 import { withRequestDeadline } from '../lib/requestDeadline';
 
 const messages = {
+  feature_limit_reached: 'outfitMaker.subscriptionRequired',
+  feature_disabled: 'outfitMaker.aiUnavailable',
   ai_generation_unavailable: 'outfitMaker.aiUnavailable',
   catalog_lookup_unavailable: 'outfitMaker.catalogUnavailable',
   invalid_generation_request: 'outfitMaker.invalidRequest',
@@ -9,17 +11,30 @@ const messages = {
   no_outfit_within_budget: 'outfitMaker.budgetTooLow',
   no_items_within_budget: 'outfitMaker.noItemsWithinBudget',
   no_matching_clothing: 'outfitMaker.noMatchingClothing',
+  incompatible_locked_item: 'outfitMaker.incompatibleLockedItem',
   incomplete_outfit_deck: 'outfitMaker.noMatchingClothing',
+  insufficient_candidates: 'outfitMaker.missingRequiredClothing',
+  outfit_quality_rejected: 'outfitMaker.qualityShortfall',
+  incomplete_outfit_selection: 'outfitMaker.distinctInventoryLimited',
+  planning_cpu_risk: 'outfitMaker.generationBusy',
+  generation_failed: 'outfitMaker.generateFailed',
+  // Do not trigger the screen's looser closest-match recovery after a floor failure.
+  quality_replacement_unavailable: 'outfitMaker.generateFailed',
   shoe_rotation_unavailable: 'outfitMaker.noMatchingClothing',
   invalid_outfit_budget: 'outfitMaker.invalidBudget',
 } as const;
 type MessageKey = typeof messages[keyof typeof messages] | 'outfitMaker.generateFailed'
-  | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut' | 'outfitMaker.connectionFailed';
+  | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut' | 'outfitMaker.connectionFailed'
+  | 'outfitMaker.requestTimeout' | 'outfitMaker.visualQualityUnmet';
 
 export class OutfitGenerationFailure extends Error {
-  constructor(readonly translationKey: MessageKey = 'outfitMaker.generateFailed') {
+  constructor(readonly translationKey: MessageKey = 'outfitMaker.generateFailed', readonly code?:string, readonly stage?:string) {
     super('outfit_generation_failed');
     this.name = 'OutfitGenerationFailure';
+  }
+
+  get requiresSubscription(): boolean {
+    return this.translationKey === 'outfitMaker.subscriptionRequired';
   }
 }
 
@@ -48,10 +63,15 @@ function reportUnmappedFailure(error: unknown, phase: 'transport' | 'http_body' 
   });
 }
 
+function safeFailureField(payload:unknown,key:string):string|undefined {
+  const value=(payload as Record<string,unknown>|null)?.[key];
+  return typeof value==='string'&&/^[a-z_]{1,64}$/.test(value)?value:undefined;
+}
+
 /** Decode only known server codes; never display raw provider/server messages. */
 export async function outfitGenerationFailure(data: unknown, error?: unknown): Promise<OutfitGenerationFailure> {
   const direct = messageFrom(data);
-  if (direct) return new OutfitGenerationFailure(direct);
+  if (direct) return new OutfitGenerationFailure(direct, safeFailureField(data,'code') || safeFailureField(data,'error'),safeFailureField(data,'stage'));
   const context = (error as { context?: Response } | null)?.context;
   if (context && typeof context.clone === 'function') {
     try {
@@ -60,7 +80,7 @@ export async function outfitGenerationFailure(data: unknown, error?: unknown): P
       const payload = await withRequestDeadline(() => context.clone().json(), 1500);
       const message = messageFrom(payload, context.status);
       if (!message) reportUnmappedFailure(error, 'http_body');
-      return new OutfitGenerationFailure(message);
+      return new OutfitGenerationFailure(message,safeFailureField(payload,'code') || safeFailureField(payload,'error'),safeFailureField(payload,'stage'));
     } catch { reportUnmappedFailure(error, 'http_decode'); return new OutfitGenerationFailure(); }
   }
   reportUnmappedFailure(error, 'transport');

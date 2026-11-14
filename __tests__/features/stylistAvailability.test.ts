@@ -15,8 +15,8 @@ test.each(['top', 'bottom', 'shoes', 'outerwear'])('missing %s hides an impossib
 test('sport is hidden when the inventory only has refined daywear', () => {
   expect(availableStylistCombinations(items, ['old_money'], ['travel', 'sport'])).toEqual([{ style: 'old_money', occasion: 'travel' }]);
 });
-test('explicit no-layer requests work with three real categories', () => {
-  expect(availableStylistCombinations(items.filter(item => item.macroCategory !== 'outerwear'), ['old_money'], ['travel'], undefined, 'no jacket')).toHaveLength(1);
+test('no-jacket wording still requires the shipped four-slot outfit contract', () => {
+  expect(availableStylistCombinations(items.filter(item => item.macroCategory !== 'outerwear'), ['old_money'], ['travel'], undefined, 'no jacket')).toHaveLength(0);
 });
 test('a missing locked piece is never replaced to claim availability', () => {
   expect(availableStylistCombinations(items, ['old_money'], ['travel'], undefined, '', 'missing-anchor')).toEqual([]);

@@ -1,0 +1,251 @@
+import {hasColdLayerIntent} from './outfitComposition.ts';
+import { normalizeGarmentText, SHORT_SLEEVE_RE } from './garmentText.ts';
+import { patternOf } from './outfitDiversity.ts';
+import { STYLING_PROFILES } from './stylingProfiles.ts';
+import { describeGarment, type GarmentEvidence, type GarmentDescriptor } from './garmentDescriptor.ts';
+import { isDateNightOccasion, type StylingContext } from './stylingContext.ts';
+
+/**
+ * Quiet classic palettes: a saturated scarlet/vivid red fights the muted
+ * scheme Old Money, Classic, Business Casual, Semi-Classic and Minimalist
+ * build on. The persisted visual color is trusted evidence even when the
+ * title never names the color (verified: a "Classic double-pleated chino
+ * pant" whose visual profile reads red surfaced in an Old Money work deck).
+ * Muted reds (burgundy, wine, maroon, oxblood) are a different decision and
+ * stay welcome — vivid scarlet and burgundy must not collapse into one
+ * family. An explicit favorite color still wins, and the rule is scoped to
+ * these styles: never a global color ban.
+ */
+const QUIET_PALETTE_STYLES = new Set(['old_money', 'classic', 'business_casual', 'semi_classic', 'minimalist']);
+const MUTED_RED_RE = /\b(burgundy|wine|maroon|oxblood|claret)\b/;
+const VIVID_RED_TOKEN_RE = /\b(scarlet|crimson|(?:vivid|bright|neon|electric)[ -]red)\b/;
+const RED_WORD_RE = /\bred\b/;
+
+function vividRedConflict(item: GarmentEvidence, context: StylingContext): boolean {
+  if (!QUIET_PALETTE_STYLES.has(context.style)) return false;
+  const favorites = (context.preferences?.favoriteColors || []).map((color) => String(color).toLowerCase());
+  if (favorites.some((color) => RED_WORD_RE.test(color))) return false;
+  const colorField = normalizeGarmentText(
+    `${typeof item.color === 'string' ? item.color : ''} ${String((item as Record<string, unknown>).primary_color ?? '')}`,
+  ).replace(/\s+/g, ' ');
+  const nameText = normalizeGarmentText(String(item.name || ''));
+  // A muted token in either the persisted color or the title keeps the
+  // garment admissible; otherwise any red evidence conflicts.
+  if (MUTED_RED_RE.test(colorField) || MUTED_RED_RE.test(nameText)) return false;
+  return RED_WORD_RE.test(colorField) || RED_WORD_RE.test(nameText) || VIVID_RED_TOKEN_RE.test(colorField) || VIVID_RED_TOKEN_RE.test(nameText);
+}
+
+/** Same hard dress/activity exclusions before pool caps and after construction. */
+export function garmentContextReason(
+  item: GarmentEvidence,
+  context: StylingContext
+): string | null {
+  const shop = item.isShopItem === true || String(item.id || '').startsWith('shop_');
+  if (context.sourceMode === 'wardrobe' && shop) return 'source_requires_wardrobe';
+  if (context.sourceMode === 'catalog' && !shop) return 'source_requires_catalog';
+  const d = describeGarment(item);
+  if (context.dressCode === 'smart' && /\b(work|office|business)\b/.test(context.occasion)
+    && ['classic','old_money','semi_classic','business_casual'].includes(context.style)) {
+    if (d.slot === 'top' && d.subtype === 't-shirt') return 'work_requires_smart_base';
+    const text = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
+    const cleanWovenJacket = d.subtype === 'jacket' && /\b(wool|linen)\b/.test(text)
+      && !/\b(biker|trucker|racer|denim|leather|suede|utility|military|athletic|running)\b/.test(text);
+    if (d.slot === 'outerwear' && !['blazer','cardigan','coat'].includes(d.subtype) && !cleanWovenJacket)
+      return 'work_requires_smart_layer';
+  }
+  const explicit =
+    typeof item.color === 'string' && !/^(unknown|neutral)$/i.test(item.color)
+      ? item.color
+      : item.name || '';
+  const colorEvidence =
+    ' ' +
+    normalizeGarmentText(`${explicit} ${d.evidence.some(e=>e.startsWith('image:color:')) ? d.color : ''}`)
+      .replace(/[^\p{L}]+/gu, ' ')
+      .trim() +
+    ' ';
+  if (
+    context.preferences?.avoidColors?.some((color) => {
+      const value = normalizeGarmentText(color)
+        .replace(/[^\p{L}]+/gu, ' ')
+        .trim();
+      return !!value && colorEvidence.includes(' ' + value + ' ');
+    })
+  )
+    return 'excluded_color';
+  if (
+    d.pattern !== 'unknown' &&
+    context.preferences?.dislikedPatterns?.some(
+      (pattern) =>
+        /stripe|check|plaid|graphic|logo|floral|camo|plain|solid|paisley|jacquard/i.test(pattern) &&
+        patternOf({ pattern }) === d.pattern
+    )
+  )
+    return 'excluded_pattern';
+  if (vividRedConflict(item, context)) return 'vivid_red_conflicts_with_quiet_palette';
+  if (context.dressCode === 'formal') {
+    const baseText = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
+    if (d.slot === 'top' && (d.utilityConstruction || /\b(seaside|resort|hawaiian)\b/.test(baseText)))
+      return 'formal_requires_dress_base';
+    // Keep the coherence/pool path consistent with the existing occasion gate.
+    if (d.slot === 'top' && SHORT_SLEEVE_RE.test(baseText))
+      return 'formal_requires_long_sleeve_dress_base';
+    // Catalog "shirt" is too broad: a Henley has no dress collar, while
+    // merino button-through knitwear needs explicit woven/dress evidence.
+    if (d.slot === 'top' && (
+      /\b(henley|grandad|collarless|camp[ -]collar|cuban[ -]collar)\b/.test(baseText)
+      || /\b(knit|knitted|jersey)\b/.test(baseText)
+      || (/\bmerino\b/.test(baseText) && /\bbutton[ -]through\b/.test(baseText)
+        && !/\b(woven|dress|formal|poplin|oxford)\b/.test(baseText))
+    )) return 'formal_requires_dress_base';
+    if (
+      ['top', 'outerwear', 'bottom'].includes(d.slot) &&
+      /\b(corduroy|denim|fleece|sweatshirt)\b/i.test(`${item.name || ''} ${item.description || ''}`)
+    )
+      return 'formal_rejects_casual_fabric';
+    if (d.slot === 'outerwear' && d.subtype !== 'blazer') return 'formal_requires_structured_layer';
+    if (d.slot === 'top' && (!['shirt', 'dress-shirt'].includes(d.subtype) || (d.texture === 'knit' && d.subtype !== 'dress-shirt')))
+      return 'formal_requires_dress_base';
+    if (d.slot === 'bottom' && d.subtype !== 'tailored-trouser')
+      return 'formal_requires_tailored_bottom';
+    if (
+      d.slot === 'shoes' &&
+      (!['oxford', 'derby', 'monk', 'dress-boot', 'chelsea', 'loafer'].includes(d.subtype) ||
+        d.rugged || d.casualSole ||
+        (d.subtype === 'loafer' && d.formality !== 'formal') ||
+        d.athletic || /\b(hybrids?|cup[ -]?soles?)\b/.test(baseText))
+    )
+      return 'formal_requires_dress_footwear';
+  }
+  const outdoor = /\b(hik(?:e|ing)|trek(?:king)?|trail|mountain|snow)\b/i.test(
+    `${context.activity} ${context.request}`
+  );
+  const severe =
+    context.weather?.temp != null &&
+    context.weather.temp < 5 &&
+    /snow|ice/i.test(context.weather.condition || '');
+  if (context.dressCode === 'smart' && d.slot === 'shoes' && d.rugged && !outdoor && !severe)
+    return 'rugged_footwear_conflicts_with_smart_context';
+  if (context.dressCode === 'athletic') {
+    if (d.slot === 'shoes' && !d.athletic) return 'workout_requires_athletic_footwear';
+    if (d.slot === 'bottom' && d.structured) return 'workout_rejects_restrictive_tailoring';
+  }
+  return null;
+}
+
+/** Construction penalties only for Old Money office requests; unknown cues stay neutral. */
+export function officeRefinementPenalty(item: GarmentEvidence, context: StylingContext, d: GarmentDescriptor = describeGarment(item)): number {
+  if (context.style !== 'old_money' || context.dressCode !== 'smart'
+    || !/\b(work|office|business)\b/.test(context.occasion)) return 0;
+  const text = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
+  if (d.slot === 'shoes' && d.casualSole) return 0.35;
+  if (d.slot === 'outerwear' && (/\b(leisure|utility|flight|racer|bomber)\b/.test(text)
+    || (/\b(technical|nylon|shell)\b/.test(text) && /\b(zip|waterproof|windproof|performance)\b/.test(text)))) return 0.3;
+  if (d.slot === 'top' && d.pattern === 'stripe'
+    && /\b(rugby|rugger|sporty|athletic|jersey|bold|wide|contrast|block|candy)\b/.test(text)) return 0.25;
+  return 0;
+}
+
+/** Prefer the lower known price only when quality/recency are tied, within one slot and currency.
+ * Owned garments, unknown costs and mixed currencies are not price comparisons. No cap or FX is invented. */
+export function compareUnbudgetedValue(a: {price?: unknown; currency?: unknown; macroCategory?: unknown; isShopItem?: boolean; isWardrobe?: boolean}, b: typeof a): number {
+  if (!a.isShopItem || !b.isShopItem || a.isWardrobe === true || b.isWardrobe === true
+    || a.macroCategory !== b.macroCategory) return 0;
+  const currency = typeof a.currency === 'string' ? a.currency.trim().toUpperCase() : '';
+  if (!/^[A-Z]{3}$/.test(currency) || currency !== String(b.currency || '').trim().toUpperCase()) return 0;
+  const first = Number(a.price), second = Number(b.price);
+  return Number.isFinite(first) && first > 0 && Number.isFinite(second) && second > 0 ? first - second : 0;
+}
+
+/** Soft profile preference. Unknown evidence stays neutral; never a hard waiver. */
+export function scoreGarmentForContext(item: GarmentEvidence, context: StylingContext): number {
+  const d = describeGarment(item);
+  let score = 0.5;
+  const evening = /black[ -]?tie|tuxedo|gala|смокинг/i.test(
+    `${context.occasion} ${context.request}`
+  );
+  if (d.evening && !evening) return 0.05;
+  if (d.subtype === 'unknown') return score;
+  if (context.dressCode === 'formal')
+    return d.structured || ['oxford', 'derby', 'monk', 'dress-boot'].includes(d.subtype) ? 1 : 0.8;
+  if (context.dressCode === 'athletic') return d.athletic ? 0.95 : 0.25;
+  if (context.dressCode === 'smart') {
+    score = [
+      'blazer',
+      'cardigan',
+      'dress-shirt',
+      'shirt',
+      'fine-knit',
+      'tailored-trouser',
+      'chino',
+      'loafer',
+      'chelsea',
+      'dress-boot',
+      'oxford',
+      'derby',
+    ].includes(d.subtype)
+      ? 0.9
+      : 0.45;
+    if (d.rugged) score = 0.1;
+    // Work's tailoring and clean knit layers should lead the shortlist.
+    // Casual leather/denim jackets remain available for other occasions.
+    if (/\b(work|office|business)\b/.test(context.occasion) && d.slot === 'outerwear') {
+      if (['blazer', 'cardigan'].includes(d.subtype)) score = 1;
+      if (/\b(biker|trucker|racer|denim)\b/.test(normalizeGarmentText(`${item.name || ''} ${item.description || ''}`))) score = 0.15;
+    }
+  } else {
+    score = [
+      'overshirt',
+      'jacket',
+      'bomber',
+      't-shirt',
+      'polo',
+      'shirt',
+      'chino',
+      'jeans',
+      'sneaker',
+      'minimal-sneaker',
+      'driver',
+    ].includes(d.subtype)
+      ? 0.9
+      : 0.6;
+
+  }
+  // Travel is an activity, independent of the requested aesthetic. Do not
+  // claim all leather shoes are comfortable: rank only supported features.
+  const travel = /\b(travel|trip|sightseeing)\b/.test(`${context.occasion} ${context.request}`);
+  const businessTravel = /\b(business|meeting|conference)\b/.test(context.request);
+  if (travel && !businessTravel) {
+    if (['oxford', 'monk', 'blazer'].includes(d.subtype)) score -= 0.3;
+    if (d.evening) score = 0.05;
+    if (d.bulk === 'heavy' && (!context.weather || (context.weather.temp ?? 15) > 12)) score -= 0.2;
+    if (['cardigan', 'overshirt', 'chino', 'minimal-sneaker'].includes(d.subtype)) score += 0.2;
+    const text = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
+    if (d.slot === 'shoes' && /\b(cushioned|flexible|walking|padded insole|comfort)\b/.test(text)) score += 0.2;
+  }
+  const dateNight = isDateNightOccasion(context.occasion);
+  if (dateNight) {
+    if (d.fadedDenim || d.sportyZip || d.technicalLeisure || d.athletic) score -= 0.35;
+    if (['fine-knit', 'polo', 'cardigan', 'chino', 'chelsea', 'loafer', 'minimal-sneaker'].includes(d.subtype)
+      && !d.casualSole && !d.loudBranding) score += 0.08;
+  }
+  if (context.style === 'old_money' && (d.loudBranding || d.sportyZip)) score -= 0.4;
+  const profile = STYLING_PROFILES[context.style];
+  if (profile) {
+    score = score * 0.75 + (profile.preferred.includes(d.subtype) ? 1 : 0.4) * 0.25;
+    if (profile.textures.includes(d.texture)) score += 0.025;
+  }
+  if (context.style === 'minimalist' && d.pattern !== 'solid' && d.pattern !== 'unknown')
+    score -= 0.08;
+  if (!context.weather && d.bulk === 'heavy') score -= 0.1;
+  if(d.insulated && !hasColdLayerIntent(context.weather))score-=context.dressCode==='smart'?0.3:0.15;
+  if (d.bulk === 'light' && ['cardigan', 'blazer', 'overshirt'].includes(d.subtype)) score += 0.05;
+  if(d.color!=='unknown' && context.preferences?.favoriteColors?.some(color=>normalizeGarmentText(color).trim()===d.color))score+=0.03;
+  const fit = context.preferences?.fitPreference?.toLowerCase() || '';
+  if (d.volume !== 'unknown' && fit) {
+    const wanted = /slim|fitted/.test(fit) ? 'slim' : /relaxed|loose|wide|oversized/.test(fit) ? 'wide' : /regular|straight/.test(fit) ? 'regular' : '';
+    if (wanted) score += wanted === d.volume ? 0.05 : -0.025;
+  }
+  // Explicit occasion tags can support a preference; missing tags are neutral.
+  if (Array.isArray(item.occasions) && item.occasions.some(value => typeof value === 'string' && value.toLowerCase().trim() === context.occasion)) score += 0.04;
+  return Math.max(0, Math.min(1, score - officeRefinementPenalty(item, context, d)));
+}

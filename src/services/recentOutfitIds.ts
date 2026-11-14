@@ -1,3 +1,5 @@
+import {boundedGenerationHistory} from '../domain/outfitGenerationRequest';
+import {outfitVisualSignature} from '../domain/outfitVisualSignature';
 /**
  * recentOutfitIds.ts
  *
@@ -13,7 +15,8 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { productIdentityKeys, diversitySlotOf } from '../../backend/supabase/functions/_shared/outfitDiversity';
+import {withRequestDeadline} from '../lib/requestDeadline';
+import { productIdentityKeys, diversitySlotOf } from '../domain/outfitDiversity';
 
 const MAX_RECENT_IDS = 150;
 const STORAGE_KEY = 'aiExcludeShownItemIds';
@@ -21,6 +24,7 @@ const STORAGE_KEY = 'aiExcludeShownItemIds';
 interface RecencyState {
     recentIds: string[];
     productKeys: string[];
+    lookSignatures:string[];
     hydrated: boolean;
     hydratePromise: Promise<void> | null;
     writeChain: Promise<void>;
@@ -30,14 +34,15 @@ function stateFor(scope?: string): { key: string; state: RecencyState } {
     const key = scope ? `${STORAGE_KEY}::${encodeURIComponent(scope)}` : STORAGE_KEY;
     let state = states.get(key);
     if (!state) {
-        state = { recentIds: [], productKeys: [], hydrated: false, hydratePromise: null, writeChain: Promise.resolve() };
+        state = { recentIds: [], productKeys: [], lookSignatures:[], hydrated: false, hydratePromise: null, writeChain: Promise.resolve() };
         states.set(key, state);
+        if(states.size>32)states.delete(states.keys().next().value!);
     }
     return { key, state };
 }
 
 function isRealPoolId(id: string): boolean {
-    if (!id) return false;
+    if (!id || id.length > 200) return false;
     // Placeholder / synthesized ids are not pool members — recording them
     // would burn window space without excluding anything real.
     if (id === 'placeholder_shoes') return false;
@@ -48,12 +53,13 @@ function isRealPoolId(id: string): boolean {
 function ensureHydrated(state: RecencyState, key: string): Promise<void> {
     if (state.hydrated) return Promise.resolve();
     if (!state.hydratePromise) {
-        state.hydratePromise = Promise.all([AsyncStorage.getItem(key), AsyncStorage.getItem(`${key}::products`)])
-            .then(([raw, products]) => {
+        state.hydratePromise = Promise.all([AsyncStorage.getItem(key), AsyncStorage.getItem(`${key}::products`),AsyncStorage.getItem(`${key}::looks`)])
+            .then(([raw, products,looks]) => {
+                try{const values=JSON.parse(looks||'[]');if(Array.isArray(values))state.lookSignatures=values.filter(v=>typeof v==='string'&&v.startsWith('sq1:')&&v.length<=1000).slice(-36);}catch{/* Optional malformed history stays empty. */}
                 if (products) {
                     try {
                         const keys = JSON.parse(products);
-                        if (Array.isArray(keys)) state.productKeys = keys.filter((key: unknown) => typeof key === 'string' && /^(id:|n:|i:)/.test(key) && key.length <= 2048).slice(-MAX_RECENT_IDS * 3);
+                        if (Array.isArray(keys)) state.productKeys = keys.filter((key: unknown) => typeof key === 'string' && /^(id:|n:|i:|u:)/.test(key) && key.length <= 2048).slice(-MAX_RECENT_IDS * 3);
                     } catch { /* Ignore a corrupt optional identity cache. */ }
                 }
                 if (raw) {
@@ -95,6 +101,8 @@ export async function getRecentShownProductKeys(scope?: string): Promise<string[
     return [...state.productKeys];
 }
 
+export async function getRecentShownLookSignatures(scope?:string):Promise<string[]>{const {state,key}=stateFor(scope);await Promise.all([ensureHydrated(state,key),state.writeChain]);return [...state.lookSignatures];}
+
 /**
  * Record the decks the user is now looking at (raw edge response or any
  * `outfits` array with `items[].id`). FIFO-capped, persisted. Fire-and-
@@ -106,6 +114,8 @@ export function recordShownOutfits(outfits: unknown, scope?: string): void {
     state.writeChain = state.writeChain.then(async () => {
         await ensureHydrated(state, key);
         if (!Array.isArray(outfits)) return;
+        const signatures=outfits.filter(o=>Array.isArray(o?.items)&&[3,4].includes(o.items.length)).map(o=>outfitVisualSignature(o.items));
+        if(signatures.length){state.lookSignatures=[...state.lookSignatures,...signatures].slice(-36);await AsyncStorage.setItem(`${key}::looks`,JSON.stringify(state.lookSignatures)).catch(()=>undefined);}
         const seen = new Set(state.recentIds);
         const seenKeys = new Set(state.productKeys);
         let keysAdded = false;
@@ -117,12 +127,13 @@ export function recordShownOutfits(outfits: unknown, scope?: string): void {
                 const id = String((raw as { id?: unknown } | null)?.id ?? '').trim();
                 if (!isRealPoolId(id)) continue;
                 for (const key of productIdentityKeys(raw)) {
-                    if (key.length > 2048 || seenKeys.has(key)) continue;
+                    if (key.length > 2048) continue;
+                    if(seenKeys.has(key))state.productKeys=state.productKeys.filter(value=>value!==key);
                     seenKeys.add(key);
                     state.productKeys.push(key);
                     keysAdded = true;
                 }
-                if (seen.has(id)) continue;
+                if (seen.has(id)) state.recentIds=state.recentIds.filter(value=>value!==id);
                 seen.add(id);
                 state.recentIds.push(id);
                 added = true;
@@ -143,7 +154,7 @@ export function recordShownOutfits(outfits: unknown, scope?: string): void {
     });
 }
 
-export interface RotationDeck { requestId: string; productKeys: string[] }
+export interface RotationDeck { requestId: string; productKeys: string[]; lookSignatures?: string[] }
 const deckStates = new Map<string, {decks: RotationDeck[]; ready: Promise<void>; writes: Promise<void>}>();
 let requestSequence = 0;
 /** Stable semantic identity; request IDs deliberately live outside this scope. */
@@ -161,28 +172,50 @@ function decksFor(scope: string) {
             try { const decks=JSON.parse(raw||'[]');if(Array.isArray(decks))captured.decks=decks.filter(d=>typeof d?.requestId==='string'&&Array.isArray(d.productKeys)&&d.productKeys.every((k:unknown)=>typeof k==='string')).slice(-12); } catch { /* An unreadable cache is empty. */ }
         }).catch(()=>undefined);
         deckStates.set(scope,state);
+        if(deckStates.size>64)deckStates.delete(deckStates.keys().next().value!);
     }
     return state;
 }
+/** Best-effort recency: a slow or hung persistence write must never stall a read. */
+const settleWrites = (writes: Promise<void>) =>
+    withRequestDeadline(() => writes, 1500).catch(() => undefined);
+
 export async function getRotationHistory(scope:string) {
-    const state=decksFor(scope);await state.ready;
-    const shoes=decksFor(`shoes:${scope.split('|')[0]}`);await shoes.ready;
-    return {previousDeckProductKeys:[...(state.decks.at(-1)?.productKeys||[])],olderRecentProductKeys:[...new Set(state.decks.slice(0,-1).flatMap(d=>d.productKeys))],rotationDecks:state.decks.map(d=>({...d,productKeys:[...d.productKeys]})),
+    const state=decksFor(scope);await state.ready;await settleWrites(state.writes);
+    const owner=scope.split('|')[0];
+    const products=decksFor(`products:${owner}`);await products.ready;await settleWrites(products.writes);
+    const shoes=decksFor(`shoes:${owner}`);await shoes.ready;await settleWrites(shoes.writes);
+    // Older clients persisted an account window but only kept deck boundaries
+    // per occasion. Carry that evidence forward without copying another user.
+    const [legacyKeys,legacyIds,legacyLooks]=await Promise.all([getRecentShownProductKeys(owner),getRecentShownIds(owner),getRecentShownLookSignatures(owner)]);
+    const legacy=[...legacyKeys,...legacyIds.map(id=>`id:${id}`)];
+    const decks=products.decks.length ? products.decks : state.decks;
+    const previous=[...(decks.at(-1)?.productKeys||[])],previousSet=new Set(previous);
+    const semanticDecks=[...new Map([...state.decks,...decks].map(deck=>[deck.requestId,deck])).values()].slice(-12);
+    return boundedGenerationHistory({recentLookSignatures:[...new Set([...legacyLooks,...semanticDecks.flatMap(d=>d.lookSignatures||[])])].filter(s=>typeof s==='string'&&s.startsWith('sq1:')&&s.length<=1000).slice(-36),previousDeckProductKeys:previous,olderRecentProductKeys:[...new Set([...legacy,...decks.slice(0,-1).flatMap(d=>d.productKeys)])].filter(key=>!previousSet.has(key)).slice(-(450-previous.length)),rotationDecks:decks.map(d=>({...d,productKeys:[...d.productKeys]})),
         ...(shoes.decks.length ? {previousShoeProductKeys:[...shoes.decks.at(-1)!.productKeys],
             recentShoeProductKeys:[...new Set(shoes.decks.flatMap(d=>d.productKeys))],
-            shoeRotationDecks:shoes.decks.map(d=>({...d,productKeys:[...d.productKeys]}))} : {})};
+            shoeRotationDecks:shoes.decks.map(d=>({...d,productKeys:[...d.productKeys]}))} : {})});
 }
 /** Call after final acceptance, before unlocking the next Generate press. */
 export async function recordDisplayedDeck(outfits:unknown,scope:string,requestId:string):Promise<void> {
     const state=decksFor(scope);await state.ready;
     if(!Array.isArray(outfits)||state.decks.some(d=>d.requestId===requestId))return;
-    const productKeys=[...new Set<string>(outfits.flatMap(o=>Array.isArray(o?.items)?o.items.flatMap(productIdentityKeys):[]))];
+    const productKeys=[...new Set<string>(outfits.flatMap(o=>Array.isArray(o?.items)?o.items.flatMap(productIdentityKeys):[]))].filter(key=>key.length<=2048).slice(-60);
     if(!productKeys.length)return;
-    state.decks=[...state.decks,{requestId,productKeys}].slice(-12);
+    const lookSignatures=outfits.filter(o=>Array.isArray(o?.items)&&[3,4].includes(o.items.length)).map(o=>outfitVisualSignature(o.items)).slice(0,15);
+    state.decks=[...state.decks,{requestId,productKeys,lookSignatures}].slice(-12);
     const snapshot=JSON.stringify(state.decks);
     state.writes=state.writes.then(()=>AsyncStorage.setItem(`stylistRotationDecks::${scope}`,snapshot)).catch(()=>undefined);
-    // Shoes rotate across styles and occasions, while clothing keeps the
-    // semantic scope above. Keep accounts isolated and persist only footwear.
+    // All physical products rotate across occasions and styles. Context still
+    // identifies the request; it must not reset the displayed-product window.
+    const productScope=`products:${scope.split('|')[0]}`,products=decksFor(productScope);await products.ready;
+    if(!products.decks.some(d=>d.requestId===requestId)) {
+        products.decks=[...products.decks,{requestId,productKeys,lookSignatures}].slice(-12);
+        const productSnapshot=JSON.stringify(products.decks);
+        products.writes=products.writes.then(()=>AsyncStorage.setItem(`stylistRotationDecks::${productScope}`,productSnapshot)).catch(()=>undefined);
+    }
+    // Keep the explicit footwear schedule for compatible older Edge versions.
     const shoeScope=`shoes:${scope.split('|')[0]}`,shoes=decksFor(shoeScope);await shoes.ready;
     const shoeKeys=[...new Set<string>(outfits.flatMap(o=>Array.isArray(o?.items)?o.items.filter((item:any)=>diversitySlotOf(item)==='shoes').flatMap(productIdentityKeys):[]))];
     if(shoeKeys.length && !shoes.decks.some(d=>d.requestId===requestId)) {
@@ -190,4 +223,7 @@ export async function recordDisplayedDeck(outfits:unknown,scope:string,requestId
         const shoeSnapshot=JSON.stringify(shoes.decks);
         shoes.writes=shoes.writes.then(()=>AsyncStorage.setItem(`stylistRotationDecks::${shoeScope}`,shoeSnapshot)).catch(()=>undefined);
     }
+    // Normal restarts must see the displayed deck on disk. Bound storage
+    // faults so an already visible success can still unlock Generate.
+    await withRequestDeadline(() => Promise.all([state.writes, products.writes, shoes.writes]), 1500).catch(() => undefined);
 }

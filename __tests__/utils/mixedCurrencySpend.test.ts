@@ -1,5 +1,5 @@
 import {referenceFx} from '../fixtures/budgetFx';
-import { outfitShopSpend, itemShopPrice, resolveShopPrice, resolveShopQuote, buildAgentClothingContext } from '../../src/utils/outfitBudget';
+import { outfitShopSpend, itemShopPrice, resolveShopPrice, resolveShopQuote, outfitCurrencySubtotals, buildAgentClothingContext } from '../../src/utils/outfitBudget';
 const local = { id: 'shop_local', price: 100000, currency: 'UZS', isShopItem: true };
 const imported = { id: 'shop_import', price: 20, currency: 'USD', isShopItem: true };
 test('mixed currencies are converted before adding and cannot pass a 200000 UZS cap', () => {
@@ -40,4 +40,19 @@ test('a matching unpriced catalog row cannot silently become free when reference
 });
 test('a matching owned row keeps a retail value out of budget spending', () => {
     expect(resolveShopPrice({id:'owned'}, [{id:'owned',isWardrobe:true,price:200,currency:'USD'}], 'USD')).toBe(0);
+});
+
+test('show exact per-currency subtotals, not a fake mixed-currency sum',()=>{
+    const items=[local,imported,{...imported,id:'shop_import_2',price:5},{id:'owned',isWardrobe:true,isShopItem:false}];
+    const actual=outfitCurrencySubtotals(items);
+    expect(actual).toEqual([{currency:'USD',price:25},{currency:'UZS',price:100000}]);
+    expect(local.price).toBe(100000);
+    expect(imported.currency).toBe('USD');
+});
+test('unquoted shop entries cannot be silently left out of visible mixed-currency subtotals',()=>{
+    expect(outfitCurrencySubtotals([local,{...imported,currency:null}],[])).toEqual([]);
+    expect(outfitCurrencySubtotals([{id:'owned',isWardrobe:true,isShopItem:false}])).toEqual([]);
+    expect(outfitCurrencySubtotals([imported,local],[local,imported])).toEqual([
+      {currency:'USD',price:20},{currency:'UZS',price:100000}
+    ]);
 });

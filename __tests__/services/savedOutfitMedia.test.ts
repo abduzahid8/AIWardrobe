@@ -4,7 +4,8 @@ import { authEvents } from '../../store/authEvents';
 const mockUpsert=jest.fn(), mockSession=jest.fn();
 jest.mock('../../lib/supabase',()=>({supabase:{auth:{getSession:()=>mockSession()},from:()=>({upsert:mockUpsert})}}));
 jest.mock('../../src/services/wardrobeItemMedia',()=>({prepareWardrobeItemMedia:jest.fn()}));
-const input={id:'outfit',date:'2026-10-17',occasion:'casual',items:[{id:'garment',image:'file:///photo.jpg',imageUrl:'file:///thumb.jpg',name:'shirt'}]};
+const companions:Array<{id:string;name:string;macroCategory:string;image?:string;imageUrl?:string}>=[{id:'layer',name:'Fine cardigan',macroCategory:'outerwear'},{id:'bottom',name:'Chino trousers',macroCategory:'bottom'},{id:'shoes',name:'Leather loafers',macroCategory:'shoes'}];
+const input={id:'outfit',date:'2026-10-17',occasion:'casual',items:[{id:'garment',image:'file:///photo.jpg',imageUrl:'file:///thumb.jpg',name:'shirt',macroCategory:'top'},...companions]};
 beforeEach(()=>{
  jest.clearAllMocks();authEvents.emitLogin('owner');mockSession.mockResolvedValue({data:{session:{user:{id:'owner'}}},error:null});
  mockUpsert.mockReturnValue({select:()=>({single:async()=>({data:{id:'outfit'},error:null})})});
@@ -12,13 +13,13 @@ beforeEach(()=>{
 });
 test('both image field conventions persist permanent prepared references without mutating caller input',async()=>{
  const confirmed = await saveCloudOutfit(input);
- expect(confirmed).toEqual([{id:'garment',name:'shirt',image:'https://storage.test/original.jpg',imageUrl:'https://storage.test/thumbnail.jpg'}]);
- expect(mockUpsert).toHaveBeenCalledWith(expect.objectContaining({items:[{id:'garment',name:'shirt',image:'https://storage.test/original.jpg',imageUrl:'https://storage.test/thumbnail.jpg'}]}));
+ expect(confirmed).toEqual([{id:'garment',name:'shirt',macroCategory:'top',image:'https://storage.test/original.jpg',imageUrl:'https://storage.test/thumbnail.jpg'},...companions]);
+ expect(mockUpsert).toHaveBeenCalledWith(expect.objectContaining({items:[{id:'garment',name:'shirt',macroCategory:'top',image:'https://storage.test/original.jpg',imageUrl:'https://storage.test/thumbnail.jpg'},...companions]}));
  expect(input.items[0].image).toBe('file:///photo.jpg');
 });
 it.each(['image','imageUrl'] as const)('single %s field is preserved without adding the other convention',async(field)=>{
- await saveCloudOutfit({...input,items:[{id:'garment',[field]:'file:///photo.jpg'}]});
- expect(mockUpsert.mock.calls[0][0].items).toEqual([{id:'garment',[field]:'https://storage.test/original.jpg'}]);
+ await saveCloudOutfit({...input,items:[{id:'garment',name:'shirt',macroCategory:'top',[field]:'file:///photo.jpg'},...companions]});
+ expect(mockUpsert.mock.calls[0][0].items).toEqual([{id:'garment',name:'shirt',macroCategory:'top',[field]:'https://storage.test/original.jpg'},...companions]);
 });
 test('snapshot capture prevents caller changes during session lookup changing the saved look',async()=>{
  const value={...input,items:input.items.map(item=>({...item}))};

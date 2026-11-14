@@ -2,7 +2,7 @@ import { saveCloudOutfit, removeCloudOutfit } from '../../src/services/savedOutf
 import { authEvents } from '../../store/authEvents';
 const mockSession = jest.fn(), mockUpsert = jest.fn(), mockDelete = jest.fn(), mockEq = jest.fn(), mockSingle = jest.fn();
 jest.mock('../../lib/supabase', () => ({ supabase: { auth: { getSession: () => mockSession() }, from: () => ({ upsert: mockUpsert, delete: mockDelete }) } }));
-const input = { id: 'outfit', date: '2026-10-16', occasion: 'casual', items: [{ id: 'top', imageUrl: 'https://example.invalid/top.png' }] };
+const input = { id: 'outfit', date: '2026-10-16', occasion: 'casual', items: [{ id: 'top',name:'Cotton shirt',macroCategory:'top', imageUrl: 'https://example.invalid/top.png' },{id:'layer',name:'Fine cardigan',macroCategory:'outerwear'},{id:'bottom',name:'Chino trousers',macroCategory:'bottom'},{id:'shoes',name:'Leather loafers',macroCategory:'shoes'}] };
 beforeEach(() => {
   jest.clearAllMocks(); authEvents.emitLogin('owner');
   mockSession.mockResolvedValue({ data: { session: { user: { id: 'owner' } } }, error: null });
@@ -35,4 +35,10 @@ test('invalid date and missing session cannot save', async () => {
   mockSession.mockResolvedValueOnce({ data: { session: null }, error: null });
   await expect(saveCloudOutfit(input)).rejects.toThrow('Signed-in');
   expect(mockUpsert).not.toHaveBeenCalled();
+});
+
+test('rejects incomplete or duplicated-slot saves before auth or writes',async()=>{
+ await expect(saveCloudOutfit({...input,items:input.items.slice(1)})).rejects.toThrow('Invalid saved outfit');
+ await expect(saveCloudOutfit({...input,items:[input.items[0],input.items[0],...input.items.slice(2)]})).rejects.toThrow('Invalid saved outfit');
+ expect(mockSession).not.toHaveBeenCalled();expect(mockUpsert).not.toHaveBeenCalled();
 });

@@ -1,0 +1,121 @@
+{
+  "branches": [
+    {
+      "name": "abduzahid8-exactly-three-outfits",
+      "protected": false
+    },
+    {
+      "name": "abduzahid8-stabilize-outfit-composition",
+      "protected": false
+    },
+    {
+      "name": "aiwardrobe-full-local-implementation",
+      "protected": false
+    },
+    {
+      "name": "backup-stylist-2467dba",
+      "protected": false
+    },
+    {
+      "name": "backup-stylist-head-206d49f",
+      "protected": false
+    },
+    {
+      "name": "main",
+      "protected": false
+    },
+    {
+      "name": "recovery-personal-stylist",
+      "protected": false
+    },
+    {
+      "name": "restore-uncommitted-stash1",
+      "protected": false
+    },
+    {
+      "name": "stylist-four-slot-recovery",
+      "protected": false
+    }
+  ],
+  "rulesets": [],
+  "deployments?per_page=10": [
+    {
+      "id": 7523476354,
+      "environment": "Preview \u2013 ai-wardrobe",
+      "ref": "1f0b6b2a7fd5af37e4929f319a45c1569f1256a6",
+      "sha": "1f0b6b2a7fd5af37e4929f319a45c1569f1256a6",
+      "created_at": "2026-11-03T15:49:17Z"
+    },
+    {
+      "id": 7523369907,
+      "environment": "Preview \u2013 ai-wardrobe-services",
+      "ref": "1f0b6b2a7fd5af37e4929f319a45c1569f1256a6",
+      "sha": "1f0b6b2a7fd5af37e4929f319a45c1569f1256a6",
+      "created_at": "2026-11-03T15:45:05Z"
+    },
+    {
+      "id": 7523335945,
+      "environment": "Preview \u2013 alicevision-service",
+      "ref": "1f0b6b2a7fd5af37e4929f319a45c1569f1256a6",
+      "sha": "1f0b6b2a7fd5af37e4929f319a45c1569f1256a6",
+      "created_at": "2026-11-03T15:43:41Z"
+    },
+    {
+      "id": 7495616001,
+      "environment": "Production \u2013 ai-wardrobe-services",
+      "ref": "5784fc5cff24381cdae982e937d841fca611c7cd",
+      "sha": "5784fc5cff24381cdae982e937d841fca611c7cd",
+      "created_at": "2026-11-02T15:08:30Z"
+    },
+    {
+      "id": 7495594516,
+      "environment": "Production \u2013 ai-wardrobe",
+      "ref": "5784fc5cff24381cdae982e937d841fca611c7cd",
+      "sha": "5784fc5cff24381cdae982e937d841fca611c7cd",
+      "created_at": "2026-11-02T15:07:35Z"
+    },
+    {
+      "id": 7495523809,
+      "environment": "Production \u2013 alicevision-service",
+      "ref": "5784fc5cff24381cdae982e937d841fca611c7cd",
+      "sha": "5784fc5cff24381cdae982e937d841fca611c7cd",
+      "created_at": "2026-11-02T15:04:33Z"
+    },
+    {
+      "id": 7420014561,
+      "environment": "Preview \u2013 ai-wardrobe-services",
+      "ref": "b48cb31cf9718c782f656adf5d720b3ad2e9ffb1",
+      "sha": "b48cb31cf9718c782f656adf5d720b3ad2e9ffb1",
+      "created_at": "2026-10-29T17:51:27Z"
+    },
+    {
+      "id": 7419990256,
+      "environment": "Preview \u2013 ai-wardrobe",
+      "ref": "b48cb31cf9718c782f656adf5d720b3ad2e9ffb1",
+      "sha": "b48cb31cf9718c782f656adf5d720b3ad2e9ffb1",
+      "created_at": "2026-10-29T17:50:21Z"
+    },
+    {
+      "id": 7419929869,
+      "environment": "Preview \u2013 alicevision-service",
+      "ref": "b48cb31cf9718c782f656adf5d720b3ad2e9ffb1",
+      "sha": "b48cb31cf9718c782f656adf5d720b3ad2e9ffb1",
+      "created_at": "2026-10-29T17:47:41Z"
+    },
+    {
+      "id": 7417425296,
+      "environment": "Preview \u2013 alicevision-service",
+      "ref": "26a940fbd41e2f20b160fa37022779c9720cbf36",
+      "sha": "26a940fbd41e2f20b160fa37022779c9720cbf36",
+      "created_at": "2026-10-29T16:02:18Z"
+    }
+  ],
+  "commits/1f0b6b2a7fd5af37e4929f319a45c1569f1256a6/check-runs": [
+    {
+      "name": "Vercel Preview Comments",
+      "app": "vercel",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ]
+}

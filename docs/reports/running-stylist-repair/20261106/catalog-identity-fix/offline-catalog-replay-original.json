@@ -1,0 +1,59 @@
+{
+  "snapshotObservedAt": "2026-11-05T02:16:12.183Z",
+  "snapshotRows": 7020,
+  "requestCount": 6,
+  "requests": [
+    {
+      "slotFilter": "category.eq.tops,garment_type.eq.upper_body",
+      "rows": 100,
+      "first": "allsaints-usm001nc-162",
+      "last": "allsaints-usm047nf-1124",
+      "rawRowsAcceptedWithoutShopIdentity": 0,
+      "catalogRowsAccepted": 3
+    },
+    {
+      "slotFilter": "category.eq.tops,garment_type.eq.upper_body",
+      "rows": 100,
+      "first": "allsaints-usm047nf-451",
+      "last": "allsaints-usm089kb-10919",
+      "rawRowsAcceptedWithoutShopIdentity": 0,
+      "catalogRowsAccepted": 10
+    },
+    {
+      "slotFilter": "category.eq.tops,garment_type.eq.upper_body",
+      "rows": 100,
+      "first": "allsaints-usm089kb-4093",
+      "last": "armani_exchange-6dzmlf_zj4xz_1200",
+      "rawRowsAcceptedWithoutShopIdentity": 0,
+      "catalogRowsAccepted": 29
+    },
+    {
+      "slotFilter": "category.eq.tops,garment_type.eq.upper_body",
+      "rows": 100,
+      "first": "armani_exchange-8nzb99_znxxz_1583",
+      "last": "armani_exchange-xm002394_af19936_u0009",
+      "rawRowsAcceptedWithoutShopIdentity": 0,
+      "catalogRowsAccepted": 17
+    },
+    {
+      "slotFilter": "category.eq.tops,garment_type.eq.upper_body",
+      "rows": 100,
+      "first": "armani_exchange-xm002401_af10366_u0009",
+      "last": "aurelien-10150890340682",
+      "rawRowsAcceptedWithoutShopIdentity": 0,
+      "catalogRowsAccepted": 27
+    },
+    {
+      "slotFilter": "category.eq.tops,garment_type.eq.upper_body",
+      "rows": 100,
+      "first": "aurelien-10186815766858",
+      "last": "aurelien-15489794965834",
+      "rawRowsAcceptedWithoutShopIdentity": 0,
+      "catalogRowsAccepted": 32
+    }
+  ],
+  "result": {
+    "ok": false,
+    "error": "catalog_lookup_unavailable"
+  }
+}

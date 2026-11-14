@@ -1,0 +1,11 @@
+device,os,rc_sha256,build_type,metric,method,samples,p50_ms,min_ms,max_ms,peak_memory_mb,status,evidence,production_claim
+UNASSIGNED,,,release-required,cold_startup,,,,,,,UNTESTED,,false
+UNASSIGNED,,,release-required,warm_startup,,,,,,,UNTESTED,,false
+UNASSIGNED,,,release-required,home_render,,,,,,,UNTESTED,,false
+UNASSIGNED,,,release-required,wardrobe_render,,,,,,,UNTESTED,,false
+UNASSIGNED,,,release-required,shop_first_paint,,,,,,,UNTESTED,,false
+UNASSIGNED,,,release-required,outfit_client_overhead,,,,,,,UNTESTED,,false
+UNASSIGNED,,,release-required,buycheck_client_overhead,,,,,,,UNTESTED,,false
+UNASSIGNED,,,release-required,image_picker_import,,,,,,,UNTESTED,,false
+UNASSIGNED,,,release-required,large_wardrobe_scroll,,,,,,,UNTESTED,,false
+UNASSIGNED,,,release-required,reference_look_screen,,,,,,,UNTESTED,,false

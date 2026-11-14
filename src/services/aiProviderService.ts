@@ -1,3 +1,6 @@
+import i18n from 'i18next';
+import {fourSlotOutfitReason} from '../domain/outfitStructure';
+import {passesStyleJudge} from '../domain/occasionRules';
 /**
  * AI Provider Service — Single-provider abstraction layer
  *
@@ -5,24 +8,12 @@
  * Primary provider: Google Gemini (vision + text).
  * Falls back to local heuristics when offline or quota exceeded.
  *
- * This does NOT replace aiService.ts — it provides a cleaner
- * abstraction that aiService methods can delegate to.
+ * Current transport is Supabase; historical generic clients are quarantined
+ * under backend/legacy-mobile.
  */
 
-import Config from '../config/env';
+import { normalizeVisionConfidence } from '../domain/visionPolicy';
 import { supabase } from '../../lib/supabase';
-
-async function buildAuthHeaders(): Promise<Record<string, string>> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    try {
-        const { data } = await supabase.auth.getSession();
-        const token = data?.session?.access_token;
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-    } catch {
-        // Unauthenticated — backend will 401 and callers use fallbacks.
-    }
-    return headers;
-}
 
 // ============================================
 // TYPES
@@ -51,6 +42,8 @@ export interface DetectedItem {
 }
 
 export interface GenerateOutfitResult {
+    success?:boolean;
+    error?:'insufficient_candidates';
     items: string[];       // Item IDs
     reasoning: string;
     occasion: string;
@@ -145,40 +138,32 @@ class AIProviderService {
 
     /**
      * Analyze an image to detect clothing items.
-     * Uses the Node.js API server which proxies to Gemini/AliceVision.
+     * Uses the authenticated Supabase vision contract.
      * Falls back to local analysis on failure.
      */
     async analyzeImage(imageBase64: string): Promise<AnalyzeImageResult> {
         const start = Date.now();
 
         try {
-            const response = await this.fetchWithRetry(
-                // Backend route is POST /api/openai/analyze-clothing and
-                // validates { imageBase64 } (see validators.validateImageData).
-                `${Config.api.url}/api/openai/analyze-clothing`,
-                {
-                    method: 'POST',
-                    headers: await buildAuthHeaders(),
-                    body: JSON.stringify({ imageBase64 }),
-                }
-            );
-
-            const data = await response.json();
+            const { aiVisionService } = await import('./aiVisionService');
+            const result = await aiVisionService.analyzeClothing(imageBase64);
+            if (!result.success) throw new Error(result.error || 'Classification unavailable');
+            const data = { items: result.items };
             const latency = Date.now() - start;
             this.tracker.record(latency, true);
 
             return {
-                items: (data.items || []).map((item: Record<string, unknown>) => ({
+                items: (data.items || []).map((item) => ({
                     category: item.category || 'top',
-                    subCategory: item.specificType || item.subCategory || '',
+                    subCategory: item.specificType || '',
                     primaryColor: item.primaryColor || '',
                     colorHex: item.colorHex || '#000000',
                     pattern: item.pattern || 'solid',
                     material: item.material || '',
-                    confidence: item.confidence || 0.5,
+                    confidence: normalizeVisionConfidence(item.confidence),
                 })),
                 processingTimeMs: latency,
-                provider: this.config.providerName,
+                provider: result.provider,
             };
         } catch (error: unknown) {
             const latency = Date.now() - start;
@@ -207,34 +192,26 @@ class AIProviderService {
         const start = Date.now();
 
         try {
-            // Backend route is POST /api/generate-outfits and expects
-            // { occasion, stylePreferences, limit }. Wardrobe-item targeting
-            // is handled server-side via the Supabase JWT (preferred) or the
-            // canonical generateOutfitsFromDB() edge-function path.
-            const response = await this.fetchWithRetry(
-                `${Config.api.url}/api/generate-outfits`,
-                {
-                    method: 'POST',
-                    headers: await buildAuthHeaders(),
-                    body: JSON.stringify({
-                        occasion,
-                        stylePreferences: 'casual',
-                        limit: Math.max(1, Math.min(wardrobeItemIds.length || 3, 5)),
-                    }),
-                }
-            );
-
-            const data = await response.json();
+            const { data, error } = await supabase.functions.invoke('generate-outfits', {
+                body: {
+                    occasion, weather, wardrobeOnly: true,
+                    selectedItemIds: wardrobeItemIds,
+                    limit: 1,
+                },
+            });
+            if (error || !data?.outfits?.length) throw error || new Error('No complete outfit available');
             const latency = Date.now() - start;
             this.tracker.record(latency, true);
 
             const outfits = Array.isArray(data.outfits) ? data.outfits : [];
             const first = outfits[0] || {};
+            if(fourSlotOutfitReason(first.items)||!passesStyleJudge(first.items,first.style||'casual',occasion,weather))throw new Error('No valid four-piece outfit');
             const ids: string[] = Array.isArray(first.items)
                 ? first.items.map((i: any) => String(i.id || i)).filter(Boolean)
                 : (data.itemIds || []);
             return {
-                items: ids.length > 0 ? ids : wardrobeItemIds.slice(0, 4),
+                success:true,
+                items: ids,
                 reasoning: first.description || data.reasoning || '',
                 occasion: first.occasion || data.occasion || occasion,
                 style: first.style || data.style || '',
@@ -246,7 +223,7 @@ class AIProviderService {
             const errorMsg = error instanceof Error ? error.message : 'Unknown error';
             this.tracker.record(latency, false, errorMsg);
 
-            // Local fallback: return random subset of items
+            // Unknown IDs have no slot/compatibility evidence. Return an honest shortfall.
             console.warn('[AIProvider] generateOutfit failed, using local fallback:', errorMsg);
             return this.localOutfitFallback(wardrobeItemIds, occasion);
         }
@@ -316,25 +293,16 @@ class AIProviderService {
      * Process an uploaded image through the full pipeline:
      * background removal → clothing classification → studio enhancement → style description.
      *
-     * Uses local AliceVision service (free) with Gemini/Replicate fallbacks.
+     * Uses the authenticated Supabase pipeline; provider admission stays server-side.
      */
     async processUpload(imageBase64: string): Promise<ProcessUploadResult> {
         const start = Date.now();
 
         try {
-            const response = await this.fetchWithRetry(
-                `${Config.api.url}/api/process-upload`,
-                {
-                    method: 'POST',
-                    headers: await buildAuthHeaders(),
-                    body: JSON.stringify({
-                        imageBase64: imageBase64.replace(/^data:image\/\w+;base64,/, ''),
-                        generateDescription: true,
-                    }),
-                }
-            );
-
-            const data = await response.json();
+            const { data, error } = await supabase.functions.invoke('ai-process', {
+                body: { image: imageBase64, operation: 'all' },
+            });
+            if (error || !data?.success) throw error || new Error('Image processing failed');
             const latency = Date.now() - start;
             this.tracker.record(latency, true);
 
@@ -383,57 +351,20 @@ class AIProviderService {
 
     // ── Private helpers ────────────────────────
 
-    private async fetchWithRetry(
-        url: string,
-        options: RequestInit,
-        retries: number = this.config.maxRetries
-    ): Promise<Response> {
-        let lastError: Error | null = null;
-
-        for (let i = 0; i <= retries; i++) {
-            try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
-
-                const response = await fetch(url, {
-                    ...options,
-                    signal: controller.signal,
-                });
-
-                clearTimeout(timeout);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                return response;
-            } catch (error) {
-                lastError = error instanceof Error ? error : new Error(String(error));
-
-                if (i < retries) {
-                    // Exponential backoff: 1s, 2s, 4s
-                    await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, i)));
-                }
-            }
-        }
-
-        throw lastError || new Error('Request failed after retries');
-    }
-
     private localOutfitFallback(
         itemIds: string[],
         occasion: string
     ): GenerateOutfitResult {
-        // Simple fallback: pick up to 4 items
-        const selected = itemIds.slice(0, Math.min(4, itemIds.length));
+        void itemIds;
 
         return {
-            items: selected,
-            reasoning: 'Generated locally while offline. For better suggestions, connect to the internet.',
+            success:false,error:'insufficient_candidates',
+            items: [],
+            reasoning: i18n.t('outfitMaker.noValidItems'),
             occasion,
             style: 'mixed',
             colorHarmony: 'unknown',
-            confidence: 0.3,
+            confidence: 0,
         };
     }
 }

@@ -1,0 +1,98 @@
+{
+  "scope": "User launch execution master prompt sections 0\u201333; local preparation vs release acceptance",
+  "auditStatus": "Local checks and prepared server controls verified; mandatory device, authenticated/billing and approved-target acceptance remain blocked",
+  "requirements": [
+    {
+      "sections": "0,2,30,31,33",
+      "evidence": "No remote mutation performed; docs/DEFERRED_FEATURES.md and launch/FIRST_7_DAYS.md",
+      "status": "local preparation complete"
+    },
+    {
+      "sections": "1,27,32",
+      "evidence": "launch/BETA_PLAN.md and generated release report",
+      "status": "release acceptance blocked by required manual and remote evidence"
+    },
+    {
+      "sections": "3,28,29",
+      "evidence": "scripts/release-candidate.mjs, activation-config.json, evidence/release-candidate.json and source-snapshot.json",
+      "status": "automated record/report exists; final local rerun passed"
+    },
+    {
+      "sections": "4,13,18",
+      "evidence": "launch/FEATURES.md and actual platform defaults",
+      "status": "All six currently metered Edge entries use locally verified operator stop controls; existing entitlement admission retained without duplicate charge; deployed and legacy route inventory/drill incomplete"
+    },
+    {
+      "sections": "5",
+      "evidence": "launch/blockers.json and BLOCKERS.md",
+      "status": "recorded; open blockers remain"
+    },
+    {
+      "sections": "6,7",
+      "evidence": "launch/BETA_QA.md and device-results.csv",
+      "status": "Scripts/matrix prepared; native feedback and actual signed-out App-root subsets verified on one simulator; required complete four-class device scripts untested"
+    },
+    {
+      "sections": "8,9",
+      "evidence": "launch/BETA_QA.md, performance-results.csv, host-stress.json and __tests__/launch/stress.test.ts",
+      "status": "Host plus isolated native image/scroll/cache/stress and actual signed-out startup measured; high RSS peak recorded; authenticated screens, physical devices and OS memory pressure unverified"
+    },
+    {
+      "sections": "10",
+      "evidence": "scripts/launch/personas.mjs and beta-review.test.mjs",
+      "status": "five deterministic synthetic personas plus bounded stress fixtures verified"
+    },
+    {
+      "sections": "11,12,25",
+      "evidence": "launch/BETA_PLAN.md and FEEDBACK.md",
+      "status": "success definitions/cohort gates/scope review prepared; real outcomes not yet available"
+    },
+    {
+      "sections": "14,15",
+      "evidence": "launch/REMOTE_ACTIVATION.md and activation-config.json",
+      "status": "exact ordered local inventory/prechecks prepared; no remote step executed"
+    },
+    {
+      "sections": "16",
+      "evidence": "launch/MIGRATIONS.md, migration_tests.log, releaseIsolation.sql and rollback files",
+      "status": "Six local migrations/reverse disable pass; private grant inventory, cross-owner visual inserts/updates/supersession and owner-preserving delete cleanup verified; hosted baseline unavailable"
+    },
+    {
+      "sections": "17",
+      "evidence": "launch/MIGRATIONS.md and compatibility_contracts.log",
+      "status": "RPC contract fallback/present cases pass; complete installed A/B/C/D combinations unverified"
+    },
+    {
+      "sections": "19",
+      "evidence": "__tests__/launch/telemetry.test.ts, validationLoop.test.ts, shared analyticsPayload.ts",
+      "status": "schema/privacy/sink failure/concurrency/dedupe locally verified; full app/server outcome coverage partial"
+    },
+    {
+      "sections": "20",
+      "evidence": "launch/DASHBOARD.md",
+      "status": "definitions/denominators prepared; no fabricated baselines; live monitoring not activated"
+    },
+    {
+      "sections": "21,22,23",
+      "evidence": "BetaFeedbackButton.tsx, Profile/BuyCheck/outfit integrations, validationLoop.ts and FEEDBACK.md",
+      "status": "Reviewed export/undo/close-reset verified in native feedback; keyboard obstruction fixed. Correction assertions remain session-local exports, not automatic shared-catalog repair."
+    },
+    {
+      "sections": "24",
+      "evidence": "scripts/launch/beta-review.mjs and tests",
+      "status": "Local summaries and optional observations verified; positive-default feedback excluded from failures and even-sample p50 fixed; six review-tool tests pass; no real-user outcomes"
+    },
+    {
+      "sections": "26",
+      "evidence": "launch/FIRST_7_DAYS.md",
+      "status": "day 0\u20137 operating checklist prepared, no activation"
+    }
+  ],
+  "rcWorktreeSha256": "3df0c34ea3530b2edc13d60aa48811e116d8e02f2eb99b0599dba41f1ce974d6",
+  "localGateResult": "MANUAL REQUIRED",
+  "automatedChecksPassed": 15,
+  "automatedChecksFailed": 0,
+  "manualChecksRequired": 6,
+  "previousGoalTurnClassification": "progress: native App-root and feedback validation",
+  "currentGoalTurnClassification": "progress: shared paid-work stop, exact server configuration record, recovery/fallback tests and final release check"
+}

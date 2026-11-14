@@ -71,6 +71,7 @@ test/
 tests/
 !backend/mobile-vton-service/tests/
 !backend/api/tests/
+!backend/stylist-node/test/
 /dist*/
 
 # One-off test/demo files
@@ -115,6 +116,10 @@ scripts/out/
 *.pth
 *.bin
 !backend/api/blank_mannequin.jpg
+# Web export mannequin placeholders (small first-party stand-ins referenced
+# by app.json; must stay tracked despite the scratch *.jpg rule above).
+!assets/images/mannequin_front.jpg
+!assets/images/mannequin_side.jpg
 # First-party splash assets must stay tracked (overrides the scratch *.png rule).
 !assets/splash-logo.png
 !android/app/src/main/res/drawable-*/splash_logo.png
@@ -145,3 +150,23 @@ api_server.log
 .maestro/verify-shots/
 .maestro/scenarios/artifacts/
 report.xml
+
+# Local offline catalog image enrichment environment
+/.visual-venv/
+
+# Unlicensed/unverified creator media stays outside the public repository
+image-teaste.zip
+AIWardrobe_Style_References_46_Pilot.zip
+style_references_private/
+**/reference_upload_receipt.json
+**/private_reference_vault/
+
+# Original licensed fashion lookbook source files: never publish them in Git
+/image-teaste/
+**/image-teaste/
+
+# Vercel CLI link artifacts
+.vercel/
+
+# Private staging evidence, probe credentials, env snapshots & cached images
+.private/

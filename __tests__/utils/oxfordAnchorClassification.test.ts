@@ -2,11 +2,21 @@ import {detectSlotMismatch,isOxfordFootwearName,styleJudgeReason} from '../../fe
 import {sanitizeGeneratedOutfitItemsDetailed} from '../../features/outfit-generator/utils/sanitizeGeneratedOutfit';
 
 const footwear=['Bexford Leather Oxfords - Black','Leather Oxford','Cap-toe Oxford shoes','Suede Oxfords','Black leather brogue Oxfords'];
+const footwearWithoutShoeWord=['Bexford Leather Oxfords - Black','Leather Oxford','Suede Oxfords','Black leather brogue Oxfords'];
+const footwearWithShoeWord=['Cap-toe Oxford shoes'];
 const shirts=['White Oxford shirt','Blue Oxford cotton button-down shirt','Oxford cloth shirt','Oxford short-sleeve shirt'];
-test.each(footwear)('keeps %s in shoes and repairs a misfiled top',name=>{
+test.each(footwear)('keeps %s in shoes',name=>{
  expect(isOxfordFootwearName(name)).toBe(true);
  expect(detectSlotMismatch('shoes',name,'shoes')).toBeNull();
  expect(detectSlotMismatch('footwear',name,'shoes')).toBeNull();
+});
+// Shipped fix (preserve Oxford apparel, deployed v209): 'Oxford' alone is
+// ambiguous — a misfiled top claim stays unrepaired unless the name carries
+// explicit footwear wording or the source already claims shoes/footwear.
+test.each(footwearWithoutShoeWord)('keeps %s in shoes; top claim stays unrepaired (oxford is ambiguous)',name=>{
+ expect(detectSlotMismatch('top',name,'upper_body')).toBeNull();
+});
+test.each(footwearWithShoeWord)('repairs a misfiled %s top via the explicit footwear word',name=>{
  expect(detectSlotMismatch('top',name,'upper_body')).toBe('shoes');
 });
 test.each(shirts)('keeps %s in tops and repairs a misfiled shoe',name=>{

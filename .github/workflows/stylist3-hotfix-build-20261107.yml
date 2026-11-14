@@ -1,0 +1,51 @@
+name: One-time v196 safety/telemetry bundle
+on:
+  push:
+    branches: [hotfix/v196-catalog-footwear-guard-20261107]
+    paths-ignore:
+      - '.stylist3-hotfix/**'
+permissions:
+  contents: write
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build exact Edge bundle and verify classification edge cases
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const esbuild=require('esbuild');
+          (async()=>{
+            const edge=await esbuild.build({entryPoints:['backend/supabase/functions/generate-outfits/index.ts'],absWorkingDir:process.cwd(),
+              bundle:true,format:'esm',platform:'neutral',target:'es2022',external:['https://*'],write:false,logLevel:'silent'});
+            fs.mkdirSync('.stylist3-hotfix',{recursive:true});
+            fs.writeFileSync('.stylist3-hotfix/index.ts',edge.outputFiles[0].contents);
+            const parser=await esbuild.build({entryPoints:['src/domain/occasionRules.ts'],bundle:true,format:'cjs',platform:'node',target:'node22',write:false,logLevel:'silent'});
+            const mod={exports:{}};
+            new Function('module','exports','require',parser.outputFiles[0].text)(mod,mod.exports,require);
+            const check=(slot,title,want)=>{
+              const got=mod.exports.detectSlotMismatch(slot,title);
+              if(got!==want)throw Error(title+': expected '+want+' got '+got);
+            };
+            check('top','The Slim-Fit Japanese Oxford | Slate Grey | Regular',null);
+            check('top','Sandalwood Crewneck Sweater Cash Linen Gg 7',null);
+            check('shoes','Oxford Leather Dress Shoes',null);
+            check('top','Oxford Leather Dress Shoes','shoes');
+            check('bottom','Barnard Short-Sleeved Polo Shirt','top');
+            console.log('Five targeted name classification checks passed');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          sha256sum .stylist3-hotfix/index.ts | tee .stylist3-hotfix/sha256.txt
+      - name: Save reviewed bundle in this hotfix branch
+        run: |
+          git config user.name 'AIWardrobe release build'
+          git config user.email 'actions@users.noreply.github.com'
+          git add .stylist3-hotfix/index.ts .stylist3-hotfix/sha256.txt
+          git commit -m 'build: attach v196 catalog and provider diagnostics hotfix'
+          git push

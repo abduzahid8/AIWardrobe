@@ -3,7 +3,9 @@ import { AccessibilityInfo, Animated, AppState, type AppStateStatus, Easing, Sty
 import * as SplashScreen from 'expo-splash-screen';
 import { onAppReady } from '../lib/appReady';
 import { recordStartupVisible } from '../lib/startupTiming';
-import { Image } from 'react-native';
+// The splash logo routes through the owner-aware media boundary like every
+// other rendered image; the bundled asset passes through untouched.
+import { Image } from './MediaImage';
 
 
 // Brand splash look — must stay visually identical to the native splash

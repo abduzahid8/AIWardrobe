@@ -3,15 +3,30 @@ import { createClient } from '@supabase/supabase-js';
 import { outfitGenerationFailure } from '../../src/services/outfitGenerationFailure';
 
 test.each([
+ ['feature_limit_reached','outfitMaker.subscriptionRequired'],
  ['no_outfit_within_budget','outfitMaker.budgetTooLow'],
  ['no_items_within_budget','outfitMaker.noItemsWithinBudget'],
  ['no_matching_clothing','outfitMaker.noMatchingClothing'],
+ ['incompatible_locked_item','outfitMaker.incompatibleLockedItem'],
+ ['insufficient_candidates','outfitMaker.missingRequiredClothing'],
+ ['outfit_quality_rejected','outfitMaker.qualityShortfall'],
+ ['incomplete_outfit_selection','outfitMaker.distinctInventoryLimited'],
+ ['planning_cpu_risk','outfitMaker.generationBusy'],
  ['invalid_outfit_budget','outfitMaker.invalidBudget'],
 ])('maps known server code %s to localized message %s',async(code,key)=>{
  expect((await outfitGenerationFailure({code})).translationKey).toBe(key);
 });
 test('invalid-budget error field is recognized without displaying server text',async()=>{
  expect((await outfitGenerationFailure({error:'invalid_outfit_budget'})).translationKey).toBe('outfitMaker.invalidBudget');
+});
+test('the SDK403 body preserves subscription denial and its paywall action', async () => {
+ const client=createClient('https://outfit-errors.invalid','fixture-anon',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:async()=>new Response(JSON.stringify({error:'feature_limit_reached'}),{status:403,headers:{'Content-Type':'application/json'}})}});
+ const {data,error}=await client.functions.invoke('generate-outfits',{body:{}});
+ const failure=await outfitGenerationFailure(data,error);
+ expect(failure.translationKey).toBe('outfitMaker.subscriptionRequired');
+ expect(failure.requiresSubscription).toBe(true);
+ expect(await error.context.json()).toEqual({error:'feature_limit_reached'});
+ expect((await outfitGenerationFailure({error:'feature_disabled'})).requiresSubscription).toBe(false);
 });
 test('decodes the installed Supabase HTTP error Response and leaves its body readable',async()=>{
  const client=createClient('https://outfit-errors.invalid','fixture-anon',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:async()=>new Response(JSON.stringify({success:false,code:'no_outfit_within_budget'}),{status:422,headers:{'Content-Type':'application/json'}})}});
@@ -37,7 +52,7 @@ test('a hung error-body read cannot leave the outfit screen waiting',async()=>{
 });
 test.each(['en','ru','uz'])('%s includes every mapped outfit failure message',locale=>{
  const translations=require(`../../i18n/locales/${locale}.json`);
- for(const key of ['budgetTooLow','noItemsWithinBudget','noMatchingClothing','invalidBudget','generateFailed','aiUnavailable']) expect(translations.outfitMaker[key].length).toBeGreaterThan(20);
+ for(const key of ['budgetTooLow','noItemsWithinBudget','noMatchingClothing','missingRequiredClothing','qualityShortfall','generationBusy','requestTimeout','invalidBudget','generateFailed','aiUnavailable','subscriptionRequired']) expect(translations.outfitMaker[key].length).toBeGreaterThan(20);
 });
 
 test('unknown prices have their own localized failure rather than a budget-too-low claim', async () => {
@@ -78,3 +93,8 @@ test('unknown failure diagnostics retain only a bounded category and status',asy
  test.each(['FunctionsFetchError', 'FunctionsRelayError'])('%s gives connection guidance', async name => {
   expect((await outfitGenerationFailure(null, {name})).translationKey).toBe('outfitMaker.connectionFailed');
  });
+
+test('operator-disabled paid generation maps to the existing unavailable/local-alternative path', async () => {
+  expect((await outfitGenerationFailure({error:'feature_disabled'})).translationKey).toBe('outfitMaker.aiUnavailable');
+  expect((await outfitGenerationFailure(null,{context:new Response(JSON.stringify({error:'feature_disabled'}),{status:503})})).translationKey).toBe('outfitMaker.aiUnavailable');
+});

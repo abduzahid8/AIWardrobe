@@ -7,16 +7,23 @@ test('recognizes a saved polo despite its broad tees category',()=>{
     {name:'Navy chino trousers',macroCategory:'bottom'},{name:'Brown leather loafers',macroCategory:'shoes'}];
   expect(styleJudgeReason(parts,'old_money','Date night',undefined,polo.id)).toBeNull();
 });
-test('still rejects a real tee sold by a polo brand',()=>{
-  expect(rejectForStyleOccasion({...polo,name:'Polo Ralph Lauren cotton T-shirt'},'casual','Date night')).toBeTruthy();
+test('still rejects a real tee sold by a polo brand for classic styles',()=>{
+  // Stylist 5 redesign: date is a 'smart' dress code, so a cotton tee passes
+  // a casual date look; classic styles still veto basic tees in every occasion.
+  expect(rejectForStyleOccasion({...polo,name:'Polo Ralph Lauren cotton T-shirt'},'casual','Date night')).toBeNull();
+  expect(rejectForStyleOccasion({...polo,name:'Polo Ralph Lauren cotton T-shirt'},'old_money','Date night')).toBe('basic tees break classic discipline');
 });
 test('retains the piqué polo and tailored blazer incompatibility',()=>{
   expect(styleJudgeReason([polo,{name:'Wool suit blazer',macroCategory:'outerwear'},
     {name:'Navy chino trousers',macroCategory:'bottom'},{name:'Brown leather loafers',macroCategory:'shoes'}],
     'old_money','Date night',undefined,polo.id)).toMatch(/piqu/);
 });
-test('keeps the work dress-code restriction for piqué polos',()=>{
-  expect(rejectForStyleOccasion(polo,'casual','Work')).toMatch(/workwear/);
+test('keeps the work dress-code restriction for tee-typed polos via smart-work gates',()=>{
+  // Stylist 5 redesign: work is a 'smart' dress code, so a polo no longer
+  // trips the formal 'not workwear' block; for classic styles the targeted
+  // smart-work base gate in garmentContextReason keeps the restriction.
+  expect(rejectForStyleOccasion(polo,'casual','Work')).toBeNull();
+  expect(rejectForStyleOccasion(polo,'old_money','Work')).toBe('work_requires_smart_base');
 });
 
 test('the final quality gate honors an owned jersey-trouser anchor while keeping companion and dress-code checks',()=>{

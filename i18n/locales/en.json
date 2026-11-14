@@ -41,6 +41,7 @@
     "gotIt": "Got it",
     "info": "Info",
     "item": "Item",
+    "photoUnavailable": "Photo unavailable",
     "ok": "OK",
     "retry": "Retry",
     "tapToDismiss": "Tap to dismiss"
@@ -700,6 +701,49 @@
     }
   },
   "outfitMaker": {
+    "activeBudget": "Active budget: {{amount}}. Every shown look is checked against this cap.",
+    "optionalBudget": "Budget for one complete outfit (optional)",
+    "budgetAmount": "Maximum outfit spend",
+    "budgetCurrency": "Budget currency",
+    "noBudget": "No budget set",
+    "lookSpend": "Look total: {{total}} · Budget cap: {{cap}}",
+    "outfitTotal": "Outfit total",
+    "outfitTotalUnavailable": "Total unavailable — items are listed in different currencies",
+    "qualityExplanation": {
+      "garmentSummary": "{{top}} with {{outerwear}}, {{bottom}} and {{shoes}}.",
+      "formalStructure": "A shirt and structured blazer keep the look appropriate for a formal occasion.",
+      "travelLayer": "The openable layer can be removed during the journey and added outdoors.",
+      "adaptableLayer": "With the weather unknown, adjust the removable layer as conditions change.",
+      "fitCheck": "Check that the outer layer fits comfortably over the base without pulling.",
+      "unlayeredFitCheck": "Check that the top and bottom fit comfortably together without bunching.",
+      "textureDepth": "Let the textured layer lead — keep the base smooth and simple.",
+      "lightBase": "A lightweight base sits under an openable layer.",
+      "tailoredFootwear": "Dress footwear follows the tailored trouser silhouette.",
+      "restrainedPalette": "The restrained palette supports the minimalist style.",
+      "casualLayer": "An overshirt gives the T-shirt a distinct casual layer.",
+      "fourPieces": "A complete look with a top, layer, trousers and shoes.",
+      "editorialLayered": "{{top}} sits under {{layer}}; {{bottom}} and {{shoes}} carry the lower line.",
+      "editorialUnlayered": "{{top}} pairs with {{bottom}} and {{shoes}}, without an extra layer.",
+      "paletteStory": "The {{palette}} colors give the look a clear palette.",
+      "shapeStory": "The {{shape}} trouser line defines the silhouette.",
+      "shape_unknown": "",
+      "shape_slim": "slim",
+      "shape_regular": "regular",
+      "shape_wide": "wide",
+      "texture_unknown": "",
+      "texture_smooth": "smooth",
+      "texture_knit": "knitted",
+      "texture_ribbed": "ribbed",
+      "texture_denim": "denim",
+      "texture_suede": "suede",
+      "texture_corduroy": "corduroy",
+      "texture_tweed": "tweed",
+      "texture_technical": "technical",
+      "editorialTailoredFootwear": "{{shoes}} echo the line of {{bottom}}, keeping the tailoring sharp.",
+      "editorialLightBase": "{{top}} sits neatly beneath {{layer}}, so the open layer frames the base.",
+      "editorialTextureContrast": "The {{texture}} of {{layer}} adds depth over the smoother {{top}}.",
+      "editorialCasualFootwear": "{{shoes}} keep {{bottom}} in the same casual register."
+    },
     "closestShopAlternative": "Closest available combination with pieces from the shop.",
     "closestAlternative": "Closest available combination from your wardrobe.",
     "closestAlternativeTip": "This alternative keeps your selected item. Some pieces may differ from your requested style, occasion or weather.",
@@ -714,11 +758,62 @@
     "addToCalendar": "Add to Calendar",
     "saveOutfit": "Save Outfit",
     "aiStylist": "AI Stylist",
+    "newOutfit": "New outfit",
+    "yourStyle": "Your style",
+    "direction_signature": "Closest to your style",
+    "directionExplain_signature": "A reliable starting point for your chosen style and occasion.",
+    "direction_refresh": "A fresh perspective",
+    "directionExplain_refresh": "A new combination that stays close to your original direction.",
+    "direction_discovery": "Something new to try",
+    "directionExplain_discovery": "A noticeably different silhouette, texture or palette that still fits the occasion.",
+    "direction_alternative": "Another wearable option",
+    "directionExplain_alternative": "A compatible variation; a truly different direction was not supported by this selection.",
+    "personalizedForYou": "Selected for your taste",
+    "personalizedFitWide": "Relaxed fit",
+    "personalizedFitSlim": "Fitted silhouette",
+    "fromWardrobe": "From wardrobe",
+    "newClothing": "New clothing",
+    "newShort": "New",
+    "wardrobeShort": "Wardrobe",
+    "pickOccasion": "Pick an occasion",
+    "generateOutfit": "Generate outfit",
+    "weatherUnavailable": "Weather unavailable",
+    "anchorItem": "Anchor item",
+    "locked": "Locked",
+    "tripDay": "Trip day",
+    "planningFor": "Planning for {{date}}",
+    "planningSubtitle": "Generated looks will be saved back to this day",
+    "planForDate": "Plan for {{date}}",
+    "fromQuiz": "From quiz",
+    "moreOccasions": "More occasions",
+    "lessOccasions": "Less",
+    "moreCount": "More ({{count}})",
+    "viewTrip": "View Trip",
+    "viewCalendar": "View Calendar",
+    "savedToTrip": "Saved to your trip · {{date}}",
+    "savedToTripSubtitle": "Saved to your closet and connected to your trip day calendar + packing list.",
+    "savedToTripUpdated": "Trip outfit updated for {{date}}",
+    "savedToCalendar": "Saved to {{date}}",
+    "savedToCalendarSubtitle": "Your outfit was added to your calendar and trip packing list.",
+    "saveAndConnectTrip": "Save + Connect to trip",
+    "dateNight": "Date night",
+    "style_old_money": "Old Money",
+    "style_semi_classic": "Semi-Classic",
+    "style_minimalist": "Minimalist",
+    "style_casual": "Casual",
+    "style_classic": "Classic",
+    "style_business_casual": "Modern Professional",
+    "styleDesc_old_money": "Classic, refined pieces with a subtle focus on pure luxury.",
+    "styleDesc_semi_classic": "Refined everyday elegance — tailored touches with relaxed comfort.",
+    "styleDesc_minimalist": "Clean lines, neutral colors, and essential wardrobe staples.",
+    "styleDesc_casual": "Relaxed, effortless style with well-fitted basics and clean combos.",
+    "styleDesc_classic": "Sharp, tailored looks perfect for the modern workplace.",
+    "styleDesc_business_casual": "Sharp, tailored looks perfect for the modern workplace.",
     "whereGoing": "Where are you going?",
     "discoverVibe": "Discover Your Vibe",
     "tapStyleCard": "Tap a style card below and AI will instantly build a complete look from your wardrobe.",
-    "promptPlaceholder": "Where you're going, style (old money, classic…), budget (1 500 000 UZS)…",
-    "promptPlaceholderShort": "Where you're going, style, budget (1 500 000 UZS)…",
+    "promptPlaceholder": "Where you're going, style (old money, classic…)…",
+    "promptPlaceholderShort": "Where you're going and the style you want…",
     "generate": "Generate",
     "description1": "A curated {{style}} look styled from your wardrobe.",
     "description2": "An elegant {{style}} ensemble with balanced proportions.",
@@ -732,7 +827,13 @@
     "noOutfitsError": "Could not generate outfits. Add more items to your wardrobe for better suggestions.",
     "budgetTooLow": "Available clothing cannot form a complete outfit within this budget. Increase your budget or use items you own.",
     "noItemsWithinBudget": "No available clothing items fit this budget. Increase your budget or use items you own.",
+    "formalInventoryShortfall": "The checked clothing cannot form three complete Formal outfits. Each needs a shirt, structured blazer, tailored trousers and dress shoes. Try more suitable inventory or another occasion.",
     "noMatchingClothing": "No clothing matches your selections. Try adjusting your selections.",
+    "incompatibleLockedItem": "The selected item is outside this clothing source. Switch sources or remove the selected item.",
+    "missingRequiredClothing": "A complete look needs clothing in every required category. Add the missing pieces or broaden the source.",
+    "qualityShortfall": "The available pieces did not make a suitable complete look for this occasion.",
+    "generationBusy": "Outfit planning took too long. Please try again.",
+    "requestTimeout": "Outfit generation timed out. Please try again.",
     "aiCurated": "AI curated",
     "invalidBudget": "The budget amount or currency is invalid. Check your budget and try again.",
     "invalidRequest": "Check your request: up to 1,000 characters, 200 selected items and 15 outfits.",
@@ -761,7 +862,135 @@
     "formal": "Formal",
     "sport": "Sport",
     "date": "Date",
-    "travel": "Travel"
+    "travel": "Travel",
+    "aiRanked": "AI ranked",
+    "styledLook": "Styled look",
+    "feedbackPrompt": "Does this look work for you?",
+    "feedbackSaved": "Feedback saved",
+    "feedbackLike": "Like this look",
+    "feedbackDislike": "This look needs work",
+    "feedbackUnavailable": "Could not save feedback. Please try again.",
+    "concepts": {
+      "clean-lines": {"title": "Clean lines"},
+      "textured-knit": {"title": "Quiet knit texture"},
+      "modern-tailoring": {"title": "Tonal modern separates"},
+      "tailored": {"title": "Formal tailoring"},
+      "active": {"title": "Active layers"},
+      "ivy-knit": {"title": "Refined knit layers"},
+      "soft-tailoring": {"title": "Soft tailoring"},
+      "relaxed-layers": {"title": "Relaxed layers"},
+      "refined-ivy": {
+        "title": "Refined Ivy",
+        "story": "A crisp base, easy tailoring and grounded leather footwear."
+      },
+      "textured-tailoring": {
+        "title": "Textured tailoring",
+        "story": "Quiet color relationships give textured tailoring room to lead."
+      },
+      "smart-knit-layering": {
+        "title": "Smart knit layering",
+        "story": "A softer open layer keeps the proportions refined and approachable."
+      },
+      "precise-office": {
+        "title": "Precise office tailoring",
+        "story": "A clear shirt line and structured trousers carry the professional register."
+      },
+      "classic-separates": {
+        "title": "Classic separates",
+        "story": "Contrast between jacket and trousers gives traditional separates definition."
+      },
+      "tonal-evening": {
+        "title": "Tonal evening",
+        "story": "A darker tonal palette and clean lines make an understated evening look."
+      },
+      "soft-evening-texture": {
+        "title": "Soft evening texture",
+        "story": "Warm neutrals and tactile layers bring softness to a polished date look."
+      },
+      "modern-evening": {
+        "title": "Modern evening separates",
+        "story": "A simple base lets modern outerwear and a clean trouser line define the look."
+      },
+      "easy-transit": {
+        "title": "Easy transit",
+        "story": "Easy proportions, walkable footwear and an adaptable layer for travel."
+      },
+      "soft-utility": {
+        "title": "Soft utility",
+        "story": "Earth tones and practical construction keep the whole look grounded."
+      },
+      "relaxed-knit": {
+        "title": "Relaxed knit layers",
+        "story": "Soft knit texture balances relaxed trousers and comfortable footwear."
+      },
+      "clean-transit": {
+        "title": "Clean transit",
+        "story": "{{top}} pairs with {{bottom}} and {{shoes}}, without an extra layer."
+      },
+      "unlayered-separates-1": {
+        "title": "Clean separates",
+        "story": "A complete look with no additional layer."
+      },
+      "unlayered-separates-2": {
+        "title": "Soft separates",
+        "story": "A complete look with no additional layer."
+      },
+      "unlayered-separates-3": {
+        "title": "Textured separates",
+        "story": "A complete look with no additional layer."
+      },
+      "available-separates": {
+        "title": "Inventory separates",
+        "story": "A complete alternative from the available catalog."
+      },
+      "grounded-separates": {
+        "title": "Clean separates",
+        "story": "Coordinated separates form a complete look."
+      },
+      "grounded-knit-layers": {
+        "title": "Soft Knit Layers",
+        "story": "Soft knit layering keeps the look polished and approachable."
+      },
+      "grounded-tailoring": {
+        "title": "Refined Tailoring",
+        "story": "Structured tailoring and dress footwear carry a refined register."
+      },
+      "grounded-denim-ease": {
+        "title": "Relaxed Denim Ease",
+        "story": "Relaxed denim and understated footwear keep the look easy."
+      }
+    },
+    "distinctInventoryLimited": "These are the strongest distinct, complete options found for this request.",
+    "visualApprovedPartial": "Only {{count}} outfit(s) passed visual quality review. Unverified looks were not added to reach three.",
+    "visualReviewUnavailable": "Visual AI review was unavailable. These are catalog-based suggestions, not visually approved outfits.",
+    "visualQualityUnmet": "The available outfits did not pass visual quality review. Try a different style or occasion; no unverified replacement was added.",
+    "editorialColors": {
+      "black": "black",
+      "white": "white",
+      "cream": "cream",
+      "beige": "beige",
+      "brown": "brown",
+      "navy": "navy",
+      "blue": "blue",
+      "grey": "grey",
+      "green": "green",
+      "olive": "olive",
+      "burgundy": "burgundy",
+      "red": "red",
+      "pink": "pink",
+      "purple": "purple",
+      "yellow": "yellow",
+      "orange": "orange",
+      "dark": "dark tones",
+      "dark-neutral": "dark neutrals",
+      "light": "light tones",
+      "earth": "earth tones",
+      "warm": "warm tones",
+      "mid": "muted tones",
+      "cool-dark": "deep cool tones",
+      "cool-mid": "cool tones"
+    },
+    "viewProductAtStore": "Check at store"
   },
   "paywall": {
     "verifyingPurchase": "Verifying your purchase",
@@ -1381,6 +1610,7 @@
     "restore": "Already a pro? Restore"
   },
   "inspo": {
+    "variantNumber": "Variant {{number}}",
     "title": "Inspiration",
     "fromYourCloset": "From Your Closet",
     "personalStylist": "Personal Stylist",
@@ -2136,5 +2366,105 @@
     "retry": "Retry sync",
     "upgrade": "Upgrade",
     "retrying": "Syncing…"
+  },
+  "purchase": {
+    "hubTitle": "Shopping & fit intelligence",
+    "checkBeforeBuy": "Check before I buy",
+    "loadFailed": "Could not load private shopping preferences",
+    "offlineProduct": "Product unavailable offline. Paste its title or select a loaded product.",
+    "received": "Shared product received; resolve it before checking",
+    "input": "Product URL, title or shopping intent",
+    "failed": "Could not complete this check. You can continue shopping.",
+    "invalidBudget": "Enter a valid non-negative budget",
+    "resolve": "Resolve / search",
+    "priceUnknown": "Price unknown",
+    "checkout": "Known checkout costs (leave unknown fields empty)",
+    "runCheck": "Run BuyCheck",
+    "save": "Save this product locally",
+    "openMerchant": "Open exact merchant product",
+    "openFailed": "Could not open the merchant",
+    "watch": "Watch item price locally",
+    "watchLocal": "Saved on this device. Background monitoring is not active.",
+    "confidence": "Confidence",
+    "size": "Recommended size",
+    "unknown": "Unknown",
+    "manual": "Product details when URL metadata is unavailable",
+    "useDetails": "Use these product details",
+    "lookPieces": "Choose exact look pieces (four required)",
+    "feedbackSetting": "Optional fit feedback prompts",
+    "localPrivacy": "Fit evidence stays on this device. It is not sent to merchants, analytics or an AI prompt.",
+    "savedProduct": "Saved product",
+    "compare": "Compare using my wardrobe",
+    "noAlternatives": "No valid alternatives with enough evidence were found",
+    "selectLook": "Choose four exact look pieces first",
+    "noUpgrade": "No supported single-piece improvement found",
+    "cheaperLook": "Make a representative look cheaper",
+    "intent": {
+      "complete": "Complete my wardrobe",
+      "find": "Find something",
+      "check": "Check before I buy",
+      "upgrade": "Improve an outfit",
+      "save": "Save money",
+      "budget": "Spend my budget wisely"
+    },
+    "mode": {
+      "overall": "Best overall",
+      "cheaper": "Cheaper",
+      "closest-style": "Closest style",
+      "fit": "Best fit",
+      "wardrobe": "Best wardrobe value",
+      "lowest-duplicate": "Lowest duplicate risk",
+      "missing-piece": "Best missing-piece value"
+    }
+  },
+  "beta": {
+    "report": "Report this result",
+    "privacy": "Optional feedback. Review the export before sharing it with your beta coordinator. Avoid personal details, body measurements and secrets. Nothing is sent automatically. Screenshots are not captured; attach one yourself only if you choose. Corrections record your feedback for review; they do not edit the catalog. Drafts are discarded when you close this form or change accounts.",
+    "feature": "Feature",
+    "helpful": "Was this helpful?",
+    "yes": "Yes",
+    "no": "No",
+    "issue": "Issue type",
+    "comment": "Comment (optional)",
+    "correction": "Correction (optional)",
+    "before": "Previous value (optional)",
+    "after": "Correct value",
+    "undo": "Undo correction (keep audit)",
+    "edit": "Edit feedback",
+    "share": "Choose where to share",
+    "shareFailed": "Could not open sharing. Your draft is still available.",
+    "review": "Review export",
+    "close": "Close and discard",
+    "features": {
+      "general": "General",
+      "outfit": "Outfit",
+      "buycheck": "BuyCheck",
+      "fit": "Fit",
+      "shopping": "Shopping",
+      "visual": "Visual analysis",
+      "subscription": "Subscription"
+    },
+    "issues": {
+      "wrong_outfit": "Wrong outfit",
+      "wrong_fit": "Wrong fit",
+      "duplicate": "Duplicate",
+      "irrelevant_shopping": "Irrelevant shopping",
+      "price_issue": "Price issue",
+      "visual_analysis_wrong": "Visual analysis wrong",
+      "slow": "Slow",
+      "bug": "Bug",
+      "confusing_ux": "Confusing experience",
+      "privacy_concern": "Privacy concern",
+      "other": "Other"
+    },
+    "fields": {
+      "garment_type": "Garment type",
+      "color": "Color",
+      "fit": "Fit",
+      "duplicate_group": "Duplicate group",
+      "outfit_context": "Outfit context",
+      "product_family": "Product family",
+      "price_match": "Price match"
+    }
   }
 }

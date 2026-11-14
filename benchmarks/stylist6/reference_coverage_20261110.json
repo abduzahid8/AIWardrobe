@@ -1,0 +1,2217 @@
+{
+ "summary": {
+  "tool": "reference-catalog-check-v1",
+  "references": 46,
+  "shoppable": 46,
+  "thin": 0,
+  "gap": 0,
+  "noBrief": 0,
+  "knitBaseLayerLooks": 36,
+  "snapshotAdmitted": 38388,
+  "byProjection": {
+   "outerwear_family": 6189,
+   "native_category": 29547,
+   "knit_base_layer": 2652
+  }
+ },
+ "table": [
+  {
+   "referenceId": "rt_001",
+   "title": "Grey tailored utility",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "overshirt",
+      "jacket"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "overshirt": 888,
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "minimal-sneaker",
+      "sneaker"
+     ],
+     "candidates": 178,
+     "perSubtype": {
+      "minimal-sneaker": 8,
+      "sneaker": 170
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_002",
+   "title": "Brown suede tonal",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket",
+      "overshirt"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "jacket": 1100,
+      "overshirt": 888
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "minimal-sneaker",
+      "sneaker"
+     ],
+     "candidates": 178,
+     "perSubtype": {
+      "minimal-sneaker": 8,
+      "sneaker": 170
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_003",
+   "title": "Heritage fair isle",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "cardigan"
+     ],
+     "candidates": 307,
+     "perSubtype": {
+      "cardigan": 307
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_004",
+   "title": "Navy suede clean",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "overshirt",
+      "jacket"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "overshirt": 888,
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "minimal-sneaker",
+      "sneaker"
+     ],
+     "candidates": 178,
+     "perSubtype": {
+      "minimal-sneaker": 8,
+      "sneaker": 170
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_005",
+   "title": "Camel overcoat monochrome",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "coat"
+     ],
+     "candidates": 1885,
+     "perSubtype": {
+      "coat": 1885
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "boot"
+     ],
+     "candidates": 1448,
+     "perSubtype": {
+      "boot": 1448
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_006",
+   "title": "Olive quilt vest contrast",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket"
+     ],
+     "candidates": 1100,
+     "perSubtype": {
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_007",
+   "title": "Camel Ivy office",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "shirt",
+      "dress-shirt"
+     ],
+     "candidates": 3480,
+     "perSubtype": {
+      "shirt": 3410,
+      "dress-shirt": 70
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "blazer"
+     ],
+     "candidates": 1850,
+     "perSubtype": {
+      "blazer": 1850
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": false
+  },
+  {
+   "referenceId": "rt_008",
+   "title": "Burgundy Ivy cardigan",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "shirt",
+      "dress-shirt"
+     ],
+     "candidates": 3480,
+     "perSubtype": {
+      "shirt": 3410,
+      "dress-shirt": 70
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "cardigan"
+     ],
+     "candidates": 307,
+     "perSubtype": {
+      "cardigan": 307
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": false
+  },
+  {
+   "referenceId": "rt_009",
+   "title": "Chocolate suede clean",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket",
+      "overshirt"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "jacket": 1100,
+      "overshirt": 888
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_010",
+   "title": "Grey safari and cream",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "overshirt",
+      "jacket"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "overshirt": 888,
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer",
+      "derby"
+     ],
+     "candidates": 11637,
+     "perSubtype": {
+      "loafer": 3201,
+      "derby": 8436
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_011",
+   "title": "Olive winter heritage",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "coat"
+     ],
+     "candidates": 1885,
+     "perSubtype": {
+      "coat": 1885
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "boot"
+     ],
+     "candidates": 1448,
+     "perSubtype": {
+      "boot": 1448
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_012",
+   "title": "Belted plaid winter",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "coat"
+     ],
+     "candidates": 1885,
+     "perSubtype": {
+      "coat": 1885
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_013",
+   "title": "Chocolate bomber denim",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "bomber"
+     ],
+     "candidates": 159,
+     "perSubtype": {
+      "bomber": 159
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "jeans"
+     ],
+     "candidates": 504,
+     "perSubtype": {
+      "jeans": 504
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "minimal-sneaker",
+      "sneaker"
+     ],
+     "candidates": 178,
+     "perSubtype": {
+      "minimal-sneaker": 8,
+      "sneaker": 170
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_014",
+   "title": "Sand suede denim",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket",
+      "overshirt"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "jacket": 1100,
+      "overshirt": 888
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer",
+      "derby"
+     ],
+     "candidates": 11637,
+     "perSubtype": {
+      "loafer": 3201,
+      "derby": 8436
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_015",
+   "title": "Olive vest soft neutrals",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket"
+     ],
+     "candidates": 1100,
+     "perSubtype": {
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "minimal-sneaker",
+      "sneaker"
+     ],
+     "candidates": 178,
+     "perSubtype": {
+      "minimal-sneaker": 8,
+      "sneaker": 170
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_016",
+   "title": "Olive vest dressy",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket"
+     ],
+     "candidates": 1100,
+     "perSubtype": {
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_017",
+   "title": "Navy puffer smart",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket"
+     ],
+     "candidates": 1100,
+     "perSubtype": {
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "chelsea",
+      "boot"
+     ],
+     "candidates": 3035,
+     "perSubtype": {
+      "chelsea": 1587,
+      "boot": 1448
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_018",
+   "title": "Olive suede old-money",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket",
+      "overshirt"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "jacket": 1100,
+      "overshirt": 888
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_019",
+   "title": "Brown tonal tailoring",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "blazer"
+     ],
+     "candidates": 1850,
+     "perSubtype": {
+      "blazer": 1850
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_020",
+   "title": "Charcoal jacket formal",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket",
+      "overshirt"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "jacket": 1100,
+      "overshirt": 888
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_021",
+   "title": "Grey shawl knit office",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "shirt",
+      "dress-shirt"
+     ],
+     "candidates": 3480,
+     "perSubtype": {
+      "shirt": 3410,
+      "dress-shirt": 70
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "cardigan"
+     ],
+     "candidates": 307,
+     "perSubtype": {
+      "cardigan": 307
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_022",
+   "title": "Camel check tailoring",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "blazer"
+     ],
+     "candidates": 1850,
+     "perSubtype": {
+      "blazer": 1850
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_023",
+   "title": "Camel tailoring olive knit",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "blazer"
+     ],
+     "candidates": 1850,
+     "perSubtype": {
+      "blazer": 1850
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_024",
+   "title": "Olive blazer ivory knit",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "blazer"
+     ],
+     "candidates": 1850,
+     "perSubtype": {
+      "blazer": 1850
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_025",
+   "title": "Camel coat winter casual",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "coat"
+     ],
+     "candidates": 1885,
+     "perSubtype": {
+      "coat": 1885
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "minimal-sneaker",
+      "sneaker"
+     ],
+     "candidates": 178,
+     "perSubtype": {
+      "minimal-sneaker": 8,
+      "sneaker": 170
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_026",
+   "title": "Cream blazer evening",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "blazer"
+     ],
+     "candidates": 1850,
+     "perSubtype": {
+      "blazer": 1850
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_027",
+   "title": "Midnight suede blouson",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket",
+      "overshirt"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "jacket": 1100,
+      "overshirt": 888
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer",
+      "derby"
+     ],
+     "candidates": 11637,
+     "perSubtype": {
+      "loafer": 3201,
+      "derby": 8436
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_028",
+   "title": "Brown leather contrast",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket",
+      "overshirt"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "jacket": 1100,
+      "overshirt": 888
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer",
+      "derby"
+     ],
+     "candidates": 11637,
+     "perSubtype": {
+      "loafer": 3201,
+      "derby": 8436
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_029",
+   "title": "Cream puffer navy",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket"
+     ],
+     "candidates": 1100,
+     "perSubtype": {
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "minimal-sneaker",
+      "sneaker"
+     ],
+     "candidates": 178,
+     "perSubtype": {
+      "minimal-sneaker": 8,
+      "sneaker": 170
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_030",
+   "title": "Burgundy corduroy",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket",
+      "overshirt"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "jacket": 1100,
+      "overshirt": 888
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_031",
+   "title": "Navy quilted layering",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "shirt",
+      "dress-shirt"
+     ],
+     "candidates": 3480,
+     "perSubtype": {
+      "shirt": 3410,
+      "dress-shirt": 70
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket"
+     ],
+     "candidates": 1100,
+     "perSubtype": {
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": false
+  },
+  {
+   "referenceId": "rt_032",
+   "title": "Dark coffee field jacket",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket",
+      "overshirt"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "jacket": 1100,
+      "overshirt": 888
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "minimal-sneaker",
+      "sneaker"
+     ],
+     "candidates": 178,
+     "perSubtype": {
+      "minimal-sneaker": 8,
+      "sneaker": 170
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_033",
+   "title": "Olive quilted heritage",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "fine-knit"
+     ],
+     "candidates": 2652,
+     "perSubtype": {
+      "fine-knit": 2652
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket"
+     ],
+     "candidates": 1100,
+     "perSubtype": {
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_034",
+   "title": "Pattern knit polo ecru",
+   "status": "shoppable",
+   "layerPolicy": "absent",
+   "slots": {
+    "top": {
+     "demanded": [
+      "polo"
+     ],
+     "candidates": 1846,
+     "perSubtype": {
+      "polo": 1846
+     }
+    },
+    "outerwear": {
+     "demanded": [],
+     "candidates": 0,
+     "skipped": true
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_035",
+   "title": "Espresso polo denim",
+   "status": "shoppable",
+   "layerPolicy": "absent",
+   "slots": {
+    "top": {
+     "demanded": [
+      "polo"
+     ],
+     "candidates": 1846,
+     "perSubtype": {
+      "polo": 1846
+     }
+    },
+    "outerwear": {
+     "demanded": [],
+     "candidates": 0,
+     "skipped": true
+    },
+    "bottom": {
+     "demanded": [
+      "jeans"
+     ],
+     "candidates": 504,
+     "perSubtype": {
+      "jeans": 504
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer",
+      "derby"
+     ],
+     "candidates": 11637,
+     "perSubtype": {
+      "loafer": 3201,
+      "derby": 8436
+     }
+    }
+   },
+   "knitBaseLayer": false
+  },
+  {
+   "referenceId": "rt_036",
+   "title": "Cream tee blue denim",
+   "status": "shoppable",
+   "layerPolicy": "absent",
+   "slots": {
+    "top": {
+     "demanded": [
+      "t-shirt"
+     ],
+     "candidates": 1173,
+     "perSubtype": {
+      "t-shirt": 1173
+     }
+    },
+    "outerwear": {
+     "demanded": [],
+     "candidates": 0,
+     "skipped": true
+    },
+    "bottom": {
+     "demanded": [
+      "jeans"
+     ],
+     "candidates": 504,
+     "perSubtype": {
+      "jeans": 504
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "minimal-sneaker",
+      "sneaker"
+     ],
+     "candidates": 178,
+     "perSubtype": {
+      "minimal-sneaker": 8,
+      "sneaker": 170
+     }
+    }
+   },
+   "knitBaseLayer": false
+  },
+  {
+   "referenceId": "rt_037",
+   "title": "Olive blazer summer office",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "shirt",
+      "dress-shirt"
+     ],
+     "candidates": 3480,
+     "perSubtype": {
+      "shirt": 3410,
+      "dress-shirt": 70
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "blazer"
+     ],
+     "candidates": 1850,
+     "perSubtype": {
+      "blazer": 1850
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": false
+  },
+  {
+   "referenceId": "rt_038",
+   "title": "Sand chore smart casual",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "polo"
+     ],
+     "candidates": 1846,
+     "perSubtype": {
+      "polo": 1846
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "overshirt",
+      "jacket"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "overshirt": 888,
+      "jacket": 1100
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_039",
+   "title": "Retro striped polo cream",
+   "status": "shoppable",
+   "layerPolicy": "absent",
+   "slots": {
+    "top": {
+     "demanded": [
+      "polo"
+     ],
+     "candidates": 1846,
+     "perSubtype": {
+      "polo": 1846
+     }
+    },
+    "outerwear": {
+     "demanded": [],
+     "candidates": 0,
+     "skipped": true
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": false
+  },
+  {
+   "referenceId": "rt_040",
+   "title": "Chocolate polo cream",
+   "status": "shoppable",
+   "layerPolicy": "absent",
+   "slots": {
+    "top": {
+     "demanded": [
+      "polo"
+     ],
+     "candidates": 1846,
+     "perSubtype": {
+      "polo": 1846
+     }
+    },
+    "outerwear": {
+     "demanded": [],
+     "candidates": 0,
+     "skipped": true
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": false
+  },
+  {
+   "referenceId": "rt_041",
+   "title": "Sage knit polo cream",
+   "status": "shoppable",
+   "layerPolicy": "absent",
+   "slots": {
+    "top": {
+     "demanded": [
+      "polo"
+     ],
+     "candidates": 1846,
+     "perSubtype": {
+      "polo": 1846
+     }
+    },
+    "outerwear": {
+     "demanded": [],
+     "candidates": 0,
+     "skipped": true
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_042",
+   "title": "Camel blazer pale blue",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "shirt",
+      "dress-shirt"
+     ],
+     "candidates": 3480,
+     "perSubtype": {
+      "shirt": 3410,
+      "dress-shirt": 70
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "blazer"
+     ],
+     "candidates": 1850,
+     "perSubtype": {
+      "blazer": 1850
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": false
+  },
+  {
+   "referenceId": "rt_043",
+   "title": "Sky-blue knit polo",
+   "status": "shoppable",
+   "layerPolicy": "absent",
+   "slots": {
+    "top": {
+     "demanded": [
+      "polo"
+     ],
+     "candidates": 1846,
+     "perSubtype": {
+      "polo": 1846
+     }
+    },
+    "outerwear": {
+     "demanded": [],
+     "candidates": 0,
+     "skipped": true
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_044",
+   "title": "Burgundy preppy cardigan",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "t-shirt"
+     ],
+     "candidates": 1173,
+     "perSubtype": {
+      "t-shirt": 1173
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "cardigan"
+     ],
+     "candidates": 307,
+     "perSubtype": {
+      "cardigan": 307
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_045",
+   "title": "Cream crochet zip knit",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "polo"
+     ],
+     "candidates": 1846,
+     "perSubtype": {
+      "polo": 1846
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "cardigan"
+     ],
+     "candidates": 307,
+     "perSubtype": {
+      "cardigan": 307
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": true
+  },
+  {
+   "referenceId": "rt_046",
+   "title": "Sand jacket olive polo",
+   "status": "shoppable",
+   "layerPolicy": "required",
+   "slots": {
+    "top": {
+     "demanded": [
+      "polo"
+     ],
+     "candidates": 1846,
+     "perSubtype": {
+      "polo": 1846
+     }
+    },
+    "outerwear": {
+     "demanded": [
+      "jacket",
+      "overshirt"
+     ],
+     "candidates": 1988,
+     "perSubtype": {
+      "jacket": 1100,
+      "overshirt": 888
+     }
+    },
+    "bottom": {
+     "demanded": [
+      "tailored-trouser",
+      "trouser"
+     ],
+     "candidates": 3435,
+     "perSubtype": {
+      "tailored-trouser": 1897,
+      "trouser": 1538
+     }
+    },
+    "shoes": {
+     "demanded": [
+      "loafer"
+     ],
+     "candidates": 3201,
+     "perSubtype": {
+      "loafer": 3201
+     }
+    }
+   },
+   "knitBaseLayer": false
+  }
+ ]
+}

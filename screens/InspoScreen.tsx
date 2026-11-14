@@ -28,7 +28,14 @@ import Animated, {
 
 import { LiquidGlass2026Theme } from '../constants/LiquidGlass2026Theme';
 import { CachedImage } from '../components/ui/CachedImage';
-import type { ShopCatalogItem } from '../src/types/shop';
+import type { ShopCatalogItem as CatalogRow } from '../src/types/shop';
+import { buildCatalogFamilyViews, selectCatalogVariant } from '../src/services/catalogFamilyView';
+import { CatalogVariantPicker } from '../components/CatalogVariantPicker';
+interface ShopCatalogItem extends CatalogRow {
+    familyKey?: string;
+    catalogVariants?: CatalogRow[];
+    onVariantSelect?: (familyKey: string, variantId: string) => void;
+}
 import { INSPO_MENS_SHOP_ITEMS, CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
 import { useShopCatalog } from '../hooks/useShopCatalog';
 import { useFeaturedCapsules, type FeaturedCapsule } from '../hooks/useFeaturedCapsules';
@@ -241,10 +248,11 @@ const ProductCard = React.memo(({
     plate?: number;
     highlighted?: boolean;
 }) => {
+    const purchaseNavigation=useAppNavigation();
     const displayPrice = useUzsPrice(Number(item.price), item.currency);
     const handleSave = React.useCallback(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onSave(item);
+        onSave(item.catalogVariants?.find(variant => variant.id === item.id) || item);
     }, [onSave, item]);
     const handleCardPress = React.useCallback(() => {
         handleBuyPress(item);
@@ -316,10 +324,17 @@ const ProductCard = React.memo(({
                 </ScaledText>
             </View>
         </TouchableOpacity>
+        <TouchableOpacity accessibilityRole="button" style={{paddingVertical:8}} onPress={()=>purchaseNavigation.navigate('PurchaseIntelligence',{candidateId:item.id,candidate:item.catalogVariants?.find(variant=>variant.id===item.id) || {id:item.id,name:item.name,brand:item.brand,price:item.price,currency:item.currency,imageUrl:item.imageUrl,garmentType:item.garmentType,sourceUrl:item.sourceUrl,source:item.source},intent:'check'})}>
+            <ScaledText>{t('purchase.checkBeforeBuy')}</ScaledText>
+        </TouchableOpacity>
+        {item.catalogVariants && (
+            <CatalogVariantPicker variants={item.catalogVariants} selectedId={item.id}
+                onSelect={id => item.familyKey && item.onVariantSelect?.(item.familyKey, id)} />
+        )}
     </Animated.View>
     );
 }, (prev, next) =>
-    prev.item.id === next.item.id &&
+    prev.item === next.item &&
     prev.isSaved === next.isSaved &&
     prev.highlighted === next.highlighted &&
     prev.spotlight === next.spotlight &&
@@ -463,12 +478,12 @@ const InspoScreen = () => {
     // Fetch each garment family independently. The catalog's global
     // sort_order can contain hundreds of shirts before its first pair of
     // trousers or shoes, so sorting a single page cannot create a mixed feed.
-    const topsCatalog = useShopCatalog({ category: 'tops', source: 'all', search: deferredSearchQuery });
-    const bottomsCatalog = useShopCatalog({ category: 'bottoms', source: 'all', search: deferredSearchQuery });
-    const shoesCatalog = useShopCatalog({ category: 'shoes', source: 'all', search: deferredSearchQuery });
-    const outerwearCatalog = useShopCatalog({ category: 'outerwear', source: 'all', search: deferredSearchQuery });
-    const accessoriesCatalog = useShopCatalog({ category: 'accessory', source: 'all', search: deferredSearchQuery });
-    const dressesCatalog = useShopCatalog({ category: 'dresses', source: 'all', search: deferredSearchQuery });
+    const topsCatalog = useShopCatalog({ category: 'tops', source: 'all', discovery: true, search: deferredSearchQuery });
+    const bottomsCatalog = useShopCatalog({ category: 'bottoms', source: 'all', discovery: true, search: deferredSearchQuery });
+    const shoesCatalog = useShopCatalog({ category: 'shoes', source: 'all', discovery: true, search: deferredSearchQuery });
+    const outerwearCatalog = useShopCatalog({ category: 'outerwear', source: 'all', discovery: true, search: deferredSearchQuery });
+    const accessoriesCatalog = useShopCatalog({ category: 'accessory', source: 'all', discovery: true, search: deferredSearchQuery });
+    const dressesCatalog = useShopCatalog({ category: 'dresses', source: 'all', discovery: true, search: deferredSearchQuery });
     const shopCatalogs = [topsCatalog, bottomsCatalog, shoesCatalog, outerwearCatalog, accessoriesCatalog, dressesCatalog];
     const syncedShopItems = useMemo(() => {
         const seen = new Set<string>();
@@ -621,6 +636,10 @@ const InspoScreen = () => {
     // images/animations in flight) and dropping keystrokes.
 
 
+    const [selectedCatalogVariants, setSelectedCatalogVariants] = useState<Record<string, string>>({});
+    const selectShopVariant = useCallback((familyKey: string, variantId: string) => {
+        setSelectedCatalogVariants(previous => ({ ...previous, [familyKey]: variantId }));
+    }, []);
     const shopItems = useMemo(() => {
         const baseItems = showingFallbackCatalog ? INSPO_MENS_SHOP_ITEMS : syncedShopItems;
 
@@ -645,6 +664,15 @@ const InspoScreen = () => {
             });
         }
 
+        const { families } = buildCatalogFamilyViews(sourceItems, {
+            selectedVariantIds: [...Object.values(selectedCatalogVariants), ...(focusedShopItemId ? [focusedShopItemId] : [])],
+        });
+        sourceItems = families.map(family => ({
+            ...selectCatalogVariant(family)!,
+            familyKey: family.familyKey,
+            catalogVariants: family.variants.map(variant => variant.item),
+            onVariantSelect: selectShopVariant,
+        }));
         sourceItems = mixShopGarmentTypes(sourceItems);
 
         if (!query) {
@@ -660,7 +688,7 @@ const InspoScreen = () => {
         }
 
         return sourceItems;
-    }, [deferredSearchQuery, showingFallbackCatalog, syncedShopItems, showSavedOnly, savedInspo, focusedShopItemId]);
+    }, [deferredSearchQuery, showingFallbackCatalog, syncedShopItems, showSavedOnly, savedInspo, focusedShopItemId, selectedCatalogVariants, selectShopVariant]);
 
     // ── FlatList helpers for the shop grid ────────────────────────────────────
     const savedInspoSet = useMemo(
@@ -807,6 +835,9 @@ const InspoScreen = () => {
 
     const renderShopHeader = useCallback(() => (
         <>
+            <TouchableOpacity accessibilityRole="button" style={{padding:16,marginBottom:12,borderRadius:16,backgroundColor:'#EBF1F8'}} onPress={()=>navigation.navigate('PurchaseIntelligence',{intent:'complete'})}>
+                <ScaledText>{t('purchase.hubTitle')}</ScaledText>
+            </TouchableOpacity>
             {/* Personal Stylist Button */}
             <Animated.View entering={FadeInDown.delay(80).duration(400)}>
                 <TouchableOpacity

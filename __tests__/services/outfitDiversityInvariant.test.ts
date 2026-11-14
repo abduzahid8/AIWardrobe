@@ -11,6 +11,7 @@ import {
     buildLocalOutfits,
     type LocalClothingItem,
 } from '../../src/services/outfitGenerationService';
+import { outfitVisualSignature } from '../../src/domain/outfitVisualSignature';
 import {
     analyzeDeckProductDiversity,
     productIdentityKeys,
@@ -136,6 +137,29 @@ describe('buildLocalOutfits diversity invariant', () => {
         expect(outfits.length).toBeGreaterThan(0);
         for (const outfit of outfits) {
             expect(outfit.items.length).toBeGreaterThanOrEqual(3);
+        }
+    });
+
+    it('semantic recency never vetoes a valid deck in the local fallback', () => {
+        const params = {
+            stylePreferences: 'casual',
+            occasion: 'Everyday',
+            weather: { temp: 16, condition: 'mild' },
+            limit: 3,
+        } as const;
+        const fresh = buildLocalOutfits(variedPool(), { ...params });
+        expect(fresh).toHaveLength(3);
+        const reranked = buildLocalOutfits(variedPool(), {
+            ...params,
+            recentLookSignatures: fresh.map((outfit) => outfitVisualSignature(outfit.items)),
+        });
+        // Every-look history is the harshest input: the deck must stay
+        // complete with exactly four slots per look, never an exception.
+        expect(reranked).toHaveLength(3);
+        for (const outfit of reranked) {
+            expect(outfit.items).toHaveLength(4);
+            const slots = outfit.items.map((item) => item.macroCategory).sort();
+            expect(slots).toEqual(['bottom', 'outerwear', 'shoes', 'top']);
         }
     });
 });

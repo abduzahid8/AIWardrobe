@@ -41,6 +41,7 @@
     "gotIt": "Got it",
     "info": "Info",
     "item": "Item",
+    "photoUnavailable": "Rasm mavjud emas",
     "ok": "OK",
     "retry": "Retry",
     "tapToDismiss": "Tap to dismiss"
@@ -715,6 +716,49 @@
     "uzbek": "O'zbek"
   },
   "outfitMaker": {
+    "activeBudget": "Byudjet: {{amount}}. Har bir ko‘rsatilgan obraz shu chegara bo‘yicha tekshirilgan.",
+    "optionalBudget": "To‘liq obraz uchun byudjet (ixtiyoriy)",
+    "budgetAmount": "Obraz uchun eng yuqori xarajat",
+    "budgetCurrency": "Byudjet valyutasi",
+    "noBudget": "Byudjet belgilanmagan",
+    "lookSpend": "Obraz narxi: {{total}} · Byudjet chegarasi: {{cap}}",
+    "outfitTotal": "Outfit jami",
+    "outfitTotalUnavailable": "Jami mavjud emas — mahsulotlar turli valyutalarda ko'rsatilgan",
+    "qualityExplanation": {
+      "garmentSummary": "{{top}}, {{outerwear}}, {{bottom}} va {{shoes}} uyg‘unligi.",
+      "formalStructure": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi.",
+      "travelLayer": "Safar davomida ustki qatlamni yechib, tashqarida yana kiyish mumkin.",
+      "adaptableLayer": "Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang.",
+      "fitCheck": "Ustki qatlam ichki kiyim ustidan tortishmasdan, qulay turishini tekshiring.",
+      "unlayeredFitCheck": "Ustki va pastki kiyim birga qulay turishini, mato ortiqcha yig‘ilmasligini tekshiring.",
+      "textureDepth": "Fakturali qatlam ajralib tursin — asos silliq va sodda bo‘lsin.",
+      "lightBase": "Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi.",
+      "tailoredFootwear": "Klassik poyabzal bichimli shim siluetini to‘ldiradi.",
+      "restrainedPalette": "Vazmin ranglar minimalistik uslubni qo‘llab-quvvatlaydi.",
+      "casualLayer": "Ustki ko‘ylak futbolkani kundalik qatlam bilan to‘ldiradi.",
+      "fourPieces": "To‘liq obraz: asosiy ustki kiyim, ikkinchi qatlam, shim va poyabzal.",
+      "editorialLayered": "{{top}} — {{layer}} ostidagi asos; {{bottom}} va {{shoes}} siluet chizig‘ini davom ettiradi.",
+      "editorialUnlayered": "{{top}} {{bottom}} va {{shoes}} bilan uyg‘unlashadi, qo‘shimcha qatlamsiz.",
+      "paletteStory": "{{palette}} ranglari obrazga aniq palitra beradi.",
+      "shapeStory": "Shimning {{shape}} bichimi siluetni belgilaydi.",
+      "shape_unknown": "",
+      "shape_slim": "toraygan",
+      "shape_regular": "standart",
+      "shape_wide": "keng",
+      "texture_unknown": "",
+      "texture_smooth": "silliq",
+      "texture_knit": "trikotaj",
+      "texture_ribbed": "yo‘lli",
+      "texture_denim": "denim",
+      "texture_suede": "zamsh",
+      "texture_corduroy": "velvet",
+      "texture_tweed": "tvid",
+      "texture_technical": "texnik",
+      "editorialTailoredFootwear": "{{shoes}} {{bottom}} chizig‘ini takrorlaydi va bichimni aniq saqlaydi.",
+      "editorialLightBase": "{{top}} {{layer}} ostida tartibli turadi — ochiq qatlam asosni hoshiyalaydi.",
+      "editorialTextureContrast": "{{layer}}ning {{texture}} fakturasi silliqroq {{top}} ustida chuqurlik beradi.",
+      "editorialCasualFootwear": "{{shoes}} {{bottom}} bilan bir xil erkin uslubda qoladi."
+    },
     "closestShopAlternative": "Do‘kondagi kiyimlar bilan eng yaqin mos kombinatsiya.",
     "closestAlternative": "Garderobingizdagi eng yaqin mos kombinatsiya.",
     "closestAlternativeTip": "Tanlangan kiyim saqlanadi. Ayrim kiyimlar so‘ralgan uslub, tadbir yoki ob-havoga to‘liq mos kelmasligi mumkin.",
@@ -729,6 +773,57 @@
     "addToCalendar": "Kalenderga qo'shish",
     "saveOutfit": "Libosni saqlash",
     "aiStylist": "AI stilist",
+    "newOutfit": "Yangi obraz",
+    "yourStyle": "Sizning uslubingiz",
+    "direction_signature": "Did'ingizga yaqin",
+    "directionExplain_signature": "Siz tanlagan uslub va vaziyatga mos ishonchli asos.",
+    "direction_refresh": "Yangicha qarash",
+    "directionExplain_refresh": "Asosiy uslubingizga yaqin, ammo boshqacha uyg'unlashuv.",
+    "direction_discovery": "Yangilikni sinab ko‘ring",
+    "directionExplain_discovery": "Vaziyatga mos, lekin bichimi, fakturasi yoki ranglari ancha farqli obraz.",
+    "direction_alternative": "Yana bir mos variant",
+    "directionExplain_alternative": "Mos keladigan boshqa kombinatsiya; keskin yangi yo‘nalish tasdiqlanmadi.",
+    "personalizedForYou": "Did'ingizga mos tanlov",
+    "personalizedFitWide": "Erkin bichim",
+    "personalizedFitSlim": "Tanaga mos bichim",
+    "fromWardrobe": "Shkafdan",
+    "newClothing": "Yangi kiyimlar",
+    "newShort": "Yangi",
+    "wardrobeShort": "Shkaf",
+    "pickOccasion": "Vaziyatni tanlang",
+    "generateOutfit": "Obraz yaratish",
+    "weatherUnavailable": "Ob-havo mavjud emas",
+    "anchorItem": "Mahkamlangan kiyim",
+    "locked": "Mahkamlangan",
+    "tripDay": "Sayohat kuni",
+    "planningFor": "{{date}} uchun rejalashtirish",
+    "planningSubtitle": "Yaratilgan obrazlar shu kunga saqlanadi",
+    "planForDate": "{{date}} uchun reja",
+    "fromQuiz": "Testdan",
+    "moreOccasions": "Boshqa vaziyatlar",
+    "lessOccasions": "Yashirish",
+    "moreCount": "Yana ({{count}})",
+    "viewTrip": "Sayohatni ko‘rish",
+    "viewCalendar": "Kalendarni ko‘rish",
+    "savedToTrip": "Sayohatingizga saqlandi · {{date}}",
+    "savedToTripSubtitle": "Shkafingizga saqlandi va sayohat kuni kalendari + narsalar ro‘yxatiga bog‘landi.",
+    "savedToTripUpdated": "Sayohat obrazi yangilandi: {{date}}",
+    "savedToCalendar": "Saqlandi: {{date}}",
+    "savedToCalendarSubtitle": "Obrazingiz kalendar va sayohat narsalari ro‘yxatiga qo‘shildi.",
+    "saveAndConnectTrip": "Saqlash + sayohatga bog‘lash",
+    "dateNight": "Romantik uchrashuv",
+    "style_old_money": "Old Money",
+    "style_semi_classic": "Yarim klassika",
+    "style_minimalist": "Minimalizm",
+    "style_casual": "Kundalik",
+    "style_classic": "Klassika",
+    "style_business_casual": "Zamonaviy professional",
+    "styleDesc_old_money": "Nafis klassik kiyimlar — vazmin hashamatga urg‘u.",
+    "styleDesc_semi_classic": "Nafis kundalik nafosat — klassik detallar va qulaylik.",
+    "styleDesc_minimalist": "Toza chiziqlar, neytral ranglar va asosiy kiyimlar.",
+    "styleDesc_casual": "Erkin uslub: yaxshi bichim va toza uyg‘unliklar.",
+    "styleDesc_classic": "Zamonaviy ofis uchun aniq klassik obrazlar.",
+    "styleDesc_business_casual": "Zamonaviy ish uslubidagi aniq obrazlar.",
     "whereGoing": "Qayera ketayapsiz?",
     "styleChat": "Stil suhbati",
     "outfitAI": "Libos AI",
@@ -749,8 +844,8 @@
     "travel": "Sayohat",
     "discoverVibe": "Stilingizni kashf qiling",
     "tapStyleCard": "Quyidagi stil kartasini bosing va AI shkafingizdan to'liq libos yaratadi.",
-    "promptPlaceholder": "Qayerga ketayapsiz, stil (old money, classic…), byudjet (1 500 000 UZS)…",
-    "promptPlaceholderShort": "Qayerga ketayapsiz, stil, byudjet (1 500 000 UZS)…",
+    "promptPlaceholder": "Qayerga ketayapsiz, uslub (old money, classic…)…",
+    "promptPlaceholderShort": "Qayerga borasiz va qanday uslubni xohlaysiz…",
     "generate": "Yaratish",
     "description1": "Shkafingizdan tanlangan {{style}} libosi.",
     "description2": "Muvozanatli nisbatlarga ega elegan {{style}} ansambli.",
@@ -764,7 +859,13 @@
     "noOutfitsError": "Liboslar yaratib bo'lmadi. Yaxshi takliflar uchun shkafingizga ko'proq narsa qo'shing.",
     "budgetTooLow": "Mavjud kiyimlardan bu byudjetga mos to‘liq obraz tuzib bo‘lmaydi. Byudjetni oshiring yoki o‘zingizdagi kiyimlardan foydalaning.",
     "noItemsWithinBudget": "Bu byudjetga mos kiyim topilmadi. Byudjetni oshiring yoki o‘zingizdagi kiyimlardan foydalaning.",
+    "formalInventoryShortfall": "Tekshirilgan kiyimlardan uchta to‘liq rasmiy obraz tuzilmadi. Har biriga ko‘ylak, shaklli pidjak, bichimli shim va klassik poyabzal kerak. Mos kiyimlar qo‘shing yoki boshqa tadbirni tanlang.",
     "noMatchingClothing": "Tanlovlaringizga mos kiyim topilmadi. Tanlovlarni o‘zgartirib ko‘ring.",
+    "incompatibleLockedItem": "Tanlangan kiyim bu manbaga kirmaydi. Manbani almashtiring yoki kiyim tanlovini olib tashlang.",
+    "missingRequiredClothing": "To‘liq obraz uchun kerakli toifadagi kiyimlar yetishmayapti. Ularni qo‘shing yoki tanlovni kengaytiring.",
+    "qualityShortfall": "Mavjud kiyimlardan bu vaziyatga mos to‘liq obraz tuzilmadi.",
+    "generationBusy": "Obraz tanlash juda uzoq davom etdi. Qayta urinib ko‘ring.",
+    "requestTimeout": "Obraz yaratish vaqti tugadi. Qayta urinib ko‘ring.",
     "aiCurated": "AI tanlagan",
     "invalidBudget": "Byudjet miqdori yoki valyutasi noto‘g‘ri. Byudjetni tekshirib, qayta urinib ko‘ring.",
     "invalidRequest": "So‘rovni tekshiring: ko‘pi bilan 1000 ta belgi, 200 ta tanlangan kiyim va 15 ta obraz.",
@@ -776,7 +877,135 @@
     "noAvailableShopLooks": "Bu shartlarga mos to‘liq do‘kon obrazlari mavjud emas.",
     "noAvailableWardrobeLooks": "Bu shartlar uchun garderobda to‘liq obrazga yetarli kiyim yo‘q. Garderobga kiyim qo‘shing.",
     "generateFailed": "Hozir obraz yaratib bo‘lmadi. Qayta urinib ko‘ring.",
-    "aiUnavailable": "Sun’iy intellekt obrazni yarata olmadi. Birozdan so‘ng qayta urinib ko‘ring."
+    "aiUnavailable": "Sun’iy intellekt obrazni yarata olmadi. Birozdan so‘ng qayta urinib ko‘ring.",
+    "aiRanked": "AI tanlovi",
+    "styledLook": "Tayyor obraz",
+    "feedbackPrompt": "Bu obraz sizga mosmi?",
+    "feedbackSaved": "Fikr saqlandi",
+    "feedbackLike": "Obraz yoqdi",
+    "feedbackDislike": "Obrazni yaxshilash kerak",
+    "feedbackUnavailable": "Fikr saqlanmadi. Qayta urinib ko‘ring.",
+    "concepts": {
+      "clean-lines": {"title": "Sodda chiziqlar"},
+      "textured-knit": {"title": "Sokin trikotaj fakturasi"},
+      "modern-tailoring": {"title": "Uyg‘un ranglardagi zamonaviy obraz"},
+      "tailored": {"title": "Rasmiy obraz"},
+      "active": {"title": "Faol harakat uchun obraz"},
+      "ivy-knit": {"title": "Nafis trikotaj qatlamlari"},
+      "soft-tailoring": {"title": "Yumshoq bichim"},
+      "relaxed-layers": {"title": "Erkin qatlamlar"},
+      "refined-ivy": {
+        "title": "Nafis Ivy",
+        "story": "Aniq ko‘ylak chizig‘i, yengil qatlamlar va vazmin charm poyabzal."
+      },
+      "textured-tailoring": {
+        "title": "Fakturali klassika",
+        "story": "Sokin ranglar kiyimning ifodali fakturasini ta’kidlaydi."
+      },
+      "smart-knit-layering": {
+        "title": "Nafis trikotaj qatlamlar",
+        "story": "Yumshoq ochiladigan qatlam nafis va yengil nisbatlarni saqlaydi."
+      },
+      "precise-office": {
+        "title": "Aniq ofis klassikasi",
+        "story": "Ko‘ylak va shaklli shim ishchan ko‘rinish yaratadi."
+      },
+      "classic-separates": {
+        "title": "Klassik uyg‘unlik",
+        "story": "Pidjak va shim kontrasti klassik uyg‘unlikka aniqlik beradi."
+      },
+      "tonal-evening": {
+        "title": "To‘q rangli oqshom",
+        "story": "To‘q uyg‘un ranglar va aniq chiziqlar vazmin oqshom obrazi uchun."
+      },
+      "soft-evening-texture": {
+        "title": "Yumshoq oqshom fakturalari",
+        "story": "Iliq neytral ranglar va yumshoq qatlamlar nafis uchrashuv uchun."
+      },
+      "modern-evening": {
+        "title": "Zamonaviy oqshom obrazi",
+        "story": "Oddiy asos, zamonaviy ustki qatlam va aniq shim chizig‘i."
+      },
+      "easy-transit": {
+        "title": "Yo‘lda qulaylik",
+        "story": "Erkin nisbatlar, qulay poyabzal va sayohatga mos qatlam."
+      },
+      "soft-utility": {
+        "title": "Amaliy kundalik obraz",
+        "story": "Tabiiy ranglar va amaliy detallar obrazni birlashtiradi."
+      },
+      "relaxed-knit": {
+        "title": "Erkin trikotaj qatlamlar",
+        "story": "Yumshoq trikotaj erkin shim va qulay poyabzalni muvozanatlashtiradi."
+      },
+      "clean-transit": {
+        "title": "Sodda safar",
+        "story": "{{top}} {{bottom}} va {{shoes}} bilan uyg‘unlashadi, qo‘shimcha qatlamsiz."
+      },
+      "unlayered-separates-1": {
+        "title": "Sodda uyg‘unlik",
+        "story": "Qo‘shimcha qatlamsiz to‘liq obraz."
+      },
+      "unlayered-separates-2": {
+        "title": "Yumshoq uyg‘unlik",
+        "story": "Qo‘shimcha qatlamsiz to‘liq obraz."
+      },
+      "unlayered-separates-3": {
+        "title": "Fakturali uyg‘unlik",
+        "story": "Qo‘shimcha qatlamsiz to‘liq obraz."
+      },
+      "available-separates": {
+        "title": "Mavjud uyg‘unlik",
+        "story": "Mavjud katalogdan to‘liq muqobil obraz."
+      },
+      "grounded-separates": {
+        "title": "Sodda uyg‘unlik",
+        "story": "Muvofiqlashtirilgan kiyimlar to‘liq obraz hosil qiladi."
+      },
+      "grounded-knit-layers": {
+        "title": "Yumshoq trikotaj qatlamlar",
+        "story": "Yumshoq trikotaj qatlamlar obrazni ozoda va samimiy saqlaydi."
+      },
+      "grounded-tailoring": {
+        "title": "Nafis klassika",
+        "story": "Aniq bichim va klassik poyabzal obrazga nafislik beradi."
+      },
+      "grounded-denim-ease": {
+        "title": "Erkin denim uyg‘unlik",
+        "story": "Erkin denim va vazmin poyabzal yengil obraz yaratadi."
+      }
+    },
+    "distinctInventoryLimited": "Bu so‘rov uchun topilgan eng yaxshi, bir-biridan farqli to‘liq obrazlar ko‘rsatilgan.",
+    "visualApprovedPartial": "Vizual tekshiruvdan o‘tgan obrazlar soni: {{count}}. Uchta qilish uchun tekshirilmagan variantlar qo‘shilmadi.",
+    "visualReviewUnavailable": "AI vizual tekshiruvi mavjud emas. Bu katalogga asoslangan takliflar, suratlar bilan tasdiqlanmagan.",
+    "visualQualityUnmet": "Tanlangan obrazlar vizual sifat tekshiruvidan o‘tmadi. Boshqa uslub yoki vaziyatni sinab ko‘ring. Tekshirilmagan variant qo‘shilmadi.",
+    "editorialColors": {
+      "black": "qora",
+      "white": "oq",
+      "cream": "qaymoqrang",
+      "beige": "bej",
+      "brown": "jigarrang",
+      "navy": "to‘q ko‘k",
+      "blue": "ko‘k",
+      "grey": "kulrang",
+      "green": "yashil",
+      "olive": "zaytunrang",
+      "burgundy": "bordo",
+      "red": "qizil",
+      "pink": "pushti",
+      "purple": "binafsha",
+      "yellow": "sariq",
+      "orange": "to‘q sariq",
+      "dark": "to‘q tuslar",
+      "dark-neutral": "to‘q neytral tuslar",
+      "light": "och tuslar",
+      "earth": "tabiiy tuslar",
+      "warm": "iliq tuslar",
+      "mid": "o‘chirilgan tuslar",
+      "cool-dark": "chuqur sovuq tuslar",
+      "cool-mid": "sovuq tuslar"
+    },
+    "viewProductAtStore": "Do‘konda tekshirish"
   },
   "paywall": {
     "verifyingPurchase": "Xarid tekshirilmoqda",
@@ -1392,6 +1621,7 @@
     "restore": "Allaqachon Pro? Qayta tiklash"
   },
   "inspo": {
+    "variantNumber": "Variant {{number}}",
     "title": "I'lhom",
     "fromYourCloset": "Shkafingizdan",
     "personalStylist": "Shaxsiy stilist",
@@ -2136,5 +2366,105 @@
     "retry": "Qayta sinxronlash",
     "upgrade": "Tarifni yangilash",
     "retrying": "Sinxronlanmoqda…"
+  },
+  "purchase": {
+    "hubTitle": "Xarid va moslik tahlili",
+    "checkBeforeBuy": "Xariddan oldin tekshirish",
+    "loadFailed": "Shaxsiy xarid sozlamalarini yuklab bo‘lmadi",
+    "offlineProduct": "Mahsulot oflayn mavjud emas. Nomini kiriting yoki yuklangan mahsulotni tanlang.",
+    "received": "Mahsulot qabul qilindi; avval uni aniqlang",
+    "input": "Mahsulot havolasi, nomi yoki xarid maqsadi",
+    "failed": "Tekshiruv bajarilmadi. Xaridlarni davom ettirish mumkin.",
+    "invalidBudget": "To‘g‘ri, manfiy bo‘lmagan byudjetni kiriting",
+    "resolve": "Aniqlash / qidirish",
+    "priceUnknown": "Narx noma’lum",
+    "checkout": "Ma’lum yakuniy xarajatlar (noma’lumlarini bo‘sh qoldiring)",
+    "runCheck": "Xaridni tekshirish",
+    "save": "Mahsulotni qurilmaga saqlash",
+    "openMerchant": "Asl mahsulot sahifasini ochish",
+    "openFailed": "Do‘konni ochib bo‘lmadi",
+    "watch": "Narx kuzatuvini saqlash",
+    "watchLocal": "Qurilmaga saqlandi. Fon kuzatuvi hali yoqilmagan.",
+    "confidence": "Ishonchlilik",
+    "size": "Tavsiya etilgan o‘lcham",
+    "unknown": "Noma’lum",
+    "manual": "Havola aniqlanmasa, mahsulot ma’lumotlari",
+    "useDetails": "Ushbu ma’lumotlardan foydalanish",
+    "lookPieces": "Obraz uchun to‘rtta aniq kiyimni tanlang",
+    "feedbackSetting": "Moslik haqida ixtiyoriy savollar",
+    "localPrivacy": "Moslik fikrlari qurilmada saqlanadi. Do‘konlarga, tahlil tizimlariga yoki AI ga yuborilmaydi.",
+    "savedProduct": "Saqlangan mahsulot",
+    "compare": "Garderobim bilan taqqoslash",
+    "noAlternatives": "Yetarli ma’lumotli mos muqobil topilmadi",
+    "selectLook": "Avval obraz uchun to‘rtta kiyimni tanlang",
+    "noUpgrade": "Bitta kiyimni yaxshilash uchun yetarli dalil topilmadi",
+    "cheaperLook": "Obraz namunasini arzonlashtirish",
+    "intent": {
+      "complete": "Garderobni to‘ldirish",
+      "find": "Mahsulot topish",
+      "check": "Xaridni tekshirish",
+      "upgrade": "Obrazni yaxshilash",
+      "save": "Pul tejash",
+      "budget": "Byudjetni oqilona sarflash"
+    },
+    "mode": {
+      "overall": "Umumiy eng yaxshi",
+      "cheaper": "Arzonroq",
+      "closest-style": "Eng yaqin uslub",
+      "fit": "Eng yaxshi moslik",
+      "wardrobe": "Garderob uchun eng foydali",
+      "lowest-duplicate": "Kamroq takrorlanish",
+      "missing-piece": "Yetishmayotgan kiyim"
+    }
+  },
+  "beta": {
+    "report": "Natija haqida xabar berish",
+    "privacy": "Fikr bildirish ixtiyoriy. Beta koordinatori bilan ulashishdan oldin eksportni tekshiring. Shaxsiy ma’lumotlar, tana o‘lchamlari va maxfiy kalitlarni kiritmang. Hech narsa avtomatik yuborilmaydi, skrinshot olinmaydi. Istasangiz, rasmni o‘zingiz biriktiring. Tuzatishlar tahlil uchun yoziladi, katalogni o‘zgartirmaydi. Shakl yopilganda yoki hisob almashganda qoralama o‘chadi.",
+    "feature": "Funksiya",
+    "helpful": "Bu foydali bo‘ldimi?",
+    "yes": "Ha",
+    "no": "Yo‘q",
+    "issue": "Muammo turi",
+    "comment": "Izoh (ixtiyoriy)",
+    "correction": "Tuzatish (ixtiyoriy)",
+    "before": "Oldingi qiymat (ixtiyoriy)",
+    "after": "To‘g‘ri qiymat",
+    "undo": "Tuzatishni bekor qilish (tarixni saqlash)",
+    "edit": "Fikrni tahrirlash",
+    "share": "Ulashish usulini tanlash",
+    "shareFailed": "Ulashishni ochib bo‘lmadi. Qoralama shaklda saqlanmoqda.",
+    "review": "Eksportni tekshirish",
+    "close": "Yopish va qoralamani o‘chirish",
+    "features": {
+      "general": "Umumiy",
+      "outfit": "Obraz",
+      "buycheck": "BuyCheck",
+      "fit": "Moslik",
+      "shopping": "Xaridlar",
+      "visual": "Tasvir tahlili",
+      "subscription": "Obuna"
+    },
+    "issues": {
+      "wrong_outfit": "Noto‘g‘ri obraz",
+      "wrong_fit": "Noto‘g‘ri moslik",
+      "duplicate": "Takroriy mahsulot",
+      "irrelevant_shopping": "Mos bo‘lmagan xaridlar",
+      "price_issue": "Narx muammosi",
+      "visual_analysis_wrong": "Tasvir tahlili xatosi",
+      "slow": "Sekin",
+      "bug": "Xato",
+      "confusing_ux": "Tushunarsiz interfeys",
+      "privacy_concern": "Maxfiylik masalasi",
+      "other": "Boshqa"
+    },
+    "fields": {
+      "garment_type": "Kiyim turi",
+      "color": "Rang",
+      "fit": "Moslik",
+      "duplicate_group": "Takroriy mahsulot guruhi",
+      "outfit_context": "Obraz konteksti",
+      "product_family": "Mahsulot oilasi",
+      "price_match": "Narx mosligi"
+    }
   }
 }

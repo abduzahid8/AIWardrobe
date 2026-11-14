@@ -1,3 +1,4 @@
+import {FitFeedback} from '../components/purchase/FitFeedback';
 /**
  * ClothingDetailScreen — View & edit an existing wardrobe item.
  * Navigated to from MyClosetScreen and OutfitInspoScreen with
@@ -275,6 +276,7 @@ const ClothingDetailContent: React.FC<{ item: ClothingItem }> = ({ item }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {!isEditing && <FitFeedback ownerId={item.userId} productId={item.id} brand={item.brand} category={item.category} subcategory={item.subCategory} sizeLabel={(item as ClothingItem & {size?:string}).size} />}
         {/* Image */}
         <View style={styles.imageContainer}>
           {item.imageUrl ? (

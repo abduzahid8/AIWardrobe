@@ -5,10 +5,18 @@
  * Try-On feature). It is the catalog shape consumed by Home, Inspo, shop
  * stores, and the outfit pipeline, so it lives here now.
  */
-import type { GarmentPhysicalProfile } from './garment';
+import type { GarmentPhysicalProfile } from './garment.ts';
 
 export interface ShopCatalogItem {
     id: string;
+    /** Provenance retained for identity; external IDs alone never imply a family. */
+    source?: string;
+    externalId?: string;
+    /** Trusted model/group metadata only; never inferred by trimming a SKU. */
+    sourceProductGroupId?: string;
+    modelReference?: string;
+    colorName?: string;
+    category?: string;
     brand: string;
     name: string;
     price: number;

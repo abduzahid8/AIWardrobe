@@ -1,0 +1,102 @@
+{
+  "status": 200,
+  "outfits": [
+    {
+      "items": [
+        {
+          "id": "shop_cos-1289730001",
+          "name": "Relaxed Pima Cotton-Poplin Shirt - White",
+          "price": 89,
+          "currency": "USD",
+          "shopUrl": "https://www.cos.com/en-us/men/menswear/shirts/cottonshirts/product/relaxed-pima-cotton-poplin-shirt-white-1289730001"
+        },
+        {
+          "id": "shop_aurelien-16011499471178",
+          "name": "Navy Cashmere Blend Leisure Blazer",
+          "price": 950,
+          "currency": "EUR",
+          "shopUrl": "https://aurelien-online.com/products/navy-cashmere-leisure-blazer"
+        },
+        {
+          "id": "shop_barbour-mtr0810br76",
+          "name": "Carlton Wool-Cashmere Tailored Trousers",
+          "price": 270,
+          "currency": "USD",
+          "shopUrl": "https://www.barbour.com/us/carlton-wool-cashmere-tailored-trousers-MTR0810BR76.html"
+        },
+        {
+          "id": "shop_ecco-500164-01001",
+          "name": "Helsinki 2 Leather Derby Shoe - Black",
+          "price": 2089857,
+          "currency": "UZS",
+          "shopUrl": "https://gb.ecco.com/product/ecco-helsinki-2/500164/01001"
+        }
+      ]
+    },
+    {
+      "items": [
+        {
+          "id": "shop_arket-1255889003",
+          "name": "Relaxed Poplin Shirt - White/Blue",
+          "price": 99,
+          "currency": "USD",
+          "shopUrl": "https://www.arket.com/en-ww/product/relaxed-poplin-shirt-whiteblue-1255889003/"
+        },
+        {
+          "id": "shop_emporio-armani-em007640_te22612_fb493",
+          "name": "Half-lined blazer in striped stretch virgin wool",
+          "price": 15361238,
+          "currency": "UZS",
+          "shopUrl": "https://www.armani.com/en-us/emporio-armani/half-lined-blazer-in-striped-stretch-virgin-wool-cod-EM007640-TE22612-FB493/"
+        },
+        {
+          "id": "shop_md-uz-61779798",
+          "name": "Striped wool blend suit trousers",
+          "price": 2000000,
+          "currency": "UZS",
+          "shopUrl": "https://www.massimodutti.com/uz/en/striped-wool-blend-suit-trousers-l03674560?pelement=61779798"
+        },
+        {
+          "id": "shop_ecco-523364-01001",
+          "name": "Metropole Milan Leather Derby Shoe - Black",
+          "price": 2089857,
+          "currency": "UZS",
+          "shopUrl": "https://gb.ecco.com/product/ecco-metropole-milan/523364/01001"
+        }
+      ]
+    },
+    {
+      "items": [
+        {
+          "id": "shop_gant-3000150-676",
+          "name": "Gingham Classic Poplin Shirt Deep Grape Wine",
+          "price": 2902500,
+          "currency": "UZS",
+          "shopUrl": "https://gant.com/p/gingham-classic-poplin-shirt-deep-grape-wine/3000150-676"
+        },
+        {
+          "id": "shop_emporio-armani-em004656_te11131_ub081",
+          "name": "Double-breasted blazer in ultra-lightweight compact wool jersey",
+          "price": 995,
+          "currency": "USD",
+          "shopUrl": "https://www.armani.com/en-us/"
+        },
+        {
+          "id": "shop_aurelien-15501547110730",
+          "name": "Light Beige Pleated Metropolitan Trousers",
+          "price": 227.95,
+          "currency": "EUR",
+          "shopUrl": "https://aurelien-online.com/products/light-beige-pleated-metropolitan-trousers"
+        },
+        {
+          "id": "shop_ecco-520304-01001",
+          "name": "S Lite Hybrid Leather Derby Shoe - Black",
+          "price": 1768340,
+          "currency": "UZS",
+          "shopUrl": "https://gb.ecco.com/product/ecco-s-lite-hybrid/520304/01001"
+        }
+      ]
+    }
+  ],
+  "rejections": {}
+}

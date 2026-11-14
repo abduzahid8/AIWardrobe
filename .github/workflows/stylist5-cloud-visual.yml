@@ -1,0 +1,89 @@
+name: Stylist 5 cloud catalog intelligence
+on:
+  push:
+    branches: [codex/stylist-5-integrated-20261108]
+    paths:
+      - scripts/visual/**
+      - backend/supabase/functions/catalog-visual-worker/**
+      - .github/workflows/stylist5-cloud-visual.yml
+  workflow_dispatch:
+    inputs:
+      continuation:
+        type: number
+        default: 0
+        description: Bounded automatic continuation depth
+  schedule:
+    - cron: '30 2 * * *'
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: stylist5-cloud-catalog
+  cancel-in-progress: false
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 285
+    strategy:
+      fail-fast: false
+      matrix:
+        worker: [1, 2, 3, 4]
+    env:
+      STYLIST_VISUAL_WORKER_URL: ${{ secrets.STYLIST_VISUAL_WORKER_URL }}
+      STYLIST_VISUAL_WORKER_TOKEN: ${{ secrets.STYLIST_VISUAL_WORKER_TOKEN }}
+      STYLIST_VISUAL_RUN_SECONDS: '14400'
+      HF_HUB_DISABLE_PROGRESS_BARS: '1'
+      TOKENIZERS_PARALLELISM: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: siglip2-75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2-cpu-v1
+      - name: Install pinned local-inference runtime
+        run: |
+          pip install --quiet torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet -r scripts/visual/cloud/requirements.txt
+      - name: Process leased catalog images directly into Supabase
+        run: python scripts/visual/cloud/worker.py
+  continue:
+    needs: enrich
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      STYLIST_VISUAL_WORKER_URL: ${{ secrets.STYLIST_VISUAL_WORKER_URL }}
+      STYLIST_VISUAL_WORKER_TOKEN: ${{ secrets.STYLIST_VISUAL_WORKER_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
+      SOURCE_REF: ${{ github.ref_name }}
+      RESUME_DEPTH: ${{ inputs.continuation || 0 }}
+    steps:
+      - name: Continue automatically if durable work remains
+        shell: python
+        run: |
+          import os,json,uuid,urllib.request,urllib.error
+          data=json.dumps({'action':'seed','worker':str(uuid.uuid4())}).encode()
+          request=urllib.request.Request(os.environ['STYLIST_VISUAL_WORKER_URL'],data=data,headers={'Authorization':'Bearer '+os.environ['STYLIST_VISUAL_WORKER_TOKEN'],'Content-Type':'application/json'})
+          try:
+            with urllib.request.urlopen(request,timeout=40) as response: json.load(response)
+          except urllib.error.HTTPError as error:
+            payload=json.load(error)
+            if payload.get('code')=='42501':
+              print('Worker paused; no continuation requested');raise SystemExit(0)
+            raise
+          data=json.dumps({'action':'state','worker':str(uuid.uuid4())}).encode()
+          request=urllib.request.Request(os.environ['STYLIST_VISUAL_WORKER_URL'],data=data,headers={'Authorization':'Bearer '+os.environ['STYLIST_VISUAL_WORKER_TOKEN'],'Content-Type':'application/json'})
+          with urllib.request.urlopen(request,timeout=40) as response: state=json.load(response)['data']
+          print(json.dumps(state))
+          depth=int(os.environ.get('RESUME_DEPTH','0'))
+          if state['remaining'] and depth<3:
+            url='https://api.github.com/repos/'+os.environ['REPOSITORY']+'/actions/workflows/stylist5-cloud-visual.yml/dispatches'
+            body=json.dumps({'ref':os.environ['SOURCE_REF'],'inputs':{'continuation':str(depth+1)}}).encode()
+            request=urllib.request.Request(url,data=body,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'})
+            with urllib.request.urlopen(request,timeout=30) as response: print('Continuation accepted:',response.status)

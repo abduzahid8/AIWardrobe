@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm install --no-audit --no-fund",
+  "buildCommand": "npm run build",
+  "functions": {
+    "api/generate-outfits.ts": {
+      "maxDuration": 60,
+      "includeFiles": "{transport/signature.mjs,dist/stylist-bundle.mjs}"
+    },
+    "api/stylist6-vision-test.ts": {
+      "maxDuration": 60
+    },
+    "api/stylist6-generate-outfits.ts": {
+      "maxDuration": 60,
+      "includeFiles": "{transport/signature.mjs,dist/stylist6-bundle.mjs}"
+    }
+  },
+  "outputDirectory": "public"
+}

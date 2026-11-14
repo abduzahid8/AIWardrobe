@@ -1,0 +1,165 @@
+name: Stylist 6 visual-first isolated prototype
+on:
+  push:
+    branches:
+      - codex/stylist6-visual-first-20261110
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-visual-first-prototype:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout experimental branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install locked test dependencies (including native image decoder)
+        run: npm ci --no-audit --no-fund
+      - name: Verify isolated cloud image decoder resolves in clean CI
+        run: node --input-type=module -e 'import sharp from "sharp"; if (typeof sharp !== "function") process.exit(1); console.log("sharp_decoder_ready")'
+      - name: Syntax-check independent creative planner
+        run: node --check backend/stylist6/prototype.mjs
+      - name: Test real-SKU grounding and fail-closed contracts (mock providers, NO API calls)
+        run: node --test backend/stylist6/prototype.test.mjs backend/stylist6/fashion_deck.test.mjs backend/stylist6/creative_directions.test.mjs backend/stylist6/editorial_quality.test.mjs backend/stylist6/deck_editorial_copy.test.mjs
+      - name: Verify benchmark scenarios contain 68 unique requests (v2 dev/held-out split)
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import assert from "node:assert/strict";
+            const f=JSON.parse(fs.readFileSync("benchmarks/stylist6/scenarios.json","utf8"));
+            assert.equal(f.version,2);
+            const dev=f.development||[], held=f.heldOutEvaluation||[];
+            const all=[...dev,...held];
+            assert.equal(dev.length,45);
+            assert.equal(held.length,23);
+            assert.equal(all.length,68);
+            assert.equal(new Set(all.map(x=>x.id)).size,68);
+            assert.equal(f.testsNotRun,true);
+            for(const id of ["S6-01","S6-30","S6-B01","S6-B05"]) assert.ok(all.some(x=>x.id===id), "legacy scenario preserved: "+id);
+            console.log("68 A/B scenarios defined (45 development + 23 held-out); no live API tests executed");
+          '
+      - name: Verify owner-authorized Instagram dataset importer (synthetic archive only)
+        run: python3 -m unittest scripts/style_references/test_import_instagram_archive.py -v
+      - name: Verify curated references are fail-closed (no photo uploads)
+        run: node --test backend/stylist6/reference_library.test.mjs
+      - name: Verify 46 curated outfit briefs and reference-first integration (offline mocks)
+        run: node --test backend/stylist6/lookbook_briefs.test.mjs
+      - name: Verify snapshot catalog category, seller color evidence and knit layering
+        run: node --test backend/stylist6/catalog_adapter.test.mjs backend/stylist6/catalog_category_integrity.test.mjs backend/stylist6/merchant_color_fallback.test.mjs scripts/stylist6/catalog_category_audit.test.mjs
+      - name: Verify hosted visual critic and real PNG, WebP and JPEG decoding (NO API calls)
+        run: |
+          node --test backend/stylist6/cloud_visual_media.test.mjs backend/stylist6/cloud_product_media.test.mjs backend/stylist6/visual_critic_hosted.test.mjs backend/stylist6/nvidia_integration.test.mjs backend/stylist6/retail_evidence.test.mjs backend/stylist6/development_shadow.test.mjs scripts/stylist6/stylist6_nvidia_pilot.test.mjs scripts/stylist6/visual_schedule_simulation.test.mjs
+          node --experimental-strip-types --test backend/stylist-node/test/stylist6-vision-test.test.mjs
+      - name: Syntax-check pilot harness and contact sheets
+        run: |
+          node --check scripts/stylist6/pilot_12.mjs
+          node --check scripts/stylist6/retail_replay.mjs
+          node --check scripts/stylist6/fashion_replay.mjs
+          python3 -m py_compile scripts/stylist6/fashion_gallery.py
+          node --check scripts/stylist6/cc0_grounding_trial.mjs
+          node --check scripts/stylist6/retail_audit.mjs
+          node --check scripts/stylist6/reliability_report.mjs
+          python3 -m py_compile scripts/stylist6/blind_review.py
+          python3 -m unittest scripts/stylist6/test_blind_review.py -v
+          node --check scripts/stylist6/catalog_drift.mjs
+          node --check scripts/stylist6/image_access.mjs
+          node --check backend/stylist6/catalog_adapter.mjs
+          node --check backend/stylist6/visual_critic_hosted.mjs
+          python3 -m py_compile scripts/stylist6/contact_sheets_12.py
+      - name: Verify catalog drift reporter (synthetic fixtures, NO live access)
+        run: node --test scripts/stylist6/catalog_drift.test.mjs
+      - name: Verify authorized image-access policy (blocked hosts, NO network)
+        run: node --test scripts/stylist6/image_access.test.mjs
+      - name: Smoke-run one pilot scenario offline (S6 arms, NO image downloads)
+        run: |
+          node scripts/stylist6/pilot_12.mjs --out "$RUNNER_TEMP/s6-smoke" --scenarios S6-01
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import assert from "node:assert/strict";
+            const r = JSON.parse(fs.readFileSync("benchmarks/stylist6/pilot_12_report.json", "utf8"));
+            assert.equal(r.scenarios.length, 1);
+            for (const arm of ["creative-first", "reference-first"]) {
+              assert.equal(r.scenarios[0].arms[arm].looks, 3);
+              assert.equal(r.scenarios[0].arms[arm].visualVerdict, "NOT_RUN");
+            }
+            console.log("pilot smoke: S6 arms produced 3 retrieval decks each, zero API calls");
+          '
+      - name: Verify flat-lay ZIP import never stores unsafe/unreviewed media
+        run: python3 -m unittest scripts/style_references/test_import_flatlay_archive.py -v
+      - name: Verify private Supabase reference upload gate (synthetic images, NO API calls)
+        run: python3 -m unittest scripts/style_references/test_upload_private_reference_bundle.py -v
+      - name: Verify canonical image-teaste folder without ZIP (offline synthetic test)
+        run: python3 -m unittest scripts/style_references/test_verify_image_teaste_folder.py -v
+      - name: Confirm this workflow is not an authorized production release
+        run: |
+          echo "Stylist 6 is isolated; no deploys, quota calls, migrations or production cutover."
+
+  verify-integrated-stylist6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout experimental branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify dev-bridge status mapping (pure contract, no live calls)
+        run: |
+          node --test --test-name-pattern="visual statuses" scripts/stylist6/dev_bridge.test.mjs
+          node --test scripts/stylist6/nvidia_preview_invoke.test.mjs
+      # The reference-admission test in dev_bridge.test.mjs requires the
+      # owner-provided lookbook photos (image-teaste/, gitignored licensed
+      # media). It runs in the local dev gate, never in public CI.
+      - name: Verify fashion deck, source-mode isolation and locked anchors
+        run: node --test backend/stylist6/fashion_deck.test.mjs backend/stylist6/creative_directions.test.mjs backend/stylist6/editorial_quality.test.mjs backend/stylist6/deck_editorial_copy.test.mjs backend/stylist6/personal_taste.test.mjs backend/stylist6/feedback_taste.test.mjs backend/stylist6/lookbook_briefs.test.mjs backend/stylist6/nvidia_integration.test.mjs
+      - name: Verify prototype quality-floor regression (diversity plus maintained quality)
+        run: node --test backend/stylist6/prototype.test.mjs
+      - name: Verify server-side catalog observation identity, staleness and bounded reads
+        run: node --test backend/stylist6/catalog_observation.test.mjs
+      - name: Enforce evidence-driven release gate contract (synthetic fixtures, NO external calls)
+        run: |
+          node --test scripts/stylist6/release_candidate_gate.test.mjs
+          set +e
+          node scripts/stylist6/release_candidate_gate.mjs > /tmp/stylist6-gate-no-evidence.log 2>&1
+          status=$?
+          set -e
+          test "$status" -eq 2
+          grep -q 'NO_GO: supply a valid' /tmp/stylist6-gate-no-evidence.log
+          echo "Release gate correctly refuses missing evidence"
+      - name: Verify UZ merchant variants, footwear leads, and private live replay contracts
+        run: node --test scripts/stylist6/fr_variant_stock.test.mjs scripts/stylist6/curate_uz_footwear.test.mjs scripts/stylist6/collection_leads.test.mjs scripts/stylist6/live_footwear_replay.test.mjs scripts/stylist6/collect_uz_footwear_supply.test.mjs scripts/stylist6/build_human_blind_package.test.mjs backend/stylist6/merchant_offers.test.mjs
+      - name: Verify Stylist 6 cloud handler (server inventory, anchors, budgets, fakes only)
+        # --import tsx: the contract tests import client TS validators
+        # (src/services/stylist6Dev.ts); plain node --test cannot resolve them.
+        run: node --import tsx --test backend/stylist6/cloud_handler.test.mjs
+      - name: Build Node compute bundle (tests import dist/)
+        run: npm --prefix backend/stylist-node run build
+      - name: Verify signed Node transport and staging proxy admission (offline)
+        run: node --test backend/stylist-node/test/transport.test.mjs backend/stylist-node/test/transport-health.test.mjs backend/stylist-node/test/handler.test.mjs backend/stylist-node/test/health.test.mjs backend/stylist-node/test/proxy.test.mjs backend/stylist-node/test/staging.test.mjs backend/stylist-node/test/stylist6-route.test.mjs
+      - name: Verify client budget and original-currency formatting
+        run: npx jest __tests__/utils/outfitBudget.test.ts __tests__/utils/uzsPrice.test.ts __tests__/platform/budgets.test.ts __tests__/services/stylist6Dev.test.ts __tests__/services/stylist6OfferTruth.test.ts
+      - name: Verify the isolated Stylist 6 Supabase proxy pins validated compute (zero paid calls)
+        run: node --import tsx --test backend/stylist-node/test/stylist6-staging.test.mjs
+      - name: TypeScript has no errors
+        run: npx tsc --noEmit
+      - name: ESLint has no errors
+        run: npx eslint screens/AIOutfitmaker.tsx src/utils/outfitBudget.ts src/utils/uzsPrice.ts hooks/useUzsPrice.ts --max-warnings 10000
+      - name: Secret scan has no findings in tracked sources
+        run: |
+          if git grep -InE "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|nvapi-[A-Za-z0-9_-]{10,}|sk-(live|proj)-[A-Za-z0-9]{10,}|sb_secret_[A-Za-z0-9_-]{10,}" -- . ':!package-lock.json' ':!*.log' | grep -viE "test|fixture|mock|example|YOUR_KEY_HERE"; then
+            echo "secret scan found findings"; exit 1;
+          else
+            echo "secret scan: 0 findings";
+          fi
+      - name: Confirm no live provider calls ran in CI
+        run: |
+          echo "All provider evidence in CI comes from recorded fixtures and strict mocks; no NVIDIA calls."

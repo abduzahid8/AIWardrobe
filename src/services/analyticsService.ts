@@ -1,3 +1,4 @@
+import { sanitizeAnalyticsProperties } from './launch/telemetry';
 /**
  * Analytics Service — client-side event tracking with server flush.
  *
@@ -24,11 +25,14 @@ interface AnalyticsEvent {
     name: string;
     properties?: Record<string, unknown>;
     timestamp: string;
+    schemaVersion: 1;
+    eventId: string;
     userId?: string;
     sessionId?: string;
 }
 
 class AnalyticsService {
+    private eventSequence = 0;
     private userId: string | null = null;
     private sessionId: string;
     private flushTimer: ReturnType<typeof setInterval> | null = null;
@@ -137,18 +141,20 @@ class AnalyticsService {
      * serialize JSON on the JS thread per event.
      */
     trackEvent(name: string, properties?: Record<string, unknown>): void {
-        if (!this.enabled) return;
+        if (!this.enabled || !/^[a-z][a-z0-9_]{0,63}$/.test(name)) return;
 
         const event: AnalyticsEvent = {
             name,
-            properties,
+            properties: sanitizeAnalyticsProperties(properties),
+            schemaVersion: 1,
+            eventId: `${this.sessionId}_${++this.eventSequence}`,
             timestamp: new Date().toISOString(),
             userId: this.userId || undefined,
             sessionId: this.sessionId,
         };
 
         if (__DEV__) {
-            logger.debug(name, properties);
+            logger.debug(name, event.properties);
         }
 
         try {
@@ -185,7 +191,7 @@ class AnalyticsService {
             if (raw) {
                 const parsed = JSON.parse(raw);
                 if (Array.isArray(parsed)) {
-                    this.memoryQueue = parsed.slice(-MAX_QUEUE_SIZE);
+                    this.memoryQueue = [...parsed.filter(e => e && typeof e.name === 'string' && typeof e.eventId === 'string').map(e => ({ name: e.name, eventId: e.eventId, schemaVersion: 1 as const, timestamp: e.timestamp, properties: sanitizeAnalyticsProperties(e.properties) })), ...this.memoryQueue].slice(-MAX_QUEUE_SIZE);
                 }
             }
         } catch {
@@ -197,22 +203,14 @@ class AnalyticsService {
      * Get all queued events (for sending to a backend or debugging).
      */
     async getQueue(): Promise<AnalyticsEvent[]> {
-        // Serve from memory when available — avoids a disk read per flush.
-        if (this.queueLoaded || this.memoryQueue.length > 0) {
-            return [...this.memoryQueue];
-        }
-        try {
-            const data = await AsyncStorage.getItem(ANALYTICS_QUEUE_KEY);
-            return data ? JSON.parse(data) : [];
-        } catch {
-            return [];
-        }
+        if (!this.queueLoaded) await this.loadPersistedQueue();
+        return [...this.memoryQueue];
     }
 
     /**
      * Flush the event queue to the backend.
      * Sends batched events to /api/analytics/events.
-     * Falls back to clearing local queue if backend is unavailable.
+     * Keeps bounded evidence for retry if the sink fails. New in-flight events are preserved.
      */
     async flush(): Promise<void> {
         if (!this.enabled) return;
@@ -232,24 +230,20 @@ class AnalyticsService {
             // Express POST /api/analytics/events; same body contract).
             try {
                 const { supabase } = require('../../lib/supabase') as typeof import('../../lib/supabase');
-                await supabase.functions.invoke('analytics', {
+                const { data, error } = await supabase.functions.invoke('analytics', {
                     body: {
                         events: queue,
                         sessionId: this.sessionId,
                     },
                 });
+                if (error || data?.success !== true) return;
             } catch {
-                // Backend unavailable — events are kept locally for next flush.
-                // Only clear if queue is getting too large to prevent unbounded growth.
-                if (queue.length < MAX_QUEUE_SIZE) {
-                    this.isFlushing = false;
-                    return;
-                }
+                // A failed sink never clears evidence; the queue is bounded at enqueue.
+                return;
             }
-
-            // Clear the queue after successful send (or if too large)
-            this.memoryQueue = [];
-            await AsyncStorage.removeItem(ANALYTICS_QUEUE_KEY);
+            const acknowledged = new Set(queue.map(event => event.eventId));
+            this.memoryQueue = this.memoryQueue.filter(event => !acknowledged.has(event.eventId));
+            await AsyncStorage.setItem(ANALYTICS_QUEUE_KEY, JSON.stringify(this.memoryQueue));
         } catch {
             // Fail silently
         } finally {
