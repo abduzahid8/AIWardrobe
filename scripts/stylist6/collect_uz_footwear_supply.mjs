@@ -88,6 +88,7 @@ export function normalizeFrShoeOffer(product, { categorySlug, observedAt, eviden
   const offer = verifyMerchantOffer(
     {
       id,
+      merchantSku: sku, // seller SKU explicitly bound to the hashed canonical listing
       isShopItem: true,
       brand,
       name,

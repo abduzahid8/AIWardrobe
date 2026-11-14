@@ -72,9 +72,13 @@ export function verifyMerchantOffer(item, {
     offer &&
     Number.isFinite(Date.parse(offer.observedAt)) &&
     Date.parse(offer.observedAt) <= now &&
-    (!offer.refreshBefore || now < Date.parse(offer.refreshBefore)) &&
+    now - Date.parse(offer.observedAt) <= 24 * 60 * 60_000 &&
+    (!offer.refreshBefore || (Number.isFinite(Date.parse(offer.refreshBefore)) && now < Date.parse(offer.refreshBefore))) &&
+    (!offer.canonicalProductId || String(offer.canonicalProductId) === String(item.id) ||
+      (item.merchantSku && String(offer.canonicalProductId) === String(item.merchantSku))) &&
     offer.targetMarket === targetMarket &&
     (!offer.currency || offer.currency === item.currency) &&
+    (!offer.purchaseUrl || offer.purchaseUrl === purchaseUrl) &&
     (!Number.isFinite(offer.price) || Math.abs(offer.price - Number(item.price)) <= Math.max(1, Number(item.price) * 0.01))
   );
 
@@ -98,7 +102,8 @@ export function verifyMerchantOffer(item, {
 
   const offerStatus = !purchaseHost || !priceValid
     ? 'invalid_listing_evidence'
-    : offerFresh && offer.sizeStockStatus === 'merchant_reported_by_size'
+    : offerFresh && offer.sizeStockStatus === 'merchant_reported_by_size' &&
+      deliveryEligible === true && availableSizes.some(size => size.merchantReportedQty > 0)
       ? 'merchant_reported_live'
       : 'unverified_catalog_listing';
 

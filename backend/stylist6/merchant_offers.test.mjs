@@ -81,3 +81,22 @@ test('summarizeDeckOffers aggregates unique shop items accurately', () => {
   assert.equal(s.checkoutGuaranteed, false);
   assert.equal(s.imageInferencePermitted, 0);
 });
+
+test('strict 24-hour merchant evidence must bind SKU, price, delivery, available size and direct link',()=>{
+  const now=Date.parse('2026-11-14T18:00:00Z');
+  const item={id:'verified-1',isShopItem:true,shopUrl:'https://frgroup.uz/ru/store/verified-1',
+    imageUrl:'https://media.frgroup.uz/images/x.jpg',price:1500000,currency:'UZS'};
+  const base={canonicalProductId:item.id,targetMarket:'UZ',observedAt:'2026-11-14T17:00:00Z',
+    deliveryEligible:true,sizeStockStatus:'merchant_reported_by_size',
+    availableSizes:[{euSize:'42',merchantReportedQty:1}],price:item.price,currency:'UZS'};
+  const read=row=>verifyMerchantOffer(item,{now,requestedSize:'42',offerRegistry:new Map([[item.id,row]])});
+  assert.equal(read(base).offerStatus,'merchant_reported_live');
+  assert.equal(read({...base,observedAt:'2026-11-12T17:00:00Z'}).offerStatus,'unverified_catalog_listing');
+  assert.equal(read({...base,canonicalProductId:'other-item'}).offerStatus,'unverified_catalog_listing');
+  assert.equal(read({...base,price:1}).offerStatus,'unverified_catalog_listing');
+  assert.equal(read({...base,deliveryEligible:false}).offerStatus,'unverified_catalog_listing');
+  assert.equal(read({...base,availableSizes:[{euSize:'42',merchantReportedQty:0}]}).offerStatus,'unverified_catalog_listing');
+  assert.equal(read({...base,availableSizes:[]}).offerStatus,'unverified_catalog_listing');
+  assert.equal(read({...base,refreshBefore:'invalid-date'}).offerStatus,'unverified_catalog_listing');
+  assert.equal(read({...base,purchaseUrl:'https://frgroup.uz/ru/store/other'}).offerStatus,'unverified_catalog_listing');
+});
