@@ -47,6 +47,13 @@ test('buildHumanBlindPackage builds a randomized >=30-scenario blind package and
 
     assert.equal(selectComparableThreeLookScenarios({ results }).length, 30);
 
+    const excluded = [];
+    const badCatalog = { ...catalog, 'bad-sku': { id: 'bad-sku', slot: 'shoes', name: 'Bad', brand: 'Test', price: 1, currency: 'UZS', imageUrl: 'https://evil.example.com/bad.jpg' } };
+    const withBad = [...results, { scenario: { id: 'S6-BAD', style: 'classic', occasion: 'Work', weather: { temp: 18 } }, arms: { stylist5: [{ ids: makeIds('l1') }, { ids: makeIds('l2') }, { ids: makeIds('l3') }], stylist6Fashion: [{ ids: ['bad-sku'] }, { ids: makeIds('r2') }, { ids: makeIds('r3') }] } }];
+    assert.equal(selectComparableThreeLookScenarios({ catalog: badCatalog, results: withBad }, { excludedOut: excluded }).length, 30);
+    assert.equal(excluded.length, 1);
+    assert.equal(excluded[0].id, 'S6-BAD');
+
     const outDir = path.join(dir, 'pkg');
     const summary = await buildHumanBlindPackage({
       replayPath,

@@ -47,12 +47,41 @@ export function isAllowlistedImageUrl(rawUrl) {
   }
 }
 
-export function selectComparableThreeLookScenarios(replay, { limit = 0 } = {}) {
+export function selectComparableThreeLookScenarios(replay, { limit = 0, excludedOut = null } = {}) {
   const results = Array.isArray(replay?.results) ? replay.results : [];
-  const eligible = results.filter((row) =>
-    Array.isArray(row?.arms?.[BASELINE_ARM]) && row.arms[BASELINE_ARM].length === 3
-    && Array.isArray(row?.arms?.[CANDIDATE_ARM]) && row.arms[CANDIDATE_ARM].length === 3,
-  );
+  const catalog = replay?.catalog && typeof replay.catalog === 'object' ? replay.catalog : null;
+  const eligible = [];
+  for (const row of results) {
+    if (
+      !Array.isArray(row?.arms?.[BASELINE_ARM]) || row.arms[BASELINE_ARM].length !== 3
+      || !Array.isArray(row?.arms?.[CANDIDATE_ARM]) || row.arms[CANDIDATE_ARM].length !== 3
+    ) {
+      continue;
+    }
+    if (catalog) {
+      const badSkus = [];
+      for (const arm of [BASELINE_ARM, CANDIDATE_ARM]) {
+        for (const look of row.arms[arm]) {
+          for (const sku of look?.ids || []) {
+            if (!catalog[sku] || !isAllowlistedImageUrl(catalog[sku].imageUrl)) {
+              badSkus.push(sku);
+            }
+          }
+        }
+      }
+      if (badSkus.length > 0) {
+        if (Array.isArray(excludedOut)) {
+          excludedOut.push({
+            id: String(row?.scenario?.id || ''),
+            reason: 'unallowlisted_or_missing_media',
+            skus: [...new Set(badSkus)],
+          });
+        }
+        continue;
+      }
+    }
+    eligible.push(row);
+  }
   // Prioritize held-out scenarios first, then deterministic order for the rest.
   const heldOut = eligible.filter((row) => String(row?.scenario?.id || '').startsWith('S6-H'));
   const others = eligible.filter((row) => !String(row?.scenario?.id || '').startsWith('S6-H'));
@@ -116,7 +145,8 @@ export async function buildHumanBlindPackage({
   const replay = JSON.parse(replayBytes.toString('utf8'));
   const replaySha256 = sha256(replayBytes);
   const catalog = replay.catalog || {};
-  const candidates = selectComparableThreeLookScenarios(replay, { limit });
+  const excludedScenarios = [];
+  const candidates = selectComparableThreeLookScenarios(replay, { limit, excludedOut: excludedScenarios });
   if (candidates.length < minScenarios) {
     throw new Error(`insufficient_comparable_3look_scenarios:${candidates.length}<${minScenarios}`);
   }
@@ -236,6 +266,7 @@ export async function buildHumanBlindPackage({
     replaySha256,
     scenarioCount: candidates.length,
     heldOutCount: manifestScenarios.filter((s) => s.heldOut).length,
+    excludedScenarios,
     scenarios: manifestScenarios,
   };
   const packageSha256 = sha256(JSON.stringify(packageBody));
