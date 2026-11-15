@@ -23,6 +23,7 @@
     "stylist6-testflight": {
       "extends": "production",
       "channel": "stylist6-beta",
+      "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_STYLIST6_BETA": "true",
         "EXPO_PUBLIC_APP_STAGE": "testflight",
