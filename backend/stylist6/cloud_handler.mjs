@@ -54,7 +54,7 @@ const VISUAL_PROFILE_CHUNK = 100;
 const PRODUCT_FETCH_TIMEOUT_MS = 8000;
 const MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
-const REQUEST_TIMEOUT_MS = 45_000;
+const REQUEST_TIMEOUT_MS = 50_000;
 
 const fail = (code, status, extra = {}) => ({
   status,
@@ -1011,6 +1011,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         referenceBlueprints: buildReferenceBlueprints(referenceIndex),
         timeoutMs: Math.min(VISUAL_TIMEOUT_MS, Math.max(1000, remainingMs() - 1000)),
         providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
+        // Four parallel visual checks use the SAME four-call paid cap, but
+        // avoid NVIDIA's 15s-per-wave starvation of the final two outfits.
+        concurrency: 4,
         ...(fetchImpl ? { fetchImpl } : {}),
         resolveReference: (id, signal) => resolveReferenceAsset(env, env.SUPABASE_URL, id,
           fetchImpl ? (refUrl, refOptions) => fetchImpl(refUrl, { ...refOptions, signal }) : undefined),

@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
 
-export const HOSTED_VISUAL_CRITIC_VERSION = 'hosted-visual-critic-v10';
+export const HOSTED_VISUAL_CRITIC_VERSION = 'hosted-visual-critic-v11-schema';
 export const NVIDIA_VISION_MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 export const MAX_VISUAL_CANDIDATES = 4;
 export const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
-export const VISUAL_TIMEOUT_MS = 30_000;
-export const VISUAL_PROVIDER_TIMEOUT_MS = 16_000;
+export const VISUAL_TIMEOUT_MS = 38_000;
+export const VISUAL_PROVIDER_TIMEOUT_MS = 20_000;
 export const VISUAL_CONCURRENCY = 2;
 export const VERDICT_CACHE_TTL_MS = 10 * 60_000;
 export const VERDICT_CACHE_MAX_ENTRIES = 64;
@@ -94,6 +94,48 @@ export function verifiedVisualImage(asset) {
 }
 
 const safeText = (value) => typeof value === 'string' ? value.slice(0, MAX_PROMPT_CHARS) : '';
+
+/** NVIDIA's json_object mode guarantees syntactic JSON but not required
+ * verdict fields (the live v34 responses sometimes omitted them). The
+ * hosted NIM supports strict json_schema: constrain the *shape* while our
+ * existing evidence/quality validators remain the authority for the actual
+ * fashion decision. A caller's text never becomes a schema property name.
+ */
+export function nvidiaVerdictResponseFormat(candidate, referenceless) {
+  const text = { type: 'string' }, score = { type: 'number' };
+  const actualSlots = candidate.products.map(({slot})=>slot);
+  const properties = {
+    candidateId: { type: 'string', enum: [candidate.id] },
+    slotObservations: {
+      type: 'object',
+      properties: Object.fromEntries(actualSlots.map(slot => [slot, text])),
+      required: actualSlots,
+      additionalProperties: false,
+    },
+    visualCohesion: score, styleFit: score, occasionFit: score,
+    formalityFit: score, confidence: score, reject: { type: 'boolean' },
+    relationships: {
+      type: 'array', minItems: 3, maxItems: 3,
+      items: {
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: referenceless ? ['outfit'] : ['outfit','reference'] },
+          slots: { type: 'array', items: { type: 'string', enum: GARMENT_SLOTS } },
+          observation: text,
+        },
+        required: ['kind','slots','observation'],
+        additionalProperties: false,
+      },
+    },
+    ...(referenceless ? {} : { referenceFidelity: score }),
+  };
+  return { type: 'json_schema', json_schema: {
+    name: 'aiw_visual_outfit_verdict', strict: true,
+    schema: { type: 'object', properties,
+      required: Object.keys(properties), additionalProperties: false },
+  }};
+}
+
 function buildPrompt(candidate, request, { shared, referenceOnly, referenceless }, blueprint = null) {
   const context = JSON.stringify({
     style: safeText(request?.style), occasion: safeText(request?.occasion), brief: safeText(request?.brief),
@@ -268,6 +310,7 @@ export function createHostedVisualCritic({
   fetchImpl = globalThis.fetch,
   timeoutMs = VISUAL_TIMEOUT_MS,
   providerTimeoutMs = VISUAL_PROVIDER_TIMEOUT_MS,
+  concurrency = VISUAL_CONCURRENCY,
   signal: callerSignal,
   resolveReference,
   resolveProduct,
@@ -291,6 +334,10 @@ export function createHostedVisualCritic({
   if (!Number.isInteger(providerTimeoutMs) || providerTimeoutMs < 1 || providerTimeoutMs > VISUAL_PROVIDER_TIMEOUT_MS) {
     throw new Error('invalid_visual_provider_timeout');
   }
+  // Four calls remain the absolute per-request cap. Only actual provider
+  // concurrency changes, never the count or the cost of those calls.
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX_VISUAL_CANDIDATES)
+    throw new Error('invalid_visual_concurrency');
   const selectedModel = model || (provider === 'nvidia' ? NVIDIA_VISION_MODEL : DEFAULT_GEMINI_MODEL);
   const endpoint = provider === 'nvidia' ? NVIDIA_ENDPOINT
     : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(selectedModel)}:generateContent`;
@@ -438,7 +485,8 @@ export function createHostedVisualCritic({
                   { type: 'image_url', image_url: { url: `data:${mimeType};base64,${data}` } },
                 ]),
               ] }],
-              temperature: 0.6, top_p: 0.95, max_tokens: 900, stream: false, response_format: { type: 'json_object' },
+              temperature: 0.2, top_p: 0.95, max_tokens: 900, stream: false,
+              response_format: nvidiaVerdictResponseFormat(candidate, referenceless),
               chat_template_kwargs: { enable_thinking: false },
             }
           : {
@@ -570,7 +618,7 @@ export function createHostedVisualCritic({
       while (next < payload.length) await judge(next++);
     }
     try {
-      await Promise.all(Array.from({ length: VISUAL_CONCURRENCY }, worker));
+      await Promise.all(Array.from({ length: concurrency }, worker));
       return verdicts.filter(Boolean);
     } finally {
       clearTimeout(timer);

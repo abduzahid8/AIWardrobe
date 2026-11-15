@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createHostedVisualCritic, NVIDIA_VISION_MODEL, validVisualVerdict } from './visual_critic_hosted.mjs';
+import { createHostedVisualCritic, NVIDIA_VISION_MODEL, validVisualVerdict, nvidiaVerdictResponseFormat } from './visual_critic_hosted.mjs';
 
 const apiKey = 'test-api-key-0123456789abcdef';
 function asset(fill = 7, width = 16) {
@@ -60,7 +60,15 @@ test('NVIDIA request sends only style context and ordered, pinned outfit images'
   const body = JSON.parse(init.body);
   assert.equal(body.model, NVIDIA_VISION_MODEL);
   assert.equal(body.stream, false);
-  assert.deepEqual(body.response_format, { type: 'json_object' });
+  const schema = body.response_format;
+  assert.equal(schema.type, 'json_schema', 'NVIDIA json_object does not guarantee required fields');
+  assert.equal(schema.json_schema.strict, true);
+  assert.deepEqual(schema.json_schema.schema.properties.candidateId.enum, [candidate.id]);
+  assert.deepEqual(schema.json_schema.schema.properties.slotObservations.required,
+    candidate.products.map(({slot})=>slot));
+  assert.ok(schema.json_schema.schema.required.includes('referenceFidelity'));
+  assert.equal(schema.json_schema.schema.additionalProperties, false);
+  assert.equal(body.temperature,0.2, 'fashion verdicts must be reasonably reproducible');
   assert.equal(body.chat_template_kwargs.enable_thinking, false);
   const [prompt, ...mediaParts] = body.messages[0].content;
   const images = mediaParts.filter((part) => part.type === 'image_url');
@@ -106,9 +114,59 @@ test('unconfigured owner reference bucket uses product-only critique without fak
   assert.equal(result[0].referenceless,true);
   assert.equal(result[0].referenceFidelity,undefined);
   assert.equal(captures.length,1);
+  const responseSchema = captures[0].response_format.json_schema.schema;
+  assert.equal(captures[0].response_format.type,'json_schema');
+  assert.equal(Object.hasOwn(responseSchema.properties,'referenceFidelity'),false,
+    'cannot demand photographic fidelity without reference bytes');
+  assert.ok(responseSchema.required.includes('reject'));
+  assert.ok(responseSchema.required.includes('confidence'));
   const images=captures[0].messages[0].content.filter(item=>item.type==='image_url');
   assert.equal(images.length,4,'products only; no missing reference slot');
   assert.match(captures[0].messages[0].content[0].text,/No reference image is supplied/);
+});
+
+test('hosted NVIDIA structured verdict enforces every returned garment slot, score and relationship',()=>{
+  const response=nvidiaVerdictResponseFormat(candidate,true);
+  assert.equal(response.type,'json_schema');
+  const schema=response.json_schema.schema;
+  assert.equal(response.json_schema.strict,true);
+  assert.equal(schema.properties.relationships.minItems,3);
+  assert.equal(schema.properties.relationships.maxItems,3);
+  assert.deepEqual(schema.properties.relationships.items.properties.kind.enum,['outfit']);
+  for(const field of ['candidateId','visualCohesion','styleFit','occasionFit',
+    'formalityFit','confidence','reject','slotObservations','relationships']) {
+    assert.ok(schema.required.includes(field),`required field ${field}`);
+  }
+  assert.equal(schema.properties.slotObservations.additionalProperties,false);
+  assert.equal(schema.additionalProperties,false);
+  assert.ok(!schema.required.includes('referenceFidelity'));
+});
+
+test('bounded four-way NVIDIA evaluation dispatches at most four calls and admits valid verdicts',async()=>{
+  const batch=Array.from({length:4},(_,index)=>({
+    ...candidate, id:`s6_fourway_${index}`,
+  }));
+  let active=0,maxActive=0,total=0;
+  const critic=createHostedVisualCritic({
+    provider:'nvidia',apiKey,concurrency:4,referenceMediaConfigured:false,
+    resolveReference:()=>{throw Error('unlicensed reference not sent')},
+    resolveProduct:()=>asset(231),
+    fetchImpl:async (_url,init)=>{
+      active++;total++;maxActive=Math.max(maxActive,active);
+      const body=JSON.parse(init.body);
+      await new Promise(done=>setTimeout(done,16));
+      active--;
+      return nvidiaResponse(referencelessVerdict(
+        body.response_format.json_schema.schema.properties.candidateId.enum[0]));
+    },
+  });
+  const rows=await critic(batch,{style:'old_money',occasion:'Work'});
+  assert.equal(total,4,'spend cap must not increase');
+  assert.equal(maxActive,4,'four parallel calls remove the second 15s tail wave');
+  assert.equal(rows.length,4);
+  assert.ok(rows.every(x=>x.referenceless===true));
+  assert.throws(()=>createHostedVisualCritic({provider:'nvidia',apiKey,concurrency:5,
+    resolveReference:()=>asset(),resolveProduct:()=>asset()}),/invalid_visual_concurrency/);
 });
 
 test('textual editorial blueprint informs referenceless style judgment without claiming reference photography',async()=>{
