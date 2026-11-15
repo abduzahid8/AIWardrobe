@@ -1680,7 +1680,7 @@ const AIOutfitGenerator = () => {
       // rows via the loopback bridge. Ranking failures surface below and
       // are never replaced with a Stylist 5 deck.
       const s6Active = STYLIST6_DEV_ENABLED && devEngine === 'stylist6';
-      const s6CloudActive = STYLIST6_DEV_ENABLED && devEngine === 'stylist6cloud';
+      let s6CloudActive = STYLIST6_DEV_ENABLED && devEngine === 'stylist6cloud';
       let data: any;
       let invokeError: any;
       if (s6CloudActive) {
@@ -1799,8 +1799,8 @@ const AIOutfitGenerator = () => {
       // the user's one generation. Never accept an unverified partial deck.
       // Recognize Stylist 6 server responses whether routed via the isolated
       // staging proxy (s6CloudActive) or the production generate-outfits gateway.
-      const s6ServerDeck = s6CloudActive || isStylist6CloudVersion(data?.generationVersion);
-      const s6CloudAcceptance = s6ServerDeck ? stylist6CloudCompletion(data) : null;
+      s6CloudActive = s6CloudActive || isStylist6CloudVersion(data?.generationVersion);
+      const s6CloudAcceptance = s6CloudActive ? stylist6CloudCompletion(data) : null;
       const s6DevVerifiedPartial = s6Active && data?.success === true && data?.status === 'partial'
         && Array.isArray(data?.outfits) && data.outfits.length >= 1 && data.outfits.length <= 2
         && data?.visualStatus === 'NVIDIA_APPLIED'
@@ -1809,17 +1809,17 @@ const AIOutfitGenerator = () => {
         && data?.visualReceipt?.displayedLooks === data.outfits.length
         && data.outfits.every((look: any) => look?.fashionDiagnostics?.visualVerdict === 'JUDGED');
       const s6VerifiedPartial = s6CloudAcceptance === 'verified_partial' || s6DevVerifiedPartial;
-      if (s6ServerDeck && data?.success === true && !s6CloudAcceptance) {
+      if (s6CloudActive && data?.success === true && !s6CloudAcceptance) {
         throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing', 'stylist6_incomplete_cloud_deck', 'stylist6_render');
       }
 
       // Stylist 6 Cloud fetches and validates CBU FX server-side when a budget is
       // requested. Attach the server-returned validated snapshot to shopBudget
       // so client-side fitsCap checks match without failing cross-currency decks.
-      if (s6ServerDeck && shopBudget && data?.success) {
+      if (s6CloudActive && shopBudget && data?.success) {
         shopBudget = applyStylist6CloudBudgetFx(shopBudget, data?.currencyConversion) ?? null;
       }
-      if (shopBudget?.fx && !s6ServerDeck && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
+      if (shopBudget?.fx && !s6CloudActive && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
       if (data && data.success && data.outfits && data.outfits.length > 0) {
         // Feed the rotation window BEFORE normalizing — the next tap must
         // exclude these exact ids even if the deck is edited downstream.
@@ -1876,7 +1876,7 @@ const AIOutfitGenerator = () => {
         // contract is enforced — source-aware, because wardrobe and mixed
         // decks legitimately carry owned pieces — and budgets still apply
         // downstream.
-        const s6CloudAcceptance = s6ServerDeck
+        const s6CloudAcceptance = s6CloudActive
           ? acceptStylist6CloudDeck(data.outfits, (data as any)?.sourceMode)
           : null;
         const prepared = (s6Acceptance || s6CloudAcceptance)
@@ -1934,8 +1934,9 @@ const AIOutfitGenerator = () => {
         const anchorKeys = baseItemId
           ? new Set<string>([
               String(baseItemId),
+              String(baseItemId).replace(/^shop_/i, ''),
               ...[...budgetedOutfits.flatMap((o: GeneratedOutfit) => o.items as any[]), ...genPool]
-                .filter((x: any) => String(x?.id ?? '') === String(baseItemId))
+                .filter((x: any) => String(x?.id ?? '').replace(/^shop_/i, '') === String(baseItemId).replace(/^shop_/i, ''))
                 .flatMap((x: any) => productKeysOf(x)),
             ])
           : undefined;
@@ -1945,7 +1946,7 @@ const AIOutfitGenerator = () => {
         const anchorSlot = ((): DiversitySlot | null => {
           if (!baseItemId) return null;
           const anchorItem = [...budgetedOutfits.flatMap((o: GeneratedOutfit) => o.items as any[]), ...genPool]
-            .find((x: any) => String(x?.id ?? '') === String(baseItemId));
+            .find((x: any) => String(x?.id ?? '').replace(/^shop_/i, '') === String(baseItemId).replace(/^shop_/i, ''));
           return anchorItem ? diversitySlotOf(anchorItem) : null;
         })();
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] fill start: judged=${judgedOutfits.length} budgeted=${budgetedOutfits.length}`), []);
@@ -1972,7 +1973,7 @@ const AIOutfitGenerator = () => {
           archetypes: deckArchetypes,
           similarities: deckSimilarities,
           inventory: deckInventory,
-        } = s6Active || s6ServerDeck || /^stylist-[56]-/.test(String(data.generationVersion || ''))
+        } = s6Active || s6CloudActive || /^stylist-[56]-/.test(String(data.generationVersion || ''))
           ? {deck:budgetedOutfits,relaxed:false,relaxReason:undefined,
              archetypes:[] as string[],similarities:[] as {a:number;b:number;score:number}[],
              inventory:undefined as ReturnType<typeof assembleDiverseDeck<GeneratedOutfit>>['inventory'] | undefined}
@@ -2067,11 +2068,11 @@ const AIOutfitGenerator = () => {
         if (__DEV__) readinessLogger.debug(String(`[AIOutfitmaker] nonce=${generationNonce.current} edge=${cleanedOutfits.length} shown=${finalOutfits.length}`), []);
 
         if (finalOutfits.length === 0) {
-          if (s6Active || s6ServerDeck) {
+          if (s6Active || s6CloudActive) {
             throw new OutfitGenerationFailure(
               'outfitMaker.noMatchingClothing',
-              s6ServerDeck ? 'stylist6_client_deck_rejected' : 'stylist6_deck_empty',
-              s6ServerDeck ? 'stylist6_render' : 'stylist6_dev');
+              s6CloudActive ? 'stylist6_client_deck_rejected' : 'stylist6_deck_empty',
+              s6CloudActive ? 'stylist6_render' : 'stylist6_dev');
           }
           throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing');
         }
@@ -2086,13 +2087,13 @@ const AIOutfitGenerator = () => {
               shownOutfits.length === data.outfits.length) &&
               !(/^stylist-[56]-/.test(String(data.generationVersion||'')) &&
                 data.inventoryReason==='distinct_editorial_inventory_limited' && shownOutfits.length>0)) {
-            if (s6ServerDeck || s6Active) throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing', 'stylist6_client_deck_rejected', s6ServerDeck ? 'stylist6_render' : 'stylist6_dev');
+            if (s6CloudActive || s6Active) throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing', 'stylist6_client_deck_rejected', s6CloudActive ? 'stylist6_render' : 'stylist6_dev');
             throw new Error('incomplete_outfit_deck');
           }
           const previousKeys = new Set(history.previousDeckProductKeys);
           const previousShoeKeys = new Set(history.previousShoeProductKeys ?? history.previousDeckProductKeys);
           const previousDeckOverlapBySlot = Object.fromEntries(['outerwear','top','bottom','shoes'].map(slot=>[slot,
-            shownOutfits.flatMap(o=>o.items as any[]).filter(item=>item.macroCategory===slot && String(item.id)!==String(baseItemId||'')
+            shownOutfits.flatMap(o=>o.items as any[]).filter(item=>item.macroCategory===slot && String(item.id||'').replace(/^shop_/i,'')!==String(baseItemId||'').replace(/^shop_/i,'')
               && productIdentityKeys(item).some(key=>(slot==='shoes'?previousShoeKeys:previousKeys).has(key))).length]));
           // Edge overlap describes its original looks. A locally recomposed
           // quartet has different products and is outside that audit.
@@ -2101,7 +2102,7 @@ const AIOutfitGenerator = () => {
           for (const [slot,count] of Object.entries(previousDeckOverlapBySlot)) {
             // The dev bridge ships its exact deck; rotation-overlap audit
             // applies to recomposed edge decks only.
-            if (!s6Active && !s6ServerDeck && data.generationVersion && !/^stylist-[56]-/.test(String(data.generationVersion)) && count > Number(data.previousDeckOverlapBySlot?.[slot] ?? 0)) throw new Error('client_rotation_overlap');
+            if (!s6Active && !s6CloudActive && data.generationVersion && !/^stylist-5-/.test(String(data.generationVersion)) && count > Number(data.previousDeckOverlapBySlot?.[slot] ?? 0)) throw new Error('client_rotation_overlap');
           }
 
           // Stylist 6 Cloud has already performed the authoritative entitlement
@@ -2109,9 +2110,9 @@ const AIOutfitGenerator = () => {
           // Do not run a second client quota-consumption RPC after a paid
           // success: it can reject a valid deck and increments a separate
           // aiOutfits counter. Keep the session/nonce guard for every engine.
-          if ((!s6ServerDeck && !(await consumeOrPaywall('aiOutfits', {cancelSignal}))) || !isCurrentGeneration()) return;
+          if ((!s6CloudActive && !(await consumeOrPaywall('aiOutfits', {cancelSignal}))) || !isCurrentGeneration()) return;
           setResultBudget(shopBudget);
-          const incompleteVisualReview = s6ServerDeck && data?.visualReceipt?.requested === true &&
+          const incompleteVisualReview = s6CloudActive && data?.visualReceipt?.requested === true &&
             (data?.visualReceipt?.displayedJudged ?? 0) < shownOutfits.length;
           setInventoryNote(s6VerifiedPartial
             ? t('outfitMaker.visualApprovedPartial', { count: shownOutfits.length })

@@ -17,7 +17,7 @@ Machine-readable deployment and audit snapshot: [`deployment-matrix-20261115.jso
   - `backend/stylist6/cloud_visual_media.mjs` transcodes WebP/AVIF/GIF product images to PNG (`sharp`) before sending inline `data:image/png;base64,...` payloads to NVIDIA NIM so WebP/AVIF CDNs never cause false abstentions.
 - **Merchant & offer truth**:
   - Exact listing/SKU binding (including FR Group supplier-specific SKU), positive size quantity, confirmed Uzbekistan delivery, and a 30-minute freshness window are required for a `live_in_stock` label (`src/domain/offerTruth.ts`).
-  - Mobile UI (`screens/AIOutfitmaker.tsx` and `locales/{en,ru,uz}/outfitMaker.json`) uses honest `Check at store` / `Проверить в магазине` / `Do'konda tekshirish` CTAs on Stylist 6 cards and blocks synthesized search fallback URLs (`offerVerification === 'search_fallback'`).
+  - Mobile UI (`screens/AIOutfitmaker.tsx`, `components/OutfitShopSheet.tsx`, and `locales/{en,ru,uz}/outfitMaker.json`) uses honest `Check at store` / `Проверить в магазине` / `Do'konda tekshirish` CTAs on Stylist 6 cards and blocks synthesized search fallback URLs (`offerVerification === 'search_fallback'`).
 - **Production-capable server-side routing & secret rotation (Stage G)**:
   - `backend/stylist-node/transport/signature.mjs` supports zero-downtime HMAC secret rotation (`previousSecret` / `secrets`).
   - `backend/stylist-proxy/index.ts` supports server-controlled rollout (`STYLIST_ENGINE_ROLLOUT`: `'stylist5'` default, `'cohort'` via server-verified Supabase `/auth/v1/user` against `STYLIST6_ROLLOUT_USER_IDS` / `STYLIST6_ROLLOUT_PERCENT`, or `'stylist6'`), routing Stylist 6 requests to `STYLIST6_NODE_URL` (`/api/stylist6-generate-outfits`) without trusting caller flags.

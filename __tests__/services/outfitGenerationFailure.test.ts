@@ -13,8 +13,23 @@ test.each([
  ['incomplete_outfit_selection','outfitMaker.distinctInventoryLimited'],
  ['planning_cpu_risk','outfitMaker.generationBusy'],
  ['invalid_outfit_budget','outfitMaker.invalidBudget'],
+ ['stylist6_no_feasible_looks','outfitMaker.noMatchingClothing'],
+ ['stylist6_visual_quality_unmet','outfitMaker.visualQualityUnmet'],
+ ['stylist6_empty_catalog','outfitMaker.catalogUnavailable'],
+ ['stylist6_ranking_failed','outfitMaker.aiUnavailable'],
+ ['invalid_stylist6_request','outfitMaker.invalidRequest'],
+ ['anchor_not_found','outfitMaker.incompatibleLockedItem'],
+ ['stylist_compute_timeout','outfitMaker.requestTimeout'],
+ ['stylist_compute_unavailable','outfitMaker.aiUnavailable'],
+ ['stylist_compute_unconfigured','outfitMaker.aiUnavailable'],
+ ['stylist6_claim_unavailable','outfitMaker.aiUnavailable'],
+ ['rate_limit_unavailable','outfitMaker.aiUnavailable'],
+ ['rate_limited','outfitMaker.generationBusy'],
 ])('maps known server code %s to localized message %s',async(code,key)=>{
- expect((await outfitGenerationFailure({code})).translationKey).toBe(key);
+ const failure = await outfitGenerationFailure({code, stage: 'stylist6_cloud'});
+ expect(failure.translationKey).toBe(key);
+ expect(failure.code).toBe(code);
+ expect(failure.stage).toBe('stylist6_cloud');
 });
 test('invalid-budget error field is recognized without displaying server text',async()=>{
  expect((await outfitGenerationFailure({error:'invalid_outfit_budget'})).translationKey).toBe('outfitMaker.invalidBudget');

@@ -52,7 +52,7 @@
     "secretRotationSupported": true,
     "mobileEntryPoints": {
       "AIOutfitmaker": "Supports both dev/staging aiw-stylist6-node-staging and server-routed Stylist 6 decks from generate-outfits",
-      "dailyAIOutfit": "Supports server-routed Stylist 6 decks in outfitGenerationService.ts and 3-piece optional-layer-v1 looks in dailyOutfitCache.ts"
+      "dailyAIOutfit": "Supports server-routed Stylist 6 decks in outfitGenerationService.ts, 3-piece optional-layer-v1 looks in dailyOutfitCache.ts, and merchant offer truth in OutfitShopSheet.tsx"
     }
   },
   "catalogAudit": {

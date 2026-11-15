@@ -1,5 +1,5 @@
 import {stylingCopyParts,outfitDescription,resolveOutfitSelectionSource} from './stylingCopy';
-import { applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6Language } from './stylist6Dev';
+import { applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6CloudCompletion, stylist6Language } from './stylist6Dev';
 import i18n from 'i18next';
 import { validatedQuartets } from '../domain/validatedQuartets';
 import { stylingContext } from '../domain/stylingContext';
@@ -280,18 +280,22 @@ export async function generateOutfitsFromDB(
         }
 
         const isS6Server = isStylist6CloudVersion(data.generationVersion);
+        if (isS6Server && data.status === 'partial' && stylist6CloudCompletion(data) !== 'verified_partial') {
+            return { success: false, outfits: [], error: 'stylist6_incomplete_cloud_deck', code: 'stylist6_incomplete_cloud_deck', stage: 'stylist6_render', errorTranslationKey: 'outfitMaker.noMatchingClothing' };
+        }
         const optionalLayer = (params.compositionProtocol === 'optional-layer-v1' || isS6Server) && data.compositionProtocol === 'optional-layer-v1';
         const serverPlan = /^stylist-[56]-/.test(String(data.generationVersion || ''));
         const rawCap = params.preferences?.maxShopBudget;
         const cap = rawCap && isS6Server ? (applyStylist6CloudBudgetFx(rawCap, data.currencyConversion) ?? rawCap) : rawCap;
+        const sameItemId = (a: string, b: string) => a === b || a.replace(/^shop_/i, '') === b.replace(/^shop_/i, '');
         const outfits: GeneratedOutfit[] = data.outfits
             .filter((o: any) => o && !fourSlotOutfitReason(o.items, !optionalLayer))
             .filter((o: any) => !serverPlan || (o.items.every((item:any) => typeof item?.id==='string' && item.id.trim())
                 && new Set(o.items.map((item:any)=>item.id)).size===o.items.length))
             .map((o: any) => mapRawOutfit(o, params, data))
-            .filter((o: GeneratedOutfit) => [...(params.selectedItemIds||[]),...(params.anchorItemId?[params.anchorItemId]:[])].every(id=>o.items.some(item=>item.id===id))
+            .filter((o: GeneratedOutfit) => [...(params.selectedItemIds||[]),...(params.anchorItemId?[params.anchorItemId]:[])].every(id=>o.items.some(item=>sameItemId(String(item.id), String(id))))
                 && (params.sourceMode!=='wardrobe'||o.items.every(item=>!isShopClothingItem(item)))
-                && (params.sourceMode!=='catalog'||o.items.every(isShopClothingItem))
+                && (params.sourceMode!=='catalog'||o.items.every(item=>isShopClothingItem(item)||(params.anchorItemId&&sameItemId(String(item.id),String(params.anchorItemId)))))
                 && (!cap || fitsBudgetAmount(outfitShopSpend(o.items,undefined,cap.currency,params.budgetFx||cap.fx),cap.amount))
                 && (serverPlan || passesStyleJudge(o.items, params.stylePreferences, `${params.occasion || ''} ${params.prompt || ''}`, params.weather,params.anchorItemId,params.preferences)));
         if (!outfits.length) return { success: false, outfits: [], error: 'no_valid_outfits_for_request', errorTranslationKey: 'outfitMaker.noMatchingClothing' };

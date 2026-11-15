@@ -22,6 +22,18 @@ const messages = {
   quality_replacement_unavailable: 'outfitMaker.generateFailed',
   shoe_rotation_unavailable: 'outfitMaker.noMatchingClothing',
   invalid_outfit_budget: 'outfitMaker.invalidBudget',
+  stylist6_no_feasible_looks: 'outfitMaker.noMatchingClothing',
+  stylist6_visual_quality_unmet: 'outfitMaker.visualQualityUnmet',
+  stylist6_empty_catalog: 'outfitMaker.catalogUnavailable',
+  stylist6_ranking_failed: 'outfitMaker.aiUnavailable',
+  invalid_stylist6_request: 'outfitMaker.invalidRequest',
+  anchor_not_found: 'outfitMaker.incompatibleLockedItem',
+  stylist_compute_timeout: 'outfitMaker.requestTimeout',
+  stylist_compute_unavailable: 'outfitMaker.aiUnavailable',
+  stylist_compute_unconfigured: 'outfitMaker.aiUnavailable',
+  stylist6_claim_unavailable: 'outfitMaker.aiUnavailable',
+  rate_limit_unavailable: 'outfitMaker.aiUnavailable',
+  rate_limited: 'outfitMaker.generationBusy',
 } as const;
 type MessageKey = typeof messages[keyof typeof messages] | 'outfitMaker.generateFailed'
   | 'outfitMaker.requestTooLarge' | 'outfitMaker.requestUploadTimedOut' | 'outfitMaker.connectionFailed'
@@ -65,7 +77,7 @@ function reportUnmappedFailure(error: unknown, phase: 'transport' | 'http_body' 
 
 function safeFailureField(payload:unknown,key:string):string|undefined {
   const value=(payload as Record<string,unknown>|null)?.[key];
-  return typeof value==='string'&&/^[a-z_]{1,64}$/.test(value)?value:undefined;
+  return typeof value==='string'&&value!=='__proto__'&&/^[a-z0-9_]{1,64}$/.test(value)?value:undefined;
 }
 
 /** Decode only known server codes; never display raw provider/server messages. */

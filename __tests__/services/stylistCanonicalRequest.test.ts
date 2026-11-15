@@ -270,7 +270,7 @@ it('preserves server-approved Stylist 6 three-piece and cross-currency decks acr
     fashionDiagnostics: { visualVerdict: 'JUDGED', personalization: { adjustment: 0.04 } },
     offerVerification: { directProductUrlCount: 3, searchFallbackCount: 0 },
     items: [
-      { id: 'shop_top_1', name: 'Fine merino knit polo', macroCategory: 'top', isShopItem: true, price: 60, currency: 'USD', shopUrl: 'https://retailer.invalid/products/top-1', priceFreshness: 'fresh', priceAgeDays: 2 },
+      { id: 'top_1', name: 'Fine merino knit polo', macroCategory: 'top', isShopItem: true, price: 60, currency: 'USD', shopUrl: 'https://retailer.invalid/products/top-1', priceFreshness: 'fresh', priceAgeDays: 2 },
       { id: 'shop_bot_1', name: 'Tailored wool trousers', macroCategory: 'bottom', isShopItem: true, price: 70, currency: 'USD', shopUrl: 'https://retailer.invalid/products/bot-1', priceFreshness: 'fresh', priceAgeDays: 2 },
       { id: 'shop_sho_1', name: 'Brown suede loafers', macroCategory: 'shoes', isShopItem: true, price: 80, currency: 'USD', shopUrl: 'https://retailer.invalid/products/sho-1', priceFreshness: 'fresh', priceAgeDays: 2 },
     ],
@@ -300,6 +300,7 @@ it('preserves server-approved Stylist 6 three-piece and cross-currency decks acr
   const result = await generateOutfitsFromDB({
     stylePreferences: 'old_money',
     occasion: 'Date',
+    anchorItemId: 'shop_top_1',
     weather: { temp: 22, condition: 'clear' },
     preferences: { maxShopBudget: { amount: 3_000_000, currency: 'UZS' } },
     recordShown: false,
@@ -313,6 +314,26 @@ it('preserves server-approved Stylist 6 three-piece and cross-currency decks acr
   expect(result.outfits[0].direction?.id).toBe('signature');
   expect(result.outfits[0].items).toHaveLength(3);
   expect(result.outfits[0].items[0].priceFreshness).toBe('fresh');
+
+  // Unverified partial Stylist 6 response is rejected fail-closed
+  invoke.mockResolvedValueOnce({
+    data: {
+      success: true,
+      status: 'partial',
+      source: 'stylist-6-cloud',
+      generationVersion: 'stylist-6-cloud-staging-1',
+      visualStatus: 'NVIDIA_ABSTAINED',
+      outfits: [s6Outfit],
+    },
+    error: null,
+  });
+  const unverifiedPartial = await generateOutfitsFromDB({
+    stylePreferences: 'old_money',
+    occasion: 'Date',
+    recordShown: false,
+  });
+  expect(unverifiedPartial.success).toBe(false);
+  expect(unverifiedPartial.code).toBe('stylist6_incomplete_cloud_deck');
 
   // Home daily cache accepts the 3-piece Stylist 6 look in mild weather and invalidates it if weather turns freezing
   const validMild = validatedDailyOutfits(result.outfits, 'old_money', 'Date', { temp: 22, condition: 'clear' });

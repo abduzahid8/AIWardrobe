@@ -503,8 +503,10 @@ describe('stylist6 cloud staging client', () => {
     const enriched = applyStylist6CloudBudgetFx(budget, { active: true, snapshot });
     expect(enriched?.fx?.snapshot.id).toBe(snapshot.id);
 
-    const inactive = applyStylist6CloudBudgetFx(budget, { active: false, reason: 'fx_unavailable' });
+    const inactive = applyStylist6CloudBudgetFx(enriched, { active: false, reason: 'fx_unavailable' });
     expect(inactive?.fx).toBeUndefined();
+    expect(inactive?.amount).toBe(2_500_000);
+    expect(inactive?.currency).toBe('UZS');
 
     for (const badConv of [
       { active: true },

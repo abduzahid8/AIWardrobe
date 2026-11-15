@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { ScaledText } from './ui/ScaledText';
 import { getShopDestination } from '../src/utils/shopDestination';
+import { offerCaveatLabel, shopCardActionMode, shopCardHasDirectListing } from '../src/services/stylingCopy';
 import { ExpoImage } from '../src/components/MediaImage';
 import { ImageUnavailablePlaceholder, useProductImageRetry } from '../src/components/ProductImageFallback';
 
@@ -34,6 +35,9 @@ export interface ShopSheetItem {
   macroCategory?: string;
   category?: string;
   isShopItem?: boolean;
+  isWardrobe?: boolean;
+  priceFreshness?: string;
+  offerVerification?: Record<string, unknown> | null;
 }
 
 interface OutfitShopSheetProps {
@@ -138,6 +142,13 @@ export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: Ou
               const retailer = getRetailerLabel(shopUrl);
               const price = shopPriceLabel(item, i18n?.resolvedLanguage || i18n?.language, displayRates);
               const name = item.name || item.type || `Item ${index + 1}`;
+              const offerCaveat = offerCaveatLabel(item);
+              const showBuyButton = item.isWardrobe !== true
+                && (item.isShopItem !== false || Boolean(shopUrl))
+                && shopCardHasDirectListing({ ...item, shopUrl });
+              const actionLabel = shopCardActionMode(item) === 'view_store'
+                ? t('outfitMaker.viewProductAtStore', 'Check at store')
+                : t('home.buy', 'Buy');
               return (
                 <View key={String(item.id ?? `${name}-${index}`)} style={styles.row}>
                   <View style={styles.thumbWrap}>
@@ -151,6 +162,9 @@ export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: Ou
                         {[item.brand, price].filter(Boolean).join(' · ')}
                       </ScaledText>
                     )}
+                    {offerCaveat ? (
+                      <ScaledText style={styles.rowCaveat} numberOfLines={1}>{offerCaveat}</ScaledText>
+                    ) : null}
                     {retailer ? (
                       <View style={styles.retailerRow}>
                         <Ionicons name="storefront-outline" size={12} color="#58734E" />
@@ -163,15 +177,17 @@ export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: Ou
                       </View>
                     )}
                   </View>
-                  <TouchableOpacity
-                    style={styles.buyButton}
-                    onPress={() => openShopUrl(shopUrl, name)}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('home.buyItem', 'Buy {{name}}', { name })}
-                  >
-                    <Ionicons name="cart-outline" size={15} color="#FFFFFF" />
-                    <ScaledText style={styles.buyButtonText}>{t('home.buy', 'Buy')}</ScaledText>
-                  </TouchableOpacity>
+                  {showBuyButton ? (
+                    <TouchableOpacity
+                      style={styles.buyButton}
+                      onPress={() => openShopUrl(shopUrl, name)}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('home.buyItem', 'Buy {{name}}', { name })}
+                    >
+                      <Ionicons name="cart-outline" size={15} color="#FFFFFF" />
+                      <ScaledText style={styles.buyButtonText}>{actionLabel}</ScaledText>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               );
             })}
@@ -291,6 +307,11 @@ const styles = StyleSheet.create({
   rowMeta: {
     fontSize: 11,
     color: '#4A5568',
+    marginTop: 2,
+  },
+  rowCaveat: {
+    fontSize: 10,
+    color: '#718096',
     marginTop: 2,
   },
   retailerRow: {

@@ -1406,4 +1406,44 @@ test('accepts standard generate-outfits release payloads, ignores client wardrob
   assert.equal(dup.status, 409);
   assert.equal(dup.body.outcomeState, 'terminal_recorded');
   assert.equal(dup.body.priorStatus, 200);
+
+  // Unprefixed catalog SKU anchor in catalogOnly mode stays pure catalog (never loads wardrobe)
+  const unprefixedCatalogRes = await signedCall({
+    occasion: 'Work',
+    stylePreferences: ['old_money'],
+    catalogOnly: true,
+    anchorItemId: 'top-1',
+    generationRequestId: 'release-unprefixed-catalog-anchor-1',
+  });
+  assert.equal(unprefixedCatalogRes.status, 200);
+  assert.equal(unprefixedCatalogRes.body.sourceMode, 'catalog');
+  for (const outfit of unprefixedCatalogRes.body.outfits) {
+    assert.ok(outfit.items.some((item) => item.id === 'top-1'));
+    assert.ok(outfit.items.every((item) => item.isShopItem === true));
+  }
+
+  // Locked closet anchor in catalogOnly mode loads only the locked closet anchor + catalog items
+  const closetAnchorRes = await signedCall({
+    occasion: 'Work',
+    stylePreferences: ['old_money'],
+    catalogOnly: true,
+    anchorItemId: 'w-top-1',
+    generationRequestId: 'release-closet-anchor-1',
+  });
+  assert.equal(closetAnchorRes.status, 200);
+  assert.equal(closetAnchorRes.body.sourceMode, 'mixed');
+  for (const outfit of closetAnchorRes.body.outfits) {
+    assert.ok(outfit.items.some((item) => item.id === 'w-top-1' && item.isShopItem === false));
+    assert.ok(outfit.items.filter((item) => item.id !== 'w-top-1').every((item) => item.isShopItem === true));
+  }
+
+  // Shop-only occasion defaults to catalog and merges id: product keys into excludeItemIds
+  const shopOnlyNormalized = normalizeStylist6CloudPayload({
+    stylePreferences: 'business_casual',
+    occasion: 'Team Collaboration',
+    excludeProductKeys: ['id:top-2', 'name:ignored'],
+    previousDeckProductKeys: ['id:shoe-1'],
+  }, {});
+  assert.equal(shopOnlyNormalized.sourceMode, 'catalog');
+  assert.deepEqual(shopOnlyNormalized.excludeItemIds, ['top-2', 'shoe-1']);
 });

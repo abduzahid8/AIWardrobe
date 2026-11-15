@@ -268,7 +268,11 @@ export function applyStylist6CloudBudgetFx(
   const conv = currencyConversion && typeof currencyConversion === 'object'
     ? (currencyConversion as { active?: unknown; snapshot?: unknown })
     : null;
-  if (conv?.active !== true) return shopBudget;
+  if (conv?.active !== true) {
+    if (!('fx' in shopBudget)) return shopBudget;
+    const { fx: _fx, ...rest } = shopBudget;
+    return rest;
+  }
   if (!conv.snapshot) {
     throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable', 'budget_rates_unavailable', 'stylist6_cloud');
   }
@@ -281,7 +285,7 @@ export function applyStylist6CloudBudgetFx(
 }
 
 function failureForCloud(code: unknown, stage = 'stylist6_cloud'): OutfitGenerationFailure {
-  const known: Record<string, 'outfitMaker.generateFailed' | 'outfitMaker.noMatchingClothing' | 'outfitMaker.visualQualityUnmet' | 'outfitMaker.catalogUnavailable' | 'outfitMaker.requestTooLarge' | 'outfitMaker.invalidRequest'> = {
+  const known: Record<string, 'outfitMaker.generateFailed' | 'outfitMaker.noMatchingClothing' | 'outfitMaker.visualQualityUnmet' | 'outfitMaker.catalogUnavailable' | 'outfitMaker.requestTooLarge' | 'outfitMaker.invalidRequest' | 'outfitMaker.subscriptionRequired'> = {
     stylist6_no_feasible_looks: 'outfitMaker.noMatchingClothing',
     stylist6_visual_quality_unmet: 'outfitMaker.visualQualityUnmet',
     stylist6_empty_catalog: 'outfitMaker.catalogUnavailable',
@@ -291,7 +295,7 @@ function failureForCloud(code: unknown, stage = 'stylist6_cloud'): OutfitGenerat
     anchor_not_found: 'outfitMaker.invalidRequest',
     unauthorized: 'outfitMaker.generateFailed',
     rate_limited: 'outfitMaker.generateFailed',
-    feature_limit_reached: 'outfitMaker.generateFailed',
+    feature_limit_reached: 'outfitMaker.subscriptionRequired',
     staging_transport_unconfigured: 'outfitMaker.generateFailed',
     staging_compute_unavailable: 'outfitMaker.generateFailed',
   };

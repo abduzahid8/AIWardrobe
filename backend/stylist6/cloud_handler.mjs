@@ -606,20 +606,32 @@ export function normalizeStylist6CloudPayload(payload, env = {}) {
         payload.anchorItemId,
         ...(Array.isArray(payload.selectedItemIds) ? payload.selectedItemIds : []),
       ].filter((id) => typeof id === 'string' && id.trim());
-  const hasOwnedAnchor = requiredIds.some((id) => !String(id).startsWith('shop_'));
+  const shopOnlyOccasion = /(business[_ ]?casual|team[_ ]?collaboration)/i.test(`${style} ${occasion}`);
   const sourceMode = payload.sourceMode !== undefined
     ? payload.sourceMode
     : payload.wardrobeOnly === true
       ? 'wardrobe'
-      : payload.catalogOnly === true
-        ? (hasOwnedAnchor ? 'mixed' : 'catalog')
+      : (payload.catalogOnly === true || payload.useProvidedWardrobeOnly === true || shopOnlyOccasion)
+        ? 'catalog'
         : 'mixed';
   const rawPrefs = payload.preferences && typeof payload.preferences === 'object' && !Array.isArray(payload.preferences)
     ? payload.preferences
     : {};
   const { maxShopBudget, ...preferences } = rawPrefs;
   const budget = payload.budget !== undefined ? payload.budget : maxShopBudget;
-  const excludeItemIds = Array.isArray(payload.excludeItemIds) ? payload.excludeItemIds : [];
+  const extractExcludedIds = (list) => (Array.isArray(list) ? list : [])
+    .map((entry) => String(entry || '').trim())
+    .filter(Boolean)
+    .map((entry) => (entry.startsWith('id:') ? entry.slice(3).trim() : (!entry.includes(':') ? entry : '')))
+    .filter(Boolean);
+  const excludeItemIds = [...new Set([
+    ...extractExcludedIds(payload.excludeItemIds),
+    ...extractExcludedIds(payload.excludeProductKeys),
+    ...extractExcludedIds(payload.previousDeckProductKeys),
+    ...extractExcludedIds(payload.olderRecentProductKeys),
+    ...extractExcludedIds(payload.recentShoeProductKeys),
+    ...extractExcludedIds(payload.previousShoeProductKeys),
+  ])];
   const recentSignatures = Array.isArray(payload.recentSignatures)
     ? payload.recentSignatures
     : (Array.isArray(payload.recentLookSignatures) ? payload.recentLookSignatures : []);
@@ -682,7 +694,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
   if (typeof style !== 'string' || !style || typeof occasion !== 'string' || !occasion) {
     return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
   }
-  const sourceMode = normalizeSourceMode(request.sourceMode);
+  let sourceMode = normalizeSourceMode(request.sourceMode);
   if (!sourceMode) return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
   // Display language for the deck's editorial copy. Never an admission
   // error: an unsupported value degrades to English per output string.
@@ -753,7 +765,23 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       .then((profiles) => hydrateProfiles(shopRows, profiles));
     deadline();
     const { items: shopItems } = adaptCatalog(shopRows);
-    const wardrobeItems = wardrobeRows.map(projectWardrobeItem).filter(Boolean);
+    let wardrobeItems = wardrobeRows.map(projectWardrobeItem).filter(Boolean);
+    if (sourceMode === 'catalog' && !payload?.request && requiredIds.length > 0) {
+      const shopIdSet = new Set(shopItems.map((item) => String(item.id)));
+      const hasMissingCatalogAnchor = requiredIds.some((id) => !shopIdSet.has(id) && !(id.startsWith('shop_') && shopIdSet.has(id.slice(5))));
+      if (hasMissingCatalogAnchor) {
+        const anchorWardrobeRows = await io.fetchWardrobeRows(userId);
+        deadline();
+        const requiredSet = new Set(requiredIds);
+        const lockedWardrobeAnchors = anchorWardrobeRows
+          .map(projectWardrobeItem)
+          .filter((item) => item && requiredSet.has(String(item.id)));
+        if (lockedWardrobeAnchors.length > 0) {
+          wardrobeItems = lockedWardrobeAnchors;
+          sourceMode = 'mixed';
+        }
+      }
+    }
     const pool = sourceMode === 'catalog' ? shopItems
       : sourceMode === 'wardrobe' ? wardrobeItems
         : [...wardrobeItems, ...shopItems];
