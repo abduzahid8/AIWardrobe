@@ -35,8 +35,16 @@ export function resolveStylistWeather(prompt?: string | null, weather?: Composit
   const text = prompt || '';
   const explicit = text.match(/(-?\d{1,2}(?:\.\d+)?)\s*(?:°\s*C|C\b|degrees?\s*(?:C|celsius)|celsius)\b/i);
   if (explicit) return {temp: Number(explicit[1]), condition: 'requested temperature'};
-  if (/\b(freezing|snow|winter|sub[ -]?zero|qish)\b|мороз|зим[ауы]|қиш/i.test(text)) return {condition: 'requested winter season'};
-  if (/\b(summer|yoz)\b|лет[оа]/i.test(text)) return {condition: 'requested summer season'};
+  // A season keyword conveys intent, not a temperature. Preserve a
+  // measured/explicit destination temperature already supplied by the client:
+  // dropping 32°C when the brief said 'summer' was incorrectly dressing
+  // Old Money Work in blazers and cardigans. Only the condition is replaced.
+  const measured = typeof weather?.temp === 'number' && Number.isFinite(weather.temp)
+    ? {temp: weather.temp} : {};
+  if (/\b(freezing|snow|winter|sub[ -]?zero|qish)\b|мороз|зим[ауы]|қиш/i.test(text))
+    return {...measured,condition: 'requested winter season'};
+  if (/\b(summer|yoz)\b|лет[оа]/i.test(text))
+    return {...measured,condition: 'requested summer season'};
   return weather || undefined;
 }
 

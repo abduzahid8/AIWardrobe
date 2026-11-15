@@ -16,6 +16,16 @@ it('season words do not fabricate a temperature', () => {
   expect(resolveStylistWeather('winter visit')).toEqual({ condition: 'requested winter season' });
   expect(resolveStylistWeather('destination 12°C')?.temp).toBe(12);
 });
+it('keeps a measured 32°C destination temperature despite a summer word', () => {
+  const { resolveStylistWeather, resolveOutfitComposition } = require('../../src/domain/outfitComposition');
+  const resolved = resolveStylistWeather('summer old money work, no extra jacket', { temp:32, condition:'sunny' });
+  expect(resolved).toEqual({ temp:32, condition:'requested summer season' });
+  expect(resolveOutfitComposition('old_money',resolved,'summer old money work, no extra jacket',true).layered)
+    .toBe(false);
+  expect(resolveStylistWeather('summer destination at 9°C',{temp:32})?.temp).toBe(9);
+  expect(resolveStylistWeather('winter journey',{temp:32})).toEqual({temp:32,condition:'requested winter season'});
+});
+
 it('captures negative constraints instead of retaining a mutable caller array', () => {
   const avoidColors = ['red'];
   const c = stylingContext({ preferences: { avoidColors } });

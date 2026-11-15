@@ -106,6 +106,16 @@ test('warm work outfits keep the exact anchor, avoid excluded colors and omit th
   assert.ok(new Set(result.outfits.flatMap(({ items }) => items.map(({ id }) => id))).size >= 7);
 });
 
+test('summer 32°C work avoids an unnecessary blazer when the weather was explicit',async()=>{
+  const request={...base.request,brief:'Three summer old money work outfits without a jacket',weather:{temp:32,condition:'clear'}};
+  assert.equal(fashionStylingContext(request).weather.temp,32);
+  const result=await recommendFashionDeck({...base,request});
+  assert.equal(result.status,'complete');
+  assert.equal(result.outfits.length,3);
+  assert.ok(result.outfits.every(({items})=>items.length===3 && !items.some(item=>item.macroCategory==='outerwear')),
+    'summer season word must not erase the explicit 32°C temperature');
+});
+
 test('cold looks retain layers and an infeasible budget never gains a fallback outfit', async () => {
   const request = { ...base.request, weather: { temp: 9 }, budget: { amount: 1000000, currency: 'UZS' } };
   const cold = await recommendFashionDeck({ ...base, request });
