@@ -159,9 +159,20 @@ test('proxy supports server-controlled Stylist 6 rollout and cohort routing with
     }));
     assert.equal((await res.json()).generationVersion, 'stylist-6-cloud-v1');
     assert.equal(visitedUrls.at(-1), s6Endpoint);
+
+    // 4. Secret isolation: Stylist 6 routing must fail closed if STYLIST6_NODE_SHARED_SECRET is absent,
+    // even when STYLIST_NODE_SHARED_SECRET is configured.
+    envOverrides.STYLIST6_NODE_SHARED_SECRET = '';
+    res = await proxyHandler(new Request('https://supabase.example/functions/v1/generate-outfits', {
+      method: 'POST', body,
+      headers: { authorization: 'Bearer non-cohort-user-token', apikey: 'public-anon-key', 'content-type': 'application/json' },
+    }));
+    assert.equal(res.status, 503);
+    assert.equal((await res.json()).code, 'stylist_compute_unconfigured');
   } finally {
     delete envOverrides.STYLIST_ENGINE_ROLLOUT;
     delete envOverrides.STYLIST6_ROLLOUT_USER_IDS;
+    delete envOverrides.STYLIST6_NODE_SHARED_SECRET;
     globalThis.fetch = oldFetch;
   }
 });

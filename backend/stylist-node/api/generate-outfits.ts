@@ -58,7 +58,10 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const authorized = await verifyStylistTransport({
-    secret, body, authorization,
+    secret,
+    previousSecret: process.env.STYLIST_NODE_SHARED_SECRET_PREVIOUS,
+    body,
+    authorization,
     timestamp: request.headers.get('x-aiw-timestamp'),
     nonce: request.headers.get('x-aiw-nonce'),
     signature: request.headers.get('x-aiw-signature'),

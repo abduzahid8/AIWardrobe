@@ -86,9 +86,9 @@ function makeIo(overrides = {}) {
         calls.finishRequest += 1;
         claims.set(requestId, { ...claims.get(requestId), status, code });
       },
-      async fetchShopRows(seed) {
+      async fetchShopRows(seed, context) {
         calls.fetchShopRows += 1;
-        overrides.onShopSeed?.(seed);
+        overrides.onShopSeed?.(seed, context);
         return overrides.shopRows ?? SHOP;
       },
       async fetchWardrobeRows(userId) {
@@ -1446,4 +1446,54 @@ test('accepts standard generate-outfits release payloads, ignores client wardrob
   }, {});
   assert.equal(shopOnlyNormalized.sourceMode, 'catalog');
   assert.deepEqual(shopOnlyNormalized.excludeItemIds, ['top-2', 'shoe-1']);
+});
+
+test('budgeted unanchored cloud discovery forwards budget, currency, and FX rates via p_context', async (t) => {
+  const { createCloudIo } = await import('./cloud_handler.mjs');
+  const { parseCbuBudgetRates } = await import('../../src/domain/budgetFx.ts');
+  const seen = [];
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    seen.push(JSON.parse(options.body));
+    return new Response('[]', { status: 200 });
+  });
+  const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'server', supabaseJs: {} });
+  const rates = { UZS: 1, USD: 12800, EUR: 13800, GBP: 16200 };
+  await io.fetchShopRows(null, { budget: 2500000, currency: 'UZS', rates });
+  assert.equal(seen.length, 4);
+  assert.ok(seen.every((row) => row.p_context?.budget === 2500000 && row.p_context?.currency === 'UZS' && row.p_context?.rates?.USD === 12800));
+
+  const now = Date.now();
+  const futureUz = new Date(now + 5 * 3_600_000);
+  const dd = String(futureUz.getUTCDate()).padStart(2, '0');
+  const mm = String(futureUz.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = futureUz.getUTCFullYear();
+  const cbuDate = `${dd}.${mm}.${yyyy}`;
+  const validSnapshot = parseCbuBudgetRates([
+    { Ccy: 'USD', Nominal: '1', Rate: '12800', Date: cbuDate },
+    { Ccy: 'EUR', Nominal: '1', Rate: '13800', Date: cbuDate },
+    { Ccy: 'GBP', Nominal: '1', Rate: '16200', Date: cbuDate },
+  ], now);
+
+  const capturedContexts = [];
+  await signedCall({
+    request: { ...baseRequest, budget: { amount: 2500000, currency: 'UZS' }, generationRequestId: 'budget-ctx-1' },
+  }, {}, {
+    fetchBudgetFxSnapshot: async () => validSnapshot,
+    onShopSeed: (_seed, context) => capturedContexts.push(context),
+  });
+  assert.deepEqual(capturedContexts[0], {
+    budget: 2500000,
+    currency: 'UZS',
+    rates: validSnapshot.uzsPerUnit,
+  });
+
+  // Locked anchors must not be pre-filtered before anchor_not_found validation.
+  capturedContexts.length = 0;
+  await signedCall({
+    request: { ...baseRequest, requiredIds: ['top-1'], budget: { amount: 2500000, currency: 'UZS' }, generationRequestId: 'budget-ctx-anchored' },
+  }, {}, {
+    fetchBudgetFxSnapshot: async () => validSnapshot,
+    onShopSeed: (_seed, context) => capturedContexts.push(context),
+  });
+  assert.equal(capturedContexts[0], null);
 });

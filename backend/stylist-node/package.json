@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --experimental-strip-types --test test/*.test.mjs"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsc --noEmit -p tsconfig.json && node --experimental-strip-types --test test/*.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.45.4",

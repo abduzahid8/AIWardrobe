@@ -41,7 +41,7 @@ import { HOST_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/im
 import { prepareCloudVisualMedia } from './cloud_visual_media.mjs';
 import { verifyStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 import { verifyMerchantOffer, summarizeDeckOffers } from './merchant_offers.mjs';
-import { parseCbuBudgetRates, validateBudgetFxSnapshot, referenceAmount } from '../../src/domain/budgetFx.ts';
+import { BUDGET_CURRENCIES, parseCbuBudgetRates, validateBudgetFxSnapshot, referenceAmount } from '../../src/domain/budgetFx.ts';
 import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46.json' with { type: 'json' };
 
 export const STYLIST6_CLOUD_VERSION = 'stylist-6-cloud-staging-1';
@@ -253,17 +253,26 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         return false;
       }
     },
-    async fetchShopRows(seed = null) {
+    async fetchShopRows(seed = null, context = null) {
       const rows = new Map();
       // An unanchored fresh request gets a stable but rotated bounded catalog
       // window. Keep legacy sampling for explicit anchors (no missing locked
       // product due to a random discovery page). No client-supplied raw seed.
       const safeSeed = typeof seed === 'string' && /^[a-f0-9]{16}$/.test(seed) ? seed : null;
+      const hasContext = Boolean(context && typeof context === 'object' && !Array.isArray(context) && Object.keys(context).length > 0);
       for (const slot of CATALOG_SLOTS) {
+        const rpcBody = {
+          p_slot: slot,
+          p_search: '',
+          p_seed: safeSeed ? `s6cloud:${slot}:${safeSeed}` : `s6cloud:${slot}`,
+          p_limit: CATALOG_PER_SLOT,
+          p_offset: 0,
+          ...(hasContext ? { p_context: context } : {}),
+        };
         const response = await fetch(`${url}/rest/v1/rpc/catalog_discovery_candidates`, {
           method: 'POST',
           headers: { ...authHeaders(serviceKey), Authorization: `Bearer ${serviceKey}` },
-          body: JSON.stringify({ p_slot: slot, p_search: '', p_seed: safeSeed ? `s6cloud:${slot}:${safeSeed}` : `s6cloud:${slot}`, p_limit: CATALOG_PER_SLOT, p_offset: 0 }),
+          body: JSON.stringify(rpcBody),
         });
         const data = await check(response, 'stylist6_catalog_unavailable');
         for (const row of Array.isArray(data) ? data : []) {
@@ -749,6 +758,30 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
   let claimed = false;
   let debited = false;
   try {
+    // Owned wardrobe pieces are free. When a budget is requested, cross-currency
+    // pricing uses only a validated CBU FX snapshot; without valid FX we never
+    // invent exchange rates and strictly admit same-currency shop items only.
+    let fxSnapshot = null;
+    let fxUnavailableReason = null;
+    if (budget) {
+      if (typeof io.fetchBudgetFxSnapshot === 'function') {
+        try {
+          fxSnapshot = validateBudgetFxSnapshot(await io.fetchBudgetFxSnapshot());
+        } catch {
+          fxSnapshot = null;
+          fxUnavailableReason = 'fx_unavailable';
+        }
+      } else {
+        fxUnavailableReason = 'fx_not_configured';
+      }
+    }
+    const discoveryContext = budget && !requiredIds.length && BUDGET_CURRENCIES.includes(String(budget.currency))
+      ? {
+          budget: budget.amount,
+          currency: budget.currency,
+          ...(fxSnapshot?.uzsPerUnit ? { rates: fxSnapshot.uzsPerUnit } : {}),
+        }
+      : null;
     // Server-side inventory only. Shop rows come from the discovery RPC;
     // wardrobe rows come from clothing_items filtered by the verified user.
     // Stable over retries of identical request bytes, different on fresh
@@ -757,7 +790,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const discoverySeed = requiredIds.length ? null : createHash('sha256')
       .update(userId).update('|').update(body).digest('hex').slice(0, 16);
     const [shopRows, wardrobeRows] = await Promise.all([
-      sourceMode === 'wardrobe' ? [] : io.fetchShopRows(discoverySeed),
+      sourceMode === 'wardrobe' ? [] : io.fetchShopRows(discoverySeed, discoveryContext),
       sourceMode === 'catalog' ? [] : io.fetchWardrobeRows(userId),
     ]);
     deadline();
@@ -833,23 +866,6 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       }
       await finish(503, 'rate_limit_unavailable');
       return fail('rate_limit_unavailable', 503, { stage: 'stylist6_admission' });
-    }
-    // Owned wardrobe pieces are free. When a budget is requested, cross-currency
-    // pricing uses only a validated CBU FX snapshot; without valid FX we never
-    // invent exchange rates and strictly admit same-currency shop items only.
-    let fxSnapshot = null;
-    let fxUnavailableReason = null;
-    if (budget) {
-      if (typeof io.fetchBudgetFxSnapshot === 'function') {
-        try {
-          fxSnapshot = validateBudgetFxSnapshot(await io.fetchBudgetFxSnapshot());
-        } catch {
-          fxSnapshot = null;
-          fxUnavailableReason = 'fx_unavailable';
-        }
-      } else {
-        fxUnavailableReason = 'fx_not_configured';
-      }
     }
     const currencyConversion = !budget
       ? { active: false, reason: 'unbudgeted' }

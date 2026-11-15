@@ -4,8 +4,15 @@ export interface SignedStylistTransport {
   secret: string; body: string; authorization: string; now?: number; nonce?: string;
 }
 export interface VerifiedStylistTransport {
-  secret: string; body: string; authorization: string;
-  timestamp: string | null; nonce: string | null; signature: string | null; now?: number;
+  secret?: string;
+  previousSecret?: string;
+  secrets?: string[];
+  body: string;
+  authorization: string;
+  timestamp: string | null;
+  nonce: string | null;
+  signature: string | null;
+  now?: number;
 }
 export declare function signStylistTransport(input: SignedStylistTransport): Promise<Record<string, string>>;
 export declare function verifyStylistTransport(input: VerifiedStylistTransport): Promise<boolean>;

@@ -81,7 +81,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     ? Deno.env.get('STYLIST6_NODE_URL')
     : Deno.env.get('STYLIST_NODE_URL');
   const secret = useStylist6
-    ? (Deno.env.get('STYLIST6_NODE_SHARED_SECRET') || Deno.env.get('STYLIST_NODE_SHARED_SECRET'))
+    ? Deno.env.get('STYLIST6_NODE_SHARED_SECRET')
     : Deno.env.get('STYLIST_NODE_SHARED_SECRET');
   const expectedPath = useStylist6 ? '/api/stylist6-generate-outfits' : '/api/generate-outfits';
   if (!endpoint || !secret || secret.length < 32) return jsonError('stylist_compute_unconfigured', 503);

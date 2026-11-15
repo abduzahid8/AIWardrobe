@@ -32,6 +32,8 @@ const messages = {
   stylist_compute_unavailable: 'outfitMaker.aiUnavailable',
   stylist_compute_unconfigured: 'outfitMaker.aiUnavailable',
   stylist6_claim_unavailable: 'outfitMaker.aiUnavailable',
+  duplicate_request: 'outfitMaker.generationBusy',
+  request_content_conflict: 'outfitMaker.invalidRequest',
   rate_limit_unavailable: 'outfitMaker.aiUnavailable',
   rate_limited: 'outfitMaker.generationBusy',
 } as const;

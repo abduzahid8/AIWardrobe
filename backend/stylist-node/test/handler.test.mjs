@@ -62,3 +62,29 @@ test('Vercel default fetch entrypoint is exported and fails closed', async () =>
   }));
   assert.equal(forbiddenMethod.status, 405);
 });
+
+test('Stylist 5 Node handler accepts STYLIST_NODE_SHARED_SECRET_PREVIOUS during rotation', async () => {
+  const prevSecret = 'previous-s5-hmac-secret-for-rotation-testing-67890';
+  process.env.STYLIST_NODE_SHARED_SECRET = secret;
+  process.env.STYLIST_NODE_SHARED_SECRET_PREVIOUS = prevSecret;
+  const oldUrl = process.env.SUPABASE_URL;
+  const oldKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  try {
+    const signed = await signStylistTransport({ secret: prevSecret, authorization, body });
+    const response = await POST(new Request('https://node.example/api/generate-outfits', {
+      method: 'POST',
+      headers: { authorization, 'content-type': 'application/json', ...signed },
+      body,
+    }));
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).error, 'rate_limit_unavailable');
+  } finally {
+    delete process.env.STYLIST_NODE_SHARED_SECRET_PREVIOUS;
+    if (oldUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = oldUrl;
+    if (oldKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = oldKey;
+  }
+});
