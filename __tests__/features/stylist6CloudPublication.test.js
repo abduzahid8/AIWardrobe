@@ -101,6 +101,12 @@ test('server-admitted cloud success does not trigger a second client quota consu
   expect(quota).toHaveBeenCalledWith('aiOutfits', { cancelSignal: undefined });
 });
 
+test('Stylist 6 defaults to the reliable editorial deck, not the unreliable hosted prototype critique', () => {
+  expect(source).toContain('const [nvidiaVisual, setNvidiaVisual] = useState(false)');
+  expect(source).toContain('enableVisual: nvidiaVisual === true');
+  expect(source).toContain('NVIDIA visual review (optional)');
+});
+
 test('actual displayed look count stays visible in both simulator diagnostic configurations', () => {
   expect(source).toContain('testID="stylistEngineBanner"');
   expect(source).toContain('${outfits.length} looks');

@@ -1,0 +1,53 @@
+# Isolated simulator E2E for reliable Stylist 6 editorial mode.
+# Requires authenticated QA user, valid quota, dev bridge flag, staging route;
+# no private credentials or NVIDIA model assumptions.
+appId: com.aiwardrobe
+name: aiw_s6_stable_three_shop_no_vendor_dependency
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: ".*(Create outfit|Create Outfit|New outfit|Новый образ).*"
+    timeout: 45000
+- runFlow:
+    when:
+      visible: ".*(Create outfit|Create Outfit).*"
+    commands:
+      - tapOn: ".*(Create outfit|Create Outfit).*"
+- extendedWaitUntil:
+    visible: ".*(New outfit|Новый образ).*"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: stylistSource-shop
+    direction: UP
+    timeout: 16000
+- tapOn:
+    id: stylistSource-shop
+- scrollUntilVisible:
+    element:
+      id: stylistEnginePick-stylist6cloud
+    direction: DOWN
+    timeout: 16000
+- tapOn:
+    id: stylistEnginePick-stylist6cloud
+- scrollUntilVisible:
+    element:
+      id: stylistNvidiaToggle
+    direction: DOWN
+    timeout: 13000
+- assertVisible:
+    id: stylistNvidiaToggle
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 70000
+- assertVisible: ".*3 looks.*"
+- assertVisible:
+    id: stylistLookTab-0
+- assertVisible:
+    id: stylistLookTab-1
+- assertVisible:
+    id: stylistLookTab-2
+- takeScreenshot: .private/aiw-s6-stable-three-ios-proof

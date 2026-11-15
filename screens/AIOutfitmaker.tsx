@@ -727,12 +727,13 @@ const AIOutfitGenerator = () => {
   // Development-only engine choice. The picker renders only when
   // STYLIST6_DEV_ENABLED, so release builds can never select Stylist 6.
   const [devEngine, setDevEngine] = useState<DevEngine>(STYLIST6_DEV_ENABLED ? 'stylist6cloud' : 'stylist5');
-  // Hosted NVIDIA visual review for Stylist 6, on by default so the cloud
-  // staging request (enableVisual) defaults to true when the client supports
-  // it. The review is bounded to one small batch per deck and degrades to an
-  // honest NVIDIA_NOT_RUN when the server kill-switch or a missing key
-  // blocks it; the toggle below is the opt-out.
-  const [nvidiaVisual, setNvidiaVisual] = useState(true);
+  // Primary experience: deliver three feasibility-gated, fashion-ranked
+  // outfits without depending on the variable-latency NVIDIA prototype API.
+  // The live provider can take >40s and abstain on all four calls: when this
+  // option defaults ON, customers can receive only one look for a paid tap.
+  // Keep real visual judging as an explicit QA opt-in, and mark its results
+  // honestly; never call an unreviewed deck "NVIDIA_APPLIED".
+  const [nvidiaVisual, setNvidiaVisual] = useState(false);
   // Actual engine that produced the visible deck (or null before/after).
   const [lastEngineVersion, setLastEngineVersion] = useState<string | null>(null);
   const [lastEngineDetail, setLastEngineDetail] = useState<string | null>(null);
@@ -3039,7 +3040,7 @@ const AIOutfitGenerator = () => {
                   </View>
                   <View style={{flex:1}}>
                     <ScaledText style={{color: D.textPrimary, fontWeight:'700', fontSize:13}}>
-                      {'NVIDIA visual review'}
+                      {'NVIDIA visual review (optional)'}
                     </ScaledText>
                     <ScaledText style={{color: D.textSecondary, fontSize: 11}}>
                       {'Hosted Nemotron check on the dev bridge only. Stays off for Stylist 5.'}

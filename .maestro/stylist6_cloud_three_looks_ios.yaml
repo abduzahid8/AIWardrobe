@@ -26,8 +26,8 @@ name: aiw_s6_three_tabs_from_generator
       id: stylistNvidiaToggle
     direction: DOWN
     timeout: 13000
-- tapOn:
-    id: stylistNvidiaToggle
+# Live NVIDIA validation is explicitly optional and off by default;
+# do not toggle it during the high-reliability three-look acceptance run.
 - tapOn:
     id: stylistGenerate
 - extendedWaitUntil:
