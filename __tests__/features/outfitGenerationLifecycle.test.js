@@ -11,7 +11,7 @@ function setup(authenticated=true){
  let owner=authenticated ? 'owner-a' : null,revision=1;
  // v209: the press handler checks a synchronous feature gate (requireFeature); quota consumption
  // moved post-success into generateOutfits' publication gate (consumeOrPaywall with cancelSignal).
- const deps={authEvents:{getUserId:()=>owner,getRevision:()=>revision},generationRequest:{current:null},generationNonce:{current:0},isMounted:{current:true},setLoading:jest.fn(),setError:jest.fn(),setOutfits:jest.fn(),setSelectedStyle:jest.fn(),requireFeature:jest.fn(()=>true),consumeOrPaywall:jest.fn(async()=>true),generateOutfits:jest.fn(async()=>{}),Haptics:{notificationAsync:jest.fn(async()=>{}),NotificationFeedbackType:{Success:'success'}},OutfitGenerationFailure:class extends Error{},t:key=>key};
+ const deps={STYLIST6_CLOUD_ENABLED:false,devEngine:'stylist5',setVisibleLookIndex:jest.fn(),authEvents:{getUserId:()=>owner,getRevision:()=>revision},generationRequest:{current:null},generationNonce:{current:0},isMounted:{current:true},setLoading:jest.fn(),setError:jest.fn(),setOutfits:jest.fn(),setSelectedStyle:jest.fn(),requireFeature:jest.fn(()=>true),consumeOrPaywall:jest.fn(async()=>true),generateOutfits:jest.fn(async()=>{}),Haptics:{notificationAsync:jest.fn(async()=>{}),NotificationFeedbackType:{Success:'success'}},OutfitGenerationFailure:class extends Error{},t:key=>key};
  const api=Function(...Object.keys(deps),code+';return {handleGeneratePress,cancelOutfitGeneration};')(...Object.values(deps));
  return{...deps,...api,switchOwner:()=>{owner='owner-b';revision++;}};
 }

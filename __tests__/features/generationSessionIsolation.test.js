@@ -50,7 +50,7 @@ test('an account change while the quota gate is pending cannot publish the deck'
 test('same-owner generation still proceeds when the feature gate passes',async()=>{
  // Redesign v209 replaced the pre-dispatch quota admission with a synchronous feature gate;
  // quota is consumed post-success inside generateOutfits (consumeOrPaywall no longer runs here).
- const state={generationRequest:{current:null},OutfitGenerationFailure:class extends Error{},t:key=>key,authEvents:{getUserId:()=>'owner',getRevision:()=>1},isMounted:{current:true},setLoading:jest.fn(),setError:jest.fn(),requireFeature:jest.fn(()=>true),Haptics:{notificationAsync:jest.fn().mockResolvedValue(undefined),NotificationFeedbackType:{Success:'success'}},setSelectedStyle:jest.fn(),generateOutfits:jest.fn()};
+ const state={generationRequest:{current:null},STYLIST6_CLOUD_ENABLED:false,devEngine:'stylist5',OutfitGenerationFailure:class extends Error{},t:key=>key,authEvents:{getUserId:()=>'owner',getRevision:()=>1},isMounted:{current:true},setLoading:jest.fn(),setError:jest.fn(),requireFeature:jest.fn(()=>true),Haptics:{notificationAsync:jest.fn().mockResolvedValue(undefined),NotificationFeedbackType:{Success:'success'}},setSelectedStyle:jest.fn(),generateOutfits:jest.fn()};
  await make(expressions.handleGeneratePress,state)('casual');
  expect(state.generateOutfits).toHaveBeenCalledWith('casual',expect.any(AbortSignal));
  expect(state.setSelectedStyle).toHaveBeenCalledWith('casual');

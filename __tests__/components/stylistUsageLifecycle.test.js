@@ -4,8 +4,8 @@ const source=ts.createSourceFile('AIOutfitmaker.tsx',fs.readFileSync(path.resolv
 let handler;
 function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(source)==='handleGeneratePress')handler=node.initializer;else ts.forEachChild(node,visit);}
 visit(source);
-function mount(allowed=true){
- const bindings={authEvents:{getUserId:()=> 'owner',getRevision:()=>1},generationRequest:{current:null},isMounted:{current:true},
+function mount(allowed=true, cloud=false){
+ const bindings={STYLIST6_CLOUD_ENABLED:cloud,devEngine:cloud?'stylist6cloud':'stylist5',authEvents:{getUserId:()=> 'owner',getRevision:()=>1},generationRequest:{current:null},isMounted:{current:true},
   requireFeature:jest.fn(()=>allowed),consumeOrPaywall:jest.fn(),generateOutfits:jest.fn(async()=>{}),
   setLoading:jest.fn(),setError:jest.fn(),setSelectedStyle:jest.fn(),t:key=>key,
   Haptics:{notificationAsync:async()=>{},NotificationFeedbackType:{Success:'success'}},OutfitGenerationFailure:class extends Error{}};
@@ -24,4 +24,13 @@ test('a denied entitlement never starts generation or increments usage',async()=
 test('the Generate handler leaves usage recording to successful publication',async()=>{
  const app=mount();await app.run('classic');expect(app.generateOutfits).toHaveBeenCalledWith('classic',expect.any(AbortSignal));
  expect(app.consumeOrPaywall).not.toHaveBeenCalled();expect(app.setLoading).toHaveBeenLastCalledWith(false);
+});
+
+test('opt-in hosted Stylist 6 defers entitlement and quota to its authenticated server',async()=>{
+ const app=mount(false,true);
+ await app.run('old_money');
+ expect(app.requireFeature).not.toHaveBeenCalled();
+ expect(app.consumeOrPaywall).not.toHaveBeenCalled();
+ expect(app.generateOutfits).toHaveBeenCalledWith('old_money',expect.any(AbortSignal));
+ expect(app.generationRequest.current).toBeNull();
 });
