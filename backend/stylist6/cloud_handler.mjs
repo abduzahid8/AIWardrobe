@@ -30,6 +30,7 @@ import { referenceFirstBriefs } from './lookbook_briefs.mjs';
 import { buildReferenceBlueprints } from './reference_blueprint.mjs';
 import { currentVisual } from '../../src/domain/visualFashion.ts';
 import { resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
+import { isWorkoutOccasion } from '../../src/domain/occasionRules.ts';
 import { normalizeStylistLanguage } from '../../src/domain/stylingContext.ts';
 import {
   createHostedVisualCritic,
@@ -255,41 +256,61 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         return false;
       }
     },
-    async fetchShopRows(seed = null, context = null) {
+    async fetchShopRows(seed = null, context = null, discoveryIntent = null) {
       const rows = new Map();
       // An unanchored fresh request gets a stable but rotated bounded catalog
       // window. Keep legacy sampling for explicit anchors (no missing locked
       // product due to a random discovery page). No client-supplied raw seed.
       const safeSeed = typeof seed === 'string' && /^[a-f0-9]{16}$/.test(seed) ? seed : null;
-      const hasContext = Boolean(context && typeof context === 'object' && !Array.isArray(context) && Object.keys(context).length > 0);
-      const slotBatches = await Promise.all(CATALOG_SLOTS.map(async (slot) => {
+      // A generic (100/slot) rotation regularly omitted the *only* real
+      // training shirts and returned linen polos + jeans for Workout. Work
+      // from fixed, server-owned activity search terms first, then refill the
+      // same per-slot windows from diversified general results. The 400-row
+      // media/price hydration budget and merchant truth gates DO NOT change.
+      const workout = discoveryIntent === 'workout';
+      const cold = discoveryIntent === 'cold';
+      const localContext = workout ? { ...(context || {}), dressCode: 'athletic' } : context;
+      const hasContext = Boolean(localContext && typeof localContext === 'object' && !Array.isArray(localContext) && Object.keys(localContext).length > 0);
+      const workouts = workout ? [
+        { slot: 'top', search: 'training', limit: 25 },
+        { slot: 'bottom', search: 'jogger', limit: 35 },
+        { slot: 'shoes', search: 'running', limit: 20 },
+        { slot: 'shoes', search: 'training', limit: 15 },
+        { slot: 'outerwear', search: 'training', limit: 15 },
+      ] : [];
+      // Freezing weather needs boots and genuine coats. A generic casual
+      // window previously offered blazers plus suede loafers at -2°C.
+      const coldWeather = cold ? [
+        { slot: 'outerwear', search: 'puffer', limit: 22 },
+        { slot: 'outerwear', search: 'coat', limit: 32 },
+        { slot: 'shoes', search: 'boot', limit: 25 },
+      ] : [];
+      const queries = [...workouts, ...coldWeather, ...CATALOG_SLOTS.map(slot => ({ slot, search: '', limit: CATALOG_PER_SLOT }))];
+      const slotBatches = await Promise.all(queries.map(async (query) => {
         const rpcBody = {
-          p_slot: slot,
-          p_search: '',
-          p_seed: safeSeed ? `s6cloud:${slot}:${safeSeed}` : `s6cloud:${slot}`,
-          p_limit: CATALOG_PER_SLOT,
+          p_slot: query.slot,
+          p_search: query.search,
+          p_seed: query.search
+            ? (safeSeed ? `s6cloud:${query.slot}:${query.search}:${safeSeed}` : `s6cloud:${query.slot}:${query.search}`)
+            : (safeSeed ? `s6cloud:${query.slot}:${safeSeed}` : `s6cloud:${query.slot}`),
+          p_limit: query.limit,
           p_offset: 0,
-          ...(hasContext ? { p_context: context } : {}),
+          ...(hasContext ? { p_context: localContext } : {}),
         };
         const response = await fetch(`${url}/rest/v1/rpc/catalog_discovery_candidates`, {
           method: 'POST',
           headers: { ...authHeaders(serviceKey), Authorization: `Bearer ${serviceKey}` },
           body: JSON.stringify(rpcBody),
         });
-        return check(response, 'stylist6_catalog_unavailable');
+        return { slot: query.slot, data: await check(response, 'stylist6_catalog_unavailable') };
       }));
-      for (const data of slotBatches) {
+      const bySlot = Object.fromEntries(CATALOG_SLOTS.map(slot => [slot, 0]));
+      for (const { slot, data } of slotBatches) {
         for (const row of Array.isArray(data) ? data : []) {
+          if (bySlot[slot] >= CATALOG_PER_SLOT) break;
           if (row && row.id && !rows.has(String(row.id))) {
-            // This server RPC selects only active shop_catalog rows, but its
-            // JSON projection omits is_active. Restore that contract fact
-            // here, never in the general adapter or from client inventory.
-            // The projection also omits the intelligence table's subtype
-            // column; the projected fashion_intelligence descriptor carries
-            // exactly that value (subtype = descriptor.subtype at write
-            // time), so restore it for the adapter's live-hint contract.
-            // Explicit false stays false; a missing descriptor leaves the
-            // row to the adapter's transparent text projection.
+            // The RPC guarantees its normalized fashion slot and only active
+            // items; no user-supplied inventory may be smuggled into the pool.
             rows.set(String(row.id), {
               ...row,
               is_active: row.is_active ?? true,
@@ -298,6 +319,7 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
                   ? row.fashion_intelligence?.descriptor?.subtype
                   : undefined),
             });
+            bySlot[slot] += 1;
           }
         }
       }
@@ -815,7 +837,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const discoverySeed = requiredIds.length ? null : createHash('sha256')
       .update(userId).update('|').update(body).digest('hex').slice(0, 16);
     const [shopRows, wardrobeRows] = await Promise.all([
-      sourceMode === 'wardrobe' ? [] : io.fetchShopRows(discoverySeed, discoveryContext),
+      sourceMode === 'wardrobe' ? [] : io.fetchShopRows(discoverySeed, discoveryContext,
+        isWorkoutOccasion(request.occasion) ? 'workout' : Number(request.weather?.temp) < 5 ? 'cold' : null),
       sourceMode === 'catalog' ? [] : io.fetchWardrobeRows(userId),
     ]);
     deadline();

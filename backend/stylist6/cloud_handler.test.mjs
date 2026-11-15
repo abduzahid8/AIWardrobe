@@ -1649,3 +1649,54 @@ test('crash-window recovery: deadline aborts slow provider with 504 stylist6_tim
   });
   assert.equal(killRes.body.visualReceipt.policy, 'server_killswitch');
 });
+
+test('real workout catalog discovery retrieves verified training products first without exceeding four bounded slot windows', async()=>{
+  const { createCloudIo }=await import('./cloud_handler.mjs');
+  const originalFetch=globalThis.fetch;
+  const searched=[];
+  globalThis.fetch=async (_url, options={})=>{
+    assert.equal(options.method,'POST','all catalog discovery is server-side RPC');
+    const payload=JSON.parse(options.body);
+    searched.push(payload);
+    const slot=payload.p_slot;
+    const search=payload.p_search||'general';
+    const count=payload.p_limit;
+    return Response.json(Array.from({length:count},(_,n)=>({
+      ...shopRow(`${slot}-${search}-${n}`,slot),
+      last_seen_at:null,
+      fashion_intelligence:{descriptor:{subtype:search}},
+    })));
+  };
+  try{
+    const io=createCloudIo({url:'https://example.supabase.co',anonKey:'public',serviceKey:'server',supabaseJs:{}});
+    const athletic=await io.fetchShopRows('a'.repeat(16),null,'workout');
+    assert.equal(searched.length,9,'four base plus five targeted, never per-user arbitrary search');
+    assert.deepEqual(searched.filter(x=>x.p_search).map(x=>`${x.p_slot}:${x.p_search}`),[
+      'top:training','bottom:jogger','shoes:running','shoes:training','outerwear:training',
+    ]);
+    assert.ok(searched.every(x=>x.p_context?.dressCode==='athletic'));
+    assert.equal(athletic.length,400,'cannot exceed 400 SKU hydration cap');
+    assert.ok(athletic.some(x=>x.id==='top-training-0'));
+    assert.ok(athletic.some(x=>x.id==='bottom-jogger-0'));
+    assert.ok(athletic.some(x=>x.id==='shoes-running-0'));
+    assert.ok(athletic.some(x=>x.id==='shoes-training-0'));
+    assert.equal(athletic.filter(x=>x.id.startsWith('top-')).length,100);
+    assert.equal(athletic.filter(x=>x.id.startsWith('bottom-')).length,100);
+    assert.equal(athletic.filter(x=>x.id.startsWith('shoes-')).length,100);
+    assert.equal(athletic.filter(x=>x.id.startsWith('outerwear-')).length,100);
+    searched.length=0;
+    const winter=await io.fetchShopRows('a'.repeat(16),null,'cold');
+    assert.equal(searched.length,7,'four standard plus three targeted snow-friendly queries');
+    assert.deepEqual(searched.filter(x=>x.p_search).map(x=>`${x.p_slot}:${x.p_search}`),[
+      'outerwear:puffer','outerwear:coat','shoes:boot',
+    ]);
+    assert.equal(winter.length,400,'winter discovery must keep exact 400-SKU cap');
+    assert.ok(winter.some(x=>x.id==='outerwear-puffer-0'));
+    assert.ok(winter.some(x=>x.id==='shoes-boot-0'));
+    searched.length=0;
+    const everyday=await io.fetchShopRows('a'.repeat(16),null,null);
+    assert.equal(searched.length,4);
+    assert.ok(searched.every(x=>x.p_search==='' && !x.p_context));
+    assert.equal(everyday.length,400);
+  }finally{globalThis.fetch=originalFetch;}
+});

@@ -18,11 +18,43 @@ import {
 import { DIRECTION_VERSION, directionDifference, selectCreativeDirectionDeck, labelCreativeDirections } from './creative_directions.mjs';
 import { EDITORIAL_QUALITY_VERSION, evaluateEditorialQuality } from './editorial_quality.mjs';
 import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitStructure.ts';
-import { rejectForClimate, rejectForStyleOccasion } from '../../src/domain/occasionRules.ts';
+import { rejectForClimate, rejectForStyleOccasion, rejectForRequestIntent, isWorkoutOccasion } from '../../src/domain/occasionRules.ts';
 import { editorialDeckCopy, DECK_COPY_VERSION } from './deck_editorial_copy.mjs';
 import { editorialRegisterVeto, EDITORIAL_REGISTER_VERSION } from './editorial_register.mjs';
 
 const slots = ['top', 'outerwear', 'bottom', 'shoes'];
+
+/** Guard against calling fashion-casual products workout equipment. A source
+ * description or generic 'athletic fit' tag is not enough: the PRODUCT NAME
+ * must support the intended physical activity, and hard contradictions win.
+ * This is Stylist 6 retrieval admission, before price/visual ranking; it is
+ * not a post-hoc change to a user's pinned SKU or a fabricated outfit.
+ */
+export function workoutItemTruthReason(item, context) {
+  if (!isWorkoutOccasion(context?.occasion)) return null;
+  const name=String(item?.name||'').toLowerCase().replace(/[-_]+/g,' ');
+  const slot=String(item?.macroCategory||'');
+  if (!['top','outerwear','bottom','shoes'].includes(slot)) return 'invalid_workout_slot';
+  if (slot==='top') {
+    if (/\b(polos?|linen|cashmere|merino|wool|flannel|oxford|poplin|dress|suit)\b/.test(name)) return 'non_workout_top';
+    if (/\b(?:shirts?|button[ -]?down)\b/.test(name) && !/\b(?:t[ -]?shirts?|tee)\b/.test(name)) return 'non_workout_shirt';
+    if (!/\b(?:training|workout|running|gym|sport(?:s)?wear|activewear|athletic|performance|technical|tech|quick[ -]?dry|drymove|moisture[ -]?wick)\b/.test(name)) return 'unverified_workout_top';
+  }
+  if (slot==='bottom') {
+    if (/\b(?:jeans?|denim|chinos?|suit|tailored|wool|flannel|formal|dress|pleated|cargo)\b/.test(name)) return 'non_workout_bottom';
+    if (!/\b(?:joggers?|sweatpants?|track[ -]?pants?|training|workout|running|gym|sport(?:s)?wear|activewear|athletic|technical|tech|quick[ -]?dry|drymove|shorts?)\b/.test(name)) return 'unverified_workout_bottom';
+  }
+  if (slot==='shoes') {
+    if (/\b(?:loafer|derby|oxford|chelsea|formal|dress|suede)\b/.test(name)) return 'non_workout_footwear';
+    if (!/\b(?:training|running|gym|workout|athletic|sports?|trail)\b/.test(name)) return 'unverified_workout_footwear';
+  }
+  if (slot==='outerwear') {
+    if (/\b(?:blazer|wool|cardigan|suit|dress|denim)\b/.test(name)) return 'non_workout_layer';
+    if (!/\b(?:training|running|gym|workout|activewear|athletic|performance|technical|tech|sports?|track|windbreaker)\b/.test(name)) return 'unverified_workout_layer';
+  }
+  return null;
+}
+
 const normalized = (value) => String(value || '').toLowerCase().replace(/[\s-]+/g, '_');
 const known = (value) => !!value && value !== 'unknown' && value !== 'neutral';
 const image = (item) => item.imageUrl || item.image_url;
@@ -392,7 +424,9 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
     prepare(item) {
       if (visualAdmissionReason(item) || isNonOutfitItem(item)) return null;
       const prepared = prepareGarment(item.color ? item : { ...item, color: undefined }), descriptor = describeGarment(prepared);
-      if (descriptor.slot !== item.macroCategory || descriptor.productKind === 'complete-suit' ||
+      if (workoutItemTruthReason(prepared, context) ||
+          rejectForRequestIntent(prepared, context.request, context.weather) ||
+          descriptor.slot !== item.macroCategory || descriptor.productKind === 'complete-suit' ||
           garmentContextReason(prepared, context) || rejectForClimate(prepared, context.weather) ||
           rejectForStyleOccasion(prepared, context.style, context.occasion) ||
           rejectForUnsuitableDateNight(descriptor, context, prepared) ||

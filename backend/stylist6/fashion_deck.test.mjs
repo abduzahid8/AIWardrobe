@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, workoutItemTruthReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -30,6 +30,40 @@ const base = {
     optionalLayer: true, referenceId: 'rt_001', budget: { amount: 750000, currency: 'UZS' },
     preferences: { avoidColors: ['black'] }, requiredIds: ['shirt-white'] },
 };
+
+test('workout catalog admission rejects real-world polo, jeans, and casual jackets before ranking',()=>{
+  const context={occasion:'Workout',style:'sport'};
+  const truth=(name,macroCategory)=>workoutItemTruthReason({id:'x',name,macroCategory},context);
+  assert.equal(truth('Rust Linen Polo Shirt','top'),'non_workout_top');
+  assert.equal(truth('regular fit knit polo in viscose mix','top'),'non_workout_top');
+  assert.equal(truth('Sea Green Ribbed T-Shirt','top'),'unverified_workout_top');
+  assert.equal(truth('The Athletic 4-Way Stretch Organic Jean | Uniform','bottom'),'non_workout_bottom');
+  assert.equal(truth('The Performance Chino | Uniform','bottom'),'non_workout_bottom');
+  assert.equal(truth('Full zip jacket with pockets','outerwear'),'unverified_workout_layer');
+  assert.equal(truth('BASIC COTTON TRAINING T-SHIRT','top'),null);
+  assert.equal(truth('TECHNICAL TRAINING T-SHIRT','top'),null);
+  assert.equal(truth('Regular-Fit Tapered Sports Joggers with DryMove','bottom'),null);
+  assert.equal(truth('SLIM FIT JOGGER WAIST TROUSERS','bottom'),null);
+  assert.equal(truth('RUNNING TRAINERS','shoes'),null);
+  assert.equal(truth('TRAINING TRAINERS','shoes'),null);
+  assert.equal(truth('RETRO STYLE TRAINERS','shoes'),'unverified_workout_footwear');
+  assert.equal(workoutItemTruthReason({name:'Rust Linen Polo Shirt',macroCategory:'top'},
+    {occasion:'Casual',style:'streetwear'}),null,'do not alter non-workout styling');
+});
+
+test('cold-weather classic office cannot serve a blazer plus loafers as winter protection',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',weather:{temp:-2,condition:'snow'},optionalLayer:true};
+  const invalidCatalog=[
+    ...products.filter(p=>['top','bottom','shoes','outerwear'].includes(p.macroCategory)),
+  ];
+  const r=await recommendFashionDeck({ ...base, request, catalog:invalidCatalog,
+    referenceBriefs:[],hardGate:async()=>({ok:true}) });
+  assert.ok((r.outfits||[]).every(o=>
+    o.items.some(i=>/\b(?:puffer|parka|insulated|overcoat|topcoat|quilted)\b/i.test(i.name)) &&
+    o.items.some(i=>/\b(?:boot|chelsea|winter)\b/i.test(i.name))),
+    'no suit blazer and lightweight loafer can be a claimed -2°C winter outfit');
+  assert.equal(r.outfits.length,0,'the mock inventory lacks coats/boots and must fail honestly');
+});
 
 test('Old Money Work retrieves office-clean roles before the hosted critic, without weakening casual use', () => {
   const ivy = {
