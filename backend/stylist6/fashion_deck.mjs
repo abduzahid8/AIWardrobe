@@ -595,7 +595,11 @@ const OLD_MONEY_OFFICE_ROLES = Object.freeze({
   ],
 });
 export function refineQuietOfficeConcept(concept, context) {
-  if (context?.style !== 'old_money' || !OFFICE_INTENT.test(String(context?.occasion || '')) ||
+  // The source-bound catalog has genuine alternatives for an editorial
+  // preference; wardrobe/mixed modes must never imply an owned SKU can be
+  // substituted just because the office formula prefers another subtype.
+  if (context?.sourceMode !== 'catalog' || context?.style !== 'old_money' ||
+      !OFFICE_INTENT.test(String(context?.occasion || '')) ||
       !OLD_MONEY_OFFICE_ROLES[concept?.id]) return concept;
   const roles = OLD_MONEY_OFFICE_ROLES[concept.id];
   return { ...concept, slots: roles.map(slot => [...slot]) };

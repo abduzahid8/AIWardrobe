@@ -35,16 +35,18 @@ test('Old Money Work retrieves office-clean roles before the hosted critic, with
   const ivy = {
     id:'refined-ivy', slots:[['dress-shirt','shirt'],['blazer','cardigan'],['chino','tailored-trouser'],['loafer','derby']],
   };
-  const work = refineQuietOfficeConcept(ivy,{style:'old_money',occasion:'Work'});
+  const work = refineQuietOfficeConcept(ivy,{sourceMode:'catalog',style:'old_money',occasion:'Work'});
   assert.deepEqual(work.slots[0], ['dress-shirt']);
   assert.deepEqual(work.slots[3], ['loafer','derby']);
   assert.equal(ivy.slots[0].length,2, 'shared original concept is immutable');
-  assert.equal(refineQuietOfficeConcept(ivy,{style:'old_money',occasion:'Weekend'}),ivy);
-  assert.equal(refineQuietOfficeConcept(ivy,{style:'classic',occasion:'Work'}),ivy);
+  assert.equal(refineQuietOfficeConcept(ivy,{sourceMode:'catalog',style:'old_money',occasion:'Weekend'}),ivy);
+  assert.equal(refineQuietOfficeConcept(ivy,{sourceMode:'catalog',style:'classic',occasion:'Work'}),ivy);
+  assert.equal(refineQuietOfficeConcept(ivy,{sourceMode:'wardrobe',style:'old_money',occasion:'Work'}),ivy);
+  assert.equal(refineQuietOfficeConcept(ivy,{sourceMode:'mixed',style:'old_money',occasion:'Work'}),ivy);
   assert.deepEqual(refineQuietOfficeConcept({id:'smart-knit-layering'},
-    {style:'old_money',occasion:'Business meeting'}).slots[1],['cardigan']);
+    {sourceMode:'catalog',style:'old_money',occasion:'Business meeting'}).slots[1],['cardigan']);
   assert.deepEqual(refineQuietOfficeConcept({id:'textured-tailoring'},
-    {style:'old_money',occasion:'Работа'}).slots[0],['dress-shirt','fine-knit']);
+    {sourceMode:'catalog',style:'old_money',occasion:'Работа'}).slots[0],['dress-shirt','fine-knit']);
 });
 
 test('warm work outfits keep the exact anchor, avoid excluded colors and omit the unnecessary layer', async () => {
