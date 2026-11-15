@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DIRECTION_VERSION,
+  architectureSeparationAdjustment,
   brandVarietyAdjustment,
   deckCategoryVarietyAdjustment,
   directionDifference,
@@ -254,7 +255,7 @@ test('pair-repeat evidence is neutral if only one lower slot repeats or metadata
 });
 
 // ---------------------------------------------------------------------------
-// Deck brand-monotony tie-break (s6-three-directions-editorial-v4). Same
+// Deck brand-monotony tie-break (s6-three-directions-editorial-v5). Same
 // bounded-magnitude convention as the footwear-variety tie-break: a look
 // whose whole brand set was already drawn pays at most -0.035 (scaled by the
 // repeat share), a new brand set earns +0.012; brand-less looks stay neutral.
@@ -363,4 +364,20 @@ test('category variety penalizes same shoe colorway/subtype and repeated bottom 
     deckCategoryVarietyAdjustment(variedCategory, [lead], metrics.featuresOf),
     'crossing dress -> sneaker register must never outrank a varied same-register dress shoe',
   );
+});
+
+
+test('fashion architecture distinguishes changed outfit formula from only recolored shoes',()=>{
+  const base=look('base',.9,SHIRT);
+  const recolor=look('recolor',.88,[SHIRT[0],SHIRT[1],SHIRT[2],slot('loafer','black')]);
+  const changed=look('changed',.88,EXPLORE);
+  assert.equal(architectureSeparationAdjustment(recolor,[base],metrics.featuresOf),-.05);
+  assert.equal(architectureSeparationAdjustment(changed,[base],metrics.featuresOf),.055);
+  assert.equal(architectureSeparationAdjustment(changed,[],metrics.featuresOf),0);
+});
+
+test('unknown outfit role metadata is neutral for architecture scoring',()=>{
+  const unknown=look('one',.90,[null,null,null,slot('sneaker','unknown')]);
+  const other=look('two',.89,[null,null,null,slot('derby','unknown')]);
+  assert.equal(architectureSeparationAdjustment(other,[unknown],metrics.featuresOf),0);
 });

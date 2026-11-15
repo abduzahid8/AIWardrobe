@@ -17,6 +17,7 @@ import {
 } from './feedback_taste.mjs';
 import { DIRECTION_VERSION, directionDifference, selectCreativeDirectionDeck, labelCreativeDirections } from './creative_directions.mjs';
 import { EDITORIAL_QUALITY_VERSION, evaluateEditorialQuality } from './editorial_quality.mjs';
+import { CONCEPT_FIDELITY_VERSION, evaluateConceptFidelity, verifiedPaletteMatch } from './concept_fidelity.mjs';
 import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitStructure.ts';
 import { rejectForClimate, rejectForStyleOccasion, rejectForRequestIntent, isWorkoutOccasion } from '../../src/domain/occasionRules.ts';
 import { editorialDeckCopy, DECK_COPY_VERSION } from './deck_editorial_copy.mjs';
@@ -137,13 +138,19 @@ function referenceAffinity(items, reference) {
     const expected = reference.roles[items[index].macroCategory] || [];
     return expected.some((subtype) => normalized(subtype) === normalized(d.subtype)) ? 1 : 0;
   });
-  const colors = descriptions.map(({ color }) => color).filter(known);
-  const palette = new Set(reference.palette.map(normalized));
-  const paletteFit = colors.length ? colors.filter((color) => palette.has(normalized(color))).length / colors.length : null;
-  const slotMatches = descriptions.flatMap(({ color }, index) => {
-    const notes = reference.garmentNotes?.[items[index].macroCategory];
+  // Use the source's verified hue tokens (navy, cream, white...) instead of
+  // the descriptor's coarse tone bins (cool-dark, light, mid...). Otherwise
+  // paletteFit and slotColorFit were systematically 0 even for a perfect match.
+  const paletteMatches = items.map(item => verifiedPaletteMatch(item,reference.palette))
+    .filter(value => value !== null);
+  const paletteFit = paletteMatches.length
+    ? paletteMatches.filter(Boolean).length / paletteMatches.length : null;
+  const slotMatches = items.flatMap(item => {
+    const notes = reference.garmentNotes?.[item.macroCategory];
     const expected = colorTokensOf({ name: notes });
-    return known(color) && expected.length ? [Number(expected.includes(color))] : [];
+    if (!expected.length) return [];
+    const matched = verifiedPaletteMatch(item, expected);
+    return matched === null ? [] : [Number(matched)];
   });
   const layered = items.some((item) => item.macroCategory === 'outerwear');
   const layerFit = reference.layerPolicy === 'optional' || layered === (reference.layerPolicy === 'required');
@@ -459,12 +466,16 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       return (brief.roles[item.macroCategory].includes(normalized(item.subtype)) ||
           brief.roles[item.macroCategory].includes(normalized(d.subtype)) ? 0.55 : 0)
         + 0.30 * contextScores.get(item)
-        + (brief.palette.includes(normalized(d.color)) ? 0.15 : 0)
+        // Preserve proven coarse-palette seeds (light, dark, earth) and only
+        // add a small exact-hue preference when those seeds do not apply.
+        + (brief.palette.includes(normalized(d.color)) ? 0.15 :
+          (!extras.budgeted && !extras.requiredIds?.length &&
+            verifiedPaletteMatch(item, brief.palette) === true ? 0.02 : 0))
         + 0.70 * (personalScores.get(item) || 0)
         + FEEDBACK_ITEM_SEED_WEIGHT * (feedbackScores.get(item) || 0);
     },
     rankLook(items, brief) {
-      const identity = JSON.stringify(items.map(({ id }) => id).sort());
+      const identity = JSON.stringify([brief?.id || null, ...items.map(({ id }) => id).sort()]);
       if (coherent.has(identity)) return coherent.get(identity);
       const assessment = outfitCoherence(items, context);
       if (!assessment.valid || rejectUnpolishedDateNightLook(items, context) || outfitStructureReason(items, false) ||
@@ -532,6 +543,13 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
             hasLayer: !unlayered,
           })
         : { score: null, adjustment: 0, evidence: [], version: EDITORIAL_QUALITY_VERSION };
+      // A look also needs to look like the concept that nominated it.
+      // Previously ranking ignored its generating brief, so an identical
+      // generic capsule scored the same for every distinct fashion direction.
+      const conceptFidelity = context.sourceMode === 'catalog' && !extras.requiredIds?.length
+        ? evaluateConceptFidelity(items, brief, { requiredIds: extras.requiredIds })
+        : { version: CONCEPT_FIDELITY_VERSION, score:null, adjustment:0,
+          roleFit:null, paletteFit:null, mismatchedSlots:[] };
       const result = {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
           personal.adjustment + editorial.adjustment + feedback.adjustment -
@@ -547,6 +565,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           : assessment.evidence,
         referenceMetadata: affinity,
         editorial,
+        conceptFidelity,
         imageSupportedItems: items.filter((item) =>
           describeGarment(item).evidence.some((entry) => entry.startsWith('image:'))).length,
         personalization: {
@@ -906,6 +925,7 @@ export async function recommendFashionDeck({
     diagnostics: { ...retrieval.diagnostics, editorialRegister: { version: EDITORIAL_REGISTER_VERSION, rejected: editorialVetoes, eligible: selectable.length }, visualVerdict,
       directionVersion: DIRECTION_VERSION,
       editorialQualityVersion: EDITORIAL_QUALITY_VERSION,
+      conceptFidelityVersion: CONCEPT_FIDELITY_VERSION,
       deckCopyVersion: DECK_COPY_VERSION,
       feedbackTasteVersion: FEEDBACK_TASTE_VERSION,
       feedbackTasteActive: !!(feedbackTaste && feedbackTaste.active),

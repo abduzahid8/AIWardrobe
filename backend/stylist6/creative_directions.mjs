@@ -12,7 +12,7 @@
 import { productIdentityOf } from '../../src/domain/outfitDiversity.ts';
 import { editorialDirectionEligible } from './editorial_quality.mjs';
 
-export const DIRECTION_VERSION = 's6-three-directions-editorial-v4';
+export const DIRECTION_VERSION = 's6-three-directions-editorial-v5';
 const MAX_POOL = 72;
 const QUALITY_WINDOW = 0.16;
 const EPS = 1e-9;
@@ -77,7 +77,11 @@ export function directionDifference(a, b, featuresOf, featureDistance) {
 }
 
 const refreshWorthShowing = (diff) =>
-  diff.distance >= 0.12 && diff.changedSlots.length >= 1;
+  diff.distance >= 0.12 &&
+  // A single recolored shirt or different shoe is still the same outfit.
+  // If a genuinely different construction is unavailable, it can remain a
+  // truthful "alternative" but must not be advertised as a fresh direction.
+  (diff.structuralSlots.some(slot => slot !== 'shoes') || diff.paletteSlots.length >= 2);
 
 const discoveryWorthShowing = (base, previous) =>
   base.distance >= 0.24 &&
@@ -251,8 +255,39 @@ export function silhouetteContrastAdjustment(candidate, chosen, featuresOf) {
   return seen.includes(mine) ? -0.032 : 0.014;
 }
 
+/** Never sell a recolor of the same outfit formula as fashion discovery.
+ * Soft ranking only: when the admitted catalog contains no different role
+ * architecture, keep a complete feasible deck and label it honestly.
+ * A new shoe/brand is not a new silhouette; compare top, outerwear, bottom.
+ */
+export function architectureSeparationAdjustment(look, chosen, featuresOf) {
+  if (!chosen?.length || typeof featuresOf !== 'function') return 0;
+  // In a sparse catalog, unknown structure must stay neutral, not be treated
+  // as evidence that two garments share the same cut or silhouette.
+  const structuralEvidence = chosen.some(other => {
+    const a = featuresOf(other), b = featuresOf(look);
+    return [0, 1, 2].some(i => {
+      if (i === 1 && Boolean(a?.[i]) !== Boolean(b?.[i])) return true;
+      return featToken(a?.[i], 0) && featToken(b?.[i], 0);
+    });
+  });
+  if (!structuralEvidence) return 0;
+  const differences = chosen.map(other =>
+    directionDifference(other, look, featuresOf, () => 0));
+  // DirectionDifference computes actual subtype/volume/texture/pattern delta
+  // separately from color and does not count a shoe-only change as styling.
+  const minMajor = Math.min(...differences.map(d =>
+    d.structuralSlots.filter(slot => slot !== 'shoes').length));
+  return minMajor >= 2 ? 0.055 : minMajor === 1 ? 0.022 : -0.05;
+}
+
 function deckDiversityAdjustments(look, chosen, overlap, anchorIds, features) {
-  return footwearVarietyAdjustment(look, chosen, overlap) +
+  // Concept fidelity acts only after retrieval and all hard gates. It cannot
+  // shrink budget-feasible candidate pools or turn a valid deck into failure.
+  const conceptFidelity = look?.fashion?.conceptFidelity?.adjustment;
+  return (Number.isFinite(conceptFidelity) ? conceptFidelity : 0) +
+    architectureSeparationAdjustment(look, chosen, features) +
+    footwearVarietyAdjustment(look, chosen, overlap) +
     lowerBodyPairRepeatAdjustment(look, chosen, overlap) +
     brandVarietyAdjustment(look, chosen) +
     garmentIdentityOverlapAdjustment(look, chosen, anchorIds) +
