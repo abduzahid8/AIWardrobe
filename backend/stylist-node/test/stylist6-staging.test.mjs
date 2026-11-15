@@ -49,7 +49,7 @@ test('Stylist 6 staging forwards HMAC-signed JWT and nonce ONLY to pinned READY 
   let called=0;
   globalThis.fetch=async(url, init)=>{
     called++;
-    assert.equal(url,'https://aiwardrobe-stylist-compute-44wpg0j3i-abduzahid8s-projects.vercel.app/api/stylist6-generate-outfits');
+    assert.equal(url,'https://aiwardrobe-stylist-compute-akqo2g0fh-abduzahid8s-projects.vercel.app/api/stylist6-generate-outfits');
     assert.equal(init.method,'POST');
     assert.equal(init.redirect,'error');
     assert.equal(init.body,body);
