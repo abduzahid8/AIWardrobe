@@ -661,6 +661,7 @@ export async function recommendFashionDeck({
   const visualEvidenceById = new Map();
   const visualReferenceModeById = new Map();
   let visualReviewCoverage = null;
+  let visualQualityDecisions = null;
   // Reference-optional review: a deck with no matching reference brief is
   // still visually judged on its product images alone (the critic marks such
   // verdicts referenceless and never claims a reference comparison). With a
@@ -707,6 +708,8 @@ export async function recommendFashionDeck({
         { ...retrieval, shortlist: candidates }, request, visualCritic,
         { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds, requireDistinctArchitectures: true },
       );
+      visualQualityDecisions = Array.isArray(reviewed.diagnostics.visualQualityDecisions)
+        ? reviewed.diagnostics.visualQualityDecisions.slice(0, 4) : [];
       visualVerdict = reviewed.diagnostics.visualValid > 0 ? 'JUDGED' : 'ABSTAINED';
       const rejected = new Set(reviewed.diagnostics.rejectedCandidateIds);
       // The hosted critic has already applied visual quality, confidence,
@@ -804,6 +807,7 @@ export async function recommendFashionDeck({
       feedbackTasteVersion: FEEDBACK_TASTE_VERSION,
       feedbackTasteActive: !!(feedbackTaste && feedbackTaste.active),
       ...(visualReviewCoverage ? { visualReviewCoverage } : {}),
+      ...(visualQualityDecisions ? { visualQualityDecisions } : {}),
       directions: directions.map((d) => d.id),
       qualifiedDirections: directions.filter((d) => d.qualified).length,
       neighborBriefs: neighborHouse.length,

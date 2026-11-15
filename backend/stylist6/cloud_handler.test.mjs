@@ -1070,6 +1070,8 @@ test('cloud rejects all low-quality assessed outfits without charging AGAIN or l
   assert.equal(result.body.visualStatus,'NVIDIA_EVALUATED_NO_CHANGE');
   assert.deepEqual(result.body.outfits,[]);
   assert.equal(result.body.diagnostics.visualReviewCoverage.approved,0);
+  assert.ok(result.body.diagnostics.visualQualityDecisions?.length > 0);
+  assert.ok(result.body.diagnostics.visualQualityDecisions.every(x => x.reason === 'below_quality_floor' && x.quality < 0.68));
   assert.ok(recorder.prompts.length>0);
 });
 
