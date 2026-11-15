@@ -194,6 +194,7 @@ test('joint selection keeps the strongest first look and avoids a second look th
       formalityFit:score,confidence:.95,reject:false,evidence:['mock colors','mock formality','mock balance']};
   });
   const result=selectVisualDeck({generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}},rows);
+  assert.ok(Array.isArray(result.diagnostics.visualQualityDecisions), 'every actual AI verdict has a quality receipt');
   assert.equal(result.status,'complete');
   assert.equal(result.outfits[0].id,'look-0');
   assert.deepEqual(new Set(result.outfits.map(({id})=>id)),new Set(['look-0','look-2','look-3']));

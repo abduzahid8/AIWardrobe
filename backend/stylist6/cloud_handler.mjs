@@ -192,12 +192,12 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         throw denied;
       }
     },
-    // Paid debit, called exactly once after the request is fully admitted
-    // (valid anchors, feasible inventory). Same production outfit-generation
-    // bucket: no new entitlement surface, no migration.
-    async debitQuota(userId) {
+    // Transactional charge: the durable logical claim is locked and marked
+    // debited in the SAME Postgres transaction as consume_edge_quota. A crash
+    // cannot leave an ambiguous debit without a durable quota marker.
+    async debitQuota(userId, requestId) {
       const admin = this.adminClient();
-      const quota = await admin.rpc('consume_edge_quota', { p_user: userId, p_endpoint: 'generate-outfits' });
+      const quota = await admin.rpc('charge_stylist6_request', { p_user: userId, p_request_id: requestId });
       if (quota.error || typeof quota.data !== 'boolean') throw new Error('stylist6_rate_unavailable');
       if (!quota.data) {
         const denied = new Error('stylist6_quota_exhausted');
@@ -245,7 +245,9 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
     async finishRequest(userId, requestId, status, code) {
       const admin = this.adminClient();
       try {
-        const finished = await admin.rpc('finish_stylist6_request', {
+        // Terminal failure + refund commit atomically and idempotently;
+        // successful generations retain their one legitimate quota debit.
+        const finished = await admin.rpc('settle_stylist6_request', {
           p_user: userId, p_request_id: requestId, p_status: status, p_code: String(code || ''),
         });
         return !finished?.error;
@@ -881,7 +883,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // Paid debit exactly once, after full admission. Planning failures
     // keep the debit, mirroring production semantics.
     try {
-      await io.debitQuota(userId);
+      await io.debitQuota(userId, requestId);
       debited = true;
     } catch (error) {
       if (error?.code === 'feature_limit_reached') {
@@ -1076,9 +1078,16 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // silently reopen the originally feasible (but rejected) catalog deck.
       const qualityFailed = (deck.diagnostics?.visualReviewCoverage?.valid ?? 0) > 0 &&
         (deck.diagnostics?.visualReviewCoverage?.approved ?? 0) === 0;
-      const failureCode = qualityFailed ? 'stylist6_visual_quality_unmet' : 'stylist6_no_feasible_looks';
-      await finish(502, failureCode);
-      return fail(failureCode, 502, {
+      // A present but incompatible locked item cannot produce an outfit.
+      // This is actionable (422), never a fabricated replacement for the
+      // anchor. Settlement atomically refunds the previously charged quota.
+      const anchorUnavailable = requiredIds.length > 0 && !qualityFailed &&
+        (deck.diagnostics?.candidateCount ?? 0) === 0;
+      const failureCode = anchorUnavailable ? 'anchor_outfit_unavailable'
+        : qualityFailed ? 'stylist6_visual_quality_unmet' : 'stylist6_no_feasible_looks';
+      const failureStatus = anchorUnavailable ? 422 : 502;
+      await finish(failureStatus, failureCode);
+      return fail(failureCode, failureStatus, {
         stage: 'stylist6_ranking',
         engineVersion: STYLIST6_CLOUD_VERSION,
         visualStatus,

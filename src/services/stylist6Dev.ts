@@ -109,6 +109,7 @@ function failureForBridge(code: unknown, stage = 'stylist6_ranking'): OutfitGene
     invalid_stylist6_request: 'outfitMaker.invalidRequest',
     invalid_generation_request: 'outfitMaker.requestTooLarge',
     anchor_not_found: 'outfitMaker.invalidRequest',
+    anchor_outfit_unavailable: 'outfitMaker.noMatchingClothing',
   };
   const key = typeof code === 'string' && code in known ? known[code] : 'outfitMaker.generateFailed';
   return new OutfitGenerationFailure(key, typeof code === 'string' ? code : 'stylist6_ranking_failed', stage);
@@ -293,6 +294,7 @@ function failureForCloud(code: unknown, stage = 'stylist6_cloud'): OutfitGenerat
     invalid_stylist6_request: 'outfitMaker.invalidRequest',
     invalid_generation_request: 'outfitMaker.requestTooLarge',
     anchor_not_found: 'outfitMaker.invalidRequest',
+    anchor_outfit_unavailable: 'outfitMaker.noMatchingClothing',
     unauthorized: 'outfitMaker.generateFailed',
     rate_limited: 'outfitMaker.generateFailed',
     feature_limit_reached: 'outfitMaker.subscriptionRequired',

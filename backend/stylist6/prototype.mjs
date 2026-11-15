@@ -328,6 +328,10 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
   const minVisualQuality=options.minVisualQuality??0.68;
   const allowed=new Set(shortlist.map(c=>c.id));
   const seen=new Set(),duplicates=new Set(),valid=new Map(),accepted=new Map();
+  // An explainable, bounded receipt from the exact candidates actually
+  // examined by NVIDIA. Do not change the established quality threshold to
+  // turn rejected outfits into synthetic successes. No images or secrets.
+  const qualityDecisions=[];
   for(const row of critiques){
     if(!allowed.has(row?.candidateId))continue;
     if(seen.has(row.candidateId))duplicates.add(row.candidateId);
@@ -343,7 +347,24 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       ? 0.45*c.visualCohesion+0.20*c.styleFit+0.20*c.occasionFit+0.15*c.formalityFit
       : 0.30*c.visualCohesion+0.30*c.referenceFidelity+
         0.15*c.styleFit+0.15*c.occasionFit+0.10*c.formalityFit;
-    if(c.confidence>=0.6&&quality>=minVisualQuality&&!c.reject)accepted.set(id,{...c,quality});
+    const decision=c.reject?'model_veto':c.confidence<0.6?'low_confidence'
+      :quality<minVisualQuality?'below_quality_floor':'approved';
+    qualityDecisions.push({
+      candidateId:id,
+      quality:Number(quality.toFixed(4)),
+      qualityFloor:minVisualQuality,
+      confidence:c.confidence,
+      reject:c.reject,
+      reason:decision,
+      scores:{cohesion:c.visualCohesion,styleFit:c.styleFit,
+        occasionFit:c.occasionFit,formalityFit:c.formalityFit,
+        referenceFidelity:c.referenceless===true?null:c.referenceFidelity},
+      // The model's short slot-pair observations are essential for
+      // investigating real fashion failures, but never include image bytes.
+      evidence:(Array.isArray(c.evidence)?c.evidence:[])
+        .slice(0,3).map(line=>String(line).slice(0,160)),
+    });
+    if(decision==='approved')accepted.set(id,{...c,quality});
   }
   const eligible=shortlist.filter(c=>accepted.has(c.id));
   const strongest=Math.max(...eligible.map(c=>accepted.get(c.id).quality));
@@ -401,6 +422,7 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       visualRejected:[...valid.values()].filter(row=>row.reject).length,
       rejectedCandidateIds:[...valid.values()].filter(row=>row.reject&&row.confidence>=0.6).map(row=>row.candidateId),
       visualApproved:accepted.size,
+      visualQualityDecisions:qualityDecisions,
       criticFailed,selected:selected.length}
   };
 }

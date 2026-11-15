@@ -63,9 +63,10 @@ function makeIo(overrides = {}) {
           throw denied;
         }
       },
-      async debitQuota(userId) {
+      async debitQuota(userId, requestId) {
         calls.debitQuota += 1;
         assert.equal(userId, USER);
+        assert.ok(claims.has(requestId), 'debit must be tied to a durable request claim');
         if (overrides.quotaDeny) {
           const denied = new Error('denied');
           denied.code = overrides.quotaDeny;
@@ -251,7 +252,7 @@ test('durable claim RPC wins over the local table and replays outcomes', async (
             store.set(key, { status: 0, code: '' });
             return { data: [{ duplicate: false, status_code: 0, outcome_code: '' }], error: null };
           }
-          if (name === 'finish_stylist6_request') {
+          if (name === 'settle_stylist6_request') {
             store.set(`${args.p_user}:${args.p_request_id}`, { status: args.p_status, code: args.p_code });
             return { data: null, error: null };
           }
@@ -271,6 +272,33 @@ test('durable claim RPC wins over the local table and replays outcomes', async (
   assert.equal(second.durable, true);
 });
 
+test('Stylist 6 quota is charged and failure-settled through claim-bound atomic RPCs only', async () => {
+  const { createCloudIo } = await import('./cloud_handler.mjs');
+  const used = [];
+  const io = createCloudIo({
+    url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'service',
+    supabaseJs: { createClient: () => ({
+      rpc: async (name, args) => {
+        used.push({ name, args });
+        if (name === 'claim_stylist6_request') return { data: [{ duplicate:false, status_code:0, outcome_code:'' }], error:null };
+        if (name === 'charge_stylist6_request') return { data:true, error:null };
+        if (name === 'settle_stylist6_request') return { data:true, error:null };
+        throw Error(`unexpected or obsolete RPC: ${name}`);
+      },
+    }) },
+  });
+  const requestId = 'server-bound-transaction-1';
+  const claim = await io.claimRequest(USER, requestId, 'a'.repeat(64));
+  assert.equal(claim.duplicate, false);
+  await io.debitQuota(USER, requestId);
+  assert.equal(await io.finishRequest(USER, requestId, 502, 'stylist6_visual_quality_unmet'), true);
+  assert.deepEqual(used.map(x=>x.name), [
+    'claim_stylist6_request','charge_stylist6_request','settle_stylist6_request',
+  ]);
+  assert.deepEqual(used[1].args, {p_user:USER,p_request_id:requestId});
+  assert.equal(used[2].args.p_status,502);
+});
+
 test('missing claim storage fails closed before any debit', async () => {
   const { createCloudIo } = await import('./cloud_handler.mjs');
   const calls = { debit: 0 };
@@ -284,7 +312,7 @@ test('missing claim storage fails closed before any debit', async () => {
             return { data: null, error: { code: 'PGRST202', message: 'claim_stylist6_request does not exist' } };
           }
           if (name === 'increment_rate_bucket') return { data: 1, error: null };
-          if (name === 'consume_edge_quota') { calls.debit += 1; return { data: true, error: null }; }
+          if (name === 'charge_stylist6_request') { calls.debit += 1; return { data: true, error: null }; }
           throw new Error('unexpected rpc ' + name);
         },
         from: () => { throw new Error('unused'); },
@@ -692,6 +720,21 @@ test('malformed budgets fail before debit', async () => {
     assert.equal(result.status,400);
     assert.equal(result.calls.debitQuota,0);
   }
+});
+
+test('present but unusable locked footwear returns actionable 422 without fabricating replacement', async () => {
+  const wardrobeMismatch = SHOP.map(item => item.id === 'shoes-1'
+    ? { ...item, name:'Neon beach flip-flops for swimming', fashion_subtype:'flip_flop',
+      garment_type:'shoes', category:'shoes' }
+    : item);
+  const {status,body,calls} = await signedCall({request:{...baseRequest,
+    style:'classic',occasion:'Work',requiredIds:['shoes-1'],
+    generationRequestId:'qa-locked-incompatible-shoe-1'}}, {}, {shopRows:wardrobeMismatch});
+  assert.equal(status,422);
+  assert.equal(body.code,'anchor_outfit_unavailable');
+  assert.equal(body.outfits.length,0);
+  assert.equal(calls.debitQuota,1);
+  assert.equal(calls.finishRequest,1);
 });
 
 test('a debited request with no feasible looks records its terminal outcome', async () => {

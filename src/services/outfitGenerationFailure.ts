@@ -29,6 +29,7 @@ const messages = {
   stylist6_timeout: 'outfitMaker.requestTimeout',
   invalid_stylist6_request: 'outfitMaker.invalidRequest',
   anchor_not_found: 'outfitMaker.incompatibleLockedItem',
+  anchor_outfit_unavailable: 'outfitMaker.incompatibleLockedItem',
   stylist_compute_timeout: 'outfitMaker.requestTimeout',
   stylist_compute_unavailable: 'outfitMaker.aiUnavailable',
   stylist_compute_unconfigured: 'outfitMaker.aiUnavailable',
