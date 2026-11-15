@@ -1369,8 +1369,17 @@ const AIOutfitGenerator = () => {
     try {
       setLoading(true);
       setError('');
-      let ok = false;
-      try { ok = requireFeature('aiOutfits'); } catch { ok = false; }
+      // The isolated Stylist 6 cloud QA engine enforces an authenticated,
+      // server-side entitlement and atomic quota charge. The simulator's
+      // local subscription snapshot can be stale when an owner provisions a
+      // short-lived QA tier AFTER sign-in. Only the opt-in __DEV__ cloud path
+      // skips this redundant *client-side* gate; a free account still gets
+      // a real 403 from Supabase and is never granted generation by the app.
+      const serverMeteredCloudQA = STYLIST6_DEV_ENABLED && devEngine === 'stylist6cloud';
+      let ok = serverMeteredCloudQA;
+      if (!serverMeteredCloudQA) {
+        try { ok = requireFeature('aiOutfits'); } catch { ok = false; }
+      }
       if (!current() || !ok) return;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       if (styleOverride) setSelectedStyle(styleOverride);
@@ -2201,7 +2210,7 @@ const AIOutfitGenerator = () => {
           {STYLIST6_DEV_ENABLED && lastEngineVersion && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS !== 'true' ? (
             <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
               <ScaledText testID="stylistEngineBanner" style={{fontSize: 11, textAlign: 'center', color: '#173A65', fontWeight: '700'}}>
-                {`Engine ${lastEngineVersion}${lastEngineDetail ? ` · ${lastEngineDetail}` : ''}`}
+                {`Engine ${lastEngineVersion} · ${outfits.length} looks${lastEngineDetail ? ` · ${lastEngineDetail}` : ''}`}
               </ScaledText>
             </View>
           ) : null}
