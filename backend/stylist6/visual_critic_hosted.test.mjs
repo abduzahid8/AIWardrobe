@@ -135,7 +135,11 @@ test('textual editorial blueprint informs referenceless style judgment without c
   const body=seen[0], prompt=body.messages[0].content[0].text;
   assert.match(prompt,/editorial TEXT BLUEPRINT/);
   assert.match(prompt,/grey wool overshirt/);
-  assert.match(prompt,/never claim photographic reference fidelity/);
+  assert.match(prompt,/never claim photographic reference fidelity/i);
+  assert.match(prompt,/not an exact compulsory uniform or color match/);
+  assert.match(prompt,/unless the user explicitly asked for them/);
+  assert.match(prompt,/Do not subtract styleFit or occasionFit merely because/);
+  assert.match(prompt,/Reject real visible mismatches/);
   assert.equal(body.messages[0].content.filter(x=>x.type==='image_url').length,4);
   // Change the curated guidance but keep EXACT product photos. The verdict
   // cache may not reuse an evaluation against a different fashion direction.
