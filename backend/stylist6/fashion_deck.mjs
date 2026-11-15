@@ -576,6 +576,31 @@ export function adjacentCreativeStyles(style, dressCode) {
   return neighbors[style] || [];
 }
 
+// The broad Ivy/preppy concept family is correct for weekends, but a Work
+// intent needs office-weight garment roles *before* candidate retrieval.
+// Otherwise seed retrieval overweights casual plaid/gingham shirts and heavy
+// leisure footwear; a later NVIDIA veto has only four slots to fix them.
+// This adjusts concept *preferences*, never budget, stock, anchors, or the
+// visual quality gate. Every final SKU still passes the original hard gates.
+const OFFICE_INTENT = /\b(work|office|business|meeting|conference)\b|работ|офис|делов|встреч|\b(ofis|ish|biznes|uchrashuv)\b/i;
+const OLD_MONEY_OFFICE_ROLES = Object.freeze({
+  'refined-ivy': [
+    ['dress-shirt'], ['blazer', 'cardigan'], ['chino', 'tailored-trouser'], ['loafer', 'derby'],
+  ],
+  'textured-tailoring': [
+    ['dress-shirt', 'fine-knit'], ['blazer', 'coat'], ['tailored-trouser', 'trouser'], ['derby', 'loafer', 'monk'],
+  ],
+  'smart-knit-layering': [
+    ['dress-shirt', 'fine-knit'], ['cardigan'], ['tailored-trouser', 'chino'], ['loafer', 'chelsea'],
+  ],
+});
+export function refineQuietOfficeConcept(concept, context) {
+  if (context?.style !== 'old_money' || !OFFICE_INTENT.test(String(context?.occasion || '')) ||
+      !OLD_MONEY_OFFICE_ROLES[concept?.id]) return concept;
+  const roles = OLD_MONEY_OFFICE_ROLES[concept.id];
+  return { ...concept, slots: roles.map(slot => [...slot]) };
+}
+
 export function fashionStylingContext(request) {
   const weather = resolveStylistWeather(request.brief, request.weather);
   const context = stylingContext({ ...request, weather, request: request.brief, optionalLayer: request.optionalLayer === true });
@@ -610,7 +635,9 @@ export async function recommendFashionDeck({
     if (forceLayer) return null;
     return brief;
   };
-  const house = outfitConcepts({ ...context, optionalLayer: noLayer }).map((concept) => ({
+  const house = outfitConcepts({ ...context, optionalLayer: noLayer })
+    .map((concept) => refineQuietOfficeConcept(concept, context))
+    .map((concept) => ({
     id: concept.id, name: concept.title, palette: [...concept.palette], silhouette: concept.silhouette,
     roles: Object.fromEntries(slots.map((slot, index) => [slot, [...(concept.slots[index] || [])].slice(0, 10)])),
     layerPolicy: concept.layerRole === 'absent' ? 'absent' : context.optionalLayer && !forceLayer ? 'optional' : 'required',

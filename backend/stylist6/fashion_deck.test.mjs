@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -30,6 +30,22 @@ const base = {
     optionalLayer: true, referenceId: 'rt_001', budget: { amount: 750000, currency: 'UZS' },
     preferences: { avoidColors: ['black'] }, requiredIds: ['shirt-white'] },
 };
+
+test('Old Money Work retrieves office-clean roles before the hosted critic, without weakening casual use', () => {
+  const ivy = {
+    id:'refined-ivy', slots:[['dress-shirt','shirt'],['blazer','cardigan'],['chino','tailored-trouser'],['loafer','derby']],
+  };
+  const work = refineQuietOfficeConcept(ivy,{style:'old_money',occasion:'Work'});
+  assert.deepEqual(work.slots[0], ['dress-shirt']);
+  assert.deepEqual(work.slots[3], ['loafer','derby']);
+  assert.equal(ivy.slots[0].length,2, 'shared original concept is immutable');
+  assert.equal(refineQuietOfficeConcept(ivy,{style:'old_money',occasion:'Weekend'}),ivy);
+  assert.equal(refineQuietOfficeConcept(ivy,{style:'classic',occasion:'Work'}),ivy);
+  assert.deepEqual(refineQuietOfficeConcept({id:'smart-knit-layering'},
+    {style:'old_money',occasion:'Business meeting'}).slots[1],['cardigan']);
+  assert.deepEqual(refineQuietOfficeConcept({id:'textured-tailoring'},
+    {style:'old_money',occasion:'Работа'}).slots[0],['dress-shirt','fine-knit']);
+});
 
 test('warm work outfits keep the exact anchor, avoid excluded colors and omit the unnecessary layer', async () => {
   const result = await recommendFashionDeck(base);
