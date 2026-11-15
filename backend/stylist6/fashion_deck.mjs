@@ -549,6 +549,21 @@ function creativeMetrics(context) {
   };
 }
 
+/**
+ * The fourth hosted-visual candidate is insurance against a visual veto,
+ * not an opportunity to show a weaker novelty stunt. All challengers have
+ * already passed exact SKU/occasion/budget admission and differ in >=2 items
+ * from the proposed deck. Within the same bounded quality window, present
+ * the best deterministic whole-look score first; novelty breaks near ties.
+ * NVIDIA remains the final gate: this function never approves a look.
+ */
+export function rankVisualChallengerPool(entries) {
+  return [...entries]
+    .sort((a,b) => b.look.fashion.score - a.look.fashion.score ||
+      b.difference - a.difference || String(a.look.id).localeCompare(String(b.look.id)))
+    .map(({look}) => look);
+}
+
 function chooseDeck(shortlist, context, excluded = new Set()) {
   return selectCreativeDirectionDeck(
     shortlist.filter(({ id }) => !excluded.has(id)),
@@ -714,7 +729,7 @@ export async function recommendFashionDeck({
     if (candidates.length < 4) {
       const metrics = creativeMetrics(deckContext);
       const leadScore = lead.fashion?.score ?? -Infinity;
-      const extras = selectable
+      const extras = rankVisualChallengerPool(selectable
         .filter(look => !candidates.some(chosen => chosen.id === look.id) &&
           Number.isFinite(look.fashion?.score) &&
           look.fashion.score >= leadScore - VISUAL_CHALLENGER_QUALITY_WINDOW &&
@@ -725,10 +740,7 @@ export async function recommendFashionDeck({
           difference: Math.min(...(candidates.length ? candidates : selected).map(other =>
             directionDifference(other, look, metrics.featuresOf, metrics.featureDistance).distance)),
         }))
-        .sort((a, b) => b.difference - a.difference ||
-          b.look.fashion.score - a.look.fashion.score ||
-          String(a.look.id).localeCompare(String(b.look.id)))
-        .map(({ look }) => look);
+      );
       for (const alternate of extras) {
         if (candidates.length >= 4) break;
         if (await permitted(alternate)) candidates.push(alternate);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -47,6 +47,21 @@ test('Old Money Work retrieves office-clean roles before the hosted critic, with
     {sourceMode:'catalog',style:'old_money',occasion:'Business meeting'}).slots[1],['cardigan']);
   assert.deepEqual(refineQuietOfficeConcept({id:'textured-tailoring'},
     {sourceMode:'catalog',style:'old_money',occasion:'Работа'}).slots[0],['dress-shirt','fine-knit']);
+});
+
+test('fourth visual challenger favors safe whole-look quality over extreme novelty', () => {
+  const options=[
+    {look:{id:'eccentric',fashion:{score:0.74}},difference:0.92},
+    {look:{id:'coherent',fashion:{score:0.84}},difference:0.26},
+    {look:{id:'balanced',fashion:{score:0.81}},difference:0.51},
+    {look:{id:'tie-less-novel',fashion:{score:0.80}},difference:0.15},
+    {look:{id:'tie-more-novel',fashion:{score:0.80}},difference:0.38},
+  ];
+  assert.deepEqual(rankVisualChallengerPool(options).map(x=>x.id),
+    ['coherent','balanced','tie-more-novel','tie-less-novel','eccentric']);
+  assert.deepEqual(options.map(x=>x.look.id),
+    ['eccentric','coherent','balanced','tie-less-novel','tie-more-novel'],
+    'sorting must not mutate source shortlist');
 });
 
 test('warm work outfits keep the exact anchor, avoid excluded colors and omit the unnecessary layer', async () => {
