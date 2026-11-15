@@ -260,7 +260,7 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       // product due to a random discovery page). No client-supplied raw seed.
       const safeSeed = typeof seed === 'string' && /^[a-f0-9]{16}$/.test(seed) ? seed : null;
       const hasContext = Boolean(context && typeof context === 'object' && !Array.isArray(context) && Object.keys(context).length > 0);
-      for (const slot of CATALOG_SLOTS) {
+      const slotBatches = await Promise.all(CATALOG_SLOTS.map(async (slot) => {
         const rpcBody = {
           p_slot: slot,
           p_search: '',
@@ -274,7 +274,9 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
           headers: { ...authHeaders(serviceKey), Authorization: `Bearer ${serviceKey}` },
           body: JSON.stringify(rpcBody),
         });
-        const data = await check(response, 'stylist6_catalog_unavailable');
+        return check(response, 'stylist6_catalog_unavailable');
+      }));
+      for (const data of slotBatches) {
         for (const row of Array.isArray(data) ? data : []) {
           if (row && row.id && !rows.has(String(row.id))) {
             // This server RPC selects only active shop_catalog rows, but its
@@ -677,7 +679,7 @@ export function normalizeStylist6CloudPayload(payload, env = {}) {
  * (injectable fakes in tests); `env` carries server-only configuration.
  * Returns {status, body} with an edge-shaped payload.
  */
-export async function handleStylist6CloudGenerate({ method, headers, bodyText, env, io, fetchImpl }) {
+export async function handleStylist6CloudGenerate({ method, headers, bodyText, env, io, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS }) {
   const secret = env.STYLIST6_NODE_SHARED_SECRET || '';
   const previousSecret = env.STYLIST6_NODE_SHARED_SECRET_PREVIOUS || '';
   if (!secret || secret.length < 32) return fail('stylist_compute_unconfigured', 503);
@@ -743,9 +745,30 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     return fail('rate_limit_unavailable', 503, { stage: 'stylist6_admission' });
   }
 
+  const budgetMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : REQUEST_TIMEOUT_MS;
   const started = Date.now();
+  const remainingMs = () => budgetMs - (Date.now() - started);
   const deadline = () => {
-    if (Date.now() - started > REQUEST_TIMEOUT_MS) throw new Error('stylist6_timeout');
+    if (remainingMs() <= 0) throw new Error('stylist6_timeout');
+  };
+  const deadlineController = new AbortController();
+  const runWithinRemainingDeadline = async (work) => {
+    const left = remainingMs();
+    if (left <= 0) throw new Error('stylist6_timeout');
+    let timer;
+    try {
+      return await Promise.race([
+        Promise.resolve().then(work),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            deadlineController.abort();
+            reject(new Error('stylist6_timeout'));
+          }, left);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   };
   // Logical request identity: an explicit client id when supplied,
   // otherwise the body hash (identical bytes = identical request).
@@ -850,6 +873,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         priorStatus: prior.status ?? null,
         priorCode: prior.code || null,
         outcomeState: hasTerminalStatus ? 'terminal_recorded' : 'in_progress_or_interrupted',
+        retryWithNewRequestId: !hasTerminalStatus,
         replayProtection: 'durable',
       });
     }
@@ -960,6 +984,15 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const visualEvents = [];
     const visualAsked = request.enableVisual === true;
     const visualDisabled = ['1', 'true'].includes(String(env.STYLIST6_VISUAL_DISABLED || '').trim().toLowerCase());
+    const explicitVisualFlag = payload?.enableVisual !== undefined
+      || payload?.visualEvaluation !== undefined
+      || payload?.request?.enableVisual !== undefined
+      || payload?.request?.visualEvaluation !== undefined;
+    const visualPolicy = visualDisabled
+      ? 'server_killswitch'
+      : explicitVisualFlag
+        ? (visualAsked ? 'explicit_client' : 'default_off')
+        : (/^(1|true)$/i.test(String(env.STYLIST6_DEFAULT_VISUAL_EVAL || '').trim()) ? 'server_default' : 'default_off');
     const nvidiaKey = env.NVIDIA_API_KEY || '';
     const photoCache = new Map();
     if (visualAsked && !visualDisabled && nvidiaKey.startsWith('nvapi-')) {
@@ -974,7 +1007,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         // bucket cannot serve the selected reference, the critic abstains.
         referenceMediaConfigured: Boolean(String(env.STYLIST6_REFERENCE_BUCKET || '').trim()),
         referenceBlueprints: buildReferenceBlueprints(referenceIndex),
-        timeoutMs: VISUAL_TIMEOUT_MS,
+        timeoutMs: Math.min(VISUAL_TIMEOUT_MS, Math.max(1000, remainingMs() - 1000)),
         providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
         ...(fetchImpl ? { fetchImpl } : {}),
         resolveReference: (id, signal) => resolveReferenceAsset(env, env.SUPABASE_URL, id,
@@ -999,7 +1032,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // Bounded concurrent media pre-warm before Wave 1 hits the strict NIM
       // deadline so merchant CDN fetches never wait behind each other inside
       // provider evaluation. Only touches URLs already permitted for inference.
-      visualCritic = async (candidates, ...rest) => {
+      visualCritic = async (candidates, critiqueRequest, criticOptions = {}) => {
         const urls = [...new Set(
           (Array.isArray(candidates) ? candidates : []).flatMap((look) =>
             (look?.items || [])
@@ -1008,10 +1041,14 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           ),
         )];
         for (let i = 0; i < urls.length; i += 6) {
+          if (remainingMs() <= 5000 || deadlineController.signal.aborted) break;
           await Promise.allSettled(urls.slice(i, i + 6).map((imageUrl) =>
             resolveProduct({ imageUrl }).catch(() => null)));
         }
-        return rawVisualCritic(candidates, ...rest);
+        const combinedSignal = criticOptions?.signal
+          ? AbortSignal.any([deadlineController.signal, criticOptions.signal])
+          : deadlineController.signal;
+        return rawVisualCritic(candidates, critiqueRequest, { ...criticOptions, signal: combinedSignal });
       };
       // Transmission gate, separate from download eligibility: every product
       // image must carry explicit external-inference authorization, or the
@@ -1020,7 +1057,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         isInferenceAuthorized(item.imageUrl || item.image_url));
     }
     deadline();
-    const deck = await recommendFashionDeck({
+    const deck = await runWithinRemainingDeadline(() => recommendFashionDeck({
       request: input,
       catalog: feasible,
       referenceBriefs: refs,
@@ -1031,7 +1068,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // in one bounded batch, not just the first selection.
       visualDeckReview: true,
       ...(visualCritic ? { visualCritic, canJudgeOutfit } : {}),
-    });
+    }));
     const visualStatus = mapCloudVisualStatus(deck);
     if ((deck.status !== 'complete' && deck.status !== 'partial') || !deck.outfits.length) {
       // Distinguish a real feasibility shortage from an actual visual
@@ -1139,6 +1176,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           // Cost metering is tokens-based only: no per-call pricing table
           // exists in this codebase, so no currency estimate is invented.
           model: visualCritic ? NVIDIA_VISION_MODEL : null,
+          policy: visualPolicy,
           requested: visualAsked,
           serverDisabled: visualAsked && visualDisabled,
           // Owner reference storage is optional; without it the critic may
@@ -1184,10 +1222,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       },
     };
   } catch (error) {
-    const status = error?.message === 'stylist6_timeout' ? 504 : 500;
+    const timedOut = error?.message === 'stylist6_timeout';
+    const status = timedOut ? 504 : 500;
+    const failureCode = timedOut ? 'stylist6_timeout' : 'stylist6_ranking_failed';
     if (claimed) {
-      await finish(debited ? status : 503, debited ? 'stylist6_ranking_failed' : 'aborted_pre_debit').catch(() => {});
+      await finish(debited ? status : 503, debited ? failureCode : 'aborted_pre_debit').catch(() => {});
     }
-    return fail('stylist6_ranking_failed', status, { stage: 'stylist6_ranking' });
+    return fail(failureCode, status, { stage: 'stylist6_ranking', retryWithNewRequestId: debited && timedOut });
   }
 }

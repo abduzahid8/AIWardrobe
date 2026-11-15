@@ -1156,7 +1156,7 @@ test('enableVisual without a server key completes the deterministic deck with an
   assert.equal(result.status, 200);
   assert.equal(result.body.visualStatus, 'NVIDIA_NOT_RUN');
   assert.deepEqual(result.body.visualReceipt, {
-    model: null, requested: true, serverDisabled: false, referenceBucketConfigured: false,
+    model: null, policy: 'explicit_client', requested: true, serverDisabled: false, referenceBucketConfigured: false,
     providerCalls: 0, imagesSent: 0, cacheHits: 0, retriedCalls: 0,
     validVerdicts: 0, abstentions: 0, displayedLooks: result.body.outfits.length, displayedJudged: 0,
     visualApproval: 'unavailable', totalTokens: null, events: [],
@@ -1496,4 +1496,111 @@ test('budgeted unanchored cloud discovery forwards budget, currency, and FX rate
     onShopSeed: (_seed, context) => capturedContexts.push(context),
   });
   assert.equal(capturedContexts[0], null);
+});
+
+test('crash-window recovery: deadline aborts slow provider with 504 stylist6_timeout and stranded claims signal retryWithNewRequestId without re-debit', async () => {
+  // 1) Simulated stalled downstream provider inside ranking triggers 504 + finishRequest before 60s kill
+  const harness = makeIo({ shopRows: merchantShop('timeout-test') });
+  const body = JSON.stringify({ request: { ...baseRequest, enableVisual: true, generationRequestId: 'timeout-recovery-1' } });
+  const authorization = `Bearer ${JWT}`;
+  const signature = await signStylistTransport({ secret: SECRET, body, authorization });
+  const mediaStub = makeVisualFetchStub('timeout-test');
+  const slowFetch = async (targetUrl, options = {}) => {
+    const u = String(targetUrl);
+    if (u.startsWith('https://integrate.api.nvidia.com/')) {
+      await new Promise((resolve, reject) => {
+        const t = setTimeout(resolve, 1000);
+        options.signal?.addEventListener('abort', () => { clearTimeout(t); reject(new Error('aborted')); }, { once: true });
+      });
+    }
+    return mediaStub(targetUrl, options);
+  };
+  const timeoutRes = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization, ...signature },
+    bodyText: body,
+    env: { ...env, NVIDIA_API_KEY: 'nvapi-timeout-test-key' },
+    io: harness.io,
+    fetchImpl: slowFetch,
+    timeoutMs: 120,
+  });
+  assert.equal(timeoutRes.status, 504);
+  assert.equal(timeoutRes.body.code, 'stylist6_timeout');
+  assert.equal(timeoutRes.body.retryWithNewRequestId, true);
+  assert.equal(harness.calls.debitQuota, 1);
+  assert.equal(harness.calls.finishRequest, 1);
+  assert.equal(harness.claims.get('timeout-recovery-1').status, 504);
+  assert.equal(harness.claims.get('timeout-recovery-1').code, 'stylist6_timeout');
+
+  // Replaying timed-out ID returns 409 duplicate_request with 0 extra debits
+  const replayTimeout = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization, ...signature },
+    bodyText: body,
+    env,
+    io: harness.io,
+  });
+  assert.equal(replayTimeout.status, 409);
+  assert.equal(replayTimeout.body.code, 'duplicate_request');
+  assert.equal(replayTimeout.body.priorStatus, 504);
+  assert.equal(replayTimeout.body.retryWithNewRequestId, false);
+  assert.equal(harness.calls.debitQuota, 1);
+
+  // 2) Stranded status=0 claim (e.g. Lambda SIGKILL mid-flight) blocks same ID and signals retryWithNewRequestId=true
+  const strandedHarness = makeIo();
+  const strandedReq = { ...baseRequest, generationRequestId: 'sigkill-stranded-1' };
+  const strandedBody = JSON.stringify({ request: strandedReq });
+  const strandedSig = await signStylistTransport({ secret: SECRET, body: strandedBody, authorization });
+  strandedHarness.claims.set('sigkill-stranded-1', {
+    status: 0,
+    code: '',
+    fingerprint: canonicalRequestFingerprint(strandedReq),
+  });
+  const strandedRes = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization, ...strandedSig },
+    bodyText: strandedBody,
+    env,
+    io: strandedHarness.io,
+  });
+  assert.equal(strandedRes.status, 409);
+  assert.equal(strandedRes.body.code, 'duplicate_request');
+  assert.equal(strandedRes.body.outcomeState, 'in_progress_or_interrupted');
+  assert.equal(strandedRes.body.retryWithNewRequestId, true);
+  assert.equal(strandedHarness.calls.debitQuota, 0);
+
+  // 3) Visual policy transparency: default_off vs server_default vs server_killswitch vs explicit_client
+  const defaultOff = await signedCall({ request: { ...baseRequest, generationRequestId: 'policy-default-off' } });
+  assert.equal(defaultOff.body.visualReceipt.policy, 'default_off');
+
+  const explicitBody = JSON.stringify({ request: { ...baseRequest, enableVisual: true, generationRequestId: 'policy-explicit' } });
+  const explicitSig = await signStylistTransport({ secret: SECRET, body: explicitBody, authorization });
+  const explicitRes = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization, ...explicitSig },
+    bodyText: explicitBody,
+    env,
+    io: makeIo().io,
+  });
+  assert.equal(explicitRes.body.visualReceipt.policy, 'explicit_client');
+
+  const srvDefaultBody = JSON.stringify({ prompt: 'work', occasion: 'Work', stylePreferences: ['classic'], generationRequestId: 'policy-srv-default' });
+  const srvDefaultSig = await signStylistTransport({ secret: SECRET, body: srvDefaultBody, authorization });
+  const srvDefaultRes = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization, ...srvDefaultSig },
+    bodyText: srvDefaultBody,
+    env: { ...env, STYLIST6_DEFAULT_VISUAL_EVAL: 'true' },
+    io: makeIo().io,
+  });
+  assert.equal(srvDefaultRes.body.visualReceipt.policy, 'server_default');
+
+  const killRes = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization, ...explicitSig },
+    bodyText: explicitBody,
+    env: { ...env, STYLIST6_VISUAL_DISABLED: 'true' },
+    io: makeIo().io,
+  });
+  assert.equal(killRes.body.visualReceipt.policy, 'server_killswitch');
 });

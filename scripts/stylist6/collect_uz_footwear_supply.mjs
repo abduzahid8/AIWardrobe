@@ -146,21 +146,25 @@ function loadEnv() {
   return out;
 }
 
-async function fetchActiveShoesSummary(repoRoot, env) {
+async function fetchActiveShoesSummary(repoRoot, env, fetchImpl = fetch) {
   let rows = [];
   let source = 'none';
   if (env.EXPO_PUBLIC_SUPABASE_URL && env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
     const u = `${env.EXPO_PUBLIC_SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/shop_catalog?select=id,name,brand,price,currency,image_url,source_url,is_active&is_active=eq.true&garment_type=eq.shoes&limit=500`;
-    const res = await fetch(u, {
-      headers: {
-        apikey: env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-      },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (res.ok) {
-      rows = await res.json();
-      source = 'supabase_rest_readonly';
+    try {
+      const res = await fetchImpl(u, {
+        headers: {
+          apikey: env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res?.ok) {
+        rows = await res.json();
+        source = 'supabase_rest_readonly';
+      }
+    } catch {
+      rows = [];
     }
   }
   if (!rows.length) {
@@ -279,7 +283,7 @@ export async function runCollector({ fetchImpl = fetch, writeOutput = true } = {
     for (const item of batchResults) if (item) items.push(item);
   }
 
-  const activeCatalog = await fetchActiveShoesSummary(repoRoot, env);
+  const activeCatalog = await fetchActiveShoesSummary(repoRoot, env, fetchImpl);
   const archivedPath = path.join(repoRoot, 'benchmarks/stylist6/FOOTWEAR_UZ_EXISTING_INACTIVE_20261113.json');
   const archivedUrls = fs.existsSync(archivedPath)
     ? new Set((JSON.parse(fs.readFileSync(archivedPath, 'utf8')).matches || []).map((m) => text(m.source_url)).filter(Boolean))
