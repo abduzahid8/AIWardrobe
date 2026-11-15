@@ -381,3 +381,30 @@ test('unknown outfit role metadata is neutral for architecture scoring',()=>{
   const other=look('two',.89,[null,null,null,slot('derby','unknown')]);
   assert.equal(architectureSeparationAdjustment(other,[unknown],metrics.featuresOf),0);
 });
+
+
+test('footwear-only novelty cannot be promoted to a third fashion direction',()=>{
+  const base=look('signature',.94,SHIRT);
+  const refresh=look('refresh',.92,FRESH);
+  const shoeSwap=look('shoe-swap',.91,[
+    ...FRESH.slice(0,3),slot('chelsea','burgundy','wide','suede','check'),
+  ]);
+  const selection=selectCreativeDirectionDeck([base,refresh,shoeSwap],metrics);
+  assert.equal(selection.looks.length,3);
+  assert.equal(selection.directions[2].id,'alternative');
+  assert.equal(selection.directions[2].qualified,false);
+});
+
+test('structural change must differ from both earlier looks to count as discovery',()=>{
+  const base=look('signature',.94,SHIRT);
+  const refresh=look('refresh',.92,FRESH);
+  // The third look changes footwear and colors from the signature, but is
+  // otherwise the same garment architecture as the refresh.
+  const recolor=look('recolor',.90,[
+    slot('shirt','burgundy','slim'),null,
+    slot('tailored-trouser','black','slim'),slot('chelsea','black'),
+  ]);
+  const selection=selectCreativeDirectionDeck([base,refresh,recolor],metrics);
+  assert.equal(selection.looks.length,3);
+  assert.equal(selection.directions[2].id,'alternative');
+});

@@ -83,10 +83,17 @@ const refreshWorthShowing = (diff) =>
   // truthful "alternative" but must not be advertised as a fresh direction.
   (diff.structuralSlots.some(slot => slot !== 'shoes') || diff.paletteSlots.length >= 2);
 
+// A change of shoes alone is not a new fashion direction. Likewise, three
+// color changes cannot stand in for a changed garment architecture.
+// Discovery needs an evidenced change of top, layer or trouser construction;
+// the weaker refresh/alternative lanes can still show colorways honestly.
+const hasGarmentDirection = (diff) =>
+  diff.structuralSlots.some(slot => slot !== 'shoes');
+
 const discoveryWorthShowing = (base, previous) =>
   base.distance >= 0.24 &&
-  (base.structuralSlots.length >= 1 || base.paletteSlots.length >= 3) &&
-  (!previous || previous.distance >= 0.16);
+  hasGarmentDirection(base) &&
+  (!previous || (previous.distance >= 0.16 && hasGarmentDirection(previous)));
 
 function allowedTogether(a, b, overlap) {
   // Existing production boundary: two different purchased/owned products

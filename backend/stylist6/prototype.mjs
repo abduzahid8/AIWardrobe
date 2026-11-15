@@ -114,23 +114,44 @@ const photoUrl=i=>i.imageUrl||i.image_url;
 const sameProduct=(a,b)=>baseProductId(a.id)===baseProductId(b.id)||
   (!!photoUrl(a)&&photoUrl(a)===photoUrl(b));
 const sharedProducts=(a,b)=>a.items.filter(item=>b.items.some(other=>sameProduct(item,other))).length;
-// Preserve the seed winner and use the remaining review slots for alternatives
-// within one palette match of the strongest unreviewed seed.
-function diversifyBriefHead(candidates){
+// Count only source-backed garment roles; distinct SKUs or shoes alone are
+// not evidence that a different outfit construction reached the shortlist.
+function architecturalOverlap(a,b){
+  let comparable=0, same=0;
+  for(const slot of ['top','outerwear','bottom']){
+    const x=a.items.find(item=>item.macroCategory===slot);
+    const y=b.items.find(item=>item.macroCategory===slot);
+    if(!x && !y) continue;
+    if(!x || !y){comparable++;continue;}
+    if(!x.subtype || !y.subtype || x.subtype==='unknown' || y.subtype==='unknown') continue;
+    comparable++;
+    if(x.subtype===y.subtype) same++;
+  }
+  return comparable ? same/comparable : null;
+}
+
+// Preserve the best seed. Within an existing tight seed-quality window, show
+// genuine garment architectures before merely varying SKU, brand or shoes.
+// Missing subtype evidence falls back to the previous product-overlap policy.
+export function diversifyBriefHead(candidates){
   candidates.sort((a,b)=>b.seedScore-a.seedScore);
   if(candidates.length<3)return;
   const chosen=[candidates.shift()];
   while(candidates.length&&chosen.length<MAX_VISUAL_CANDIDATES){
     const floor=candidates[0].seedScore-PALETTE_MATCH_WEIGHT-1e-9;
-    let best=0,leastOverlap=Infinity;
+    let best=0,leastArchitecture=Infinity,leastProductOverlap=Infinity;
     for(const [index,candidate] of candidates.entries()){
       if(candidate.seedScore<floor)break;
-      const overlap=Math.max(...chosen.map(look=>sharedProducts(candidate,look)));
-      if(overlap<leastOverlap){
+      const measured=chosen.map(look=>architecturalOverlap(candidate,look)).filter(Number.isFinite);
+      const architecturalSimilarity=measured.length?Math.max(...measured):1;
+      const productOverlap=Math.max(...chosen.map(look=>sharedProducts(candidate,look)));
+      if(architecturalSimilarity<leastArchitecture ||
+        (architecturalSimilarity===leastArchitecture && productOverlap<leastProductOverlap)){
         best=index;
-        leastOverlap=overlap;
+        leastArchitecture=architecturalSimilarity;
+        leastProductOverlap=productOverlap;
       }
-      if(leastOverlap===0)break;
+      if(leastArchitecture===0 && leastProductOverlap===0)break;
     }
     chosen.push(candidates.splice(best,1)[0]);
   }

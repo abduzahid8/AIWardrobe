@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {proposeVisualFirstDeck,shortlistRetrievalDeck,selectVisualDeck,STYLIST6_VERSION} from './prototype.mjs';
+import {proposeVisualFirstDeck,shortlistRetrievalDeck,selectVisualDeck,diversifyBriefHead,STYLIST6_VERSION} from './prototype.mjs';
 
 const catalog=[];
 function add(slot,subtype,colors,price=170000){
@@ -235,4 +235,36 @@ test('joint selection keeps the strongest first look and avoids a second look th
   assert.equal(result.status,'complete');
   assert.equal(result.outfits[0].id,'look-0');
   assert.deepEqual(new Set(result.outfits.map(({id})=>id)),new Set(['look-0','look-2','look-3']));
+});
+
+
+test('retrieval preserves different garment architectures ahead of new-SKU clones',()=>{
+  const item=(id,macroCategory,subtype)=>({id,macroCategory,subtype});
+  const make=(id,seedScore,top,layer,bottom,shoe)=>({id,seedScore,items:[
+    item(id+'-top','top',top),item(id+'-layer','outerwear',layer),
+    item(id+'-bottom','bottom',bottom),item(id+'-shoe','shoes',shoe),
+  ]});
+  const pool=[
+    make('lead',.98,'shirt','blazer','tailored-trouser','loafer'),
+    make('sku-clone',.975,'shirt','blazer','tailored-trouser','derby'),
+    make('knit-architecture',.97,'fine-knit','cardigan','chino','loafer'),
+    make('other-architecture',.965,'polo','overshirt','jeans','loafer'),
+  ];
+  diversifyBriefHead(pool);
+  assert.deepEqual(pool.slice(0,3).map(x=>x.id),[
+    'lead','knit-architecture','other-architecture',
+  ]);
+  assert.equal(pool[3].id,'sku-clone');
+});
+
+test('architecture evidence absent falls back to original physical-SKU diversity',()=>{
+  const make=(id,seedScore,ids)=>({id,seedScore,items:ids.map(x=>({id:x}))});
+  const candidates=[
+    make('lead',.98,['t1','b1','s1']),
+    make('clone',.975,['t1','b1','s2']),
+    make('new-products',.97,['t2','b2','s3']),
+  ];
+  diversifyBriefHead(candidates);
+  assert.equal(candidates[0].id,'lead');
+  assert.equal(candidates[1].id,'new-products');
 });
