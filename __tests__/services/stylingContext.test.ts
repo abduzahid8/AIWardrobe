@@ -26,6 +26,15 @@ it('keeps a measured 32°C destination temperature despite a summer word', () =>
   expect(resolveStylistWeather('winter journey',{temp:32})).toEqual({temp:32,condition:'requested winter season'});
 });
 
+it('respects a clear no-jacket instruction without treating color exclusions as a jacket ban', () => {
+  const {resolveOutfitComposition} = require('../../src/domain/outfitComposition');
+  for (const brief of ['no jacket','no extra jacket','without a blazer','skip outerwear','без пиджака','pidjaksiz']) {
+    expect(resolveOutfitComposition('old_money',{temp:21},brief,true).layered).toBe(false);
+  }
+  expect(resolveOutfitComposition('old_money',{temp:21},'no black jacket',true).layered).toBe(true);
+  expect(resolveOutfitComposition('old_money',{temp:9},'no jacket',true).layered).toBe(true);
+});
+
 it('captures negative constraints instead of retaining a mutable caller array', () => {
   const avoidColors = ['red'];
   const c = stylingContext({ preferences: { avoidColors } });

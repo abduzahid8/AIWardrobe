@@ -26,7 +26,14 @@ export function resolveOutfitComposition(
   optionalLayer = false,
 ): OutfitCompositionPolicy {
   const cold = (_weather?.temp != null && _weather.temp < 18) || /winter|freezing|snow|зим|мороз/i.test(_weather?.condition || '');
-  const noLayer = optionalLayer && !cold && (/\b(no|without|skip)\s+(layers?|outerwear)\b/i.test(_prompt || '') || (_weather?.temp != null && _weather.temp >= 25));
+  // Respect explicit customer garment constraints in all supported copy
+  // languages. 'No black jacket' excludes a color, not the entire layer:
+  // only negative layer phrases without a color modifier omit outerwear.
+  const brief = _prompt || '';
+  const noLayerIntent = /\b(?:no|without|skip)\s+(?:(?:an?|any|extra|additional|unnecessary)\s+){0,3}(?:layers?|outerwear|jacket|blazer|coat|cardigan)\b/i.test(brief)
+    || /без\s+(?:(?:лишнего|дополнительного)\s+)?(?:пиджака|куртки|пальто|кардигана|верхней\s+одежды|слоёв|слоя)/i.test(brief)
+    || /\b(?:pidjaksiz|kurtkasiz|paltosiz)\b/i.test(brief);
+  const noLayer = optionalLayer && !cold && (noLayerIntent || (_weather?.temp != null && _weather.temp >= 25));
   return noLayer ? {layered:false,activeSlots:['top','bottom','shoes']} : { layered: true, activeSlots: [...LAYERED_SLOTS] };
 }
 
