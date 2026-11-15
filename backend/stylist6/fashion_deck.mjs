@@ -18,6 +18,7 @@ import {
 import { DIRECTION_VERSION, directionDifference, selectCreativeDirectionDeck, labelCreativeDirections } from './creative_directions.mjs';
 import { EDITORIAL_QUALITY_VERSION, evaluateEditorialQuality } from './editorial_quality.mjs';
 import { CONCEPT_FIDELITY_VERSION, evaluateConceptFidelity, verifiedPaletteMatch } from './concept_fidelity.mjs';
+import { FASHION_FINISH_VERSION, evaluateFashionFinish } from './fashion_finish.mjs';
 import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitStructure.ts';
 import { rejectForClimate, rejectForStyleOccasion, rejectForRequestIntent, isWorkoutOccasion } from '../../src/domain/occasionRules.ts';
 import { editorialDeckCopy, DECK_COPY_VERSION } from './deck_editorial_copy.mjs';
@@ -550,9 +551,13 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
         ? evaluateConceptFidelity(items, brief, { requiredIds: extras.requiredIds })
         : { version: CONCEPT_FIDELITY_VERSION, score:null, adjustment:0,
           roleFit:null, paletteFit:null, mismatchedSlots:[] };
+      const finish = context.sourceMode === 'catalog'
+        ? evaluateFashionFinish({ items, descriptors:descriptions, context,
+            requiredIds:extras.requiredIds || [] })
+        : { version:FASHION_FINISH_VERSION,active:false,adjustment:0,evidence:[] };
       const result = {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
-          personal.adjustment + editorial.adjustment + feedback.adjustment -
+          personal.adjustment + editorial.adjustment + feedback.adjustment + finish.adjustment -
           recentStylingPenalty(items, recentSignatures) - pricing.penalty - freshness -
           registerPenalty - basePolishPenalty,
         dimensions: { ...dimensions, palette },
@@ -565,6 +570,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           : assessment.evidence,
         referenceMetadata: affinity,
         editorial,
+        finish,
         conceptFidelity,
         imageSupportedItems: items.filter((item) =>
           describeGarment(item).evidence.some((entry) => entry.startsWith('image:'))).length,
@@ -925,6 +931,7 @@ export async function recommendFashionDeck({
     diagnostics: { ...retrieval.diagnostics, editorialRegister: { version: EDITORIAL_REGISTER_VERSION, rejected: editorialVetoes, eligible: selectable.length }, visualVerdict,
       directionVersion: DIRECTION_VERSION,
       editorialQualityVersion: EDITORIAL_QUALITY_VERSION,
+      fashionFinishVersion: FASHION_FINISH_VERSION,
       conceptFidelityVersion: CONCEPT_FIDELITY_VERSION,
       deckCopyVersion: DECK_COPY_VERSION,
       feedbackTasteVersion: FEEDBACK_TASTE_VERSION,

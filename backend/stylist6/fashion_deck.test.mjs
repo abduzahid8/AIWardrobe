@@ -1115,3 +1115,22 @@ test('elevated register covers date nights and dampens unrequested henleys/tank 
   assert.equal(elevatedBasePolishPenaltyForLook([tank], [], { sourceMode: 'catalog', style: 'smart_casual', occasion: 'Date night', request: 'layered tank top' }), 0);
   assert.equal(elevatedBasePolishPenaltyForLook([henley], [], { sourceMode: 'wardrobe', style: 'classic', occasion: 'Business meeting', request: '' }), 0);
 });
+
+test('quiet-office finish is a bounded rank signal, not a gate or a wardrobe override', async()=>{
+  const unanchored = await recommendFashionDeck({
+    ...base, request:{...base.request,requiredIds:[],weather:{temp:18},
+      budget:{amount:1200000,currency:'UZS'},preferences:{}},
+  });
+  assert.ok(unanchored.outfits.length>0);
+  assert.equal(unanchored.diagnostics.fashionFinishVersion,'s6-quiet-office-finish-v1');
+  for(const look of unanchored.outfits){
+    const finish=look.fashion.finish;
+    assert.equal(finish.active,true);
+    assert.ok(finish.adjustment>=-.045&&finish.adjustment<=.038);
+    assert.ok(finish.evidence.every(x=>typeof x==='string'));
+  }
+  const locked=await recommendFashionDeck(base);
+  assert.ok(locked.outfits.length>0);
+  assert.ok(locked.outfits.every(look=>look.fashion.finish.active===false &&
+    look.fashion.finish.adjustment===0));
+});
