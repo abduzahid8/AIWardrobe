@@ -369,7 +369,13 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
   const eligible=shortlist.filter(c=>accepted.has(c.id));
   const strongest=Math.max(...eligible.map(c=>accepted.get(c.id).quality));
   const first=eligible.find(c=>accepted.get(c.id).quality>=strongest-VISUAL_NEAR_TIE);
-  let selected=first?[first]:[],bestUtility=-Infinity;
+  // The strongest visual card must not become a mandatory anchor: it can
+  // prevent three genuinely distinct outfits even when three OTHER approved
+  // looks can form a full deck. Enumerate all seeds (at most four verified
+  // candidates), maximize the number of independent looks first, then sum
+  // visual quality with bounded diversity. Preserve the earlier candidate
+  // on a true <=0.015 single-look near tie.
+  let selected=[],bestUtility=-Infinity;
   const anchorSet=new Set((options.requiredIds||[]).map(String));
   const nonAnchorSlotKeys=(look,slot)=>new Set(
     (look?.items||[])
@@ -401,7 +407,10 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
     if(deck.length===target)return;
     for(const c of eligible){
       if(deck.includes(c))continue;
-      if(options.requireDistinctArchitectures===true && deck.length >= 2 &&
+      // Enforce independently verified architecture for EVERY pair, even
+      // when choosing the second look. An earlier >=2 guard let a pair of
+      // near-clones through and falsely called three looks "distinct".
+      if(options.requireDistinctArchitectures===true &&
         deck.some(other=>!independentOutfitDirection(c,other,options.requiredIds)))continue;
       const difference=Math.min(...deck.map(other=>novelty(c,other)));
       if(difference<(options.minNovelty??0.30)||difference===0)continue;
@@ -409,7 +418,10 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       consider([...deck,c],utility+accepted.get(c.id).quality+0.18*difference-(repeats?0.10:0)+diversityAdjustment(c,deck));
     }
   }
-  if(first)consider([first],0);
+  for(const seed of eligible){
+    const preferredNearTie=seed===first?VISUAL_NEAR_TIE:0;
+    consider([seed],accepted.get(seed.id).quality+preferredNearTie);
+  }
   return {generationVersion,
     status:selected.length===target?'complete':selected.length?'distinct_inventory_limited':'no_verified_looks',
     outfits:selected.map(c=>({id:c.id,concept:{id:c.brief.id,title:c.brief.name,referenceId:c.brief.referenceId||null},

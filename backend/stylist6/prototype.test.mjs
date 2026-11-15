@@ -178,8 +178,45 @@ test('visual deck only treats material architecture as a distinct direction when
   const ordinary=selectVisualDeck(input,critiques,{target:3,minNovelty:0.01});
   const guarded=selectVisualDeck(input,critiques,{target:3,minNovelty:0.01,requireDistinctArchitectures:true});
   assert.equal(ordinary.outfits.length,3);
-  assert.equal(guarded.outfits.length,2,'renamed SKUs and new shirt colors alone do not certify three directions');
+  assert.equal(guarded.outfits.length,1,'renamed SKUs and new shirt colors alone do not certify independent directions');
   assert.equal(guarded.status,'distinct_inventory_limited');
+});
+
+test('visual deck globally finds three independent directions instead of anchoring to a blocker lead',()=>{
+  // All four have independently approved visual photographs and exact SKUs.
+  // The very highest-scored outfit is structurally too similar to B and C;
+  // a REAL three-way independent set exists only in B,C,D. The old greedy
+  // leader-only walk either returned 2 or counted a duplicate second look.
+  const slots=['top','outerwear','bottom','shoes'];
+  const colorSets=[
+    ['navy','navy','navy','navy'],
+    ['grey','grey','navy','navy'],
+    ['navy','navy','brown','brown'],
+    ['navy','navy','navy','navy'],
+  ];
+  const looks=colorSets.map((colors,index)=>({
+    id:['dominant','grey-drape','warm-classic','soft-knit'][index],
+    briefId:'direction-'+index,brief:{id:'direction-'+index,name:'Different legitimate look'},
+    items:slots.map((slot,i)=>({id:`${slot}-${index}`,name:`${colors[i]} ${slot} ${index}`,
+      macroCategory:slot,subtype:slot==='top'&&index===3?'fine-knit':
+        slot==='top'?'shirt':slot==='outerwear'?'blazer':
+          slot==='bottom'?'tailored-trouser':'loafer',
+      color:colors[i],texture:slot==='top'&&index===3?'knit':'cotton',
+      isShopItem:true,price:100,currency:'USD',
+      imageUrl:`https://example.com/${slot}${index}.jpg`,shopUrl:`https://example.com/${slot}${index}`})),
+  }));
+  const scores=[0.98,0.90,0.88,0.86];
+  const verdicts=looks.map((x,i)=>({candidateId:x.id,visualCohesion:scores[i],
+    referenceFidelity:scores[i],styleFit:scores[i],occasionFit:scores[i],
+    formalityFit:scores[i],confidence:0.98,reject:false,
+    evidence:['top versus bottom harmony','outerwear silhouette and top','shoe to hem proportion']}));
+  const result=selectVisualDeck({generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}},
+    verdicts,{target:3,minNovelty:0.01,requireDistinctArchitectures:true});
+  assert.equal(result.status,'complete');
+  assert.deepEqual(new Set(result.outfits.map(x=>x.id)),
+    new Set(['grey-drape','warm-classic','soft-knit']));
+  assert.equal(result.diagnostics.visualApproved,4);
+  assert.ok(result.outfits.every(x=>Array.isArray(x.evidence)));
 });
 
 test('joint selection keeps the strongest first look and avoids a second look that blocks a full deck',()=>{

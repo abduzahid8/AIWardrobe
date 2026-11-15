@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -47,6 +47,34 @@ test('Old Money Work retrieves office-clean roles before the hosted critic, with
     {sourceMode:'catalog',style:'old_money',occasion:'Business meeting'}).slots[1],['cardigan']);
   assert.deepEqual(refineQuietOfficeConcept({id:'textured-tailoring'},
     {sourceMode:'catalog',style:'old_money',occasion:'Работа'}).slots[0],['dress-shirt','fine-knit']);
+});
+
+test('fourth visual candidate unlocks genuinely distinct three-look directions over a close score clone', () => {
+  const slots = ['top', 'outerwear', 'bottom', 'shoes'];
+  const make = (id, colors, topSubtype = 'shirt') => ({ id,
+    items: slots.map((slot, i) => ({ id:`${id}-${slot}`, macroCategory:slot,
+      color:colors[i], subtype: i === 0 ? topSubtype : slot === 'outerwear' ? 'blazer' : slot,
+      texture: i === 0 && topSubtype === 'fine-knit' ? 'knit' : 'cotton' })),
+    fashion: { score:0.89 },
+  });
+  const current = [
+    make('hero',['navy','navy','navy','navy']),
+    make('cool',['grey','grey','navy','navy']),
+    make('warm',['navy','navy','brown','brown']),
+  ];
+  const clone = make('high-score-duplicate',['navy','grey','navy','navy']);
+  clone.fashion.score=0.92;
+  const architectural = make('clean-new-direction',['navy','navy','navy','navy'],'fine-knit');
+  architectural.fashion.score=0.88;
+  const baseline = visualArchitectureCapacity(current);
+  assert.equal(baseline,2);
+  assert.equal(visualArchitectureCapacity([...current,clone]),2);
+  assert.equal(visualArchitectureCapacity([...current,architectural]),3);
+  const candidates = [
+    {look:clone,capacityGain:0,difference:0.4},
+    {look:architectural,capacityGain:1,difference:0.25},
+  ];
+  assert.equal(rankVisualChallengerPool(candidates)[0].id,architectural.id);
 });
 
 test('fourth visual challenger favors safe whole-look quality over extreme novelty', () => {

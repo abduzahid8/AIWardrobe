@@ -1,6 +1,6 @@
 // Experimental catalog/wardrobe recommendation path. Callers own inventory,
 // permission and provider admission. Local styling never requires image upload.
-import { shortlistRetrievalDeck, evaluateVisualShortlist } from './prototype.mjs';
+import { shortlistRetrievalDeck, evaluateVisualShortlist, independentOutfitDirection } from './prototype.mjs';
 import { baseProductId } from './catalog_adapter.mjs';
 import { describeGarment, prepareGarment } from '../../src/domain/garmentDescriptor.ts';
 import { currentVisual, visualAdmissionReason } from '../../src/domain/visualFashion.ts';
@@ -550,16 +550,39 @@ function creativeMetrics(context) {
 }
 
 /**
- * The fourth hosted-visual candidate is insurance against a visual veto,
- * not an opportunity to show a weaker novelty stunt. All challengers have
- * already passed exact SKU/occasion/budget admission and differ in >=2 items
- * from the proposed deck. Within the same bounded quality window, present
- * the best deterministic whole-look score first; novelty breaks near ties.
- * NVIDIA remains the final gate: this function never approves a look.
+ * Maximum size of a pairwise independent outfit deck. Deliberately bounded
+ * to the <=4 garments-group candidates chosen for one NVIDIA review. A
+ * different SKU, jacket color or title alone does not prove a new direction:
+ * use the same structural rule as the final model-approved selection.
+ */
+export function visualArchitectureCapacity(looks, requiredIds = []) {
+  if (!Array.isArray(looks) || looks.length > 4) return 0;
+  let maximum = 0;
+  const walk = (index, selected) => {
+    if (selected.length > maximum) maximum = selected.length;
+    if (index === looks.length || maximum === 3) return;
+    const candidate = looks[index];
+    if (selected.every(other => independentOutfitDirection(candidate, other, requiredIds))) {
+      walk(index + 1, [...selected, candidate]);
+    }
+    walk(index + 1, selected);
+  };
+  walk(0, []);
+  return Math.min(3, maximum);
+}
+
+/**
+ * Four visual assessments must have a chance to yield three genuinely
+ * different looks. If the three initially chosen cards contain structural
+ * twins, pick the spare which unlocks the biggest independent subset; after
+ * that prefer whole-look fashion quality over maximal novelty. All options
+ * have already passed exact SKU/occasion/budget admission and the quality
+ * window. NVIDIA retains the ONLY authority to approve displayed looks.
  */
 export function rankVisualChallengerPool(entries) {
   return [...entries]
-    .sort((a,b) => b.look.fashion.score - a.look.fashion.score ||
+    .sort((a,b) => (b.capacityGain || 0) - (a.capacityGain || 0) ||
+      b.look.fashion.score - a.look.fashion.score ||
       b.difference - a.difference || String(a.look.id).localeCompare(String(b.look.id)))
     .map(({look}) => look);
 }
@@ -729,6 +752,8 @@ export async function recommendFashionDeck({
     if (candidates.length < 4) {
       const metrics = creativeMetrics(deckContext);
       const leadScore = lead.fashion?.score ?? -Infinity;
+      const current = candidates.length ? candidates : selected;
+      const capacity = visualArchitectureCapacity(current, requiredIds);
       const extras = rankVisualChallengerPool(selectable
         .filter(look => !candidates.some(chosen => chosen.id === look.id) &&
           Number.isFinite(look.fashion?.score) &&
@@ -737,7 +762,8 @@ export async function recommendFashionDeck({
             Math.max(other.items.length, look.items.length) - overlaps(other, look) >= 2))
         .map(look => ({
           look,
-          difference: Math.min(...(candidates.length ? candidates : selected).map(other =>
+          capacityGain: visualArchitectureCapacity([...current, look], requiredIds) - capacity,
+          difference: Math.min(...current.map(other =>
             directionDifference(other, look, metrics.featuresOf, metrics.featureDistance).distance)),
         }))
       );
