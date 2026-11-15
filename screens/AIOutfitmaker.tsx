@@ -3,7 +3,7 @@ import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveO
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6CloudCompletion, stylist6Language, stylist6VisualDiagnostic, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6CloudCompletion, stylist6Language, stylist6VisualDiagnostic, type DevEngine} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -724,9 +724,10 @@ const AIOutfitGenerator = () => {
   const [resultBudget, setResultBudget] = useState<ReturnType<typeof parseBudgetFromText>>(null);
   const [inventoryNote, setInventoryNote] = useState('');
   const [error, setError] = useState('');
-  // Development-only engine choice. The picker renders only when
-  // STYLIST6_DEV_ENABLED, so release builds can never select Stylist 6.
-  const [devEngine, setDevEngine] = useState<DevEngine>(STYLIST6_DEV_ENABLED ? 'stylist6cloud' : 'stylist5');
+  // Public App Store builds stay on Stylist 5. Explicitly configured
+  // TestFlight builds use the authenticated Stylist 6 cloud endpoint while
+  // retaining the same non-developer UI and no loopback bridge.
+  const [devEngine, setDevEngine] = useState<DevEngine>(STYLIST6_CLOUD_ENABLED ? 'stylist6cloud' : 'stylist5');
   // Primary experience: deliver three feasibility-gated, fashion-ranked
   // outfits without depending on the variable-latency NVIDIA prototype API.
   // The live provider can take >40s and abstain on all four calls: when this
@@ -1381,7 +1382,7 @@ const AIOutfitGenerator = () => {
       // short-lived QA tier AFTER sign-in. Only the opt-in __DEV__ cloud path
       // skips this redundant *client-side* gate; a free account still gets
       // a real 403 from Supabase and is never granted generation by the app.
-      const serverMeteredCloudQA = STYLIST6_DEV_ENABLED && devEngine === 'stylist6cloud';
+      const serverMeteredCloudQA = STYLIST6_CLOUD_ENABLED && devEngine === 'stylist6cloud';
       let ok = serverMeteredCloudQA;
       if (!serverMeteredCloudQA) {
         try { ok = requireFeature('aiOutfits'); } catch { ok = false; }
@@ -1585,8 +1586,10 @@ const AIOutfitGenerator = () => {
       // cloud S6 engine enforces the identical same-currency filter
       // server-side. Multi-currency limits and the hosted edge keep the
       // fail-closed fetch.
-      const s6SameCurrencyBudget = STYLIST6_DEV_ENABLED
-        && (devEngine === 'stylist6' || devEngine === 'stylist6cloud') && !mixedLimits;
+      const s6SameCurrencyBudget = (
+        (STYLIST6_DEV_ENABLED && devEngine === 'stylist6') ||
+        (STYLIST6_CLOUD_ENABLED && devEngine === 'stylist6cloud')
+      ) && !mixedLimits;
       if ((mixedLimits || (shopBudget && effectiveSource === 'shop')) && !s6SameCurrencyBudget) {
         let fx;
         try { fx = budgetFxContext(await getBudgetRates()); }
@@ -1696,7 +1699,7 @@ const AIOutfitGenerator = () => {
       // rows via the loopback bridge. Ranking failures surface below and
       // are never replaced with a Stylist 5 deck.
       const s6Active = STYLIST6_DEV_ENABLED && devEngine === 'stylist6';
-      let s6CloudActive = STYLIST6_DEV_ENABLED && devEngine === 'stylist6cloud';
+      let s6CloudActive = STYLIST6_CLOUD_ENABLED && devEngine === 'stylist6cloud';
       let data: any;
       let invokeError: any;
       if (s6CloudActive) {

@@ -13,10 +13,16 @@ function loadDevModule(): typeof import('../../src/services/stylist6Dev') {
 
 const previousDev = (globalThis as any).__DEV__;
 const previousFlag = process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE;
+const previousBeta = process.env.EXPO_PUBLIC_STYLIST6_BETA;
+const previousStage = process.env.EXPO_PUBLIC_APP_STAGE;
 afterEach(() => {
   (globalThis as any).__DEV__ = previousDev;
   if (previousFlag === undefined) delete process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE;
   else process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = previousFlag;
+  if (previousBeta === undefined) delete process.env.EXPO_PUBLIC_STYLIST6_BETA;
+  else process.env.EXPO_PUBLIC_STYLIST6_BETA = previousBeta;
+  if (previousStage === undefined) delete process.env.EXPO_PUBLIC_APP_STAGE;
+  else process.env.EXPO_PUBLIC_APP_STAGE = previousStage;
   jest.restoreAllMocks();
 });
 
@@ -58,6 +64,37 @@ describe('stylist6 cloud completion safety', () => {
       status: 'complete', outfits: [{}, {}, {}] })).toBeNull();
     expect(stylist6CloudCompletion({ success: true, generationVersion: 'stylist-6-cloud-staging-1',
       status: 'partial', visualStatus: 'NVIDIA_APPLIED', outfits: [{}] })).toBeNull();
+  });
+});
+
+describe('Stylist 6 opt-in TestFlight rollout gate', () => {
+  test('public production is NOT enrolled without both explicit flags', () => {
+    (globalThis as any).__DEV__ = false;
+    delete process.env.EXPO_PUBLIC_STYLIST6_BETA;
+    delete process.env.EXPO_PUBLIC_APP_STAGE;
+    expect(loadDevModule().STYLIST6_CLOUD_ENABLED).toBe(false);
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    expect(loadDevModule().STYLIST6_CLOUD_ENABLED).toBe(false);
+  });
+
+  test('a flag in production without TestFlight stage does not enable Stylist 6', () => {
+    (globalThis as any).__DEV__ = false;
+    process.env.EXPO_PUBLIC_STYLIST6_BETA = 'true';
+    process.env.EXPO_PUBLIC_APP_STAGE = 'production';
+    expect(loadDevModule().STYLIST6_CLOUD_ENABLED).toBe(false);
+    process.env.EXPO_PUBLIC_APP_STAGE = 'testflight';
+    process.env.EXPO_PUBLIC_STYLIST6_BETA = 'false';
+    expect(loadDevModule().STYLIST6_CLOUD_ENABLED).toBe(false);
+  });
+
+  test('explicit TestFlight stage uses real JWT-protected cloud while loopback remains disabled', () => {
+    (globalThis as any).__DEV__ = false;
+    delete process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE;
+    process.env.EXPO_PUBLIC_STYLIST6_BETA = 'true';
+    process.env.EXPO_PUBLIC_APP_STAGE = 'testflight';
+    const app = loadDevModule();
+    expect(app.STYLIST6_CLOUD_ENABLED).toBe(true);
+    expect(app.STYLIST6_DEV_ENABLED).toBe(false);
   });
 });
 
@@ -328,7 +365,7 @@ describe('stylist6 cloud staging client', () => {
     const spy = jest.spyOn(globalThis, 'fetch' as any);
     await expect(mod.invokeStylist6Cloud({
       request: { style: 'classic', occasion: 'Work', brief: '' },
-    })).rejects.toMatchObject({ code: 'stylist6_dev_disabled' });
+    })).rejects.toMatchObject({ code: 'stylist6_release_disabled' });
     expect(spy).not.toHaveBeenCalled();
   });
 

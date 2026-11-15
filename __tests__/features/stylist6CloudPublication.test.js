@@ -46,12 +46,14 @@ function compiled(expression, args, asynchronous = false) {
   return Function(...Object.keys(args), js)(...Object.values(args));
 }
 
-test('dev-only feature gate selects Stylist 6 Cloud; production stays on Stylist 5', () => {
+test('explicit TestFlight release feature chooses Stylist 6 Cloud; regular App Store stays Stylist 5', () => {
   const choose = enabled => compiled(defaultEngine, {
-    STYLIST6_DEV_ENABLED: enabled, useState: value => [value, () => {}],
+    STYLIST6_CLOUD_ENABLED: enabled, useState: value => [value, () => {}],
   })[0];
   expect(choose(true)).toBe('stylist6cloud');
   expect(choose(false)).toBe('stylist5');
+  expect(source).toContain('const serverMeteredCloudQA = STYLIST6_CLOUD_ENABLED');
+  expect(source).toContain("let s6CloudActive = STYLIST6_CLOUD_ENABLED");
 });
 
 test('three complete server-ranked Stylist 6 Cloud looks bypass legacy deck reconstruction', () => {

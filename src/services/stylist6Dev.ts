@@ -20,6 +20,16 @@ import type { ParsedBudget } from '../utils/outfitBudget';
 export const STYLIST6_DEV_ENABLED =
   __DEV__ && process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE === 'true';
 
+/** Opt-in TestFlight engine, never an implicit App Store rollout.
+ * Release builds use the server-owned JWT/HMAC gateway and do NOT expose
+ * developer controls or the loopback bridge. Both opt-ins must be explicit;
+ * production EAS profile has neither one.
+ */
+export const STYLIST6_CLOUD_ENABLED = STYLIST6_DEV_ENABLED || (
+  !__DEV__ && process.env.EXPO_PUBLIC_STYLIST6_BETA === 'true' &&
+  process.env.EXPO_PUBLIC_APP_STAGE === 'testflight'
+);
+
 export type DevEngine = 'stylist5' | 'stylist6' | 'stylist6cloud';
 
 const devPort = (): number => {
@@ -341,8 +351,8 @@ export async function invokeStylist6Cloud(
   body: { request: Stylist6CloudRequest },
   options?: { signal?: AbortSignal },
 ): Promise<Record<string, any>> {
-  if (!STYLIST6_DEV_ENABLED) {
-    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_dev_disabled', 'stylist6_cloud');
+  if (!STYLIST6_CLOUD_ENABLED) {
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_release_disabled', 'stylist6_cloud');
   }
   // Call-time require keeps lib/supabase out of this module's import graph
   // (the dev-only cloud path must not force a Supabase client everywhere),
