@@ -268,3 +268,30 @@ test('architecture evidence absent falls back to original physical-SKU diversity
   assert.equal(candidates[0].id,'lead');
   assert.equal(candidates[1].id,'new-products');
 });
+
+test('retrieval diversification prioritizes distinct garment architecture over office-shirt-trouser clones', () => {
+  const item = (id, macroCategory, subtype) => ({ id, macroCategory, subtype });
+  const make = (id, seedScore, top, layer, bottom, shoe) => ({
+    id, seedScore, items: [
+      item(id + '-top', 'top', top),
+      ...(layer ? [item(id + '-layer', 'outerwear', layer)] : []),
+      item(id + '-bottom', 'bottom', bottom),
+      item(id + '-shoe', 'shoes', shoe),
+    ],
+  });
+
+  const pool = [
+    make('office-1', .98, 'dress-shirt', null, 'tailored-trouser', 'derby'),
+    make('office-2', .975, 'shirt', null, 'tailored-trouser', 'loafer'),
+    make('office-3', .972, 'shirt', null, 'chino', 'derby'),
+    make('tailored-blazer', .968, 'dress-shirt', 'blazer', 'tailored-trouser', 'oxford'),
+    make('knit-layer', .965, 'fine-knit', 'cardigan', 'tailored-trouser', 'loafer'),
+  ];
+
+  diversifyBriefHead(pool);
+  const headIds = pool.slice(0, 3).map(x => x.id);
+  // Must preserve lead and elevate different garment architectures (tailored-blazer / knit-layer)
+  assert.equal(headIds[0], 'office-1');
+  assert.ok(headIds.includes('tailored-blazer') || headIds.includes('knit-layer'),
+    'Architecture-diverse candidates must be promoted over repeated unlayered office clones');
+});

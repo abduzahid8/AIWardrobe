@@ -288,10 +288,72 @@ export function architectureSeparationAdjustment(look, chosen, featuresOf) {
   return minMajor >= 2 ? 0.055 : minMajor === 1 ? 0.022 : -0.05;
 }
 
+/**
+ * Determine high-level garment architecture of a look to distinguish
+ * structural silhouettes (knitwear, layering, tailoring) from the standard
+ * unlayered shirt-trouser formula.
+ */
+export function garmentArchitectureOf(look, featuresOf) {
+  if (typeof featuresOf === 'function') {
+    const f = featuresOf(look);
+    if (Array.isArray(f) && f.length >= 3) {
+      const topSub = featToken(f[0], 0);
+      const outerSub = featToken(f[1], 0);
+      const botSub = featToken(f[2], 0);
+      const hasLayer = Boolean(f[1]) && outerSub !== 'none';
+      return {
+        top: topSub || 'unknown',
+        outerwear: hasLayer ? (outerSub || 'layered') : 'none',
+        bottom: botSub || 'unknown',
+        isOfficeShirtTrouser: !hasLayer &&
+          /^(shirt|dress-shirt)$/.test(topSub || '') &&
+          /^(trouser|tailored-trouser|chino)$/.test(botSub || ''),
+      };
+    }
+  }
+  const items = look?.items || [];
+  const top = items.find(i => i?.macroCategory === 'top');
+  const outer = items.find(i => i?.macroCategory === 'outerwear');
+  const bottom = items.find(i => i?.macroCategory === 'bottom');
+  const topSub = top?.subtype || top?.fashion_subtype || (typeof top?.type === 'string' && top.type !== top.macroCategory ? top.type : '') || '';
+  const outerSub = outer?.subtype || outer?.fashion_subtype || (typeof outer?.type === 'string' && outer.type !== outer.macroCategory ? outer.type : '') || '';
+  const botSub = bottom?.subtype || bottom?.fashion_subtype || (typeof bottom?.type === 'string' && bottom.type !== bottom.macroCategory ? bottom.type : '') || '';
+  const hasLayer = Boolean(outer && outerSub !== 'none');
+  return {
+    top: topSub || 'unknown',
+    outerwear: hasLayer ? (outerSub || 'layered') : 'none',
+    bottom: botSub || 'unknown',
+    isOfficeShirtTrouser: !hasLayer &&
+      /^(shirt|dress-shirt)$/.test(topSub) &&
+      /^(trouser|tailored-trouser|chino)$/.test(botSub),
+  };
+}
+
+/**
+ * Bounded deck-level architecture variety tie-break: penalizes recycling
+ * the unlayered office-shirt-trouser formula when chosen already contains it,
+ * and rewards breaking the formula with genuine architectural variety.
+ * Strictly bounded in [-0.045, +0.030] so it cannot promote clearly lower-quality looks.
+ */
+export function deckOfficeMonotonyAdjustment(candidate, chosen, featuresOf) {
+  if (!chosen?.length) return 0;
+  const candArch = garmentArchitectureOf(candidate, featuresOf);
+  const chosenArchs = chosen.map(c => garmentArchitectureOf(c, featuresOf));
+  const officeCount = chosenArchs.filter(a => a.isOfficeShirtTrouser).length;
+  if (candArch.isOfficeShirtTrouser) {
+    if (officeCount >= 2) return -0.045;
+    if (officeCount === 1) return -0.025;
+    return 0;
+  }
+  if (officeCount >= 1) return 0.030;
+  return 0;
+}
+
 function deckDiversityAdjustments(look, chosen, overlap, anchorIds, features) {
   // Concept fidelity acts only after retrieval and all hard gates. It cannot
   // shrink budget-feasible candidate pools or turn a valid deck into failure.
   const conceptFidelity = look?.fashion?.conceptFidelity?.adjustment;
+  const officeMonotonyAdjustment = deckOfficeMonotonyAdjustment(look, chosen, features);
   return (Number.isFinite(conceptFidelity) ? conceptFidelity : 0) +
     architectureSeparationAdjustment(look, chosen, features) +
     footwearVarietyAdjustment(look, chosen, overlap) +
@@ -299,7 +361,8 @@ function deckDiversityAdjustments(look, chosen, overlap, anchorIds, features) {
     brandVarietyAdjustment(look, chosen) +
     garmentIdentityOverlapAdjustment(look, chosen, anchorIds) +
     deckCategoryVarietyAdjustment(look, chosen, features) +
-    silhouetteContrastAdjustment(look, chosen, features);
+    silhouetteContrastAdjustment(look, chosen, features) +
+    officeMonotonyAdjustment;
 }
 
 function pick(pool, chosen, overlap, predicate, rank, extras = {}) {
@@ -339,6 +402,8 @@ export function selectCreativeDirectionDeck(shortlist, {
   const featureCache = new Map(eligible.map(look => [look.id, featuresOf(look)]));
   const features = look => featureCache.get(look.id) || featuresOf(look);
   const anchorIds = new Set((requiredIds || []).map(String));
+  const archOf = look => garmentArchitectureOf(look, features);
+  const eligibleHasVariety = eligible.some(look => !archOf(look).isOfficeShirtTrouser);
   const diff = (a,b) => directionDifference(a,b,features,featureDistance);
   const bonus = look => singleCurrencyBonus(look.items);
   const differentBrief = (a,b) => a?.briefId !== b?.briefId ? 0.012 : 0;
@@ -366,10 +431,23 @@ export function selectCreativeDirectionDeck(shortlist, {
     if (fresh.id === signature.id || !allowedTogether(signature, fresh, overlap)) continue;
     const firstDiff = diff(signature, fresh);
     if (!refreshWorthShowing(firstDiff) || !editorialDirectionEligible(signature, fresh, 'refresh')) continue;
-    const discovered = pick(eligible, [signature, fresh], overlap,
+    const needArchBreak = eligibleHasVariety &&
+      archOf(signature).isOfficeShirtTrouser &&
+      archOf(fresh).isOfficeShirtTrouser;
+    const discovered = (needArchBreak ? pick(eligible, [signature, fresh], overlap,
+      (look, [d1,d2]) => !archOf(look).isOfficeShirtTrouser && discoveryWorthShowing(d1,d2) && editorialDirectionEligible(signature, look, 'discovery'),
+      discoveredRank, { anchorIds, features }) : null) || pick(eligible, [signature, fresh], overlap,
       (look, [d1,d2]) => discoveryWorthShowing(d1,d2) && editorialDirectionEligible(signature, look, 'discovery'),
       discoveredRank, { anchorIds, features });
     if (!discovered) continue;
+    if (eligibleHasVariety &&
+        archOf(signature).isOfficeShirtTrouser &&
+        archOf(fresh).isOfficeShirtTrouser &&
+        archOf(discovered).isOfficeShirtTrouser) {
+      // Do not allow all three selected looks to share the exact same
+      // office-shirt-trouser formula when candidates allow architecture variety.
+      continue;
+    }
     const joint = refreshedRank.value(fresh, [firstDiff]) +
       deckDiversityAdjustments(fresh, [signature], overlap, anchorIds, features) +
       discoveredRank.value(discovered, [diff(signature,discovered),diff(fresh,discovered)]) +
@@ -394,11 +472,21 @@ export function selectCreativeDirectionDeck(shortlist, {
       if (fallback) greedy.push(fallback);
     }
     if (greedy.length === 2) {
-      const discovered = pick(eligible, greedy, overlap,
+      const needArchBreak = eligibleHasVariety &&
+        archOf(signature).isOfficeShirtTrouser &&
+        archOf(greedy[1]).isOfficeShirtTrouser;
+      const discovered = (needArchBreak ? pick(eligible, greedy, overlap,
+        (look, [d1,d2]) => !archOf(look).isOfficeShirtTrouser && discoveryWorthShowing(d1,d2) && editorialDirectionEligible(signature, look, 'discovery'),
+        discoveredRank, { anchorIds, features }) : null) || pick(eligible, greedy, overlap,
         (look, [d1,d2]) => discoveryWorthShowing(d1,d2) && editorialDirectionEligible(signature, look, 'discovery'), discoveredRank, { anchorIds, features });
       if (discovered) greedy.push(discovered);
       else {
-        const fallback = pick(eligible, greedy, overlap, (look) => editorialDirectionEligible(signature, look, 'alternative'), {
+        const fallback = (needArchBreak ? pick(eligible, greedy, overlap, (look) =>
+          !archOf(look).isOfficeShirtTrouser && editorialDirectionEligible(signature, look, 'alternative'), {
+          diff,
+          value: (look, d) => score(look) + bonus(look) +
+            .11 * Math.min(...d.map(x => x.distance)),
+        }, { anchorIds, features }) : null) || pick(eligible, greedy, overlap, (look) => editorialDirectionEligible(signature, look, 'alternative'), {
           diff,
           value: (look, d) => score(look) + bonus(look) +
             .11 * Math.min(...d.map(x => x.distance)),
@@ -435,6 +523,10 @@ export function selectCreativeDirectionDeck(shortlist, {
           if (third.id === signature.id || third.id === second.id) continue;
           if (!allowedTogether(signature, third, overlap) || !allowedTogether(second, third, overlap)) continue;
           if (!editorialDirectionEligible(signature, third, 'alternative')) continue;
+          if (eligibleHasVariety &&
+              archOf(signature).isOfficeShirtTrouser &&
+              archOf(second).isOfficeShirtTrouser &&
+              archOf(third).isOfficeShirtTrouser) continue;
           const val = scorePair(second, third);
           if (val > bestFallbackScore + EPS) {
             bestFallbackScore = val;
@@ -444,6 +536,21 @@ export function selectCreativeDirectionDeck(shortlist, {
       }
       if (bestFallbackPair) chosen.push(...bestFallbackPair);
       else chosen.push(...greedy.slice(1));
+    }
+  }
+  if (chosen.length === 3 && eligibleHasVariety && chosen.every(l => archOf(l).isOfficeShirtTrouser)) {
+    const alternative = eligible.find(look =>
+      !archOf(look).isOfficeShirtTrouser &&
+      allowedTogether(chosen[0], look, overlap) &&
+      allowedTogether(chosen[1], look, overlap) &&
+      editorialDirectionEligible(signature, look, 'alternative')
+    ) || eligible.find(look =>
+      !archOf(look).isOfficeShirtTrouser &&
+      allowedTogether(chosen[0], look, overlap) &&
+      editorialDirectionEligible(signature, look, 'alternative')
+    );
+    if (alternative) {
+      chosen[2] = alternative;
     }
   }
   const directions = labelCreativeDirections(chosen,{featuresOf: features,featureDistance});

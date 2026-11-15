@@ -5,8 +5,10 @@ import {
   architectureSeparationAdjustment,
   brandVarietyAdjustment,
   deckCategoryVarietyAdjustment,
+  deckOfficeMonotonyAdjustment,
   directionDifference,
   footwearVarietyAdjustment,
+  garmentArchitectureOf,
   lowerBodyPairRepeatAdjustment,
   labelCreativeDirections,
   selectCreativeDirectionDeck,
@@ -407,4 +409,59 @@ test('structural change must differ from both earlier looks to count as discover
   const selection=selectCreativeDirectionDeck([base,refresh,recolor],metrics);
   assert.equal(selection.looks.length,3);
   assert.equal(selection.directions[2].id,'alternative');
+});
+
+test('deckOfficeMonotonyAdjustment penalizes repeated office formula and rewards architecture diversity', () => {
+  const office1 = look('office-1', .95, SHIRT);
+  const office2 = look('office-2', .94, FRESH);
+  const knitLook = look('knit', .92, EXPLORE);
+
+  // When no office look chosen yet: neutral
+  assert.equal(deckOfficeMonotonyAdjustment(office1, [], metrics.featuresOf), 0);
+  // When 1 office look chosen: office candidate penalized
+  assert.equal(deckOfficeMonotonyAdjustment(office2, [office1], metrics.featuresOf), -0.025);
+  // When 2 office looks chosen: candidate with office formula penalized further (-0.045)
+  assert.equal(deckOfficeMonotonyAdjustment(office2, [office1, office1], metrics.featuresOf), -0.045);
+  // Candidate breaking the formula earns bounded bonus (+0.030)
+  assert.equal(deckOfficeMonotonyAdjustment(knitLook, [office1], metrics.featuresOf), 0.030);
+  assert.equal(deckOfficeMonotonyAdjustment(knitLook, [office1, office2], metrics.featuresOf), 0.030);
+});
+
+test('3-look deck selection does not allow all 3 looks to share the same office-shirt-trouser formula when candidates allow architecture variety', () => {
+  const shirt1 = look('shirt-navy', .95, SHIRT, ['s1-top', 's1-bottom', 's1-shoes'], 'brief-1');
+  const shirt2 = look('shirt-grey', .94, FRESH, ['s2-top', 's2-bottom', 's2-shoes'], 'brief-2');
+  const shirt3 = look('shirt-burgundy', .93, [
+    slot('shirt', 'burgundy', 'slim'), null,
+    slot('tailored-trouser', 'charcoal', 'slim'), slot('derby', 'brown'),
+  ], ['s3-top', 's3-bottom', 's3-shoes'], 'brief-3');
+
+  // Candidate with different garment architecture (fine knitwear + chino)
+  const knitLook = look('knit-explore', .91, EXPLORE, ['k1-top', 'k1-bottom', 'k1-shoes'], 'brief-4');
+
+  // Pool has 3 unlayered shirt+trouser looks scoring .95, .94, .93, and 1 knit look scoring .91
+  const selection = selectCreativeDirectionDeck([shirt1, shirt2, shirt3, knitLook], metrics);
+  assert.equal(selection.looks.length, 3);
+
+  // The 3 selected looks must NOT all be the office-shirt-trouser formula
+  const archs = selection.looks.map(l => garmentArchitectureOf(l, metrics.featuresOf));
+  const officeCount = archs.filter(a => a.isOfficeShirtTrouser).length;
+  assert.ok(officeCount < 3, `Expected < 3 office-shirt-trouser looks, but got ${officeCount}`);
+  assert.ok(selection.looks.some(l => l.id === 'knit-explore'), 'knit architecture candidate must be selected over 3rd office clone');
+});
+
+test('diversity bonuses are bounded and do not select clearly lower-quality looks', () => {
+  const shirt1 = look('shirt-1', .95, SHIRT, ['s1-top', 's1-bottom', 's1-shoes'], 'brief-1');
+  const shirt2 = look('shirt-2', .94, FRESH, ['s2-top', 's2-bottom', 's2-shoes'], 'brief-2');
+  const shirt3 = look('shirt-3', .93, [
+    slot('shirt', 'burgundy', 'slim'), null,
+    slot('tailored-trouser', 'charcoal', 'slim'), slot('derby', 'brown'),
+  ], ['s3-top', 's3-bottom', 's3-shoes'], 'brief-3');
+
+  // Architecture-diverse candidate but clearly lower quality (score 0.40, far below the 0.16 window)
+  const junkLook = look('junk-knit', .40, EXPLORE, ['j1-top', 'j1-bottom', 'j1-shoes'], 'brief-junk');
+
+  const selection = selectCreativeDirectionDeck([shirt1, shirt2, shirt3, junkLook], metrics);
+  assert.equal(selection.looks.length, 3);
+  // junkLook must NEVER be selected despite having distinct architecture
+  assert.ok(!selection.looks.some(l => l.id === 'junk-knit'), 'junk look must be excluded despite architecture difference');
 });

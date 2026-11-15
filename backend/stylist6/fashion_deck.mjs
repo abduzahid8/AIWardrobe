@@ -417,6 +417,277 @@ export function applyExclusionQualityFloor(selected, best, exclusionsApplied) {
   return { kept, limited: true };
 }
 
+export const FASHION_QUALITY_VERSION = 's6-fashion-quality-v1';
+
+const OFFICE_INTENT = /\b(work|office|business|meeting|conference)\b|работ|офис|делов|встреч|\b(ofis|ish|biznes|uchrashuv)\b/i;
+
+const QUIET_OFFICE_STYLES = new Set(['classic','old_money','semi_classic','business_casual']);
+function fashionQualityApplies(context) {
+  return context?.sourceMode === 'catalog' && QUIET_OFFICE_STYLES.has(context?.style) &&
+    OFFICE_INTENT.test(String(context?.occasion || '')) &&
+    !(Array.isArray(context?.requiredIds) && context.requiredIds.length);
+}
+const inactiveFashionQuality = () => ({ version:FASHION_QUALITY_VERSION,active:false,
+  paletteHarmony:null,shoeAppropriateness:null,silhouetteBalance:null,
+  textureCoordination:null,boringOfficePenalty:0,score:null,adjustment:0 });
+
+const QUIET_PALETTE = new Set([
+  'navy', 'blue', 'grey', 'gray', 'charcoal', 'black', 'white',
+  'cream', 'beige', 'tan', 'brown', 'camel', 'olive', 'khaki',
+  'burgundy', 'forest_green', 'taupe', 'ecru', 'stone', 'sand',
+  'light', 'mid', 'cool-dark', 'warm-dark', 'dark',
+]);
+
+function itemColorToken(item) {
+  const explicit = typeof item?.color === 'string' ? colorTokensOf({ color:item.color }) : [];
+  if (explicit.length === 1) return explicit[0];
+  if (explicit.length > 1) return null;
+  const fromName = colorTokensOf({ name:item?.name || '' });
+  // A coarse "earth", "dark" or "light" bin is not an exact color observation.
+  return fromName.length === 1 ? fromName[0] : null;
+}
+
+function computePaletteHarmony(items, descriptors, context, coherencePalette) {
+  const colors = items.map((item, i) => itemColorToken(item, descriptors[i])).filter(Boolean);
+  const base = Number.isFinite(coherencePalette) ? coherencePalette : 0.75;
+  const style = String(context?.style || '').toLowerCase();
+  const occasion = String(context?.occasion || '').toLowerCase();
+  const quiet = ['classic', 'old_money', 'semi_classic', 'business_casual', 'smart_casual'].includes(style) ||
+    OFFICE_INTENT.test(occasion);
+
+  let bonus = 0;
+  if (quiet && colors.length > 0) {
+    const quietMatchCount = colors.filter(c => QUIET_PALETTE.has(c)).length;
+    if (quietMatchCount === colors.length) {
+      bonus += 0.12;
+    } else if (quietMatchCount / colors.length >= 0.75) {
+      bonus += 0.06;
+    }
+  }
+
+  const clashing = items.some(item => {
+    const text = `${item.name || ''} ${item.color || ''}`.toLowerCase();
+    return /\b(neon|fluorescent|electric[ -]blue|hot[ -]pink|bright[ -]yellow)\b/.test(text);
+  });
+  if (clashing && quiet) {
+    bonus -= 0.25;
+  }
+
+  const uniqueHues = new Set(colors);
+  if (uniqueHues.size > 3 && quiet) {
+    bonus -= 0.08;
+  }
+
+  return Math.max(0, Math.min(1, base + bonus));
+}
+
+function computeShoeAppropriateness(items, descriptors, context) {
+  const shoeDesc = descriptors.find(d => d.slot === 'shoes');
+  const shoeItem = items.find(i => i.macroCategory === 'shoes');
+  if (!shoeDesc && !shoeItem) return 0.5;
+
+  const style = String(context?.style || '').toLowerCase();
+  const occasion = String(context?.occasion || '').toLowerCase();
+  const req = String(context?.request || '').toLowerCase();
+  const isQuietOrWork = ['classic', 'old_money', 'semi_classic', 'business_casual'].includes(style) ||
+    OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) ||
+    /\b(work|office|business|meeting|conference|formal)\b/i.test(`${occasion} ${req}`);
+
+  const sub = shoeDesc?.subtype || '';
+  const text = `${shoeItem?.name || ''} ${shoeItem?.type || ''}`.toLowerCase();
+
+  if (isQuietOrWork) {
+    // Explicit shoe preferences outrank this purely editorial prior.
+    if (/\b(sneakers?|trainers?)\b|кроссовк|кед/i.test(req) &&
+        /^(sport-sneaker|sneaker|minimal-sneaker)$/.test(sub)) return 0.90;
+    if (/^(loafer|derby|oxford|monk|chelsea|dress-boot)$/.test(sub) ||
+        /\b(loafers?|derb(?:y|ies)|oxfords?|monk[ -]?straps?|chelsea)\b/i.test(text)) {
+      if (shoeDesc?.soleProfile === 'dress' || /\b(leather|blake|welt|calfskin)\b/i.test(text)) {
+        return 1.0;
+      }
+      return 0.95;
+    }
+    if (sub === 'minimal-sneaker' || SLEEK_SNEAKER.test(text)) {
+      return shoeDesc?.casualSole ? 0.60 : 0.68;
+    }
+    if (/^(sport-sneaker|sneaker|hiking-boot)$/.test(sub) ||
+        shoeDesc?.athletic || shoeDesc?.casualSole ||
+        /\b(running|training|athletic|trail|sports?|retro|chunky)\b/i.test(text)) {
+      return 0.20;
+    }
+    if (/^(espadrille|boat-shoe|sandal|driver)$/.test(sub)) {
+      return 0.35;
+    }
+    return 0.60;
+  }
+
+  if (/^(sport-sneaker|sneaker|minimal-sneaker)$/.test(sub)) {
+    return 0.95;
+  }
+  return 0.80;
+}
+
+function computeSilhouetteBalance(items, descriptors, context, coherenceProportion) {
+  const base = Number.isFinite(coherenceProportion) ? coherenceProportion : 0.80;
+  const topDesc = descriptors.find(d => d.slot === 'top');
+  const botDesc = descriptors.find(d => d.slot === 'bottom');
+  const outerDesc = descriptors.find(d => d.slot === 'outerwear');
+
+  let bonus = 0;
+  if (topDesc && botDesc) {
+    const topVol = topDesc.volume;
+    const botVol = botDesc.volume;
+    if (topVol && botVol && topVol !== 'unknown' && botVol !== 'unknown') {
+      if (topVol === botVol) bonus += 0.05;
+      else if ((topVol === 'slim' && botVol === 'regular') ||
+               (topVol === 'regular' && botVol === 'wide')) bonus += 0.05;
+      else if (topVol === 'wide' && botVol === 'slim') bonus -= 0.05;
+    }
+  }
+
+  if (botDesc && /^(tailored-trouser|trouser)$/.test(botDesc.subtype)) {
+    bonus += 0.05;
+  }
+  if (outerDesc && /^(blazer|cardigan|coat)$/.test(outerDesc.subtype)) {
+    bonus += 0.05;
+  }
+
+  return Math.max(0, Math.min(1, base + bonus));
+}
+
+function computeTextureCoordination(items, descriptors, context, coherenceTexture) {
+  const base = Number.isFinite(coherenceTexture) ? coherenceTexture : 0.78;
+  let bonus = 0;
+  const hasKnit = descriptors.some(d =>
+    /^(fine-knit|sweater|cardigan|knit-trouser)$/.test(d.subtype) ||
+    /^(knit|fine-knit)$/.test(d.texture) ||
+    /\b(merino|cashmere|wool|knit|ribbed)\b/i.test(`${d.evidence?.join(' ') || ''}`));
+  const hasTailored = descriptors.some(d =>
+    /^(blazer|tailored-trouser)$/.test(d.subtype) ||
+    /^(flannel|wool|tweed|suiting)$/.test(d.texture));
+  const hasLeather = descriptors.some(d =>
+    d.slot === 'shoes' && (/^(loafer|derby|oxford|monk|chelsea)$/.test(d.subtype) || /^(leather|suede)$/.test(d.texture)));
+
+  if (hasKnit && hasTailored) bonus += 0.10;
+  if (hasTailored && hasLeather) bonus += 0.05;
+
+  return Math.max(0, Math.min(1, base + bonus));
+}
+
+function computeBoringOfficePenalty(items, descriptors, context) {
+  const topDesc = descriptors.find(d => d.slot === 'top');
+  const botDesc = descriptors.find(d => d.slot === 'bottom');
+  const outerDesc = descriptors.find(d => d.slot === 'outerwear');
+
+  if (outerDesc && outerDesc.subtype && outerDesc.subtype !== 'unknown' && outerDesc.subtype !== 'none') {
+    return 0;
+  }
+
+  const style = String(context?.style || '').toLowerCase();
+  const occasion = String(context?.occasion || '').toLowerCase();
+  const req = String(context?.request || '').toLowerCase();
+  const isWork = OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) ||
+    /\b(work|office|business|meeting)\b/i.test(`${occasion} ${req}`);
+  const isQuiet = ['classic', 'old_money', 'semi_classic'].includes(style);
+
+  if (!isWork && !isQuiet) return 0;
+
+  const temp = Number(context?.weather?.temp ?? context?.weather?.temperature);
+  const intentionallySimple = /\b(no jacket|no blazer|no layer|without (?:a )?jacket|just a shirt)\b|без пиджак|без куртк|без слоя/i.test(req);
+  if ((Number.isFinite(temp) && temp >= 25) || intentionallySimple) return 0;
+  const isShirt = topDesc && /^(shirt|dress-shirt)$/.test(topDesc.subtype);
+  const isTrouser = botDesc && /^(trouser|tailored-trouser|chino)$/.test(botDesc.subtype);
+
+  if (isShirt && isTrouser) {
+    const interestingTexture = descriptors.some(d =>
+      /^(fine-knit|knit|flannel|tweed|corduroy|linen)$/.test(d.texture) ||
+      ['stripe', 'check'].includes(d.pattern)
+    );
+    if (!interestingTexture) {
+      return 0.10;
+    }
+    return 0.05;
+  }
+  return 0;
+}
+
+/**
+ * Fashion-quality evaluator: bounded whole-look styling assessment
+ * incorporating palette harmony, shoe appropriateness, silhouette balance,
+ * texture coordination, and boring office penalty.
+ */
+export function evaluateFashionQuality(lookOrItems, context = {}) {
+  if (!fashionQualityApplies(context)) return inactiveFashionQuality();
+  const rawItems = Array.isArray(lookOrItems) ? lookOrItems : (lookOrItems?.items || []);
+  const items = Array.isArray(rawItems) ? rawItems.filter(Boolean) : [];
+  const look = (lookOrItems && !Array.isArray(lookOrItems)) ? lookOrItems : { items };
+  const descriptors = items.map(describeGarment);
+
+  const coherencePalette = look?.fashion?.dimensions?.palette;
+  const coherenceProportion = look?.fashion?.dimensions?.proportion;
+  const coherenceTexture = look?.fashion?.dimensions?.texture;
+
+  const paletteHarmony = computePaletteHarmony(items, descriptors, context, coherencePalette);
+  const shoeAppropriateness = computeShoeAppropriateness(items, descriptors, context);
+  const silhouetteBalance = computeSilhouetteBalance(items, descriptors, context, coherenceProportion);
+  const textureCoordination = computeTextureCoordination(items, descriptors, context, coherenceTexture);
+  const boringOfficePenalty = computeBoringOfficePenalty(items, descriptors, context);
+
+  const score = Math.max(0, Math.min(1,
+    0.25 * paletteHarmony +
+    0.30 * shoeAppropriateness +
+    0.20 * silhouetteBalance +
+    0.25 * textureCoordination -
+    boringOfficePenalty
+  ));
+
+  const adjustment = Math.max(-0.08, Math.min(0.06, (score - 0.75) * 0.25));
+
+  return {
+    paletteHarmony: Number(paletteHarmony.toFixed(4)),
+    shoeAppropriateness: Number(shoeAppropriateness.toFixed(4)),
+    silhouetteBalance: Number(silhouetteBalance.toFixed(4)),
+    textureCoordination: Number(textureCoordination.toFixed(4)),
+    boringOfficePenalty: Number(boringOfficePenalty.toFixed(4)),
+    score: Number(score.toFixed(4)),
+    adjustment: Number(adjustment.toFixed(4)),
+    version: FASHION_QUALITY_VERSION,
+  };
+}
+
+/**
+ * Bounded fashion-quality reranker for final look selection.
+ * Reranks candidate looks by evaluating fashion quality signals and applying
+ * bounded quality adjustments.
+ */
+export function rerankFashionCandidates(candidates, context = {}) {
+  if (!Array.isArray(candidates)) return [];
+  if (!fashionQualityApplies(context)) return candidates;
+  for (const look of candidates) {
+    if (!look) continue;
+    if (!look.fashionQuality) {
+      if (look.fashion?.fashionQuality) {
+        look.fashionQuality = look.fashion.fashionQuality;
+      } else {
+        const quality = evaluateFashionQuality(look, context);
+        look.fashionQuality = quality;
+        if (look.fashion) {
+          look.fashion.fashionQuality = quality;
+          if (Number.isFinite(look.fashion.score) && !look.fashion.qualityAdjustmentApplied) {
+            look.fashion.score = Number((look.fashion.score + quality.adjustment).toFixed(4));
+            look.fashion.qualityAdjustmentApplied = true;
+          }
+        }
+      }
+    }
+  }
+  return candidates.sort((a, b) => {
+    const sa = a?.fashion?.score ?? -Infinity;
+    const sb = b?.fashion?.score ?? -Infinity;
+    return sb - sa || String(a?.id || '').localeCompare(String(b?.id || ''));
+  });
+}
+
 function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
   const contextScores = new WeakMap(), personalScores = new WeakMap(), coherent = new Map();
   const feedbackScores = new WeakMap();
@@ -555,9 +826,14 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
         ? evaluateFashionFinish({ items, descriptors:descriptions, context,
             requiredIds:extras.requiredIds || [] })
         : { version:FASHION_FINISH_VERSION,active:false,adjustment:0,evidence:[] };
+      const fashionQuality = evaluateFashionQuality(
+        { items, fashion: { dimensions: { ...dimensions, palette } } },
+        { ...context, requiredIds:extras.requiredIds || [] }
+      );
       const result = {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
-          personal.adjustment + editorial.adjustment + feedback.adjustment + finish.adjustment -
+          personal.adjustment + editorial.adjustment + feedback.adjustment + finish.adjustment +
+          fashionQuality.adjustment -
           recentStylingPenalty(items, recentSignatures) - pricing.penalty - freshness -
           registerPenalty - basePolishPenalty,
         dimensions: { ...dimensions, palette },
@@ -571,6 +847,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
         referenceMetadata: affinity,
         editorial,
         finish,
+        fashionQuality,
         conceptFidelity,
         imageSupportedItems: items.filter((item) =>
           describeGarment(item).evidence.some((entry) => entry.startsWith('image:'))).length,
@@ -679,7 +956,6 @@ export function adjacentCreativeStyles(style, dressCode) {
 // leisure footwear; a later NVIDIA veto has only four slots to fix them.
 // This adjusts concept *preferences*, never budget, stock, anchors, or the
 // visual quality gate. Every final SKU still passes the original hard gates.
-const OFFICE_INTENT = /\b(work|office|business|meeting|conference)\b|работ|офис|делов|встреч|\b(ofis|ish|biznes|uchrashuv)\b/i;
 const OLD_MONEY_OFFICE_ROLES = Object.freeze({
   'refined-ivy': [
     ['dress-shirt'], ['blazer', 'cardigan'], ['chino', 'tailored-trouser'], ['loafer', 'derby'],
@@ -777,10 +1053,11 @@ export async function recommendFashionDeck({
     editorialVetoes[reason] = (editorialVetoes[reason] || 0) + 1;
     return false;
   });
+  const deckContext = { ...context, requiredIds };
+  rerankFashionCandidates(selectable, deckContext);
   const layerMix = { three: 0, four: 0 };
   for (const candidate of selectable) layerMix[candidate.items.length === 3 ? 'three' : 'four'] += 1;
   const ordered = selectable.map((c) => c.fashion?.score).filter(Number.isFinite).sort((a, b) => b - a);
-  const deckContext = { ...context, requiredIds };
   let selected = chooseDeck(selectable, deckContext);
   const floor = applyExclusionQualityFloor(
     selected, ordered[0] ?? NaN, (retrieval.diagnostics.exclusions?.requested || 0) > 0);
@@ -921,6 +1198,9 @@ export async function recommendFashionDeck({
         concept: { ...copy[index].concept, referenceId: reference?.referenceId ?? null },
         direction: directions[index],
         fashion: look.fashion,
+        ...(look.fashionQuality || look.fashion?.fashionQuality ? {
+          fashionQuality: look.fashionQuality || look.fashion?.fashionQuality,
+        } : {}),
         ...(visualReferenceModeById.has(look.id)
           ? { visualReferenceMode: visualReferenceModeById.get(look.id) } : {}),
         ...(visualEvidenceById.has(look.id)
@@ -931,6 +1211,7 @@ export async function recommendFashionDeck({
     diagnostics: { ...retrieval.diagnostics, editorialRegister: { version: EDITORIAL_REGISTER_VERSION, rejected: editorialVetoes, eligible: selectable.length }, visualVerdict,
       directionVersion: DIRECTION_VERSION,
       editorialQualityVersion: EDITORIAL_QUALITY_VERSION,
+      fashionQualityVersion: FASHION_QUALITY_VERSION,
       fashionFinishVersion: FASHION_FINISH_VERSION,
       conceptFidelityVersion: CONCEPT_FIDELITY_VERSION,
       deckCopyVersion: DECK_COPY_VERSION,
