@@ -688,6 +688,10 @@ const AIOutfitGenerator = () => {
   }, [quizStyleDefault]);
   const [loading, setLoading] = useState(false);
   const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
+  // Three server-ranked looks are independently navigable. A tall OutfitSlotGrid
+  // on iOS can consume all practical scroll space; users must never be left
+  // stranded on look #1 despite receiving a complete three-look deck.
+  const [visibleLookIndex, setVisibleLookIndex] = useState(0);
   // Switching languages re-renders static labels via t(), but stored result
   // copy (descriptions, tips) was localized at generation time. Re-derive it
   // from the stored garments so the result screen refreshes without a new
@@ -1356,6 +1360,7 @@ const AIOutfitGenerator = () => {
     generationNonce.current += 1;
     setLoading(false);
     setOutfits([]);
+    setVisibleLookIndex(0);
     setError('');
   };
 
@@ -1454,6 +1459,7 @@ const AIOutfitGenerator = () => {
     setLoading(true);
     setError('');
     setOutfits([]);
+    setVisibleLookIndex(0);
     setLastEngineVersion(null);
     setLastEngineDetail(null);
     setLastFailureCode(null);
@@ -2194,7 +2200,7 @@ const AIOutfitGenerator = () => {
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           <View style={styles.header}>
             <TouchableOpacity
-              onPress={() => setOutfits([])}
+              onPress={() => { setOutfits([]); setVisibleLookIndex(0); }}
               style={styles.backButton}
               testID="aiResultsBack"
               accessibilityLabel={t('common.back')}
@@ -2207,7 +2213,7 @@ const AIOutfitGenerator = () => {
           </View>
 
           {__DEV__ && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true' && <StylistRuntimeDiagnostic engine={lastEngineVersion || undefined} detail={lastEngineDetail || undefined} />}
-          {STYLIST6_DEV_ENABLED && lastEngineVersion && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS !== 'true' ? (
+          {STYLIST6_DEV_ENABLED && lastEngineVersion ? (
             <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
               <ScaledText testID="stylistEngineBanner" style={{fontSize: 11, textAlign: 'center', color: '#173A65', fontWeight: '700'}}>
                 {`Engine ${lastEngineVersion} · ${outfits.length} looks${lastEngineDetail ? ` · ${lastEngineDetail}` : ''}`}
@@ -2247,9 +2253,37 @@ const AIOutfitGenerator = () => {
             </View>
           )}
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
+          {outfits.length > 1 ? (
+            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingBottom: 12 }}>
+              {outfits.map((look, index) => (
+                <TouchableOpacity
+                  key={look.id}
+                  testID={`stylistLookTab-${index}`}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: visibleLookIndex === index }}
+                  accessibilityLabel={`${t('outfitMaker.yourOutfits')} ${index + 1}`}
+                  onPress={() => setVisibleLookIndex(index)}
+                  style={{
+                    flex: 1, paddingVertical: 11, alignItems: 'center', borderRadius: 12,
+                    backgroundColor: visibleLookIndex === index ? D.accent : 'rgba(23,58,101,0.08)',
+                    borderWidth: 1, borderColor: visibleLookIndex === index ? D.accent : 'rgba(23,58,101,0.12)',
+                  }}
+                >
+                  <ScaledText style={{ fontSize: 14, fontWeight: '700', color: visibleLookIndex === index ? '#FFFFFF' : D.textPrimary }}>
+                    {String(index + 1).padStart(2, '0')}
+                  </ScaledText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
+          <ScrollView
+            key={`stylist-look-${visibleLookIndex}`}
+            testID="stylistResultsScroll"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+          >
             {!!inventoryNote && <ScaledText style={styles.outfitDesc}>{inventoryNote}</ScaledText>}
-            {outfits.map((outfit, index) => (
+            {outfits.map((outfit, index) => index !== visibleLookIndex ? null : (
               <Animated.View key={outfit.id} testID={`stylistResult-${index}`} style={[styles.glassCard, { marginTop: index === 0 ? 8 : 24 }]}>
                 <BlurView intensity={Platform.OS === 'ios' ? 48 : 90} tint="light" style={StyleSheet.absoluteFill} />
                 <LinearGradient colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)']} style={StyleSheet.absoluteFill} />

@@ -1,0 +1,55 @@
+# Manual QA with REAL iOS Simulator and authenticated Stylist 6 Cloud staging.
+# Preconditions: logged-in dedicated QA user, valid test entitlement,
+# Expo dev build + Metro with EXPO_PUBLIC_STYLIST6_DEV_BRIDGE=true.
+# Starts on AI Outfit Maker's New outfit screen; no hidden credentials.
+# Runs a single non-visual catalog request and verifies all 3 navigable looks.
+appId: com.aiwardrobe
+name: aiw_s6_three_tabs_from_generator
+---
+- assertVisible: ".*(New outfit|Новый образ).*"
+- scrollUntilVisible:
+    element:
+      id: stylistSource-shop
+    direction: UP
+    timeout: 12000
+- tapOn:
+    id: stylistSource-shop
+- scrollUntilVisible:
+    element:
+      id: stylistEnginePick-stylist6cloud
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: stylistEnginePick-stylist6cloud
+- scrollUntilVisible:
+    element:
+      id: stylistNvidiaToggle
+    direction: DOWN
+    timeout: 13000
+- tapOn:
+    id: stylistNvidiaToggle
+- tapOn:
+    id: stylistGenerate
+- extendedWaitUntil:
+    visible: "Your Outfits"
+    timeout: 90000
+- assertVisible: ".*3 looks.*"
+- assertVisible:
+    id: stylistLookTab-0
+- assertVisible:
+    id: stylistLookTab-1
+- assertVisible:
+    id: stylistLookTab-2
+- assertVisible:
+    id: stylistResult-0
+- takeScreenshot: .private/qa-s6-tab-look-01
+- tapOn:
+    id: stylistLookTab-1
+- assertVisible:
+    id: stylistResult-1
+- takeScreenshot: .private/qa-s6-tab-look-02
+- tapOn:
+    id: stylistLookTab-2
+- assertVisible:
+    id: stylistResult-2
+- takeScreenshot: .private/qa-s6-tab-look-03

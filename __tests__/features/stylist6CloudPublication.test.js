@@ -101,6 +101,21 @@ test('server-admitted cloud success does not trigger a second client quota consu
   expect(quota).toHaveBeenCalledWith('aiOutfits', { cancelSignal: undefined });
 });
 
+test('actual displayed look count stays visible in both simulator diagnostic configurations', () => {
+  expect(source).toContain('testID="stylistEngineBanner"');
+  expect(source).toContain('${outfits.length} looks');
+  expect(source).not.toContain("STYLIST6_DEV_ENABLED && lastEngineVersion && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS !== 'true'");
+});
+
+test('every returned look has a directly selectable tab and retains its exact card identity', () => {
+  expect(source).toContain('testID={`stylistLookTab-${index}`}');
+  expect(source).toContain('accessibilityState={{ selected: visibleLookIndex === index }}');
+  expect(source).toContain('onPress={() => setVisibleLookIndex(index)}');
+  expect(source).toContain('key={`stylist-look-${visibleLookIndex}`}');
+  expect(source).toContain('index !== visibleLookIndex ? null : (');
+  expect(source).toContain('testID={`stylistResult-${index}`}');
+});
+
 test('cloud rendering failures retain a classified code rather than hiding rejection reasons', () => {
   expect(source).toContain("'stylist6_client_deck_rejected'");
   expect(source).toContain("'stylist6_incomplete_cloud_deck'");
