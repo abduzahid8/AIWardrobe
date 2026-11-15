@@ -990,7 +990,10 @@
       "cool-dark": "deep cool tones",
       "cool-mid": "cool tones"
     },
-    "viewProductAtStore": "Check at store"
+    "viewProductAtStore": "Check at store",
+    "offerCaveatPriceOutdated": "Price outdated · verify at store",
+    "offerCaveatCheckSizeStock": "Check size & stock at store",
+    "offerCaveatVerifyAvailability": "Verify availability at store"
   },
   "paywall": {
     "verifyingPurchase": "Verifying your purchase",

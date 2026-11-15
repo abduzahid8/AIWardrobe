@@ -61,6 +61,7 @@ export function validateOutfitGenerationRequest(body: unknown): Record<string, a
   list(body.recentShoeProductKeys, 450, 2048, 'recentShoeProductKeys');
   text(body.rotationScope, 500, 'rotationScope');
   text(body.generationRequestId, 100, 'generationRequestId');
+  text(body.language, 16, 'language');
   for (const key of ['rotationDecks', 'shoeRotationDecks'])
     if (body[key] !== undefined) {
       if (!Array.isArray(body[key]) || body[key].length > 12)

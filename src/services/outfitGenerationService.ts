@@ -1,4 +1,6 @@
-import {stylingCopyParts,outfitDescription} from './stylingCopy';
+import {stylingCopyParts,outfitDescription,resolveOutfitSelectionSource} from './stylingCopy';
+import { applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6Language } from './stylist6Dev';
+import i18n from 'i18next';
 import { validatedQuartets } from '../domain/validatedQuartets';
 import { stylingContext } from '../domain/stylingContext';
 import { budgetFxContext, fitsBudgetAmount, type BudgetFxContext } from '../domain/budgetFx';
@@ -103,15 +105,22 @@ export interface GeneratedOutfitItem {
     image?: string | number;
     recommendation: string;
     isShopItem: boolean;
+    isWardrobe?: boolean;
     price?: number;
     currency?: string;
     shopUrl?: string;
+    priceAgeDays?: number | null;
+    priceFreshness?: string;
+    offerVerification?: Record<string, unknown>;
 }
 
 export interface GeneratedOutfit {
     compositionProtocol?: 'optional-layer-v1';
     explanationVersion?:number;
     concept?: {id:string;title:string;story:string;score?:number};
+    direction?: { id: string; qualified?: boolean; evidence?: Record<string, unknown> };
+    fashionDiagnostics?: Record<string, unknown>;
+    offerVerification?: Record<string, unknown>;
     selectionSource?: string;
     generationRequestId?:string;
     engineVersion?:string;
@@ -225,6 +234,7 @@ export async function generateOutfitsFromDB(
             excludeItemIds,
             excludeProductKeys,
             recentLookSignatures,
+            language: stylist6Language(i18n.language),
         };
         try { validateOutfitGenerationRequest(body); }
         catch {
@@ -269,14 +279,16 @@ export async function generateOutfitsFromDB(
             return { success: false, outfits: [], error: 'stylist_generation_failed', errorTranslationKey: (await outfitGenerationFailure(data, error)).translationKey };
         }
 
-        const optionalLayer = params.compositionProtocol === 'optional-layer-v1' && data.compositionProtocol === 'optional-layer-v1';
-        const serverPlan = /^stylist-5-/.test(String(data.generationVersion || ''));
-        const cap = params.preferences?.maxShopBudget;
+        const isS6Server = isStylist6CloudVersion(data.generationVersion);
+        const optionalLayer = (params.compositionProtocol === 'optional-layer-v1' || isS6Server) && data.compositionProtocol === 'optional-layer-v1';
+        const serverPlan = /^stylist-[56]-/.test(String(data.generationVersion || ''));
+        const rawCap = params.preferences?.maxShopBudget;
+        const cap = rawCap && isS6Server ? (applyStylist6CloudBudgetFx(rawCap, data.currencyConversion) ?? rawCap) : rawCap;
         const outfits: GeneratedOutfit[] = data.outfits
             .filter((o: any) => o && !fourSlotOutfitReason(o.items, !optionalLayer))
             .filter((o: any) => !serverPlan || (o.items.every((item:any) => typeof item?.id==='string' && item.id.trim())
                 && new Set(o.items.map((item:any)=>item.id)).size===o.items.length))
-            .map((o: any) => mapRawOutfit(o, params))
+            .map((o: any) => mapRawOutfit(o, params, data))
             .filter((o: GeneratedOutfit) => [...(params.selectedItemIds||[]),...(params.anchorItemId?[params.anchorItemId]:[])].every(id=>o.items.some(item=>item.id===id))
                 && (params.sourceMode!=='wardrobe'||o.items.every(item=>!isShopClothingItem(item)))
                 && (params.sourceMode!=='catalog'||o.items.every(isShopClothingItem))
@@ -1413,7 +1425,7 @@ function toDisplayItem(
     };
 }
 
-function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
+function mapRawOutfit(o: any, params: GenerateOutfitsParams, envelope?: any): GeneratedOutfit {
     const items: GeneratedOutfitItem[] = (o.items || []).map((item: any): GeneratedOutfitItem => {
         const resolvedImage = item.imageUrl || item.image_url || item.image || item.thumbnailUrl || item.thumbnail_url || '';
         const resolvedMacroCategory = item.macroCategory || item.macro_category || item.category || item.garmentType || item.garment_type || '';
@@ -1444,9 +1456,13 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
             image: resolvedImage,
             recommendation: item.recommendation || 'Selected for this outfit',
             isShopItem: item.isShopItem ?? item.is_shop_item ?? false,
+            ...(item.isWardrobe !== undefined ? { isWardrobe: item.isWardrobe } : {}),
             price: item.price,
             currency: item.currency,
             shopUrl: item.shopUrl || item.shop_url || item.sourceUrl || item.source_url,
+            ...(item.priceAgeDays !== undefined ? { priceAgeDays: item.priceAgeDays } : {}),
+            ...(item.priceFreshness !== undefined ? { priceFreshness: item.priceFreshness } : {}),
+            ...(item.offerVerification !== undefined ? { offerVerification: item.offerVerification } : {}),
         };
     });
 
@@ -1461,13 +1477,22 @@ function mapRawOutfit(o: any, params: GenerateOutfitsParams): GeneratedOutfit {
     });
 
     const normalizedItems = dedupedItems;
-    const serverScore = /^stylist-5-/.test(String(o.engineVersion || '')) ? Number(o.confidence) : NaN;
+    const resolvedEngineVersion = o.engineVersion ?? envelope?.generationVersion;
+    const resolvedCompositionProtocol = o.compositionProtocol ?? envelope?.compositionProtocol;
+    const resolvedGenerationRequestId = o.generationRequestId ?? envelope?.generationRequestId;
+    const isS6Outfit = /^stylist-6-/.test(String(resolvedEngineVersion || ''));
+    const resolvedSelectionSource = isS6Outfit ? resolveOutfitSelectionSource(o, envelope) : o.selectionSource;
+    const serverScore = /^stylist-[56]-/.test(String(resolvedEngineVersion || '')) ? Number(o.confidence ?? o.matchScore) : NaN;
     const score = Number.isFinite(serverScore) ? serverScore
         : assessOutfitQuality(normalizedItems,params.stylePreferences,params.occasion,params.weather,params.anchorItemId,params.preferences).score;
 
     return {
         id: o.id || `outfit_${Date.now()}_${Math.random()}`,
-        compositionProtocol:o.compositionProtocol,explanationVersion:o.explanationVersion,concept:o.concept,selectionSource:o.selectionSource,generationRequestId:o.generationRequestId,engineVersion:o.engineVersion,
+        compositionProtocol:resolvedCompositionProtocol,explanationVersion:o.explanationVersion,concept:o.concept,
+        ...(o.direction !== undefined ? { direction: o.direction } : {}),
+        ...(o.fashionDiagnostics !== undefined ? { fashionDiagnostics: o.fashionDiagnostics } : {}),
+        ...(o.offerVerification !== undefined ? { offerVerification: o.offerVerification } : {}),
+        selectionSource:resolvedSelectionSource,generationRequestId:resolvedGenerationRequestId,engineVersion:resolvedEngineVersion,
         description: outfitDescription(o, items, stylingContext({
           style: params.stylePreferences, occasion: params.occasion,
           request: params.prompt, weather: params.weather,

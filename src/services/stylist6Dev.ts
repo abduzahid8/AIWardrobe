@@ -38,15 +38,66 @@ export interface Stylist6BridgeRequest {
   preferences?: unknown;
   recentSignatures?: string[];
   excludeItemIds?: string[];
+  requiredIds?: string[];
+  sourceMode?: 'wardrobe' | 'catalog' | 'mixed' | 'shop' | 'hybrid';
+  language?: 'en' | 'ru' | 'uz';
   /** Dev-only opt-in: run the hosted NVIDIA visual review on the backend. */
   enableVisual?: boolean;
+}
+
+function normalizeBridgeSourceMode(
+  mode: unknown,
+): 'wardrobe' | 'catalog' | 'mixed' | undefined {
+  if (typeof mode !== 'string') return undefined;
+  const normalized = mode.trim().toLowerCase();
+  if (normalized === 'shop' || normalized === 'catalog') return 'catalog';
+  if (normalized === 'hybrid' || normalized === 'mixed') return 'mixed';
+  if (normalized === 'wardrobe') return 'wardrobe';
+  return undefined;
 }
 
 export function buildStylist6BridgeBody(args: {
   request: Stylist6BridgeRequest;
   catalogRows: Record<string, unknown>[];
-}): { request: Stylist6BridgeRequest; catalogRows: Record<string, unknown>[] } {
-  return { request: args.request, catalogRows: args.catalogRows };
+  wardrobeItems?: Record<string, unknown>[];
+}): {
+  request: Stylist6BridgeRequest;
+  catalogRows: Record<string, unknown>[];
+  wardrobeItems?: Record<string, unknown>[];
+} {
+  const req: Stylist6BridgeRequest = { ...args.request };
+  if (Array.isArray(args.request.requiredIds)) {
+    const cleanRequired = [...new Set(
+      args.request.requiredIds
+        .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+        .map((id) => id.trim()),
+    )].slice(0, 4);
+    if (cleanRequired.length > 0) {
+      req.requiredIds = cleanRequired;
+    } else {
+      delete req.requiredIds;
+    }
+  }
+  const normalizedSourceMode = normalizeBridgeSourceMode(args.request.sourceMode);
+  if (normalizedSourceMode) {
+    req.sourceMode = normalizedSourceMode;
+  } else {
+    delete req.sourceMode;
+  }
+  if (args.request.language !== undefined) {
+    req.language = normalizeStylistLanguage(args.request.language);
+  }
+  const wardrobeItems = Array.isArray(args.wardrobeItems) && args.wardrobeItems.length > 0
+    ? args.wardrobeItems
+      .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
+      .slice(0, 120)
+      .map((item) => ({ ...item, isWardrobe: true, isShopItem: false }))
+    : undefined;
+  return {
+    request: req,
+    catalogRows: args.catalogRows,
+    ...(wardrobeItems && wardrobeItems.length > 0 ? { wardrobeItems } : {}),
+  };
 }
 
 function failureForBridge(code: unknown, stage = 'stylist6_ranking'): OutfitGenerationFailure {
@@ -57,6 +108,7 @@ function failureForBridge(code: unknown, stage = 'stylist6_ranking'): OutfitGene
     stylist6_ranking_failed: 'outfitMaker.generateFailed',
     invalid_stylist6_request: 'outfitMaker.invalidRequest',
     invalid_generation_request: 'outfitMaker.requestTooLarge',
+    anchor_not_found: 'outfitMaker.invalidRequest',
   };
   const key = typeof code === 'string' && code in known ? known[code] : 'outfitMaker.generateFailed';
   return new OutfitGenerationFailure(key, typeof code === 'string' ? code : 'stylist6_ranking_failed', stage);
@@ -68,7 +120,11 @@ function failureForBridge(code: unknown, stage = 'stylist6_ranking'): OutfitGene
  * Throws OutfitGenerationFailure on any transport or ranking failure.
  */
 export async function invokeStylist6Bridge(
-  body: { request: Stylist6BridgeRequest; catalogRows: Record<string, unknown>[] },
+  body: {
+    request: Stylist6BridgeRequest;
+    catalogRows: Record<string, unknown>[];
+    wardrobeItems?: Record<string, unknown>[];
+  },
   options?: { signal?: AbortSignal }
 ): Promise<Record<string, any>> {
   if (!STYLIST6_DEV_ENABLED) {
@@ -386,7 +442,11 @@ function lookStructureRejection(items: unknown[]): string | null {
  * Budgets are still enforced downstream by the screen's fitsCap filter;
  * anything that fails here is counted, never repaired or substituted.
  */
-export function acceptStylist6DevDeck(outfits: unknown): Stylist6DevAcceptance {
+export function acceptStylist6DevDeck(
+  outfits: unknown,
+  sourceMode?: unknown,
+): Stylist6DevAcceptance {
+  const mode = normalizeBridgeSourceMode(sourceMode) ?? 'catalog';
   const rejections: Record<string, number> = {};
   const reject = (reason: string) => {
     rejections[reason] = (rejections[reason] || 0) + 1;
@@ -403,7 +463,12 @@ export function acceptStylist6DevDeck(outfits: unknown): Stylist6DevAcceptance {
       reject(structural);
       continue;
     }
-    if (items.some((item: any) => item?.isShopItem !== true)) {
+    const provenanceOk = mode === 'wardrobe'
+      ? items.every((item: any) => item?.isShopItem === false)
+      : mode === 'mixed'
+        ? items.every((item: any) => typeof item?.isShopItem === 'boolean')
+        : items.every((item: any) => item?.isShopItem === true);
+    if (!provenanceOk) {
       reject('source_or_anchor');
       continue;
     }

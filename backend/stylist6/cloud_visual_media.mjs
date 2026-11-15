@@ -15,7 +15,9 @@ import sharp from 'sharp';
 
 export const CLOUD_VISUAL_MAX_INPUT_BYTES = 4 * 1024 * 1024;
 export const CLOUD_VISUAL_MAX_OUTPUT_BYTES = 512 * 1024;
-export const CLOUD_VISUAL_MAX_INPUT_PIXELS = 16 * 1024 * 1024;
+// Modern fashion CDNs (Armani 3840x4800, Aurélien 3600x4800) routinely serve
+// 17-19 MP 4:5 gallery frames within 4 MiB; allow up to 36 MP before cap.
+export const CLOUD_VISUAL_MAX_INPUT_PIXELS = 36 * 1024 * 1024;
 export const CLOUD_VISUAL_MAX_EDGE = 2048;
 const FORMATS = new Set(['jpeg', 'png', 'webp', 'avif']);
 
@@ -32,7 +34,7 @@ export async function prepareCloudVisualMedia(bytes, {
   let source;
   try {
     source = sharpImpl(bytes, {
-      failOn: 'error',
+      failOn: 'truncated',
       limitInputPixels: CLOUD_VISUAL_MAX_INPUT_PIXELS,
       animated: false,
       sequentialRead: true,
@@ -50,7 +52,7 @@ export async function prepareCloudVisualMedia(bytes, {
     // strips metadata, flattens transparency and rotates EXIF orientation.
     for (const [edge, quality] of [[1024, 74], [768, 52]]) {
       const result = await sharpImpl(bytes, {
-        failOn: 'error',
+        failOn: 'truncated',
         limitInputPixels: CLOUD_VISUAL_MAX_INPUT_PIXELS,
         animated: false,
         sequentialRead: true,

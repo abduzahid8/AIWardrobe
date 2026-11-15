@@ -639,8 +639,9 @@ export async function recommendFashionDeck({
       requiredIds, feedbackTaste,
     }), perRole: 8, perBrief: 100, maxVisual: 72 },
   });
-  // A single cross-slot veto applies to both selection and hosted review.
-  // Never swap a pinned user item without asking; show fewer looks instead.
+  // A single cross-slot veto applies to selection AND visual challengers.
+  // The pre-reviewed critic must never fill a rejected outfit from another
+  // path after an NVIDIA verdict. Retain exact SKU and feasibility admission.
   const editorialVetoes = {};
   const selectable = retrieval.shortlist.filter((look) => {
     const reason = editorialRegisterVeto(look, context);

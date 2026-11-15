@@ -1005,7 +1005,10 @@
       "cool-dark": "глубокие холодные тона",
       "cool-mid": "холодные тона"
     },
-    "viewProductAtStore": "Проверить в магазине"
+    "viewProductAtStore": "Проверить в магазине",
+    "offerCaveatPriceOutdated": "Цена устарела · уточните в магазине",
+    "offerCaveatCheckSizeStock": "Уточните размер и наличие в магазине",
+    "offerCaveatVerifyAvailability": "Проверьте наличие в магазине"
   },
   "paywall": {
     "verifyingPurchase": "Проверяем покупку",

@@ -79,8 +79,10 @@ export async function POST(request: Request): Promise<Response> {
     return errorResponse('invalid_generation_request', 413);
   }
 
+  const previousSecret = envOf('STYLIST6_NODE_SHARED_SECRET_PREVIOUS');
   const authorized = await verifyStylistTransport({
     secret,
+    previousSecret,
     body,
     authorization,
     timestamp: request.headers.get('x-aiw-timestamp'),
@@ -91,6 +93,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const env = {
     STYLIST6_NODE_SHARED_SECRET: secret,
+    STYLIST6_NODE_SHARED_SECRET_PREVIOUS: previousSecret,
     SUPABASE_URL: envOf('SUPABASE_URL'),
     SUPABASE_ANON_KEY: envOf('SUPABASE_ANON_KEY'),
     SUPABASE_SERVICE_ROLE_KEY: envOf('SUPABASE_SERVICE_ROLE_KEY'),
@@ -99,6 +102,7 @@ export async function POST(request: Request): Promise<Response> {
     // Owner kill-switch: any truthy value ('1'/'true') forces an honest
     // NVIDIA_NOT_RUN for the hosted visual review, whatever the client asks.
     STYLIST6_VISUAL_DISABLED: envOf('STYLIST6_VISUAL_DISABLED'),
+    STYLIST6_DEFAULT_VISUAL_EVAL: envOf('STYLIST6_DEFAULT_VISUAL_EVAL'),
   };
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
     // Owner-only runtime diagnostics: presence flags, never credentials.

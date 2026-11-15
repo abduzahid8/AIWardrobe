@@ -1,0 +1,142 @@
+{
+  "generatedAt": "2026-11-15T15:10:00+05:00",
+  "repository": "abduzahid8/AIWardrobe",
+  "branch": "codex/stylist6-visual-first-20261110",
+  "pullRequest": {
+    "number": 15,
+    "state": "OPEN",
+    "isDraft": true,
+    "baseParentSha": "973c2eb7bcca1f59530f82bb889adb4682365e69"
+  },
+  "supabase": {
+    "projectRef": "fwbkrxddvohjcbhszgxr",
+    "edgeFunctions": {
+      "generate-outfits": {
+        "status": "ACTIVE",
+        "version": 209,
+        "verifyJwt": false,
+        "role": "Production Stylist 5 endpoint (untouched)"
+      },
+      "aiw-stylist6-node-staging": {
+        "status": "ACTIVE",
+        "version": 26,
+        "verifyJwt": true,
+        "role": "Isolated Stylist 6 staging proxy"
+      },
+      "aiw-stylist-staging": {
+        "status": "ACTIVE",
+        "version": 6,
+        "verifyJwt": true,
+        "role": "Stylist 5 staging proxy"
+      }
+    }
+  },
+  "vercel": {
+    "project": "aiwardrobe-stylist-compute",
+    "latestPreviewDeployment": {
+      "id": "dpl_9eSxvjfuYMta3QkD8vtpQmPYeJDe",
+      "url": "https://aiwardrobe-stylist-compute-m5yjrunbb-visolav13-5399s-projects.vercel.app",
+      "state": "READY",
+      "gitCommitSha": "973c2eb7bcca1f59530f82bb889adb4682365e69",
+      "routes": [
+        "/api/stylist-generate-outfits",
+        "/api/stylist6-generate-outfits"
+      ]
+    }
+  },
+  "productionRoutingReadiness": {
+    "proxyModule": "backend/stylist-proxy/index.ts",
+    "rolloutEnvVar": "STYLIST_ENGINE_ROLLOUT",
+    "defaultMode": "stylist5",
+    "supportedModes": ["stylist5", "cohort", "stylist6"],
+    "secretRotationSupported": true,
+    "mobileEntryPoints": {
+      "AIOutfitmaker": "Supports both dev/staging aiw-stylist6-node-staging and server-routed Stylist 6 decks from generate-outfits",
+      "dailyAIOutfit": "Supports server-routed Stylist 6 decks in outfitGenerationService.ts and 3-piece optional-layer-v1 looks in dailyOutfitCache.ts"
+    }
+  },
+  "catalogAudit": {
+    "totalRows": 40989,
+    "sourceFiles": 180,
+    "tier1_rawActive": 38658,
+    "tier1_rawInactive": 2331,
+    "tier2_admittedUsable": 38047,
+    "tier2_bySlot": {
+      "outerwear": 6149,
+      "top": 10213,
+      "bottom": 6654,
+      "shoes": 15031
+    },
+    "tier2_byCurrency": {
+      "EUR": 15281,
+      "USD": 9468,
+      "GBP": 8245,
+      "UZS": 5053
+    },
+    "tier2_uzsBySlot": {
+      "outerwear": 864,
+      "top": 1957,
+      "bottom": 1401,
+      "shoes": 831
+    },
+    "excludedInvalidOrIneligible": {
+      "total": 2942,
+      "inactive": 2331,
+      "nonOutfitCategory": 270,
+      "catalogCategoryConflict": 199,
+      "priceImplausible": 142
+    },
+    "verifiedUzFootwearExpansion": {
+      "verifiedItems": 153,
+      "artifact": ".private/uz-footwear-staging-preview-20261114.json"
+    }
+  },
+  "fashionReplay72Scenarios": {
+    "frozenUzCatalog384": {
+      "stylist5": {
+        "completeDecks": 52,
+        "scenariosWithAnyLook": 55,
+        "totalLooks": 161,
+        "coherentLooks": 155,
+        "averageCoherence": 0.7827,
+        "averageStylingDistance": 0.6531,
+        "budgetViolations": 0,
+        "constraintViolations": 0
+      },
+      "stylist6Previous": {
+        "completeDecks": 38,
+        "scenariosWithAnyLook": 44,
+        "totalLooks": 120,
+        "coherentLooks": 113,
+        "averageCoherence": 0.7061,
+        "averageStylingDistance": 0.4533,
+        "budgetViolations": 0,
+        "constraintViolations": 0
+      },
+      "stylist6Fashion": {
+        "completeDecks": 52,
+        "scenariosWithAnyLook": 55,
+        "totalLooks": 161,
+        "coherentLooks": 161,
+        "averageCoherence": 0.8205,
+        "averageStylingDistance": 0.6594,
+        "budgetViolations": 0,
+        "constraintViolations": 0
+      }
+    },
+    "with153VerifiedUzFootwear": {
+      "stylist6Fashion": {
+        "completeDecks": 54,
+        "scenariosWithAnyLook": 57,
+        "totalLooks": 167,
+        "coherentLooks": 167,
+        "averageCoherence": 0.8187,
+        "budgetViolations": 0,
+        "constraintViolations": 0,
+        "newFootwearSelections": 73,
+        "distinctNewFootwearSkusUsed": 17
+      }
+    }
+  },
+  "releaseVerdict": "READY FOR STAGING VALIDATION ONLY (PRODUCTION CUTOVER NO-GO PENDING HUMAN BLIND PANEL, 30-SAMPLE HOSTED LATENCY P95, LIVE MERCHANT STOCK API, AND OWNER APPROVAL)"
+}

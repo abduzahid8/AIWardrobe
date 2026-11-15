@@ -209,3 +209,46 @@ test('unlocalizable facts fall back to English per string, without inventing wor
   assert.equal(fallbackTitle,'Unmapped concept name');
   assert.ok(monolingual(fallbackTitle));
 });
+
+test('uzbek card headlines stay capitalized, prefer paired nouns over bare slot nouns, and avoid unnatural tones',()=>{
+  const uniformColorLooks=[0,1,2].map(n=>({id:'u-'+n,items:[
+    garment('t-'+n,'Top item','top','mid'),
+    garment('b-'+n,'Bottom item','bottom','earth'),
+    garment('s-'+n,'Shoe item','shoes','black'),
+  ].map((it,idx)=>({...it,subtype:['shirt','trouser','loafer'][idx]}))}));
+  const uzCtx=contextFor('uz',{style:'semi_classic',occasion:'Date night'});
+  const cards=editorialDeckCopy(uniformColorLooks,uzCtx,[
+    {id:'signature',qualified:true,evidence:{structuralSlots:[],paletteSlots:[]}},
+    {id:'refresh',qualified:true,evidence:{structuralSlots:['top'],paletteSlots:[]}},
+    {id:'discovery',qualified:true,evidence:{structuralSlots:['top'],paletteSlots:[]}},
+  ]);
+  for(const card of cards){
+    assert.match(card.concept.title,/^[A-ZА-ЯЁ]/,`headline must be capitalized: ${card.concept.title}`);
+    assert.ok(!/tuproq tusi|o'rtacha|salqin to'q|beshovt/i.test(card.concept.title),`awkward uzbek in title: ${card.concept.title}`);
+    assert.ok(!/tuproq tusi|o'rtacha|salqin to'q|beshovt/i.test(card.description),`awkward uzbek in desc: ${card.description}`);
+  }
+  const rawDateNightCards=editorialDeckCopy(uniformColorLooks,{language:'uz',style:'semi_classic',occasion:'Date night'},[
+    {id:'signature',qualified:true,evidence:{structuralSlots:[],paletteSlots:[]}},
+    {id:'refresh',qualified:true,evidence:{structuralSlots:['top'],paletteSlots:[]}},
+    {id:'discovery',qualified:true,evidence:{structuralSlots:['top'],paletteSlots:[]}},
+  ]);
+  for(const card of rawDateNightCards){
+    assert.match(card.description,/uchrashuv/i,`expected Uzbek Date night copy, got: ${card.description}`);
+    assert.doesNotMatch(card.description,/Closest to|interpretation|follows the tailored/i);
+  }
+  const bareDeck=editorialDeckCopy(
+    [0,1,2].map(n=>({id:'b-'+n,items:[
+      garment('t2-'+n,'Cotton shirt','top'),
+      garment('b2-'+n,'Tailored trousers','bottom'),
+      garment('s2-'+n,'Leather loafers','shoes'),
+    ]})),
+    uzCtx,
+    [
+      {id:'signature',qualified:true,evidence:{structuralSlots:[],paletteSlots:[]}},
+      {id:'refresh',qualified:true,evidence:{structuralSlots:['top'],paletteSlots:[]}},
+      {id:'discovery',qualified:true,evidence:{structuralSlots:['bottom'],paletteSlots:[]}},
+    ],
+  );
+  assert.ok(bareDeck.some(c=>/va /i.test(c.concept.title)),`expected paired headline before bare role noun, got: ${bareDeck.map(c=>c.concept.title).join(', ')}`);
+  assert.ok(bareDeck.every(c=>/^[A-ZА-ЯЁ]/.test(c.concept.title)));
+});

@@ -72,7 +72,7 @@ export function verifyMerchantOffer(item, {
     offer &&
     Number.isFinite(Date.parse(offer.observedAt)) &&
     Date.parse(offer.observedAt) <= now &&
-    now - Date.parse(offer.observedAt) <= 24 * 60 * 60_000 &&
+    now - Date.parse(offer.observedAt) <= 30 * 60_000 &&
     (!offer.refreshBefore || (Number.isFinite(Date.parse(offer.refreshBefore)) && now < Date.parse(offer.refreshBefore))) &&
     (!offer.canonicalProductId || String(offer.canonicalProductId) === String(item.id) ||
       (item.merchantSku && String(offer.canonicalProductId) === String(item.merchantSku))) &&
@@ -93,7 +93,8 @@ export function verifyMerchantOffer(item, {
   let requestedSizeStatus = 'unverified';
   if (offerFresh && availableSizes.length > 0 && requestedSize != null) {
     const hit = availableSizes.find((s) => s.size === String(requestedSize));
-    requestedSizeStatus = hit ? 'merchant_reported_available_not_reserved' : 'size_not_in_merchant_snapshot';
+    requestedSizeStatus = hit?.merchantReportedQty > 0 ? 'merchant_reported_available_not_reserved'
+      : hit ? 'size_out_of_stock_at_observation' : 'size_not_in_merchant_snapshot';
   }
 
   const deliveryEligible = offerFresh && typeof offer.deliveryEligible === 'boolean'

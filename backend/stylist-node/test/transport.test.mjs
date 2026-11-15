@@ -62,3 +62,29 @@ test('payload size and unconfigured shared secret fail closed', async () => {
     secret: 'too-short', authorization, body, nonce, now,
   }), /unconfigured/);
 });
+
+test('secret rotation accepts signatures signed with previousSecret during key rollover', async () => {
+  const previousSecret = 'previous-rotation-secret-that-is-at-least-32-chars';
+  const nextSecret = 'next-active-rotation-secret-that-is-at-least-32-chars';
+  const headers = await signStylistTransport({ secret: previousSecret, authorization, body, nonce, now });
+  assert.equal(await verifyStylistTransport({
+    secret: nextSecret,
+    previousSecret,
+    authorization,
+    body,
+    timestamp: headers['x-aiw-timestamp'],
+    nonce: headers['x-aiw-nonce'],
+    signature: headers['x-aiw-signature'],
+    now,
+  }), true);
+  assert.equal(await verifyStylistTransport({
+    secret: nextSecret,
+    previousSecret: 'short',
+    authorization,
+    body,
+    timestamp: headers['x-aiw-timestamp'],
+    nonce: headers['x-aiw-nonce'],
+    signature: headers['x-aiw-signature'],
+    now,
+  }), false);
+});

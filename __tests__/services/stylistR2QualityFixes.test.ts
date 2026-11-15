@@ -327,3 +327,39 @@ test('an absent budget imposes no hidden limit; an explicit budget is honored', 
   expect(strictestOutfitBudget({ amount: 1500000, currency: 'UZS' }, null, convert))
     .toEqual({ amount: 1500000, currency: 'UZS' });
 });
+
+// ── Regression scenarios: animal/resort prints & Spherica Ec16 comfort loafers ─
+
+import { rejectForStyleOccasion } from '../../src/domain/occasionRules';
+
+test('leopard-print oversized shirts are rejected for semi_classic / smart formal tailoring while Spherica Ec16 suede marks comfort sole', () => {
+  const leo = {
+    id: 'allsaints-usm222sf-10711',
+    name: 'Leo Oversized Leopard-Print Shirt',
+    macroCategory: 'top',
+    color: 'brown',
+  };
+  const desc = describeGarment(leo);
+  expect(desc.pattern).toBe('print');
+  expect(desc.patternProminence).toBe('prominent');
+  expect(rejectForStyleOccasion(leo, 'semi_classic', 'Date night')).not.toBeNull();
+  expect(
+    wholeOutfitRegisterClash(
+      [
+        leo,
+        item('Moleskin Suit Pants Caramel Brown', 'bottom'),
+        item('MELBOURNE Leather Derby Shoe - Black', 'shoes'),
+      ],
+      stylingContext({ style: 'semi_classic', occasion: 'Date night' })
+    )
+  ).toBe('casual_statement_print_with_formal_tailoring');
+
+  const sphericaSuede = describeGarment({
+    id: 'geox-u65hyb00022c6021',
+    name: 'Spherica Ec16 Suede Loafers',
+    macroCategory: 'shoes',
+    color: 'dark brown',
+  });
+  expect(sphericaSuede.casualSole).toBe(true);
+  expect(sphericaSuede.materials).toContain('suede');
+});

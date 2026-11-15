@@ -180,6 +180,16 @@ export function wholeOutfitRegisterClash(
     )
       return 'formal_leisure_layer_breaks_structured_tailoring';
   }
+  const topIndex = descriptors.findIndex((d) => d.slot === 'top');
+  const topDesc = topIndex >= 0 ? descriptors[topIndex] : undefined;
+  const bottomDesc = bottomIndex >= 0 ? descriptors[bottomIndex] : undefined;
+  const shoeDesc = shoeIndex >= 0 ? descriptors[shoeIndex] : undefined;
+  if (restrained && ['smart', 'formal'].includes(context.dressCode)
+    && topDesc?.pattern === 'print' && topDesc?.patternProminence === 'prominent'
+    && topDesc?.formality === 'casual'
+    && (bottomDesc?.subtype === 'tailored-trouser' || shoeDesc?.formality === 'formal')) {
+    return 'casual_statement_print_with_formal_tailoring';
+  }
   return null;
 }
 

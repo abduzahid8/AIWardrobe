@@ -111,37 +111,43 @@ test('unconfigured owner reference bucket uses product-only critique without fak
   assert.match(captures[0].messages[0].content[0].text,/No reference image is supplied/);
 });
 
-test('curated text blueprint guides styleFit while reference fidelity remains unavailable',async()=>{
+test('textual editorial blueprint informs referenceless style judgment without claiming reference photography',async()=>{
   const blueprint={id:'rt_001',name:'Grey tailored utility',palette:['grey','ivory'],
-    garments:{top:'ivory mockneck',outerwear:'grey wool overshirt',bottom:'tailored black trousers',shoes:'white minimal sneakers'},
+    silhouette:'balanced',layerPolicy:'required',
+    garments:{top:'ivory mockneck',outerwear:'grey wool overshirt',bottom:'black tailored trousers',shoes:'white minimal sneakers'},
     evidenceMode:'textual_editorial_brief_not_visual_reference'};
   const seen=[];
   const critic=createHostedVisualCritic({
     provider:'nvidia',apiKey,referenceMediaConfigured:false,
     referenceBlueprints:new Map([['rt_001',blueprint]]),
-    resolveReference:()=>{throw Error('rights unverified; no photographic reference is sent')},
+    resolveReference:()=>{throw new Error('photo rights unverified; must not fetch')},
     resolveProduct:()=>asset(130),
-    fetchImpl:async(url,init)=>{seen.push(JSON.parse(init.body));return nvidiaResponse(referencelessVerdict(candidate.id));},
+    fetchImpl:async(url, init)=>{
+      seen.push(JSON.parse(init.body));
+      return nvidiaResponse(referencelessVerdict(candidate.id));
+    },
   });
-  const first=(await critic([candidate],{style:'classic',occasion:'Work'}))[0];
+  const first=(await critic([candidate],{style:'smart_casual',occasion:'Work'}))[0];
   assert.equal(first.referenceless,true);
   assert.equal(first.referenceMode,'textual_editorial_blueprint');
   assert.equal(first.referenceFidelity,undefined);
   assert.equal(seen.length,1);
-  const body=seen[0],prompt=body.messages[0].content[0].text;
+  const body=seen[0], prompt=body.messages[0].content[0].text;
   assert.match(prompt,/editorial TEXT BLUEPRINT/);
   assert.match(prompt,/grey wool overshirt/);
   assert.match(prompt,/never claim photographic reference fidelity/);
   assert.equal(body.messages[0].content.filter(x=>x.type==='image_url').length,4);
-  const altered=createHostedVisualCritic({
+  // Change the curated guidance but keep EXACT product photos. The verdict
+  // cache may not reuse an evaluation against a different fashion direction.
+  const updated=createHostedVisualCritic({
     provider:'nvidia',apiKey,referenceMediaConfigured:false,
-    referenceBlueprints:new Map([['rt_001',{...blueprint,palette:['tan','burgundy']}]]),
-    resolveReference:()=>{throw Error('must not fetch image')},
+    referenceBlueprints:new Map([['rt_001',{...blueprint,palette:['burgundy','tan']}]]),
+    resolveReference:()=>{throw new Error('must not fetch')},
     resolveProduct:()=>asset(130),
-    fetchImpl:async(url,init)=>{seen.push(JSON.parse(init.body));return nvidiaResponse(referencelessVerdict(candidate.id));},
+    fetchImpl:async(url,init)=>{seen.push(JSON.parse(init.body));return nvidiaResponse(referencelessVerdict(candidate.id))},
   });
-  assert.equal((await altered([candidate]))[0].referenceMode,'textual_editorial_blueprint');
-  assert.equal(seen.length,2,'changing blueprint invalidates cached provider verdict');
+  assert.equal((await updated([candidate]))[0].referenceMode,'textual_editorial_blueprint');
+  assert.equal(seen.length,2,'different blueprint requires a new visual verdict, not a stale cache hit');
 });
 
 test('configured owner reference bucket failure never silently downgrades to product-only',async()=>{

@@ -163,22 +163,22 @@ test('review slots preserve the seed and cover distinct products from the same b
 });
 
 
-test('the third reviewed look needs material architectural diversity rather than only a new SKU',()=>{
-  const slots=['top','bottom','shoes'];
+test('visual deck only treats material architecture as a distinct direction when enabled',()=>{
+  const names=['top','bottom','shoes'];
   const looks=['a','b','c'].map((id,i)=>({
-    id,briefId:'brief-'+id,brief:{id:'brief-'+id,name:'Sample'},
-    items:slots.map(slot=>({id:slot+'-'+id,macroCategory:slot,
+    id,brief:{id:'b'+i,name:'Test'},briefId:'b'+i,
+    items:names.map(slot=>({id:slot+'-'+id,macroCategory:slot,
       subtype:slot==='top'?'shirt':slot==='bottom'?'trouser':'loafer',
       color:slot==='top'?['sky','white','ivory'][i]:'navy',texture:'cotton'})),
   }));
   const critiques=looks.map(({id})=>({candidateId:id,visualCohesion:.95,referenceFidelity:.95,
     styleFit:.95,occasionFit:.95,formalityFit:.95,confidence:.95,reject:false,
-    evidence:['top and bottom balance','shoes ground color','texture cohesion']}));
+    evidence:['top matches bottom','bottom matches shoes','shoes provide support']}));
   const input={generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}};
-  const plain=selectVisualDeck(input,critiques,{target:3,minNovelty:.01});
-  const guarded=selectVisualDeck(input,critiques,{target:3,minNovelty:.01,requireDistinctArchitectures:true});
-  assert.equal(plain.outfits.length,3);
-  assert.equal(guarded.outfits.length,2);
+  const ordinary=selectVisualDeck(input,critiques,{target:3,minNovelty:0.01});
+  const guarded=selectVisualDeck(input,critiques,{target:3,minNovelty:0.01,requireDistinctArchitectures:true});
+  assert.equal(ordinary.outfits.length,3);
+  assert.equal(guarded.outfits.length,2,'renamed SKUs and new shirt colors alone do not certify three directions');
   assert.equal(guarded.status,'distinct_inventory_limited');
 });
 

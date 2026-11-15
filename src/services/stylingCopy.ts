@@ -120,6 +120,11 @@ export function resolveOutfitSelectionSource(
   return resolveSelectionSource(data?.source);
 }
 
+const caveatText = (key: string, fallback: string): string => {
+  const translated = i18n.t(key, { defaultValue: fallback });
+  return typeof translated === 'string' && translated && translated !== key ? translated : fallback;
+};
+
 /**
  * Honest purchasing caveat for shop cards when live merchant size/stock
  * or price recency cannot be asserted server-side.
@@ -136,28 +141,37 @@ export function offerCaveatLabel(
   } | null | undefined
 ): string | null {
   if (!item || item.isWardrobe === true) return null;
-  if (item.priceFreshness === 'stale') return 'Price outdated · verify at store';
+  if (item.priceFreshness === 'stale') {
+    return caveatText('outfitMaker.offerCaveatPriceOutdated', 'Price outdated · verify at store');
+  }
   const ov = item.offerVerification;
   if (!ov) return null;
-  if (ov.sizeStockStatus === 'unverified') return 'Check size & stock at store';
-  if (Array.isArray(ov.limitations) && ov.limitations.length > 0) return 'Verify availability at store';
+  if (ov.sizeStockStatus === 'unverified') {
+    return caveatText('outfitMaker.offerCaveatCheckSizeStock', 'Check size & stock at store');
+  }
+  if (Array.isArray(ov.limitations) && ov.limitations.length > 0) {
+    return caveatText('outfitMaker.offerCaveatVerifyAvailability', 'Verify availability at store');
+  }
   return null;
 }
 
 /**
- * A catalog listing is not a reservation or verified checkout. Stylist 6
- * opens a direct SKU listing for final stock/size verification, never labels
- * this action as an immediate purchase. Legacy Stylist 5 stays unchanged.
+ * A catalog link is not a checkout reservation. In Stylist 6 a merchant
+ * snapshot explicitly accompanies every SKU, so the CTA opens the listing
+ * for final size/availability verification rather than implying purchase.
+ * Stylist 5 legacy cards are unchanged.
  */
 export function shopCardActionMode(item: {
   offerVerification?: unknown;
 } | null | undefined): 'view_store' | 'buy' {
-  return item?.offerVerification && typeof item.offerVerification === 'object' ? 'view_store' : 'buy';
+  return item?.offerVerification && typeof item.offerVerification === 'object'
+    ? 'view_store' : 'buy';
 }
 
 /**
- * No search-result redirect for an unverified cloud SKU. Only a validated
- * direct merchant listing can carry the 'check at store' action.
+ * In Stylist 6 a search-result URL must never masquerade as the merchant's
+ * product page. Only the server-validated direct SKU listing enables the
+ * "check at store" action. Legacy Stylist 5 destinations remain unchanged.
  */
 export function shopCardHasDirectListing(item: {
   shopUrl?: unknown;
@@ -165,9 +179,9 @@ export function shopCardHasDirectListing(item: {
 } | null | undefined): boolean {
   if (shopCardActionMode(item) === 'buy') return true;
   const url = item?.shopUrl;
-  const evidence = item?.offerVerification;
+  const ov = item?.offerVerification;
   return typeof url === 'string' && url.length > 0 &&
-    evidence?.purchaseUrlValid === true && evidence.purchaseUrl === url;
+    ov?.purchaseUrlValid === true && ov.purchaseUrl === url;
 }
 
 /** Card badge copy key. The AI badge renders for genuine provider acceptance

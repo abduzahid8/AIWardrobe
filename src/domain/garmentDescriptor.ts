@@ -192,8 +192,8 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
   // comfort sole. This is comfort evidence, never a sneaker classification:
   // https://www.geox.com/en-GB/leather_dress_loafers-coffee-spherica_ec16_man-U65HYB00046C6009.html
   // https://www.geox.com/en-US/leather_dress_loafers-black-spherica_ec1_b_man-U66CJC00047C9999.html
-  const verifiedComfortLoafer = slot === 'shoes' && (/^(?:shop_)?geox-(?:u66mac|u44q6d|u56q6a|u65hyb00046|u66cjc00047)/i.test(String(item.id || ''))
-    || /^(?:flextride plus|moner w 2fit)\b/i.test(item.name || ''));
+  const verifiedComfortLoafer = slot === 'shoes' && (/^(?:shop_)?geox-(?:u66mac|u44q6d|u56q6a|u65hyb000(?:22|46)|u66cjc00047)/i.test(String(item.id || ''))
+    || /^(?:flextride plus|moner w 2fit)\b|\bspherica\s+ec16\b/i.test(item.name || ''));
   // Silhouette outranks a marketing "dress" label. Cushioning/rubber alone
   // never establishes a sneaker sole; a slim rubber dress sole stays dressy.
   const sneakerSole = slot === 'shoes' && /\b(sneaker[ -]+(?:style[ -]+)?soles?|cup[ -]?soles?|hybrid[ -]+(?:oxfords?|derb(?:y|ies)|loafers?|dress shoes?)|(?:oxfords?|derb(?:y|ies)|loafers?).{0,35}(?:sporty[ -]+)?hybrid)\b/.test(text);
@@ -245,7 +245,8 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
     && (/\b(fair[ -]?isle|fairisle|argyle|intarsia|brocade|damask|nordic)\b/.test(text)
       || (/\bjacquard\b/.test(text)
         && /\b(geometric|pattern(?:ed|s)?|all[ -]over|bold|large|oversized|busy|high[ -]contrast|medium[ -]contrast|graphic|chevron|fair[ -]?isle|argyle|intarsia|brocade)\b/.test(text)));
-  const pattern = /\b(paisley|floral|geometric|polka[ -]dots?|camo)\b/.test(text) || knitMotifEvidence
+  const animalOrResortPrint = /\b(leopard|cheetah|zebra|snakeskin|tropical|hawaiian)\b(?:[- ]?prints?)?|\banimal[ -]prints?\b/.test(text);
+  const pattern = /\b(paisley|floral|geometric|polka[ -]dots?|camo)\b/.test(text) || knitMotifEvidence || animalOrResortPrint
     ? 'print'
     : /\b(checks?|checked|plaid|gingham|houndstooth|windowpane|tartan)\b/.test(text)
       ? 'check'
@@ -253,7 +254,7 @@ export function describeGarment(item: GarmentEvidence): GarmentDescriptor {
         || (typeof item.pattern === 'string' && !/^(unknown|other|\s*)$/i.test(item.pattern))
         ? patternOf(item) : 'unknown';
   const patterned = ['stripe', 'check', 'print'].includes(pattern);
-  const prominentMotif = /\b(busy|bold|large|oversized|high[ -]contrast|medium[ -]contrast|all[ -]over|heavily|highly)(?:[ -]+(?:busy|bold|large|scale|geometric|patterned|tropical|botanical|resort|abstract|colorful|multicolou?red)){0,2}[ -]+(?:checks?|checked|plaid|tartan|stripes?|striped|paisley|floral|jacquard|brocade|intarsia|fair[ -]?isle|argyle|graphics?|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
+  const prominentMotif = animalOrResortPrint || /\b(busy|bold|large|oversized|high[ -]contrast|medium[ -]contrast|all[ -]over|heavily|highly)(?:[ -]+(?:busy|bold|large|scale|geometric|patterned|tropical|botanical|resort|abstract|colorful|multicolou?red)){0,2}[ -]+(?:checks?|checked|plaid|tartan|stripes?|striped|paisley|floral|jacquard|brocade|intarsia|fair[ -]?isle|argyle|graphics?|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
   const subtleMotif = /\b(subtle|tonal|micro|fine|small|low[ -]contrast)(?:[ -]+(?:fine|subtle|small|micro|scale))?[ -]+(?:checks?|checked|plaid|windowpane|houndstooth|stripes?|striped|pinstriped|paisley|floral|jacquard|brocade|intarsia|fair[ -]?isle|argyle|prints?|pattern(?:s|ed)?|motifs?)\b/.test(text);
   // Large-scale, high-contrast checks read as statement patterns, not the
   // restrained checks minimalism and quiet tailoring allow. Buffalo (and

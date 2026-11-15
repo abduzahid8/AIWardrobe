@@ -280,39 +280,44 @@ export async function evaluateVisualShortlist(retrieval,request,visualCritic,opt
 }
 
 /**
- * A visually reviewed deck needs garment-architecture contrast, not merely
- * renamed SKUs. Explicit subtype, texture and known color differences are
- * catalog evidence; unknown attributes never fabricate a positive claim.
+ * A visually reviewed *deck* needs genuine garment-architecture contrast.
+ * Different SKUs, colored shoes or a renamed concept alone cannot turn the
+ * same shirt + blazer + trousers into three independent styling directions.
+ * Only explicit catalog subtype/texture evidence can certify a material
+ * change; broad palette contrast requires three known slot-color changes.
  */
 export function independentOutfitDirection(a, b, requiredIds = []) {
-  const roles = ['top', 'outerwear', 'bottom', 'shoes'];
+  const slots = ['top', 'outerwear', 'bottom', 'shoes'];
   const anchored = new Set((requiredIds || []).map(String));
-  const valid = value => typeof value === 'string' && value.trim() &&
-    !['unknown','neutral','none','smooth','missing'].includes(value.trim().toLowerCase());
-  const nameColor = item => {
+  const nameColor = (item) => {
     const name = String(item?.name || '').toLowerCase();
     const match = name.match(/\b(?:navy|white|cream|grey|gray|beige|brown|black|tan|burgundy|charcoal|olive|blue|red)\b/);
     return match?.[0] === 'gray' ? 'grey' : match?.[0];
   };
   const get = (look, slot) => (look?.items || []).find(x => x.macroCategory === slot);
+  const valid = value => typeof value === 'string' && value.trim() &&
+    !['unknown','neutral','none','smooth','missing'].includes(value.trim().toLowerCase());
   let structure = 0, texture = 0, palette = 0, comparable = 0;
-  for (const role of roles) {
-    const x = get(a, role), y = get(b, role);
-    if (role === 'outerwear' && Boolean(x) !== Boolean(y)) { structure++; comparable++; continue; }
+  for (const slot of slots) {
+    const x = get(a, slot), y = get(b, slot);
+    if (slot === 'outerwear' && Boolean(x) !== Boolean(y)) { structure++; comparable++; continue; }
     if (!x || !y) continue;
     const subA = text(x.subtype), subB = text(y.subtype);
-    if (role !== 'shoes' && valid(subA) && valid(subB)) {
+    if (slot !== 'shoes' && valid(subA) && valid(subB)) {
       comparable++;
       if (subA !== subB) structure++;
     }
     const texA = text(x.texture), texB = text(y.texture);
-    if (role !== 'shoes' && valid(texA) && valid(texB) && texA !== texB) texture++;
+    if (slot !== 'shoes' && valid(texA) && valid(texB) && texA !== texB) texture++;
+    // User-fixed anchors may repeat by design. They are neither a novelty
+    // gain nor evidence that two otherwise different looks are identical.
     if (anchored.has(String(x.id)) && anchored.has(String(y.id))) continue;
     const colA = text(valid(x.color) ? x.color : nameColor(x));
     const colB = text(valid(y.color) ? y.color : nameColor(y));
     if (valid(colA) && valid(colB) && colA !== colB) palette++;
   }
-  if (!comparable) return true; // lack of metadata is not a veto
+  // Sparse catalog metadata cannot prove *or* disprove an architecture.
+  if (!comparable) return true;
   return structure > 0 || texture >= 2 || palette >= (anchored.size ? 2 : 3);
 }
 
@@ -375,8 +380,8 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
     if(deck.length===target)return;
     for(const c of eligible){
       if(deck.includes(c))continue;
-      if(options.requireDistinctArchitectures===true && deck.length>=2 &&
-          deck.some(other=>!independentOutfitDirection(c,other,options.requiredIds)))continue;
+      if(options.requireDistinctArchitectures===true && deck.length >= 2 &&
+        deck.some(other=>!independentOutfitDirection(c,other,options.requiredIds)))continue;
       const difference=Math.min(...deck.map(other=>novelty(c,other)));
       if(difference<(options.minNovelty??0.30)||difference===0)continue;
       const repeats=deck.some(other=>other.briefId===c.briefId);

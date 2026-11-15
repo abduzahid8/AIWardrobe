@@ -67,11 +67,25 @@ export async function verifyStylistTransport(input) {
       !UUID_RE.test(nonce) || !SIGNATURE_RE.test(signature) ||
       !/^Bearer\s+\S+$/i.test(input.authorization) ||
       encoder.encode(input.body).byteLength > STYLIST_TRANSPORT_MAX_BODY_BYTES) return false;
+  const candidateSecrets = [
+    ...(Array.isArray(input.secrets) ? input.secrets : []),
+    input.secret,
+    input.previousSecret,
+  ].filter(candidate => typeof candidate === 'string' && candidate.length >= 32);
+  if (!candidateSecrets.length) return false;
   try {
-    return await crypto.subtle.verify('HMAC', await keyFor(input.secret),
-      fromHex(signature),
-      await signedMessage(timestamp, nonce, input.authorization, input.body)
-    );
+    const message = await signedMessage(timestamp, nonce, input.authorization, input.body);
+    const sigBytes = fromHex(signature);
+    for (const candidate of candidateSecrets) {
+      const ok = await crypto.subtle.verify(
+        'HMAC',
+        await keyFor(candidate),
+        sigBytes,
+        message
+      );
+      if (ok) return true;
+    }
+    return false;
   } catch {
     return false;
   }

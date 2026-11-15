@@ -106,6 +106,24 @@ describe('stylist6 dev bridge client', () => {
     expect(body.catalogRows).toEqual([row]);
     expect(body.request.style).toBe('classic');
     expect(body.request.occasion).toBe('Work');
+
+    const enriched = buildStylist6BridgeBody({
+      request: {
+        style: 'classic',
+        occasion: 'Work',
+        brief: 'Work',
+        requiredIds: [' w-1 ', 'w-1', '', 'w-2'],
+        sourceMode: 'hybrid',
+        language: 'ru-RU' as any,
+      },
+      catalogRows: [row],
+      wardrobeItems: [{ id: 'w-1', name: 'Owned shirt', macroCategory: 'top', imageUrl: 'https://example.com/w1.jpg' }],
+    });
+    expect(enriched.request.requiredIds).toEqual(['w-1', 'w-2']);
+    expect(enriched.request.sourceMode).toBe('mixed');
+    expect(enriched.request.language).toBe('ru');
+    expect(enriched.wardrobeItems).toHaveLength(1);
+    expect(enriched.wardrobeItems?.[0]).toMatchObject({ id: 'w-1', isWardrobe: true, isShopItem: false });
   });
 
   test('disabled gate throws without touching the network', async () => {
@@ -187,6 +205,15 @@ describe('stylist6 dev bridge client', () => {
     expect(rejections).toMatchObject({
       invalid_product_identity: 1, unrenderable_photo: 1, structure: 2, source_or_anchor: 1,
     });
+
+    // Source-aware acceptance allows owned garments in wardrobe/mixed local bridge decks.
+    const ownedItem = (id: string, macroCategory: string) => item(id, macroCategory, { isShopItem: false, isWardrobe: true });
+    expect(acceptStylist6DevDeck([
+      deck([ownedItem('wt', 'top'), ownedItem('wb', 'bottom'), ownedItem('ws', 'shoes')]),
+    ], 'wardrobe').accepted).toHaveLength(1);
+    expect(acceptStylist6DevDeck([
+      deck([ownedItem('wt', 'top'), item('so', 'outerwear'), item('sb', 'bottom'), item('ss', 'shoes')]),
+    ], 'mixed').accepted).toHaveLength(1);
   });
 
   test('a Stylist 6 deck resolves with its own engine version', async () => {

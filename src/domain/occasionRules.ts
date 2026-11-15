@@ -142,7 +142,7 @@ const MINIMALIST_NOISE_RE = /\b(graphic|logo|camo|neon|rhinestones?|sequins?|ani
 // souvenir prints, florals, lettering. Tailored patterns (checks, stripes,
 // pinstripes, tweed…) are deliberately ABSENT from this list, so oxford
 // stripes and Glen checks always survive the veto.
-const LOUD_PRINT_RE = /\b(graphics?|logos?|florals?|paisleys?|prints?|printed|camos?|tie[\s-]?dyes?|neons?|sequins?|rhinestones?|souvenirs?|sukajans?|embroidered|embroidery|animal\s*prints?|lettering|slogans?|texts?|palms?|tropical|hawaiian)\b/;
+const LOUD_PRINT_RE = /\b(graphics?|logos?|florals?|paisleys?|prints?|printed|camos?|tie[\s-]?dyes?|neons?|sequins?|rhinestones?|souvenirs?|sukajans?|embroidered|embroidery|animal\s*prints?|leopards?|cheetahs?|zebras?|snakeskins?|pythons?|lettering|slogans?|texts?|palms?|tropical|hawaiian)\b/;
 // Fit doctrine (STYLE_KNOWLEDGE #18: a jacket must cover the seat): cropped,
 // boxy, or shrunken tops/layers are fashion fits, never classic.
 // (Patch pockets are Ivy staples — 'patch' itself is NOT vetoed.)
@@ -465,6 +465,12 @@ export function rejectForStyleOccasion(
     // "Technical Tracksuit" bottoms, "Chunky Moc Toe Shoes").
     if (style === 'semi_classic') {
         if (isShoeish(item, blob) && /\bchunky\b/.test(blob)) return 'chunky soles break semi-classic polish';
+        if (isTopOrLayer && /\b(leopards?|cheetahs?|zebras?|snakeskins?|pythons?|animal\s*prints?|camos?|hawaiian|tropical|palms?|graphics?|logos?|lettering|slogans?|texts?|tie[\s-]?dyes?|neons?|sequins?|rhinestones?|souvenirs?|sukajans?)\b/.test(blob)) {
+            return 'loud prints break semi-classic polish';
+        }
+        if (isTopOrLayer && UNCLASSIC_FIT_RE.test(blob) && /\b(work|office|business|date|dinner|formal)\b/.test(String(occasionId || '').toLowerCase())) {
+            return 'oversized/boxy fits break semi-classic proportions';
+        }
         if (isBottom && /\b(ripped|distressed|sweatpants?|joggers?|jogging|tracksuits?|track[\s-]?(?:pants?|trousers?)|baggy|cargo|oversized|balloon[\s-]?fit)\b/.test(blob)) {
             return 'sloppy/track bottoms break semi-classic discipline';
         }

@@ -227,8 +227,8 @@ const UZ = {
     'navy':"to'q ko'k",'blue':"ko'k",'grey':'kulrang','green':'yashil','olive':'zaytun',
     'burgundy':'bordo','red':'qizil','pink':'pushti','purple':'binafsha',
     'yellow':'sariq','orange':"to'q sariq",'charcoal':"ko'mirrang",'dark':"to'q",
-    'dark-neutral':"to'q neytral",'light':'och','earth':'tuproq tusi','warm':'iliq',
-    'mid':"o'rtacha",'cool-dark':"salqin to'q",'cool-mid':'salqin',
+    'dark-neutral':"to'q neytral",'light':'och','earth':'tabiiy','warm':'iliq',
+    'mid':"mo'tadil",'cool-dark':"chuqur sovuq",'cool-mid':'sovuq',
   },
   textures: {
     'smooth':'silliq','knit':'trikotaj','textured':'teksturali',
@@ -262,7 +262,7 @@ const UZ = {
     'Active layers':'Faol qatlamlar',
     'Formal tailoring':'Rasmiy kostyum',
     'Clean lines':'Toza chiziqlar',
-    'Quiet knit texture':'Beshovt trikotaj fakturasi',
+    'Quiet knit texture':'Sokin trikotaj fakturasi',
     'Tonal modern separates':"Tonli zamonaviy to'plam",
     'Ivy Knit':'Ayvi trikotaj',
     'Soft Tailoring':'Yumshoq kostyum',
@@ -295,10 +295,10 @@ const UZ = {
     adds: role => `Bu variant qatlam sifatida ${role.nom} qo'shadi.`,
     removes: role => `Bu variant ${role.nom} qatlamini olib tashlaydi.`,
     replaces: (to, from) => `${cap(to.nom)} ${from.nom} o'rnini egallaydi — kiyim tarkibi o'zgaradi.`,
-    volume: (role, v1, v2) => `${role} silueti ${v1} dan ${v2} ga o'zgaradi.`,
-    texture: (role, t1, t2) => `${role} teksturasi ${t1} dan ${t2} ga o'zgaradi.`,
-    pattern: (role, p1, p2) => `${role} naqshi ${p1} dan ${p2} ga o'zgaradi.`,
-    paletteShift: (role, c1, c2) => `${role} rangi ${c1} dan ${c2} ga o'zgaradi.`,
+    volume: (role, v1, v2) => `${cap(role)} silueti ${v1}dan ${v2}ga o'zgaradi.`,
+    texture: (role, t1, t2) => `${cap(role)} teksturasi ${t1}dan ${t2}ga o'zgaradi.`,
+    pattern: (role, p1, p2) => `${cap(role)} naqshi ${p1}dan ${p2}ga o'zgaradi.`,
+    paletteShift: (role, c1, c2) => `${cap(role)} rangi ${c1}dan ${c2}ga o'zgaradi.`,
   },
   pairTitle: (a, b) => `${cap(a)} va ${b}`,
   colorRoleTitle: (color, roleNom) => `${cap(color)} ${roleNom}`,
@@ -450,8 +450,11 @@ function localizedPrefix(lang, context, direction) {
   const L = COPY_LOCALES[lang];
   const template = L.prefixes[direction?.id];
   if (!template) return null;
-  const style = L.styles[context?.style];
-  const occasion = L.occasions[context?.occasion];
+  const styleKey = String(context?.style || '').trim().toLowerCase();
+  const rawOccasion = String(context?.occasion || '').trim().toLowerCase();
+  const occasionKey = /^date(?:[_ -]?night)?$/.test(rawOccasion) ? 'date' : rawOccasion;
+  const style = L.styles[styleKey];
+  const occasion = L.occasions[occasionKey];
   // An unknown style/occasion id would inject foreign words into the
   // sentence: per-string English fallback instead.
   if (!style || !occasion) return null;
@@ -482,6 +485,7 @@ function localizedHeadlineCandidates(lang, part, direction) {
     ...slotOrder,
   ])];
   const result = [];
+  const roleOnly = [];
   for (const slot of focusSlots) {
     const d = part[slot];
     const role = roleFor(lang, d);
@@ -498,7 +502,7 @@ function localizedHeadlineCandidates(lang, part, direction) {
         result.push(`${titleCase(d.color)} ${titleCase(enRole(d))}`);
       }
     }
-    result.push(lang === 'en' ? titleCase(role.name) : role.nom);
+    roleOnly.push(lang === 'en' ? titleCase(role.name) : cap(role.nom));
   }
   const top = roleFor(lang, part.top), bottom = roleFor(lang, part.bottom);
   const layer = roleFor(lang, part.outerwear);
@@ -507,6 +511,7 @@ function localizedHeadlineCandidates(lang, part, direction) {
     : L.pairTitle(a.nom, b.nom);
   if (top && bottom) result.push(pair(top, bottom));
   if (layer && bottom) result.push(pair(layer, bottom));
+  result.push(...roleOnly);
   return [...new Set(result)];
 }
 

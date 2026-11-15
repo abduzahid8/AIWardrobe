@@ -247,3 +247,76 @@ it('requests a catalog-only pool for the shop-only Home deck', async () => {
   await generateOutfitsFromDB({stylePreferences:'business_casual',occasion:'Team Collaboration',allowRecentFallback:true});
   expect(invoke.mock.calls[0][1].body.catalogOnly).toBe(true);
 });
+
+it('preserves server-approved Stylist 6 three-piece and cross-currency decks across generateOutfitsFromDB and validatedDailyOutfits', async () => {
+  const { validatedDailyOutfits } = require('../../src/services/dailyOutfitCache');
+  const { parseCbuBudgetRates } = require('../../src/domain/budgetFx');
+  const now = Date.now();
+  const uzToday = new Date(now + 5 * 3600_000);
+  const dd = String(uzToday.getUTCDate()).padStart(2, '0');
+  const mm = String(uzToday.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = uzToday.getUTCFullYear();
+  const snapshot = parseCbuBudgetRates([
+    { Ccy: 'USD', Nominal: '1', Rate: '12800', Date: `${dd}.${mm}.${yyyy}` },
+    { Ccy: 'EUR', Nominal: '1', Rate: '13800', Date: `${dd}.${mm}.${yyyy}` },
+    { Ccy: 'GBP', Nominal: '1', Rate: '16200', Date: `${dd}.${mm}.${yyyy}` },
+  ], now);
+  const s6Outfit = {
+    id: 's6_look_1',
+    description: 'Fine merino knit over tailored trousers with suede loafers.',
+    confidence: 0.91,
+    selectionSource: 'ai',
+    direction: { id: 'signature', qualified: true },
+    fashionDiagnostics: { visualVerdict: 'JUDGED', personalization: { adjustment: 0.04 } },
+    offerVerification: { directProductUrlCount: 3, searchFallbackCount: 0 },
+    items: [
+      { id: 'shop_top_1', name: 'Fine merino knit polo', macroCategory: 'top', isShopItem: true, price: 60, currency: 'USD', shopUrl: 'https://retailer.invalid/products/top-1', priceFreshness: 'fresh', priceAgeDays: 2 },
+      { id: 'shop_bot_1', name: 'Tailored wool trousers', macroCategory: 'bottom', isShopItem: true, price: 70, currency: 'USD', shopUrl: 'https://retailer.invalid/products/bot-1', priceFreshness: 'fresh', priceAgeDays: 2 },
+      { id: 'shop_sho_1', name: 'Brown suede loafers', macroCategory: 'shoes', isShopItem: true, price: 80, currency: 'USD', shopUrl: 'https://retailer.invalid/products/sho-1', priceFreshness: 'fresh', priceAgeDays: 2 },
+    ],
+  };
+  invoke.mockReset();
+  invoke.mockResolvedValueOnce({
+    data: {
+      success: true,
+      status: 'complete',
+      source: 'stylist-6-cloud',
+      generationVersion: 'stylist-6-cloud-staging-1',
+      generationRequestId: 'req-s6-home-1',
+      compositionProtocol: 'optional-layer-v1',
+      visualStatus: 'NVIDIA_APPLIED',
+      currencyConversion: {
+        active: true,
+        source: 'CBU',
+        asOf: snapshot.asOf,
+        snapshotId: snapshot.id,
+        budgetCurrency: 'UZS',
+        snapshot,
+      },
+      outfits: [s6Outfit],
+    },
+    error: null,
+  });
+  const result = await generateOutfitsFromDB({
+    stylePreferences: 'old_money',
+    occasion: 'Date',
+    weather: { temp: 22, condition: 'clear' },
+    preferences: { maxShopBudget: { amount: 3_000_000, currency: 'UZS' } },
+    recordShown: false,
+  });
+  expect(result.success).toBe(true);
+  expect(result.compositionProtocol).toBe('optional-layer-v1');
+  expect(result.outfits).toHaveLength(1);
+  expect(result.outfits[0].engineVersion).toBe('stylist-6-cloud-staging-1');
+  expect(result.outfits[0].selectionSource).toBe('ai');
+  expect(result.outfits[0].confidence).toBe(0.91);
+  expect(result.outfits[0].direction?.id).toBe('signature');
+  expect(result.outfits[0].items).toHaveLength(3);
+  expect(result.outfits[0].items[0].priceFreshness).toBe('fresh');
+
+  // Home daily cache accepts the 3-piece Stylist 6 look in mild weather and invalidates it if weather turns freezing
+  const validMild = validatedDailyOutfits(result.outfits, 'old_money', 'Date', { temp: 22, condition: 'clear' });
+  expect(validMild).toHaveLength(1);
+  const validFreezing = validatedDailyOutfits(result.outfits, 'old_money', 'Date', { temp: -5, condition: 'snow' });
+  expect(validFreezing).toHaveLength(0);
+});

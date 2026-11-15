@@ -1,3 +1,5 @@
+import i18n from 'i18next';
+import uz from '../../i18n/locales/uz.json';
 import { resolveOutfitSelectionSource, offerCaveatLabel, shopCardActionMode, shopCardHasDirectListing } from '../../src/services/stylingCopy';
 
 describe('Stylist 6 per-look visual & merchant offer truth helpers', () => {
@@ -26,7 +28,7 @@ describe('Stylist 6 per-look visual & merchant offer truth helpers', () => {
     expect(resolveOutfitSelectionSource({}, { source: 'legacy' })).toBe('deterministic_fallback');
   });
 
-  test('merchant listings never promise checkout and never link to a different product',()=>{
+  test('merchant listing CTA never promises checkout when only availability evidence exists',()=>{
     expect(shopCardActionMode({offerVerification:{offerStatus:'unverified_catalog_listing'}})).toBe('view_store');
     expect(shopCardActionMode({offerVerification:{offerStatus:'merchant_reported_live'}})).toBe('view_store');
     expect(shopCardActionMode({offerVerification:null})).toBe('buy');
@@ -36,6 +38,7 @@ describe('Stylist 6 per-look visual & merchant offer truth helpers', () => {
       offerVerification:{purchaseUrlValid:true,purchaseUrl:'https://frgroup.uz/ru/store/item-b'}})).toBe(false);
     expect(shopCardHasDirectListing({shopUrl:'',offerVerification:{purchaseUrlValid:false}})).toBe(false);
     expect(shopCardHasDirectListing({shopUrl:'',offerVerification:null})).toBe(true);
+
   });
 
   test('renders honest offer caveats for shop items with unverified size/stock or stale pricing', () => {
@@ -62,5 +65,19 @@ describe('Stylist 6 per-look visual & merchant offer truth helpers', () => {
       priceFreshness: 'fresh',
       offerVerification: { sizeStockStatus: 'in_stock', limitations: [] },
     })).toBeNull();
+  });
+
+  test('localizes store offer caveats when i18n is configured in Uzbek', async () => {
+    await i18n.init({ lng: 'uz', resources: { uz: { translation: uz } } });
+    expect(offerCaveatLabel({
+      isWardrobe: false,
+      priceFreshness: 'recent',
+      offerVerification: { sizeStockStatus: 'unverified' },
+    })).toBe(uz.outfitMaker.offerCaveatCheckSizeStock);
+    expect(offerCaveatLabel({
+      isWardrobe: false,
+      priceFreshness: 'stale',
+      offerVerification: { sizeStockStatus: 'unverified' },
+    })).toBe(uz.outfitMaker.offerCaveatPriceOutdated);
   });
 });

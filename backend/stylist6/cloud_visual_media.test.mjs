@@ -58,6 +58,22 @@ test('input cap, invalid bytes, vector and tiny/icon images fail closed', async(
   assert.equal(await prepareCloudVisualMedia(await example('jpeg'),{maxBytes:1}),null);
 });
 
+test('high-resolution 3840x4800 gallery JPEGs within byte cap decode while >36MP caps fail closed',async()=>{
+  const validJpeg=await example('jpeg');
+  const stubFor=(width,height)=>()=>({
+    metadata:async()=>({format:'jpeg',width,height,pages:1}),
+    rotate(){return this;},
+    resize(){return this;},
+    flatten(){return this;},
+    jpeg(){return this;},
+    toBuffer:async()=>validJpeg,
+  });
+  const ok=await prepareCloudVisualMedia(validJpeg,{sharpImpl:stubFor(3840,4800)});
+  assert.ok(ok && ok.length>=128);
+  const tooManyPixels=await prepareCloudVisualMedia(validJpeg,{sharpImpl:stubFor(6200,6200)});
+  assert.equal(tooManyPixels,null);
+});
+
 test('untrusted seller EXIF/metadata is not included in normalized inference JPEG',async()=>{
   const source=await sharp({
     create:{width:640,height:480,channels:3,background:'#263648'},

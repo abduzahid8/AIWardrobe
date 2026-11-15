@@ -1338,3 +1338,72 @@ test('verified FX enables honest cross-currency budgets while unavailable FX nev
   assert.equal(expired.body.currencyConversion.active, false);
   assert.equal(expired.body.currencyConversion.reason, 'fx_unavailable');
 });
+
+test('accepts standard generate-outfits release payloads, ignores client wardrobeItems, and supports secret rotation', async () => {
+  const { normalizeStylist6CloudPayload } = await import('./cloud_handler.mjs');
+  const releasePayload = {
+    prompt: 'refined office look',
+    occasion: 'Work',
+    stylePreferences: ['old_money'],
+    catalogOnly: true,
+    anchorItemId: 'shop_top-1',
+    excludeItemIds: ['shop_top-2'],
+    recentLookSignatures: ['sig-1'],
+    preferences: {
+      favoriteBrands: ['Test'],
+      maxShopBudget: { amount: 2000000, currency: 'UZS' },
+    },
+    wardrobeItems: [{ id: 'forged-wardrobe-item', price: 0 }],
+    generationRequestId: 'release-payload-1',
+    language: 'uz',
+  };
+  const normalized = normalizeStylist6CloudPayload(releasePayload, { STYLIST6_DEFAULT_VISUAL_EVAL: 'false' });
+  assert.equal(normalized.style, 'old_money');
+  assert.equal(normalized.occasion, 'Work');
+  assert.equal(normalized.sourceMode, 'catalog');
+  assert.deepEqual(normalized.budget, { amount: 2000000, currency: 'UZS' });
+  assert.deepEqual(normalized.requiredIds, ['shop_top-1']);
+  assert.deepEqual(normalized.excludeItemIds, ['shop_top-2']);
+  assert.deepEqual(normalized.recentSignatures, ['sig-1']);
+  assert.equal(normalized.language, 'uz');
+  assert.equal(normalized.preferences.maxShopBudget, undefined);
+
+  // Sign with previousSecret while primary secret is rotated
+  const previousSecret = 'previous-shared-secret-0123456789abcdef';
+  const rotatedEnv = {
+    ...env,
+    STYLIST6_NODE_SHARED_SECRET: 'new-active-shared-secret-0123456789abcdef',
+    STYLIST6_NODE_SHARED_SECRET_PREVIOUS: previousSecret,
+  };
+  const harness = makeIo();
+  const body = JSON.stringify(releasePayload);
+  const authorization = `Bearer ${JWT}`;
+  const signature = await signStylistTransport({ secret: previousSecret, body, authorization });
+  const res = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization, ...signature },
+    bodyText: body,
+    env: rotatedEnv,
+    io: harness.io,
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.clientInventoryIgnored, true);
+  assert.equal(res.body.language, 'uz');
+  assert.ok(res.body.outfits.length > 0);
+  for (const outfit of res.body.outfits) {
+    assert.ok(outfit.items.some((item) => item.id === 'top-1'));
+    assert.ok(outfit.items.every((item) => item.id !== 'top-2'));
+  }
+
+  // Duplicate replay reports outcomeState: 'terminal_recorded'
+  const dup = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization, ...signature },
+    bodyText: body,
+    env: rotatedEnv,
+    io: harness.io,
+  });
+  assert.equal(dup.status, 409);
+  assert.equal(dup.body.outcomeState, 'terminal_recorded');
+  assert.equal(dup.body.priorStatus, 200);
+});

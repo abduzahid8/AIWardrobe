@@ -16,7 +16,7 @@ import { View, TouchableOpacity, Text } from 'react-native';
 import { formatMoney, resolveShopQuote } from '../../src/utils/outfitBudget';
 import { canonicalizeMacroCategory } from '../../src/utils/categoryMapper';
 import { getShopDestination } from '../../src/utils/shopDestination';
-import { offerCaveatLabel } from '../../src/services/stylingCopy';
+import { offerCaveatLabel, shopCardActionMode, shopCardHasDirectListing } from '../../src/services/stylingCopy';
 import {
   ImageUnavailablePlaceholder,
   useProductImageRetry,
@@ -79,6 +79,8 @@ const outfitSlotGrid = build(extract(screenSource, 'OutfitSlotGrid'), {
   resolveShopQuote,
   getShopDestination,
   offerCaveatLabel,
+  shopCardActionMode,
+  shopCardHasDirectListing,
   slotStyles: {},
 });
 

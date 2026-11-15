@@ -77,6 +77,7 @@ const normalizeSourceMode = (mode) => {
   const normalized = String(mode || 'catalog').toLowerCase();
   if (normalized === 'shop' || normalized === 'catalog') return 'catalog';
   if (normalized === 'wardrobe' || normalized === 'mixed') return normalized;
+  if (normalized === 'hybrid') return 'mixed';
   return null;
 };
 
@@ -576,12 +577,88 @@ export function canonicalRequestFingerprint(request) {
 }
 
 /**
+ * Normalizes both `{ request: { ... } }` (Stylist 6 staging contract) and
+ * top-level `generate-outfits` payloads (mobile release contract) into a
+ * single canonical Stylist 6 request shape. Client-supplied inventory is
+ * never copied into the normalized request.
+ */
+export function normalizeStylist6CloudPayload(payload, env = {}) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return {};
+  if (payload.request && typeof payload.request === 'object' && !Array.isArray(payload.request)) {
+    return payload.request;
+  }
+  const styleFromPrefs = Array.isArray(payload.stylePreferences)
+    ? payload.stylePreferences.find((entry) => typeof entry === 'string' && entry.trim())
+    : typeof payload.stylePreferences === 'string' && payload.stylePreferences.trim()
+      ? payload.stylePreferences.split(',')[0].trim()
+      : '';
+  const style = typeof payload.style === 'string' && payload.style.trim()
+    ? payload.style.trim()
+    : (styleFromPrefs ? styleFromPrefs.trim() : '');
+  const occasion = typeof payload.occasion === 'string' ? payload.occasion.trim() : '';
+  const prompt = typeof payload.prompt === 'string' ? payload.prompt.trim() : '';
+  const brief = typeof payload.brief === 'string' && payload.brief.trim()
+    ? payload.brief.trim()
+    : [occasion, style, prompt].filter(Boolean).join(', ');
+  const requiredIds = Array.isArray(payload.requiredIds)
+    ? payload.requiredIds
+    : [
+        payload.anchorItemId,
+        ...(Array.isArray(payload.selectedItemIds) ? payload.selectedItemIds : []),
+      ].filter((id) => typeof id === 'string' && id.trim());
+  const hasOwnedAnchor = requiredIds.some((id) => !String(id).startsWith('shop_'));
+  const sourceMode = payload.sourceMode !== undefined
+    ? payload.sourceMode
+    : payload.wardrobeOnly === true
+      ? 'wardrobe'
+      : payload.catalogOnly === true
+        ? (hasOwnedAnchor ? 'mixed' : 'catalog')
+        : 'mixed';
+  const rawPrefs = payload.preferences && typeof payload.preferences === 'object' && !Array.isArray(payload.preferences)
+    ? payload.preferences
+    : {};
+  const { maxShopBudget, ...preferences } = rawPrefs;
+  const budget = payload.budget !== undefined ? payload.budget : maxShopBudget;
+  const excludeItemIds = Array.isArray(payload.excludeItemIds) ? payload.excludeItemIds : [];
+  const recentSignatures = Array.isArray(payload.recentSignatures)
+    ? payload.recentSignatures
+    : (Array.isArray(payload.recentLookSignatures) ? payload.recentLookSignatures : []);
+  const weather = payload.weather && typeof payload.weather === 'object' && !Array.isArray(payload.weather)
+    ? {
+        ...(typeof payload.weather.temp === 'number' && Number.isFinite(payload.weather.temp) ? { temp: payload.weather.temp } : {}),
+        ...(typeof payload.weather.condition === 'string' && payload.weather.condition.trim() ? { condition: payload.weather.condition.trim() } : {}),
+      }
+    : undefined;
+  const enableVisual = payload.enableVisual !== undefined
+    ? Boolean(payload.enableVisual)
+    : payload.visualEvaluation !== undefined
+      ? Boolean(payload.visualEvaluation)
+      : /^(1|true)$/i.test(String(env?.STYLIST6_DEFAULT_VISUAL_EVAL || '').trim());
+  return {
+    style,
+    occasion,
+    brief,
+    sourceMode,
+    ...(weather ? { weather } : {}),
+    ...(budget !== undefined ? { budget } : {}),
+    preferences,
+    requiredIds,
+    excludeItemIds,
+    recentSignatures,
+    ...(payload.generationRequestId !== undefined ? { generationRequestId: payload.generationRequestId } : {}),
+    ...(payload.language !== undefined ? { language: payload.language } : {}),
+    ...(enableVisual ? { enableVisual: true } : {}),
+  };
+}
+
+/**
  * Authenticated Stylist 6 cloud generation. `io` performs all Supabase IO
  * (injectable fakes in tests); `env` carries server-only configuration.
  * Returns {status, body} with an edge-shaped payload.
  */
 export async function handleStylist6CloudGenerate({ method, headers, bodyText, env, io, fetchImpl }) {
   const secret = env.STYLIST6_NODE_SHARED_SECRET || '';
+  const previousSecret = env.STYLIST6_NODE_SHARED_SECRET_PREVIOUS || '';
   if (!secret || secret.length < 32) return fail('stylist_compute_unconfigured', 503);
   if (method !== 'POST') return fail('method_not_allowed', 405);
   const body = String(bodyText || '');
@@ -589,7 +666,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     return fail('invalid_generation_request', 413);
   }
   const authorized = await verifyStylistTransport({
-    secret, body, authorization: headers.authorization || '',
+    secret, previousSecret, body, authorization: headers.authorization || '',
     timestamp: headers['x-aiw-timestamp'], nonce: headers['x-aiw-nonce'], signature: headers['x-aiw-signature'],
   });
   if (!authorized) return fail('unauthorized', 401);
@@ -600,7 +677,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
   } catch {
     return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
   }
-  const request = payload?.request || {};
+  const request = normalizeStylist6CloudPayload(payload, env);
   const { style, occasion } = request;
   if (typeof style !== 'string' || !style || typeof occasion !== 'string' || !occasion) {
     return fail('invalid_stylist6_request', 400, { stage: 'stylist6_admission' });
@@ -623,7 +700,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     .map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 8);
   const excludedIds = [...new Set((Array.isArray(request.excludeItemIds) ? request.excludeItemIds : [])
     .map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 64);
-  const clientInventoryIgnored = Array.isArray(payload?.catalogRows) && payload.catalogRows.length > 0;
+  const clientInventoryIgnored =
+    (Array.isArray(payload?.catalogRows) && payload.catalogRows.length > 0) ||
+    (Array.isArray(payload?.wardrobeItems) && payload.wardrobeItems.length > 0);
 
   // JWT first: no user, no inventory, no quota touch.
   const authorization = headers.authorization || '';
@@ -655,6 +734,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     return `body-${createHash('sha256').update(body).digest('hex').slice(0, 32)}`;
   })();
   const finish = (status, code) => io.finishRequest(userId, requestId, status, code).catch(() => {});
+  let claimed = false;
+  let debited = false;
   try {
     // Server-side inventory only. Shop rows come from the discovery RPC;
     // wardrobe rows come from clothing_items filtered by the verified user.
@@ -683,7 +764,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // quota debit: invalid anchors fail without a generation charge and
     // are never silently dropped.
     const poolIds = new Set(pool.map((item) => String(item.id)));
-    const missingAnchors = requiredIds.filter((id) => !poolIds.has(id));
+    const resolvePoolId = (id) => (poolIds.has(id) ? id : id.startsWith('shop_') && poolIds.has(id.slice(5)) ? id.slice(5) : id);
+    const resolvedRequiredIds = requiredIds.map(resolvePoolId);
+    const resolvedExcludedIds = excludedIds.map(resolvePoolId);
+    const missingAnchors = resolvedRequiredIds.filter((id) => !poolIds.has(id));
     if (missingAnchors.length) {
       return fail('anchor_not_found', 422, { stage: 'stylist6_admission', missingAnchors, serverInventory: true });
     }
@@ -699,17 +783,21 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     if (claim.conflict) return fail('request_content_conflict', 409, { stage: 'stylist6_admission' });
     if (claim.duplicate) {
       const prior = claim.prior || {};
+      const hasTerminalStatus = typeof prior.status === 'number' && prior.status > 0;
       return fail('duplicate_request', 409, {
         stage: 'stylist6_admission',
         priorStatus: prior.status ?? null,
         priorCode: prior.code || null,
+        outcomeState: hasTerminalStatus ? 'terminal_recorded' : 'in_progress_or_interrupted',
         replayProtection: 'durable',
       });
     }
+    claimed = true;
     // Paid debit exactly once, after full admission. Planning failures
     // keep the debit, mirroring production semantics.
     try {
       await io.debitQuota(userId);
+      debited = true;
     } catch (error) {
       if (error?.code === 'feature_limit_reached') {
         await finish(403, 'feature_limit_reached');
@@ -804,8 +892,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       weather,
       referenceId: reference?.referenceId,
       recentSignatures: Array.isArray(request.recentSignatures) ? request.recentSignatures.slice(-32) : [],
-      excludedIds,
-      requiredIds,
+      excludedIds: resolvedExcludedIds,
+      requiredIds: resolvedRequiredIds,
       sourceMode,
       budget,
       style,
@@ -919,7 +1007,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         diagnostics: deck.diagnostics || null,
       });
     }
-    const excluded = new Set(excludedIds);
+    const excluded = new Set(resolvedExcludedIds);
     const previousDeckOverlapBySlot = { top: 0, outerwear: 0, bottom: 0, shoes: 0 };
     for (const look of deck.outfits) {
       for (const item of look.items) {
@@ -995,6 +1083,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         sourceMode,
         serverInventory: true,
         clientInventoryIgnored,
+        language,
         currencyConversion,
         offerVerification,
         replayProtection: 'durable',
@@ -1051,11 +1140,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       },
     };
   } catch (error) {
-    if (error?.message === 'stylist6_timeout') {
-      await finish(504, 'stylist6_ranking_failed').catch(() => {});
-      return fail('stylist6_ranking_failed', 504, { stage: 'stylist6_ranking' });
+    const status = error?.message === 'stylist6_timeout' ? 504 : 500;
+    if (claimed) {
+      await finish(debited ? status : 503, debited ? 'stylist6_ranking_failed' : 'aborted_pre_debit').catch(() => {});
     }
-    await finish(500, 'stylist6_ranking_failed').catch(() => {});
-    return fail('stylist6_ranking_failed', 500, { stage: 'stylist6_ranking' });
+    return fail('stylist6_ranking_failed', status, { stage: 'stylist6_ranking' });
   }
 }

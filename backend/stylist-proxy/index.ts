@@ -25,6 +25,42 @@ function jsonError(code: string, status: number): Response {
   });
 }
 
+async function resolveVerifiedCohortUserId(authorization: string, apikey: string): Promise<string | null> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim();
+  const anonKey = (Deno.env.get('SUPABASE_ANON_KEY') || apikey || '').trim();
+  if (!supabaseUrl || !anonKey) return null;
+  try {
+    const authUrl = new URL('/auth/v1/user', supabaseUrl);
+    if (authUrl.protocol !== 'https:') return null;
+    const res = await fetch(authUrl, {
+      method: 'GET',
+      redirect: 'error',
+      headers: { authorization, apikey: anonKey },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return null;
+    const payload = await res.json();
+    const id = typeof payload?.id === 'string' ? payload.id.trim() : '';
+    return id || null;
+  } catch {
+    return null;
+  }
+}
+
+async function inStylist6Cohort(userId: string): Promise<boolean> {
+  const allowlist = (Deno.env.get('STYLIST6_ROLLOUT_USER_IDS') || '')
+    .split(',')
+    .map(entry => entry.trim())
+    .filter(Boolean);
+  if (allowlist.includes(userId)) return true;
+  const percent = Number(Deno.env.get('STYLIST6_ROLLOUT_PERCENT') || 0);
+  if (!Number.isFinite(percent) || percent <= 0) return false;
+  if (percent >= 100) return true;
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`stylist6:${userId}`)));
+  const bucket = ((digest[0] << 8) | digest[1]) % 100;
+  return bucket < percent;
+}
+
 Deno.serve(async (request: Request): Promise<Response> => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return jsonError('method_not_allowed', 405);
@@ -32,8 +68,22 @@ Deno.serve(async (request: Request): Promise<Response> => {
   const authorization = request.headers.get('authorization') || '';
   if (!/^Bearer\s+\S+$/i.test(authorization)) return jsonError('unauthorized', 401);
 
-  const endpoint = Deno.env.get('STYLIST_NODE_URL');
-  const secret = Deno.env.get('STYLIST_NODE_SHARED_SECRET');
+  // Server-controlled engine selection: never trust caller-supplied engine flags.
+  // Modes: 'stylist5' (default), 'stylist6' (100% Stylist 6), 'cohort' (verified user cohort).
+  const rolloutMode = (Deno.env.get('STYLIST_ENGINE_ROLLOUT') || 'stylist5').trim().toLowerCase();
+  let useStylist6 = rolloutMode === 'stylist6';
+  if (rolloutMode === 'cohort') {
+    const verifiedUserId = await resolveVerifiedCohortUserId(authorization, request.headers.get('apikey') || '');
+    useStylist6 = Boolean(verifiedUserId && await inStylist6Cohort(verifiedUserId));
+  }
+
+  const endpoint = useStylist6
+    ? Deno.env.get('STYLIST6_NODE_URL')
+    : Deno.env.get('STYLIST_NODE_URL');
+  const secret = useStylist6
+    ? (Deno.env.get('STYLIST6_NODE_SHARED_SECRET') || Deno.env.get('STYLIST_NODE_SHARED_SECRET'))
+    : Deno.env.get('STYLIST_NODE_SHARED_SECRET');
+  const expectedPath = useStylist6 ? '/api/stylist6-generate-outfits' : '/api/generate-outfits';
   if (!endpoint || !secret || secret.length < 32) return jsonError('stylist_compute_unconfigured', 503);
 
   let destination: URL;
@@ -41,7 +91,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     destination = new URL(endpoint);
     if (destination.protocol !== 'https:' || destination.username || destination.password ||
         destination.search || destination.hash ||
-        destination.pathname !== '/api/generate-outfits') throw new Error('invalid_target');
+        destination.pathname !== expectedPath) throw new Error('invalid_target');
   } catch {
     return jsonError('stylist_compute_unconfigured', 503);
   }
@@ -76,7 +126,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       headers,
       redirect: 'error',
       body,
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(useStylist6 ? 55_000 : 45_000),
     });
     if (!upstream.headers.get('content-type')?.toLowerCase().includes('application/json')) {
       return jsonError('stylist_compute_unavailable', 502);

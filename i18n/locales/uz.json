@@ -1005,7 +1005,10 @@
       "cool-dark": "chuqur sovuq tuslar",
       "cool-mid": "sovuq tuslar"
     },
-    "viewProductAtStore": "Do‘konda tekshirish"
+    "viewProductAtStore": "Do‘konda tekshirish",
+    "offerCaveatPriceOutdated": "Narx eskirgan · do‘konda tekshiring",
+    "offerCaveatCheckSizeStock": "O‘lcham va mavjudligini do‘konda tekshiring",
+    "offerCaveatVerifyAvailability": "Mavjudligini do‘konda tekshiring"
   },
   "paywall": {
     "verifyingPurchase": "Xarid tekshirilmoqda",
