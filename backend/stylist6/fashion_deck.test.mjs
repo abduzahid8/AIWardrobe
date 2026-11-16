@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, namedCardiganBriefMismatch } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -49,6 +49,22 @@ test('workout catalog admission rejects real-world polo, jeans, and casual jacke
   assert.equal(truth('RETRO STYLE TRAINERS','shoes'),'unverified_workout_footwear');
   assert.equal(workoutItemTruthReason({name:'Rust Linen Polo Shirt',macroCategory:'top'},
     {occasion:'Casual',style:'streetwear'}),null,'do not alter non-workout styling');
+});
+
+test('Old Money / Casual avoids surprise resort shorts and terry shirts when weather is unknown',()=>{
+  const context={sourceMode:'catalog',style:'old_money',occasion:'Casual',request:'Old Money Casual',weather:{}};
+  const shorts=garment('e','The 7-inch Slim Fit Short','bottom','shorts');
+  const terry=garment('t','Blue Turquoise Terry T-Shirt','top','t-shirt');
+  const chino=garment('b','Stone Regular Fit Chino','bottom','chino');
+  const knit=garment('k','Merino Cotton Polo','top','polo');
+  assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'shorts'},context,shorts),'unknown_weather_unrequested_short_bottom');
+  assert.equal(rejectUnrequestedRivieraPiece({slot:'top',subtype:'t-shirt'},context,terry),'unknown_weather_resort_terry_top');
+  assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'chino'},context,chino),null);
+  assert.equal(rejectUnrequestedRivieraPiece({slot:'top',subtype:'polo'},context,knit),null);
+  assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'shorts'},{...context,weather:{temp:28}},shorts),null);
+  assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'shorts'},{...context,request:'Old Money summer shorts'},shorts),null);
+  assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'shorts'},{...context,sourceMode:'wardrobe'},shorts),null);
+  assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'shorts'},{...context,style:'casual'},shorts),null);
 });
 
 test('Old Money catalog excludes generic hoodies while respecting the owner or an explicit hoodie request', () => {
@@ -614,6 +630,23 @@ test('price bands are per slot and currency, need evidence and cap the dampener'
   assert.equal(triple.flagged, 1);
   assert.ok(tenx.penalty > triple.penalty && tenx.penalty <= UNBUDGETED_PRICE_PENALTY_MAX);
   assert.deepEqual(pricePenaltyForLook([{ ...shoe('usp', 100000) }], {}), { penalty: 0, flagged: 0 });
+});
+
+test('default catalog excludes only substantiated extreme relative price outliers, not luxury requests',()=>{
+  const data=[400000,640000,849900,1000000,1200000,6500000,7400000,8500000,9100000,12000000,13000000,14000000]
+    .map((price,i)=>garment(`p${i}`,'Wool tailored trousers','bottom','tailored-trouser',
+      {price,currency:'UZS',brand:i===11?'Canali':'Other'}));
+  const profile=buildPriceProfile(data);
+  const basic=data[2],luxury=data[11];
+  const context={sourceMode:'catalog',style:'old_money',occasion:'Casual',request:'Old Money Casual'};
+  assert.equal(extremeUnrequestedCatalogPriceReason(basic,profile,context),null);
+  assert.equal(extremeUnrequestedCatalogPriceReason(luxury,profile,context),'extreme_unrequested_catalog_price_outlier');
+  assert.equal(extremeUnrequestedCatalogPriceReason(luxury,profile,{...context,request:'Old Money luxury Canali'}),null);
+  assert.equal(extremeUnrequestedCatalogPriceReason(luxury,profile,{...context,preferences:{favoriteBrands:['CANALI']}}),null);
+  assert.equal(extremeUnrequestedCatalogPriceReason(luxury,profile,{...context,sourceMode:'wardrobe'}),null);
+  assert.equal(extremeUnrequestedCatalogPriceReason(luxury,profile,{...context,budget:{amount:15000000,currency:'UZS'}}),null);
+  assert.equal(extremeUnrequestedCatalogPriceReason({...luxury,currency:'CAD'},profile,context),null);
+  assert.equal(extremeUnrequestedCatalogPriceReason(luxury,{'UZS|bottom':{accessible:800000,count:7}},context),null);
 });
 
 test('skewed luxury catalog uses observed accessible quartile to preserve affordable role choices',()=>{

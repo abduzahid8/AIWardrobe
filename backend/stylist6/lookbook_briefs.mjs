@@ -10,6 +10,17 @@
  */
 export const LOOKBOOK_BRIEFS_VERSION = 'lookbook-briefs-v1';
 
+/** User selected a *specific* lookbook image for comparison. A generic
+ * "Old Money / Casual" style is not an instruction to recreate the first
+ * matching photograph. For open briefs, use reference blueprints only.
+ * The caller must separately verify the actual media is available.
+ */
+export function explicitLookbookPhotoRequested(request, pickedReference) {
+  const chosen=typeof request?.referenceId==='string' ? request.referenceId.trim():'';
+  return /^rt_\d{3}$/.test(chosen) && chosen===pickedReference?.referenceId;
+}
+
+
 const normalize=(value)=>String(value||'').toLowerCase().trim()
   .replace(/[^a-z0-9_-]+/g,'_').replace(/[-_]+/g,'_');
 const has=(source,term)=>String(source||'').toLowerCase().includes(term);

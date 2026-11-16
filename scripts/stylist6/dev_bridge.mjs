@@ -36,7 +36,7 @@ import dotenv from 'dotenv';
 import { adaptCatalog, DEV_PURCHASE_EVIDENCE, devLookFeasibility, sourceHash } from '../../backend/stylist6/catalog_adapter.mjs';
 import { recommendFashionDeck } from '../../backend/stylist6/fashion_deck.mjs';
 import { feedbackTasteModel } from '../../backend/stylist6/feedback_taste.mjs';
-import { referenceFirstBriefs } from '../../backend/stylist6/lookbook_briefs.mjs';
+import { referenceFirstBriefs, explicitLookbookPhotoRequested } from '../../backend/stylist6/lookbook_briefs.mjs';
 import { buildReferenceBlueprints } from '../../backend/stylist6/reference_blueprint.mjs';
 import { verifyMerchantOffer, summarizeDeckOffers, MERCHANT_OFFER_VERSION } from '../../backend/stylist6/merchant_offers.mjs';
 import { projectWardrobeItem } from '../../backend/stylist6/cloud_handler.mjs';
@@ -446,7 +446,14 @@ export async function generateStylist6Deck(payload, options = {}) {
   const visualEvents = [];
   const visualAsked = request.enableVisual === true;
   const nvidiaKey = options.nvidiaApiKey ?? (process.env.NVIDIA_API_KEY || '');
-  const hasLocalReference = Boolean(reference && referenceFileFor(reference.referenceId));
+  // A generic style/occasion selection is NOT consent to recreate the first
+  // arbitrary lookbook photograph. In production, reference bytes are absent
+  // and the critic reviews product photos with textual style blueprints.
+  // Mirror that behavior in local iOS QA. Only an explicitly selected, known
+  // reference gets pixel-to-pixel fidelity grading when local bytes exist.
+  const hasLocalReference = Boolean(reference &&
+    explicitLookbookPhotoRequested(request, reference) &&
+    referenceFileFor(reference.referenceId));
   if (visualAsked && nvidiaKey.startsWith('nvapi-') && nvidiaKey.length >= 20) {
     visualCritic = createHostedVisualCritic({
       provider: 'nvidia',
@@ -516,6 +523,27 @@ export async function generateStylist6Deck(payload, options = {}) {
   process.stdout.write(`[stylist6-dev-bridge] visual requested=${visualAsked} key=${nvidiaKey.startsWith('nvapi-') ? 'present' : 'missing'} ` +
     `reference=${reference ? reference.referenceId : 'none'} localMedia=${hasLocalReference} status=${visualStatus} providerCalls=${providerCalls}\n`);
   if ((deck.status !== 'complete' && deck.status !== 'partial') || !deck.outfits.length) {
+    // The simulator must reveal the *real quality bottleneck*, not just a
+    // generic 502. This is local QA telemetry only: no item IDs, photos,
+    // authenticated data, provider evidence or customer secrets are logged.
+    const diagnostic = deck.diagnostics || {};
+    const rejectionCounts = Object.entries((diagnostic.visualQualityDecisions || []).reduce(
+      (counts, item) => ({...counts,[String(item?.reason || 'unknown')]:
+        (counts[String(item?.reason || 'unknown')] || 0) + 1}), {}));
+    process.stdout.write(`[stylist6-dev-bridge] quality_failed ${JSON.stringify({
+      deckStatus:deck.status,finalLooks:deck.outfits.length,
+      catalogInput:diagnostic.catalogInput,admittedCatalogItems:diagnostic.admittedCatalogItems,
+      candidateCount:diagnostic.candidateCount,shortlisted:diagnostic.shortlisted,
+      editorialEligible:diagnostic.editorialRegister?.eligible,
+      visualCoverage:diagnostic.visualReviewCoverage,
+      visualDecisionCounts:Object.fromEntries(rejectionCounts),
+      visualScores:(diagnostic.visualQualityDecisions||[]).slice(0,8).map(d=>({
+        reason:d.reason,quality:d.quality,confidence:d.confidence,
+        cohesion:d.scores?.cohesion,style:d.scores?.styleFit,
+        occasion:d.scores?.occasionFit,formality:d.scores?.formalityFit,
+        reference:d.scores?.referenceFidelity,
+      })),
+    })}\n`);
     return {
       status: 502,
       body: {

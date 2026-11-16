@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {referenceFirstBriefs} from './lookbook_briefs.mjs';
+import {referenceFirstBriefs,explicitLookbookPhotoRequested} from './lookbook_briefs.mjs';
 import {proposeVisualFirstDeck} from './prototype.mjs';
 
 const index=JSON.parse(readFileSync(
@@ -89,4 +89,14 @@ test('exact single-reference brief matches ranked brief mapping', async () => {
   assert.throws(() => briefForReferenceId(index, 'rt_999'), /reference_not_usable/);
   assert.throws(() => briefForReferenceId({ ...index, images: index.images.slice(1) }, 'rt_001'),
     /incomplete_reference_collection/);
+});
+
+test('an occasion/style does not implicitly request copying a lookbook photograph',()=>{
+  const picked={referenceId:'rt_002'};
+  assert.equal(explicitLookbookPhotoRequested({style:'old_money',occasion:'casual'},picked),false);
+  assert.equal(explicitLookbookPhotoRequested({style:'old_money',occasion:'casual',referenceId:'rt_002'},picked),true);
+  assert.equal(explicitLookbookPhotoRequested({referenceId:'rt_003'},picked),false);
+  assert.equal(explicitLookbookPhotoRequested({referenceId:'rt_999999'},picked),false);
+  assert.equal(explicitLookbookPhotoRequested(null,picked),false);
+  assert.equal(explicitLookbookPhotoRequested({referenceId:'rt_002'},null),false);
 });

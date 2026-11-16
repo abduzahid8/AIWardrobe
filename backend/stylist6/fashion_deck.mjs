@@ -175,6 +175,27 @@ export function explicitlyRequestsLuxury(context) {
   return /\b(?:luxury|premium|designer|high[ -]?end|couture)\b|люкс|премиальн|дорог(?:ой|ие|ую)|дизайнерск/i.test(request);
 }
 
+/** Reject only unrequested extreme source-price outliers when a genuinely
+ * populated slot/currency cohort proves comparable accessible stock exists.
+ * This is NOT a hard user budget, exchange-rate guess, or luxury brand ban.
+ * Explicit luxury instructions, favorite houses and owned/locked pieces win.
+ * The default catalog should not quietly turn a 900k trouser request into
+ * an 8.6m trouser simply because an editorial model likes the photograph.
+ */
+export function extremeUnrequestedCatalogPriceReason(item, profile, context) {
+  if(context?.sourceMode !== 'catalog' || context?.budget ||
+      explicitlyRequestsLuxury(context) || !Number.isFinite(item?.price) || item.price <= 0)
+    return null;
+  const cohort=profile?.[`${item.currency}|${item.macroCategory}`];
+  if(!cohort || cohort.count<12 || !(cohort.accessible>0))return null;
+  if(item.price < cohort.accessible*6)return null;
+  const brand=String(item.brand||'').trim().toLowerCase();
+  if(brand && Array.isArray(context?.preferences?.favoriteBrands) &&
+      context.preferences.favoriteBrands.some(x=>String(x||'').trim().toLowerCase()===brand))return null;
+  if(brand && String(context?.request||'').toLowerCase().includes(brand))return null;
+  return 'extreme_unrequested_catalog_price_outlier';
+}
+
 function referenceAffinity(items, reference) {
   if (!reference) return null;
   const descriptions = items.map(describeGarment);
@@ -819,6 +840,30 @@ export function rerankFashionCandidates(candidates, context = {}) {
   });
 }
 
+/** A generic Old Money / Casual chip is not a summer-holiday brief.
+ * The owner iOS QA surfaced terry resort shirts and two SHORTS looks at
+ * unknown weather (November). Prefer versatile tailoring/knits until there
+ * is explicit warm-weather evidence. Do not override summer or a deliberate
+ * shorts request, and do not affect owned/anchored garments.
+ */
+export function rejectUnrequestedRivieraPiece(descriptor, context, item) {
+  if(context?.sourceMode !== 'catalog' || context?.style !== 'old_money' ||
+    !/\b(casual|weekend|outing|brunch)\b|повседнев|выходн|прогулк/i.test(
+      `${context?.occasion || ''} ${context?.request || ''}`)) return null;
+  const brief=String(context.request || '');
+  const explicitSummer=/\b(summer|beach|resort|coastal|riviera|holiday|vacation|shorts?|bermudas?)\b|летн|пляж|курорт|шорт/i.test(brief);
+  const warmWeather=Number.isFinite(context?.weather?.temp) && context.weather.temp>=24;
+  if(explicitSummer || warmWeather) return null;
+  const name=String(item?.name || '');
+  if(descriptor.slot==='bottom' && (descriptor.subtype==='shorts' ||
+    /\b(shorts?|bermudas?)\b/i.test(name))) return 'unknown_weather_unrequested_short_bottom';
+  if(descriptor.slot==='top' &&
+    /\b(terry|towell?ing|beachwear|resort(?:[ -]wear)?)\b/i.test(name) &&
+    /\b(shirts?|tees?|t-shirts?|polos?|tops?)\b/i.test(name))
+    return 'unknown_weather_resort_terry_top';
+  return null;
+}
+
 /** An Old Money concept is not permission to show a generic sports hoodie.
  * User-requested hoodies, locked garments and owned wardrobe remain intact.
  */
@@ -868,6 +913,9 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           rejectForUnsuitableDateNight(descriptor, context, prepared) ||
           rejectQuietSmartLeisureLayer(descriptor, context, prepared) ||
           quietLuxuryHoodieReason(prepared, descriptor, context) ||
+          rejectUnrequestedRivieraPiece(descriptor, context, prepared) ||
+          (!lockedIds.has(String(prepared.id)) &&
+            extremeUnrequestedCatalogPriceReason(prepared, extras.priceProfile, context)) ||
           rejectPolishedContextMismatch(descriptor, context, prepared)) return null;
       if (descriptor.slot === 'shoes') {
         shoePool[trainerFootwearDescriptor(descriptor, prepared) ? 'trainer' : 'nonTrainer'] += 1;
@@ -996,7 +1044,10 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       const result = {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
           personal.adjustment + editorial.adjustment + feedback.adjustment + finish.adjustment +
-          fashionQuality.adjustment -
+          // This was computed and published in diagnostics but silently
+          // omitted from ranking. With reference-led NVIDIA judging, the
+          // shortlist must prefer garments that actually match the brief.
+          conceptFidelity.adjustment + fashionQuality.adjustment -
           recentStylingPenalty(items, recentSignatures) - pricing.penalty - freshness -
           registerPenalty - basePolishPenalty,
         dimensions: { ...dimensions, palette },

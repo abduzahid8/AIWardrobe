@@ -26,7 +26,7 @@ import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.
 import { hydrateCatalogObservations } from './catalog_observation.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
 import { feedbackTasteModel, FEEDBACK_TASTE_VERSION, FEEDBACK_TASTE_MAX_ROWS } from './feedback_taste.mjs';
-import { referenceFirstBriefs } from './lookbook_briefs.mjs';
+import { referenceFirstBriefs, explicitLookbookPhotoRequested } from './lookbook_briefs.mjs';
 import { buildReferenceBlueprints } from './reference_blueprint.mjs';
 import { currentVisual } from '../../src/domain/visualFashion.ts';
 import { resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
@@ -1085,7 +1085,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         // Referenceless visual critique is allowed only when the entire
         // reference bucket was never configured. If an explicitly configured
         // bucket cannot serve the selected reference, the critic abstains.
-        referenceMediaConfigured: Boolean(String(env.STYLIST6_REFERENCE_BUCKET || '').trim()),
+        referenceMediaConfigured: Boolean(String(env.STYLIST6_REFERENCE_BUCKET || '').trim() &&
+          explicitLookbookPhotoRequested(request,reference)),
         referenceBlueprints: buildReferenceBlueprints(referenceIndex),
         timeoutMs: Math.min(VISUAL_TIMEOUT_MS, Math.max(1000, remainingMs() - 1000)),
         providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
