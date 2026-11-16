@@ -158,3 +158,24 @@ test('real Stylist 6 retrieval consumes the three AI plans without fabricating S
       'the creative model does not waive the hard budget');
   }
 });
+
+
+test('concurrent identical style contexts share one NVIDIA creative plan rather than creating a provider storm', async () => {
+  const key = 'nvapi-test-key-0123456789abcdef';
+  const local = { ...request, brief: 'Unique dedup concurrent style test ' + CREATIVE_DIRECTOR_VERSION };
+  let release;
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls++;
+    return new Promise(resolve => { release = () => resolve(fakeResponse(proposal)); });
+  };
+  const first = designCreativeBriefs({ catalog, request: local, apiKey: key, fetchImpl });
+  const second = designCreativeBriefs({ catalog, request: local, apiKey: key, fetchImpl });
+  assert.equal(calls, 1, 'two identical simultaneous requests spend one provider call');
+  release();
+  const [a, b] = await Promise.all([first, second]);
+  assert.equal(a.status, 'planned');
+  assert.equal(b.status, 'shared');
+  assert.equal(b.providerCalls, 0);
+  assert.deepEqual(a.briefs, b.briefs);
+});
