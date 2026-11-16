@@ -25,6 +25,7 @@ import { createHash } from 'node:crypto';
 import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { hydrateCatalogObservations } from './catalog_observation.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
+import { designCreativeBriefs, CREATIVE_DIRECTOR_VERSION } from './creative_director_ai.mjs';
 import { feedbackTasteModel, FEEDBACK_TASTE_VERSION, FEEDBACK_TASTE_MAX_ROWS } from './feedback_taste.mjs';
 import { referenceFirstBriefs, explicitLookbookPhotoRequested } from './lookbook_briefs.mjs';
 import { buildReferenceBlueprints } from './reference_blueprint.mjs';
@@ -1057,6 +1058,24 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // fingerprint includes it — copy language is request content.
       language,
     };
+    // INVENTORY-GROUNDED CREATIVE DIRECTOR (staging canary).
+    // One short, text-only model call plans three actual fashion architectures
+    // before deterministic SKU retrieval. Only counts/subtypes and explicit
+    // style preferences are sent; no user ID, merchant link or garment photo.
+    // A failed AI plan never bypasses a constraint or blocks the existing
+    // house-formula fallback. Enable ONLY on the isolated S6 compute preview.
+    const creativeDirectorEnabled =
+      /^(1|true)$/i.test(String(env.STYLIST6_CREATIVE_DIRECTOR_ENABLED || '').trim()) &&
+      !isWorkoutOccasion(occasion) && remainingMs() >= 12000;
+    const creativePlan = creativeDirectorEnabled
+      ? await designCreativeBriefs({
+          catalog: feasible, request: input,
+          apiKey: env.NVIDIA_API_KEY || '',
+          ...(fetchImpl ? { fetchImpl } : {}),
+          signal: deadlineController.signal,
+          timeoutMs: Math.min(7500, Math.max(1000, remainingMs() - 7000)),
+        })
+      : { status: 'disabled_or_deadline', briefs: [], providerCalls: 0 };
     // Hosted NVIDIA review: strictly opt-in, server-side key only, bounded
     // to the critic's own batch limits. Reference-guided judging needs
     // staged reference bytes; without them admission fails honestly and the
@@ -1161,6 +1180,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       request: input,
       catalog: feasible,
       referenceBriefs: refs,
+      aiCreativeBriefs: creativePlan.briefs,
       hardGate: async (items) => devLookFeasibility(items),
       priceToBudgetCurrency,
       feedbackTaste,
@@ -1324,6 +1344,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         diagnostics: deck.diagnostics || null,
         // Gate D read receipt: the bounded feedback read this ranking used
         // (or honestly did not use). Never a taste profile, only a status.
+        creativeDirector: {
+          version: CREATIVE_DIRECTOR_VERSION,
+          status: creativePlan.status,
+          providerCalls: creativePlan.providerCalls,
+          briefsAccepted: creativePlan.briefs.length,
+        },
         feedbackTaste: {
           status: feedbackTasteStatus,
           rows: feedbackRows.length,
