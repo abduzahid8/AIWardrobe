@@ -1349,6 +1349,9 @@ export function fashionStylingContext(request) {
 
 export async function recommendFashionDeck({
   request, catalog, referenceBriefs = [], hardGate, priceToBudgetCurrency, visualCritic, canJudgeOutfit,
+  // Optional trusted inventory-grounded AI directions; still subject to the
+  // exact same retrieval, price, wardrobe, weather and visual checks.
+  aiCreativeBriefs = [],
   // Optional prebuilt model from feedback_taste.mjs (explicit thumbs rows).
   // Absent/inert model = byte-identical legacy ranking (back-compat).
   feedbackTaste,
@@ -1400,7 +1403,15 @@ export async function recommendFashionDeck({
           : context.optionalLayer && !forceLayer ? 'optional' : 'required',
       })));
   const references = [reference, ...referenceBriefs.filter((brief) => brief !== reference)].filter(Boolean);
-  const briefs = [...house, ...neighborHouse, ...references].map(adaptLayer).filter(Boolean).slice(0, 10);
+  // Let a bounded AI Creative Director design the FIRST three architectures,
+  // while keeping the established house references as safe fallback choices.
+  // These are *plans*, never invented items or guaranteed approved looks.
+  const aiPlans = Array.isArray(aiCreativeBriefs) ? aiCreativeBriefs.slice(0, 3).filter(
+    brief => brief?.generatedBy === 's6-creative-director-v1' &&
+      brief?.roles && slots.every(slot => Array.isArray(brief.roles[slot]))
+  ) : [];
+  const briefs = [...aiPlans, ...house, ...neighborHouse, ...references]
+    .map(adaptLayer).filter(Boolean).slice(0, 10);
   if (!briefs.length) return { status: 'no_feasible_looks', outfits: [], diagnostics: { visualVerdict: 'NOT_RUN' } };
   const priceProfile = buildPriceProfile(catalog,valueFxRates);
   const retrieval = await shortlistRetrievalDeck({
@@ -1648,6 +1659,7 @@ export async function recommendFashionDeck({
       ...(visualQualityDecisions ? { visualQualityDecisions } : {}),
       directions: directions.map((d) => d.id),
       qualifiedDirections: directions.filter((d) => d.qualified).length,
+      aiCreativeDirectorBriefs: aiPlans.length,
       neighborBriefs: neighborHouse.length,
       shortlistMix: { ...layerMix, best: ordered[0] ?? null, top20cutoff: ordered[19] ?? null },
       ...(floor.limited ? { exclusionQualityLimited: true } : {}) },
