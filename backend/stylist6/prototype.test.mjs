@@ -476,3 +476,34 @@ test('three model-approved outfit directions favor a coat architecture over a th
     'one source-confirmed coat must outrank a third near-quality suit blazer');
   assert.ok(new Set(selected.outfits.map(look=>outerwearArchetype(look))).size>=2);
 });
+
+
+test('whole-outfit occasion/fit floors veto aesthetic color wins that fail the actual use case',()=>{
+  const look={id:'good-colors-wrong-occasion',briefId:'trial',brief:{id:'trial',name:'Refined date'},
+    items:[
+      {id:'t',macroCategory:'top',subtype:'shirt',name:'Draped light shirt'},
+      {id:'b',macroCategory:'bottom',subtype:'chino',name:'Cream tapered chinos'},
+      {id:'s',macroCategory:'shoes',subtype:'loafer',name:'Brown penny loafers'},
+    ]};
+  const forgedBeauty={candidateId:look.id,visualCohesion:.96,styleFit:.95,
+    occasionFit:.58,formalityFit:.92,referenceFidelity:.96,confidence:.99,reject:false,
+    evidence:['colors harmonize','shapes balance','but occasion mismatch']};
+  const review={generationVersion:STYLIST6_VERSION,shortlist:[look],diagnostics:{}};
+  const legacy=selectVisualDeck(review,[forgedBeauty],{target:1});
+  assert.equal(legacy.status,'complete','weighted aesthetic score was enough before axis gate');
+  const strict=selectVisualDeck(review,[forgedBeauty],{target:1,
+    minStyleFit:.72,minOccasionFit:.75,minFormalityFit:.70});
+  assert.equal(strict.status,'no_verified_looks');
+  assert.equal(strict.diagnostics.visualQualityDecisions[0].reason,'occasion_mismatch');
+  const badPersonal={...forgedBeauty,occasionFit:.94,styleFit:.60};
+  const rated=selectVisualDeck(review,[badPersonal],{target:1,
+    minStyleFit:.72,minOccasionFit:.75,minFormalityFit:.70});
+  assert.equal(rated.diagnostics.visualQualityDecisions[0].reason,'style_mismatch');
+  const badFormality={...forgedBeauty,occasionFit:.94,formalityFit:.51};
+  const formal=selectVisualDeck(review,[badFormality],{target:1,
+    minStyleFit:.72,minOccasionFit:.75,minFormalityFit:.70});
+  assert.equal(formal.diagnostics.visualQualityDecisions[0].reason,'formality_mismatch');
+  const approved={...forgedBeauty,occasionFit:.81};
+  assert.equal(selectVisualDeck(review,[approved],{target:1,
+    minStyleFit:.72,minOccasionFit:.75,minFormalityFit:.70}).status,'complete');
+});

@@ -1542,6 +1542,10 @@ export async function recommendFashionDeck({
         { ...retrieval, shortlist: candidates }, request, visualCritic,
         { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds,
           requireDistinctArchitectures: true,
+          // Whole-outfit quality is conjunctive: correct colors cannot excuse
+          // an unsuitable dress code or occasion. These are per-axis NVIDIA
+          // verdict scores, never inferred user attributes or SKU heuristics.
+          minStyleFit: 0.72, minOccasionFit: 0.75, minFormalityFit: 0.70,
           // Among already model-approved sets, a true signature/refresh/
           // discovery triple may outrank a near-tie with an "alternative"
           // third. This changes the chosen garments, not merely card labels,

@@ -559,6 +559,25 @@ test('two visually approved looks produce a truthful partial result, no unreview
   assert.ok(result.outfits.every(look => look.items.every(item => item.price > 0)));
 });
 
+test('cloud whole-deck review does not approve beautiful colors with a genuinely wrong occasion', async () => {
+  const testRequest={...base.request,style:'semi_classic',occasion:'Date night',
+    weather:{temp:17},sourceMode:'catalog',referenceId:undefined,
+    requiredIds:[],budget:{amount:1800000,currency:'UZS'}};
+  const result=await recommendFashionDeck({
+    ...base, request:testRequest,referenceBriefs:[],visualDeckReview:true,
+    canJudgeOutfit:async()=>true,allowUnreviewedVisualFill:false,
+    visualCritic:async batch=>batch.map(candidate=>admittedVisualVerdict(candidate, {
+      visualCohesion:.97,styleFit:.97,occasionFit:.55,formalityFit:.97,
+      confidence:.97,referenceFidelity:.97,
+    })),
+  });
+  assert.equal(result.status,'no_feasible_looks',
+    'a style/occasion mismatch must never be rescued by a 0.97 palette score');
+  assert.equal(result.outfits.length,0);
+  assert.equal(result.diagnostics.visualReviewCoverage.approved,0);
+  assert.ok(result.diagnostics.visualQualityDecisions.some(x=>x.reason==='occasion_mismatch'));
+});
+
 test('valid visual verdicts rejecting every finalist fail closed rather than showing weak outfits', async () => {
   const result = await recommendFashionDeck({
     ...base, visualDeckReview: true, canJudgeOutfit: async () => true,

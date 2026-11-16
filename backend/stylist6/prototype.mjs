@@ -392,8 +392,16 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       ? 0.45*c.visualCohesion+0.20*c.styleFit+0.20*c.occasionFit+0.15*c.formalityFit
       : 0.30*c.visualCohesion+0.30*c.referenceFidelity+
         0.15*c.styleFit+0.15*c.occasionFit+0.10*c.formalityFit;
+    // A high palette/proportion score must NEVER compensate for a plainly
+    // inappropriate occasion, dress code or personal style. The stricter
+    // axis thresholds are opted into by the whole-deck product path; older
+    // reference-only comparisons retain their established contract.
     const decision=c.reject?'model_veto':c.confidence<0.6?'low_confidence'
-      :quality<minVisualQuality?'below_quality_floor':'approved';
+      :quality<minVisualQuality?'below_quality_floor'
+        :Number.isFinite(options.minStyleFit) && c.styleFit<options.minStyleFit?'style_mismatch'
+          :Number.isFinite(options.minOccasionFit) && c.occasionFit<options.minOccasionFit?'occasion_mismatch'
+            :Number.isFinite(options.minFormalityFit) && c.formalityFit<options.minFormalityFit?'formality_mismatch'
+              :'approved';
     qualityDecisions.push({
       candidateId:id,
       quality:Number(quality.toFixed(4)),
