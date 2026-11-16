@@ -84,6 +84,9 @@ const tier = await client.rpc('effective_subscription_tier', { p_user: userId })
 const tierName = tier.error ? `unreadable(${tier.error.message})` : tier.data;
 console.log(`probe entitlement tier: ${JSON.stringify(tierName)} (bot account; expected free/unpaid)`);
 
+const visualApproved = process.env.AIW_S6_VISUAL_APPROVED === 'I_ACCEPT_NVIDIA_VISUAL_CALLS';
+if (process.env.AIW_S6_VISUAL_APPROVED && !visualApproved)
+  throw new Error('Invalid AIW_S6_VISUAL_APPROVED acknowledgement');
 const results = { startedAt: new Date().toISOString(), stage: 'aiw-stylist6-node-staging', checks: [] };
 
 // 1) Anonymous POST must fail 401 with zero quota movement.
@@ -146,7 +149,7 @@ const paid = await fetch(stage, {
     request: {
       style: 'classic', occasion: 'Work', brief: 'Work, classic', sourceMode: 'catalog',
       preferences: {}, recentSignatures: [], excludeItemIds: [], requiredIds: [],
-      generationRequestId: randomUUID(), enableVisual: false,
+      generationRequestId: randomUUID(), enableVisual: visualApproved,
       budget: { amount: 25_000_000, currency: 'UZS' },
     },
   }),
@@ -207,6 +210,41 @@ if (paid.ok) {
       'Converted outfit exceeds UZS budget');
   }
   assert.equal(quotaDelta, 1, 'Completed request must debit exactly one quota unit');
+  // Local-only evidence for reviewing real merchant photos and fashion
+  // directions. No user token, account identity or sensitive taste inputs.
+  // Keep product-level bytes out of CI logs and the Git repository.
+  const qaOutfits = paidBody.outfits.map((look) => ({
+    direction: look.direction?.id || 'unknown',
+    directionEvidence: look.direction?.evidence ? {
+      distance: look.direction.evidence.distance ?? null,
+      structuralSlots: (look.direction.evidence.structuralSlots || []).slice(0,4),
+      paletteSlots: (look.direction.evidence.paletteSlots || []).slice(0,4),
+    } : null,
+    concept: look.concept?.title || null,
+    description: String(look.description || '').slice(0, 600),
+    fashionScore: look.fashionDiagnostics?.score ?? null,
+    visualVerdict: look.fashionDiagnostics?.visualVerdict || 'NOT_RUN',
+    offerVerification: look.offerVerification?.level || null,
+    items: (look.items || []).map((item) => ({
+      id: item.id, brand: item.brand || null, name: item.name,
+      slot: item.macroCategory || item.type, subtype: item.subtype || null,
+      imageUrl: item.imageUrl || null, shopUrl: item.shopUrl || null,
+      price: item.price, currency: item.currency,
+    })),
+  }));
+  const visual = paidBody.visualReceipt || {};
+  writeFileSync('.private/s6-probe-last-outfits.json',JSON.stringify({
+    capturedAt:new Date().toISOString(),stage:'aiw-stylist6-node-staging',
+    generationVersion:paidBody.generationVersion,
+    visualStatus:paidBody.visualStatus,
+    visualReview:{requested:visualApproved,approval:visual.visualApproval || null,
+      providerCalls:visual.providerCalls || 0,validVerdicts:visual.validVerdicts || 0,
+      abstentions:visual.abstentions || 0,displayedJudged:visual.displayedJudged ?? 0,
+      displayedLooks:visual.displayedLooks ?? paidBody.outfits.length},
+    currencyConversion:{source:conversion?.source || null,asOf:conversion?.asOf || null},
+    looks:qaOutfits,
+  },null,2),{mode:0o600});
+  console.log(`visual_receipt: approval=${String(visual.visualApproval || 'not_requested')} judged=${visual.displayedJudged ?? 0}/${visual.displayedLooks ?? decks} direction_ids=${qaOutfits.map(x=>x.direction).join(',')}`);
   results.checks.push({ check: 'metered_generation_complete', status: paid.status, decks,
     quotaDelta, fxSource: rates ? 'CBU' : 'same_currency_only', crossCurrencyLooks,
     budgetVerified: true });
