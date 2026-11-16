@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -30,6 +30,25 @@ const base = {
     optionalLayer: true, referenceId: 'rt_001', budget: { amount: 750000, currency: 'UZS' },
     preferences: { avoidColors: ['black'] }, requiredIds: ['shirt-white'] },
 };
+
+test('live Classic Work rejects a terry resort shirt and guru-collar statement jacket before NVIDIA', () => {
+  const office = {sourceMode:'catalog',style:'classic',occasion:'Work',request:'polished office tailoring'};
+  const resort = garment('yellow-terry','Yellow Terry Towelling Resort Shirt','top','shirt');
+  const jacket = garment('guru-jacket','Icon guru-collar wool-blend jacket with off-centre fastening','outerwear','jacket');
+  assert.equal(rejectUnrequestedOfficeRegisterPiece(resort,office),'unrequested_resort_top_in_polished_office');
+  assert.equal(rejectUnrequestedOfficeRegisterPiece(jacket,office),'unrequested_statement_jacket_in_classic_office');
+  // Preserve appropriate garments, weekend freedom and direct user intent.
+  for (const item of [garment('blue-shirt','Blue Cutaway Cotton Shirt','top','dress-shirt'),
+    garment('blue-blazer','Navy Single-Breasted Wool Blazer','outerwear','blazer'),
+    garment('brown-knit','Fine Merino Wool Polo','top','polo')])
+    assert.equal(rejectUnrequestedOfficeRegisterPiece(item,office),null);
+  assert.equal(rejectUnrequestedOfficeRegisterPiece(resort,{...office,occasion:'Weekend'}),null);
+  assert.equal(rejectUnrequestedOfficeRegisterPiece(jacket,{...office,style:'old_money',occasion:'Weekend'}),null);
+  assert.equal(rejectUnrequestedOfficeRegisterPiece(resort,{...office,sourceMode:'wardrobe'}),null);
+  assert.equal(rejectUnrequestedOfficeRegisterPiece(resort,{...office,request:'Please use my yellow terry resort shirt'}),null);
+  assert.equal(rejectUnrequestedOfficeRegisterPiece(jacket,{...office,request:'Wear my asymmetric statement jacket'}),null);
+  assert.equal(rejectUnrequestedOfficeRegisterPiece(garment('unknown','Item 123','top','shirt'),office),null);
+});
 
 test('workout catalog admission rejects real-world polo, jeans, and casual jackets before ranking',()=>{
   const context={occasion:'Workout',style:'sport'};

@@ -308,6 +308,38 @@ export function rejectForUnsuitableDateNight(descriptor, context, item) {
 }
 
 /**
+ * High-confidence catalog register: a holiday/towelling shirt or an avant-garde
+ * asymmetric jacket can look individually handsome in a photo but cannot be
+ * recommended as an unrequested CLASSIC OFFICE piece. This is a retrieval
+ * admission rule (before ranking and NVIDIA), so a coherent replacement is
+ * actually available to compete instead of wasting the critic's top-4 slots.
+ * It never edits merchant metadata and does not apply to owned items, leisure
+ * occasions or an explicitly requested statement garment.
+ */
+export function rejectUnrequestedOfficeRegisterPiece(item, context) {
+  if (context?.sourceMode !== 'catalog' ||
+      !['classic','old_money','semi_classic','business_casual'].includes(context?.style) ||
+      !/\b(work|office|business|meeting|conference)\b/i.test(String(context?.occasion || ''))) return null;
+  const name = String(item?.name || '');
+  const request = String(context?.request || '');
+  if (item?.macroCategory === 'top') {
+    const explicitResortTop =
+      /\b(?:resort|beach|aloha|hawaiian|holiday)\b.{0,35}\b(?:shirt|tee|polo|top)\b/i.test(name) ||
+      /\b(?:terry(?:[ -]?towell(?:ing)?)?|towell?ing|towel[ -]?cloth|beachwear)\b.{0,35}\b(?:shirt|tee|polo|top)\b/i.test(name);
+    if (explicitResortTop && !/\b(?:resort|beach|aloha|hawaiian|terry|towell?ing|towel[ -]?cloth)\b/i.test(request))
+      return 'unrequested_resort_top_in_polished_office';
+  }
+  if (item?.macroCategory === 'outerwear' && context.style === 'classic') {
+    // Verified source image: "Icon guru-collar wool-blend jacket with
+    // off-centre fastening" reads avant-garde, not traditional office.
+    const statement = /\b(?:guru[ -]?collar|off[ -]?cent(?:er|re)|asymmetri(?:c|cal))\b/i.test(name);
+    if (statement && !/\b(?:guru[ -]?collar|asymmetri(?:c|cal)|off[ -]?cent(?:er|re)|statement[ -]?jacket)\b/i.test(request))
+      return 'unrequested_statement_jacket_in_classic_office';
+  }
+  return null;
+}
+
+/**
  * Catalog-only quiet-smart layer guard. A known leisure/technical sport shell
  * has a different visual register from classic office and old-money evening
  * tailoring. The name must explicitly identify the leisure/training purpose:
@@ -986,6 +1018,8 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       const prepared = prepareGarment(item.color ? item : { ...item, color: undefined }), descriptor = describeGarment(prepared);
       if (workoutItemTruthReason(prepared, context) ||
           freezingCatalogVestReason(prepared, context) ||
+          (!lockedIds.has(String(prepared.id)) &&
+            rejectUnrequestedOfficeRegisterPiece(prepared, context)) ||
           rejectForRequestIntent(prepared, context.request, context.weather) ||
           descriptor.slot !== item.macroCategory || descriptor.productKind === 'complete-suit' ||
           garmentContextReason(prepared, context) || rejectForClimate(prepared, context.weather) ||
