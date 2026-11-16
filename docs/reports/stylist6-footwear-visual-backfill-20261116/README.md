@@ -19,3 +19,11 @@ The stage uses the already-pinned SigLIP2 revision `75de2d55ec2d0b4efc50b3e9ad70
 - Exact GitHub workflow run ID/conclusion and model revision; counted `succeeded`, `unknown`, `pending`, `failed` shoe jobs before and after.
 - Image confidence coverage and random sample review of leather dress shoes vs sneaker/hybrid soles. Treat uncertain descriptions as unknown, not confident.
 - Current Stylist 6 cloud staging SHA, independent fashion visual approval, and bottlenecks; do not confuse this catalog process with synchronous 3-look inference.
+
+## Second bounded run — additional footwear (2026-11-16)
+
+The **first workflow job #43924986094 completed successfully**. Live Supabase verification showed all 45 newly queued shoe products gained source-hash-current profiles: 114 -> 159, pending 0, unknown remained 1. The public RLS catalog read independently confirmed 159 actual visual shoe profiles among 1,649 active shoes.
+
+A second deliberate SQL cohort inserted **exactly 512** new active shoe SKUs with unfilled, source-verified visual profiles and HTTPS product + store links. Selection is diversified by footwear subtype and merchant brand; includes loafers, Oxfords, Derbies, Chelsea boots, monk shoes, boots, and drivers; excludes unnamed source-only offers, unknown slot guesses, inactive products, and current profiles. This is queue metadata only, not fashion approval or a stock claim.
+
+The follow-up workflow uses **four** CPU GitHub runners, each bounded to 128 completed images / 2400s / 55 minute job timeout. It uses the existing scoped worker token and PostgreSQL `SKIP LOCKED` eight-item leases, so workers cannot claim the same product. It still never calls `seed` and cannot silently expand to the full catalog. Its actual completion status and success count must be verified after running; 512 enqueued does NOT mean 512 analyzed.

@@ -13,13 +13,18 @@ concurrency:
 jobs:
   enrich-footwear:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        worker: [1, 2, 3, 4]
     env:
       STYLIST_VISUAL_WORKER_URL: ${{ secrets.STYLIST_VISUAL_WORKER_URL }}
       STYLIST_VISUAL_WORKER_TOKEN: ${{ secrets.STYLIST_VISUAL_WORKER_TOKEN }}
       STYLIST_VISUAL_SKIP_SEED: '1'
-      STYLIST_VISUAL_MAX_IMAGES: '48'
-      STYLIST_VISUAL_RUN_SECONDS: '1800'
+      STYLIST_VISUAL_MAX_IMAGES: '128'
+      STYLIST_VISUAL_RUN_SECONDS: '2400'
       HF_HUB_DISABLE_PROGRESS_BARS: '1'
       TOKENIZERS_PARALLELISM: 'false'
     steps:
@@ -41,5 +46,5 @@ jobs:
         run: |
           pip install --quiet torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet -r scripts/visual/cloud/requirements.txt
-      - name: Process at most 48 previously queued products, do not seed entire catalog
+      - name: Process one bounded 128-image cohort, do not seed entire catalog
         run: python scripts/visual/cloud/worker.py
