@@ -176,6 +176,24 @@ describe('SlotCell image honesty', () => {
     expect(currentImage()).toBe(stale);
   });
 
+  it('a hanging CDN never leaves a grey outfit tile forever: one timeout retry, then honest fallback',()=>{
+    const view=render(React.createElement(slotCell,cellProps('https://slow.example/item.jpg')));
+    act(()=>jest.advanceTimersByTime(10000));
+    expect(currentImage().source.uri).toBe('https://slow.example/item.jpg');
+    act(()=>jest.advanceTimersByTime(PRODUCT_IMAGE_RETRY_DELAY_MS));
+    expect(currentImage().source.uri).toMatch(/aiwr=/);
+    act(()=>jest.advanceTimersByTime(10000));
+    expect(view.getByTestId('slot-photo-unavailable-second-top-1')).toBeTruthy();
+    expect(view.getByText('Photo unavailable')).toBeTruthy();
+  });
+  it('a confirmed successful download cancels the hanging-CDN watchdog',()=>{
+    const view=render(React.createElement(slotCell,cellProps('https://good.example/item.jpg')));
+    act(()=>currentImage().onLoad());
+    act(()=>jest.advanceTimersByTime(40000));
+    expect(view.queryByTestId('slot-photo-unavailable-second-top-1')).toBeNull();
+    expect(currentImage().source.uri).toBe('https://good.example/item.jpg');
+  });
+
   it('never cache-busts local or private wardrobe photos — one error is the placeholder', () => {
     const view = render(React.createElement(slotCell, cellProps('file:///local/wardrobe.jpg')));
     act(() => { currentImage().onError(); });

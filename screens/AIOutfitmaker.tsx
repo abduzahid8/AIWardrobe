@@ -446,7 +446,8 @@ const SlotCell = React.memo(function SlotCell({
   // labeled 'photo unavailable' tile — never a silent grey box posing as the
   // product photo. One bounded cache-busting retry absorbs CDN hiccups.
   const bundledSource = typeof imageSource === 'number' ? imageSource : null;
-  const { phase, activeUri, onImageError } = useProductImageRetry(bundledSource === null ? imageUri : null);
+  const { phase, activeUri, onImageError, onImageLoad } = useProductImageRetry(
+    bundledSource === null ? imageUri : null, 10000);
   const imageUnavailable = bundledSource === null && (phase === 'unavailable' || !activeUri);
   return (
     <View key={slotKey} style={slotStyles.cell}>
@@ -465,6 +466,7 @@ const SlotCell = React.memo(function SlotCell({
           cachePolicy="memory-disk"
           recyclingKey={`${slotKey}-${itemId ?? ''}-${activeUri}`}
           onError={bundledSource === null ? onImageError : undefined}
+          onLoad={bundledSource === null ? onImageLoad : undefined}
         />
       )}
       <View style={slotStyles.labelWrap}>

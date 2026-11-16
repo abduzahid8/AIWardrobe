@@ -40,6 +40,8 @@ export interface ProductImageRetryState {
   activeUri: string;
   /** Feed expo-image / RN Image onError here. */
   onImageError: () => void;
+  /** Report a successful load to cancel the optional hanging-CDN timeout. */
+  onImageLoad: () => void;
 }
 
 /**
@@ -50,9 +52,10 @@ export interface ProductImageRetryState {
  * instead of a silent grey tile pretending to be the product photo.
  * A missing/invalid URL skips straight to 'unavailable'.
  */
-export function useProductImageRetry(rawUri: string | undefined | null): ProductImageRetryState {
+export function useProductImageRetry(rawUri: string | undefined | null, maxWaitMs = 0): ProductImageRetryState {
   const uri = useMemo(() => usableProductImageUri(rawUri), [rawUri]);
   const [retryUri, setRetryUri] = useState('');
+  const [loadedUri, setLoadedUri] = useState('');
   const [unavailable, setUnavailable] = useState(!uri);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const failedUriRef = useRef('');
@@ -62,6 +65,7 @@ export function useProductImageRetry(rawUri: string | undefined | null): Product
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
     failedUriRef.current = '';
     setRetryUri('');
+    setLoadedUri('');
     setUnavailable(!uri);
     return () => {
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
@@ -87,10 +91,27 @@ export function useProductImageRetry(rawUri: string | undefined | null): Product
     }
   }, [uri, retryUri, unavailable]);
 
+  const onImageLoad = useCallback(() => {
+    setLoadedUri(retryUri || uri);
+  }, [retryUri, uri]);
+
+  // Some retail CDNs hang instead of reporting an error to expo-image. Only
+  // the Stylist result tiles opt in: no infinite grey box or unbounded retry.
+  // A completed image clears this deadline; a hang follows the exact same
+  // single-retry -> labeled-placeholder contract as an explicit HTTP error.
+  useEffect(() => {
+    const displayed = retryUri || uri;
+    if (!Number.isFinite(maxWaitMs) || maxWaitMs <= 0 || !displayed || unavailable ||
+        loadedUri === displayed) return;
+    const timer = setTimeout(onImageError, Math.min(maxWaitMs, 20000));
+    return () => clearTimeout(timer);
+  }, [retryUri, uri, unavailable, loadedUri, maxWaitMs, onImageError]);
+
   return {
     phase: unavailable ? 'unavailable' : 'ready',
     activeUri: retryUri || uri,
     onImageError,
+    onImageLoad,
   };
 }
 
