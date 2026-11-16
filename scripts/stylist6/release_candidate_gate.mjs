@@ -99,7 +99,7 @@ export function evaluateStylist6Release(manifest) {
     requests.every(x => whole(x.providerCalls) && x.providerCalls <= 4 && x.debitCount === 1) &&
     yes(hosted.replayIsIdempotent) && yes(hosted.jwtHmacRlsVerified) &&
     yes(hosted.spendCapVerified) && hosted.duplicateDebits === 0,
-    '30+ hosted calls p95 <=25s, <=6 provider calls, single debit and safe replay/security/spend');
+    '30+ hosted calls p95 <=25s, <=8 provider calls, single debit and safe replay/security/spend');
 
   return {
     verdict: failures.length ? 'NO_GO' : 'ENGINEERING_RELEASE_CANDIDATE',

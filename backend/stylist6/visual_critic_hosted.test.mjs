@@ -165,7 +165,7 @@ test('bounded four-way NVIDIA evaluation dispatches at most four calls and admit
   assert.equal(maxActive,4,'four parallel calls remove the second 15s tail wave');
   assert.equal(rows.length,4);
   assert.ok(rows.every(x=>x.referenceless===true));
-  assert.throws(()=>createHostedVisualCritic({provider:'nvidia',apiKey,concurrency:7,
+  assert.throws(()=>createHostedVisualCritic({provider:'nvidia',apiKey,concurrency:9,
     resolveReference:()=>asset(),resolveProduct:()=>asset()}),/invalid_visual_concurrency/);
 });
 
@@ -348,7 +348,7 @@ test('429 stops further dispatch and never exceeds two in flight', async () => {
   assert.equal(references, 1);
   assert.equal(calls, 2);
   assert.equal(peak, 2);
-  await assert.rejects(critic([...candidates, candidate, {...candidate,id:'sixth'}, {...candidate,id:'seventh'}]), /invalid_visual_batch/);
+  await assert.rejects(critic([...candidates, candidate, {...candidate,id:'sixth'}, {...candidate,id:'seventh'}, {...candidate,id:'eighth'}, {...candidate,id:'ninth'}]), /invalid_visual_batch/);
   await assert.rejects(critic([candidate, candidate]), /invalid_visual_batch/);
 });
 

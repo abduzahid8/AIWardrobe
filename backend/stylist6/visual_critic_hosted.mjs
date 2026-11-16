@@ -4,7 +4,7 @@ export const HOSTED_VISUAL_CRITIC_VERSION = 'hosted-visual-critic-v11-schema';
 export const NVIDIA_VISION_MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
-export const MAX_VISUAL_CANDIDATES = 6;
+export const MAX_VISUAL_CANDIDATES = 8;
 export const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
 export const VISUAL_TIMEOUT_MS = 38_000;
 export const VISUAL_PROVIDER_TIMEOUT_MS = 20_000;
@@ -334,7 +334,7 @@ export function createHostedVisualCritic({
   if (!Number.isInteger(providerTimeoutMs) || providerTimeoutMs < 1 || providerTimeoutMs > VISUAL_PROVIDER_TIMEOUT_MS) {
     throw new Error('invalid_visual_provider_timeout');
   }
-  // Six calls are the absolute per-request cap for the full-deck rescue.
+  // Eight calls are the absolute per-request cap for the full-deck rescue.
   // Requests never pay for more than the explicitly admitted candidate set.
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX_VISUAL_CANDIDATES)
     throw new Error('invalid_visual_concurrency');

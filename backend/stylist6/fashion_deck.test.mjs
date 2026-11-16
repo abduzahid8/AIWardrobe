@@ -218,7 +218,7 @@ test('cloud full-deck review judges every authorized displayed card in one bound
     },
   });
   assert.equal(reviewCalls, 1);
-  assert.ok(reviewed.length >= baseline.outfits.length && reviewed.length <= 6);
+  assert.ok(reviewed.length >= baseline.outfits.length && reviewed.length <= 8);
   assert.ok(baseline.outfits.every(({ id }) => reviewed.some(candidate => candidate.id === id)));
   assert.equal(result.diagnostics.visualVerdict, 'JUDGED');
   assert.equal(result.diagnostics.visualReviewCoverage.mode, 'displayed_deck');
@@ -285,7 +285,7 @@ test('visual-first selection is controlled by the complete MODEL-APPROVED deck, 
         }));
     },
   });
-  assert.ok(candidateIds.length >= 3 && candidateIds.length <= 6);
+  assert.ok(candidateIds.length >= 3 && candidateIds.length <= 8);
   assert.equal(result.status, 'complete');
   assert.notEqual(result.outfits[0].id, initial.outfits[0].id,
     'the model must be able to change which outfit is displayed first');
@@ -310,7 +310,7 @@ test('six authorized challengers rescue full deck after one timeout and two qual
     },
   });
   assert.ok(sent.length>=5, 'challenger pool must exceed the old four-call cap');
-  assert.ok(sent.length<=6);
+  assert.ok(sent.length<=8);
   assert.equal(result.status,'complete','three independently approved alternatives should fill the deck');
   assert.equal(result.outfits.length,3);
   assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence,3);

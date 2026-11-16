@@ -12,7 +12,7 @@
  * Bounds (hard-coded, enforced):
  * - at most 2 scenarios, each run twice: enableVisual=false (deterministic
  *   baseline) then enableVisual=true (visual review);
- * - at most 12 NVIDIA provider calls in the whole process; the script refuses
+ * - at most 16 NVIDIA provider calls in the whole process; the script refuses
  *   to dispatch further calls beyond the budget;
  * - merchant image bytes are cached on disk under `.private/` (mode 600
  *   files, mode 700 dir) so repeated runs fetch each URL at most once.
@@ -44,7 +44,7 @@ const args = Object.fromEntries(process.argv.slice(2).flatMap((a, i, all) => {
   return [[a.slice(2), next && !next.startsWith('--') ? next : 'true']];
 }));
 
-const PROVIDER_CALL_BUDGET = 12;
+const PROVIDER_CALL_BUDGET = 16;
 const MAX_SCENARIOS = 2;
 const NVIDIA_HOST = 'integrate.api.nvidia.com';
 const IMAGE_FETCH_TIMEOUT_MS = 8000;

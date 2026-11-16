@@ -235,7 +235,7 @@ test('3-look deck selection under Classic / Work enforces architecture diversity
     'Architecture variety must be present in the 3 selected looks');
 });
 
-test('quality layer never changes wardrobe, sport, casual, or anchored user selection', () => {
+test('quality layer never changes wardrobe, sport, generic casual, or anchored user selection', () => {
   const fixed = [makeItem('top','top','White Oxford Shirt',{color:'white',subtype:'dress-shirt'}),
     makeItem('bottom','bottom','Navy Tailored Trousers',{color:'navy',subtype:'tailored-trouser'}),
     makeItem('shoe','shoes','Leather Loafer',{color:'brown',subtype:'loafer'})];
@@ -245,7 +245,6 @@ test('quality layer never changes wardrobe, sport, casual, or anchored user sele
     {...classicWorkContext,style:'sport'},
     {...classicWorkContext,style:'casual'},
     {...classicWorkContext,requiredIds:['top']},
-    {...classicWorkContext,occasion:'Weekend'},
   ]) {
     const quality=evaluateFashionQuality(fixed,context);
     assert.equal(quality.adjustment,0);
@@ -255,6 +254,23 @@ test('quality layer never changes wardrobe, sport, casual, or anchored user sele
     assert.equal(result[0].fashion.score,.89);
     assert.equal(result[0].fashionQuality,undefined);
   }
+});
+
+test('Old Money casual uses palette and refined footwear without an office-layer penalty', () => {
+  const casual = { ...classicWorkContext, style:'old_money', occasion:'Casual', request:'relaxed weekend' };
+  const parts=[
+    makeItem('top','top','Cream Oxford Shirt',{color:'cream',subtype:'dress-shirt'}),
+    makeItem('bottom','bottom','Navy Tailored Trousers',{color:'navy',subtype:'tailored-trouser'}),
+    makeItem('shoe','shoes','Brown Leather Loafers',{color:'brown',subtype:'loafer'}),
+  ];
+  const elegant=evaluateFashionQuality(parts,casual);
+  assert.equal(elegant.active,true,'quiet lifestyle should get a real styling rerank');
+  assert.equal(elegant.boringOfficePenalty,0,'simple weekend shirt and trousers are not boring officewear');
+  const sporty=evaluateFashionQuality(parts.map(i=>i.macroCategory==='shoes'
+    ? makeItem('sport','shoes','Neon Running Trainers',{color:'neon',subtype:'sport-sneaker'}) : i),casual);
+  assert.ok(elegant.score>sporty.score,'old money weekend should not prefer neon runners');
+  const owned=evaluateFashionQuality(parts,{...casual,sourceMode:'wardrobe'});
+  assert.equal(owned.active,false,'do not constrain the owners wardrobe');
 });
 
 test('quiet-office quality does not penalize requested sneakers or a hot-weather shirt outfit',()=>{

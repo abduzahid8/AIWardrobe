@@ -437,13 +437,18 @@ export const FASHION_QUALITY_VERSION = 's6-fashion-quality-v1';
 const OFFICE_INTENT = /\b(work|office|business|meeting|conference)\b|работ|офис|делов|встреч|\b(ofis|ish|biznes|uchrashuv)\b/i;
 
 const QUIET_OFFICE_STYLES = new Set(['classic','old_money','semi_classic','business_casual']);
+const QUIET_LIFESTYLE_STYLES = new Set(['classic','old_money','semi_classic']);
+const CASUAL_INTENT = /\b(casual|weekend|date|dinner|brunch|outing|evening|weekend)\b|повседнев|выходн|ужин|прогулк|свидан/i;
 function fashionQualityApplies(context) {
   const style = String(context?.style || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const occasion = String(context?.occasion || '');
   const req = String(context?.request || '');
   const brief = String(context?.brief || '');
+  const office = OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) || OFFICE_INTENT.test(brief);
+  const quietLifestyle = QUIET_LIFESTYLE_STYLES.has(style) &&
+    CASUAL_INTENT.test(`${occasion} ${req} ${brief}`);
   return context?.sourceMode === 'catalog' && QUIET_OFFICE_STYLES.has(style) &&
-    (OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) || OFFICE_INTENT.test(brief)) &&
+    (office || quietLifestyle) &&
     !(Array.isArray(context?.requiredIds) && context.requiredIds.length);
 }
 const inactiveFashionQuality = () => ({ version:FASHION_QUALITY_VERSION,active:false,
@@ -528,8 +533,11 @@ function computeShoeAppropriateness(items, descriptors, context) {
   const occasion = String(context?.occasion || '').toLowerCase();
   const req = String(context?.request || '').toLowerCase();
   const brief = String(context?.brief || '').toLowerCase();
+  const isWork = OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) || OFFICE_INTENT.test(brief);
+  const isQuietLifestyle = ['classic', 'old_money', 'semi_classic'].includes(style) &&
+    !isWork && CASUAL_INTENT.test(`${occasion} ${req} ${brief}`);
   const isQuietOrWork = ['classic', 'old_money', 'semi_classic', 'business_casual'].includes(style) ||
-    OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) || OFFICE_INTENT.test(brief) ||
+    isWork ||
     /\b(work|office|business|meeting|conference|formal)\b/i.test(`${occasion} ${req} ${brief}`);
 
   const sub = itemSubtype(shoeItem, shoeDesc);
@@ -547,7 +555,10 @@ function computeShoeAppropriateness(items, descriptors, context) {
       return 0.95;
     }
     if (sub === 'minimal-sneaker' || SLEEK_SNEAKER.test(text)) {
-      return shoeDesc?.casualSole ? 0.60 : 0.68;
+      // Old Money weekend can genuinely use a clean low-profile sneaker.
+      // Running, retro/chunky and trail shoes remain less appropriate.
+      return isQuietLifestyle ? (shoeDesc?.casualSole ? 0.77 : 0.84)
+        : shoeDesc?.casualSole ? 0.60 : 0.68;
     }
     if (/^(sport-sneaker|sneaker|hiking-boot)s?$/i.test(sub) ||
         shoeDesc?.athletic || shoeDesc?.casualSole ||
@@ -665,9 +676,8 @@ function computeBoringOfficePenalty(items, descriptors, context) {
   const brief = String(context?.brief || '').toLowerCase();
   const isWork = OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) || OFFICE_INTENT.test(brief) ||
     /\b(work|office|business|meeting)\b/i.test(`${occasion} ${req} ${brief}`);
-  const isQuiet = ['classic', 'old_money', 'semi_classic'].includes(style);
 
-  if (!isWork && !isQuiet) return 0;
+  if (!isWork) return 0; // weekend simplicity is not an office-quality defect
 
   const temp = Number(context?.weather?.temp ?? context?.weather?.temperature);
   const intentionallySimple = /\b(no jacket|no blazer|no layer|without (?:a )?jacket|just a shirt)\b|без пиджак|без куртк|без слоя/i.test(`${req} ${brief}`);
@@ -975,7 +985,7 @@ function creativeMetrics(context) {
 
 /**
  * Maximum size of a pairwise independent outfit deck. Deliberately bounded
- * to the <=6 garment-group candidates chosen for one NVIDIA review. A
+ * to the <=8 garment-group candidates chosen for one NVIDIA review. A
  * different SKU, jacket color or title alone does not prove a new direction:
  * use the same structural rule as the final model-approved selection.
  */
@@ -998,7 +1008,7 @@ export function visualArchitectureCapacity(looks, requiredIds = []) {
 /** Number of different 3-look sets the approved-photo selector could form
  * if ALL candidates passed the visual quality gate. Maximizing this before
  * inference creates actual replacement options, not a row of clones. Bounded
- * at six candidates (20 triples) and uses the final pairwise rule unchanged.
+ * at eight candidates (56 triples) and uses the final pairwise rule unchanged.
  */
 export function visualRescueTripleCount(looks, requiredIds = []) {
   if (!Array.isArray(looks) || looks.length > MAX_VISUAL_CANDIDATES) return 0;
@@ -1016,7 +1026,7 @@ export function visualRescueTripleCount(looks, requiredIds = []) {
 }
 
 /**
- * Six visual assessments must have a chance to yield three genuinely
+ * Eight visual assessments must have a chance to yield three genuinely
  * different looks. If the three initially chosen cards contain structural
  * twins, pick the spare which unlocks the biggest independent subset; after
  * that prefer whole-look fashion quality over maximal novelty. All options
@@ -1191,7 +1201,7 @@ export async function recommendFashionDeck({
     // Budgeted and source-verified finalist pool. Expand beyond the three
     // displayed directions: one timed-out NVIDIA call and one real fashion
     // rejection must not force a two-look deck when better alternatives exist.
-    // The critic still owns every approval and enforces a six-call paid cap.
+    // The critic still owns every approval and enforces an eight-call paid cap.
     const candidates = [];
     for (const look of selected) {
       if (await permitted(look)) candidates.push(look);
