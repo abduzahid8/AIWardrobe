@@ -337,6 +337,7 @@ test('real planned AI architectures reach visual evaluation before house challen
   assert.ok(result.diagnostics.aiCreativeDirectorEligible>0,'real role match creates a feasible AI outfit');
   // The hosted critic only receives product photos/names, not trusted
   // internal plan provenance, which is recorded in server diagnostics.
+  assert.ok(result.diagnostics.distinctLayerArchitectures >= 1);
   assert.ok(result.diagnostics.visualReviewCoverage.aiCreativeDirectorJudged>0,
     'validated AI plans must not disappear before whole-look visual review');
   assert.ok(judged.some(look=>look.products.some(it=>it.id==='ai-knit')),
@@ -1483,4 +1484,15 @@ test('quiet-office finish is a bounded rank signal, not a gate or a wardrobe ove
   assert.ok(locked.outfits.length>0);
   assert.ok(locked.outfits.every(look=>look.fashion.finish.active===false &&
     look.fashion.finish.adjustment===0));
+});
+
+
+test('hosted visual challengers include different known outerwear shapes when rescue capacity ties',()=>{
+  const alternative=(id,score)=>({id,items:[],fashion:{score}});
+  const same=alternative('blazer-duplicate',.93);
+  const different=alternative('real-overcoat-direction',.90);
+  assert.deepEqual(rankVisualChallengerPool([
+    {look:same,rescueGain:0,capacityGain:0,outerwearGain:0,unseenTop:1,difference:.5},
+    {look:different,rescueGain:0,capacityGain:0,outerwearGain:1,unseenTop:0,difference:.4},
+  ]).map(x=>x.id),['real-overcoat-direction','blazer-duplicate']);
 });

@@ -1,6 +1,6 @@
 // Experimental catalog/wardrobe recommendation path. Callers own inventory,
 // permission and provider admission. Local styling never requires image upload.
-import { shortlistRetrievalDeck, evaluateVisualShortlist, independentOutfitDirection } from './prototype.mjs';
+import { shortlistRetrievalDeck, evaluateVisualShortlist, independentOutfitDirection, outerwearArchetype } from './prototype.mjs';
 import { MAX_VISUAL_CANDIDATES } from './visual_critic_hosted.mjs';
 import { baseProductId } from './catalog_adapter.mjs';
 import { describeGarment, prepareGarment } from '../../src/domain/garmentDescriptor.ts';
@@ -1271,6 +1271,7 @@ export function rankVisualChallengerPool(entries) {
   return [...entries]
     .sort((a,b) => (b.rescueGain || 0) - (a.rescueGain || 0) ||
       (b.capacityGain || 0) - (a.capacityGain || 0) ||
+      (b.outerwearGain || 0) - (a.outerwearGain || 0) ||
       (b.unseenTop || 0) - (a.unseenTop || 0) ||
       b.look.fashion.score - a.look.fashion.score ||
       b.difference - a.difference || String(a.look.id).localeCompare(String(b.look.id)))
@@ -1496,6 +1497,8 @@ export async function recommendFashionDeck({
       const capacity = visualArchitectureCapacity(current, requiredIds);
       const rescueTriples = visualRescueTripleCount(current, requiredIds);
       const pinned = new Set(requiredIds.map(String));
+      const existingLayerArchetypes=new Set(current.map(look =>
+        outerwearArchetype(look,requiredIds)).filter(Boolean));
       const usedTopIds = new Set(current.flatMap(({ items }) => (items || [])
         .filter(it => it.macroCategory === 'top' && !pinned.has(String(it.id)))
         .map(it => String(it.id))));
@@ -1512,6 +1515,9 @@ export async function recommendFashionDeck({
           look,
           capacityGain: visualArchitectureCapacity([...current, look], requiredIds) - capacity,
           rescueGain: visualRescueTripleCount([...current, look], requiredIds) - rescueTriples,
+          outerwearGain: existingLayerArchetypes.size &&
+            outerwearArchetype(look,requiredIds) &&
+            !existingLayerArchetypes.has(outerwearArchetype(look,requiredIds)) ? 1 : 0,
           unseenTop: look.items.some(it => it.macroCategory === 'top' &&
             !pinned.has(String(it.id)) && !usedTopIds.has(String(it.id))) ? 1 : 0,
           difference: Math.min(...current.map(other =>
@@ -1684,6 +1690,11 @@ export async function recommendFashionDeck({
       ...(visualQualityDecisions ? { visualQualityDecisions } : {}),
       directions: directions.map((d) => d.id),
       qualifiedDirections: directions.filter((d) => d.qualified).length,
+      // Measurable actual displayed architecture, not cosmetic direction
+      // labels. Unknown/pinned layer evidence remains null.
+      displayedLayerArchitectures: selected.map(look=>outerwearArchetype(look,requiredIds)),
+      distinctLayerArchitectures: new Set(selected.map(look=>
+        outerwearArchetype(look,requiredIds)).filter(Boolean)).size,
       aiCreativeDirectorBriefs: aiPlans.length,
       aiCreativeDirectorEligible: selectable.filter(look => aiPlans.some(plan => look.briefId === canonicalBriefId(plan.id))).length,
       aiCreativeDirectorDisplayed: selected.filter(look => aiPlans.some(plan => look.briefId === canonicalBriefId(plan.id))).length,

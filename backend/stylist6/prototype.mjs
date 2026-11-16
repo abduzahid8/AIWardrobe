@@ -161,6 +161,23 @@ export function diversifyBriefHead(candidates){
   }
   candidates.unshift(...chosen);
 }
+/** Evidence-backed visual architecture, not a change of brand or SKU.
+ * An unknown "jacket" is intentionally not guessed to be a blazer or coat.
+ * Pinned owned hero garments are excluded from the novelty requirement.
+ */
+export function outerwearArchetype(look, requiredIds = []) {
+  const layer=(look?.items||[]).find(it=>it?.macroCategory==='outerwear');
+  if (!layer) return 'unlayered';
+  if ((requiredIds||[]).some(id=>String(id)===String(layer.id))) return null;
+  const kind=text(layer.subtype);
+  if (['blazer','suit_jacket','tailored_jacket'].includes(kind)) return 'tailored_jacket';
+  if (['coat','overcoat','topcoat','peacoat','trench','trench_coat'].includes(kind)) return 'full_coat';
+  if (['cardigan','knit_cardigan','sweater','fine_knit'].includes(kind)) return 'knit_layer';
+  if (kind==='overshirt') return 'overshirt';
+  if (['bomber','harrington','windbreaker'].includes(kind)) return 'casual_jacket';
+  return null;
+}
+
 function novelty(a,b){
   const shared=sharedProducts(a,b);
   if(Math.max(a.items.length,b.items.length)-shared<2)return 0;
@@ -441,6 +458,14 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       const prevLayers=new Set(deck.flatMap(d=>[...nonAnchorSlotKeys(d,'outerwear')]));
       if([...coatKeys].some(k=>prevLayers.has(k)))adj-=0.085;
     }
+    // Three different blazers are still one garment architecture. Prefer
+    // a genuinely different layer shape (coat, knit layer, overshirt) among
+    // independently NVIDIA-approved near-quality candidates. Do not force a
+    // new architecture if the catalog/owned wardrobe cannot support one.
+    const layerType=outerwearArchetype(look,options.requiredIds);
+    const previousTypes=new Set(deck.map(d=>outerwearArchetype(d,options.requiredIds)).filter(Boolean));
+    if(layerType && previousTypes.has(layerType)) adj-=0.12;
+    else if(layerType && previousTypes.size) adj+=0.035;
     const shoeKeys=nonAnchorSlotKeys(look,'shoes');
     if(shoeKeys.size){
       const prevShoes=new Set(deck.flatMap(d=>[...nonAnchorSlotKeys(d,'shoes')]));

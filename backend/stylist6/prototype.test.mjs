@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {proposeVisualFirstDeck,shortlistRetrievalDeck,selectVisualDeck,diversifyBriefHead,STYLIST6_VERSION} from './prototype.mjs';
+import {proposeVisualFirstDeck,shortlistRetrievalDeck,selectVisualDeck,diversifyBriefHead,outerwearArchetype,STYLIST6_VERSION} from './prototype.mjs';
 
 const catalog=[];
 function add(slot,subtype,colors,price=170000){
@@ -444,4 +444,35 @@ test('retrieval diversification prioritizes distinct garment architecture over o
   assert.equal(headIds[0], 'office-1');
   assert.ok(headIds.includes('tailored-blazer') || headIds.includes('knit-layer'),
     'Architecture-diverse candidates must be promoted over repeated unlayered office clones');
+});
+
+
+test('three model-approved outfit directions favor a coat architecture over a third repeated blazer',()=>{
+  const make=(id,visualScore,topType,outerType,bottomType,shoeType,color)=>({
+    id,briefId:id,brief:{id,name:id},items:[
+      {id:id+'-top',macroCategory:'top',subtype:topType,name:color+' top',color},
+      {id:id+'-outer',macroCategory:'outerwear',subtype:outerType,name:color+' '+outerType,color},
+      {id:id+'-bottom',macroCategory:'bottom',subtype:bottomType,name:color+' bottoms',color},
+      {id:id+'-shoe',macroCategory:'shoes',subtype:shoeType,name:color+' shoes',color},
+    ],visualScore,
+  });
+  const looks=[
+    make('navy-tailoring',.98,'shirt','blazer','tailored-trouser','oxford','navy'),
+    make('cream-tailoring',.965,'fine-knit','blazer','chino','derby','cream'),
+    make('brown-tailoring',.945,'polo','blazer','trouser','loafer','brown'),
+    make('gray-overcoat',.925,'dress-shirt','overcoat','pleated-trouser','chelsea','grey'),
+  ];
+  const verdicts=looks.map(l=>({candidateId:l.id,visualCohesion:l.visualScore,
+    referenceFidelity:l.visualScore,styleFit:l.visualScore,occasionFit:l.visualScore,
+    formalityFit:l.visualScore,confidence:0.98,reject:false,
+    evidence:['model inspected top and bottom','model inspected layer','model inspected shoes']}));
+  assert.equal(outerwearArchetype(looks[0]),'tailored_jacket');
+  assert.equal(outerwearArchetype(looks[3]),'full_coat');
+  assert.equal(outerwearArchetype(looks[0],['navy-tailoring-outer']),null);
+  const selected=selectVisualDeck({generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}},
+    verdicts,{target:3,minNovelty:.02,requireDistinctArchitectures:true});
+  assert.equal(selected.status,'complete');
+  assert.ok(selected.outfits.some(l=>l.id==='gray-overcoat'),
+    'one source-confirmed coat must outrank a third near-quality suit blazer');
+  assert.ok(new Set(selected.outfits.map(look=>outerwearArchetype(look))).size>=2);
 });
