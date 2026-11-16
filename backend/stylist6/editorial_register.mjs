@@ -16,7 +16,7 @@ const exact = (value, regex) => regex.test(value);
 const elevatedStyle = /^(classic|old money|semi classic|smart casual|business casual)$/;
 const elevatedOccasion = /\b(work|office|business|meeting|date|dinner|romantic|cocktail|theater|opera|wedding)\b/;
 
-export function editorialRegisterVeto(look, { style, occasion, brief = '', request = '', weather = null, sourceMode = null } = {}) {
+export function editorialRegisterVeto(look, { style, occasion, brief = '', request = '', weather = null, sourceMode = null, requiredIds = [] } = {}) {
   const isElevated = elevatedStyle.test(norm(style)) &&
     (elevatedOccasion.test(norm(occasion)) || elevatedOccasion.test(norm(brief)));
   if (!isElevated) return null;
@@ -44,7 +44,8 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '', reque
   const classicPolishedOffice = sourceMode === 'catalog' && norm(style) === 'classic' &&
     /\b(work|office|business|meeting|conference)\b/.test(norm(occasion)) &&
     !/\b(casual|relaxed|informal|dress-down)\b/i.test(`${brief} ${request}`);
-  if (classicPolishedOffice) {
+  const pinned = new Set(Array.isArray(requiredIds) ? requiredIds.map(String) : []);
+  if (classicPolishedOffice && !(look?.items || []).some(it => pinned.has(String(it.id)))) {
     const outer = slot(look, 'outerwear');
     const lower = slot(look, 'bottom');
     const structuralLayer = /^(blazer|suit-jacket|coat|overcoat|topcoat|peacoat|trench|tailored-jacket)$/.test(
@@ -53,10 +54,24 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '', reque
     const structuralBottom = /^(tailored-trouser|dress-trouser|suit-trouser|wool-trouser|pleated-trouser)$/.test(
       String(lower?.subtype || '').toLowerCase()) ||
       /\b(suit trousers?|wool trousers?|tailored trousers?|dress trousers?|pleated trousers?|wool flannel pants)\b/i.test(bottom);
+    // Source-backed casual construction across ANY of the garment roles is
+    // insufficient for a polished workplace when no structured element
+    // counterbalances it. Unknown types must abstain, not be guessed casual.
     const relaxedTop = /\b(knit|knitted|sweater|turtleneck|polo|tee|jersey|half[- ]?zip|quarter[- ]?zip)\b/i.test(top) ||
       /^(fine-knit|sweater|polo|t-shirt|henley)$/.test(String(slot(look, 'top')?.subtype || '').toLowerCase());
-    if (!structuralLayer && !structuralBottom && relaxedTop)
+    const casualLayer = /\b(cardigan|hoodie|sweatshirt|overshirt|fleece|track jacket)\b/i.test(layer) ||
+      /^(cardigan|hoodie|overshirt|sweatshirt|fleece)$/.test(String(outer?.subtype || '').toLowerCase());
+    const casualBottom = /\b(chinos?|jeans|joggers|cargo pants|corduroys?)\b/i.test(bottom) ||
+      /^(chino|jeans|jogger|cargo|shorts)$/.test(String(lower?.subtype || '').toLowerCase());
+    if (!structuralLayer && !structuralBottom && (relaxedTop || casualLayer || casualBottom))
       return 'polished_classic_office_requires_tailored_structure';
+    // A sole advertised as athletic/hybrid can be suitable for walking or
+    // casual Fridays, but not the polished professional contract. The
+    // governing evidence is footwear construction, NOT a merchant brand or
+    // a particular product ID; no exception is invented for unknown soles.
+    if (structuralLayer && /\b(?:athletic|running|trainer|sneaker|hybrid[- ]soled?|sport[- ]soled?)\b/i.test(
+      described(slot(look, 'shoes'))))
+      return 'polished_classic_office_athletic_sole';
   }
   const tailoring = exact(bottom, /\b(tailored|suit|dress trouser|pleated|smart stretch|wool trouser|slacks)\b/);
   const blazer = exact(layer, /\b(blazer|suit jacket|sartorial)\b/);

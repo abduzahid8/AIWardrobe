@@ -1363,6 +1363,19 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const timedOut = error?.message === 'stylist6_timeout';
     const status = timedOut ? 504 : 500;
     const failureCode = timedOut ? 'stylist6_timeout' : 'stylist6_ranking_failed';
+    // Internal failure evidence, never sent to the app. Only a server source
+    // location, standard JS error class and safe system-code enum are logged:
+    // no private JWT, garment/personal payload, URL, key or raw error message.
+    const firstServerFrame = String(error?.stack || '').match(
+      /backend\/(?:stylist6|stylist-node)\/[a-z0-9_./-]+\.(?:mjs|ts):\d+:\d+/i,
+    )?.[0] || null;
+    const errorClass = ['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError']
+      .includes(error?.name) ? error.name : 'UnknownError';
+    const systemCode = /^(?:E(?:CONNRESET|TIMEDOUT|HOSTUNREACH|PIPE|AI_AGAIN)|ERR_[A-Z_]{1,40})$/
+      .test(String(error?.code || '')) ? error.code : null;
+    console.error('stylist6_cloud_failure', {
+      failureCode, errorClass, systemCode, firstServerFrame, claimed, debited,
+    });
     if (claimed) {
       await finish(debited ? status : 503, debited ? failureCode : 'aborted_pre_debit').catch(() => {});
     }

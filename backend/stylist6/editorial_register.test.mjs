@@ -94,3 +94,33 @@ test('Classic Work formality is a whole-outfit silhouette check, not a ban on sp
   assert.equal(editorialRegisterVeto(look('White Dress Shirt','Grey Wool Overcoat',
     'Beige Chinos','Dark Brown Chelsea Boots'),context),null);
 });
+
+
+test('professional Classic Work contract rejects hybrid athletic soles even when bottom is a chino', () => {
+  const work={style:'classic',occasion:'Work',sourceMode:'catalog',
+    brief:'Classic polished professional office outfit with sophisticated tailoring'};
+  const example=look('Merino Wool Button-Through Shirt','Chocolate Wool Blazer',
+    'Walnut Velvet Chinos','Herring hybrid-soled brown suede loafers');
+  assert.equal(editorialRegisterVeto(example,work),'polished_classic_office_athletic_sole');
+  assert.equal(editorialRegisterVeto(example,{...work,occasion:'Weekend'}),null);
+  assert.equal(editorialRegisterVeto(example,{...work,brief:'Casual relaxed Friday office outfit'}),null);
+  assert.equal(editorialRegisterVeto(example,{...work,sourceMode:'wardrobe'}),null);
+  assert.equal(editorialRegisterVeto(look('White Oxford Shirt','Navy Blazer',
+    'Beige Chinos','Brown Leather Penny Loafers'),work),null);
+});
+
+
+test('source-backed casual constructions need a tailored anchor for polished Classic Work', () => {
+  const office={style:'classic',occasion:'Work',sourceMode:'catalog',brief:'Professional office tailoring'};
+  const casual=look('Grey Flannel Shirt','Textured Button Cardigan','Walnut Chinos','Brown Penny Loafers');
+  assert.equal(editorialRegisterVeto(casual,office),'polished_classic_office_requires_tailored_structure');
+  assert.equal(editorialRegisterVeto(casual,{...office,occasion:'Weekend'}),null);
+  assert.equal(editorialRegisterVeto(casual,{...office,brief:'Casual Friday office'}),null);
+  assert.equal(editorialRegisterVeto(casual,{...office,sourceMode:'wardrobe'}),null);
+  const anchored={items:casual.items.map((item,i)=>({...item,id:'owned-'+i}))};
+  assert.equal(editorialRegisterVeto(anchored,{...office,requiredIds:['owned-1']}),null,
+    'explicitly user-pinned garment must not be silently replaced');
+  assert.equal(editorialRegisterVeto(look('Unknown shirt','Unknown item','Unknown item','Unknown shoes'),office),null,
+    'unknown metadata is not evidence of an informal outfit');
+  assert.equal(editorialRegisterVeto(look('Blue Dress Shirt','Grey Wool Suit Blazer','Cream Chinos','Dark Brown Leather Oxfords'),office),null);
+});
