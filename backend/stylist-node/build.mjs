@@ -104,3 +104,13 @@ await build({
 });
 await writeFile(resolve(serviceRoot, 'dist/stylist6-bundle.d.mts'), 'export {};\n', 'utf8');
 console.info('stylist6_cloud_bundle_ready', { entry: 'backend/stylist-node/stylist6-entry.mjs' });
+
+// Render's long-lived Node service reuses this EXACT signed Vercel POST
+// implementation. No duplicated auth, JWT, quotas, or fashion ranking.
+await build({
+  entryPoints: [resolve(serviceRoot,'api/stylist6-generate-outfits.ts')],
+  outfile: resolve(serviceRoot,'dist/stylist6-http-route.mjs'),
+  bundle:true,platform:'node',target:['node22'],format:'esm',
+  packages:'external',legalComments:'none',sourcemap:false,logLevel:'info',
+});
+console.info('stylist6_portable_route_ready');
