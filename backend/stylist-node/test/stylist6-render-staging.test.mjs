@@ -41,4 +41,38 @@ test('Render canary signs JWT/body and forwards only to isolated Render route',a
     assert.equal(calls,1);
   }finally{globalThis.fetch=prior}
 });
+test('Render response body must be complete valid JSON before returning success headers',async()=>{
+  const prior=globalThis.fetch;
+  const url='https://x.example/functions/v1/aiw-stylist6-node-render-staging';
+  const req=()=>new Request(url,{method:'POST',headers:{authorization:'Bearer synthetic-not-real-user'},body:'{}'});
+  try{
+    globalThis.fetch=async()=>new Response('{broken',{status:200,headers:{'content-type':'application/json'}});
+    const invalid=await handler(req());
+    assert.equal(invalid.status,502);
+    assert.equal((await invalid.json()).code,'render_invalid_json');
+    globalThis.fetch=async()=>new Response(new ReadableStream({start(controller){
+      controller.error(new Error('upstream response terminated after sending headers'));
+    }}),{status:200,headers:{'content-type':'application/json'}});
+    const truncated=await handler(req());
+    assert.equal(truncated.status,503,'a broken upstream stream is not a successful HTTP 200');
+    assert.equal((await truncated.json()).code,'render_compute_unavailable');
+    globalThis.fetch=async()=>{const error=new Error('deadline');error.name='TimeoutError';throw error};
+    const timedOut=await handler(req());
+    assert.equal(timedOut.status,504);
+    assert.equal((await timedOut.json()).code,'render_compute_timeout');
+  }finally{globalThis.fetch=prior}
+});
+
+test('Render must reject excessive compute payloads without streaming huge untrusted JSON',async()=>{
+  const prior=globalThis.fetch;
+  globalThis.fetch=async()=>new Response('{}',{status:200,headers:{'content-type':'application/json','content-length':'3000000'}});
+  try{
+    const req=new Request('https://x.example/functions/v1/aiw-stylist6-node-render-staging',{
+      method:'POST',headers:{authorization:'Bearer synthetic'},body:'{}'});
+    const r=await handler(req);
+    assert.equal(r.status,502);
+    assert.equal((await r.json()).code,'render_response_too_large');
+  }finally{globalThis.fetch=prior}
+});
+
 test.after(()=>{globalThis.Deno=oldDeno});
