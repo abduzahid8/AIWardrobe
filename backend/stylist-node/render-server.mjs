@@ -55,6 +55,12 @@ export function createStylist6RenderServer(post=POST){
 if(process.argv[1]?.endsWith('/render-server.mjs')){
   const port=Number(process.env.PORT||10000);
   if(!Number.isInteger(port)||port<1||port>65535)throw Error('invalid_port');
+  // Private Render service logs: missing variable NAMES only, no values.
+  // The public /health endpoint intentionally exposes only one boolean.
+  const required=['STYLIST6_NODE_SHARED_SECRET','SUPABASE_URL','SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY','NVIDIA_API_KEY'];
+  const missing=required.filter(name=>!process.env[name]);
+  if(missing.length)console.warn('[stylist6-render] missing_environment_names:',missing.join(','));
   createStylist6RenderServer().listen(port,'0.0.0.0',()=>{
     console.log('[stylist6-render] ready '+port);
   });
