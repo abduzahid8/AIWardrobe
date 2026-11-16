@@ -1,10 +1,10 @@
 // Experimental catalog/wardrobe recommendation path. Callers own inventory,
 // permission and provider admission. Local styling never requires image upload.
 import { shortlistRetrievalDeck, evaluateVisualShortlist, independentOutfitDirection, outerwearArchetype } from './prototype.mjs';
-import { MAX_VISUAL_CANDIDATES } from './visual_critic_hosted.mjs';
+import { MAX_VISUAL_CANDIDATES, verifiedAvoidColors } from './visual_critic_hosted.mjs';
 import { baseProductId } from './catalog_adapter.mjs';
 import { describeGarment, prepareGarment } from '../../src/domain/garmentDescriptor.ts';
-import { currentVisual, visualAdmissionReason } from '../../src/domain/visualFashion.ts';
+import { currentVisual, confidentVisual, visualAdmissionReason } from '../../src/domain/visualFashion.ts';
 import { outfitCoherence } from '../../src/domain/outfitCoherence.ts';
 import { garmentContextReason, scoreGarmentForContext } from '../../src/domain/garmentContext.ts';
 import { outfitConcepts } from '../../src/domain/outfitConcepts.ts';
@@ -85,6 +85,35 @@ const TIE_MARGIN = 0.025;
 // not just the most similarly scored clone of the lead. Keep it inside the
 // same .16 deterministic quality window used for creative-direction planning.
 const VISUAL_CHALLENGER_QUALITY_WINDOW = 0.16;
+
+/** Count actual source-hash-verified, confidently IMAGE-observed permitted
+ * garments in a complete outfit. A merchant name is not photographic proof:
+ * blue suit pants may photograph as navy, and a catalog title may omit color.
+ * Used to PRIORITIZE scarce hosted vision calls, never bypass its own verdict.
+ * Unknown items remain eligible in the ordinary fallback path; locked user
+ * garment choices must not be filtered by preferences.
+ */
+export function photographicPaletteEvidence(look, preferences, requiredIds = []) {
+  const excluded=new Set(verifiedAvoidColors(preferences?.avoidColors));
+  const preferred=new Set(verifiedAvoidColors(preferences?.favoriteColors));
+  const pinned=new Set((requiredIds||[]).map(String));
+  let total=0, verified=0, preferredCount=0, blocked=0;
+  for(const item of look?.items||[]){
+    if(pinned.has(String(item.id)))continue;
+    total++;
+    const observation=currentVisual(item)?.attributes?.color;
+    if(!confidentVisual(observation) || typeof observation.value!=='string')continue;
+    const color=String(observation.value).toLowerCase();
+    const normalized=color==='gray'||color==='charcoal'?'grey':color;
+    if(excluded.has(normalized))blocked++;
+    else {verified++;if(preferred.has(normalized))preferredCount++;}
+  }
+  return {total,verified,preferred:preferredCount,blocked,
+    // A certified complete outfit outranks uncertain images; a photographer's
+    // verified favorite color breaks near-ties, never supersedes style.
+    score:blocked?-1:(total?verified/total + .15*preferredCount/total:0)};
+}
+
 // A selected look this far below the shortlist best is decisively off the
 // pace (10x the near-tie margin), not a close alternative worth showing.
 const EXCLUSION_QUALITY_GAP = 0.25;
@@ -1475,6 +1504,29 @@ export async function recommendFashionDeck({
     }
     const metrics = creativeMetrics(deckContext);
     const leadScore = selected[0].fashion?.score ?? -Infinity;
+    // Strongly photographed, PERSONALIZED catalog alternatives are reserved
+    // before weakly evidenced lookalikes can exhaust 8 paid NVIDIA calls.
+    // Only complete photos whose color intelligence matches the CURRENT
+    // image+source hash count as verified. The provider still decides which
+    // of these candidates actually looks good and matches the occasion.
+    const explicitColorPreferences=context.sourceMode==='catalog' &&
+      verifiedAvoidColors(context.preferences?.avoidColors).length>0;
+    const photoSafe=explicitColorPreferences ? selectable
+      .filter(look=>!candidates.some(other=>other.id===look.id) &&
+        Number.isFinite(look.fashion?.score) &&
+        look.fashion.score>=leadScore-VISUAL_CHALLENGER_QUALITY_WINDOW)
+      .map(look=>({look,evidence:photographicPaletteEvidence(look,context.preferences,requiredIds)}))
+      .filter(({evidence})=>!evidence.blocked && evidence.verified>=3 &&
+        evidence.verified>=evidence.total-1)
+      .sort((a,b)=>b.evidence.score-a.evidence.score ||
+        (b.look.fashion?.score??0)-(a.look.fashion?.score??0)) : [];
+    let photoReserved=0;
+    for(const {look} of photoSafe){
+      if(photoReserved>=3 || candidates.length>=reviewedLimit)break;
+      if(candidates.some(other=>Math.max(other.items.length,look.items.length)-overlaps(other,look)<2))continue;
+      if(await permitted(look)){candidates.push(look);photoReserved++;}
+    }
+
     // A Creative Director is not useful if its inventory-grounded designs
     // are never shown to the visual critic. Reserve at most one challenge per
     // accepted AI plan BEFORE ordinary lookalike challengers consume the
@@ -1484,14 +1536,15 @@ export async function recommendFashionDeck({
     // independent visual gate decides whether a lower-ranked but novel plan
     // deserves to displace a familiar safe house combination.
     const aiBriefIds = new Set(aiPlans.map(plan => canonicalBriefId(plan.id)));
+    let aiReserved=0;
     for (const plan of aiPlans) {
-      if (candidates.length >= reviewedLimit) break;
+      if (candidates.length >= reviewedLimit || (photoReserved>=2 && aiReserved>=2)) break;
       const planned = selectable.filter(look =>
         look.briefId === canonicalBriefId(plan.id) && !candidates.some(other => other.id === look.id) &&
         Number.isFinite(look.fashion?.score))
         .sort((a,b) => b.fashion.score - a.fashion.score);
       for (const look of planned.slice(0, 6)) {
-        if (await permitted(look)) { candidates.push(look); break; }
+        if (await permitted(look)) { candidates.push(look); aiReserved++; break; }
       }
     }
 

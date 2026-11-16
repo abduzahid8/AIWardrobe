@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -1539,4 +1539,38 @@ test('hosted visual challengers include different known outerwear shapes when re
     {look:same,rescueGain:0,capacityGain:0,outerwearGain:0,unseenTop:1,difference:.5},
     {look:different,rescueGain:0,capacityGain:0,outerwearGain:1,unseenTop:0,difference:.4},
   ]).map(x=>x.id),['real-overcoat-direction','blazer-duplicate']);
+});
+
+
+test('independently verified product photos prioritize an explicitly permitted personal palette', () => {
+  const colored=(id,color,slot)=>{
+    const row=garment(id,'Color unspecified '+slot,slot,slot==='outerwear'?'blazer':slot==='bottom'?'tailored-trouser':slot==='shoes'?'derby':'shirt');
+    const hash='f'.repeat(32);
+    return {...row,visualSourceHash:hash,visualFashion:{version:1,sourceHash:hash,
+      imageUrl:row.imageUrl,imageSha256:'a'.repeat(64),model:'siglip2',revision:'color-r1',
+      attributes:{color:{value:color,confidence:0.93,margin:0.63,evidence:'image-model'}}}};
+  };
+  const allPermitted={items:[colored('p1','cream','top'),colored('p2','brown','outerwear'),
+    colored('p3','beige','bottom'),colored('p4','black','shoes')]};
+  const preference={favoriteColors:['cream','beige','brown'],avoidColors:['navy','grey']};
+  const safe=photographicPaletteEvidence(allPermitted,preference);
+  assert.equal(safe.verified,4);
+  assert.equal(safe.preferred,3);
+  assert.equal(safe.blocked,0);
+  assert.ok(safe.score>1);
+  const unknown={items:[...allPermitted.items.slice(0,2),
+    garment('unknown-pants','Unknown tailored pants','bottom','tailored-trouser'),
+    garment('unknown-shoes','Leather footwear','shoes','derby')]};
+  const sparse=photographicPaletteEvidence(unknown,preference);
+  assert.equal(sparse.verified,2);
+  assert.ok(sparse.score<safe.score,'unknown photo colors must not outrank actual permitted photo evidence');
+  const violating={items:[...allPermitted.items.slice(0,2),colored('navy','navy','bottom'),
+    allPermitted.items[3]]};
+  const banned=photographicPaletteEvidence(violating,preference);
+  assert.equal(banned.blocked,1);
+  assert.equal(banned.score,-1,'known excluded photographic color is not an alternative');
+  const anchored=photographicPaletteEvidence(violating,preference,['navy']);
+  assert.equal(anchored.blocked,0,'a specifically pinned garment is a direct user instruction');
+  const noPreference=photographicPaletteEvidence(allPermitted,{});
+  assert.ok(noPreference.score>=1,'no policy is invented when the user did not specify exclusions');
 });
