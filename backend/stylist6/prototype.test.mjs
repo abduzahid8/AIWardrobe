@@ -219,6 +219,44 @@ test('visual deck globally finds three independent directions instead of anchori
   assert.ok(result.outfits.every(x=>Array.isArray(x.evidence)));
 });
 
+test('visual selector prefers a genuine third direction only among approved near-quality looks',()=>{
+  const roles=[
+    ['shirt','blazer','tailored-trouser','derby'],
+    ['polo','cardigan','chino','loafer'],
+    ['fine-knit','overshirt','jeans','sneaker'],
+    ['dress-shirt','coat','flannel-trouser','oxford'],
+  ];
+  const models=[.97,.96,.95,.90];
+  const looks=roles.map((types,i)=>({
+    id:'candidate-'+i,briefId:'concept-'+i,brief:{id:'concept-'+i,name:'Verified look'},
+    fashion:{editorial:{score:i===3?.88:.92}},
+    items:['top','outerwear','bottom','shoes'].map((slot,j)=>({
+      id:`sku-${i}-${slot}`,name:`${types[j]} photo ${i}`,macroCategory:slot,
+      subtype:types[j],color:'navy',texture:'wool',
+    })),
+  }));
+  const critiques=looks.map((l,i)=>({
+    candidateId:l.id,visualCohesion:models[i],referenceFidelity:models[i],
+    styleFit:models[i],occasionFit:models[i],formalityFit:models[i],
+    confidence:.98,reject:false,evidence:['garment construction','color cohesion','dress register'],
+  }));
+  const input={generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}};
+  const base={target:3,minNovelty:.01,requireDistinctArchitectures:true};
+  const plain=selectVisualDeck(input,critiques,base);
+  assert.equal(plain.status,'complete');
+  const priority=selectVisualDeck(input,critiques,{...base,
+    directionDeckBonus:deck=>deck.some(l=>l.id==='candidate-3')?.12:0});
+  assert.equal(priority.status,'complete');
+  assert.ok(priority.outfits.some(l=>l.id==='candidate-3'),
+    'bounded direction gain should displace a close but less distinctive approved outfit');
+  assert.ok(priority.outfits.every(l=>l.visualQuality>=.68));
+  const vetoed=critiques.map(v=>v.candidateId==='candidate-3'?{...v,reject:true}:v);
+  const guarded=selectVisualDeck(input,vetoed,{...base,
+    directionDeckBonus:deck=>deck.some(l=>l.id==='candidate-3')?100:0});
+  assert.ok(!guarded.outfits.some(l=>l.id==='candidate-3'),
+    'even an unbounded caller bonus must never restore an NVIDIA-vetoed candidate');
+});
+
 test('model-approved looks favor comparable affordable outfits unless user requests luxury',()=>{
   const kinds=[['shirt','blazer','chino','loafer'],['polo','cardigan','tailored-trouser','derby'],
     ['fine-knit','coat','jeans','chelsea'],['t-shirt','overshirt','trouser','oxford']];

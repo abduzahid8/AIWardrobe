@@ -1496,6 +1496,15 @@ export async function recommendFashionDeck({
         { ...retrieval, shortlist: candidates }, request, visualCritic,
         { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds,
           requireDistinctArchitectures: true,
+          // Among already model-approved sets, a true signature/refresh/
+          // discovery triple may outrank a near-tie with an "alternative"
+          // third. This changes the chosen garments, not merely card labels,
+          // without weakening any NVIDIA or editorial qualification gate.
+          directionDeckBonus: (looks) => {
+            if(looks.length!==3)return 0;
+            const directions=labelCreativeDirections(looks,creativeMetrics(deckContext));
+            return directions.every((direction)=>direction.qualified) ? 0.12 : 0;
+          },
           preferValue: request.sourceMode === 'catalog' && !request.budget &&
             !requiredIds.length && !explicitlyRequestsLuxury(context) },
       );

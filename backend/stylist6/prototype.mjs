@@ -436,9 +436,22 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
   // A greedy second pick can block the only viable third. The judged pool
   // is capped at four, so evaluate the small set of feasible continuations.
   function consider(deck,utility){
-    if(deck.length>selected.length||(deck.length===selected.length&&utility>bestUtility)){
+    // All entries in this enumeration are individually NVIDIA-approved and
+    // already passed the unchanged model quality and physical-SKU gates.
+    // A small, capped joint-direction reward can prefer a genuinely distinct
+    // third outfit over a slightly higher-scored but repetitive alternative.
+    // The callback is trusted in-process ranking evidence, never a client
+    // parameter or a substitute for a real provider verdict.
+    let directionBonus=0;
+    if(deck.length===3 && typeof options.directionDeckBonus==='function'){
+      try{const value=options.directionDeckBonus(deck);
+        if(Number.isFinite(value))directionBonus=Math.max(0,Math.min(0.12,value));
+      }catch{directionBonus=0}
+    }
+    const deckUtility=utility+directionBonus;
+    if(deck.length>selected.length||(deck.length===selected.length&&deckUtility>bestUtility)){
       selected=deck;
-      bestUtility=utility;
+      bestUtility=deckUtility;
     }
     if(deck.length===target)return;
     for(const c of eligible){
