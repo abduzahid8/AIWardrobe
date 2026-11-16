@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -581,19 +581,31 @@ test('price bands are per slot and currency, need evidence and cap the dampener'
   assert.deepEqual(pricePenaltyForLook(plain, profile), { penalty: 0, flagged: 0 });
   const hit = pricePenaltyForLook([{ ...shoe('usp', 100000) }], profile);
   assert.equal(hit.flagged, 1);
-  assert.ok(hit.penalty > 0 && hit.penalty <= 0.06);
+  assert.ok(hit.penalty > 0 && hit.penalty <= UNBUDGETED_PRICE_PENALTY_MAX);
   const mild = pricePenaltyForLook([{ ...shoe('m', 150) }], profile);
   assert.equal(mild.flagged, 0);
   assert.ok(mild.penalty > 0 && mild.penalty < hit.penalty);
   const capped = pricePenaltyForLook(
     [{ ...shoe('a', 100000) }, { ...shoe('b', 90000) }, { ...shoe('c', 80000) }], profile);
-  assert.equal(capped.penalty, 0.06);
+  assert.equal(capped.penalty, UNBUDGETED_PRICE_PENALTY_MAX);
   // Multiples beyond 2x continue differentiating instead of plateauing flat.
   const triple = pricePenaltyForLook([{ ...shoe('x3', 300) }], profile);
   const tenx = pricePenaltyForLook([{ ...shoe('x10', 1000) }], profile);
   assert.equal(triple.flagged, 1);
-  assert.ok(tenx.penalty > triple.penalty && tenx.penalty <= 0.06);
+  assert.ok(tenx.penalty > triple.penalty && tenx.penalty <= UNBUDGETED_PRICE_PENALTY_MAX);
   assert.deepEqual(pricePenaltyForLook([{ ...shoe('usp', 100000) }], {}), { penalty: 0, flagged: 0 });
+});
+
+test('unbudgeted styling strongly de-prioritizes a 9m UZS luxury knit without banning it', () => {
+  const profile = {'UZS|top':{median:650000,count:30}};
+  const ordinary = pricePenaltyForLook([{macroCategory:'top',price:800000,currency:'UZS'}],profile);
+  const luxury = pricePenaltyForLook([{macroCategory:'top',price:8939235,currency:'UZS'}],profile);
+  assert.ok(ordinary.penalty < 0.02);
+  assert.ok(luxury.penalty > 0.16 && luxury.penalty <= UNBUDGETED_PRICE_PENALTY_MAX);
+  assert.equal(luxury.flagged,1);
+  assert.equal(explicitlyRequestsLuxury({style:'old_money',request:'work outfit'}),false);
+  assert.equal(explicitlyRequestsLuxury({style:'old_money',request:'luxury designer workwear'}),true);
+  assert.equal(explicitlyRequestsLuxury({style:'classic',request:'премиальный костюм'}),true);
 });
 
 test('price freshness dampener is bounded, shoppable-only and tier-scaled', () => {

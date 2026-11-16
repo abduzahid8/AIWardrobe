@@ -59,7 +59,7 @@ import {
     type DiversitySlot,
 } from '../features/outfit-generator/utils/outfitDiversity';
 import { isShortsBottom, isFormalLayer, fabricFamily, isSameLayerBaseCategory, PLACEHOLDER_PANTS, PLACEHOLDER_SHOES, getBackendMacroCategory, isCompleteNormalizedOutfit, isFourSlotLook, REAL_IMAGE_RE, createSlotNormalizer, ensureSlotFloors } from '../features/outfit-generator/utils/normalizeSlots';
-import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, outfitTotalQuote, formatMoney, budgetCandidatesFromText, budgetInCurrency, resolveShopQuote, withOutfitBudget, mixedCurrencyPriced, outfitCurrencySubtotals } from '../src/utils/outfitBudget';
+import { parseBudgetFromText, stripBudgetFromText, outfitShopSpend, outfitTotalQuote, formatMoney, budgetCandidatesFromText, budgetInCurrency, resolveShopQuote, withOutfitBudget, mixedCurrencyPriced, outfitCurrencySubtotals, outfitReferencedTotal } from '../src/utils/outfitBudget';
 import { getShopDestination } from '../src/utils/shopDestination';
 import { parseStylistIntent } from '../features/outfit-generator/utils/stylistIntent';
 import { reconcileStylistBriefWithChips } from '../features/outfit-generator/utils/stylistBriefSelection';
@@ -358,19 +358,32 @@ const getOccasionLabel = (id: string, t: TranslateFn) => {
   return t(`outfitMaker.${key}`, { defaultValue: preset?.label || id });
 };
 
-/** Single-currency card total from the same quote resolver the tiles use.
- * Hidden whenever any shop piece is unquoted or currencies are mixed. */
+/** Show a complete, currency-honest outfit total. A reference FX quote
+ * is explicitly approximate; the underlying shop cards keep merchant units.
+ * Unknown prices and stale or absent FX never result in guessed totals. */
 function outfitTotalDisplay(items: any[], catalog: any[] | undefined, rates: BudgetFxSnapshot | null,
-  budget?: ReturnType<typeof parseBudgetFromText>): { label: string; converted: boolean } | null {
+  budget?: ReturnType<typeof parseBudgetFromText>): { label: string; converted: boolean; referenceDate?: string } | null {
   const total = outfitTotalQuote(items as any[], catalog as any[]);
+  const fx = rates || budget?.fx?.snapshot || null;
   if (!total?.currency) {
+    // Mixed USD / UZS / EUR / GBP now totals in local currency whenever
+    // a validated CBU reference is available. Never add unlike units.
+    const referenced = outfitReferencedTotal(items as any[], catalog as any[], fx);
+    if (referenced) return {
+      label: `≈${formatMoney(referenced.price, 'UZS')}`, converted: true, referenceDate: referenced.asOf,
+    };
     if (!budget) return null;
     const spend = outfitShopSpend(items as any[], catalog as any[], budget.currency, budget.fx);
-    return Number.isFinite(spend) ? {label: `${formatMoney(spend, budget.currency)} / ${formatMoney(budget.amount, budget.currency)}`, converted: !!budget.fx} : null;
+    return Number.isFinite(spend) ? {
+      label: `${formatMoney(spend, budget.currency)} / ${formatMoney(budget.amount, budget.currency)}`,
+      converted: !!budget.fx, referenceDate: budget.fx?.snapshot.asOf,
+    } : null;
   }
-  // UZS conversion only when display rates are actually loaded; otherwise the
-  // exact native-currency total stands, never a relabelled guess.
-  const label = formatUzsPrice(total.price, total.currency, rates) || formatMoney(total.price, total.currency);
+  if (total.currency !== 'UZS') {
+    const converted = formatUzsPrice(total.price, total.currency, fx);
+    if (converted) return {label: `≈${converted}`, converted: true, referenceDate: fx?.asOf};
+  }
+  const label = formatMoney(total.price, total.currency);
   return label ? { label, converted: false } : null;
 }
 
@@ -2362,9 +2375,15 @@ const AIOutfitGenerator = () => {
                       <ScaledText style={styles.priceRowLabel}>{t('outfitMaker.outfitTotal')}</ScaledText>
                       <View style={{alignItems:'flex-end', flex:1}}>
                         <ScaledText style={styles.priceRowValue} minScale={0.7}>{total.label}</ScaledText>
-                        {total.converted && resultBudget?.fx && <ScaledText style={styles.priceRowLabel}>
-                          {t('outfitMaker.referenceRate', {date: resultBudget.fx.snapshot.asOf})}
+                        {total.converted && total.referenceDate && <ScaledText style={styles.priceRowLabel}>
+                          {t('outfitMaker.referenceRate', {date: total.referenceDate})}
                         </ScaledText>}
+                        {mixedCurrencyPriced(outfit.items as any[], liveShopMapped) && (
+                          <ScaledText style={styles.priceRowLabel}>
+                            {outfitCurrencySubtotals(outfit.items as any[], liveShopMapped)
+                              .map(({currency,price})=>formatMoney(price,currency)).join(' + ')}
+                          </ScaledText>
+                        )}
                       </View>
                     </View>
                     );

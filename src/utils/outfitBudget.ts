@@ -1,6 +1,6 @@
 import { budgetCandidatesFromText, stripBudgetText } from '../../backend/supabase/functions/_shared/outfitBudgetText';
 export { budgetCandidatesFromText } from '../../backend/supabase/functions/_shared/outfitBudgetText';
-import { type BudgetFxContext, fitsBudgetAmount, referenceAmount } from '../../backend/supabase/functions/_shared/budgetFx';
+import { type BudgetFxContext, type BudgetFxSnapshot, fitsBudgetAmount, referenceAmount } from '../../backend/supabase/functions/_shared/budgetFx';
 /**
  * Outfit budget — parse a spend cap from user text and score shop spend.
  *
@@ -82,6 +82,27 @@ export function outfitCurrencySubtotals(
     if(!priced) return [];
     return [...totals].sort(([a],[b])=>a.localeCompare(b))
         .map(([currency,price])=>({currency,price}));
+}
+
+/** A CBU-referenced estimate of the complete purchase basket in UZS.
+ * Every merchant quote must carry its own currency. Never drop an unquoted
+ * piece, guess exchange rates, or silently present an estimate as a store
+ * checkout price. Rates are validated for freshness by referenceAmount().
+ */
+export function outfitReferencedTotal(
+    items: Array<QuoteItem | null | undefined>,
+    catalog?: QuoteItem[],
+    rates?: BudgetFxSnapshot | null,
+): { price: number; currency: 'UZS'; asOf: string } | null {
+    if (!rates) return null;
+    const groups = outfitCurrencySubtotals(items, catalog);
+    if (!groups.length) return null;
+    try {
+        const uzs = groups.reduce((sum, group) =>
+            sum + referenceAmount(group.price, group.currency, 'UZS', rates), 0);
+        if (!Number.isFinite(uzs) || uzs <= 0) return null;
+        return { price: Math.round(uzs), currency: 'UZS', asOf: rates.asOf };
+    } catch { return null; }
 }
 
 /** First non-empty item currency, upper-cased (e.g. 'UZS'). */

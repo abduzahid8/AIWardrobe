@@ -1,6 +1,6 @@
 /** @jest-environment node */
 const fs=require('fs'),ts=require('typescript'),React=require('react');
-const {resolveShopQuote,outfitTotalQuote,formatMoney}=require('../../src/utils/outfitBudget');
+const {resolveShopQuote,outfitTotalQuote,outfitReferencedTotal,formatMoney}=require('../../src/utils/outfitBudget');
 const {formatUzsPrice}=require('../../src/utils/uzsPrice');
 const {makeReferenceSnapshot}=require('../fixtures/budgetFx');
 const source=fs.readFileSync(require.resolve('../../screens/AIOutfitmaker.tsx'),'utf8');
@@ -34,21 +34,43 @@ it('the actual cell does not label an unknown currency as USD',()=>{
  const props=result.props.children[0].props;expect(props.priceCurrency).toBeUndefined();expect(text(cell(props))).not.toContain('$100');
 });
 
-const total=build(totalCode,{outfitTotalQuote,formatUzsPrice,formatMoney,makeReferenceSnapshot});
+const total=build(totalCode,{outfitTotalQuote,outfitReferencedTotal,formatUzsPrice,formatMoney,makeReferenceSnapshot,outfitShopSpend:require('../../src/utils/outfitBudget').outfitShopSpend});
 it('the card total sums same-currency quotes and converts with loaded rates',()=>{
  const items=[{id:'shop_a',name:'Shirt',isShopItem:true,price:100,currency:'EUR'},{id:'shop_b',name:'Coat',isShopItem:true,price:50,currency:'EUR'}];
  expect(outfitTotalQuote(items,[])).toEqual({price:150,currency:'EUR'});
  // The total now also carries `converted`, flagging the fx budget spend-cap
  // path; the plain total-quote path is always false even when display rates
  // converted the label to UZS.
- expect(total(items,[],makeReferenceSnapshot())).toEqual({label:'2 028 753 UZS',converted:false});
+ expect(total(items,[],makeReferenceSnapshot())).toEqual({label:'≈2 028 753 UZS',converted:true,referenceDate:makeReferenceSnapshot().asOf});
  expect(total(items,[],null)).toEqual({label:'€150',converted:false});
 });
 it('the card total is all-or-none across shop pieces and rejects mixed currencies',()=>{
  expect(total([{id:'shop_a',isShopItem:true,price:100,currency:'USD'},{id:'shop_c',isShopItem:true,price:25}],[])).toBeNull();
  expect(total([{id:'shop_a',isShopItem:true,price:100,currency:'USD'},{id:'shop_b',isShopItem:true,price:10,currency:'EUR'}],[])).toBeNull();
+ const basket=[{id:'shop_a',isShopItem:true,price:100,currency:'USD'},{id:'shop_b',isShopItem:true,price:10,currency:'EUR'},{id:'shop_c',isShopItem:true,price:280000,currency:'UZS'}];
+ const rates=makeReferenceSnapshot();
+ const estimate=outfitReferencedTotal(basket,[],rates);
+ expect(estimate).toMatchObject({currency:'UZS',asOf:rates.asOf});
+ expect(estimate.price).toBeGreaterThan(280000);
+ expect(total(basket,[],rates)).toEqual({label:`≈${formatMoney(estimate.price,'UZS')}`,converted:true,referenceDate:rates.asOf});
+ expect(outfitReferencedTotal([...basket,{id:'shop_d',isShopItem:true,price:75}],[],rates)).toBeNull();
  expect(total([{id:'shop_a',isShopItem:true,price:100,currency:'USD'},{id:'shop_b',isShopItem:true,price:10,currency:'USD'}],[])).toEqual({label:'$110',converted:false});
 });
+it('the photographed Stylist 6 basket totals UZS and USD without inventing retailer FX',()=>{
+ const items=[
+  {id:'canali',isShopItem:true,price:8939235,currency:'UZS'},
+  {id:'suit-pants',isShopItem:true,price:44.99,currency:'USD'},
+  {id:'brown-derby',isShopItem:true,price:2411373,currency:'UZS'},
+ ];
+ const rates=makeReferenceSnapshot();
+ const expected=Math.round(8939235+2411373+44.99*rates.uzsPerUnit.USD);
+ expect(outfitReferencedTotal(items,[],rates)).toEqual({price:expected,currency:'UZS',asOf:rates.asOf});
+ expect(total(items,[],rates)).toEqual({label:`≈${formatMoney(expected,'UZS')}`,converted:true,referenceDate:rates.asOf});
+ const stale=makeReferenceSnapshot(Date.now()-2*60*60*1000);
+ expect(outfitReferencedTotal(items,[],stale)).toBeNull();
+ expect(total(items,[],stale)).toBeNull();
+});
+
 it('owned wardrobe pieces cost zero and never invent a total',()=>{
  expect(outfitTotalQuote([{id:'w1',isWardrobe:true},{id:'shop_a',isShopItem:true,price:100,currency:'USD'}],[])).toEqual({price:100,currency:'USD'});
  expect(outfitTotalQuote([{id:'w1',isWardrobe:true},{id:'w2',isWardrobe:true}],[])).toBeNull();

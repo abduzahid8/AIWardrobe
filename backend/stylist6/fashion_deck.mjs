@@ -122,15 +122,12 @@ export function buildPriceProfile(catalog) {
   return profile;
 }
 
-/**
- * Soft, bounded dampener for unbudgeted requests: items priced above their
- * slot's typical price in the same currency cost up to 0.06 score in total.
- * Within [0, 0.06], ultra-luxury multiples (>2x median) continue scaling
- * logarithmically toward 10x instead of hitting a flat plateau at 2x.
- * It breaks near-ties toward representative prices but never rejects —
- * without a budget there is nothing to fail. A look is flagged only when an
- * item costs more than twice its slot median. Exported for tests.
+/** No invented cap when the user did not request a budget, but a 10–20x
+ * catalog-price outlier should not routinely beat an equally stylish item.
+ * Compare within the SAME slot and currency (no guessed FX). The 0.18 score
+ * ceiling keeps this a soft ranking signal, not a ban on luxury inventory.
  */
+export const UNBUDGETED_PRICE_PENALTY_MAX = 0.18;
 export function pricePenaltyForLook(items, profile) {
   let penalty = 0, flagged = 0;
   for (const item of items || []) {
@@ -138,13 +135,24 @@ export function pricePenaltyForLook(items, profile) {
     if (!band || !(item.price > band.median)) continue;
     const ratio = item.price / band.median;
     if (ratio <= 2) {
-      penalty += 0.03 * (ratio - 1);
+      penalty += 0.035 * (ratio - 1);
     } else {
       flagged += 1;
-      penalty += 0.03 + 0.03 * Math.min(1, Math.log10(ratio / 2) / Math.log10(5));
+      // A 3x item incurs a mild penalty; a 10x luxury piece receives a
+      // substantially stronger one. Never reject or fabricate a user budget.
+      penalty += 0.035 + 0.05 * Math.log2(ratio / 2);
     }
   }
-  return { penalty: Math.min(0.06, penalty), flagged };
+  return { penalty: Math.min(UNBUDGETED_PRICE_PENALTY_MAX, penalty), flagged };
+}
+
+/** Explicit requests for luxury/premium styling are not cost-optimized.
+ * A style such as Old Money by itself is NOT a request to spend 9m UZS on
+ * one sweater; price sensitivity should remain active by default.
+ */
+export function explicitlyRequestsLuxury(context) {
+  const request = `${context?.request || ''} ${context?.brief || ''}`;
+  return /\b(?:luxury|premium|designer|high[ -]?end|couture)\b|люкс|премиальн|дорог(?:ой|ие|ую)|дизайнерск/i.test(request);
 }
 
 function referenceAffinity(items, reference) {
@@ -876,7 +884,8 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           + .15 * (affinity.slotColorFit ?? affinity.paletteFit ?? .5) + .15 * Number(affinity.layerFit) : .5;
       // Unbudgeted requests get a soft, evidence-based premium dampener —
       // never a reject. Budgeted requests already hard-filter in admit().
-      const pricing = extras.budgeted || !extras.priceProfile ? { penalty: 0, flagged: 0 }
+      const pricing = extras.budgeted || !extras.priceProfile || explicitlyRequestsLuxury(context)
+        ? { penalty: 0, flagged: 0 }
         : pricePenaltyForLook(items, extras.priceProfile);
       // Bounded merchant-offer staleness dampener (gate F): reorders near-ties
       // toward verifiably recent price evidence, never a gate.
