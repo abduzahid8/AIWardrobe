@@ -10,6 +10,7 @@
  * canonical product overlap and evidence-based styling features.
  */
 import { productIdentityOf } from '../../src/domain/outfitDiversity.ts';
+import { describeGarment } from '../../src/domain/garmentDescriptor.ts';
 import { editorialDirectionEligible } from './editorial_quality.mjs';
 
 export const DIRECTION_VERSION = 's6-three-directions-editorial-v5';
@@ -191,9 +192,10 @@ const featToken = (tuple, idx) => {
     ? val : null;
 };
 
-const shoeRegisterOf = (sub) => {
-  if (/^(oxford|derby|loafer|monk|brogue|dress-shoe|boot|ankle-boot|chelsea)$/.test(sub || '')) return 'dress';
-  if (/^(sneaker|minimal-sneaker|sport-sneaker|trainer|canvas-sneaker)$/.test(sub || '')) return 'casual';
+export const shoeRegisterOf = (sub) => {
+  const s = String(sub || '').toLowerCase().replace(/_/g, '-');
+  if (/^(?:.*-)?(?:(oxford|loafer|monk(?:-strap)?|brogue|dress-shoe|boot|ankle-boot|chelsea)(?:-boot)?s?|derb(?:y|ies|ys))$/.test(s)) return 'dress';
+  if (/^(?:.*-)?(sneaker|trainer|canvas-sneaker|runner)s?$/.test(s)) return 'casual';
   return null;
 };
 
@@ -294,38 +296,64 @@ export function architectureSeparationAdjustment(look, chosen, featuresOf) {
  * unlayered shirt-trouser formula.
  */
 export function garmentArchitectureOf(look, featuresOf) {
+  let topSub = '';
+  let outerSub = '';
+  let botSub = '';
+  let hasOuterFromFeat = false;
+
   if (typeof featuresOf === 'function') {
-    const f = featuresOf(look);
+    let f = null;
+    try {
+      f = featuresOf(look);
+    } catch {
+      f = null;
+    }
     if (Array.isArray(f) && f.length >= 3) {
-      const topSub = featToken(f[0], 0);
-      const outerSub = featToken(f[1], 0);
-      const botSub = featToken(f[2], 0);
-      const hasLayer = Boolean(f[1]) && outerSub !== 'none';
-      return {
-        top: topSub || 'unknown',
-        outerwear: hasLayer ? (outerSub || 'layered') : 'none',
-        bottom: botSub || 'unknown',
-        isOfficeShirtTrouser: !hasLayer &&
-          /^(shirt|dress-shirt)$/.test(topSub || '') &&
-          /^(trouser|tailored-trouser|chino)$/.test(botSub || ''),
-      };
+      topSub = featToken(f[0], 0);
+      outerSub = featToken(f[1], 0);
+      botSub = featToken(f[2], 0);
+      hasOuterFromFeat = Boolean(f[1]) &&
+        String(outerSub || '').toLowerCase() !== 'none' &&
+        String(outerSub || '').toLowerCase() !== 'unknown';
     }
   }
-  const items = look?.items || [];
+
+  const items = (look?.items || []).filter(Boolean);
   const top = items.find(i => i?.macroCategory === 'top');
   const outer = items.find(i => i?.macroCategory === 'outerwear');
   const bottom = items.find(i => i?.macroCategory === 'bottom');
-  const topSub = top?.subtype || top?.fashion_subtype || (typeof top?.type === 'string' && top.type !== top.macroCategory ? top.type : '') || '';
-  const outerSub = outer?.subtype || outer?.fashion_subtype || (typeof outer?.type === 'string' && outer.type !== outer.macroCategory ? outer.type : '') || '';
-  const botSub = bottom?.subtype || bottom?.fashion_subtype || (typeof bottom?.type === 'string' && bottom.type !== bottom.macroCategory ? bottom.type : '') || '';
-  const hasLayer = Boolean(outer && outerSub !== 'none');
+
+  if (!topSub || topSub === 'unknown') {
+    topSub = top?.subtype || top?.fashion_subtype ||
+      (typeof top?.type === 'string' && top.type !== top.macroCategory ? top.type : '') ||
+      (top ? describeGarment(top).subtype : '') || '';
+  }
+  if (!outerSub || outerSub === 'unknown' || outerSub === 'none') {
+    const fromItem = outer?.subtype || outer?.fashion_subtype ||
+      (typeof outer?.type === 'string' && outer.type !== outer.macroCategory ? outer.type : '') ||
+      (outer ? describeGarment(outer).subtype : '') || '';
+    if (fromItem && fromItem !== 'unknown') {
+      outerSub = fromItem;
+    }
+  }
+  if (!botSub || botSub === 'unknown') {
+    botSub = bottom?.subtype || bottom?.fashion_subtype ||
+      (typeof bottom?.type === 'string' && bottom.type !== bottom.macroCategory ? bottom.type : '') ||
+      (bottom ? describeGarment(bottom).subtype : '') || '';
+  }
+
+  const cleanOuter = String(outerSub || '').toLowerCase();
+  const hasLayer = hasOuterFromFeat || Boolean(outer && cleanOuter !== 'none' && cleanOuter !== 'unknown');
+  const cleanTop = (topSub && topSub !== 'unknown') ? topSub : 'unknown';
+  const cleanBot = (botSub && botSub !== 'unknown') ? botSub : 'unknown';
+
   return {
-    top: topSub || 'unknown',
-    outerwear: hasLayer ? (outerSub || 'layered') : 'none',
-    bottom: botSub || 'unknown',
+    top: cleanTop,
+    outerwear: hasLayer ? (cleanOuter && cleanOuter !== 'unknown' && cleanOuter !== 'none' ? cleanOuter : 'layered') : 'none',
+    bottom: cleanBot,
     isOfficeShirtTrouser: !hasLayer &&
-      /^(shirt|dress-shirt)$/.test(topSub) &&
-      /^(trouser|tailored-trouser|chino)$/.test(botSub),
+      /^(shirt|dress[_-]?shirt|button[_-]?down|oxford([_-]?shirt)?)s?$/i.test(cleanTop) &&
+      /^(trouser|tailored[_-]?(?:trouser|pants?)|suit[_-]pants?|chino|pants?|slacks?)s?$/i.test(cleanBot),
   };
 }
 
@@ -338,7 +366,7 @@ export function garmentArchitectureOf(look, featuresOf) {
 export function deckOfficeMonotonyAdjustment(candidate, chosen, featuresOf) {
   if (!chosen?.length) return 0;
   const candArch = garmentArchitectureOf(candidate, featuresOf);
-  const chosenArchs = chosen.map(c => garmentArchitectureOf(c, featuresOf));
+  const chosenArchs = chosen.filter(Boolean).map(c => garmentArchitectureOf(c, featuresOf));
   const officeCount = chosenArchs.filter(a => a.isOfficeShirtTrouser).length;
   if (candArch.isOfficeShirtTrouser) {
     if (officeCount >= 2) return -0.045;
@@ -539,18 +567,24 @@ export function selectCreativeDirectionDeck(shortlist, {
     }
   }
   if (chosen.length === 3 && eligibleHasVariety && chosen.every(l => archOf(l).isOfficeShirtTrouser)) {
-    const alternative = eligible.find(look =>
+    const altFor2 = eligible.find(look =>
       !archOf(look).isOfficeShirtTrouser &&
       allowedTogether(chosen[0], look, overlap) &&
       allowedTogether(chosen[1], look, overlap) &&
       editorialDirectionEligible(signature, look, 'alternative')
-    ) || eligible.find(look =>
-      !archOf(look).isOfficeShirtTrouser &&
-      allowedTogether(chosen[0], look, overlap) &&
-      editorialDirectionEligible(signature, look, 'alternative')
     );
-    if (alternative) {
-      chosen[2] = alternative;
+    if (altFor2) {
+      chosen[2] = altFor2;
+    } else {
+      const altFor1 = eligible.find(look =>
+        !archOf(look).isOfficeShirtTrouser &&
+        allowedTogether(chosen[0], look, overlap) &&
+        allowedTogether(chosen[2], look, overlap) &&
+        editorialDirectionEligible(signature, look, 'alternative')
+      );
+      if (altFor1) {
+        chosen[1] = altFor1;
+      }
     }
   }
   const directions = labelCreativeDirections(chosen,{featuresOf: features,featureDistance});

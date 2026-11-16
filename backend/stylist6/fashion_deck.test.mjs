@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, workoutItemTruthReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -49,6 +49,18 @@ test('workout catalog admission rejects real-world polo, jeans, and casual jacke
   assert.equal(truth('RETRO STYLE TRAINERS','shoes'),'unverified_workout_footwear');
   assert.equal(workoutItemTruthReason({name:'Rust Linen Polo Shirt',macroCategory:'top'},
     {occasion:'Casual',style:'streetwear'}),null,'do not alter non-workout styling');
+});
+
+test('subzero catalog outfits cannot treat a down vest as a protective coat', () => {
+  const vest = garment('winter-vest', 'Water Repellent Down Vest', 'outerwear', 'jacket');
+  const cold = { sourceMode: 'catalog', weather: { temp: -5 } };
+  assert.equal(freezingCatalogVestReason(vest, cold), 'freezing_requires_sleeved_outerwear');
+  assert.equal(freezingCatalogVestReason(garment('gilet', 'Quilted Gilet', 'outerwear', 'jacket'), cold),
+    'freezing_requires_sleeved_outerwear');
+  assert.equal(freezingCatalogVestReason(garment('parka', 'Insulated Winter Parka', 'outerwear', 'jacket'), cold), null);
+  assert.equal(freezingCatalogVestReason(vest, { ...cold, weather: { temp: 16 } }), null);
+  assert.equal(freezingCatalogVestReason(vest, { ...cold, sourceMode: 'wardrobe' }), null);
+  assert.equal(freezingCatalogVestReason(vest, { ...cold, sourceMode: 'mixed' }), null);
 });
 
 test('cold-weather classic office cannot serve a blazer plus loafers as winter protection',async()=>{

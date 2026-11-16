@@ -304,6 +304,7 @@ function mapDeckItem(item, rankScore, offerVerification = null) {
     id: String(item.id),
     type: item.type || item.macroCategory,
     macroCategory: item.macroCategory,
+    subtype: item.subtype || item.fashion_subtype || (typeof item.type === 'string' && item.type !== item.macroCategory ? item.type : '') || '',
     color: item.color || 'unknown',
     name: item.name,
     brand: item.brand || '',
@@ -558,8 +559,14 @@ export async function generateStylist6Deck(payload, options = {}) {
       confidence: look.fashion?.score,
       matchScore: look.fashion?.score,
       engineVersion: STYLIST6_DEV_ENGINE_VERSION,
+      ...(look.fashionQuality || look.fashion?.fashionQuality ? {
+        fashionQuality: look.fashionQuality || look.fashion?.fashionQuality,
+      } : {}),
       fashionDiagnostics: {
         score: look.fashion?.score,
+        ...(look.fashionQuality || look.fashion?.fashionQuality ? {
+          fashionQuality: look.fashionQuality || look.fashion?.fashionQuality,
+        } : {}),
         referenceMetadata: look.fashion?.referenceMetadata || null,
         referenceEvaluationMode: lookVerified ? look.visualReferenceMode || 'unknown' : 'not_judged',
         visualVerdict: lookVerified

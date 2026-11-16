@@ -57,6 +57,20 @@ export function workoutItemTruthReason(item, context) {
   return null;
 }
 
+
+/** Prevent a sleeveless vest from counting as the only winter coat in a
+ * catalog outfit at below-5°C temperatures. This narrows only Stylist 6
+ * catalog retrieval; owned garments and pinned user anchors are untouched.
+ * Existing insulation/boot climate gates still validate the complete look.
+ */
+export function freezingCatalogVestReason(item, context) {
+  if (context?.sourceMode !== 'catalog' || item?.macroCategory !== 'outerwear' ||
+      !Number.isFinite(context?.weather?.temp) || context.weather.temp >= 5) return null;
+  const label = `${item.name || ''} ${item.subtype || ''} ${item.fashion_subtype || ''}`.toLowerCase();
+  return /\b(?:vests?|gilets?|waistcoats?)\b|жилет|безрукавк/.test(label)
+    ? 'freezing_requires_sleeved_outerwear' : null;
+}
+
 const normalized = (value) => String(value || '').toLowerCase().replace(/[\s-]+/g, '_');
 const known = (value) => !!value && value !== 'unknown' && value !== 'neutral';
 const image = (item) => item.imageUrl || item.image_url;
@@ -423,8 +437,12 @@ const OFFICE_INTENT = /\b(work|office|business|meeting|conference)\b|работ|
 
 const QUIET_OFFICE_STYLES = new Set(['classic','old_money','semi_classic','business_casual']);
 function fashionQualityApplies(context) {
-  return context?.sourceMode === 'catalog' && QUIET_OFFICE_STYLES.has(context?.style) &&
-    OFFICE_INTENT.test(String(context?.occasion || '')) &&
+  const style = String(context?.style || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const occasion = String(context?.occasion || '');
+  const req = String(context?.request || '');
+  const brief = String(context?.brief || '');
+  return context?.sourceMode === 'catalog' && QUIET_OFFICE_STYLES.has(style) &&
+    (OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) || OFFICE_INTENT.test(brief)) &&
     !(Array.isArray(context?.requiredIds) && context.requiredIds.length);
 }
 const inactiveFashionQuality = () => ({ version:FASHION_QUALITY_VERSION,active:false,
@@ -436,13 +454,14 @@ const QUIET_PALETTE = new Set([
   'cream', 'beige', 'tan', 'brown', 'camel', 'olive', 'khaki',
   'burgundy', 'forest_green', 'taupe', 'ecru', 'stone', 'sand',
   'light', 'mid', 'cool-dark', 'warm-dark', 'dark',
+  'light-blue', 'dark-neutral', 'indigo',
 ]);
 
 function itemColorToken(item) {
   const explicit = typeof item?.color === 'string' ? colorTokensOf({ color:item.color }) : [];
   if (explicit.length === 1) return explicit[0];
   if (explicit.length > 1) return null;
-  const fromName = colorTokensOf({ name:item?.name || '' });
+  const fromName = colorTokensOf({ name:item?.name || item?.title || '' });
   // A coarse "earth", "dark" or "light" bin is not an exact color observation.
   return fromName.length === 1 ? fromName[0] : null;
 }
@@ -450,10 +469,12 @@ function itemColorToken(item) {
 function computePaletteHarmony(items, descriptors, context, coherencePalette) {
   const colors = items.map((item, i) => itemColorToken(item, descriptors[i])).filter(Boolean);
   const base = Number.isFinite(coherencePalette) ? coherencePalette : 0.75;
-  const style = String(context?.style || '').toLowerCase();
+  const style = String(context?.style || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const occasion = String(context?.occasion || '').toLowerCase();
+  const req = String(context?.request || '').toLowerCase();
+  const brief = String(context?.brief || '').toLowerCase();
   const quiet = ['classic', 'old_money', 'semi_classic', 'business_casual', 'smart_casual'].includes(style) ||
-    OFFICE_INTENT.test(occasion);
+    OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) || OFFICE_INTENT.test(brief);
 
   let bonus = 0;
   if (quiet && colors.length > 0) {
@@ -466,7 +487,7 @@ function computePaletteHarmony(items, descriptors, context, coherencePalette) {
   }
 
   const clashing = items.some(item => {
-    const text = `${item.name || ''} ${item.color || ''}`.toLowerCase();
+    const text = `${item.name || item.title || ''} ${item.color || ''}`.toLowerCase();
     return /\b(neon|fluorescent|electric[ -]blue|hot[ -]pink|bright[ -]yellow)\b/.test(text);
   });
   if (clashing && quiet) {
@@ -481,28 +502,45 @@ function computePaletteHarmony(items, descriptors, context, coherencePalette) {
   return Math.max(0, Math.min(1, base + bonus));
 }
 
+function itemSubtype(item, descriptor) {
+  if (descriptor?.subtype && descriptor.subtype !== 'unknown' && descriptor.subtype !== 'none') {
+    return descriptor.subtype.toLowerCase().replace(/_/g, '-');
+  }
+  const explicit = item?.subtype || item?.fashion_subtype ||
+    (typeof item?.type === 'string' && item.type !== item?.macroCategory ? item.type : '');
+  if (explicit) return String(explicit).toLowerCase().replace(/_/g, '-');
+  if (item) {
+    const desc = describeGarment(item);
+    if (desc?.subtype && desc.subtype !== 'unknown' && desc.subtype !== 'none') {
+      return desc.subtype.toLowerCase().replace(/_/g, '-');
+    }
+  }
+  return '';
+}
+
 function computeShoeAppropriateness(items, descriptors, context) {
   const shoeDesc = descriptors.find(d => d.slot === 'shoes');
   const shoeItem = items.find(i => i.macroCategory === 'shoes');
   if (!shoeDesc && !shoeItem) return 0.5;
 
-  const style = String(context?.style || '').toLowerCase();
+  const style = String(context?.style || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const occasion = String(context?.occasion || '').toLowerCase();
   const req = String(context?.request || '').toLowerCase();
+  const brief = String(context?.brief || '').toLowerCase();
   const isQuietOrWork = ['classic', 'old_money', 'semi_classic', 'business_casual'].includes(style) ||
-    OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) ||
-    /\b(work|office|business|meeting|conference|formal)\b/i.test(`${occasion} ${req}`);
+    OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) || OFFICE_INTENT.test(brief) ||
+    /\b(work|office|business|meeting|conference|formal)\b/i.test(`${occasion} ${req} ${brief}`);
 
-  const sub = shoeDesc?.subtype || '';
-  const text = `${shoeItem?.name || ''} ${shoeItem?.type || ''}`.toLowerCase();
+  const sub = itemSubtype(shoeItem, shoeDesc);
+  const text = `${shoeItem?.name || shoeItem?.title || ''} ${shoeItem?.type || ''}`.toLowerCase();
 
   if (isQuietOrWork) {
     // Explicit shoe preferences outrank this purely editorial prior.
-    if (/\b(sneakers?|trainers?)\b|кроссовк|кед/i.test(req) &&
-        /^(sport-sneaker|sneaker|minimal-sneaker)$/.test(sub)) return 0.90;
-    if (/^(loafer|derby|oxford|monk|chelsea|dress-boot)$/.test(sub) ||
-        /\b(loafers?|derb(?:y|ies)|oxfords?|monk[ -]?straps?|chelsea)\b/i.test(text)) {
-      if (shoeDesc?.soleProfile === 'dress' || /\b(leather|blake|welt|calfskin)\b/i.test(text)) {
+    if (/\b(sneakers?|trainers?)\b|кроссовк|кед/i.test(`${req} ${brief}`) &&
+        /^(sport-sneaker|sneaker|minimal-sneaker)s?$/i.test(sub)) return 0.90;
+    if (/^(?:.*[_-])?(loafer|oxford|monk(?:[_-]?strap)?|brogue|dress[_-]?shoe|chelsea(?:[_-]?boot)?|dress[_-]?boot)s?$|^(?:.*[_-])?derb(?:y|ies|ys)$/i.test(sub) ||
+        /\b(loafers?|derb(?:y|ies|ys)|oxfords?|monk[ -]?straps?|chelsea(?:[ -]?boots?)?|brogues?|dress[ -]shoes?|dress[ -]boots?)\b|дерби|оксфорд|туфл|броги|монк|\btufli\b/i.test(text)) {
+      if (shoeDesc?.soleProfile === 'dress' || /\b(leather|blake|welt|calfskin)\b|кож[а-я]*|замш[а-я]*|\b(charm|teri)\b/i.test(text)) {
         return 1.0;
       }
       return 0.95;
@@ -510,18 +548,19 @@ function computeShoeAppropriateness(items, descriptors, context) {
     if (sub === 'minimal-sneaker' || SLEEK_SNEAKER.test(text)) {
       return shoeDesc?.casualSole ? 0.60 : 0.68;
     }
-    if (/^(sport-sneaker|sneaker|hiking-boot)$/.test(sub) ||
+    if (/^(sport-sneaker|sneaker|hiking-boot)s?$/i.test(sub) ||
         shoeDesc?.athletic || shoeDesc?.casualSole ||
-        /\b(running|training|athletic|trail|sports?|retro|chunky)\b/i.test(text)) {
+        /\b(running|training|athletic|trail|sports?|retro|chunky)\b|кроссовк|кед|бегов/i.test(text)) {
       return 0.20;
     }
-    if (/^(espadrille|boat-shoe|sandal|driver)$/.test(sub)) {
+    if (/^(espadrille|boat-shoe|sandal|driver)s?$/i.test(sub) ||
+        /\b(espadrilles?|boat[ -]shoes?|sandals?|drivers?|slides?)\b|сандал|шлеп/i.test(text)) {
       return 0.35;
     }
     return 0.60;
   }
 
-  if (/^(sport-sneaker|sneaker|minimal-sneaker)$/.test(sub)) {
+  if (/^(sport-sneaker|sneaker|minimal-sneaker)s?$/i.test(sub)) {
     return 0.95;
   }
   return 0.80;
@@ -532,6 +571,8 @@ function computeSilhouetteBalance(items, descriptors, context, coherenceProporti
   const topDesc = descriptors.find(d => d.slot === 'top');
   const botDesc = descriptors.find(d => d.slot === 'bottom');
   const outerDesc = descriptors.find(d => d.slot === 'outerwear');
+  const botItem = items.find(i => i.macroCategory === 'bottom');
+  const outerItem = items.find(i => i.macroCategory === 'outerwear');
 
   let bonus = 0;
   if (topDesc && botDesc) {
@@ -545,10 +586,13 @@ function computeSilhouetteBalance(items, descriptors, context, coherenceProporti
     }
   }
 
-  if (botDesc && /^(tailored-trouser|trouser)$/.test(botDesc.subtype)) {
+  const botSub = itemSubtype(botItem, botDesc);
+  const outerSub = itemSubtype(outerItem, outerDesc);
+
+  if (botSub && /^(tailored[_-]?(?:trouser|pants?)|trouser|pants?|slacks?)s?$/i.test(botSub)) {
     bonus += 0.05;
   }
-  if (outerDesc && /^(blazer|cardigan|coat)$/.test(outerDesc.subtype)) {
+  if (outerSub && /^(blazer|cardigan|coat)s?$/i.test(outerSub)) {
     bonus += 0.05;
   }
 
@@ -558,15 +602,39 @@ function computeSilhouetteBalance(items, descriptors, context, coherenceProporti
 function computeTextureCoordination(items, descriptors, context, coherenceTexture) {
   const base = Number.isFinite(coherenceTexture) ? coherenceTexture : 0.78;
   let bonus = 0;
-  const hasKnit = descriptors.some(d =>
-    /^(fine-knit|sweater|cardigan|knit-trouser)$/.test(d.subtype) ||
-    /^(knit|fine-knit)$/.test(d.texture) ||
-    /\b(merino|cashmere|wool|knit|ribbed)\b/i.test(`${d.evidence?.join(' ') || ''}`));
-  const hasTailored = descriptors.some(d =>
-    /^(blazer|tailored-trouser)$/.test(d.subtype) ||
-    /^(flannel|wool|tweed|suiting)$/.test(d.texture));
-  const hasLeather = descriptors.some(d =>
-    d.slot === 'shoes' && (/^(loafer|derby|oxford|monk|chelsea)$/.test(d.subtype) || /^(leather|suede)$/.test(d.texture)));
+  const hasKnit = descriptors.some((d, idx) => {
+    const itSub = itemSubtype(items[idx], d);
+    const itTex = (items[idx]?.texture || '').toLowerCase();
+    const itText = `${items[idx]?.name || items[idx]?.title || ''} ${items[idx]?.type || ''}`.toLowerCase();
+    return /^(fine-knit|sweater|cardigan|knit-trouser)s?$/i.test(d.subtype) ||
+      /^(fine-knit|sweater|cardigan|knit-trouser)s?$/i.test(itSub) ||
+      /^(knit|fine-knit)$/i.test(d.texture) ||
+      /^(knit|fine-knit)$/i.test(itTex) ||
+      /\b(merino|cashmere|wool|knit|ribbed)\b/i.test(`${d.evidence?.join(' ') || ''}`) ||
+      /\b(merino|cashmere|wool|knit|ribbed)\b|шерст|кашемир|меринос|трикотаж|вязаный/i.test(itText);
+  });
+  const hasTailored = descriptors.some((d, idx) => {
+    const itSub = itemSubtype(items[idx], d);
+    const itTex = (items[idx]?.texture || '').toLowerCase();
+    const itText = `${items[idx]?.name || items[idx]?.title || ''} ${items[idx]?.type || ''}`.toLowerCase();
+    return /^(blazer|tailored[_-]?(?:trouser|pants?)|suit[_-]pants?)s?$/i.test(d.subtype) ||
+      /^(blazer|tailored[_-]?(?:trouser|pants?)|suit[_-]pants?)s?$/i.test(itSub) ||
+      /^(flannel|wool|tweed|suiting)$/i.test(d.texture) ||
+      /^(flannel|wool|tweed|suiting)$/i.test(itTex) ||
+      /\b(flannel|wool|tweed|suiting)\b|фланел|шерст|твид|костюмн/i.test(itText);
+  });
+  const hasLeather = descriptors.some((d, idx) => {
+    const itSub = itemSubtype(items[idx], d);
+    const itTex = (items[idx]?.texture || '').toLowerCase();
+    const itText = `${items[idx]?.name || items[idx]?.title || ''} ${items[idx]?.type || ''}`.toLowerCase();
+    return (d.slot === 'shoes' || items[idx]?.macroCategory === 'shoes') && (
+      /^(?:.*[_-])?(loafer|oxford|monk(?:[_-]?strap)?|brogue|dress[_-]?shoe|chelsea(?:[_-]?boot)?|dress[_-]?boot)s?$|^(?:.*[_-])?derb(?:y|ies|ys)$/i.test(d.subtype) ||
+      /^(?:.*[_-])?(loafer|oxford|monk(?:[_-]?strap)?|brogue|dress[_-]?shoe|chelsea(?:[_-]?boot)?|dress[_-]?boot)s?$|^(?:.*[_-])?derb(?:y|ies|ys)$/i.test(itSub) ||
+      /^(leather|suede)$/i.test(d.texture) ||
+      /^(leather|suede)$/i.test(itTex) ||
+      /\b(leather|suede|calfskin)\b|кож[а-я]*|замш[а-я]*|\b(charm|teri)\b/i.test(itText)
+    );
+  });
 
   if (hasKnit && hasTailored) bonus += 0.10;
   if (hasTailored && hasLeather) bonus += 0.05;
@@ -578,31 +646,47 @@ function computeBoringOfficePenalty(items, descriptors, context) {
   const topDesc = descriptors.find(d => d.slot === 'top');
   const botDesc = descriptors.find(d => d.slot === 'bottom');
   const outerDesc = descriptors.find(d => d.slot === 'outerwear');
+  const topItem = items.find(i => i.macroCategory === 'top');
+  const botItem = items.find(i => i.macroCategory === 'bottom');
+  const outerItem = items.find(i => i.macroCategory === 'outerwear');
 
-  if (outerDesc && outerDesc.subtype && outerDesc.subtype !== 'unknown' && outerDesc.subtype !== 'none') {
+  const outerSub = itemSubtype(outerItem, outerDesc);
+
+  const hasOuter = Boolean(outerItem && outerSub !== 'none') ||
+    Boolean(outerSub && outerSub !== 'unknown' && outerSub !== 'none');
+  if (hasOuter) {
     return 0;
   }
 
-  const style = String(context?.style || '').toLowerCase();
+  const style = String(context?.style || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const occasion = String(context?.occasion || '').toLowerCase();
   const req = String(context?.request || '').toLowerCase();
-  const isWork = OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) ||
-    /\b(work|office|business|meeting)\b/i.test(`${occasion} ${req}`);
+  const brief = String(context?.brief || '').toLowerCase();
+  const isWork = OFFICE_INTENT.test(occasion) || OFFICE_INTENT.test(req) || OFFICE_INTENT.test(brief) ||
+    /\b(work|office|business|meeting)\b/i.test(`${occasion} ${req} ${brief}`);
   const isQuiet = ['classic', 'old_money', 'semi_classic'].includes(style);
 
   if (!isWork && !isQuiet) return 0;
 
   const temp = Number(context?.weather?.temp ?? context?.weather?.temperature);
-  const intentionallySimple = /\b(no jacket|no blazer|no layer|without (?:a )?jacket|just a shirt)\b|без пиджак|без куртк|без слоя/i.test(req);
+  const intentionallySimple = /\b(no jacket|no blazer|no layer|without (?:a )?jacket|just a shirt)\b|без пиджак|без куртк|без слоя/i.test(`${req} ${brief}`);
   if ((Number.isFinite(temp) && temp >= 25) || intentionallySimple) return 0;
-  const isShirt = topDesc && /^(shirt|dress-shirt)$/.test(topDesc.subtype);
-  const isTrouser = botDesc && /^(trouser|tailored-trouser|chino)$/.test(botDesc.subtype);
+  const topSub = itemSubtype(topItem, topDesc);
+  const botSub = itemSubtype(botItem, botDesc);
+  const isShirt = /^(shirt|dress[_-]?shirt|button[_-]?down|oxford([_-]?shirt)?)s?$/i.test(topSub);
+  const isTrouser = /^(trouser|tailored[_-]?(?:trouser|pants?)|suit[_-]pants?|chino|pants?|slacks?)s?$/i.test(botSub);
 
   if (isShirt && isTrouser) {
-    const interestingTexture = descriptors.some(d =>
-      /^(fine-knit|knit|flannel|tweed|corduroy|linen)$/.test(d.texture) ||
-      ['stripe', 'check'].includes(d.pattern)
-    );
+    const interestingTexture = descriptors.some((d, idx) => {
+      const itTex = (items[idx]?.texture || '').toLowerCase();
+      const itPat = (items[idx]?.pattern || '').toLowerCase();
+      const itText = `${items[idx]?.name || items[idx]?.title || ''} ${items[idx]?.type || ''}`.toLowerCase();
+      return /^(fine-knit|knit|flannel|tweed|corduroy|linen)$/i.test(d.texture) ||
+        /^(fine-knit|knit|flannel|tweed|corduroy|linen)$/i.test(itTex) ||
+        ['stripe', 'check'].includes(d.pattern) ||
+        ['stripe', 'check'].includes(itPat) ||
+        /\b(flannel|tweed|corduroy|linen|stripe|check|plaid)\b|фланел|твид|вельвет|лен|льн|полоск|клетк/i.test(itText);
+    });
     if (!interestingTexture) {
       return 0.10;
     }
@@ -651,6 +735,7 @@ export function evaluateFashionQuality(lookOrItems, context = {}) {
     boringOfficePenalty: Number(boringOfficePenalty.toFixed(4)),
     score: Number(score.toFixed(4)),
     adjustment: Number(adjustment.toFixed(4)),
+    active: true,
     version: FASHION_QUALITY_VERSION,
   };
 }
@@ -666,25 +751,25 @@ export function rerankFashionCandidates(candidates, context = {}) {
   for (const look of candidates) {
     if (!look) continue;
     if (!look.fashionQuality) {
-      if (look.fashion?.fashionQuality) {
-        look.fashionQuality = look.fashion.fashionQuality;
-      } else {
-        const quality = evaluateFashionQuality(look, context);
-        look.fashionQuality = quality;
-        if (look.fashion) {
-          look.fashion.fashionQuality = quality;
-          if (Number.isFinite(look.fashion.score) && !look.fashion.qualityAdjustmentApplied) {
-            look.fashion.score = Number((look.fashion.score + quality.adjustment).toFixed(4));
-            look.fashion.qualityAdjustmentApplied = true;
-          }
-        }
+      look.fashionQuality = look.fashion?.fashionQuality || evaluateFashionQuality(look, context);
+    }
+    const quality = look.fashionQuality;
+    if (look.fashion) {
+      look.fashion.fashionQuality = quality;
+      if (Number.isFinite(look.fashion.score) && !look.fashion.qualityAdjustmentApplied && Number.isFinite(quality?.adjustment)) {
+        look.fashion.score = Number((look.fashion.score + quality.adjustment).toFixed(4));
+        look.fashion.qualityAdjustmentApplied = true;
       }
+    } else if (Number.isFinite(look.seedScore) && !look.qualityAdjustmentApplied && Number.isFinite(quality?.adjustment)) {
+      look.seedScore = Number((look.seedScore + quality.adjustment).toFixed(4));
+      look.qualityAdjustmentApplied = true;
     }
   }
   return candidates.sort((a, b) => {
-    const sa = a?.fashion?.score ?? -Infinity;
-    const sb = b?.fashion?.score ?? -Infinity;
-    return sb - sa || String(a?.id || '').localeCompare(String(b?.id || ''));
+    const sa = Number.isFinite(a?.fashion?.score) ? a.fashion.score : (Number.isFinite(a?.seedScore) ? a.seedScore : -Infinity);
+    const sb = Number.isFinite(b?.fashion?.score) ? b.fashion.score : (Number.isFinite(b?.seedScore) ? b.seedScore : -Infinity);
+    if (sb !== sa) return sb - sa;
+    return String(a?.id || '').localeCompare(String(b?.id || ''));
   });
 }
 
@@ -704,6 +789,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       if (visualAdmissionReason(item) || isNonOutfitItem(item)) return null;
       const prepared = prepareGarment(item.color ? item : { ...item, color: undefined }), descriptor = describeGarment(prepared);
       if (workoutItemTruthReason(prepared, context) ||
+          freezingCatalogVestReason(prepared, context) ||
           rejectForRequestIntent(prepared, context.request, context.weather) ||
           descriptor.slot !== item.macroCategory || descriptor.productKind === 'complete-suit' ||
           garmentContextReason(prepared, context) || rejectForClimate(prepared, context.weather) ||
@@ -848,6 +934,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
         editorial,
         finish,
         fashionQuality,
+        qualityAdjustmentApplied: Boolean(fashionQuality.active),
         conceptFidelity,
         imageSupportedItems: items.filter((item) =>
           describeGarment(item).evidence.some((entry) => entry.startsWith('image:'))).length,
@@ -971,8 +1058,11 @@ export function refineQuietOfficeConcept(concept, context) {
   // The source-bound catalog has genuine alternatives for an editorial
   // preference; wardrobe/mixed modes must never imply an owned SKU can be
   // substituted just because the office formula prefers another subtype.
-  if (context?.sourceMode !== 'catalog' || context?.style !== 'old_money' ||
-      !OFFICE_INTENT.test(String(context?.occasion || '')) ||
+  const style = String(context?.style || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (context?.sourceMode !== 'catalog' || style !== 'old_money' ||
+      (!OFFICE_INTENT.test(String(context?.occasion || '')) &&
+       !OFFICE_INTENT.test(String(context?.request || '')) &&
+       !OFFICE_INTENT.test(String(context?.brief || ''))) ||
       !OLD_MONEY_OFFICE_ROLES[concept?.id]) return concept;
   const roles = OLD_MONEY_OFFICE_ROLES[concept.id];
   return { ...concept, slots: roles.map(slot => [...slot]) };
@@ -1168,7 +1258,7 @@ export async function recommendFashionDeck({
         visualWinner = result.outfits[0];
         if (visualWinner.id === alternate.id) selected = [alternate, ...selected.slice(1)];
       } else if (rejected.has(lead.id)) {
-        selected = chooseDeck(selectable, context, rejected);
+        selected = chooseDeck(selectable, deckContext, rejected);
       }
       judged = true;
       break;
@@ -1184,11 +1274,11 @@ export async function recommendFashionDeck({
       if (visualVerdict === 'JUDGED' && result.outfits[0]) {
         visualWinner = result.outfits[0];
       } else if (rejected.has(lead.id)) {
-        selected = chooseDeck(selectable, context, rejected);
+        selected = chooseDeck(selectable, deckContext, rejected);
       }
     }
   }
-  const directions = labelCreativeDirections(selected, creativeMetrics(context));
+  const directions = labelCreativeDirections(selected, creativeMetrics(deckContext));
   const copy = editorialDeckCopy(selected, context, directions);
   return {
     status: selected.length === 3 ? 'complete' : selected.length ? 'partial' : 'no_feasible_looks',
