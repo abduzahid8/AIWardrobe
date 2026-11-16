@@ -104,7 +104,14 @@ const FEEDBACK_ITEM_SEED_WEIGHT = 0.08;
  * evidence about this catalog — no FX, no invented budget. Exported for
  * tests.
  */
-export function buildPriceProfile(catalog) {
+export function buildPriceProfile(catalog, serverValidatedFxRates = null) {
+  // Cross-currency comparisons are enabled ONLY from the authenticated
+  // cloud's already-validated CBU reference-rate snapshot. No invented FX,
+  // no multiplication of USD prices against UZS without proof.
+  const fx=serverValidatedFxRates && serverValidatedFxRates.UZS===1 &&
+    ['USD','EUR','GBP'].every(c=>Number.isFinite(serverValidatedFxRates[c]) &&
+      serverValidatedFxRates[c] > 0 && serverValidatedFxRates[c] <= 1e12)
+    ? Object.freeze({...serverValidatedFxRates}) : null;
   const byBand = new Map();
   for (const item of catalog || []) {
     if (!item || !/^(top|outerwear|bottom|shoes)$/.test(item.macroCategory || '')
@@ -112,8 +119,15 @@ export function buildPriceProfile(catalog) {
     const key = `${item.currency}|${item.macroCategory}`;
     if (!byBand.has(key)) byBand.set(key, []);
     byBand.get(key).push(item.price);
+    if(fx && Number.isFinite(fx[item.currency])){
+      const normalizedKey=`CBU_REFERENCE_UZS|${item.macroCategory}`;
+      if(!byBand.has(normalizedKey))byBand.set(normalizedKey,[]);
+      const normalizedPrice=item.price*fx[item.currency];
+      if(Number.isFinite(normalizedPrice))byBand.get(normalizedKey).push(normalizedPrice);
+    }
   }
   const profile = {};
+  if(fx)Object.defineProperty(profile,'_verifiedFx',{value:fx,enumerable:false});
   for (const [key, prices] of byBand) {
     if (prices.length < PRICE_SAMPLE_MINIMUM) continue;
     prices.sort((a, b) => a - b);
@@ -133,13 +147,30 @@ export function buildPriceProfile(catalog) {
  * ceiling keeps this a soft ranking signal, not a ban on luxury inventory.
  */
 export const UNBUDGETED_PRICE_PENALTY_MAX = 0.18;
+/** Native price bands win when well populated. Sparse EUR/GBP/USD cohorts
+ * instead use the same-slot verified CBU reference cohort when available.
+ * The verified snapshot only affects price comparisons, never labels or
+ * quoted merchant prices, and is never a strict spending cap.
+ */
+export function observedPriceComparison(item, profile){
+  if(!item || !profile || !Number.isFinite(item.price) || item.price<=0)return null;
+  const native=profile[`${item.currency}|${item.macroCategory}`];
+  const fx=profile._verifiedFx;
+  const reference=fx && Number.isFinite(fx[item.currency])
+    ? profile[`CBU_REFERENCE_UZS|${item.macroCategory}`] : null;
+  if(reference?.count>=12 && (!native || native.count<12)){
+    const amount=item.price*fx[item.currency];
+    if(Number.isFinite(amount))return {value:amount,band:reference,source:'verified_cbu_reference'};
+  }
+  return native ? {value:item.price,band:native,source:'same_currency'} : null;
+}
 export function pricePenaltyForLook(items, profile) {
   let penalty = 0, flagged = 0;
   for (const item of items || []) {
-    const band = item && profile ? profile[`${item.currency}|${item.macroCategory}`] : null;
-    const anchor=band?.accessible > 0 ? band.accessible : band?.median;
-    if (!anchor || !(item.price > anchor)) continue;
-    const ratio = item.price / anchor;
+    const comparator=observedPriceComparison(item,profile);
+    const anchor=comparator?.band?.accessible > 0 ? comparator.band.accessible : comparator?.band?.median;
+    if (!anchor || !(comparator.value > anchor)) continue;
+    const ratio = comparator.value / anchor;
     if (ratio <= 2) {
       penalty += 0.035 * (ratio - 1);
     } else {
@@ -159,10 +190,10 @@ export function pricePenaltyForLook(items, profile) {
  * same slot/currency evidence; never an invented overall spending limit.
  */
 export function unbudgetedPriceSeedAdjustment(item,profile) {
-  const band=profile?.[`${item?.currency}|${item?.macroCategory}`];
-  const anchor=band?.accessible > 0 ? band.accessible : band?.median;
-  if(!anchor || !Number.isFinite(item?.price) || item.price<=0)return 0;
-  const ratio=item.price/anchor;
+  const comparator=observedPriceComparison(item,profile);
+  const anchor=comparator?.band?.accessible > 0 ? comparator.band.accessible : comparator?.band?.median;
+  if(!anchor)return 0;
+  const ratio=comparator.value/anchor;
   return ratio<=1 ? 0.065 : -Math.min(0.26,0.085*Math.log2(ratio));
 }
 
@@ -186,9 +217,10 @@ export function extremeUnrequestedCatalogPriceReason(item, profile, context) {
   if(context?.sourceMode !== 'catalog' || context?.budget ||
       explicitlyRequestsLuxury(context) || !Number.isFinite(item?.price) || item.price <= 0)
     return null;
-  const cohort=profile?.[`${item.currency}|${item.macroCategory}`];
+  const comparator=observedPriceComparison(item,profile);
+  const cohort=comparator?.band;
   if(!cohort || cohort.count<12 || !(cohort.accessible>0))return null;
-  if(item.price < cohort.accessible*6)return null;
+  if(comparator.value < cohort.accessible*6)return null;
   const brand=String(item.brand||'').trim().toLowerCase();
   if(brand && Array.isArray(context?.preferences?.favoriteBrands) &&
       context.preferences.favoriteBrands.some(x=>String(x||'').trim().toLowerCase()===brand))return null;
@@ -289,10 +321,14 @@ export function rejectQuietSmartLeisureLayer(descriptor, context, item) {
       descriptor.slot !== 'outerwear' || !(dressedQuiet || oldMoneyWeekend)) return false;
   // A user explicitly choosing sporty outerwear outranks stylist aesthetics,
   // without waiving the existing physical safety or budget gates.
-  if (/\b(technical leisure|sporty jacket|track jacket|training jacket|reversible resort jacket)\b/i
+  if (/\b(technical leisure|sporty jacket|track jacket|training jacket|reversible resort jacket|denim leisure blazer)\b/i
     .test(context.request || '')) return false;
   const name = String(item?.name || '');
   return /\b(technical[ -]?leisure|track jacket|training jacket|running jacket|sport[s]? jacket)\b/i.test(name) ||
+    // Live staging v52: Aurélien's literal "Dark Blue Denim Leisure Blazer"
+    // looked like an elevated second layer to the generic descriptor, even
+    // though the merchant explicitly identifies denim leisure, not tailoring.
+    (oldMoneyWeekend && /\bdenim\s+leisure\s+(?:blazer|jacket)\b/i.test(name)) ||
     // Owner iOS screenshot: a bright zip-front REVER-SIBLE RESORT shell
     // replaced tailoring in a semi-classic romantic-date outfit. Both
     // words must be explicit SKU evidence: an ordinary resort blazer,
@@ -1236,6 +1272,9 @@ export async function recommendFashionDeck({
   // Optional prebuilt model from feedback_taste.mjs (explicit thumbs rows).
   // Absent/inert model = byte-identical legacy ranking (back-compat).
   feedbackTaste,
+  // Passed by the trusted cloud handler only after validating the official
+  // CBU snapshot; the app never provides these rates to the ranker.
+  valueFxRates,
   // Cloud staging can opt into reviewing all three displayed looks in one
   // bounded provider batch. The isolated local / offline paths stay unchanged.
   visualDeckReview = false,
@@ -1280,7 +1319,7 @@ export async function recommendFashionDeck({
   const references = [reference, ...referenceBriefs.filter((brief) => brief !== reference)].filter(Boolean);
   const briefs = [...house, ...neighborHouse, ...references].map(adaptLayer).filter(Boolean).slice(0, 10);
   if (!briefs.length) return { status: 'no_feasible_looks', outfits: [], diagnostics: { visualVerdict: 'NOT_RUN' } };
-  const priceProfile = buildPriceProfile(catalog);
+  const priceProfile = buildPriceProfile(catalog,valueFxRates);
   const retrieval = await shortlistRetrievalDeck({
     request: { ...request, requiredIds }, catalog, hardGate, priceToBudgetCurrency,
     creativeDirector: async () => briefs,

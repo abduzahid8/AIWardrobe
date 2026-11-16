@@ -865,7 +865,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // invent exchange rates and strictly admit same-currency shop items only.
     let fxSnapshot = null;
     let fxUnavailableReason = null;
-    if (budget) {
+    // A reference-rate snapshot also lets unbudgeted New Clothing compare
+    // a €595 luxury jacket with genuinely cheaper UZS/EUR/GBP jackets.
+    // A failed/slow CBU request degrades to the existing native-currency
+    // ranking; it never invents rates or rejects the user's outfit.
+    if (budget || sourceMode === 'catalog') {
       if (typeof io.fetchBudgetFxSnapshot === 'function') {
         try {
           fxSnapshot = validateBudgetFxSnapshot(await io.fetchBudgetFxSnapshot());
@@ -1149,6 +1153,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       hardGate: async (items) => devLookFeasibility(items),
       priceToBudgetCurrency,
       feedbackTaste,
+      valueFxRates: sourceMode === 'catalog' && !budget ? fxSnapshot?.uzsPerUnit : null,
       // Staging-only visual-first quality pass: review every admissible card
       // in one bounded batch, not just the first selection.
       visualDeckReview: true,

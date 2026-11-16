@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -649,6 +649,33 @@ test('default catalog excludes only substantiated extreme relative price outlier
   assert.equal(extremeUnrequestedCatalogPriceReason(luxury,{'UZS|bottom':{accessible:800000,count:7}},context),null);
 });
 
+test('verified CBU FX compares a rare €595 jacket with affordable UZS layers',()=>{
+  const usual=Array.from({length:24},(_,i)=>garment(`layer-${i}`,'Tailored linen jacket','outerwear','blazer',
+    {price:900000+i*35000,currency:'UZS'}));
+  const expensive=garment('aurelien-denim','Dark Blue Denim Leisure Blazer','outerwear','blazer',
+    {price:595,currency:'EUR',brand:'Aurélien'});
+  const rows=[...usual,expensive];
+  const sameCurrency=buildPriceProfile(rows);
+  assert.equal(extremeUnrequestedCatalogPriceReason(expensive,sameCurrency,
+    {sourceMode:'catalog',request:'Old Money Casual'}),null,
+    'no comparable EUR cohort exists, so never invent a benchmark');
+  const cbu={UZS:1,EUR:15000,USD:12000,GBP:17500};
+  const priced=buildPriceProfile(rows,cbu);
+  const observed=observedPriceComparison(expensive,priced);
+  assert.equal(observed.source,'verified_cbu_reference');
+  assert.equal(observed.value,8925000);
+  assert.ok(observed.band.count>=25);
+  const context={sourceMode:'catalog',style:'old_money',occasion:'Casual',request:'Old Money Casual'};
+  assert.equal(extremeUnrequestedCatalogPriceReason(expensive,priced,context),'extreme_unrequested_catalog_price_outlier');
+  assert.ok(pricePenaltyForLook([expensive],priced).penalty>0.13);
+  assert.ok(unbudgetedPriceSeedAdjustment(expensive,priced)<-0.22);
+  assert.equal(extremeUnrequestedCatalogPriceReason(expensive,priced,{...context,request:'I want luxury clothes'}),null);
+  assert.equal(extremeUnrequestedCatalogPriceReason(expensive,priced,{...context,preferences:{favoriteBrands:['Aurélien']}}),null);
+  const badRates=buildPriceProfile(rows,{UZS:2,EUR:15000,USD:12000,GBP:17500});
+  assert.equal(extremeUnrequestedCatalogPriceReason(expensive,badRates,context),null,
+    'no conversion without normalized, trusted FX shape');
+});
+
 test('skewed luxury catalog uses observed accessible quartile to preserve affordable role choices',()=>{
   const rows=[];
   for(const [i,price] of [400000,640000,849900,1000000,1200000,6500000,7400000,8500000,9100000,12000000,13000000,14000000].entries())
@@ -1126,6 +1153,13 @@ test('quiet smart styling declines explicit technical leisure outerwear, without
   assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,style:'old_money',occasion:'Date night'},jacket),true);
   assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,style:'old_money',occasion:'Casual',dressCode:'casual'},jacket),true,
     'the real old-money weekend preview must not sell a technical leisure blazer');
+  const denimLeisure=garment('aurelien-16011498979658','Dark Blue Denim Leisure Blazer','outerwear','blazer');
+  assert.equal(rejectQuietSmartLeisureLayer({slot:'outerwear',subtype:'blazer'},
+    {...quiet,style:'old_money',occasion:'Casual',dressCode:'casual'},denimLeisure),true);
+  assert.equal(rejectQuietSmartLeisureLayer({slot:'outerwear',subtype:'blazer'},
+    {...quiet,style:'old_money',occasion:'Casual',dressCode:'casual',request:'Denim leisure blazer please'},denimLeisure),false);
+  assert.equal(rejectQuietSmartLeisureLayer({slot:'outerwear',subtype:'blazer'},
+    {...quiet,style:'casual',occasion:'Casual',dressCode:'casual'},denimLeisure),false);
   assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,style:'old_money',occasion:'Casual',dressCode:'casual',request:'I want a technical leisure jacket'},jacket),false);
   assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,style:'casual',occasion:'Travel'},jacket),false);
   assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,sourceMode:'wardrobe'},jacket),false);
