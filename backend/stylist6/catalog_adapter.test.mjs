@@ -135,6 +135,66 @@ test('source bottoms and shoes cannot become outerwear because of colorway words
   assert.equal(blazer.subtype, 'blazer');
 });
 
+test('verified live shoe taxonomy preserves oxfords, monks and drivers in new merchant imports', () => {
+  // A new merchant may provide a model code instead of the construction type
+  // in its title; a correct, database-backed fashion_subtype must survive.
+  const types = [
+    ['oxford', '254 ARTISTA'],
+    ['monk', 'The Claremont'],
+    ['driver', 'Model 007'],
+    ['sport-sneaker', 'Performance 128'],
+    ['hiking-boot', 'Mountain Trek'],
+    ['espadrille', 'Summer Slip-On'],
+  ];
+  const input = types.map(([subtype, name], i) => row({
+    id: 'shoe-live-' + i,
+    name,
+    description: 'Men\u0027s footwear, product-only merchant photo',
+    category: 'shoes',
+    garment_type: 'shoes',
+    fashion_slot: 'shoes',
+    fashion_subtype: subtype,
+    price: 392.56,
+    currency: 'EUR',
+  }));
+  const adapted = adaptCatalog(input);
+  assert.equal(adapted.items.length, types.length);
+  assert.equal(adapted.unknownSubtypeCount, 0);
+  for (let i = 0; i < types.length; i++) {
+    const item = adapted.items[i];
+    assert.equal(item.macroCategory, 'shoes');
+    assert.equal(item.type, 'shoes');
+    assert.equal(item.subtype, types[i][0]);
+    assert.equal(item.projection.kind, 'live_intelligence');
+    assert.equal(item.visualEvidenceVerified, false);
+    assert.equal(item.shopUrl, input[i].source_url);
+    assert.equal(item.price, input[i].price);
+    assert.equal(item.currency, input[i].currency);
+  }
+});
+
+test('fallback shoe titles do not confuse closed lacing, open lacing and brogue decoration', () => {
+  const shoe = (name, extra = {}) => projectCatalogItem(row({
+    name, description: 'Leather shoes', category: 'shoes',
+    garment_type: 'footwear', ...extra,
+  }));
+  assert.equal(shoe('Dark Brown Oxford Shoes').subtype, 'oxford');
+  assert.equal(shoe('Black Richelieu Leather Shoe').subtype, 'oxford');
+  assert.equal(shoe('Brown Derby Shoes').subtype, 'derby');
+  assert.equal(shoe('Cognac Blucher Shoes').subtype, 'derby');
+  assert.equal(shoe('Black Double Monk Strap Shoes').subtype, 'monk');
+  assert.equal(shoe('Suede Driving Shoes').subtype, 'driver');
+  assert.equal(shoe('Summer Espadrilles').subtype, 'espadrille');
+  assert.equal(shoe('Suede Wingtip Brogue').subtype, 'unknown',
+    'wingtip/brogue alone cannot prove derby-style open lacing');
+  const wrongRole = shoe('Black Oxford Shoes', {
+    fashion_slot: 'outerwear', fashion_subtype: 'coat',
+  });
+  assert.equal(wrongRole.macroCategory, 'shoes');
+  assert.equal(wrongRole.subtype, 'oxford');
+  assert.equal(wrongRole.projection.kind, 'native_category');
+});
+
 test('unshoppable rows are counted, never admitted', () => {
   const adapted = adaptCatalog([
     row({ id: 'ok' }),
