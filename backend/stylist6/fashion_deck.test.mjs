@@ -55,10 +55,17 @@ test('Old Money / Casual avoids surprise resort shorts and terry shirts when wea
   const context={sourceMode:'catalog',style:'old_money',occasion:'Casual',request:'Old Money Casual',weather:{}};
   const shorts=garment('e','The 7-inch Slim Fit Short','bottom','shorts');
   const terry=garment('t','Blue Turquoise Terry T-Shirt','top','t-shirt');
+  const culotte=garment('zara-new-06091253800-f1',
+    'Pleated Relaxed Fit Culotte Trousers','bottom','tailored-trouser');
   const chino=garment('b','Stone Regular Fit Chino','bottom','chino');
   const knit=garment('k','Merino Cotton Polo','top','polo');
   assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'shorts'},context,shorts),'unknown_weather_unrequested_short_bottom');
   assert.equal(rejectUnrequestedRivieraPiece({slot:'top',subtype:'t-shirt'},context,terry),'unknown_weather_resort_terry_top');
+  assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'tailored-trouser'},context,culotte),
+    'unknown_weather_unrequested_short_bottom',
+    'a Zara culotte was shown as shorts on actual Old Money / Casual iOS');
+  assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'tailored-trouser'},
+    {...context,request:'summer culottes'},culotte),null);
   assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'chino'},context,chino),null);
   assert.equal(rejectUnrequestedRivieraPiece({slot:'top',subtype:'polo'},context,knit),null);
   assert.equal(rejectUnrequestedRivieraPiece({slot:'bottom',subtype:'shorts'},{...context,weather:{temp:28}},shorts),null);
@@ -406,6 +413,25 @@ test('staging may disclose a third unreviewed but hard-admitted look without lau
   assert.ok(fallback && !audited.includes(fallback.id),
     'never show a rejected or timed-out NVIDIA candidate as deterministic filler');
   assert.ok(result.outfits.every(x=>x.items.every(i=>i.price===250000)));
+});
+
+test('the third unreviewed canary look needs decodable merchant photos or stays partial',async()=>{
+  const skipped=[];
+  const result=await recommendFashionDeck({
+    ...base,
+    request:{sourceMode:'catalog',style:'classic',occasion:'Work',weather:{temp:20},optionalLayer:true},
+    referenceBriefs:[],visualDeckReview:true,allowUnreviewedVisualFill:true,
+    canJudgeOutfit:async()=>true,
+    // Simulates a source-admitted product with an actual 403 or invalid bytes.
+    canDisplayOutfit:async(look)=>{skipped.push(look.id);return false;},
+    visualCritic:async(batch)=>batch.slice(0,2).map(x=>admittedVisualVerdict(x)),
+  });
+  assert.ok(skipped.length>0,'real photo preflight must run before an unjudged third card');
+  assert.equal(result.status,'partial');
+  assert.equal(result.outfits.length,2);
+  assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence,2);
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+  assert.ok(result.outfits.every(x=>Array.isArray(x.visualEvidence)));
 });
 
 test('two visually approved looks produce a truthful partial result, no unreviewed third', async () => {

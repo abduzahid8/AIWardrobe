@@ -892,7 +892,11 @@ export function rejectUnrequestedRivieraPiece(descriptor, context, item) {
   if(explicitSummer || warmWeather) return null;
   const name=String(item?.name || '');
   if(descriptor.slot==='bottom' && (descriptor.subtype==='shorts' ||
-    /\b(shorts?|bermudas?)\b/i.test(name))) return 'unknown_weather_unrequested_short_bottom';
+    // The 2026-11-16 owner Render iOS test surfaced Zara's literal
+    // "Pleated Relaxed Fit Culotte Trousers" as calf-exposing shorts,
+    // even though its inferred subtype was 'tailored-trouser'.
+    /\b(shorts?|bermudas?|culottes?)\b/i.test(name)))
+    return 'unknown_weather_unrequested_short_bottom';
   if(descriptor.slot==='top' &&
     /\b(terry|towell?ing|beachwear|resort(?:[ -]wear)?)\b/i.test(name) &&
     /\b(shirts?|tees?|t-shirts?|polos?|tops?)\b/i.test(name))
@@ -1278,6 +1282,9 @@ export async function recommendFashionDeck({
   // Cloud staging can opt into reviewing all three displayed looks in one
   // bounded provider batch. The isolated local / offline paths stay unchanged.
   visualDeckReview = false,
+  // Optional in canary only: the third unreviewed merchant look must actually
+  // load every product image, instead of displaying a 403/404/blank tile.
+  canDisplayOutfit,
   // Only for isolated staging: after exactly two NVIDIA-approved looks,
   // permit ONE additional source-verified, independently styled finalist
   // that was NOT sent to NVIDIA. It is explicitly NOT_JUDGED in the response;
@@ -1457,11 +1464,23 @@ export async function recommendFashionDeck({
         const ranked = [...selectable].sort((a,b) =>
           (b.fashion?.score ?? -Infinity) - (a.fashion?.score ?? -Infinity));
         const minScore = (selected[0].fashion?.score ?? -Infinity) - VISUAL_CHALLENGER_QUALITY_WINDOW;
-        const next = ranked.find(look => !judgedIds.has(look.id) &&
-          Number.isFinite(look.fashion?.score) && look.fashion.score >= minScore &&
-          selected.every(other => independentOutfitDirection(look,other,requiredIds) &&
-            Math.max(look.items.length,other.items.length) - overlaps(look,other) >= 2));
-        if (next) { selected = [...selected,next]; unreviewedFillAdded = 1; }
+        // One unjudged fallback, NEVER an image-inaccessible fallback.
+        // Check at most twelve structurally eligible alternatives to bound
+        // CDN requests/latency and leave NVIDIA's eight paid calls untouched.
+        let inspected=0;
+        for(const next of ranked){
+          if(judgedIds.has(next.id) || !Number.isFinite(next.fashion?.score) ||
+              next.fashion.score < minScore ||
+              !selected.every(other => independentOutfitDirection(next,other,requiredIds) &&
+                Math.max(next.items.length,other.items.length) - overlaps(next,other) >= 2))continue;
+          if(++inspected>12)break;
+          if(typeof canDisplayOutfit==='function'){
+            let available=false;
+            try {available=await canDisplayOutfit(next)===true;}catch{available=false;}
+            if(!available)continue;
+          }
+          selected=[...selected,next];unreviewedFillAdded=1;break;
+        }
       }
       visualReviewCoverage = {
         mode: 'displayed_deck',

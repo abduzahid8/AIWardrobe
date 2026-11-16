@@ -2146,12 +2146,16 @@ const AIOutfitGenerator = () => {
           // aiOutfits counter. Keep the session/nonce guard for every engine.
           if ((!s6CloudActive && !(await consumeOrPaywall('aiOutfits', {cancelSignal}))) || !isCurrentGeneration()) return;
           setResultBudget(shopBudget);
+          const checkedVisualCount = Number.isInteger(data?.visualReceipt?.displayedJudged)
+            ? Math.max(0, Math.min(shownOutfits.length, data.visualReceipt.displayedJudged)) : 0;
           const incompleteVisualReview = s6CloudActive && data?.visualReceipt?.requested === true &&
-            (data?.visualReceipt?.displayedJudged ?? 0) < shownOutfits.length;
+            checkedVisualCount < shownOutfits.length;
           setInventoryNote(s6VerifiedPartial
             ? t('outfitMaker.visualApprovedPartial', { count: shownOutfits.length })
             : incompleteVisualReview
-              ? t('outfitMaker.visualReviewUnavailable')
+              ? checkedVisualCount > 0
+                ? t('outfitMaker.visualReviewMixed', { count: checkedVisualCount, total: shownOutfits.length })
+                : t('outfitMaker.visualReviewUnavailable')
               : data.inventoryReason==='distinct_editorial_inventory_limited'
                 ? t('outfitMaker.distinctInventoryLimited') : '');
           // Record the ACTUAL engine that produced this deck for dev display.

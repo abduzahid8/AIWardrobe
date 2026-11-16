@@ -1065,6 +1065,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // STYLIST6_VISUAL_DISABLED=1 (or true) is the owner kill-switch: it
     // forces an honest NOT_RUN even when the client asks for review.
     let visualCritic, canJudgeOutfit;
+    let canDisplayOutfit;
     const visualEvents = [];
     const visualAsked = request.enableVisual === true;
     const visualDisabled = ['1', 'true'].includes(String(env.STYLIST6_VISUAL_DISABLED || '').trim().toLowerCase());
@@ -1082,6 +1083,16 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     if (visualAsked && !visualDisabled && nvidiaKey.startsWith('nvapi-')) {
       const resolveProduct = (product) => resolveProductAsset(product.imageUrl || product.image_url, photoCache,
         fetchImpl ? (prodUrl, prodOptions) => fetchImpl(prodUrl, prodOptions) : undefined);
+      // Even an explicitly unreviewed third catalog card must have real,
+      // decodable product photos. Reuse the request-scoped image cache and
+      // avoid new paid NVIDIA calls. Never let expired request time preflight.
+      canDisplayOutfit=async(look)=>{
+        if(remainingMs()<5000 || !Array.isArray(look?.items) || look.items.length<3)return false;
+        const urls=[...new Set(look.items.map(item=>item.imageUrl||item.image_url))];
+        if(urls.length<3 || urls.some(url=>!isInferenceAuthorized(url)))return false;
+        const checked=await Promise.allSettled(urls.map(imageUrl=>resolveProduct({imageUrl})));
+        return checked.every(item=>item.status==='fulfilled' && item.value?.bytes?.length>0);
+      };
       const rawVisualCritic = createHostedVisualCritic({
         provider: 'nvidia',
         apiKey: nvidiaKey,
@@ -1161,7 +1172,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // source-admitted candidate ONLY if it was never evaluated by NVIDIA.
       // The card carries NOT_JUDGED, and the receipt stays unverified_fallback.
       allowUnreviewedVisualFill: true,
-      ...(visualCritic ? { visualCritic, canJudgeOutfit } : {}),
+      ...(visualCritic ? { visualCritic, canJudgeOutfit, canDisplayOutfit } : {}),
     }));
     const visualStatus = mapCloudVisualStatus(deck);
     if ((deck.status !== 'complete' && deck.status !== 'partial') || !deck.outfits.length) {
