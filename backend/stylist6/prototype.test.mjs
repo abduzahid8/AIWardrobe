@@ -312,6 +312,43 @@ test('approved three-look deck favors distinct main tops within a small visual-q
   assert.ok(r.outfits.every(l=>l.visualQuality>=.68));
 });
 
+test('visual selection prefers non-repeated coats and footwear among similarly approved full decks', () => {
+  const article=(id,slot,type,color)=>({id,macroCategory:slot,subtype:type,
+    name:id,color,texture:slot==='outerwear'?'wool':'cotton'});
+  const look=(id,value,top,outer,bottom,shoe,topType,outerType,bottomType,shoeType,color)=>({
+    id,briefId:id,brief:{id,name:id},visualScore:value,
+    items:[article(top,'top',topType,color),article(outer,'outerwear',outerType,color),
+      article(bottom,'bottom',bottomType,color),article(shoe,'shoes',shoeType,color)],
+  });
+  const approved=[
+    look('hero',.96,'white-shirt','navy-hero-coat','grey-trousers','black-chelsea',
+      'shirt','coat','tailored-trouser','chelsea','grey'),
+    look('near-clone',.955,'navy-polo','navy-hero-coat','stone-chinos','brown-loafer',
+      'polo','coat','chino','loafer','navy'),
+    look('knit-direction',.93,'cream-knit','camel-blazer','tan-wool','tan-derby',
+      'fine-knit','blazer','tailored-trouser','derby','cream'),
+    look('dress-shirt-direction',.91,'blue-dress','olive-overcoat','brown-cords','oxblood-oxford',
+      'dress-shirt','coat','corduroy-trouser','oxford','brown'),
+  ];
+  const verdicts=approved.map(l=>({candidateId:l.id,visualCohesion:l.visualScore,
+    referenceFidelity:l.visualScore,styleFit:l.visualScore,occasionFit:l.visualScore,
+    formalityFit:l.visualScore,confidence:.98,reject:false,
+    evidence:['source-backed coherent top and bottom','proportions fit jacket','footwear matched hem']}));
+  const selected=selectVisualDeck({generationVersion:STYLIST6_VERSION,shortlist:approved,diagnostics:{}},
+    verdicts,{target:3,minNovelty:.01,requireDistinctArchitectures:true});
+  assert.equal(selected.status,'complete');
+  const layers=selected.outfits.map(l=>l.items.find(it=>it.macroCategory==='outerwear').id);
+  const shoes=selected.outfits.map(l=>l.items.find(it=>it.macroCategory==='shoes').id);
+  assert.equal(new Set(layers).size,3,'reusing the exact overcoat should lose a near-quality tie');
+  assert.equal(new Set(shoes).size,3);
+  assert.ok(selected.outfits.every(l=>l.visualQuality>=.68));
+  // A user-chosen coat can legitimately repeat across three styled looks.
+  const pinned=selectVisualDeck({generationVersion:STYLIST6_VERSION,
+    shortlist:approved.slice(0,2),diagnostics:{}},verdicts.slice(0,2),
+    {target:2,minNovelty:.01,requiredIds:['navy-hero-coat']});
+  assert.equal(pinned.status,'complete');
+});
+
 test('joint selection keeps the strongest first look and avoids a second look that blocks a full deck',()=>{
   const slots=['top','outerwear','bottom','shoes'];
   const looks=[[0,0,0,0],[1,2,0,0],[1,1,0,0],[1,2,0,1]].map((keys,index)=>({

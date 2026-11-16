@@ -426,10 +426,21 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       // when they clear the same independent-look and model-quality gates.
       if([...cur].some(k=>prev.has(k)))adj-=slot==='top'?0.14:0.04;
     }
+    // Owner visual QA: 3 approved Classic / Work cards recycled the exact
+    // New York wool overcoat twice, and a Bennett Chelsea boot twice. All
+    // cards were technically distinct, yet read like one navy suit repeated.
+    // A source-confirmed repeat of an unpinned hero layer/footwear SKU is a
+    // near-quality tie-break, not a hard rejection: sparse wardrobe decks
+    // remain valid and all choices still require NVIDIA approval.
+    const coatKeys=nonAnchorSlotKeys(look,'outerwear');
+    if(coatKeys.size){
+      const prevLayers=new Set(deck.flatMap(d=>[...nonAnchorSlotKeys(d,'outerwear')]));
+      if([...coatKeys].some(k=>prevLayers.has(k)))adj-=0.085;
+    }
     const shoeKeys=nonAnchorSlotKeys(look,'shoes');
     if(shoeKeys.size){
       const prevShoes=new Set(deck.flatMap(d=>[...nonAnchorSlotKeys(d,'shoes')]));
-      adj+=[...shoeKeys].some(k=>prevShoes.has(k))?-0.02:0.01;
+      adj+=[...shoeKeys].some(k=>prevShoes.has(k))?-0.065:0.012;
     }
     return adj;
   };
