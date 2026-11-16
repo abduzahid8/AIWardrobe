@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { POST, GET } from '../api/stylist6-generate-outfits.ts';
+import { POST, GET, stylist6CreativeServerConfig } from '../api/stylist6-generate-outfits.ts';
 import { STYLIST6_CLOUD_VERSION } from '../../stylist6/cloud_handler.mjs';
 
 test('route and handler report the identical engine version', async () => {
@@ -42,4 +42,18 @@ test('stylist6 route rejects unsigned callers and wrong methods', async () => {
     body: '{}',
   }));
   assert.equal(oversize.status, 413);
+});
+
+
+test('server-owned Creative Director flag is forwarded to the cloud handler environment, not client-controlled', () => {
+  const original = process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED;
+  try {
+    process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED = '1';
+    assert.deepEqual(stylist6CreativeServerConfig(), { STYLIST6_CREATIVE_DIRECTOR_ENABLED: '1' });
+    process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED = '';
+    assert.deepEqual(stylist6CreativeServerConfig(), { STYLIST6_CREATIVE_DIRECTOR_ENABLED: '' });
+  } finally {
+    if (original === undefined) delete process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED;
+    else process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED = original;
+  }
 });

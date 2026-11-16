@@ -64,6 +64,11 @@ function envOf(name: string): string {
   return process.env[name] || '';
 }
 
+/** Server-only Creative Director configuration, never controlled by client data. */
+export function stylist6CreativeServerConfig() {
+  return { STYLIST6_CREATIVE_DIRECTOR_ENABLED: envOf('STYLIST6_CREATIVE_DIRECTOR_ENABLED') };
+}
+
 export async function POST(request: Request): Promise<Response> {
   // Dedicated Stylist 6 staging secret, independent of the Stylist 5
   // shared secret. Never fall back to the S5 value.
@@ -98,6 +103,9 @@ export async function POST(request: Request): Promise<Response> {
     SUPABASE_ANON_KEY: envOf('SUPABASE_ANON_KEY'),
     SUPABASE_SERVICE_ROLE_KEY: envOf('SUPABASE_SERVICE_ROLE_KEY'),
     NVIDIA_API_KEY: envOf('NVIDIA_API_KEY'),
+    // Forward the server-owned switch: without this, Creative Director is
+    // silently disabled despite being enabled in the compute environment.
+    ...stylist6CreativeServerConfig(),
     STYLIST6_REFERENCE_BUCKET: envOf('STYLIST6_REFERENCE_BUCKET'),
     // Owner kill-switch: any truthy value ('1'/'true') forces an honest
     // NVIDIA_NOT_RUN for the hosted visual review, whatever the client asks.
