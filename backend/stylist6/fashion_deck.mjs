@@ -910,11 +910,40 @@ export function rejectUnrequestedRivieraPiece(descriptor, context, item) {
 export function quietLuxuryHoodieReason(item, descriptor, context) {
   const style = String(context?.style || '').toLowerCase().replace(/[\s-]+/g,'_');
   if(context?.sourceMode !== 'catalog' || style !== 'old_money' ||
-      item?.macroCategory !== 'outerwear' ||
-      /\bhood(?:ie|y)\b|худи/i.test(String(context?.request || ''))) return null;
+      item?.macroCategory !== 'outerwear') return null;
+  const requested = String(context?.request || '');
+  // Explicit user intent wins. A hooded item owned by the user is already
+  // handled by the source-mode check above; never silently replace it.
+  if(/\bhood(?:ie|ies|y|ed)\b|\bscuba\b|худи|капюшон/i.test(requested)) return null;
   const title = String(item?.name || '');
-  return descriptor?.subtype === 'hoodie' || /\bhood(?:ies|ie|y)\b|худи/i.test(title)
+  // Live Render iOS (2026-11-16): H&M "Loose-Fit Scuba Hooded Jacket"
+  // is classified as subtype=jacket, and "hooded" bypassed the historical
+  // hoodie-only filter. Catch visibly hooded outerwear from merchant titles
+  // without banning ordinary, unhooded jackets and blazers.
+  return descriptor?.subtype === 'hoodie' ||
+    /\bhood(?:ies|ie|y|ed)\b|худи|с капюшоном/i.test(title)
     ? 'quiet_luxury_hoodie_mismatch' : null;
+}
+
+/** A basic jersey tee can be styled for Old Money, but is not the
+ * strongest default hero when collared shirts and fine knitwear exist.
+ * A bounded ranking preference, NOT a hidden exclusion or user budget.
+ * Deliberately requested tees, refined fabrics and other styles are intact.
+ */
+export function quietLuxuryBasicTeePenaltyForLook(items, context) {
+  if (context?.sourceMode !== 'catalog' || context?.style !== 'old_money' ||
+      !/\b(casual|weekend|outing|brunch)\b|повседнев|выходн|прогулк/i.test(
+        `${context.occasion || ''} ${context.request || ''}`) ||
+      /\b(t[- ]?shirts?|tees?|jersey tee)\b|футболк/i.test(String(context.request || ''))) return 0;
+  const top=(items || []).find(item=>item?.macroCategory==='top');
+  if (!top) return 0;
+  const title=String(top.name || '');
+  if (describeGarment(top).subtype!=='t-shirt' && !/\b(t[- ]?shirts?|tees?)\b/i.test(title)) return 0;
+  // Known knit/silk/merino construction can be a refined jersey base.
+  if (/\b(merino|cashmere|silk|fine[ -]?knit|ribbed knit)\b/i.test(title)) return 0;
+  const layer=(items || []).find(item=>item?.macroCategory==='outerwear');
+  const refinedLayer=layer && /^(blazer|cardigan|coat)$/.test(describeGarment(layer).subtype);
+  return refinedLayer ? 0.025 : 0.065;
 }
 
 /** Do not market a hoodie as a cardigan simply because the reference photo
@@ -1042,6 +1071,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       const registerPenalty = footwearRegisterPenaltyForLook(
         items, descriptions, context, shoePool.nonTrainer > 0);
       const basePolishPenalty = elevatedBasePolishPenaltyForLook(items, descriptions, context);
+      const quietTeePenalty = quietLuxuryBasicTeePenaltyForLook(items, context);
       const personal = evaluatePersonalLook(
         items.map((item, index) => ({ item, descriptor: descriptions[index] })), taste);
       // Explicit-feedback taste (gate D): a capped, decayed adjustment from
@@ -1089,15 +1119,16 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           // shortlist must prefer garments that actually match the brief.
           conceptFidelity.adjustment + fashionQuality.adjustment -
           recentStylingPenalty(items, recentSignatures) - pricing.penalty - freshness -
-          registerPenalty - basePolishPenalty,
+          registerPenalty - basePolishPenalty - quietTeePenalty,
         dimensions: { ...dimensions, palette },
         unbudgetedPricePenalty: pricing.penalty,
-        evidence: pricing.flagged || freshness > 0 || registerPenalty > 0 || basePolishPenalty > 0
+        evidence: pricing.flagged || freshness > 0 || registerPenalty > 0 || basePolishPenalty > 0 || quietTeePenalty > 0
           ? [...assessment.evidence,
             ...(pricing.flagged ? ['unbudgeted_premium_selection_dampened'] : []),
             ...(freshness > 0 ? ['stale_price_evidence_dampened'] : []),
             ...(registerPenalty > 0 ? ['trainer_footwear_register_dampened'] : []),
-            ...(basePolishPenalty > 0 ? ['casual_base_elevated_context_dampened'] : [])]
+            ...(basePolishPenalty > 0 ? ['casual_base_elevated_context_dampened'] : []),
+            ...(quietTeePenalty > 0 ? ['quiet_luxury_basic_tee_dampened'] : [])]
           : assessment.evidence,
         referenceMetadata: affinity,
         editorial,

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -77,13 +77,49 @@ test('Old Money / Casual avoids surprise resort shorts and terry shirts when wea
 test('Old Money catalog excludes generic hoodies while respecting the owner or an explicit hoodie request', () => {
   const hoodie=garment('zara-hoodie','Classic Wool-Blend Knit Hoodie','outerwear','hoodie');
   const cardigan=garment('genuine-cardigan','Merino Wool Button Cardigan','outerwear','cardigan');
+  const scuba=garment('hm-1304459001','Loose-Fit Scuba Hooded Jacket','outerwear','jacket');
+  const woolJacket=garment('normal-tailoring','Soft Wool Unstructured Jacket','outerwear','jacket');
   const context={sourceMode:'catalog',style:'old_money',occasion:'Casual',request:''};
   assert.equal(quietLuxuryHoodieReason(hoodie,{subtype:'hoodie'},context),'quiet_luxury_hoodie_mismatch');
   assert.equal(quietLuxuryHoodieReason(cardigan,{subtype:'cardigan'},context),null);
+  assert.equal(quietLuxuryHoodieReason(scuba,{subtype:'jacket'},context),'quiet_luxury_hoodie_mismatch',
+    'actual H&M Scuba Hooded Jacket must not pass Old Money / Casual via a jacket subtype');
+  assert.equal(quietLuxuryHoodieReason(woolJacket,{subtype:'jacket'},context),null);
+  assert.equal(quietLuxuryHoodieReason(scuba,{subtype:'jacket'}, {...context,request:'I specifically want a scuba jacket'}),null);
+  assert.equal(quietLuxuryHoodieReason(scuba,{subtype:'jacket'}, {...context,request:'I want a hooded jacket'}),null);
+  assert.equal(quietLuxuryHoodieReason(scuba,{subtype:'jacket'}, {...context,sourceMode:'wardrobe'}),null);
+  assert.equal(quietLuxuryHoodieReason(scuba,{subtype:'jacket'}, {...context,style:'casual'}),null);
   assert.equal(quietLuxuryHoodieReason(hoodie,{subtype:'hoodie'}, {...context,request:'I want a hoodie'}),null);
   assert.equal(quietLuxuryHoodieReason(hoodie,{subtype:'hoodie'}, {...context,sourceMode:'wardrobe'}),null);
   assert.equal(quietLuxuryHoodieReason(hoodie,{subtype:'hoodie'}, {...context,style:'streetwear'}),null);
 });
+test('real H&M hooded jacket is never admitted to Old Money catalog finalists',async()=>{
+  const scuba=garment('hm-1304459001','Loose-Fit Scuba Hooded Jacket','outerwear','jacket',
+    {currency:'USD',price:49.99,brand:'H&M'});
+  const deck=await recommendFashionDeck({
+    ...base,catalog:[...products,scuba],referenceBriefs:[],
+    request:{sourceMode:'catalog',style:'old_money',occasion:'Casual',
+      weather:{},optionalLayer:true,preferences:{},requiredIds:[]},
+  });
+  assert.ok(deck.outfits.length>0,'other tailored catalog garments remain eligible');
+  assert.ok(deck.outfits.every(look=>look.items.every(item=>item.id!==scuba.id)),
+    'no ranked look or editorial variant can reintroduce the hooded scuba product');
+});
+
+test('Old Money / Casual gently favors refined tops over generic tees without excluding them',()=>{
+  const context={sourceMode:'catalog',style:'old_money',occasion:'Casual',request:'Old Money Casual'};
+  const baseTee=garment('md-uz-61870411','100% cotton short sleeve T-shirt','top','t-shirt');
+  const knit=garment('md-uz-61735938','100% cotton short sleeve knit sweater','top','sweater');
+  const blazer=garment('tailored','Soft Wool Blazer','outerwear','blazer');
+  assert.equal(quietLuxuryBasicTeePenaltyForLook([baseTee],context),0.065);
+  assert.equal(quietLuxuryBasicTeePenaltyForLook([baseTee,blazer],context),0.025);
+  assert.equal(quietLuxuryBasicTeePenaltyForLook([knit],context),0);
+  assert.equal(quietLuxuryBasicTeePenaltyForLook([baseTee],{...context,request:'Old Money cotton T-shirt'}),0);
+  assert.equal(quietLuxuryBasicTeePenaltyForLook([baseTee],{...context,sourceMode:'wardrobe'}),0);
+  assert.equal(quietLuxuryBasicTeePenaltyForLook([baseTee],{...context,style:'casual'}),0);
+  assert.equal(quietLuxuryBasicTeePenaltyForLook([baseTee],{...context,occasion:'Work',request:'Office'}),0);
+});
+
 test('named Cardigan direction cannot silently become a hooded knit outfit', () => {
   const context={sourceMode:'catalog',style:'old_money',occasion:'Casual'};
   const brief={name:'Burgundy preppy cardigan',roles:{outerwear:['cardigan']}};
