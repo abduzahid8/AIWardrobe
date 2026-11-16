@@ -60,6 +60,44 @@ const PRODUCT_FETCH_TIMEOUT_MS = 8000;
 const MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
 const REQUEST_TIMEOUT_MS = 50_000;
+/** Trusted styling-first discovery vocabulary. The existing Supabase RPC
+ * gives preferredSubtypes two relevance points and matching dressCode one,
+ * but cloud compute previously sent ONLY budget: the first 100-per-slot
+ * windows were full of irrelevant tees, pullovers and sportwear. All hints
+ * are fixed backend taxonomy terms, never untrusted user text or product IDs.
+ * The RPC remains read-only, bounded at 100/slot, with its unchanged source,
+ * price, photo and merchant gates.
+ */
+export function catalogStylingDiscoveryHints({style,occasion,brief='',weather=null}={}) {
+  const s=String(style||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+  const event=String(occasion||'').toLowerCase();
+  const intent=String(brief||'').toLowerCase().slice(0,300);
+  const work=/\b(work|office|business|meeting|conference)\b/.test(event);
+  const date=/\b(date|dinner|romantic|cocktail|evening)\b/.test(event);
+  const casual=/\b(casual|relaxed|informal|sporty)\b/.test(intent);
+  const quiet=['classic','semi_classic','old_money','business_casual','minimalist'].includes(s);
+  const athletic=/\b(workout|gym|training|fitness|sport)\b/.test(event);
+  if(athletic)return {};// dedicated activity-specific source discovery is already active
+  if(!quiet)return {};
+  const formal=/\b(formal|black[ -]?tie|wedding)\b/.test(event) && !casual;
+  const dressCode=formal?'formal':casual?'casual':'smart';
+  const workRole=['dress-shirt','shirt','blazer','coat','tailored-trouser',
+    'trouser','oxford','derby','loafer','chelsea','monk'];
+  const dateRole=['dress-shirt','shirt','fine-knit','polo','blazer','cardigan',
+    'coat','tailored-trouser','trouser','chino','loafer','derby','chelsea','oxford'];
+  const weekendRole=['shirt','fine-knit','polo','cardigan','overshirt',
+    'blazer','coat','chino','tailored-trouser','trouser','loafer','derby','chelsea','boot'];
+  const casualRole=['shirt','polo','fine-knit','cardigan','overshirt',
+    'chino','trouser','jeans','loafer','driver','minimal-sneaker','chelsea'];
+  const roles=formal?workRole:casual?casualRole:work?workRole:date?dateRole:weekendRole;
+  // At <=5°C prefer coats and actual boots within the existing bounded
+  // inventory rather than extra uninsulated polos or summer slippers.
+  const cold=Number.isFinite(weather?.temp) && weather.temp<=5;
+  return {dressCode,preferredSubtypes:[...new Set([
+    ...(cold?['coat','boot','chelsea']:[]),...roles,
+  ])]};
+}
+
 
 /** Diverse merchant offers, not 40 shoes from one maker. Input is ONLY
  * server-returned catalog RPC rows. Stable round-robin by manufacturer
@@ -886,13 +924,21 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         fxUnavailableReason = 'fx_not_configured';
       }
     }
-    const discoveryContext = budget && !requiredIds.length && BUDGET_CURRENCIES.includes(String(budget.currency))
+    const budgetDiscoveryContext=budget && !requiredIds.length && BUDGET_CURRENCIES.includes(String(budget.currency))
       ? {
           budget: budget.amount,
           currency: budget.currency,
           ...(fxSnapshot?.uzsPerUnit ? { rates: fxSnapshot.uzsPerUnit } : {}),
         }
-      : null;
+      : {};
+    // Explicitly pinned wardrobe/catalog anchors need the original stable
+    // full-source window: a style-biased 100-SKU cap might hide the exact
+    // requested product before the anchor-lookup and wrongly report 422.
+    const stylingDiscoveryContext=requiredIds.length?{}:catalogStylingDiscoveryHints({
+      style,occasion,brief:request.brief,weather:request.weather,
+    });
+    const discoveryContext=Object.keys({...budgetDiscoveryContext,...stylingDiscoveryContext}).length
+      ? {...budgetDiscoveryContext,...stylingDiscoveryContext} : null;
     // Server-side inventory only. Shop rows come from the discovery RPC;
     // wardrobe rows come from clothing_items filtered by the verified user.
     // Stable over retries of identical request bytes, different on fresh

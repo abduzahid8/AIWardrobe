@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import { signStylistTransport } from '../stylist-node/transport/signature.mjs';
 import {
   handleStylist6CloudGenerate,
-  createCloudIo, hydrateProfiles,
+  createCloudIo, hydrateProfiles, catalogStylingDiscoveryHints,
   mapCloudVisualStatus,
   projectWardrobeItem,
   fitVisualBytesCloud,
@@ -1562,6 +1562,9 @@ test('budgeted unanchored cloud discovery forwards budget, currency, and FX rate
     budget: 2500000,
     currency: 'UZS',
     rates: validSnapshot.uzsPerUnit,
+    ...catalogStylingDiscoveryHints({style:baseRequest.style,
+      occasion:baseRequest.occasion,brief:baseRequest.brief,
+      weather:baseRequest.weather}),
   });
 
   // Locked anchors must not be pre-filtered before anchor_not_found validation.
@@ -1785,4 +1788,50 @@ test('fresh visual image colors exclude otherwise unknown-colored merchant cardi
     source_hash:'f'.repeat(32),image_url:row.image_url,profile}]);
   assert.deepEqual(invalid,{fetched:1,attached:0,drifted:1},
     'stale photo metadata must not bypass catalog image/revision checks');
+});
+
+
+test('server-owned catalog discovery retrieves occasion-appropriate types before 100-SKU slot caps',()=>{
+  const office=catalogStylingDiscoveryHints({style:'classic',occasion:'Work',
+    brief:'Professional polished classic office tailoring'});
+  assert.equal(office.dressCode,'smart');
+  for(const type of ['dress-shirt','blazer','tailored-trouser','oxford','derby'])
+    assert.ok(office.preferredSubtypes.includes(type));
+  assert.ok(!office.preferredSubtypes.includes('t-shirt'));
+  assert.ok(!office.preferredSubtypes.includes('hoodie'));
+  const date=catalogStylingDiscoveryHints({style:'semi_classic',occasion:'Date night',
+    brief:'Refined semi-classic outfit for a nice dinner date'});
+  assert.equal(date.dressCode,'smart');
+  for(const type of ['fine-knit','polo','blazer','cardigan','tailored-trouser','loafer'])
+    assert.ok(date.preferredSubtypes.includes(type));
+  assert.ok(!date.preferredSubtypes.includes('athletic-trouser'));
+  const oldMoney=catalogStylingDiscoveryHints({style:'old_money',occasion:'Weekend'});
+  for(const type of ['cardigan','overshirt','chino','loafer'])
+    assert.ok(oldMoney.preferredSubtypes.includes(type));
+  const cold=catalogStylingDiscoveryHints({style:'old_money',occasion:'Weekend',weather:{temp:-2}});
+  assert.deepEqual(cold.preferredSubtypes.slice(0,3),['coat','boot','chelsea']);
+  const casual=catalogStylingDiscoveryHints({style:'semi_classic',occasion:'Date night',
+    brief:'Relaxed casual walk, not a formal date'});
+  assert.equal(casual.dressCode,'casual');
+  const formal=catalogStylingDiscoveryHints({style:'classic',occasion:'Wedding'});
+  assert.equal(formal.dressCode,'formal');
+  assert.deepEqual(catalogStylingDiscoveryHints({style:'casual',occasion:'Weekend'}),{});
+  assert.deepEqual(catalogStylingDiscoveryHints({style:'classic',occasion:'Workout'}),{});
+  assert.ok(!JSON.stringify(date).includes('Refined semi-classic outfit'),
+    'free-form user brief must never appear in trusted database SQL context');
+});
+
+test('authenticated stylist forwards fixed event/subtype hints to Supabase discovery, ignores client taxonomy injection',async()=>{
+  let captured=null;
+  await signedCall({request:{...baseRequest,sourceMode:'catalog',
+    style:'semi_classic',occasion:'Date night',brief:'Refined dinner date',
+    preferredSubtypes:['t-shirt','sneaker','arbitrary-client-SQL-text'],
+    preferences:{avoidColors:['navy','grey']},
+  }},{},{onShopSeed:(_seed,context)=>{captured=context;}});
+  assert.ok(captured && captured.dressCode==='smart');
+  assert.ok(captured.preferredSubtypes.includes('tailored-trouser'));
+  assert.ok(captured.preferredSubtypes.includes('blazer'));
+  assert.ok(!captured.preferredSubtypes.includes('t-shirt'));
+  assert.ok(!captured.preferredSubtypes.includes('sneaker'));
+  assert.ok(!JSON.stringify(captured).includes('arbitrary-client-SQL-text'));
 });
