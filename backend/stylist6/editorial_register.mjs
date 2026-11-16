@@ -16,7 +16,7 @@ const exact = (value, regex) => regex.test(value);
 const elevatedStyle = /^(classic|old money|semi classic|smart casual|business casual)$/;
 const elevatedOccasion = /\b(work|office|business|meeting|date|dinner|romantic|cocktail|theater|opera|wedding)\b/;
 
-export function editorialRegisterVeto(look, { style, occasion, brief = '' } = {}) {
+export function editorialRegisterVeto(look, { style, occasion, brief = '', request = '' } = {}) {
   const isElevated = elevatedStyle.test(norm(style)) &&
     (elevatedOccasion.test(norm(occasion)) || elevatedOccasion.test(norm(brief)));
   if (!isElevated) return null;
@@ -31,6 +31,7 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '' } = {}
   const casualTop = exact(top, /\b(t shirt|tee|oversized t shirt|graphic t shirt|jersey tee)\b/);
   const loudPrintTop = exact(top, /\b(leopard|cheetah|zebra|snakeskin|animal print|hawaiian|tropical|camo)\b/);
   const flannel = exact(top, /\b(flannel shirt|flannel)\b/);
+  const henley = exact(top, /\bhenleys?\b/);
   const casualShoe = exact(shoes, /\b(sneaker|trainer|running shoe|hybrid|s lite)\b/);
   const shoeItem = slot(look, 'shoes');
   const comfortLoafer = exact(shoes, /\b(spherica|flextride plus|moner w 2fit)\b/)
@@ -45,6 +46,14 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '' } = {}
   if (blazer && tailoring && suedeShoe && workOrFormalSuit) return 'suede_footwear_with_formal_suit';
   if (loudPrintTop && (tailoring || formalShoes)) return 'loud_print_with_dress_tailoring';
   if (casualTop && formalShoes && (tailoring || !layer)) return 'casual_tee_with_dress_footwear';
+  // Real Classic / Work replay: a "RIBBED LONG SLEEVED HENLEY SHIRT"
+  // was falsely classified as a dress shirt and paired with pleated suit
+  // trousers and Derby shoes. The missing dress collar is source-evident.
+  // Allow casual/date outfits and a user's explicit Henley request.
+  const polishedWork = /\b(work|office|business|meeting)\b/.test(norm(occasion)) &&
+    /^(classic|old money|semi classic|business casual)$/.test(norm(style));
+  if (henley && tailoring && formalShoes && polishedWork &&
+      !/\bhenleys?\b/i.test(`${brief} ${request}`)) return 'henley_with_office_tailoring';
   // Flannel and a business-tailored outfit should not displace a proper
   // shirt on a formal work brief. The rule is NOT applied to leisure outfits.
   if (flannel && tailoring && formalShoes && /\b(work|office|business|meeting)\b/.test(norm(occasion)))

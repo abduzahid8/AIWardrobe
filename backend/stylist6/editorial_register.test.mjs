@@ -22,6 +22,23 @@ test('flannel collision applies to polished work, not casual weekend',()=>{
   assert.equal(editorialRegisterVeto(sample,{style:'casual',occasion:'Weekend'}),null);
   assert.equal(editorialRegisterVeto(sample,{style:'old_money',occasion:'Weekend'}),null);
 });
+test('observed classic work Henley cannot masquerade as a collared dress shirt',()=>{
+  const observed=look('RIBBED LONG SLEEVED HENLEY SHIRT',null,
+    'PLEATED TROUSERS WITH METAL HOOK','Redford Brogue Derbies - Suede');
+  assert.equal(editorialRegisterVeto(observed,{style:'classic',occasion:'Work'}),
+    'henley_with_office_tailoring');
+  assert.equal(editorialRegisterVeto(observed,{style:'old_money',occasion:'Business meeting'}),
+    'henley_with_office_tailoring');
+  assert.equal(editorialRegisterVeto(observed,{style:'semi_classic',occasion:'Work'}),
+    'henley_with_office_tailoring');
+  assert.equal(editorialRegisterVeto(observed,{style:'classic',occasion:'Casual'}),null);
+  assert.equal(editorialRegisterVeto(observed,{style:'semi_classic',occasion:'Romantic date'}),null);
+  assert.equal(editorialRegisterVeto(observed,{style:'classic',occasion:'Work',brief:'Please style my Henley'}),null);
+  assert.equal(editorialRegisterVeto(observed,{style:'classic',occasion:'Work',request:'Henley top'}),null);
+  assert.equal(editorialRegisterVeto(look('Linen Henley',null,'Cotton chino','White Canvas Sneakers'),
+    {style:'classic',occasion:'Work'}),null,'no formal collision to veto');
+});
+
 test('unknown / sparse catalog descriptions never trigger speculative veto',()=>{
   assert.equal(editorialRegisterVeto(look('item 123','blazer','bottom 123','shoes 123'),{style:'classic',occasion:'Work'}),null);
 });
