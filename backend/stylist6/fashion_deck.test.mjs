@@ -370,6 +370,23 @@ test('cloud full-deck review judges every authorized displayed card in one bound
     look.items.some(item => item.id === 'shirt-white')));
 });
 
+test('cloud inference-budget six protects latency/cost without displaying unreviewed looks', async () => {
+  let calls=0,judged=[];
+  const result=await recommendFashionDeck({
+    ...base, visualDeckReview:true,visualCandidateLimit:6,
+    canJudgeOutfit:async()=>true,
+    visualCritic:async candidates=>{calls++;judged=candidates;
+      return candidates.map(candidate=>admittedVisualVerdict(candidate));},
+  });
+  assert.equal(calls,1);
+  assert.ok(judged.length>=3 && judged.length<=6);
+  assert.equal(result.diagnostics.visualReviewCoverage.inferenceCandidateCap,6);
+  assert.equal(result.diagnostics.visualReviewCoverage.attempted,judged.length);
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+  assert.ok(result.outfits.every(look=>Array.isArray(look.visualEvidence)));
+  assert.ok(result.outfits.every(look=>judged.some(c=>c.id===look.id)));
+});
+
 test('cloud full-deck review does not send any item from denied image hosts', async () => {
   const baseline = await recommendFashionDeck(base);
   const authorizedId = baseline.outfits[1].id;

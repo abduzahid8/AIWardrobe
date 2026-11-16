@@ -1188,6 +1188,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // Staging-only visual-first quality pass: review every admissible card
       // in one bounded batch, not just the first selection.
       visualDeckReview: true,
+      // Sequential authenticated cloud QA hit a 50-second deadline in one
+      // of three requests with eight large photo reviews. Review up to six
+      // whole outfits, preserving the three lead directions and genuinely
+      // different challengers. Never substitute an unreviewed finalist.
+      visualCandidateLimit: 6,
       // QUALITY FIRST: never pad two genuinely NVIDIA-approved looks with an
       // unreviewed third. An honest partial recommendation beats a pretty
       // three-card count with unverified fashion quality.

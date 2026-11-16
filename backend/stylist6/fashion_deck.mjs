@@ -1362,6 +1362,10 @@ export async function recommendFashionDeck({
   // Cloud staging can opt into reviewing all three displayed looks in one
   // bounded provider batch. The isolated local / offline paths stay unchanged.
   visualDeckReview = false,
+  // Trusted server-only inference budget: fewer provider calls improve cloud
+  // latency and cost while each displayed look still requires its OWN full
+  // photographic verdict. Local QA keeps the eight-call ceiling by default.
+  visualCandidateLimit = MAX_VISUAL_CANDIDATES,
   // Optional in canary only: the third unreviewed merchant look must actually
   // load every product image, instead of displaying a 403/404/blank tile.
   canDisplayOutfit,
@@ -1371,6 +1375,8 @@ export async function recommendFashionDeck({
   // never reintroduce a model-vetoed or timed-out candidate, or invent evidence.
   allowUnreviewedVisualFill = false,
 }) {
+  const reviewedLimit = Number.isInteger(visualCandidateLimit)
+    ? Math.max(3,Math.min(MAX_VISUAL_CANDIDATES,visualCandidateLimit)) : MAX_VISUAL_CANDIDATES;
   const context = fashionStylingContext(request);
   const weather = context.weather;
   const reference = referenceBriefs.find(({ referenceId }) => referenceId === request.referenceId);
@@ -1479,7 +1485,7 @@ export async function recommendFashionDeck({
     // deserves to displace a familiar safe house combination.
     const aiBriefIds = new Set(aiPlans.map(plan => canonicalBriefId(plan.id)));
     for (const plan of aiPlans) {
-      if (candidates.length >= MAX_VISUAL_CANDIDATES) break;
+      if (candidates.length >= reviewedLimit) break;
       const planned = selectable.filter(look =>
         look.briefId === canonicalBriefId(plan.id) && !candidates.some(other => other.id === look.id) &&
         Number.isFinite(look.fashion?.score))
@@ -1492,7 +1498,7 @@ export async function recommendFashionDeck({
     // Recompute marginal direction gain after EVERY alternate. The previous
     // one-time four-candidate sort could fill its only spare slot with a
     // redundant outfit, while all genuinely distinct challengers were hidden.
-    while (candidates.length < MAX_VISUAL_CANDIDATES) {
+    while (candidates.length < reviewedLimit) {
       const current = candidates.length ? candidates : selected;
       const capacity = visualArchitectureCapacity(current, requiredIds);
       const rescueTriples = visualRescueTripleCount(current, requiredIds);
@@ -1549,7 +1555,7 @@ export async function recommendFashionDeck({
             !requiredIds.length && !explicitlyRequestsLuxury(context) },
       );
       visualQualityDecisions = Array.isArray(reviewed.diagnostics.visualQualityDecisions)
-        ? reviewed.diagnostics.visualQualityDecisions.slice(0, MAX_VISUAL_CANDIDATES) : [];
+        ? reviewed.diagnostics.visualQualityDecisions.slice(0, reviewedLimit) : [];
       visualVerdict = reviewed.diagnostics.visualValid > 0 ? 'JUDGED' : 'ABSTAINED';
       const rejected = new Set(reviewed.diagnostics.rejectedCandidateIds);
       // The hosted critic has already applied visual quality, confidence,
@@ -1609,6 +1615,7 @@ export async function recommendFashionDeck({
       }
       visualReviewCoverage = {
         mode: 'displayed_deck',
+        inferenceCandidateCap: reviewedLimit,
         attempted: reviewed.diagnostics.visualAttempted,
         valid: reviewed.diagnostics.visualValid,
         rejected: rejected.size,
