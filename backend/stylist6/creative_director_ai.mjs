@@ -26,6 +26,9 @@ const MAX_RESP_BYTES = 24 * 1024;
 const TTL_MS = 10 * 60_000;
 const MAX_CACHE = 64;
 const cache = new Map();
+const inFlight = new Map();
+const MAX_CONCURRENT_PROVIDER_CALLS = 3;
+let activeProviderCalls = 0;
 const safeText = (value, max = 220) =>
   typeof value === 'string' ? value.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max) : '';
 const safeList = (value, max = 8) =>
@@ -192,6 +195,18 @@ export async function designCreativeBriefs({
     cache.delete(key); cache.set(key, hit);
     return { status: 'cached', briefs: hit.briefs, providerCalls: 0 };
   }
+  // Coalesce identical in-flight profile requests. On sudden traffic spikes
+  // shed new planner calls rather than spending unbounded AI tokens; house
+  // concepts remain fully operational for those requests.
+  const running = inFlight.get(key);
+  if (running) {
+    const outcome = await running;
+    return { ...outcome, status: outcome.briefs.length === 3 ? 'shared' : outcome.status, providerCalls: 0 };
+  }
+  if (activeProviderCalls >= MAX_CONCURRENT_PROVIDER_CALLS)
+    return { status: 'load_shed', briefs: [], providerCalls: 0 };
+  activeProviderCalls++;
+  const task = (async () => {
   // No unbounded model work can hold up a paid generation request.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.min(9500,
@@ -247,5 +262,13 @@ export async function designCreativeBriefs({
     return { status: reason, briefs: [], providerCalls: Number(called) };
   } finally {
     clearTimeout(timer);
+  }
+  })();
+  inFlight.set(key, task);
+  try {
+    return await task;
+  } finally {
+    inFlight.delete(key);
+    activeProviderCalls--;
   }
 }
