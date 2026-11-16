@@ -738,6 +738,38 @@ test('verified CBU FX compares a rare €595 jacket with affordable UZS layers',
     'no conversion without normalized, trusted FX shape');
 });
 
+test('verified cross-currency cohort catches €950 layer even when local EUR cohort is entirely luxury',()=>{
+  const accessible=Array.from({length:24},(_,i)=>garment(`local-${i}`,
+    'Unstructured Wool Blazer','outerwear','blazer',
+    {price:900000+i*25000,currency:'UZS',brand:'Zara'}));
+  const highEur=Array.from({length:24},(_,i)=>garment(`euro-${i}`,
+    'Premium Wool Overshirt','outerwear','overshirt',
+    {price:390+i*4,currency:'EUR',brand:'Luxury'}));
+  const live=garment('aurelien-16011499471178','Navy Cashmere Blend Leisure Blazer',
+    'outerwear','blazer',{price:950,currency:'EUR',brand:'Aurélien'});
+  const rows=[...accessible,...highEur,live];
+  const context={sourceMode:'catalog',style:'old_money',occasion:'Casual',request:'Old Money Casual'};
+  const native=buildPriceProfile(rows);
+  assert.ok(native['EUR|outerwear'].count>=24,'EUR cohort is well populated');
+  assert.equal(extremeUnrequestedCatalogPriceReason(live,native,context),null,
+    'the luxury-skewed native EUR pool did not detect this expensive layer');
+  const verified=buildPriceProfile(rows,{UZS:1,EUR:15000,USD:12000,GBP:17500});
+  const observed=observedPriceComparison(live,verified);
+  assert.equal(observed.source,'verified_cbu_reference',
+    'prefer trustworthy accessible UZS equivalents over biased EUR cohort');
+  assert.equal(observed.value,14250000);
+  assert.ok(observed.band.count>=49);
+  assert.equal(extremeUnrequestedCatalogPriceReason(live,verified,context),
+    'extreme_unrequested_catalog_price_outlier');
+  assert.ok(unbudgetedPriceSeedAdjustment(live,verified)<-0.2);
+  assert.equal(extremeUnrequestedCatalogPriceReason(live,verified,
+    {...context,request:'Old Money luxury cashmere blazer'}),null);
+  assert.equal(extremeUnrequestedCatalogPriceReason(live,verified,
+    {...context,preferences:{favoriteBrands:['Aurélien']}}),null);
+  assert.equal(extremeUnrequestedCatalogPriceReason(live,verified,
+    {...context,budget:{amount:2000,currency:'EUR'}}),null);
+});
+
 test('skewed luxury catalog uses observed accessible quartile to preserve affordable role choices',()=>{
   const rows=[];
   for(const [i,price] of [400000,640000,849900,1000000,1200000,6500000,7400000,8500000,9100000,12000000,13000000,14000000].entries())

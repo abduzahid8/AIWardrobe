@@ -143,14 +143,18 @@ export function buildPriceProfile(catalog, serverValidatedFxRates = null) {
 
 /** No invented cap when the user did not request a budget, but a 10–20x
  * catalog-price outlier should not routinely beat an equally stylish item.
- * Compare within the SAME slot and currency (no guessed FX). The 0.18 score
- * ceiling keeps this a soft ranking signal, not a ban on luxury inventory.
+ * Compare observed same-slot prices; validated CBU reference rates enable
+ * cross-currency comparisons. Without that snapshot use native currencies.
+ * The 0.18 score ceiling keeps this a soft ranking signal, not a luxury ban.
  */
 export const UNBUDGETED_PRICE_PENALTY_MAX = 0.18;
-/** Native price bands win when well populated. Sparse EUR/GBP/USD cohorts
- * instead use the same-slot verified CBU reference cohort when available.
- * The verified snapshot only affects price comparisons, never labels or
- * quoted merchant prices, and is never a strict spending cap.
+/** A populated currency cohort can itself be entirely luxury-biased:
+ * the 2026-11-16 Render Old Money run selected a €950 Aurélien layer even
+ * while affordable alternative layers existed in UZS. Compare the native
+ * lower-quartile anchor with the verified CBU-normalized all-currency anchor
+ * and use the better-supported accessible reference if materially lower.
+ * Only a server-validated snapshot permits this comparison; the user's
+ * merchant price, currency label and explicit luxury choices stay intact.
  */
 export function observedPriceComparison(item, profile){
   if(!item || !profile || !Number.isFinite(item.price) || item.price<=0)return null;
@@ -158,9 +162,16 @@ export function observedPriceComparison(item, profile){
   const fx=profile._verifiedFx;
   const reference=fx && Number.isFinite(fx[item.currency])
     ? profile[`CBU_REFERENCE_UZS|${item.macroCategory}`] : null;
-  if(reference?.count>=12 && (!native || native.count<12)){
+  if(reference?.count>=12){
     const amount=item.price*fx[item.currency];
-    if(Number.isFinite(amount))return {value:amount,band:reference,source:'verified_cbu_reference'};
+    const nativeAnchor=native?.accessible > 0 ? native.accessible : native?.median;
+    const referenceAnchor=reference.accessible > 0 ? reference.accessible : reference.median;
+    // A 25% gap prevents minor FX/tax/merchant variation from dominating a
+    // useful local cohort. If currency cohorts are sparse, the combined
+    // sample remains the only observed price evidence.
+    if(Number.isFinite(amount) && referenceAnchor>0 &&
+        (!nativeAnchor || referenceAnchor*1.25 < nativeAnchor*fx[item.currency]))
+      return {value:amount,band:reference,source:'verified_cbu_reference'};
   }
   return native ? {value:item.price,band:native,source:'same_currency'} : null;
 }
