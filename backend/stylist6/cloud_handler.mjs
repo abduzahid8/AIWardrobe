@@ -1124,10 +1124,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         referenceBlueprints: buildReferenceBlueprints(referenceIndex),
         timeoutMs: Math.min(VISUAL_TIMEOUT_MS, Math.max(1000, remainingMs() - 1000)),
         providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
-        // Six parallel, source-admitted visual checks can rescue a third look
-        // when one provider times out or another fails the quality floor.
-        // No unreviewed recommendation is ever relabeled NVIDIA-approved.
-        concurrency: 6,
+        // All eight admissible alternatives must be judged in a SINGLE
+        // bounded wave. At concurrency six, the seventh and eighth were
+        // queued behind slow 120B calls, causing late 504/partial decks.
+        // The existing 38s provider batch and 50s request deadlines still
+        // apply; no unreviewed look is ever labeled approved.
+        concurrency: 8,
         ...(fetchImpl ? { fetchImpl } : {}),
         resolveReference: (id, signal) => resolveReferenceAsset(env, env.SUPABASE_URL, id,
           fetchImpl ? (refUrl, refOptions) => fetchImpl(refUrl, { ...refOptions, signal }) : undefined),
@@ -1188,11 +1190,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // Staging-only visual-first quality pass: review every admissible card
       // in one bounded batch, not just the first selection.
       visualDeckReview: true,
-      // Sequential authenticated cloud QA hit a 50-second deadline in one
-      // of three requests with eight large photo reviews. Review up to six
-      // whole outfits, preserving the three lead directions and genuinely
-      // different challengers. Never substitute an unreviewed finalist.
-      visualCandidateLimit: 6,
+      // User-facing quality requires a three-look deck even when the stricter
+      // style/occasion/formality floors reject a candidate. Six candidates
+      // yielded only two verified looks in real cloud QA; make all eight
+      // independently model-reviewed rescue options available in one wave.
+      // Still bounded by 38s/50s, 8 paid critiques, with NO unreviewed fill.
+      visualCandidateLimit: 8,
       // QUALITY FIRST: never pad two genuinely NVIDIA-approved looks with an
       // unreviewed third. An honest partial recommendation beats a pretty
       // three-card count with unverified fashion quality.

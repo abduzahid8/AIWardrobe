@@ -36,11 +36,12 @@ export function validVisualVerdict(row, candidateId) {
 // contract reuse the verdict instead of paying a second provider call;
 // abstentions and failures are never cached. TTL is lazy; eviction is LRU.
 const verdictCache = new Map();
-const verdictCacheKey = ({ model, referenceId, referenceSha256, slots, items, blueprintDigest, productLabels }) =>
+const verdictCacheKey = ({ model, referenceId, referenceSha256, slots, items,
+  blueprintDigest, productLabels, requestContext }) =>
   createHash('sha256').update(JSON.stringify({
     model, referenceId: referenceId || 'none', referenceSha256: referenceSha256 || 'none',
     slots: [...slots].sort(), items: [...items].sort(), blueprintDigest: blueprintDigest || 'none',
-    productLabels: productLabels || [],
+    productLabels: productLabels || [], requestContext,
   })).digest('hex');
 function cachedVerdict(key) {
   const entry = verdictCache.get(key);
@@ -471,6 +472,14 @@ export function createHostedVisualCritic({
           blueprintDigest: blueprint ? createHash('sha256').update(JSON.stringify(blueprint)).digest('hex') : null,
           productLabels: candidate.products.map((product) => [product.slot,
             safeText(product.name).slice(0, 160), safeText(product.subtype).slice(0, 48)]),
+          // CRITICAL: styleFit/occasionFit/formalityFit are REQUEST dependent.
+          // The previous global in-process cache keyed only on photo bytes,
+          // so a Weekend approval could be reused as a Work verdict (or one
+          // user's dress code as another's). Hash only the exact bounded
+          // user-request fields actually used by buildPrompt. Raw private
+          // text is never retained in cache keys or exposed to telemetry.
+          requestContext: [safeText(request?.style), safeText(request?.occasion),
+            safeText(request?.brief)],
           slots: candidate.products.map(({ slot }) => slot),
           items: candidate.products.map((product, index) =>
             `${product.slot}:${images[reference ? index + 1 : index].sha256}`),

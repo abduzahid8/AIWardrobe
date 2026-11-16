@@ -714,6 +714,40 @@ test('the verdict cache reuses a judged look without another provider dispatch',
   assert.equal(calls, 2);
 });
 
+test('the same photographed outfit is judged again when occasion, style or brief changes', async () => {
+  const events=[];
+  const samePhotos=candidate.products.map((_,i)=>asset(115+i));
+  let calls=0;
+  const stored={...candidate,id:'request-sensitive-look',referenceId:null};
+  const critic=createHostedVisualCritic({
+    provider:'nvidia',apiKey,
+    referenceMediaConfigured:false,
+    resolveReference:()=>asset(119),
+    resolveProduct:({slot})=>samePhotos[candidate.products.findIndex(p=>p.slot===slot)],
+    fetchImpl:async ()=>{
+      calls++;
+      return nvidiaResponse({...referencelessVerdict(stored.id),candidateId:stored.id});
+    },
+    onEvent:e=>events.push(e),
+  });
+  const office={style:'classic',occasion:'Work',brief:'Professional polished office'};
+  const weekend={style:'classic',occasion:'Weekend',brief:'Professional polished office'};
+  const otherStyle={style:'old_money',occasion:'Weekend',brief:'Professional polished office'};
+  const otherBrief={style:'old_money',occasion:'Weekend',brief:'Relaxed leisurely gallery outing'};
+  await critic([stored],office);
+  await critic([stored],office);
+  assert.equal(calls,1,'same bytes AND the same complete fashion context can be cached');
+  await critic([stored],weekend);
+  assert.equal(calls,2,'work verdict must not be reused for weekend');
+  await critic([stored],otherStyle);
+  assert.equal(calls,3,'an explicit different style must change model-graded suitability');
+  await critic([stored],otherBrief);
+  assert.equal(calls,4,'different occasion-specific brief must change the verdict');
+  await critic([stored],otherBrief);
+  assert.equal(calls,4,'identical private fashion context may still reuse a verified verdict');
+  assert.equal(events.filter(e=>e.cacheHit).length,2);
+});
+
 test('abstentions and failures are never cached; only valid judged verdicts are', async () => {
   let calls = 0;
   const critic = createHostedVisualCritic({
