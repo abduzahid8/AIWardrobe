@@ -21,6 +21,7 @@
 // .private/s6-probe-account.json (mode 600).
 
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
@@ -146,7 +147,7 @@ const paid = await fetch(stage, {
     request: {
       style: 'classic', occasion: 'Work', brief: 'Work, classic', sourceMode: 'catalog',
       preferences: {}, recentSignatures: [], excludeItemIds: [], requiredIds: [],
-      generationRequestId: 's6-probe-20261113a', enableVisual: false,
+      generationRequestId: randomUUID(), enableVisual: false,
       budget: { amount: 25_000_000, currency: 'UZS' },
     },
   }),
