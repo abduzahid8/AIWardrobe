@@ -15,6 +15,7 @@ const previousDev = (globalThis as any).__DEV__;
 const previousFlag = process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE;
 const previousBeta = process.env.EXPO_PUBLIC_STYLIST6_BETA;
 const previousStage = process.env.EXPO_PUBLIC_APP_STAGE;
+const previousRenderCanary = process.env.EXPO_PUBLIC_STYLIST6_RENDER_CANARY;
 afterEach(() => {
   (globalThis as any).__DEV__ = previousDev;
   if (previousFlag === undefined) delete process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE;
@@ -23,6 +24,8 @@ afterEach(() => {
   else process.env.EXPO_PUBLIC_STYLIST6_BETA = previousBeta;
   if (previousStage === undefined) delete process.env.EXPO_PUBLIC_APP_STAGE;
   else process.env.EXPO_PUBLIC_APP_STAGE = previousStage;
+  if (previousRenderCanary === undefined) delete process.env.EXPO_PUBLIC_STYLIST6_RENDER_CANARY;
+  else process.env.EXPO_PUBLIC_STYLIST6_RENDER_CANARY = previousRenderCanary;
   jest.restoreAllMocks();
 });
 
@@ -356,6 +359,34 @@ describe('stylist6 cloud staging client', () => {
     expect(mod.isStylist6CloudVersion('stylist-6-dev-local-20261111-r2')).toBe(false);
     expect(mod.isStylist6CloudVersion('stylist-5-editorial-v2-rc-20261109-r2')).toBe(false);
     expect(mod.isStylist6CloudVersion(null)).toBe(false);
+  });
+
+  test('Render canary opt-in is dev-only, leaving every release on existing Vercel staging',()=>{
+    process.env.EXPO_PUBLIC_STYLIST6_RENDER_CANARY='true';
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE='true';
+    (globalThis as any).__DEV__=false;
+    process.env.EXPO_PUBLIC_STYLIST6_BETA='true';
+    process.env.EXPO_PUBLIC_APP_STAGE='testflight';
+    expect(loadDevModule().STYLIST6_RENDER_CANARY_ENABLED).toBe(false);
+    (globalThis as any).__DEV__=true;
+    expect(loadDevModule().STYLIST6_RENDER_CANARY_ENABLED).toBe(true);
+    delete process.env.EXPO_PUBLIC_STYLIST6_RENDER_CANARY;
+    expect(loadDevModule().STYLIST6_RENDER_CANARY_ENABLED).toBe(false);
+  });
+
+  test('only explicitly opted-in dev simulator calls the separate Render function',async()=>{
+    (globalThis as any).__DEV__=true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE='true';
+    process.env.EXPO_PUBLIC_STYLIST6_RENDER_CANARY='true';
+    mockInvoke.mockResolvedValue({data:{success:true,generationVersion:'stylist-6-cloud-staging-1',outfits:[]},error:null});
+    const render=loadDevModule();
+    await render.invokeStylist6Cloud({request:{style:'old_money',occasion:'Casual',brief:''}});
+    expect(mockInvoke.mock.calls[0][0]).toBe('aiw-stylist6-node-render-staging');
+    mockInvoke.mockClear();
+    process.env.EXPO_PUBLIC_STYLIST6_RENDER_CANARY='false';
+    const normal=loadDevModule();
+    await normal.invokeStylist6Cloud({request:{style:'old_money',occasion:'Casual',brief:''}});
+    expect(mockInvoke.mock.calls[0][0]).toBe('aiw-stylist6-node-staging');
   });
 
   test('cloud invoke refuses without the dev gate, never touching the network', async () => {

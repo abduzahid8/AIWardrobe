@@ -30,6 +30,12 @@ export const STYLIST6_CLOUD_ENABLED = STYLIST6_DEV_ENABLED || (
   process.env.EXPO_PUBLIC_APP_STAGE === 'testflight'
 );
 
+/** Dev-simulator-only canary switch. Never routes TestFlight or production
+ * releases to the experimental Render service. Existing Vercel staging is
+ * the unchanged default. Only the dedicated Render Supabase proxy is used. */
+export const STYLIST6_RENDER_CANARY_ENABLED =
+  STYLIST6_DEV_ENABLED && process.env.EXPO_PUBLIC_STYLIST6_RENDER_CANARY === 'true';
+
 export type DevEngine = 'stylist5' | 'stylist6' | 'stylist6cloud';
 
 const devPort = (): number => {
@@ -367,7 +373,9 @@ export async function invokeStylist6Cloud(
   let data: Record<string, any> | null = null;
   let invokeError: unknown = null;
   try {
-    const result = await supabase.functions.invoke('aiw-stylist6-node-staging', {
+    const target = STYLIST6_RENDER_CANARY_ENABLED
+      ? 'aiw-stylist6-node-render-staging' : 'aiw-stylist6-node-staging';
+    const result = await supabase.functions.invoke(target, {
       headers: { Authorization: `Bearer ${token}` },
       body,
       ...(options?.signal ? { signal: options.signal } : {}),
