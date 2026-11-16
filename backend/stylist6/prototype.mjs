@@ -286,7 +286,10 @@ export async function evaluateVisualShortlist(retrieval,request,visualCritic,opt
   const shortlist=retrieval.shortlist.slice(0,limit);
   const payload=shortlist.map(c=>({
     id:c.id,referenceId:request.referenceId||c.brief.referenceId,
-    products:c.items.map(i=>({id:i.id,slot:i.macroCategory,imageUrl:i.imageUrl||i.image_url}))
+    products:c.items.map(i=>({id:i.id,slot:i.macroCategory,imageUrl:i.imageUrl||i.image_url,
+      // Source-backed garment labels add explicit context the photo alone
+      // cannot reveal (e.g. a terry resort shirt in office tailoring).
+      name:String(i.name||'').slice(0,160),subtype:String(i.subtype||'').slice(0,48)}))
   }));
   let critiques=[];
   let criticFailed=false;

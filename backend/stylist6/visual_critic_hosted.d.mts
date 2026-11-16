@@ -45,6 +45,10 @@ export interface HostedVisualProduct {
   id: string;
   slot: 'top' | 'outerwear' | 'bottom' | 'shoes';
   imageUrl: string;
+  /** Untrusted source merchant title, never a model instruction. */
+  name?: string;
+  /** Derived or source-backed catalog subtype. */
+  subtype?: string;
 }
 
 export interface HostedVisualCandidate {

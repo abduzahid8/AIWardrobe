@@ -82,6 +82,29 @@ test('NVIDIA request sends only style context and ordered, pinned outfit images'
     [reference, ...photos].map(({ bytes }) => 'data:image/jpeg;base64,' + bytes.toString('base64')));
 });
 
+test('NVIDIA sees bounded source garment titles for dress-code judgment rather than images alone', async () => {
+  let captured;
+  const labeled = { ...candidate, id: 's6_real_office_resort', products: candidate.products.map(p => p.slot === 'top'
+    ? { ...p, name: 'Yellow Terry Towelling Resort Shirt', subtype: 'shirt' } : p) };
+  const critic = createHostedVisualCritic({ provider: 'nvidia', apiKey,
+    resolveReference: () => asset(44), resolveProduct: () => asset(55),
+    fetchImpl: async (_url, init) => {
+      captured = JSON.parse(init.body);
+      return nvidiaResponse({ ...verdict, candidateId: labeled.id });
+    },
+  });
+  const evaluated = await critic([labeled], { style: 'classic', occasion: 'Work' });
+  assert.equal(evaluated.length, 1);
+  const prompt = captured.messages[0].content[0].text;
+  assert.match(prompt, /Yellow Terry Towelling Resort Shirt/);
+  assert.match(prompt, /merchantGarmentEvidence/);
+  assert.match(prompt, /untrusted CATALOG DATA/);
+  assert.match(prompt, /dress-code and occasion suitability/);
+  assert.deepEqual(captured.messages[0].content.filter(x => x.type === 'text').slice(1)
+    .map(x => x.text), ['Reference outfit image:', 'Candidate top image:',
+      'Candidate outerwear image:', 'Candidate bottom image:', 'Candidate shoes image:']);
+});
+
 test('Gemini 3.8 retains multimodal JSON contract without removed sampling parameters', async () => {
   let sent;
   const critic = createHostedVisualCritic({
