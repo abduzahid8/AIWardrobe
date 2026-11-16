@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 // staging-authenticated-probe-v1: hosted admission-chain verification for the
-// isolated aiw-stylist6-node-staging edge function, WITHOUT a service-role key
-// and WITHOUT consuming paid quota.
+// isolated aiw-stylist6-node-staging edge function, WITHOUT a service-role key.
+// The final entitled-account check may consume ONE real outfit quota unit.
 //
 // Differences from backend/stylist-node/scripts/stylist6-staging-smoke.mjs
 // (which stays the authoritative paid smoke): this probe uses ONLY the anon
 // key and a self-registered dedicated bot account (the app's real signup
 // path), reads its OWN usage_counters rows via the owner-select RLS policy,
-// and asserts the quota-free admission guarantees. It intentionally does NOT
-// dispatch a metered generation: a free-tier account has no outfit quota, and
-// provisioning entitlement requires a service-role key this probe refuses to
-// require. The final check therefore asserts the honest quota gate instead.
+// and asserts quota-free pre-admission guarantees. The final check DOES
+// request one metered generation if the bot has entitlement; it asserts the
+// single debit and independently verifies any FX-converted spending cap.
 //
 // Usage:
 //   AIW_S6_PROBE_ACK=I_ACCEPT_S6_STAGING_PROBE \
@@ -160,12 +159,57 @@ if (paid.ok) {
   const decks = Array.isArray(paidBody?.outfits) ? paidBody.outfits.length : 0;
   assert.equal(decks, 3, `Expected 3 outfits, got ${decks}`);
   assert.ok(String(paidBody?.engineVersion || paidBody?.generationVersion || '').startsWith('stylist-6-'), 'Engine version must be stylist-6-*');
-  for (const look of paidBody.outfits) {
-    for (const item of look.items ?? []) {
-      assert.equal(item.currency, 'UZS', 'Non-UZS item in a UZS-budget deck');
-    }
+  // Currency labels always remain the merchant's native quote. The cloud's
+  // hard cap may convert USD/EUR/GBP with a server-pinned, validated CBU
+  // snapshot. Independently recalculate each complete outfit; fail closed on
+  // missing, stale or unproven conversion evidence.
+  const budgetLimit = 25_000_000;
+  const conversion = paidBody.currencyConversion;
+  let rates = null;
+  if (conversion?.active === true) {
+    assert.equal(conversion.source, 'CBU');
+    assert.equal(conversion.budgetCurrency, 'UZS');
+    const snapshot = conversion.snapshot;
+    assert.equal(snapshot?.source, 'CBU');
+    assert.equal(conversion.snapshotId, snapshot.id);
+    assert.equal(conversion.asOf, snapshot.asOf);
+    assert.match(snapshot.asOf, /^\d{4}-\d{2}-\d{2}$/);
+    const referenceDate = Date.parse(snapshot.asOf);
+    const fetchedDate = Date.parse(snapshot.fetchedAt);
+    assert.ok(Number.isFinite(referenceDate) && Number.isFinite(fetchedDate), 'Invalid FX dates');
+    const uzToday = new Date(Date.now() + 5 * 3600000).toISOString().slice(0, 10);
+    const referenceDays = (Date.parse(uzToday) - referenceDate) / 86400000;
+    assert.ok(referenceDays >= 0 && referenceDays <= 7, 'Stale FX reference date');
+    assert.ok(Date.now() - fetchedDate >= -60000 && Date.now() - fetchedDate <= 3600000, 'Stale FX fetch');
+    rates = snapshot.uzsPerUnit;
+    assert.equal(rates?.UZS, 1);
+    for (const currency of ['USD','EUR','GBP'])
+      assert.ok(Number.isFinite(rates[currency]) && rates[currency] > 0, 'Invalid CBU FX rate');
+    assert.equal(snapshot.id, `CBU:${snapshot.asOf}:${rates.USD}:${rates.EUR}:${rates.GBP}`);
+  } else {
+    assert.equal(conversion?.active, false, 'Unknown currency conversion mode');
   }
-  results.checks.push({ check: 'metered_generation_complete', status: paid.status, decks, quotaDelta, requestId: paidBody.requestId ?? null });
+  let crossCurrencyLooks = 0;
+  for (const look of paidBody.outfits) {
+    assert.ok(Array.isArray(look.items) && look.items.length >= 3, 'Incomplete budgeted outfit');
+    let subtotal = 0;
+    let mixed = false;
+    for (const item of look.items) {
+      assert.equal(item.isShopItem, true, 'Unexpected owned item in catalog mode');
+      assert.ok(Number.isFinite(item.price) && item.price > 0, 'Missing merchant price');
+      assert.ok(['UZS','USD','EUR','GBP'].includes(item.currency), 'Unverifiable merchant currency');
+      if (item.currency !== 'UZS') mixed = true;
+      assert.ok(item.currency === 'UZS' || rates, 'Foreign currency without verified FX');
+      subtotal += item.price * (rates?.[item.currency] ?? 1);
+    }
+    if (mixed) crossCurrencyLooks++;
+    assert.ok(Number.isFinite(subtotal) && subtotal <= budgetLimit + 1e-6,
+      'Converted outfit exceeds UZS budget');
+  }
+  assert.equal(quotaDelta, 1, 'Completed request must debit exactly one quota unit');
+  results.checks.push({ check: 'metered_generation_complete', status: paid.status, decks,
+    quotaDelta, fxSource: rates ? 'CBU' : 'same_currency_only', crossCurrencyLooks,
+    budgetVerified: true });
   console.log(`metered_generation_complete: decks=${decks} quota_delta=${quotaDelta}`);
 } else {
   assert.ok([402, 403, 429, 422].includes(paid.status), `Expected an honest refusal (402/403/422/429), got ${paid.status} ${JSON.stringify(paidBody.code || '')}`);
