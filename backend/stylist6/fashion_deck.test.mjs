@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, namedCardiganBriefMismatch } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, namedCardiganBriefMismatch } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -614,6 +614,21 @@ test('price bands are per slot and currency, need evidence and cap the dampener'
   assert.equal(triple.flagged, 1);
   assert.ok(tenx.penalty > triple.penalty && tenx.penalty <= UNBUDGETED_PRICE_PENALTY_MAX);
   assert.deepEqual(pricePenaltyForLook([{ ...shoe('usp', 100000) }], {}), { penalty: 0, flagged: 0 });
+});
+
+test('skewed luxury catalog uses observed accessible quartile to preserve affordable role choices',()=>{
+  const rows=[];
+  for(const [i,price] of [400000,640000,849900,1000000,1200000,6500000,7400000,8500000,9100000,12000000,13000000,14000000].entries())
+    rows.push(garment(`bottom-${i}`,'Wool tailored trousers','bottom','tailored-trouser',{price,currency:'UZS'}));
+  const profile=buildPriceProfile(rows);
+  const band=profile['UZS|bottom'];
+  assert.ok(band.accessible < band.median/2);
+  const basic=rows[2],luxury=rows[9];
+  assert.equal(unbudgetedPriceSeedAdjustment(basic,profile),0.065);
+  assert.ok(unbudgetedPriceSeedAdjustment(luxury,profile)<-0.2);
+  assert.ok(pricePenaltyForLook([luxury],profile).penalty > 0.1);
+  assert.equal(unbudgetedPriceSeedAdjustment({...luxury,currency:'CAD'},profile),0,
+    'never invent exchange rates for currencies without a price cohort');
 });
 
 test('unbudgeted styling strongly de-prioritizes a 9m UZS luxury knit without banning it', () => {

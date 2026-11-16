@@ -117,7 +117,12 @@ export function buildPriceProfile(catalog) {
   for (const [key, prices] of byBand) {
     if (prices.length < PRICE_SAMPLE_MINIMUM) continue;
     prices.sort((a, b) => a - b);
-    profile[key] = { median: prices[Math.floor((prices.length - 1) / 2)], count: prices.length };
+    // A catalog dominated by luxury inventory can have a 6.5m UZS
+    // 'median' trouser even when perfectly good 850k trousers are offered.
+    // Keep median for provenance; use the observed lower quartile as the
+    // representative accessible-price anchor for unbudgeted requests.
+    profile[key] = { median: prices[Math.floor((prices.length - 1) / 2)],
+      accessible: prices[Math.floor((prices.length - 1) / 4)], count: prices.length };
   }
   return profile;
 }
@@ -132,8 +137,9 @@ export function pricePenaltyForLook(items, profile) {
   let penalty = 0, flagged = 0;
   for (const item of items || []) {
     const band = item && profile ? profile[`${item.currency}|${item.macroCategory}`] : null;
-    if (!band || !(item.price > band.median)) continue;
-    const ratio = item.price / band.median;
+    const anchor=band?.accessible > 0 ? band.accessible : band?.median;
+    if (!anchor || !(item.price > anchor)) continue;
+    const ratio = item.price / anchor;
     if (ratio <= 2) {
       penalty += 0.035 * (ratio - 1);
     } else {
@@ -144,6 +150,20 @@ export function pricePenaltyForLook(items, profile) {
     }
   }
   return { penalty: Math.min(UNBUDGETED_PRICE_PENALTY_MAX, penalty), flagged };
+}
+
+/** Small per-item seed adjustment before the 8-piece role candidate cap.
+ * Without this, a 7m trouser survives every role shortlist solely because
+ * the catalog's first page is mostly luxury, so later outfit-price penalties
+ * have no lower-priced alternatives to choose. Source-quoted prices only,
+ * same slot/currency evidence; never an invented overall spending limit.
+ */
+export function unbudgetedPriceSeedAdjustment(item,profile) {
+  const band=profile?.[`${item?.currency}|${item?.macroCategory}`];
+  const anchor=band?.accessible > 0 ? band.accessible : band?.median;
+  if(!anchor || !Number.isFinite(item?.price) || item.price<=0)return 0;
+  const ratio=item.price/anchor;
+  return ratio<=1 ? 0.065 : -Math.min(0.26,0.085*Math.log2(ratio));
 }
 
 /** Explicit requests for luxury/premium styling are not cost-optimized.
@@ -875,7 +895,10 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           (!extras.budgeted && !extras.requiredIds?.length &&
             verifiedPaletteMatch(item, brief.palette) === true ? 0.02 : 0))
         + 0.70 * (personalScores.get(item) || 0)
-        + FEEDBACK_ITEM_SEED_WEIGHT * (feedbackScores.get(item) || 0);
+        + FEEDBACK_ITEM_SEED_WEIGHT * (feedbackScores.get(item) || 0)
+        + (context.sourceMode === 'catalog' && !extras.budgeted &&
+          !lockedIds.has(String(item.id)) && !explicitlyRequestsLuxury(context)
+          ? unbudgetedPriceSeedAdjustment(item,extras.priceProfile) : 0);
     },
     rankLook(items, brief) {
       if (namedCardiganBriefMismatch(items, brief, context, extras.requiredIds || [])) return null;
