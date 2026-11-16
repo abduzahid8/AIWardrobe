@@ -194,8 +194,13 @@ const featToken = (tuple, idx) => {
 
 export const shoeRegisterOf = (sub) => {
   const s = String(sub || '').toLowerCase().replace(/_/g, '-');
-  if (/^(?:.*-)?(?:(oxford|loafer|monk(?:-strap)?|brogue|dress-shoe|boot|ankle-boot|chelsea)(?:-boot)?s?|derb(?:y|ies|ys))$/.test(s)) return 'dress';
-  if (/^(?:.*-)?(sneaker|trainer|canvas-sneaker|runner)s?$/.test(s)) return 'casual';
+  // The old wildcard prefix (...-boot) treated "hiking-boot" as a formal
+  // dress shoe, rewarding rugged footwear inside a tailored work deck.
+  // Only admit explicit families; a generic "boot" is unknown unless the
+  // photo/source proves a formal or rugged construction.
+  if (/^(?:hiking|combat|work|snow|trail|rugged|lugged)-boots?$/.test(s)) return 'rugged';
+  if (/^(?:(?:cap-toe|wholecut|plain-toe)-)?oxfords?$|^(?:dress-)?derb(?:y|ies|ys)$|^(?:(?:penny|tassel|horsebit)-)?loafers?$|^(?:(?:single|double)-)?monk(?:-strap)?s?$|^brogues?$|^dress-shoes?$|^dress-boots?$|^chelsea(?:-boots?)?$/.test(s)) return 'dress';
+  if (/^(?:sneakers?|minimal-sneakers?|sport-sneakers?|trainers?|canvas-sneakers?|runners?|drivers?|driving-shoes?|espadrilles?|boat-shoes?)$/.test(s)) return 'casual';
   return null;
 };
 
@@ -228,7 +233,8 @@ export function deckCategoryVarietyAdjustment(candidate, chosen, featuresOf) {
       adjustment -= 0.025;
     } else if (prevShoeSubs.includes(candShoeSub)) {
       adjustment -= candReg === 'casual' ? 0.008 : 0.018;
-    } else if (!candReg || !prevRegs.length || prevRegs.includes(candReg)) {
+    } else if (candReg && prevRegs.includes(candReg)) {
+      // Unknown construction is not evidence of a compatible new register.
       adjustment += 0.014;
     }
   }

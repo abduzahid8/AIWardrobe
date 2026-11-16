@@ -12,6 +12,7 @@ import {
   lowerBodyPairRepeatAdjustment,
   labelCreativeDirections,
   selectCreativeDirectionDeck,
+  shoeRegisterOf,
 } from './creative_directions.mjs';
 
 const slot = (subtype,color,volume='regular',texture='smooth',pattern='solid') =>
@@ -316,6 +317,35 @@ test('within comparable quality a deck that repeats one brand house loses the ne
     branded('m-second',.922,FRESH,['alpha','alpha','alpha']),
   ],metrics);
   assert.equal(mono.looks[1].id,'m-second');
+});
+
+test('real imported hiking boots and driving shoes never earn dress-register novelty',()=>{
+  for (const subtype of ['oxford','cap-toe-oxford','penny-loafer','double-monk','derby','dress-derbies','chelsea','dress-boot'])
+    assert.equal(shoeRegisterOf(subtype),'dress',subtype);
+  for (const subtype of ['hiking-boot','combat-boot','work-boot','snow-boot'])
+    assert.equal(shoeRegisterOf(subtype),'rugged',subtype);
+  for (const subtype of ['sport-sneaker','driver','espadrille','boat-shoe'])
+    assert.equal(shoeRegisterOf(subtype),'casual',subtype);
+  for (const subtype of ['boot','ankle-boot','unknown'])
+    assert.equal(shoeRegisterOf(subtype),null,subtype);
+
+  const make = (id,shoeType) => {
+    const candidate=look(id,.92,[
+      slot('shirt','white'),slot('blazer','navy'),
+      slot('tailored-trouser','grey'),slot(shoeType,'brown'),
+    ],[id+'-top',id+'-layer',id+'-bottom',id+'-shoe']);
+    candidate.items.forEach((it,i)=>{it.macroCategory=['top','outerwear','bottom','shoes'][i];});
+    return candidate;
+  };
+  const dressBase=make('base','derby');
+  const dressAlternative=make('dress','oxford');
+  const rugged=make('rugged','hiking-boot');
+  const driver=make('driver','driver');
+  const unverified=make('unverified','boot');
+  const value=candidate=>deckCategoryVarietyAdjustment(candidate,[dressBase],metrics.featuresOf);
+  assert.ok(value(dressAlternative)>value(unverified),'unknown boot must not earn same-register bonus');
+  assert.ok(value(unverified)>value(rugged),'hiking boot must be a cross-register penalty');
+  assert.ok(value(unverified)>value(driver),'driving shoe must be a cross-register penalty');
 });
 
 test('category variety penalizes same shoe colorway/subtype and repeated bottom silhouette',()=>{
