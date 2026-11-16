@@ -507,3 +507,36 @@ test('whole-outfit occasion/fit floors veto aesthetic color wins that fail the a
   assert.equal(selectVisualDeck(review,[approved],{target:1,
     minStyleFit:.72,minOccasionFit:.75,minFormalityFit:.70}).status,'complete');
 });
+
+
+test('a photographed navy or grey garment cannot be styled for a user who explicitly excludes it', () => {
+  const look={id:'visible-deck',briefId:'color-brief',brief:{id:'color-brief',name:'Warm date'},
+    items:[
+      {id:'cream-top',macroCategory:'top',subtype:'fine-knit',name:'Merino knit'},
+      {id:'navy-layer',macroCategory:'outerwear',subtype:'blazer',name:'Sartorial jacket'},
+      {id:'beige-trousers',macroCategory:'bottom',subtype:'tailored-trouser',name:'Metropolitan trousers'},
+      {id:'black-shoes',macroCategory:'shoes',subtype:'derby',name:'Leather Derby'},
+    ]};
+  const opinion={candidateId:look.id,referenceless:true,
+    visualCohesion:.98,styleFit:.96,occasionFit:.93,formalityFit:.96,
+    confidence:.99,reject:false,slotColors:{top:'cream',outerwear:'navy',bottom:'beige',shoes:'black'},
+    evidence:['model saw actual garments','model saw jacket color','model saw full silhouette']};
+  const input={generationVersion:STYLIST6_VERSION,shortlist:[look],diagnostics:{}};
+  const aesthetic=selectVisualDeck(input,[opinion],{target:1});
+  assert.equal(aesthetic.status,'complete',
+    'a beautiful palette on its own would have passed for someone who enjoys navy');
+  const excluded=selectVisualDeck(input,[opinion],{target:1,avoidColors:['navy','grey']});
+  assert.equal(excluded.status,'no_verified_looks');
+  assert.equal(excluded.diagnostics.visualQualityDecisions[0].reason,'excluded_visual_color');
+  const grey={...opinion,slotColors:{...opinion.slotColors,outerwear:'charcoal'}};
+  assert.equal(selectVisualDeck(input,[grey],{target:1,avoidColors:['grey']})
+    .diagnostics.visualQualityDecisions[0].reason,'excluded_visual_color');
+  const uncertain={...opinion,slotColors:{...opinion.slotColors,outerwear:'unknown'}};
+  assert.equal(selectVisualDeck(input,[uncertain],{target:1,avoidColors:['navy']})
+    .diagnostics.visualQualityDecisions[0].reason,'visual_color_unverified');
+  const pinned=selectVisualDeck(input,[opinion],{target:1,avoidColors:['navy'],
+    requiredIds:['navy-layer']});
+  assert.equal(pinned.status,'complete','a specifically pinned owned garment overrides generic preference');
+  const clean={...opinion,slotColors:{...opinion.slotColors,outerwear:'camel'}};
+  assert.equal(selectVisualDeck(input,[clean],{target:1,avoidColors:['navy','grey']}).status,'complete');
+});

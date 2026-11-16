@@ -9,7 +9,7 @@
 import {createHash} from 'node:crypto';
 import {canonicalProductKey} from '../../src/domain/outfitDiversity.ts';
 import {baseProductId} from './catalog_adapter.mjs';
-import {MAX_VISUAL_CANDIDATES,validVisualVerdict} from './visual_critic_hosted.mjs';
+import {MAX_VISUAL_CANDIDATES,validVisualVerdict,verifiedAvoidColors,VISUAL_SLOT_COLORS} from './visual_critic_hosted.mjs';
 export const STYLIST6_VERSION='stylist6-visual-first-prototype-4';
 // Treat a near-tie as insufficient evidence to displace an earlier feasible pick.
 const VISUAL_NEAR_TIE=0.015;
@@ -316,7 +316,11 @@ export async function evaluateVisualShortlist(retrieval,request,visualCritic,opt
   let criticFailed=false;
   if(payload.length){
     try{
-      const rows=await visualCritic(payload,{style:request.style,occasion:request.occasion,brief:request.brief});
+      const rows=await visualCritic(payload,{style:request.style,occasion:request.occasion,brief:request.brief,
+        // Only bounded explicit user exclusions reach the PHOTO judge. They
+        // affect style approval, so the critic cache also keys on them.
+        avoidColors: verifiedAvoidColors(request.preferences?.avoidColors),
+        dislikedPatterns: request.preferences?.dislikedPatterns});
       if(Array.isArray(rows)&&rows.length<=limit)critiques=rows;
       else criticFailed=true;
     }catch{criticFailed=true}
@@ -371,6 +375,9 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
   assert(shortlist.length<=MAX_VISUAL_CANDIDATES,'invalid_visual_limit');
   const target=Math.min(3,Math.max(1,options.target??3));
   const minVisualQuality=options.minVisualQuality??0.68;
+  const avoidColors=new Set(verifiedAvoidColors(options.avoidColors));
+  const pinnedIds=new Set((options.requiredIds||[]).map(String));
+  const knownVisibleColors=new Set(VISUAL_SLOT_COLORS);
   const allowed=new Set(shortlist.map(c=>c.id));
   const seen=new Set(),duplicates=new Set(),valid=new Map(),accepted=new Map();
   // An explainable, bounded receipt from the exact candidates actually
@@ -385,6 +392,20 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
   }
   for(const id of duplicates)valid.delete(id);
   for(const [id,c] of valid){
+    const corresponding=shortlist.find(look=>look.id===id);
+    const unpinned=(corresponding?.items||[]).filter(item=>
+      !pinnedIds.has(String(item.id))).map(item=>item.macroCategory);
+    const visible=c.slotColors && typeof c.slotColors==='object' &&
+      !Array.isArray(c.slotColors)?c.slotColors:null;
+    const visibleExcluded=avoidColors.size && visible ? unpinned.filter(slot=>{
+      const color=String(visible[slot]||'').toLowerCase();
+      return avoidColors.has(({gray:'grey',charcoal:'grey',slate:'grey',midnight:'navy'})[color]||color);
+    }) : [];
+    // Explicitly avoided photographic colors are HARD constraints, not
+    // another weighted taste feature. If a color was not classified in a
+    // user-excluded-color request, fail closed rather than claim certainty.
+    const missingColorEvidence=avoidColors.size && unpinned.length>0 &&
+      (!visible || unpinned.some(slot=>!knownVisibleColors.has(visible[slot]) || visible[slot]==='unknown'));
     // Reference-less verdicts carry no referenceFidelity dimension: the
     // quality re-weights to cohesion-led with the same 0-1 scale, so a
     // missing reference can never read as a perfect or failed reference fit.
@@ -396,7 +417,9 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
     // inappropriate occasion, dress code or personal style. The stricter
     // axis thresholds are opted into by the whole-deck product path; older
     // reference-only comparisons retain their established contract.
-    const decision=c.reject?'model_veto':c.confidence<0.6?'low_confidence'
+    const decision=visibleExcluded?.length?'excluded_visual_color'
+      :missingColorEvidence?'visual_color_unverified'
+      :c.reject?'model_veto':c.confidence<0.6?'low_confidence'
       :quality<minVisualQuality?'below_quality_floor'
         :Number.isFinite(options.minStyleFit) && c.styleFit<options.minStyleFit?'style_mismatch'
           :Number.isFinite(options.minOccasionFit) && c.occasionFit<options.minOccasionFit?'occasion_mismatch'

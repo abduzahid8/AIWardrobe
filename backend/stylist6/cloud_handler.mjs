@@ -413,7 +413,11 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       for (let offset = 0; offset < ids.length; offset += VISUAL_PROFILE_CHUNK) {
         const chunk = ids.slice(offset, offset + VISUAL_PROFILE_CHUNK);
         const params = new URLSearchParams({
-          select: 'product_id,source_hash,image_url,profile',
+          // hydrateProfiles checks entry.version === 1. Filtering the DB
+          // query by version WITHOUT selecting that column made EVERY
+          // perfectly valid profile look versionless and silently discard.
+          // The user's visual color exclusions were consequently ignored.
+          select: 'product_id,version,source_hash,image_url,profile',
           version: 'eq.1',
           product_id: `in.(${chunk.map((id) => `"${String(id).replace(/"/g, '')}"`).join(',')})`,
         });
@@ -477,7 +481,7 @@ export async function fetchCbuBudgetFxSnapshot(fetchFn = fetch, now = Date.now()
   return snapshot;
 }
 
-function hydrateProfiles(rows, profiles) {
+export function hydrateProfiles(rows, profiles) {
   const byId = new Map(profiles.map((entry) => [String(entry.product_id), entry]));
   let attached = 0, drifted = 0;
   for (const row of rows) {

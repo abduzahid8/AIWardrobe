@@ -309,6 +309,14 @@ test('denied image review leaves the catalog-ranked deck intact with zero critic
 
 const admittedVisualVerdict = (candidate, overrides = {}) => ({
   candidateId: candidate.id, visualCohesion: 0.9, referenceFidelity: 0.9,
+  // Every real NVIDIA verdict now includes a bounded observed hue per image.
+  // Derive mock hues from the fixture's explicit garment title rather than
+  // allowing missing-photo-color evidence to mask tests about deck selection.
+  slotColors:Object.fromEntries(candidate.products.map(product=>[
+    product.slot,
+    (/\b(white|navy|cream|grey|beige|brown|burgundy|tan|black|charcoal|olive|blue)\b/i
+      .exec(String(product.name||''))?.[1]||'cream').toLowerCase(),
+  ])),
   styleFit: 0.9, occasionFit: 0.9, formalityFit: 0.9, confidence: 0.9, reject: false,
   evidence: ['shirt and trousers proportion', 'layer/palette balance', 'footwear register'],
   ...overrides,

@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { signStylistTransport } from '../stylist-node/transport/signature.mjs';
 import {
   handleStylist6CloudGenerate,
+  createCloudIo, hydrateProfiles,
   mapCloudVisualStatus,
   projectWardrobeItem,
   fitVisualBytesCloud,
@@ -12,6 +13,10 @@ import {
   canonicalRequestFingerprint,
 } from './cloud_handler.mjs';
 import { HOST_ALLOWLIST, INFERENCE_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/image_access.mjs';
+import { adaptCatalog, sourceHash } from './catalog_adapter.mjs';
+import { describeGarment } from '../../src/domain/garmentDescriptor.ts';
+import { garmentContextReason } from '../../src/domain/garmentContext.ts';
+import { stylingContext } from '../../src/domain/stylingContext.ts';
 
 const SECRET = 'cloud-test-shared-secret-0123456789abcdef';
 const JWT = 'good-jwt-token';
@@ -1726,4 +1731,58 @@ test('real workout catalog discovery prioritizes training gear and preserves the
     assert.ok(searched.every(x=>x.p_search==='' && !x.p_context));
     assert.equal(everyday.length,400);
   }finally{globalThis.fetch=originalFetch;}
+});
+
+
+test('cloud visual-profile REST query actually selects the version needed to hydrate evidence', async () => {
+  const queryURLs=[];
+  const before=globalThis.fetch;
+  try {
+    globalThis.fetch=async (url) => {
+      const parsed=new URL(String(url));
+      queryURLs.push(parsed);
+      assert.equal(parsed.pathname,'/rest/v1/catalog_visual_fashion');
+      return Response.json([]);
+    };
+    const io=createCloudIo({url:'https://fake-supabase.example',anonKey:'test-anon',
+      serviceKey:'test-service',supabaseJs:{}});
+    assert.deepEqual(await io.fetchVisualProfiles(['fashion-item-1']),[]);
+  } finally {globalThis.fetch=before;}
+  assert.equal(queryURLs.length,1);
+  assert.equal(queryURLs[0].searchParams.get('version'),'eq.1');
+  assert.deepEqual(queryURLs[0].searchParams.get('select').split(','),
+    ['product_id','version','source_hash','image_url','profile'],
+    'missing version caused all expensive already-computed image intelligence to be ignored');
+});
+
+test('fresh visual image colors exclude otherwise unknown-colored merchant cardigan from personal palette', () => {
+  const row={...shopRow('grey-photo-no-color-title','outerwear'),
+    name:'100% WOOL REGULAR-FIT CARDIGAN',description:'Wool cardigan. Plain product photo',
+    source:'trusted-merchant'};
+  const hash=sourceHash(row);
+  const profile={version:1,model:'google/siglip2-base-patch16-224',revision:'visual-test-r1',
+    imageUrl:row.image_url,sourceHash:hash,imageSha256:'a'.repeat(64),
+    attributes:{color:{value:'grey',confidence:0.92,margin:0.65,evidence:'image-model'}}};
+  const rows=[row];
+  const hydration=hydrateProfiles(rows,[{product_id:row.id,version:1,
+    source_hash:hash,image_url:row.image_url,profile}]);
+  assert.deepEqual(hydration,{fetched:1,attached:1,drifted:0});
+  const mapped=adaptCatalog(rows).items;
+  assert.equal(mapped.length,1);
+  assert.equal(mapped[0].color,'unknown','merchant title alone does not tell the color');
+  const descriptor=describeGarment(mapped[0]);
+  assert.equal(descriptor.color,'grey');
+  assert.ok(descriptor.evidence.some(x=>x.startsWith('image:color:')));
+  const warm=stylingContext({style:'semi_classic',occasion:'Date night',
+    sourceMode:'catalog',preferences:{avoidColors:['grey','navy']}});
+  assert.equal(garmentContextReason(mapped[0],warm),'excluded_color',
+    'photographic evidence must override missing merchant text');
+  const other=stylingContext({style:'semi_classic',occasion:'Date night',
+    sourceMode:'catalog',preferences:{avoidColors:['beige','brown']}});
+  assert.notEqual(garmentContextReason(mapped[0],other),'excluded_color');
+  const stale=[{...row}];
+  const invalid=hydrateProfiles(stale,[{product_id:row.id,version:1,
+    source_hash:'f'.repeat(32),image_url:row.image_url,profile}]);
+  assert.deepEqual(invalid,{fetched:1,attached:0,drifted:1},
+    'stale photo metadata must not bypass catalog image/revision checks');
 });
