@@ -4,6 +4,7 @@ import {
   CREATIVE_DIRECTOR_VERSION, directorInventory,
   validateDirectorDirections, designCreativeBriefs,
 } from './creative_director_ai.mjs';
+import { recommendFashionDeck } from './fashion_deck.mjs';
 
 const catalog = [
   { id: 'SECRET-SKU-SHIRT', macroCategory: 'top', subtype: 'dress-shirt', name: 'Private user-owned shirt' },
@@ -121,4 +122,39 @@ test('missing provider, insufficient inventory, invalid directions and provider 
   });
   assert.equal(failed.status, 'provider_unavailable');
   assert.deepEqual(failed.briefs, []);
+});
+
+
+test('real Stylist 6 retrieval consumes the three AI plans without fabricating SKUs or weakening the budget', async () => {
+  const plans = validateDirectorDirections(proposal, directorInventory(catalog, {
+    ...request, weather: { temp: 16 },
+  }));
+  const seededCatalog = catalog.map((item, index) => ({
+    ...item,
+    name: item.name || item.subtype + ' item ' + index,
+    isShopItem: true, price: 150000, currency: 'UZS',
+    imageUrl: 'https://example.com/photographs/' + index + '.jpg',
+    shopUrl: 'https://example.com/shop/' + index,
+    brand: 'Test Merchant',
+  }));
+  const deck = await recommendFashionDeck({
+    request: {
+      style: 'classic', occasion: 'Work', brief: 'Classic business outfit',
+      sourceMode: 'catalog', weather: { temp: 16 }, optionalLayer: true,
+      preferences: { favoriteColors: ['navy'] }, budget: { amount: 900000, currency: 'UZS' },
+      requiredIds: [], recentSignatures: [],
+    },
+    catalog: seededCatalog,
+    aiCreativeBriefs: plans,
+    referenceBriefs: [],
+    hardGate: async () => ({ ok: true }),
+    priceToBudgetCurrency: item => item.price,
+  });
+  assert.equal(deck.diagnostics.aiCreativeDirectorBriefs, 3);
+  for (const look of deck.outfits) {
+    assert.ok(look.items.length >= 3);
+    for (const item of look.items) assert.ok(seededCatalog.some(x => x.id === item.id));
+    assert.ok(look.items.reduce((n, item) => n + item.price, 0) <= 900000,
+      'the creative model does not waive the hard budget');
+  }
 });
