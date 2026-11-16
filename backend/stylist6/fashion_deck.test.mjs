@@ -348,6 +348,30 @@ test('rescue triple count rewards independent fallback directions, not near-dupl
   ])[0],spare);
 });
 
+test('staging may disclose a third unreviewed but hard-admitted look without laundering NVIDIA rejection', async () => {
+  const audited = [];
+  const result = await recommendFashionDeck({
+    ...base,
+    request:{ sourceMode:'catalog', style:'classic', occasion:'Work',weather:{temp:20},optionalLayer:true },
+    referenceBriefs:[], visualDeckReview:true, allowUnreviewedVisualFill:true,
+    canJudgeOutfit:async()=>true,
+    visualCritic:async(batch) => {
+      audited.push(...batch.map(x=>x.id));
+      return batch.slice(0,2).map(x=>admittedVisualVerdict(x));
+    },
+  });
+  assert.equal(result.status,'complete', 'one honest unreviewed alternative can restore three usable cards');
+  assert.equal(result.outfits.length,3);
+  assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence,2);
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,1);
+  assert.equal(result.diagnostics.visualReviewCoverage.fallbackUnreviewed,true);
+  assert.equal(result.outfits.filter(x=>Array.isArray(x.visualEvidence)).length,2);
+  const fallback=result.outfits.find(x=>!Array.isArray(x.visualEvidence));
+  assert.ok(fallback && !audited.includes(fallback.id),
+    'never show a rejected or timed-out NVIDIA candidate as deterministic filler');
+  assert.ok(result.outfits.every(x=>x.items.every(i=>i.price===250000)));
+});
+
 test('two visually approved looks produce a truthful partial result, no unreviewed third', async () => {
   let candidates = [];
   const result = await recommendFashionDeck({

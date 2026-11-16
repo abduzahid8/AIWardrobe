@@ -1121,6 +1121,11 @@ export async function recommendFashionDeck({
   // Cloud staging can opt into reviewing all three displayed looks in one
   // bounded provider batch. The isolated local / offline paths stay unchanged.
   visualDeckReview = false,
+  // Only for isolated staging: after exactly two NVIDIA-approved looks,
+  // permit ONE additional source-verified, independently styled finalist
+  // that was NOT sent to NVIDIA. It is explicitly NOT_JUDGED in the response;
+  // never reintroduce a model-vetoed or timed-out candidate, or invent evidence.
+  allowUnreviewedVisualFill = false,
 }) {
   const context = fashionStylingContext(request);
   const weather = context.weather;
@@ -1279,6 +1284,25 @@ export async function recommendFashionDeck({
       if (reviewed.diagnostics.visualValid > 0) {
         selected = reviewed.outfits.map(({ id }) => byId.get(id)).filter(Boolean);
       }
+      let unreviewedFillAdded = 0;
+      if (allowUnreviewedVisualFill && request.sourceMode === 'catalog' &&
+          requiredIds.length === 0 && selected.length === 2 &&
+          (reviewed.diagnostics.visualApproved ?? 0) >= 2) {
+        // All cards in `selectable` passed the source, image, identity,
+        // price/budget, weather, style and merchant gates already. The only
+        // eligible third is UNREVIEWED, never a photo/model failure from the
+        // batch, and it must be structurally distinct from BOTH approved
+        // cards. This is a disclosed ranking fallback, not an AI approval.
+        const judgedIds = new Set(candidates.map(look => look.id));
+        const ranked = [...selectable].sort((a,b) =>
+          (b.fashion?.score ?? -Infinity) - (a.fashion?.score ?? -Infinity));
+        const minScore = (selected[0].fashion?.score ?? -Infinity) - VISUAL_CHALLENGER_QUALITY_WINDOW;
+        const next = ranked.find(look => !judgedIds.has(look.id) &&
+          Number.isFinite(look.fashion?.score) && look.fashion.score >= minScore &&
+          selected.every(other => independentOutfitDirection(look,other,requiredIds) &&
+            Math.max(look.items.length,other.items.length) - overlaps(look,other) >= 2));
+        if (next) { selected = [...selected,next]; unreviewedFillAdded = 1; }
+      }
       visualReviewCoverage = {
         mode: 'displayed_deck',
         attempted: reviewed.diagnostics.visualAttempted,
@@ -1287,7 +1311,8 @@ export async function recommendFashionDeck({
         approved: reviewed.diagnostics.visualApproved,
         // Only an approved, actually displayed look has review evidence.
         displayedEvidence: selected.filter(look => visualEvidenceById.has(look.id)).length,
-        fallbackUnreviewed: reviewed.diagnostics.visualValid === 0,
+        fallbackUnreviewed: reviewed.diagnostics.visualValid === 0 || unreviewedFillAdded > 0,
+        unreviewedFillAdded,
       };
     }
   } else if (selected.length >= 1 && typeof visualCritic === 'function' && typeof canJudgeOutfit === 'function' && await permitted(selected[0])) {
