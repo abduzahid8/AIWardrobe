@@ -253,12 +253,19 @@ export function rejectForUnsuitableDateNight(descriptor, context, item) {
  * wardrobe items, and normal minimalist layering are unaffected.
  */
 export function rejectQuietSmartLeisureLayer(descriptor, context, item) {
+  const dressedQuiet = ['classic','old_money','semi_classic'].includes(context.style) &&
+    ['smart','formal'].includes(context.dressCode) &&
+    /\b(work|office|business|date|dinner|evening)\b/i.test(
+      `${context.occasion || ''} ${context.request || ''}`);
+  // Actual owner iOS QA, v51: Old Money / Casual still admitted the
+  // Navy Technical Leisure Blazer. Casual is a dress-code level, NOT a
+  // request for sportswear. A known leisure shell contradicts a quiet
+  // heritage capsule even on weekends, unless explicitly asked for.
+  const oldMoneyWeekend = context.style === 'old_money' &&
+    /\b(casual|weekend|brunch|outing)\b|повседнев|выходн|прогулк/i.test(
+      `${context.occasion || ''} ${context.request || ''}`);
   if (context.sourceMode !== 'catalog' ||
-      !['classic','old_money','semi_classic'].includes(context.style) ||
-      !['smart','formal'].includes(context.dressCode) ||
-      descriptor.slot !== 'outerwear' ||
-      !/\b(work|office|business|date|dinner|evening)\b/i.test(
-        `${context.occasion || ''} ${context.request || ''}`)) return false;
+      descriptor.slot !== 'outerwear' || !(dressedQuiet || oldMoneyWeekend)) return false;
   // A user explicitly choosing sporty outerwear outranks stylist aesthetics,
   // without waiving the existing physical safety or budget gates.
   if (/\b(technical leisure|sporty jacket|track jacket|training jacket|reversible resort jacket)\b/i

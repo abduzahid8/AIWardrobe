@@ -1091,6 +1091,9 @@ test('quiet smart styling declines explicit technical leisure outerwear, without
   assert.equal(rejectQuietSmartLeisureLayer(desc,quiet,jacket),true);
   assert.equal(rejectQuietSmartLeisureLayer(desc,quiet,ordinary),false);
   assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,style:'old_money',occasion:'Date night'},jacket),true);
+  assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,style:'old_money',occasion:'Casual',dressCode:'casual'},jacket),true,
+    'the real old-money weekend preview must not sell a technical leisure blazer');
+  assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,style:'old_money',occasion:'Casual',dressCode:'casual',request:'I want a technical leisure jacket'},jacket),false);
   assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,style:'casual',occasion:'Travel'},jacket),false);
   assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,sourceMode:'wardrobe'},jacket),false);
   assert.equal(rejectQuietSmartLeisureLayer(desc,{...quiet,request:'I want a technical leisure jacket'},jacket),false);
