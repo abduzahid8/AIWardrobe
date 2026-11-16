@@ -32,6 +32,7 @@ const COLOR_ALIASES = new Map([['ivory','cream'],['off-white','cream'],
   ['chocolate','brown'],['oxblood','burgundy']]);
 function canonicalPaletteColor(value) {
   const color = safeText(value, 24).toLowerCase().replace(/[\s_]+/g, '-');
+  if (color === 'gray') return 'grey';
   if (PALETTE.has(color)) return color;
   if (COLOR_ALIASES.has(color)) return COLOR_ALIASES.get(color);
   const plain = color.replace(/^(?:light|dark|deep|pale|muted|dusty|soft|mid|warm|cool)-/, '');
@@ -54,6 +55,20 @@ const safeList = (value, max = 8) =>
 const allowedSubtype = value =>
   typeof value === 'string' && /^[a-z][a-z0-9-]{1,47}$/.test(value) &&
   value !== 'unknown' && value !== 'none';
+// Only explicit, non-sensitive fashion vocabulary may leave the server.
+// Never forward arbitrary profile strings, product names or raw thumb rows.
+const knownAvoidColors = value => [...new Set(
+  safeList(value).map(canonicalPaletteColor).filter(Boolean),
+)];
+const knownAvoidPatterns = value => [...new Set(safeList(value)
+  .map(raw => {
+    const item = raw.toLowerCase();
+    if (/\b(stripes?|striped|pinstripes?|pinstriped)\b/.test(item)) return 'stripe';
+    if (/\b(checks?|checked|plaid|gingham|tartan)\b/.test(item)) return 'check';
+    if (/\b(graphic|print|printed|logo|floral|camo|patterned)\b/.test(item)) return 'print';
+    if (/\b(plain|solid)\b/.test(item)) return 'solid';
+    return null;
+  }).filter(Boolean))];
 
 /**
  * Anonymized inventory capacity, never raw merchant names, SKU IDs or photos.
@@ -85,11 +100,14 @@ export function directorInventory(catalog, request = {}) {
     sourceMode: ['catalog', 'wardrobe', 'mixed'].includes(request?.sourceMode)
       ? request.sourceMode : 'catalog',
     preferences: {
-      favoriteColors: safeList(preferences.favoriteColors),
+      favoriteColors: knownAvoidColors(preferences.favoriteColors),
+      avoidColors: knownAvoidColors(preferences.avoidColors),
       favoriteBrands: [], // merchant names intentionally stay out of provider payload
       avoidBrands: [],
-      likedPatterns: safeList(preferences.likedPatterns),
-      fitPreference: safeText(preferences.fitPreference, 28),
+      likedPatterns: knownAvoidPatterns(preferences.likedPatterns),
+      dislikedPatterns: knownAvoidPatterns(preferences.dislikedPatterns),
+      fitPreference: ['fitted','loose','balanced'].includes(preferences.fitPreference)
+        ? preferences.fitPreference : '',
     },
     available,
   };
@@ -113,6 +131,12 @@ export function directorResponseSchema(inventory) {
         : { type: 'string' },
     };
   };
+  // A prohibited color cannot appear in the provider's planned palette.
+  // Actual garment colors remain guarded independently by the existing
+  // catalog/wardrobe gates; an AI palette is NEVER shopping evidence.
+  const forbidden = new Set(inventory?.preferences?.avoidColors || []);
+  const permittedColors = [...PALETTE].filter(color =>
+    !forbidden.has(color) && !(color === 'gray' && forbidden.has('grey')));
   return {
     type: 'object',
     properties: {
@@ -123,7 +147,7 @@ export function directorResponseSchema(inventory) {
             title: { type: 'string' },
             silhouette: { type: 'string', enum: [...SHAPES] },
             palette: { type: 'array', minItems: 2, maxItems: 5,
-              items: { type: 'string', enum: [...PALETTE] } },
+              items: { type: 'string', enum: permittedColors } },
             roles: {
               type: 'object',
               properties: Object.fromEntries(SLOTS.map(slot => [slot, roleSchema(slot)])),
@@ -179,8 +203,11 @@ function normalizePlan(row, available, index, temperature) {
 export function validateDirectorDirections(data, inventory) {
   if (!data || !Array.isArray(data.directions) || data.directions.length !== 3) return [];
   if (!inventory || !inventory.available) return [];
-  const normalized = data.directions.map((row, i) =>
-    normalizePlan(row, inventory.available, i, inventory.weatherCelsius));
+  const blockedColors = new Set(inventory?.preferences?.avoidColors || []);
+  const normalized = data.directions.map((row, i) => {
+    const plan = normalizePlan(row, inventory.available, i, inventory.weatherCelsius);
+    return plan && !plan.palette.some(color => blockedColors.has(color)) ? plan : null;
+  });
   // Salvage only independently valid and distinct directions. One malformed
   // model idea must not discard two excellent, already grounded plans. The
   // remaining directions come from trusted house briefs and still need visual
@@ -229,6 +256,8 @@ export async function designCreativeBriefs({
   const inventory = directorInventory(catalog, request);
   if (!inventory.available.top.length || !inventory.available.bottom.length ||
       !inventory.available.shoes.length) return { status: 'insufficient_inventory', briefs: [], providerCalls: 0 };
+  if (directorResponseSchema(inventory).properties.directions.items.properties.palette.items.enum.length < 2)
+    return { status: 'insufficient_palette', briefs: [], providerCalls: 0 };
   if (typeof apiKey !== 'string' || !apiKey.startsWith('nvapi-')) {
     return { status: 'not_configured', briefs: [], providerCalls: 0 };
   }
@@ -267,6 +296,10 @@ export async function designCreativeBriefs({
       'appropriate for warm weather. Include top, bottom and shoes in every plan.',
       'Make three genuinely different silhouette/material/formality concepts.',
       'Respect weather, dress code and personal fit/color preferences.',
+      'Never propose a color listed in preferences.avoidColors or a pattern',
+      'listed in preferences.dislikedPatterns; these are user exclusions.',
+      'Prefer explicit favoriteColors/likedPatterns if suitable, but do not',
+      'sacrifice occasion or outfit coherence merely for a color preference.',
       'Dressy office should not include athletic/resort wear; do not substitute',
       'sportswear for tailored shoes. Avoid near-identical office uniforms.',
       'Never invent merchant names, prices, sizes, stock, products or photos.',
