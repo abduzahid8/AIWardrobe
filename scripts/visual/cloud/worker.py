@@ -20,16 +20,25 @@ def call(action,payload=None):
    time.sleep(min(30,2**attempt))
 # A push can start before the new control-plane isolate is ready. No inference
 # or model download begins until scoped authentication and queue access succeed.
-for attempt in range(20):
- try:call('seed');break
- except RuntimeError:
-  if attempt==19:raise
-  time.sleep(30)
+# The catalog importer may enqueue a bounded QA cohort explicitly. A
+# footwear-only backfill MUST NOT expand that cohort to the whole shop;
+# the standard scheduled worker retains its original seed behavior.
+if os.environ.get('STYLIST_VISUAL_SKIP_SEED')=='1':
+ print(json.dumps({'explicitQueueOnly':True}),flush=True)
+else:
+ for attempt in range(20):
+  try:call('seed');break
+  except RuntimeError:
+   if attempt==19:raise
+   time.sleep(30)
 if os.environ.get('STYLIST_VISUAL_STATE_ONLY')=='1':
  print(json.dumps(call('state')),flush=True);sys.exit(0)
 started=time.monotonic();limit=int(os.environ.get('STYLIST_VISUAL_RUN_SECONDS','14400'))
+max_images=int(os.environ.get('STYLIST_VISUAL_MAX_IMAGES','0'))
+if max_images<0 or max_images>10000:raise RuntimeError('invalid_visual_image_budget')
+processed=0
 enricher=None
-while time.monotonic()-started<limit:
+while time.monotonic()-started<limit and (max_images==0 or processed<max_images):
  rows=call('lease')
  if not rows:
   state=call('state');print(json.dumps({'progress':state}),flush=True)
@@ -46,5 +55,9 @@ while time.monotonic()-started<limit:
   # Every completed image is durable immediately; a stopped runner cannot lose
   # the rest of a batch or force paid/local re-generation of successful images.
   call('complete',{'rows':[results.pop()]})
- print(json.dumps({'progress':call('state')}),flush=True)
-print(json.dumps({'finished':call('state'),'modelRevision':MODEL_REVISION}),flush=True)
+  processed+=1
+  # The bounded backfill uses a multiple of the database lease batch size
+  # (8). If a different budget is requested, complete the lease before exit
+  # rather than strand leased jobs until expiry.
+ print(json.dumps({'progress':call('state'),'completedInRun':processed}),flush=True)
+print(json.dumps({'finished':call('state'),'modelRevision':MODEL_REVISION,'completedInRun':processed}),flush=True)

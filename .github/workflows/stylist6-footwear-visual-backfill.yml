@@ -1,0 +1,45 @@
+name: Stylist 6 bounded footwear visual intelligence
+on:
+  push:
+    branches: [codex/stylist6-visual-first-20261110]
+    paths:
+      - .github/workflows/stylist6-footwear-visual-backfill.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stylist6-bounded-footwear-visual
+  cancel-in-progress: false
+jobs:
+  enrich-footwear:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      STYLIST_VISUAL_WORKER_URL: ${{ secrets.STYLIST_VISUAL_WORKER_URL }}
+      STYLIST_VISUAL_WORKER_TOKEN: ${{ secrets.STYLIST_VISUAL_WORKER_TOKEN }}
+      STYLIST_VISUAL_SKIP_SEED: '1'
+      STYLIST_VISUAL_MAX_IMAGES: '48'
+      STYLIST_VISUAL_RUN_SECONDS: '1800'
+      HF_HUB_DISABLE_PROGRESS_BARS: '1'
+      TOKENIZERS_PARALLELISM: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Confirm narrowly scoped visual-worker credentials
+        run: |
+          test -n "$STYLIST_VISUAL_WORKER_URL"
+          test -n "$STYLIST_VISUAL_WORKER_TOKEN"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: siglip2-75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2-cpu-v1
+      - name: Install pinned local CPU visual model
+        run: |
+          pip install --quiet torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet -r scripts/visual/cloud/requirements.txt
+      - name: Process at most 48 previously queued products, do not seed entire catalog
+        run: python scripts/visual/cloud/worker.py
