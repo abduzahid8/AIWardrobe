@@ -22,7 +22,7 @@ import { createHash } from 'node:crypto';
 import { assessCatalogCategory } from './catalog_category_integrity.mjs';
 import { frColorFromCanonicalUrl } from './merchant_color_fallback.mjs';
 
-export const CATALOG_ADAPTER_VERSION = 'catalog-adapter-v3-merchant-color';
+export const CATALOG_ADAPTER_VERSION = 'catalog-adapter-v4-canonical-display-role';
 
 const has = (text, re) => re.test(text);
 
@@ -469,7 +469,11 @@ export function adaptCatalog(rows) {
       continue;
     }
     items.push(Object.freeze({
-      ...projected, description: row.description || '', type: row.garment_type || projected.macroCategory,
+      // A legacy merchant import can store real trousers as upper_body/tops.
+      // The *admitted, trusted* garment slot is already confirmed above;
+      // never let the stale feed type override that slot in the mobile card.
+      // Keep the raw feed value only in the source row for audit/migrations.
+      ...projected, description: row.description || '', type: projected.macroCategory,
       ...(row.visual_fashion && row.visual_source_hash ? {
         visualFashion: row.visual_fashion, visualSourceHash: row.visual_source_hash,
       } : {}),

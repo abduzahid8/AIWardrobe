@@ -169,7 +169,7 @@ test('color and texture inference covers reference palette words', () => {
 });
 
 test('adapter version is pinned for pilot provenance', () => {
-  assert.equal(CATALOG_ADAPTER_VERSION, 'catalog-adapter-v3-merchant-color');
+  assert.equal(CATALOG_ADAPTER_VERSION, 'catalog-adapter-v4-canonical-display-role');
 });
 
 test('live intelligence hints are honored with provenance, never remapped', async () => {
@@ -327,4 +327,41 @@ test('priceFreshness tiers are bounded: fresh ≤7d, recent ≤45d, stale beyond
   const unknown = projectCatalogItem(uzsRow({ id: 'unknown-1' }));
   assert.equal(unknown.priceAgeDays, null);
   assert.equal(unknown.priceFreshness, 'unknown');
+});
+
+
+test('live intelligence canonical type never exposes H&M suit pants as an upper-body item', () => {
+  const rowWithLegacyCategory = row({
+    id:'hm-1285755005', name:'Slim-Fit Suit Pants', brand:'H&M',
+    category:'tops', garment_type:'upper_body',
+    source_url:'https://www2.hm.com/en_us/productpage.1285755005.html',
+    fashion_slot:'bottom', fashion_subtype:'tailored-trouser',
+  });
+  const { items, bySlotSubtype } = adaptCatalog([rowWithLegacyCategory]);
+  assert.equal(items.length,1);
+  assert.equal(items[0].macroCategory,'bottom');
+  assert.equal(items[0].type,'bottom');
+  assert.equal(items[0].projection.kind,'live_intelligence');
+  assert.equal(bySlotSubtype['bottom/tailored-trouser'],1);
+});
+
+test('legacy imported blazers and coats expose their admitted outerwear slot', () => {
+  const {items} = adaptCatalog([row({
+    id:'reiss-suit-blazer',name:'Wool Single-Breasted Blazer',
+    category:'tops',garment_type:'upper_body',
+    fashion_slot:'outerwear',fashion_subtype:'blazer',
+  })]);
+  assert.equal(items.length,1);
+  assert.equal(items[0].type,'outerwear');
+  assert.equal(items[0].macroCategory,'outerwear');
+});
+
+test('rejects genuine native category conflicts instead of canonicalizing into another role', () => {
+  const {items,skipped} = adaptCatalog([row({
+    id:'bad-native-both',name:'Plain Shoes',
+    category:'shoes',garment_type:'lower_body',
+    fashion_slot:'shoes',fashion_subtype:'loafer',
+  })]);
+  assert.equal(items.length,0);
+  assert.equal(skipped.catalog_category_conflict,1);
 });
