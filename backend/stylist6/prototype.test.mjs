@@ -57,6 +57,26 @@ test('dynamic creative briefs produce three catalog-grounded distinct outfits',a
     for(const item of outfit.items)assert.ok(catalog.some(source=>source.id===item.id));
   }
 });
+test('AI-directed catalog retrieval keeps its exact verified role subtypes instead of substituting unrelated items', async () => {
+  const ai = {id:'ai-director-1',name:'Cream Knit Casual',
+    roles:{top:['fine_knit'],outerwear:['cardigan'],bottom:['chino'],shoes:['loafer']},
+    palette:['cream','brown'],silhouette:'balanced',layerPolicy:'required'};
+  const fashion={prepare:item=>item, family:item=>item.subtype,
+    rankItem:()=>0.8, rankLook:()=>({score:0.82})};
+  const deck = await shortlistRetrievalDeck({
+    ...base, request:{style:'old_money',occasion:'Weekend',sourceMode:'catalog'},
+    creativeDirector:async()=>[ai], options:{fashion,perRole:8,perBrief:30,maxVisual:24},
+  });
+  assert.ok(deck.shortlist.length>=1);
+  for(const look of deck.shortlist){
+    assert.equal(look.briefId,'ai_director_1');
+    for(const item of look.items){
+      assert.ok(ai.roles[item.macroCategory].includes(item.subtype),
+        'AI plan role must not be replaced by an unrelated SKU subtype: '+item.subtype);
+    }
+  }
+});
+
 test('hard budget applies to every complete outfit before visual review',async()=>{
   const result=await proposeVisualFirstDeck({...base,request:{...base.request,budget:{amount:690000,currency:'UZS'}}});
   for(const look of result.outfits)assert.ok(look.items.reduce((sum,item)=>sum+item.price,0)<=690000);

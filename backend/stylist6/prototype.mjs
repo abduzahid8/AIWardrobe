@@ -68,7 +68,11 @@ function getRole(items,brief,slot,cap,rank,fashion,required){
   const locked=fashion?slotItems.filter(i=>required.includes(i.id)):[];
   if(locked.length)return locked;
   const matched=slotItems.filter(i=>brief.roles[slot].includes(i.subtype));
-  const ranked=(fashion&&matched.length<cap?slotItems:matched)
+  // AI Creative Director's inventory-grounded roles are intentional. Do
+  // not quietly replace them with unrelated garment subtypes just to fill
+  // per-role retrieval capacity; fallback house briefs handle empty plans.
+  const strictDirectedRole = /^ai_director_\d+$/.test(text(brief.id));
+  const ranked=(fashion&&matched.length<cap&&!strictDirectedRole?slotItems:matched)
     .map(item=>({item,rank:rank(item,brief)}))
     .sort((a,b)=>b.rank-a.rank||a.item.id.localeCompare(b.item.id))
     .map(({item})=>item);

@@ -22,6 +22,19 @@ const PALETTE = new Set([
   'green', 'khaki', 'camel', 'stone', 'rust',
 ]);
 const SHAPES = new Set(['balanced', 'relaxed', 'tailored']);
+// Fashion shade names are semantically equivalent to their base palette.
+// Canonicalize bounded color vocabulary without inventing garment roles.
+const COLOR_ALIASES = new Map([['ivory','cream'],['off-white','cream'],
+  ['ecru','cream'],['taupe','beige'],['slate','grey'],['camel-brown','brown'],
+  ['chocolate','brown'],['oxblood','burgundy']]);
+function canonicalPaletteColor(value) {
+  const color = safeText(value, 24).toLowerCase().replace(/[\s_]+/g, '-');
+  if (PALETTE.has(color)) return color;
+  if (COLOR_ALIASES.has(color)) return COLOR_ALIASES.get(color);
+  const plain = color.replace(/^(?:light|dark|deep|pale|muted|dusty|soft|mid|warm|cool)-/, '');
+  return PALETTE.has(plain) ? plain : COLOR_ALIASES.get(plain) || null;
+}
+
 const MAX_RESP_BYTES = 24 * 1024;
 const TTL_MS = 10 * 60_000;
 const MAX_CACHE = 64;
@@ -112,8 +125,8 @@ function normalizePlan(row, available, index, temperature) {
   const name = safeText(row.title, 70);
   if (name.length < 4 || /[<>]/.test(name)) return null;
   if (!Array.isArray(row.palette) || row.palette.length < 2 || row.palette.length > 5) return null;
-  const palette = [...new Set(row.palette.map(x => safeText(x, 22).toLowerCase()))];
-  if (palette.length < 2 || palette.some(x => !PALETTE.has(x))) return null;
+  const palette = [...new Set(row.palette.map(canonicalPaletteColor))];
+  if (palette.length < 2 || palette.some(x => !x)) return null;
   if (!row.roles || typeof row.roles !== 'object' || Array.isArray(row.roles)) return null;
   const roles = {};
   for (const slot of SLOTS) {
@@ -146,12 +159,20 @@ export function validateDirectorDirections(data, inventory) {
   if (!inventory || !inventory.available) return [];
   const normalized = data.directions.map((row, i) =>
     normalizePlan(row, inventory.available, i, inventory.weatherCelsius));
-  if (normalized.some(x => !x)) return [];
-  // Distinct planned architectures, not three differently titled clones.
-  const signatures = normalized.map(x => SLOTS
-    .map(slot => x.roles[slot].join(',')).join('|'));
-  if (new Set(signatures).size !== 3) return [];
-  return normalized;
+  // Salvage only independently valid and distinct directions. One malformed
+  // model idea must not discard two excellent, already grounded plans. The
+  // remaining directions come from trusted house briefs and still need visual
+  // approval. We never fabricate or repair invalid product categories.
+  const safe = [];
+  const signatures = new Set();
+  for (const plan of normalized) {
+    if (!plan) continue;
+    const signature = SLOTS.map(slot => plan.roles[slot].join(',')).join('|');
+    if (signatures.has(signature)) continue;
+    signatures.add(signature);
+    safe.push(plan);
+  }
+  return safe;
 }
 
 async function boundedProviderText(response) {
@@ -201,7 +222,8 @@ export async function designCreativeBriefs({
   const running = inFlight.get(key);
   if (running) {
     const outcome = await running;
-    return { ...outcome, status: outcome.briefs.length === 3 ? 'shared' : outcome.status, providerCalls: 0 };
+    return { ...outcome, status: outcome.briefs.length === 3 ? 'shared' :
+      outcome.briefs.length > 0 ? 'shared_partial' : outcome.status, providerCalls: 0 };
   }
   if (activeProviderCalls >= MAX_CONCURRENT_PROVIDER_CALLS)
     return { status: 'load_shed', briefs: [], providerCalls: 0 };
@@ -253,10 +275,10 @@ export async function designCreativeBriefs({
       throw new Error('provider_incomplete');
     const proposed = JSON.parse(choice.message.content);
     const briefs = validateDirectorDirections(proposed, inventory);
-    if (briefs.length !== 3) return { status: 'invalid_plan', briefs: [], providerCalls: 1 };
+    if (!briefs.length) return { status: 'invalid_plan', briefs: [], providerCalls: 1 };
     cache.set(key, { briefs, at: Date.now() });
     while (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value);
-    return { status: 'planned', briefs, providerCalls: 1 };
+    return { status: briefs.length === 3 ? 'planned' : 'planned_partial', briefs, providerCalls: 1 };
   } catch (error) {
     const reason = combinedSignal.aborted ? 'timeout' : 'provider_unavailable';
     return { status: reason, briefs: [], providerCalls: Number(called) };

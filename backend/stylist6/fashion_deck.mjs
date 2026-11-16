@@ -1406,6 +1406,9 @@ export async function recommendFashionDeck({
   // Let a bounded AI Creative Director design the FIRST three architectures,
   // while keeping the established house references as safe fallback choices.
   // These are *plans*, never invented items or guaranteed approved looks.
+  // The retrieval kernel canonicalizes brief IDs (`ai-director-1` ->
+  // `ai_director_1`). Compare canonical IDs or AI candidates become invisible.
+  const canonicalBriefId = value => String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const aiPlans = Array.isArray(aiCreativeBriefs) ? aiCreativeBriefs.slice(0, 3).filter(
     brief => brief?.generatedBy === 's6-creative-director-v1' &&
       brief?.roles && slots.every(slot => Array.isArray(brief.roles[slot]))
@@ -1465,6 +1468,26 @@ export async function recommendFashionDeck({
     }
     const metrics = creativeMetrics(deckContext);
     const leadScore = selected[0].fashion?.score ?? -Infinity;
+    // A Creative Director is not useful if its inventory-grounded designs
+    // are never shown to the visual critic. Reserve at most one challenge per
+    // accepted AI plan BEFORE ordinary lookalike challengers consume the
+    // eight-call NVIDIA limit. All candidates have passed exact SKU, hard
+    // budget/occasion/retail admission and must also pass photo permission.
+    // The AI choices enter critique, NOT the displayed deck. Only the
+    // independent visual gate decides whether a lower-ranked but novel plan
+    // deserves to displace a familiar safe house combination.
+    const aiBriefIds = new Set(aiPlans.map(plan => canonicalBriefId(plan.id)));
+    for (const plan of aiPlans) {
+      if (candidates.length >= MAX_VISUAL_CANDIDATES) break;
+      const planned = selectable.filter(look =>
+        look.briefId === canonicalBriefId(plan.id) && !candidates.some(other => other.id === look.id) &&
+        Number.isFinite(look.fashion?.score))
+        .sort((a,b) => b.fashion.score - a.fashion.score);
+      for (const look of planned.slice(0, 6)) {
+        if (await permitted(look)) { candidates.push(look); break; }
+      }
+    }
+
     // Recompute marginal direction gain after EVERY alternate. The previous
     // one-time four-candidate sort could fill its only spare slot with a
     // redundant outfit, while all genuinely distinct challengers were hidden.
@@ -1586,6 +1609,8 @@ export async function recommendFashionDeck({
         approved: reviewed.diagnostics.visualApproved,
         // Only an approved, actually displayed look has review evidence.
         displayedEvidence: selected.filter(look => visualEvidenceById.has(look.id)).length,
+        aiCreativeDirectorJudged: candidates.filter(look => aiBriefIds.has(look.briefId)).length,
+        aiCreativeDirectorDisplayed: selected.filter(look => aiBriefIds.has(look.briefId)).length,
         fallbackUnreviewed: reviewed.diagnostics.visualValid === 0 || unreviewedFillAdded > 0,
         unreviewedFillAdded,
       };
@@ -1660,6 +1685,8 @@ export async function recommendFashionDeck({
       directions: directions.map((d) => d.id),
       qualifiedDirections: directions.filter((d) => d.qualified).length,
       aiCreativeDirectorBriefs: aiPlans.length,
+      aiCreativeDirectorEligible: selectable.filter(look => aiPlans.some(plan => look.briefId === canonicalBriefId(plan.id))).length,
+      aiCreativeDirectorDisplayed: selected.filter(look => aiPlans.some(plan => look.briefId === canonicalBriefId(plan.id))).length,
       neighborBriefs: neighborHouse.length,
       shortlistMix: { ...layerMix, best: ordered[0] ?? null, top20cutoff: ordered[19] ?? null },
       ...(floor.limited ? { exclusionQualityLimited: true } : {}) },

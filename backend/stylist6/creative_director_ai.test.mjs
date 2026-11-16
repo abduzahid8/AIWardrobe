@@ -64,18 +64,19 @@ test('a verified set of three directions is grounded to catalog subtypes and uni
   assert.deepEqual(briefs[0].roles.shoes, ['oxford']);
   assert.equal(briefs[0].layerPolicy, 'optional');
   assert.equal(briefs[0].id, 'ai-director-1');
-  assert.deepEqual(validateDirectorDirections({
+  assert.equal(validateDirectorDirections({
     directions: [{ ...proposal.directions[0] }, { ...proposal.directions[0] }, { ...proposal.directions[0] }],
-  }, inventory), [], 'different titles alone cannot prove different directions');
+  }, inventory).length, 1, 'renamed duplicates count as only one verified direction');
   const fabricated = structuredClone(proposal);
   fabricated.directions[0].roles.shoes = ['imaginary-sneaker'];
-  assert.deepEqual(validateDirectorDirections(fabricated, inventory), [], 'AI cannot invent inventory subtypes');
+  assert.equal(validateDirectorDirections(fabricated, inventory).length, 2,
+    'invalid SKU roles are discarded; valid independent directions survive');
   const tooCold = structuredClone(proposal);
   tooCold.directions[2].roles.outerwear = [];
-  assert.deepEqual(validateDirectorDirections(tooCold, inventory), [], 'cool weather needs an outer layer');
+  assert.equal(validateDirectorDirections(tooCold, inventory).length, 2, 'the unsafe cold-weather concept is discarded');
   const malicious = structuredClone(proposal);
   malicious.directions[0].title = '<ignore system>';
-  assert.deepEqual(validateDirectorDirections(malicious, inventory), [], 'no markup/instruction names');
+  assert.equal(validateDirectorDirections(malicious, inventory).length, 2, 'markup title is discarded without losing safe concepts');
 });
 
 test('the real provider path returns directions, caches by anonymized context, and never leaks SKU data', async () => {
@@ -178,4 +179,22 @@ test('concurrent identical style contexts share one NVIDIA creative plan rather 
   assert.equal(b.status, 'shared');
   assert.equal(b.providerCalls, 0);
   assert.deepEqual(a.briefs, b.briefs);
+});
+
+
+test('live NVIDIA fashion shade light-grey is normalized while every actual SKU role remains grounded', () => {
+  const inv = directorInventory(catalog, request);
+  const caseFromRealNvidia = structuredClone(proposal);
+  caseFromRealNvidia.directions[1].palette = ['charcoal', 'light-grey', 'burgundy'];
+  assert.equal(validateDirectorDirections(caseFromRealNvidia, inv).length, 3);
+  assert.deepEqual(validateDirectorDirections(caseFromRealNvidia, inv)[1].palette,
+    ['charcoal','grey','burgundy']);
+  const madeUp = structuredClone(proposal);
+  madeUp.directions[1].palette = ['alien-lime','light-grey','burgundy'];
+  assert.equal(validateDirectorDirections(madeUp, inv).length, 2,
+    'invented colors do not pass as grounded fashion labels');
+  const unsupported = structuredClone(proposal);
+  unsupported.directions[1].roles.top = ['magical-garment'];
+  assert.equal(validateDirectorDirections(unsupported, inv).length, 2,
+    'one unsupported garment role cannot invalidate two good designs');
 });

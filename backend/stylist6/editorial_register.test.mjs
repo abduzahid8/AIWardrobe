@@ -75,3 +75,22 @@ test('cool +9C Classic Work does not treat a sleeveless vest as its sole outerwe
   assert.equal(editorialRegisterVeto(candidate,{...context,request:'Please wear my navy vest'}),null);
   assert.equal(editorialRegisterVeto(look('Blue shirt','Navy wool coat','Grey wool trousers','Black Chelsea boots'),context),null);
 });
+
+
+test('Classic Work formality is a whole-outfit silhouette check, not a ban on specific brands or knits', () => {
+  const easy=look('Fine Navy Merino Knit','Navy Wool Zipper Cardigan',
+    'Ultimate Non-Iron Chinos - Navy','Helsinki Leather Penny Loafer');
+  const context={style:'classic',occasion:'Work',sourceMode:'catalog',
+    brief:'Professional polished classic workplace outfit'};
+  assert.equal(editorialRegisterVeto(easy,context),
+    'polished_classic_office_requires_tailored_structure');
+  assert.equal(editorialRegisterVeto(easy,{...context,occasion:'Weekend'}),null);
+  assert.equal(editorialRegisterVeto(easy,{...context,brief:'Relaxed casual office Friday'}),null);
+  assert.equal(editorialRegisterVeto(easy,{...context,sourceMode:'wardrobe'}),null);
+  assert.equal(editorialRegisterVeto(look('Fine Navy Merino Knit','Navy Tailored Wool Blazer',
+    'Beige Chinos','Leather Penny Loafer'),context),null);
+  assert.equal(editorialRegisterVeto(look('White Dress Shirt','Fine Merino Cardigan',
+    'Charcoal Wool Trousers','Black Oxford Leather Shoes'),context),null);
+  assert.equal(editorialRegisterVeto(look('White Dress Shirt','Grey Wool Overcoat',
+    'Beige Chinos','Dark Brown Chelsea Boots'),context),null);
+});

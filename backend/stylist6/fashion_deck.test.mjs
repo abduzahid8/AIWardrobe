@@ -314,6 +314,37 @@ const admittedVisualVerdict = (candidate, overrides = {}) => ({
   ...overrides,
 });
 
+test('real planned AI architectures reach visual evaluation before house challengers fill the eight-call limit', async () => {
+  const aiBrief={id:'ai-director-1',name:'Cream Merino Contemporary',
+    generatedBy:'s6-creative-director-v1',palette:['cream','brown','beige'],silhouette:'balanced',
+    layerPolicy:'required',roles:{top:['fine-knit'],outerwear:['coat'],bottom:['chino'],shoes:['loafer']}};
+  const extra=[
+    garment('ai-knit','Cream Fine Merino Knit','top','fine-knit',{color:'cream'}),
+    garment('ai-coat','Camel Wool Overcoat','outerwear','coat',{color:'brown'}),
+    garment('ai-chino','Beige Tailored Chino','bottom','chino',{color:'beige'}),
+    garment('ai-loafer','Brown Suede Penny Loafers','shoes','loafer',{color:'brown'}),
+  ];
+  let judged=[];
+  const result=await recommendFashionDeck({
+    ...base, catalog:[...products,...extra], aiCreativeBriefs:[aiBrief],referenceBriefs:[],
+    request:{sourceMode:'catalog',style:'old_money',occasion:'Weekend',
+      weather:{temp:17},optionalLayer:true,budget:{amount:1500000,currency:'UZS'},
+      preferences:{},requiredIds:[]},
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async candidates=>{judged=candidates;return candidates.map(x=>admittedVisualVerdict(x));},
+  });
+  assert.equal(result.diagnostics.aiCreativeDirectorBriefs,1);
+  assert.ok(result.diagnostics.aiCreativeDirectorEligible>0,'real role match creates a feasible AI outfit');
+  // The hosted critic only receives product photos/names, not trusted
+  // internal plan provenance, which is recorded in server diagnostics.
+  assert.ok(result.diagnostics.visualReviewCoverage.aiCreativeDirectorJudged>0,
+    'validated AI plans must not disappear before whole-look visual review');
+  assert.ok(judged.some(look=>look.products.some(it=>it.id==='ai-knit')),
+    'actual AI-plan merchant photos are included in the critic batch');
+  assert.ok(judged.length<=8,'still bounded by hosted visual model cap');
+  for(const look of result.outfits)assert.ok(look.items.every(it=>it.isShopItem));
+});
+
 test('cloud full-deck review judges every authorized displayed card in one bounded batch', async () => {
   const baseline = await recommendFashionDeck(base);
   let reviewCalls = 0, reviewed = [];

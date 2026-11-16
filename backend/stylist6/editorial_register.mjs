@@ -35,6 +35,29 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '', reque
   const bottom = described(slot(look, 'bottom'));
   const shoes = described(slot(look, 'shoes'));
   if (!top || !bottom || !shoes) return null;
+  // Generalizable formality floor for a *polished Classic Work* request.
+  // A coordinated knit + zip cardigan + chinos + leather loafers can look
+  // attractive on a flat lay, yet is too casual when the user asks for
+  // professional tailored office styling. Judge the WHOLE outfit structure,
+  // not a named SKU or a particular brand. Explicit casual-Friday requests
+  // and personally pinned owned clothing are not blocked.
+  const classicPolishedOffice = sourceMode === 'catalog' && norm(style) === 'classic' &&
+    /\b(work|office|business|meeting|conference)\b/.test(norm(occasion)) &&
+    !/\b(casual|relaxed|informal|dress-down)\b/i.test(`${brief} ${request}`);
+  if (classicPolishedOffice) {
+    const outer = slot(look, 'outerwear');
+    const lower = slot(look, 'bottom');
+    const structuralLayer = /^(blazer|suit-jacket|coat|overcoat|topcoat|peacoat|trench|tailored-jacket)$/.test(
+      String(outer?.subtype || '').toLowerCase()) ||
+      /\b(suit jacket|blazer|overcoat|wool coat|topcoat|peacoat|trench coat)\b/i.test(layer);
+    const structuralBottom = /^(tailored-trouser|dress-trouser|suit-trouser|wool-trouser|pleated-trouser)$/.test(
+      String(lower?.subtype || '').toLowerCase()) ||
+      /\b(suit trousers?|wool trousers?|tailored trousers?|dress trousers?|pleated trousers?|wool flannel pants)\b/i.test(bottom);
+    const relaxedTop = /\b(knit|knitted|sweater|turtleneck|polo|tee|jersey|half[- ]?zip|quarter[- ]?zip)\b/i.test(top) ||
+      /^(fine-knit|sweater|polo|t-shirt|henley)$/.test(String(slot(look, 'top')?.subtype || '').toLowerCase());
+    if (!structuralLayer && !structuralBottom && relaxedTop)
+      return 'polished_classic_office_requires_tailored_structure';
+  }
   const tailoring = exact(bottom, /\b(tailored|suit|dress trouser|pleated|smart stretch|wool trouser|slacks)\b/);
   const blazer = exact(layer, /\b(blazer|suit jacket|sartorial)\b/);
   const formalShoes = exact(shoes, /\b(oxford|derby|brogue|formal|dress shoe|dress loafers?|leather loafers?)\b/);
