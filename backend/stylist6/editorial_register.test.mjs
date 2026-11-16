@@ -63,3 +63,15 @@ test('animal prints and comfort/suede suit clashes are vetoed on elevated looks'
     null,
   );
 });
+
+test('cool +9C Classic Work does not treat a sleeveless vest as its sole outerwear', () => {
+  const candidate=look('Judd Regular-Fit Striped Shirt','Navy Rib Vest',
+    'Smart Textured Pants - Steel Blue','Astor Chelsea Boot Black');
+  const context={style:'classic',occasion:'Work',sourceMode:'catalog',weather:{temp:9}};
+  assert.equal(editorialRegisterVeto(candidate,context),'cool_weather_sleeveless_single_layer');
+  assert.equal(editorialRegisterVeto(candidate,{...context,weather:{temp:-4}}),'cool_weather_sleeveless_single_layer');
+  assert.equal(editorialRegisterVeto(candidate,{...context,weather:{temp:16}}),null);
+  assert.equal(editorialRegisterVeto(candidate,{...context,sourceMode:'wardrobe'}),null);
+  assert.equal(editorialRegisterVeto(candidate,{...context,request:'Please wear my navy vest'}),null);
+  assert.equal(editorialRegisterVeto(look('Blue shirt','Navy wool coat','Grey wool trousers','Black Chelsea boots'),context),null);
+});

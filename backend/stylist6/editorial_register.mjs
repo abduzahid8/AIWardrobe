@@ -16,10 +16,20 @@ const exact = (value, regex) => regex.test(value);
 const elevatedStyle = /^(classic|old money|semi classic|smart casual|business casual)$/;
 const elevatedOccasion = /\b(work|office|business|meeting|date|dinner|romantic|cocktail|theater|opera|wedding)\b/;
 
-export function editorialRegisterVeto(look, { style, occasion, brief = '', request = '' } = {}) {
+export function editorialRegisterVeto(look, { style, occasion, brief = '', request = '', weather = null, sourceMode = null } = {}) {
   const isElevated = elevatedStyle.test(norm(style)) &&
     (elevatedOccasion.test(norm(occasion)) || elevatedOccasion.test(norm(brief)));
   if (!isElevated) return null;
+  // Actual full-catalog Classic / Work at +9C: "Navy Rib Vest" was chosen
+  // as the ONLY outer layer. A vest or gilet alone cannot protect in cool
+  // weather. The user can still explicitly request their own waistcoat.
+  const temperature = Number.isFinite(weather?.temp) ? weather.temp : null;
+  if (sourceMode === 'catalog' && temperature !== null && temperature < 12 &&
+      !/\b(?:vest|gilet|waistcoat|sweater vest)\b/i.test(`${brief} ${request}`)) {
+    const layerItem = slot(look, 'outerwear');
+    if (layerItem && /\b(?:vests?|gilets?|waistcoats?)\b/i.test(described(layerItem)))
+      return 'cool_weather_sleeveless_single_layer';
+  }
   const top = described(slot(look, 'top'));
   const layer = described(slot(look, 'outerwear'));
   const bottom = described(slot(look, 'bottom'));
