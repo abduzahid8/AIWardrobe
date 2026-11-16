@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, namedCardiganBriefMismatch } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -49,6 +49,26 @@ test('workout catalog admission rejects real-world polo, jeans, and casual jacke
   assert.equal(truth('RETRO STYLE TRAINERS','shoes'),'unverified_workout_footwear');
   assert.equal(workoutItemTruthReason({name:'Rust Linen Polo Shirt',macroCategory:'top'},
     {occasion:'Casual',style:'streetwear'}),null,'do not alter non-workout styling');
+});
+
+test('Old Money catalog excludes generic hoodies while respecting the owner or an explicit hoodie request', () => {
+  const hoodie=garment('zara-hoodie','Classic Wool-Blend Knit Hoodie','outerwear','hoodie');
+  const cardigan=garment('genuine-cardigan','Merino Wool Button Cardigan','outerwear','cardigan');
+  const context={sourceMode:'catalog',style:'old_money',occasion:'Casual',request:''};
+  assert.equal(quietLuxuryHoodieReason(hoodie,{subtype:'hoodie'},context),'quiet_luxury_hoodie_mismatch');
+  assert.equal(quietLuxuryHoodieReason(cardigan,{subtype:'cardigan'},context),null);
+  assert.equal(quietLuxuryHoodieReason(hoodie,{subtype:'hoodie'}, {...context,request:'I want a hoodie'}),null);
+  assert.equal(quietLuxuryHoodieReason(hoodie,{subtype:'hoodie'}, {...context,sourceMode:'wardrobe'}),null);
+  assert.equal(quietLuxuryHoodieReason(hoodie,{subtype:'hoodie'}, {...context,style:'streetwear'}),null);
+});
+test('named Cardigan direction cannot silently become a hooded knit outfit', () => {
+  const context={sourceMode:'catalog',style:'old_money',occasion:'Casual'};
+  const brief={name:'Burgundy preppy cardigan',roles:{outerwear:['cardigan']}};
+  assert.equal(namedCardiganBriefMismatch([garment('h','Classic Wool-Blend Knit Hoodie','outerwear','hoodie')],brief,context),true);
+  assert.equal(namedCardiganBriefMismatch([garment('c','Merino Button Cardigan','outerwear','cardigan')],brief,context),false);
+  assert.equal(namedCardiganBriefMismatch([],brief,context),true);
+  assert.equal(namedCardiganBriefMismatch([],brief,context,['pinned-owned']),false);
+  assert.equal(namedCardiganBriefMismatch([],brief,{...context,sourceMode:'wardrobe'}),false);
 });
 
 test('subzero catalog outfits cannot treat a down vest as a protective coat', () => {

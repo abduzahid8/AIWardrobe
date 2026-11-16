@@ -792,6 +792,31 @@ export function rerankFashionCandidates(candidates, context = {}) {
   });
 }
 
+/** An Old Money concept is not permission to show a generic sports hoodie.
+ * User-requested hoodies, locked garments and owned wardrobe remain intact.
+ */
+export function quietLuxuryHoodieReason(item, descriptor, context) {
+  const style = String(context?.style || '').toLowerCase().replace(/[\s-]+/g,'_');
+  if(context?.sourceMode !== 'catalog' || style !== 'old_money' ||
+      item?.macroCategory !== 'outerwear' ||
+      /\bhood(?:ie|y)\b|худи/i.test(String(context?.request || ''))) return null;
+  const title = String(item?.name || '');
+  return descriptor?.subtype === 'hoodie' || /\bhood(?:ies|ie|y)\b|худи/i.test(title)
+    ? 'quiet_luxury_hoodie_mismatch' : null;
+}
+
+/** Do not market a hoodie as a cardigan simply because the reference photo
+ * requested a cardigan and the rest of the pieces look pleasant together.
+ * Named garment directions must be substantiated by the actual product.
+ */
+export function namedCardiganBriefMismatch(items, brief, context, requiredIds = []) {
+  if(context?.sourceMode !== 'catalog' || requiredIds?.length ||
+      !/\bcardigan\b/i.test(String(brief?.name || '')) ||
+      !brief?.roles?.outerwear?.includes('cardigan')) return false;
+  const layer = (items || []).find(item => item?.macroCategory === 'outerwear');
+  return !layer || describeGarment(layer).subtype !== 'cardigan';
+}
+
 function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
   const contextScores = new WeakMap(), personalScores = new WeakMap(), coherent = new Map();
   const feedbackScores = new WeakMap();
@@ -815,6 +840,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           rejectForStyleOccasion(prepared, context.style, context.occasion) ||
           rejectForUnsuitableDateNight(descriptor, context, prepared) ||
           rejectQuietSmartLeisureLayer(descriptor, context, prepared) ||
+          quietLuxuryHoodieReason(prepared, descriptor, context) ||
           rejectPolishedContextMismatch(descriptor, context, prepared)) return null;
       if (descriptor.slot === 'shoes') {
         shoePool[trainerFootwearDescriptor(descriptor, prepared) ? 'trainer' : 'nonTrainer'] += 1;
@@ -852,6 +878,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
         + FEEDBACK_ITEM_SEED_WEIGHT * (feedbackScores.get(item) || 0);
     },
     rankLook(items, brief) {
+      if (namedCardiganBriefMismatch(items, brief, context, extras.requiredIds || [])) return null;
       const identity = JSON.stringify([brief?.id || null, ...items.map(({ id }) => id).sort()]);
       if (coherent.has(identity)) return coherent.get(identity);
       const assessment = outfitCoherence(items, context);
@@ -943,6 +970,7 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           recentStylingPenalty(items, recentSignatures) - pricing.penalty - freshness -
           registerPenalty - basePolishPenalty,
         dimensions: { ...dimensions, palette },
+        unbudgetedPricePenalty: pricing.penalty,
         evidence: pricing.flagged || freshness > 0 || registerPenalty > 0 || basePolishPenalty > 0
           ? [...assessment.evidence,
             ...(pricing.flagged ? ['unbudgeted_premium_selection_dampened'] : []),
@@ -1263,7 +1291,10 @@ export async function recommendFashionDeck({
     if (candidates.length) {
       const reviewed = await evaluateVisualShortlist(
         { ...retrieval, shortlist: candidates }, request, visualCritic,
-        { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds, requireDistinctArchitectures: true },
+        { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds,
+          requireDistinctArchitectures: true,
+          preferValue: request.sourceMode === 'catalog' && !request.budget &&
+            !requiredIds.length && !explicitlyRequestsLuxury(context) },
       );
       visualQualityDecisions = Array.isArray(reviewed.diagnostics.visualQualityDecisions)
         ? reviewed.diagnostics.visualQualityDecisions.slice(0, MAX_VISUAL_CANDIDATES) : [];

@@ -219,6 +219,30 @@ test('visual deck globally finds three independent directions instead of anchori
   assert.ok(result.outfits.every(x=>Array.isArray(x.evidence)));
 });
 
+test('model-approved looks favor comparable affordable outfits unless user requests luxury',()=>{
+  const kinds=[['shirt','blazer','chino','loafer'],['polo','cardigan','tailored-trouser','derby'],
+    ['fine-knit','coat','jeans','chelsea'],['t-shirt','overshirt','trouser','oxford']];
+  const looks=kinds.map((k,i)=>({id:`cost-${i}`,briefId:`cost-${i}`,brief:{id:`cost-${i}`,name:`direction ${i}`},
+    fashion:{unbudgetedPricePenalty:i===0?0.18:0},
+    items:['top','outerwear','bottom','shoes'].map((slot,j)=>({
+      id:`p-${i}-${slot}`,name:`${k[j]} ${i}`,macroCategory:slot,subtype:k[j],
+      color:['navy','cream','brown','grey'][i],texture:['cotton','wool','leather','suede'][j]})),
+  }));
+  const verdicts=looks.map((look,i)=>({candidateId:look.id,visualCohesion:i===0?0.95:0.91,
+    referenceFidelity:i===0?0.95:0.91,styleFit:i===0?0.95:0.91,occasionFit:i===0?0.95:0.91,
+    formalityFit:i===0?0.95:0.91,confidence:0.96,reject:false,
+    evidence:['outfit proportions','styling direction','shoe to trouser proportions']}));
+  const input={generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}};
+  const base={target:3,minNovelty:.01,requireDistinctArchitectures:true};
+  const value=selectVisualDeck(input,verdicts,{...base,preferValue:true});
+  assert.equal(value.status,'complete');
+  assert.ok(!value.outfits.some(x=>x.id==='cost-0'),
+    'an extreme premium price should lose a close visual-quality contest when three approved alternatives exist');
+  const luxury=selectVisualDeck(input,verdicts,{...base,preferValue:false});
+  assert.ok(luxury.outfits.some(x=>x.id==='cost-0'),
+    'explicit luxury request disables the value adjustment');
+});
+
 test('approved three-look deck favors distinct main tops within a small visual-quality tradeoff', () => {
   const garment=(id,slot,subtype,color) => ({ id,macroCategory:slot,
     subtype,color,texture:'cotton',name:id });

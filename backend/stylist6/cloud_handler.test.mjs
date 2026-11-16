@@ -800,6 +800,28 @@ test('explicit user anchor keeps the original catalog sampling route', async () 
   assert.ok(result.body.outfits.every(look => look.items.some(item => item.id === 'top-1')));
 });
 
+test('brand-balanced shoes expose new makers instead of Geox / two-vendor monopolies', async () => {
+  const {balancedShoeCatalogWindow}=await import('./cloud_handler.mjs');
+  const brands=['Jack Erwin','BLKBRD','Cobbler Union','Velasca','Beckett Simonon',
+    'TLB Mallorca','Meermin','Herring','Septième Largeur','Loake','Zara','Geox',
+    'Shoepassion','Grant Stone','Barker','Carlos Santos','Henry Stevens','MANGO','ECCO','Wildsmith'];
+  const rows=brands.flatMap((brand,j)=>Array.from({length:20},(_,i)=>({
+    id:`shoe-${j}-${i}`,brand, fashion_intelligence:{descriptor:{subtype:i===19?'unknown':'loafer'}},
+  })));
+  // A discovery index organized by manufacturer used to put 20 items from
+  // the same source in front of every other brand.
+  const balanced=balancedShoeCatalogWindow(rows,100);
+  const counts=new Map();
+  for(const row of balanced)counts.set(row.brand,(counts.get(row.brand)||0)+1);
+  assert.equal(balanced.length,100);
+  assert.equal(counts.size,20);
+  assert.ok(Math.max(...counts.values())<=5);
+  assert.ok(balanced.every(x=>rows.includes(x)));
+  assert.deepEqual(balancedShoeCatalogWindow([...rows,rows[0]],100),balanced,
+    'aliases of the same source SKU never increase coverage');
+  assert.equal(balancedShoeCatalogWindow([],100).length,0);
+});
+
 test('catalog discovery RPC accepts only validated hex seed and stays within 100 per slot', async (t) => {
   const { createCloudIo } = await import('./cloud_handler.mjs');
   const seen = [];
@@ -810,8 +832,9 @@ test('catalog discovery RPC accepts only validated hex seed and stays within 100
   const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'server', supabaseJs: {} });
   const hex = 'a1b2c3d4e5f60708';
   assert.deepEqual(await io.fetchShopRows(hex), []);
-  assert.equal(seen.length, 4);
+  assert.equal(seen.length, 6);
   assert.ok(seen.every(row => row.p_seed.endsWith(':' + hex) && row.p_limit === 100));
+  assert.deepEqual(seen.filter(row=>row.p_slot==='shoes').map(row=>row.p_offset),[0,100,200]);
   seen.length = 0;
   await io.fetchShopRows('x'.repeat(256));
   assert.ok(seen.every(row => /^s6cloud:(top|bottom|shoes|outerwear)$/.test(row.p_seed)));
@@ -842,7 +865,7 @@ test('cloud discovery attaches bounded live import observations to matching SKU 
   const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon',
     serviceKey: 'server', supabaseJs: {} });
   const rows = await io.fetchShopRows();
-  assert.equal(calls.discovery, 4);
+  assert.equal(calls.discovery, 6);
   assert.equal(calls.observations, 1);
   assert.equal(rows.length, SHOP.length);
   assert.ok(rows.every(row => row.last_seen_at === observed));
@@ -1508,7 +1531,7 @@ test('budgeted unanchored cloud discovery forwards budget, currency, and FX rate
   const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'server', supabaseJs: {} });
   const rates = { UZS: 1, USD: 12800, EUR: 13800, GBP: 16200 };
   await io.fetchShopRows(null, { budget: 2500000, currency: 'UZS', rates });
-  assert.equal(seen.length, 4);
+  assert.equal(seen.length, 6);
   assert.ok(seen.every((row) => row.p_context?.budget === 2500000 && row.p_context?.currency === 'UZS' && row.p_context?.rates?.USD === 12800));
 
   const now = Date.now();
@@ -1654,7 +1677,7 @@ test('crash-window recovery: deadline aborts slow provider with 504 stylist6_tim
   assert.equal(killRes.body.visualReceipt.policy, 'server_killswitch');
 });
 
-test('real workout catalog discovery retrieves verified training products first without exceeding four bounded slot windows', async()=>{
+test('real workout catalog discovery prioritizes training gear and preserves the four 100-SKU windows', async()=>{
   const { createCloudIo }=await import('./cloud_handler.mjs');
   const originalFetch=globalThis.fetch;
   const searched=[];
@@ -1674,7 +1697,7 @@ test('real workout catalog discovery retrieves verified training products first 
   try{
     const io=createCloudIo({url:'https://example.supabase.co',anonKey:'public',serviceKey:'server',supabaseJs:{}});
     const athletic=await io.fetchShopRows('a'.repeat(16),null,'workout');
-    assert.equal(searched.length,9,'four base plus five targeted, never per-user arbitrary search');
+    assert.equal(searched.length,11,'six bounded catalog pages plus five targeted search terms');
     assert.deepEqual(searched.filter(x=>x.p_search).map(x=>`${x.p_slot}:${x.p_search}`),[
       'top:training','bottom:jogger','shoes:running','shoes:training','outerwear:training',
     ]);
@@ -1690,7 +1713,7 @@ test('real workout catalog discovery retrieves verified training products first 
     assert.equal(athletic.filter(x=>x.id.startsWith('outerwear-')).length,100);
     searched.length=0;
     const winter=await io.fetchShopRows('a'.repeat(16),null,'cold');
-    assert.equal(searched.length,7,'four standard plus three targeted snow-friendly queries');
+    assert.equal(searched.length,9,'six standard pages plus three snow-friendly queries');
     assert.deepEqual(searched.filter(x=>x.p_search).map(x=>`${x.p_slot}:${x.p_search}`),[
       'outerwear:puffer','outerwear:coat','shoes:boot',
     ]);
@@ -1699,7 +1722,7 @@ test('real workout catalog discovery retrieves verified training products first 
     assert.ok(winter.some(x=>x.id==='shoes-boot-0'));
     searched.length=0;
     const everyday=await io.fetchShopRows('a'.repeat(16),null,null);
-    assert.equal(searched.length,4);
+    assert.equal(searched.length,6);
     assert.ok(searched.every(x=>x.p_search==='' && !x.p_context));
     assert.equal(everyday.length,400);
   }finally{globalThis.fetch=originalFetch;}

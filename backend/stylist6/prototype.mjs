@@ -397,6 +397,15 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
   // visual quality with bounded diversity. Preserve the earlier candidate
   // on a true <=0.015 single-look near tie.
   let selected=[],bestUtility=-Infinity;
+  // NVIDIA certifies style, not financial suitability. Once every look
+  // cleared the model quality floor, use the server's source-price evidence
+  // as a bounded tie-break. Never impose a hidden user budget or alter a
+  // deliberately requested luxury/anchored outfit.
+  const valuePenalty = look => options.preferValue===true
+    ? 0.72 * Math.max(0, Math.min(0.18,
+      Number.isFinite(look?.fashion?.unbudgetedPricePenalty)
+        ? look.fashion.unbudgetedPricePenalty : 0)) : 0;
+  const visualUtility = look => accepted.get(look.id).quality - valuePenalty(look);
   const anchorSet=new Set((options.requiredIds||[]).map(String));
   const nonAnchorSlotKeys=(look,slot)=>new Set(
     (look?.items||[])
@@ -439,12 +448,12 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       const difference=Math.min(...deck.map(other=>novelty(c,other)));
       if(difference<(options.minNovelty??0.30)||difference===0)continue;
       const repeats=deck.some(other=>other.briefId===c.briefId);
-      consider([...deck,c],utility+accepted.get(c.id).quality+0.18*difference-(repeats?0.10:0)+diversityAdjustment(c,deck));
+      consider([...deck,c],utility+visualUtility(c)+0.18*difference-(repeats?0.10:0)+diversityAdjustment(c,deck));
     }
   }
   for(const seed of eligible){
     const preferredNearTie=seed===first?VISUAL_NEAR_TIE:0;
-    consider([seed],accepted.get(seed.id).quality+preferredNearTie);
+    consider([seed],visualUtility(seed)+preferredNearTie);
   }
   return {generationVersion,
     status:selected.length===target?'complete':selected.length?'distinct_inventory_limited':'no_verified_looks',

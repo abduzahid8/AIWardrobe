@@ -50,12 +50,50 @@ const QUOTA_FEATURE = 'aiw-stylist6-staging';
 const RATE_LIMIT_PER_MINUTE = 10;
 const CATALOG_SLOTS = ['top', 'bottom', 'shoes', 'outerwear'];
 const CATALOG_PER_SLOT = 100;
+// Shop discovery returns 100 per RPC. Only the shoe lane takes two extra
+// pages; hydration and inference remain capped at 100 verified shoes.
+const SHOE_DISCOVERY_PAGES = 3;
 const WARDROBE_PAGE = 500;
 const VISUAL_PROFILE_CHUNK = 100;
 const PRODUCT_FETCH_TIMEOUT_MS = 8000;
 const MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
 const REQUEST_TIMEOUT_MS = 50_000;
+
+/** Diverse merchant offers, not 40 shoes from one maker. Input is ONLY
+ * server-returned catalog RPC rows. Stable round-robin by manufacturer
+ * preserves each vendor's internal relevance/price order and keeps the
+ * same 100-SKU hydration budget. Unknown types follow classified shoes
+ * within their manufacturer, without being relabelled as known fashion.
+ */
+export function balancedShoeCatalogWindow(rows, limit=CATALOG_PER_SLOT) {
+  if (!Array.isArray(rows) || !Number.isInteger(limit) || limit<1 || limit>CATALOG_PER_SLOT) return [];
+  const byBrand=new Map(),seen=new Set();
+  for(const row of rows){
+    if(!row?.id || seen.has(String(row.id)))continue;
+    seen.add(String(row.id));
+    const brand=String(row.brand||'unbranded').trim().toLowerCase();
+    if(!byBrand.has(brand))byBrand.set(brand,[]);
+    byBrand.get(brand).push(row);
+  }
+  const groups=[...byBrand.values()].map(group=>group.sort((a,b)=>{
+    const aUnknown=(a?.fashion_intelligence?.descriptor?.subtype||a?.fashion_subtype||'unknown')==='unknown';
+    const bUnknown=(b?.fashion_intelligence?.descriptor?.subtype||b?.fashion_subtype||'unknown')==='unknown';
+    return Number(aUnknown)-Number(bUnknown);
+  }));
+  const balanced=[];
+  while(balanced.length<limit){
+    let progress=false;
+    for(const group of groups){
+      if(!group.length)continue;
+      const row=group.shift();
+      balanced.push(row);progress=true;
+      if(balanced.length>=limit)break;
+    }
+    if(!progress)break;
+  }
+  return balanced;
+}
 
 const fail = (code, status, extra = {}) => ({
   status,
@@ -285,7 +323,13 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         { slot: 'outerwear', search: 'coat', limit: 32 },
         { slot: 'shoes', search: 'boot', limit: 25 },
       ] : [];
-      const queries = [...workouts, ...coldWeather, ...CATALOG_SLOTS.map(slot => ({ slot, search: '', limit: CATALOG_PER_SLOT }))];
+      const queries = [
+        ...workouts, ...coldWeather,
+        ...CATALOG_SLOTS.map(slot => ({ slot, search: '', limit: CATALOG_PER_SLOT, offset:0 })),
+        ...Array.from({length:SHOE_DISCOVERY_PAGES-1},(_,i)=>({
+          slot:'shoes',search:'',limit:CATALOG_PER_SLOT,offset:(i+1)*CATALOG_PER_SLOT,
+        })),
+      ];
       const slotBatches = await Promise.all(queries.map(async (query) => {
         const rpcBody = {
           p_slot: query.slot,
@@ -294,7 +338,7 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
             ? (safeSeed ? `s6cloud:${query.slot}:${query.search}:${safeSeed}` : `s6cloud:${query.slot}:${query.search}`)
             : (safeSeed ? `s6cloud:${query.slot}:${safeSeed}` : `s6cloud:${query.slot}`),
           p_limit: query.limit,
-          p_offset: 0,
+          p_offset: query.offset || 0,
           ...(hasContext ? { p_context: localContext } : {}),
         };
         const response = await fetch(`${url}/rest/v1/rpc/catalog_discovery_candidates`, {
@@ -302,10 +346,21 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
           headers: { ...authHeaders(serviceKey), Authorization: `Bearer ${serviceKey}` },
           body: JSON.stringify(rpcBody),
         });
-        return { slot: query.slot, data: await check(response, 'stylist6_catalog_unavailable') };
+        return { slot: query.slot, search:query.search, data: await check(response, 'stylist6_catalog_unavailable') };
       }));
+      // Search-specific workout / winter shoes are kept first; generic shoes
+      // are selected from 300 real source rows with brand balance. Other
+      // garment lanes keep their original deterministic order and 100 cap.
+      const focusedShoes=slotBatches.filter(b=>b.slot==='shoes' && b.search)
+        .flatMap(b=>Array.isArray(b.data)?b.data:[]);
+      const genericShoes=slotBatches.filter(b=>b.slot==='shoes' && !b.search)
+        .flatMap(b=>Array.isArray(b.data)?b.data:[]);
+      const admittedBatches=[...slotBatches.filter(b=>b.slot!=='shoes'),{
+        slot:'shoes',data:[...focusedShoes,
+          ...balancedShoeCatalogWindow(genericShoes,CATALOG_PER_SLOT)],
+      }];
       const bySlot = Object.fromEntries(CATALOG_SLOTS.map(slot => [slot, 0]));
-      for (const { slot, data } of slotBatches) {
+      for (const { slot, data } of admittedBatches) {
         for (const row of Array.isArray(data) ? data : []) {
           if (bySlot[slot] >= CATALOG_PER_SLOT) break;
           if (row && row.id && !rows.has(String(row.id))) {
