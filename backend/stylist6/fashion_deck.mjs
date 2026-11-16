@@ -1037,6 +1037,7 @@ export function rankVisualChallengerPool(entries) {
   return [...entries]
     .sort((a,b) => (b.rescueGain || 0) - (a.rescueGain || 0) ||
       (b.capacityGain || 0) - (a.capacityGain || 0) ||
+      (b.unseenTop || 0) - (a.unseenTop || 0) ||
       b.look.fashion.score - a.look.fashion.score ||
       b.difference - a.difference || String(a.look.id).localeCompare(String(b.look.id)))
     .map(({look}) => look);
@@ -1215,6 +1216,10 @@ export async function recommendFashionDeck({
       const current = candidates.length ? candidates : selected;
       const capacity = visualArchitectureCapacity(current, requiredIds);
       const rescueTriples = visualRescueTripleCount(current, requiredIds);
+      const pinned = new Set(requiredIds.map(String));
+      const usedTopIds = new Set(current.flatMap(({ items }) => (items || [])
+        .filter(it => it.macroCategory === 'top' && !pinned.has(String(it.id)))
+        .map(it => String(it.id))));
       const extras = rankVisualChallengerPool(selectable
         .filter(look => !candidates.some(chosen => chosen.id === look.id) &&
           Number.isFinite(look.fashion?.score) &&
@@ -1228,6 +1233,8 @@ export async function recommendFashionDeck({
           look,
           capacityGain: visualArchitectureCapacity([...current, look], requiredIds) - capacity,
           rescueGain: visualRescueTripleCount([...current, look], requiredIds) - rescueTriples,
+          unseenTop: look.items.some(it => it.macroCategory === 'top' &&
+            !pinned.has(String(it.id)) && !usedTopIds.has(String(it.id))) ? 1 : 0,
           difference: Math.min(...current.map(other =>
             directionDifference(other, look, metrics.featuresOf, metrics.featureDistance).distance)),
         }))

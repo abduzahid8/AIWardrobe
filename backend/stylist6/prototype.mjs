@@ -409,7 +409,10 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       const cur=nonAnchorSlotKeys(look,slot);
       if(!cur.size)continue;
       const prev=new Set(deck.flatMap(d=>[...nonAnchorSlotKeys(d,slot)]));
-      if([...cur].some(k=>prev.has(k)))adj-=0.04;
+      // Repeating the hero shirt across separate looks is visually more
+      // noticeable than recycling trousers. Prefer different verified tops
+      // when they clear the same independent-look and model-quality gates.
+      if([...cur].some(k=>prev.has(k)))adj-=slot==='top'?0.14:0.04;
     }
     const shoeKeys=nonAnchorSlotKeys(look,'shoes');
     if(shoeKeys.size){

@@ -123,6 +123,16 @@ test('fourth visual candidate unlocks genuinely distinct three-look directions o
   assert.equal(rankVisualChallengerPool(candidates)[0].id,architectural.id);
 });
 
+test('visual challenger rank prefers a genuinely unseen main garment after rescue capacity', () => {
+  const look=(id,score)=>({id,fashion:{score}});
+  const duplicate={look:look('same-top',.94),rescueGain:1,capacityGain:0,unseenTop:0,difference:.4};
+  const newTop={look:look('new-top',.89),rescueGain:1,capacityGain:0,unseenTop:1,difference:.2};
+  assert.equal(rankVisualChallengerPool([duplicate,newTop])[0],newTop.look);
+  const essential={look:look('structural-break',.85),rescueGain:2,capacityGain:0,unseenTop:0,difference:.2};
+  assert.equal(rankVisualChallengerPool([newTop,essential])[0],essential.look,
+    'ability to make three independent outfits outranks top novelty');
+});
+
 test('fourth visual challenger favors safe whole-look quality over extreme novelty', () => {
   const options=[
     {look:{id:'eccentric',fashion:{score:0.74}},difference:0.92},

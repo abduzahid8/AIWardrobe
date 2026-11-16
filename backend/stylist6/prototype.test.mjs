@@ -219,6 +219,37 @@ test('visual deck globally finds three independent directions instead of anchori
   assert.ok(result.outfits.every(x=>Array.isArray(x.evidence)));
 });
 
+test('approved three-look deck favors distinct main tops within a small visual-quality tradeoff', () => {
+  const garment=(id,slot,subtype,color) => ({ id,macroCategory:slot,
+    subtype,color,texture:'cotton',name:id });
+  const make=(id,score,top,outer,bottom,shoes)=>({
+    id,briefId:id,brief:{id,name:id},
+    items:[garment(top,'top','shirt','cream'),
+      garment('outer-'+id,'outerwear',outer,'navy'),
+      garment('bottom-'+id,'bottom',bottom,'brown'),
+      garment('shoe-'+id,'shoes',shoes,'black')],
+    visualScore:score,
+  });
+  const looks=[
+    make('hero',.96,'hero-shirt','blazer','chino','loafer'),
+    make('repeat',.94,'hero-shirt','cardigan','trouser','derby'),
+    make('knit',.93,'knit-top','coat','chino','oxford'),
+    make('fresh',.89,'new-shirt','overshirt','trouser','chelsea'),
+  ];
+  const approved=looks.map(look=>({candidateId:look.id,visualCohesion:look.visualScore,
+    referenceFidelity:look.visualScore,styleFit:look.visualScore,occasionFit:look.visualScore,
+    formalityFit:look.visualScore,confidence:.96,reject:false,
+    evidence:['top and bottom complement','layer and silhouette balanced','footwear appropriate']}));
+  const r=selectVisualDeck({generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}},
+    approved,{target:3,minNovelty:.1,requireDistinctArchitectures:true});
+  assert.equal(r.status,'complete');
+  assert.equal(r.outfits.length,3);
+  const tops=r.outfits.map(l=>l.items.find(i=>i.macroCategory==='top')?.id);
+  assert.equal(new Set(tops).size,3,
+    'top reuse should lose a small near-quality tie when three independent approved tops exist');
+  assert.ok(r.outfits.every(l=>l.visualQuality>=.68));
+});
+
 test('joint selection keeps the strongest first look and avoids a second look that blocks a full deck',()=>{
   const slots=['top','outerwear','bottom','shoes'];
   const looks=[[0,0,0,0],[1,2,0,0],[1,1,0,0],[1,2,0,1]].map((keys,index)=>({
