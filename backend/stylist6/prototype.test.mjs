@@ -540,3 +540,28 @@ test('a photographed navy or grey garment cannot be styled for a user who explic
   const clean={...opinion,slotColors:{...opinion.slotColors,outerwear:'camel'}};
   assert.equal(selectVisualDeck(input,[clean],{target:1,avoidColors:['navy','grey']}).status,'complete');
 });
+
+
+test('catalog-quality visual selector refuses to repeat the exact same cardigan across two outfits',()=>{
+  const make=(id,layer)=>({id,briefId:id,brief:{id,name:id},items:[
+    {id:id+'-top',macroCategory:'top',subtype:({one:'dress-shirt',two:'fine-knit',three:'polo'})[id],name:'Different top '+id},
+    {id:layer,macroCategory:'outerwear',subtype:layer==='same-cardigan'?'cardigan':'blazer',name:layer==='same-cardigan'?'Same Wool Cardigan':layer},
+    {id:id+'-bottom',macroCategory:'bottom',subtype:({one:'tailored-trouser',two:'chino',three:'trouser'})[id],name:'Different smart trousers '+id},
+    {id:id+'-shoes',macroCategory:'shoes',subtype:({one:'derby',two:'loafer',three:'oxford'})[id],name:'Different shoes '+id},
+  ]});
+  const looks=[make('one','same-cardigan'),make('two','same-cardigan'),make('three','distinct-layer')];
+  const verdicts=looks.map(l=>({candidateId:l.id,referenceless:true,
+    visualCohesion:.91,styleFit:.90,occasionFit:.88,formalityFit:.91,
+    confidence:.94,reject:false,evidence:['photo top and trousers','photo layer and shoes','outfit coherent']}));
+  const input={generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}};
+  const before=selectVisualDeck(input,verdicts,{target:3});
+  assert.equal(before.outfits.length,3,'old model verdicts allowed repeated exact product');
+  const after=selectVisualDeck(input,verdicts,{target:3,requireNoProductReuse:true});
+  assert.equal(after.outfits.length,2,'not allowed to call one repeated cardigan three unique outfits');
+  assert.equal(after.status,'distinct_inventory_limited',
+    'only two independent actual catalog SKU combinations were model-approved');
+  assert.ok(!after.outfits.every(l=>l.items.some(it=>it.id==='same-cardigan')));
+  const pinned=selectVisualDeck(input,verdicts,{target:3,requireNoProductReuse:true,
+    requiredIds:['same-cardigan']});
+  assert.equal(pinned.status,'complete','an explicitly pinned shared wardrobe anchor may legitimately repeat');
+});

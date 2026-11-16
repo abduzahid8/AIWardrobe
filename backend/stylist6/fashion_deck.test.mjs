@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -476,9 +476,16 @@ test('six authorized challengers rescue full deck after one timeout and two qual
   });
   assert.ok(sent.length>=5, 'challenger pool must exceed the old four-call cap');
   assert.ok(sent.length<=8);
-  assert.equal(result.status,'complete','three independently approved alternatives should fill the deck');
-  assert.equal(result.outfits.length,3);
-  assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence,3);
+  // The mock approves three outfits, but some reuse the same actual SKU.
+  // This is no longer a valid three-outfit personal-stylist result. An
+  // honest partial result beats recycling a cardigan to make three cards.
+  assert.equal(result.status,'partial');
+  assert.equal(result.outfits.length,2);
+  assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence,2);
+  for(let i=0;i<result.outfits.length;i++)for(let j=i+1;j<result.outfits.length;j++){
+    const ids=new Set(result.outfits[i].items.map(item=>item.id));
+    assert.ok(result.outfits[j].items.every(item=>!ids.has(item.id)));
+  }
   assert.ok(result.outfits.every(look=>Array.isArray(look.visualEvidence)));
   const rejected=new Set([sent[1].id,sent[3].id,sent[5]?.id]);
   assert.ok(result.outfits.every(look=>!rejected.has(look.id)));
@@ -1573,4 +1580,29 @@ test('independently verified product photos prioritize an explicitly permitted p
   assert.equal(anchored.blocked,0,'a specifically pinned garment is a direct user instruction');
   const noPreference=photographicPaletteEvidence(allPermitted,{});
   assert.ok(noPreference.score>=1,'no policy is invented when the user did not specify exclusions');
+});
+
+
+test('visual rescue inventory counts only independently styled triples with different actual SKUs',()=>{
+  const make=(id,layer)=>({id,items:[
+    garment(id+'-top','Refined upper garment '+id,'top',
+      ({one:'shirt',two:'fine-knit',three:'polo',four:'dress-shirt'})[id]),
+    garment(layer,'Wool Cardigan '+layer,'outerwear','cardigan'),
+    garment(id+'-pants','Refined trousers '+id,'bottom',
+      ({one:'tailored-trouser',two:'chino',three:'trouser',four:'jeans'})[id]),
+    garment(id+'-shoes','Leather Derby '+id,'shoes','derby'),
+  ]});
+  const looks=[make('one','shared-cardigan'),make('two','shared-cardigan'),
+    make('three','third-cardigan')];
+  assert.equal(visualProductUniqueTripleCount(looks),0,
+    'three NVIDIA-reviewed outfit architectures are not a unique deck if two reuse a SKU');
+  assert.equal(visualProductUniqueTripleCount([...looks,make('four','fourth-cardigan')]),2);
+  assert.ok(visualRescueTripleCount(looks)>0,'architecture difference alone is weaker evidence');
+  assert.equal(visualProductUniqueTripleCount(looks,['shared-cardigan']),1,
+    'the exact owner-requested piece may repeat without pretending two new merchant items are different');
+  const candidates=[{look:{id:'unique',fashion:{score:.88}},uniqueTripleGain:2,
+    rescueGain:1,capacityGain:0,difference:.6},
+    {look:{id:'reused',fashion:{score:.93}},uniqueTripleGain:0,
+    rescueGain:1,capacityGain:0,difference:.6}];
+  assert.deepEqual(rankVisualChallengerPool(candidates).map(c=>c.id),['unique','reused']);
 });

@@ -1273,6 +1273,24 @@ export function visualArchitectureCapacity(looks, requiredIds = []) {
  * inference creates actual replacement options, not a row of clones. Bounded
  * at eight candidates (56 triples) and uses the final pairwise rule unchanged.
  */
+export function visualProductUniqueTripleCount(looks, requiredIds = []) {
+  if (!Array.isArray(looks) || looks.length > MAX_VISUAL_CANDIDATES) return 0;
+  const pinned=new Set((requiredIds||[]).map(String));
+  const shares=(a,b)=>(a?.items||[]).some(item=>
+    !pinned.has(String(item.id)) && (b?.items||[]).some(other=>
+      !pinned.has(String(other.id)) && sameProduct(item,other)));
+  let count=0;
+  for(let a=0;a<looks.length;a++)for(let b=a+1;b<looks.length;b++){
+    if(shares(looks[a],looks[b]) || !independentOutfitDirection(looks[a],looks[b],requiredIds))continue;
+    for(let c=b+1;c<looks.length;c++){
+      if(!shares(looks[a],looks[c]) && !shares(looks[b],looks[c]) &&
+        independentOutfitDirection(looks[a],looks[c],requiredIds) &&
+        independentOutfitDirection(looks[b],looks[c],requiredIds))count++;
+    }
+  }
+  return count;
+}
+
 export function visualRescueTripleCount(looks, requiredIds = []) {
   if (!Array.isArray(looks) || looks.length > MAX_VISUAL_CANDIDATES) return 0;
   let count = 0;
@@ -1298,7 +1316,8 @@ export function visualRescueTripleCount(looks, requiredIds = []) {
  */
 export function rankVisualChallengerPool(entries) {
   return [...entries]
-    .sort((a,b) => (b.rescueGain || 0) - (a.rescueGain || 0) ||
+    .sort((a,b) => (b.uniqueTripleGain || 0) - (a.uniqueTripleGain || 0) ||
+      (b.rescueGain || 0) - (a.rescueGain || 0) ||
       (b.capacityGain || 0) - (a.capacityGain || 0) ||
       (b.outerwearGain || 0) - (a.outerwearGain || 0) ||
       (b.unseenTop || 0) - (a.unseenTop || 0) ||
@@ -1459,7 +1478,8 @@ export async function recommendFashionDeck({
     options: { fashion: makeFashionScorer(context, reference, Array.isArray(request.recentSignatures) ? request.recentSignatures.slice(-32) : [], {
       priceProfile, budgeted: !!request.budget, layerOptional: context.optionalLayer === true && !forceLayer,
       requiredIds, feedbackTaste,
-    }), perRole: 8, perBrief: 100, maxVisual: 72 },
+    }), perRole: verifiedAvoidColors(context.preferences?.avoidColors).length?12:8,
+    perBrief: 100, maxVisual: 72 },
   });
   // A single cross-slot veto applies to selection AND visual challengers.
   // The pre-reviewed critic must never fill a rejected outfit from another
@@ -1521,9 +1541,15 @@ export async function recommendFashionDeck({
       .sort((a,b)=>b.evidence.score-a.evidence.score ||
         (b.look.fashion?.score??0)-(a.look.fashion?.score??0)) : [];
     let photoReserved=0;
-    for(const {look} of photoSafe){
+    // Prefer SKUs not already present anywhere in the model-review batch.
+    // Only on the second pass accept a materially different shared-cardigan
+    // alternative as a last resort: it can still be useful if the original
+    // candidate is vetoed. The displayed deck remains PRODUCT-unique.
+    for(let pass=0;pass<2&&photoReserved<3;pass++)for(const {look} of photoSafe){
       if(photoReserved>=3 || candidates.length>=reviewedLimit)break;
+      if(candidates.some(other=>other.id===look.id))continue;
       if(candidates.some(other=>Math.max(other.items.length,look.items.length)-overlaps(other,look)<2))continue;
+      if(pass===0 && candidates.some(other=>overlaps(other,look)>0))continue;
       if(await permitted(look)){candidates.push(look);photoReserved++;}
     }
 
@@ -1542,7 +1568,13 @@ export async function recommendFashionDeck({
       const planned = selectable.filter(look =>
         look.briefId === canonicalBriefId(plan.id) && !candidates.some(other => other.id === look.id) &&
         Number.isFinite(look.fashion?.score))
-        .sort((a,b) => b.fashion.score - a.fashion.score);
+        .sort((a,b) =>
+          // AI plans have multiple actual SKU executions. Prefer the one
+          // that adds genuinely NEW products instead of using the same
+          // popular cardigan the first two outfits already contain.
+          candidates.reduce((n,chosen)=>n+overlaps(chosen,a),0) -
+          candidates.reduce((n,chosen)=>n+overlaps(chosen,b),0) ||
+          b.fashion.score - a.fashion.score);
       for (const look of planned.slice(0, 6)) {
         if (await permitted(look)) { candidates.push(look); aiReserved++; break; }
       }
@@ -1555,6 +1587,7 @@ export async function recommendFashionDeck({
       const current = candidates.length ? candidates : selected;
       const capacity = visualArchitectureCapacity(current, requiredIds);
       const rescueTriples = visualRescueTripleCount(current, requiredIds);
+      const uniqueTriples=visualProductUniqueTripleCount(current,requiredIds);
       const pinned = new Set(requiredIds.map(String));
       const existingLayerArchetypes=new Set(current.map(look =>
         outerwearArchetype(look,requiredIds)).filter(Boolean));
@@ -1574,6 +1607,7 @@ export async function recommendFashionDeck({
           look,
           capacityGain: visualArchitectureCapacity([...current, look], requiredIds) - capacity,
           rescueGain: visualRescueTripleCount([...current, look], requiredIds) - rescueTriples,
+          uniqueTripleGain: visualProductUniqueTripleCount([...current,look],requiredIds) - uniqueTriples,
           outerwearGain: existingLayerArchetypes.size &&
             outerwearArchetype(look,requiredIds) &&
             !existingLayerArchetypes.has(outerwearArchetype(look,requiredIds)) ? 1 : 0,
@@ -1595,6 +1629,7 @@ export async function recommendFashionDeck({
         { ...retrieval, shortlist: candidates }, request, visualCritic,
         { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds,
           requireDistinctArchitectures: true,
+          requireNoProductReuse: request.sourceMode==='catalog',
           // Whole-outfit quality is conjunctive: correct colors cannot excuse
           // an unsuitable dress code or occasion. These are per-axis NVIDIA
           // verdict scores, never inferred user attributes or SKU heuristics.

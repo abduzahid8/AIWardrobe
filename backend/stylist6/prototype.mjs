@@ -462,6 +462,9 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
         ? look.fashion.unbudgetedPricePenalty : 0)) : 0;
   const visualUtility = look => accepted.get(look.id).quality - valuePenalty(look);
   const anchorSet=new Set((options.requiredIds||[]).map(String));
+  const sharesUnpinnedProduct=(a,b) => (a?.items||[]).some(item=>
+    !anchorSet.has(String(item.id)) && (b?.items||[]).some(other=>
+      !anchorSet.has(String(other.id)) && sameProduct(item,other)));
   const nonAnchorSlotKeys=(look,slot)=>new Set(
     (look?.items||[])
       .filter(it=>it&&it.macroCategory===slot&&!anchorSet.has(String(it.id)))
@@ -527,6 +530,13 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
     if(deck.length===target)return;
     for(const c of eligible){
       if(deck.includes(c))continue;
+      // Different products must create different purchasable outfits. Under
+      // catalog mode, reusing the SAME cardigan in two independently styled
+      // looks is still an obvious failure of a personal stylist. A locked
+      // owned anchor is the only legitimate repeat. Prefer an honest partial
+      // deck to fabricating novelty from a renamed concept or shoe swap.
+      if(options.requireNoProductReuse === true &&
+        deck.some(other=>sharesUnpinnedProduct(c,other)))continue;
       // Enforce independently verified architecture for EVERY pair, even
       // when choosing the second look. An earlier >=2 guard let a pair of
       // near-clones through and falsely called three looks "distinct".

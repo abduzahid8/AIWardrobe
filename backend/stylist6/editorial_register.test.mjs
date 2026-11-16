@@ -124,3 +124,37 @@ test('source-backed casual constructions need a tailored anchor for polished Cla
     'unknown metadata is not evidence of an informal outfit');
   assert.equal(editorialRegisterVeto(look('Blue Dress Shirt','Grey Wool Suit Blazer','Cream Chinos','Dark Brown Leather Oxfords'),office),null);
 });
+
+
+test('polished Semi-Classic romantic date requires intentional dress structure, not only earth-tone matching',()=>{
+  const request={style:'semi_classic',occasion:'Date night',sourceMode:'catalog',
+    brief:'Refined semi-classic outfit for a nice dinner date with polished footwear'};
+  const tooCasual=look('Light brown cotton polo crew neck','Regular-fit Wool Cardigan with Zipper',
+    'Walnut comfort cotton velvet regular-fit chinos','Brown suede slip-on loafers');
+  assert.equal(editorialRegisterVeto(tooCasual,request),'polished_date_needs_tailored_anchor');
+  assert.equal(editorialRegisterVeto(tooCasual,{...request,occasion:'Weekend'}),null);
+  assert.equal(editorialRegisterVeto(tooCasual,{...request,brief:'Relaxed casual dinner'}),null);
+  assert.equal(editorialRegisterVeto(tooCasual,{...request,sourceMode:'wardrobe'}),null);
+  assert.equal(editorialRegisterVeto(look('Cream fine-knit polo','Navy cotton blazer',
+    'Walnut chinos','Brown suede loafers'),request),null,
+    'polished blazer is the tailored anchor, even with chinos');
+  assert.equal(editorialRegisterVeto(look('Cream merino knit','Zip cardigan',
+    'Charcoal wool trousers','Brown oxfords'),request),null,
+    'real wool tailoring balances a knit layer');
+  assert.equal(editorialRegisterVeto(look('White dress shirt','Zip cardigan',
+    'Chinos','Dark brown leather derbies'),request),null,
+    'proper dress shirt can anchor the dinner outfit');
+});
+
+test('unrequested statement prints are not silently treated as understated semi-classic dinner',()=>{
+  const request={style:'semi_classic',occasion:'Date night',sourceMode:'catalog',
+    brief:'Nice dinner, understated contemporary sophistication'};
+  const loud=look('Abstract Polka-Dot Print Regular-Fit Shirt in Black/White',
+    'Mahogany Corduroy Blazer','Rich Coffee Corduroy Trousers','Brown Derby');
+  assert.equal(editorialRegisterVeto(loud,request),'unrequested_statement_print_on_polished_date');
+  assert.equal(editorialRegisterVeto(loud,{...request,brief:'I love polka-dot statement prints'}),null);
+  assert.equal(editorialRegisterVeto(loud,{...request,occasion:'Weekend'}),null);
+  assert.equal(editorialRegisterVeto(loud,{...request,sourceMode:'wardrobe'}),null);
+  assert.equal(editorialRegisterVeto(look('Muted pinstripe shirt','Mahogany Blazer',
+    'Wool trousers','Brown loafers'),request),null);
+});

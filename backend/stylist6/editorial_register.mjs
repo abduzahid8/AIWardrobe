@@ -73,6 +73,32 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '', reque
       described(slot(look, 'shoes'))))
       return 'polished_classic_office_athletic_sole';
   }
+  // A polished Semi-Classic dinner is not the same as a relaxed weekend:
+  // a casual zipped knit on a polo plus chinos has no dress structure,
+  // regardless of how perfectly the earthy colors harmonize. An outfit with
+  // a blazer, actual tailored/wool trousers or a proper dress shirt remains
+  // eligible, including elegant knitwear worn with tailored trousers.
+  const polishedDate = sourceMode === 'catalog' && norm(style)==='semi classic' &&
+    /\b(date|dinner|romantic)\b/.test(norm(occasion)) &&
+    !/\b(casual|relaxed|sporty|weekend|informal)\b/i.test(`${brief} ${request}`);
+  if(polishedDate && !(look?.items||[]).some(it=>pinned.has(String(it.id)))){
+    const tailoredTop=/\b(dress shirt|poplin dress|formal shirt)\b/.test(top);
+    const tailoredLayer=/\b(blazer|suit jacket|tailored jacket|overcoat|topcoat|dress coat)\b/.test(layer) ||
+      /^(blazer|coat|overcoat)$/.test(String(slot(look,'outerwear')?.subtype||'').toLowerCase());
+    const tailoredBottom=/\b(wool (?:pants|trousers)|tailored|suit (?:pants|trousers)|dress trousers|pleated trousers)\b/.test(bottom) ||
+      /^(tailored-trouser|dress-trouser|suit-trouser|wool-trouser)$/.test(String(slot(look,'bottom')?.subtype||'').toLowerCase());
+    const zipLayer=/\b(?:zip|zipper|zip-front|half zip|quarter zip)\b/.test(layer);
+    const casualLower=/\b(chinos?|jeans|joggers?|cargo pants)\b/.test(bottom) ||
+      /^(chino|jeans|jogger|cargo)$/.test(String(slot(look,'bottom')?.subtype||'').toLowerCase());
+    if(zipLayer && casualLower && !tailoredTop && !tailoredLayer && !tailoredBottom)
+      return 'polished_date_needs_tailored_anchor';
+    // A graphic statement item has a different editorial purpose from an
+    // understated semi-classic date. This is only an opt-out for unsolicited
+    // HIGH-CONTRAST prints, not a blanket ban on subtle texture or patterns.
+    const statementPrint=/\b(?:polka[- ]?dots?|abstract[- ]print|graphic[- ]print|animal[- ]print|large[- ]scale[- ]print|contrast[- ]print)\b/.test(top);
+    if(statementPrint && !/\b(?:polka|abstract|bold print|statement|graphic|patterned shirt)\b/i.test(`${brief} ${request}`))
+      return 'unrequested_statement_print_on_polished_date';
+  }
   const tailoring = exact(bottom, /\b(tailored|suit|dress trouser|pleated|smart stretch|wool trouser|slacks)\b/);
   const blazer = exact(layer, /\b(blazer|suit jacket|sartorial)\b/);
   const formalShoes = exact(shoes, /\b(oxford|derby|brogue|formal|dress shoe|dress loafers?|leather loafers?)\b/);
