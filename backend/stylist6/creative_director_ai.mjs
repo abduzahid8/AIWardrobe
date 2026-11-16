@@ -13,7 +13,10 @@
 import { createHash } from 'node:crypto';
 
 export const CREATIVE_DIRECTOR_VERSION = 's6-creative-director-v1';
-const MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
+// Text-only fashion planning does not need the expensive 120B VISION judge.
+// A live full-catalog NVIDIA A/B with the strict inventory-enum schema
+// returned three creative briefs and three visually judged looks in 26s.
+const MODEL = 'nvidia/nemotron-3.5-lightning-30b-a3b';
 const ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const SLOTS = ['top', 'outerwear', 'bottom', 'shoes'];
 const PALETTE = new Set([
@@ -92,32 +95,51 @@ export function directorInventory(catalog, request = {}) {
   };
 }
 
-const typeArray = { type: 'array', items: { type: 'string' } };
-const directorSchema = {
-  type: 'object',
-  properties: {
-    directions: {
-      type: 'array', items: {
-        type: 'object',
-        properties: {
-          title: { type: 'string' },
-          silhouette: { type: 'string', enum: [...SHAPES] },
-          palette: typeArray,
-          roles: {
-            type: 'object',
-            properties: Object.fromEntries(SLOTS.map(slot => [slot, typeArray])),
-            required: SLOTS,
-            additionalProperties: false,
+// Make the provider's STRICT JSON schema reflect the *actual admitted
+// inventory*. A text instruction alone still allowed nonexistent garment
+// subtypes or invented colors, causing the whole AI plan to be discarded.
+// Server-side validation remains mandatory even when the provider claims
+// json_schema compliance (not every provider enforces every constraint).
+export function directorResponseSchema(inventory) {
+  const roleSchema = slot => {
+    const choices = (Array.isArray(inventory?.available?.[slot]) ? inventory.available[slot] : [])
+      .map(row => row.subtype).filter(allowedSubtype);
+    const coldRequiresLayer = slot === 'outerwear' &&
+      Number.isFinite(inventory?.weatherCelsius) && inventory.weatherCelsius < 12;
+    return { type: 'array', minItems: slot === 'outerwear' && !coldRequiresLayer ? 0 : 1,
+      maxItems: choices.length ? Math.min(3, choices.length) : 0,
+      items: choices.length
+        ? { type: 'string', enum: [...new Set(choices)] }
+        : { type: 'string' },
+    };
+  };
+  return {
+    type: 'object',
+    properties: {
+      directions: {
+        type: 'array', minItems: 3, maxItems: 3, items: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            silhouette: { type: 'string', enum: [...SHAPES] },
+            palette: { type: 'array', minItems: 2, maxItems: 5,
+              items: { type: 'string', enum: [...PALETTE] } },
+            roles: {
+              type: 'object',
+              properties: Object.fromEntries(SLOTS.map(slot => [slot, roleSchema(slot)])),
+              required: SLOTS,
+              additionalProperties: false,
+            },
           },
+          required: ['title', 'silhouette', 'palette', 'roles'],
+          additionalProperties: false,
         },
-        required: ['title', 'silhouette', 'palette', 'roles'],
-        additionalProperties: false,
       },
     },
-  },
-  required: ['directions'],
-  additionalProperties: false,
-};
+    required: ['directions'],
+    additionalProperties: false,
+  };
+}
 
 function normalizePlan(row, available, index, temperature) {
   if (!row || typeof row !== 'object' || Array.isArray(row) ||
@@ -263,7 +285,7 @@ export async function designCreativeBriefs({
         temperature: 0.45, top_p: 0.9, max_tokens: 1350,
         stream: false,
         response_format: { type: 'json_schema', json_schema: {
-          name: 'stylist6_creative_directions', strict: true, schema: directorSchema,
+          name: 'stylist6_creative_directions', strict: true, schema: directorResponseSchema(inventory),
         } },
         chat_template_kwargs: { enable_thinking: false },
       }),

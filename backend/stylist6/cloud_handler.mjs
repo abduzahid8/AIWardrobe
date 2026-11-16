@@ -1188,10 +1188,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // Staging-only visual-first quality pass: review every admissible card
       // in one bounded batch, not just the first selection.
       visualDeckReview: true,
-      // When exactly two images pass NVIDIA, return a third independent,
-      // source-admitted candidate ONLY if it was never evaluated by NVIDIA.
-      // The card carries NOT_JUDGED, and the receipt stays unverified_fallback.
-      allowUnreviewedVisualFill: true,
+      // QUALITY FIRST: never pad two genuinely NVIDIA-approved looks with an
+      // unreviewed third. An honest partial recommendation beats a pretty
+      // three-card count with unverified fashion quality.
+      allowUnreviewedVisualFill: false,
       ...(visualCritic ? { visualCritic, canJudgeOutfit, canDisplayOutfit } : {}),
     }));
     const visualStatus = mapCloudVisualStatus(deck);

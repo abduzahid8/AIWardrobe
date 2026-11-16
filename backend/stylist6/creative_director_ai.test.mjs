@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CREATIVE_DIRECTOR_VERSION, directorInventory,
+  CREATIVE_DIRECTOR_VERSION, directorInventory, directorResponseSchema,
   validateDirectorDirections, designCreativeBriefs,
 } from './creative_director_ai.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
@@ -90,6 +90,8 @@ test('the real provider path returns directions, caches by anonymized context, a
     assert.ok(init.signal, 'provider request is bounded');
     const body = JSON.parse(init.body);
     assert.equal(body.response_format.type, 'json_schema');
+    assert.equal(body.model,'nvidia/nemotron-3.5-lightning-30b-a3b',
+      'text planning must not use the much larger photo judge');
     assert.match(body.messages[0].content, /inventory/);
     assert.ok(!init.body.includes('SECRET-SKU-SHIRT'));
     assert.ok(!init.body.includes('Private user-owned shirt'));
@@ -197,4 +199,28 @@ test('live NVIDIA fashion shade light-grey is normalized while every actual SKU 
   unsupported.directions[1].roles.top = ['magical-garment'];
   assert.equal(validateDirectorDirections(unsupported, inv).length, 2,
     'one unsupported garment role cannot invalidate two good designs');
+});
+
+
+test('dynamic NVIDIA JSON schema constrains all generated garments to real role subtypes', () => {
+  const inventory=directorInventory(catalog,request);
+  const schema=directorResponseSchema(inventory);
+  const directions=schema.properties.directions;
+  assert.equal(directions.minItems,3);
+  assert.equal(directions.maxItems,3);
+  const roles=directions.items.properties.roles.properties;
+  for(const slot of ['top','bottom','shoes','outerwear']) {
+    const allow=inventory.available[slot].map(it=>it.subtype);
+    assert.deepEqual(roles[slot].items.enum,allow);
+    assert.equal(roles[slot].minItems,1,'at +9C outerwear is mandatory, even for a creative AI');
+    assert.ok(roles[slot].maxItems<=3);
+  }
+  const palette=directions.items.properties.palette;
+  assert.ok(palette.items.enum.includes('navy'));
+  assert.ok(!palette.items.enum.includes('light-grey'),
+    'unsupported palette label cannot be coerced into provider schema');
+  const empty=directorInventory(catalog.filter(x=>x.macroCategory!=='outerwear'),request);
+  assert.equal(directorResponseSchema(empty).properties.directions.items.properties.roles.properties.outerwear.maxItems,0);
+  const warm=directorInventory(catalog,{...request,weather:{temp:22}});
+  assert.equal(directorResponseSchema(warm).properties.directions.items.properties.roles.properties.outerwear.minItems,0);
 });
