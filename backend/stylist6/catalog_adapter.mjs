@@ -73,10 +73,17 @@ const BOTTOM_TABLE = [
 ];
 
 const SHOE_TABLE = [
+  // Specific construction types must not be collapsed into `derby` merely
+  // because the product is a traditional leather shoe. Brogue/wingtip is a
+  // decoration, not evidence of open vs closed lacing.
+  [/\bdriving(?:[ -]?shoes?)?\b|\bdrivers?\b/, 'driver'],
   [/\bloafers?\b|\bpenny\b|\btassels?\b|\bhorsebits?\b|\bslippers?\b|\bmoccasins?\b|\bboat\b|\bdeck\b/, 'loafer'],
   [/\bchelsea\b/, 'chelsea'],
   [/\bchukkas?\b|\bboots?\b|\bankle\b/, 'boot'],
-  [/\boxfords?\b|\bderby\b|\bderbies\b|\bbrogues?\b|\bwingtips?\b|\bmonks?\b|\bstraps?\b/, 'derby'],
+  [/\boxfords?\b|\brichelieus?\b|\bbalmorals?\b/, 'oxford'],
+  [/\bderb(?:y|ies)\b|\bbluchers?\b/, 'derby'],
+  [/\bmonks?(?:[ -]?straps?)?\b/, 'monk'],
+  [/\bespadrilles?\b/, 'espadrille'],
   [/\bminimal\b|\bcourt\b|\blow[\s-]?tops?\b/, 'minimal-sneaker'],
   [/\bsneakers?\b|\btrainers?\b|\brunners?\b|\btennis\b/, 'sneaker'],
 ];
@@ -127,7 +134,8 @@ const LIVE_SUBTYPES = {
   top: new Set(['t-shirt', 'polo', 'shirt', 'dress-shirt', 'fine-knit']),
   outerwear: new Set(['blazer', 'coat', 'jacket', 'overshirt', 'cardigan', 'bomber', 'pullover']),
   bottom: new Set(['jeans', 'chino', 'tailored-trouser', 'trouser']),
-  shoes: new Set(['loafer', 'derby', 'boot', 'minimal-sneaker', 'sneaker', 'chelsea']),
+  shoes: new Set(['loafer', 'derby', 'oxford', 'monk', 'driver', 'boot', 'chelsea',
+    'minimal-sneaker', 'sneaker', 'sport-sneaker', 'hiking-boot', 'espadrille']),
 };
 
 export function liveHint(row) {
