@@ -165,8 +165,31 @@ test('bounded four-way NVIDIA evaluation dispatches at most four calls and admit
   assert.equal(maxActive,4,'four parallel calls remove the second 15s tail wave');
   assert.equal(rows.length,4);
   assert.ok(rows.every(x=>x.referenceless===true));
-  assert.throws(()=>createHostedVisualCritic({provider:'nvidia',apiKey,concurrency:5,
+  assert.throws(()=>createHostedVisualCritic({provider:'nvidia',apiKey,concurrency:7,
     resolveReference:()=>asset(),resolveProduct:()=>asset()}),/invalid_visual_concurrency/);
+});
+
+test('six-way reviewer can tolerate one unavailable call and still approve five looks', async () => {
+  const batch=Array.from({length:6},(_,index)=>({...candidate,id:`six-way-${index}`}));
+  let total=0,peak=0,active=0;
+  const critic=createHostedVisualCritic({
+    provider:'nvidia',apiKey,concurrency:6,referenceMediaConfigured:false,
+    resolveReference:()=>null,resolveProduct:()=>asset(33),
+    fetchImpl:async (_url,init)=>{
+      const id=JSON.parse(init.body).response_format.json_schema.schema.properties.candidateId.enum[0];
+      total++;active++;peak=Math.max(peak,active);
+      try {
+        if(id==='six-way-5')return new Response('provider unavailable',{status:403});
+        await new Promise(done=>setTimeout(done,12));
+        return nvidiaResponse(referencelessVerdict(id));
+      } finally {active--;}
+    },
+  });
+  const rows=await critic(batch,{style:'classic',occasion:'Work'});
+  assert.equal(total,6);
+  assert.ok(peak>=5);
+  assert.equal(rows.length,5);
+  assert.ok(rows.every(row=>row.referenceless===true));
 });
 
 test('textual editorial blueprint informs referenceless style judgment without claiming reference photography',async()=>{
@@ -325,7 +348,7 @@ test('429 stops further dispatch and never exceeds two in flight', async () => {
   assert.equal(references, 1);
   assert.equal(calls, 2);
   assert.equal(peak, 2);
-  await assert.rejects(critic([...candidates, candidate]), /invalid_visual_batch/);
+  await assert.rejects(critic([...candidates, candidate, {...candidate,id:'sixth'}, {...candidate,id:'seventh'}]), /invalid_visual_batch/);
   await assert.rejects(critic([candidate, candidate]), /invalid_visual_batch/);
 });
 

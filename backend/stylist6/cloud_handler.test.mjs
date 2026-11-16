@@ -1075,7 +1075,7 @@ test('cloud rejects all low-quality assessed outfits without charging AGAIN or l
   assert.ok(recorder.prompts.length>0);
 });
 
-test('cloud returns real two-look partial with per-look NVIDIA approvals rather than three fake looks', async()=>{
+test('cloud returns only independent, individually approved partial looks rather than fabricating a third', async()=>{
   const recorder={prompts:[],hosts:new Set()};
   let call=0;
   const degradeLater = row => {
@@ -1091,11 +1091,15 @@ test('cloud returns real two-look partial with per-look NVIDIA approvals rather 
   );
   assert.equal(result.status,200);
   assert.equal(result.body.status,'partial');
-  assert.equal(result.body.outfits.length,2);
+  // The two model-approved images may themselves form structurally
+  // equivalent looks. Never force both into the deck just to hit a count.
+  assert.ok(result.body.outfits.length>=1 && result.body.outfits.length<=2);
   assert.equal(result.body.visualStatus,'NVIDIA_APPLIED');
   assert.equal(result.body.visualReceipt.visualApproval,'verified_partial');
-  assert.equal(result.body.visualReceipt.displayedLooks,2);
-  assert.equal(result.body.visualReceipt.displayedJudged,2);
+  assert.equal(result.body.visualReceipt.displayedLooks,result.body.outfits.length);
+  assert.equal(result.body.visualReceipt.displayedJudged,result.body.outfits.length);
+  assert.equal(result.body.diagnostics.visualReviewCoverage.approved,2,
+    'both model verdicts are present; displayed pairwise independence is a separate gate');
   assert.ok(result.body.outfits.every(x=>x.fashionDiagnostics.visualVerdict==='JUDGED'));
 });
 

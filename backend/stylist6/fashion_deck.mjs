@@ -1,6 +1,7 @@
 // Experimental catalog/wardrobe recommendation path. Callers own inventory,
 // permission and provider admission. Local styling never requires image upload.
 import { shortlistRetrievalDeck, evaluateVisualShortlist, independentOutfitDirection } from './prototype.mjs';
+import { MAX_VISUAL_CANDIDATES } from './visual_critic_hosted.mjs';
 import { baseProductId } from './catalog_adapter.mjs';
 import { describeGarment, prepareGarment } from '../../src/domain/garmentDescriptor.ts';
 import { currentVisual, visualAdmissionReason } from '../../src/domain/visualFashion.ts';
@@ -974,12 +975,12 @@ function creativeMetrics(context) {
 
 /**
  * Maximum size of a pairwise independent outfit deck. Deliberately bounded
- * to the <=4 garments-group candidates chosen for one NVIDIA review. A
+ * to the <=6 garment-group candidates chosen for one NVIDIA review. A
  * different SKU, jacket color or title alone does not prove a new direction:
  * use the same structural rule as the final model-approved selection.
  */
 export function visualArchitectureCapacity(looks, requiredIds = []) {
-  if (!Array.isArray(looks) || looks.length > 4) return 0;
+  if (!Array.isArray(looks) || looks.length > MAX_VISUAL_CANDIDATES) return 0;
   let maximum = 0;
   const walk = (index, selected) => {
     if (selected.length > maximum) maximum = selected.length;
@@ -994,8 +995,28 @@ export function visualArchitectureCapacity(looks, requiredIds = []) {
   return Math.min(3, maximum);
 }
 
+/** Number of different 3-look sets the approved-photo selector could form
+ * if ALL candidates passed the visual quality gate. Maximizing this before
+ * inference creates actual replacement options, not a row of clones. Bounded
+ * at six candidates (20 triples) and uses the final pairwise rule unchanged.
+ */
+export function visualRescueTripleCount(looks, requiredIds = []) {
+  if (!Array.isArray(looks) || looks.length > MAX_VISUAL_CANDIDATES) return 0;
+  let count = 0;
+  for (let a = 0; a < looks.length; a++) {
+    for (let b = a + 1; b < looks.length; b++) {
+      if (!independentOutfitDirection(looks[a], looks[b], requiredIds)) continue;
+      for (let c = b + 1; c < looks.length; c++) {
+        if (independentOutfitDirection(looks[a], looks[c], requiredIds) &&
+            independentOutfitDirection(looks[b], looks[c], requiredIds)) count++;
+      }
+    }
+  }
+  return count;
+}
+
 /**
- * Four visual assessments must have a chance to yield three genuinely
+ * Six visual assessments must have a chance to yield three genuinely
  * different looks. If the three initially chosen cards contain structural
  * twins, pick the spare which unlocks the biggest independent subset; after
  * that prefer whole-look fashion quality over maximal novelty. All options
@@ -1004,7 +1025,8 @@ export function visualArchitectureCapacity(looks, requiredIds = []) {
  */
 export function rankVisualChallengerPool(entries) {
   return [...entries]
-    .sort((a,b) => (b.capacityGain || 0) - (a.capacityGain || 0) ||
+    .sort((a,b) => (b.rescueGain || 0) - (a.rescueGain || 0) ||
+      (b.capacityGain || 0) - (a.capacityGain || 0) ||
       b.look.fashion.score - a.look.fashion.score ||
       b.difference - a.difference || String(a.look.id).localeCompare(String(b.look.id)))
     .map(({look}) => look);
@@ -1166,37 +1188,46 @@ export async function recommendFashionDeck({
   };
   if (visualDeckReview && selected.length && typeof visualCritic === 'function' &&
       typeof canJudgeOutfit === 'function') {
-    // Budgeted, source-verified finalist set: no model can nominate a SKU or
-    // skip the original hard gates. Judge all authorised displayed looks, not
-    // only the lead; fill remaining slots up to the 4-call cap so a single
-    // visual rejection or unresolved CDN host still yields a full 3-look deck.
+    // Budgeted and source-verified finalist pool. Expand beyond the three
+    // displayed directions: one timed-out NVIDIA call and one real fashion
+    // rejection must not force a two-look deck when better alternatives exist.
+    // The critic still owns every approval and enforces a six-call paid cap.
     const candidates = [];
     for (const look of selected) {
       if (await permitted(look)) candidates.push(look);
     }
-    const lead = selected[0];
-    if (candidates.length < 4) {
-      const metrics = creativeMetrics(deckContext);
-      const leadScore = lead.fashion?.score ?? -Infinity;
+    const metrics = creativeMetrics(deckContext);
+    const leadScore = selected[0].fashion?.score ?? -Infinity;
+    // Recompute marginal direction gain after EVERY alternate. The previous
+    // one-time four-candidate sort could fill its only spare slot with a
+    // redundant outfit, while all genuinely distinct challengers were hidden.
+    while (candidates.length < MAX_VISUAL_CANDIDATES) {
       const current = candidates.length ? candidates : selected;
       const capacity = visualArchitectureCapacity(current, requiredIds);
+      const rescueTriples = visualRescueTripleCount(current, requiredIds);
       const extras = rankVisualChallengerPool(selectable
         .filter(look => !candidates.some(chosen => chosen.id === look.id) &&
           Number.isFinite(look.fashion?.score) &&
           look.fashion.score >= leadScore - VISUAL_CHALLENGER_QUALITY_WINDOW &&
-          (candidates.length ? candidates : selected).every(other =>
-            Math.max(other.items.length, look.items.length) - overlaps(other, look) >= 2))
+          // A challenger only needs to be materially different from SOME
+          // existing direction. Near substitutes can replace a visually
+          // rejected garment; the selector still requires final pairwise
+          // independence, and the reviewer never approves an unjudged card.
+          current.some(other => Math.max(other.items.length, look.items.length) - overlaps(other, look) >= 2))
         .map(look => ({
           look,
           capacityGain: visualArchitectureCapacity([...current, look], requiredIds) - capacity,
+          rescueGain: visualRescueTripleCount([...current, look], requiredIds) - rescueTriples,
           difference: Math.min(...current.map(other =>
             directionDifference(other, look, metrics.featuresOf, metrics.featureDistance).distance)),
         }))
       );
-      for (const alternate of extras) {
-        if (candidates.length >= 4) break;
-        if (await permitted(alternate)) candidates.push(alternate);
+      let alternate = null;
+      for (const contender of extras) {
+        if (await permitted(contender)) { alternate = contender; break; }
       }
+      if (!alternate) break;
+      candidates.push(alternate);
     }
     if (candidates.length) {
       const reviewed = await evaluateVisualShortlist(
@@ -1204,7 +1235,7 @@ export async function recommendFashionDeck({
         { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds, requireDistinctArchitectures: true },
       );
       visualQualityDecisions = Array.isArray(reviewed.diagnostics.visualQualityDecisions)
-        ? reviewed.diagnostics.visualQualityDecisions.slice(0, 4) : [];
+        ? reviewed.diagnostics.visualQualityDecisions.slice(0, MAX_VISUAL_CANDIDATES) : [];
       visualVerdict = reviewed.diagnostics.visualValid > 0 ? 'JUDGED' : 'ABSTAINED';
       const rejected = new Set(reviewed.diagnostics.rejectedCandidateIds);
       // The hosted critic has already applied visual quality, confidence,

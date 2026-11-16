@@ -1034,9 +1034,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         referenceBlueprints: buildReferenceBlueprints(referenceIndex),
         timeoutMs: Math.min(VISUAL_TIMEOUT_MS, Math.max(1000, remainingMs() - 1000)),
         providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
-        // Four parallel visual checks use the SAME four-call paid cap, but
-        // avoid NVIDIA's 15s-per-wave starvation of the final two outfits.
-        concurrency: 4,
+        // Six parallel, source-admitted visual checks can rescue a third look
+        // when one provider times out or another fails the quality floor.
+        // No unreviewed recommendation is ever relabeled NVIDIA-approved.
+        concurrency: 6,
         ...(fetchImpl ? { fetchImpl } : {}),
         resolveReference: (id, signal) => resolveReferenceAsset(env, env.SUPABASE_URL, id,
           fetchImpl ? (refUrl, refOptions) => fetchImpl(refUrl, { ...refOptions, signal }) : undefined),

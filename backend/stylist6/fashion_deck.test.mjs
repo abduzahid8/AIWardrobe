@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -218,7 +218,7 @@ test('cloud full-deck review judges every authorized displayed card in one bound
     },
   });
   assert.equal(reviewCalls, 1);
-  assert.ok(reviewed.length >= baseline.outfits.length && reviewed.length <= 4);
+  assert.ok(reviewed.length >= baseline.outfits.length && reviewed.length <= 6);
   assert.ok(baseline.outfits.every(({ id }) => reviewed.some(candidate => candidate.id === id)));
   assert.equal(result.diagnostics.visualVerdict, 'JUDGED');
   assert.equal(result.diagnostics.visualReviewCoverage.mode, 'displayed_deck');
@@ -285,7 +285,7 @@ test('visual-first selection is controlled by the complete MODEL-APPROVED deck, 
         }));
     },
   });
-  assert.ok(candidateIds.length >= 3 && candidateIds.length <= 4);
+  assert.ok(candidateIds.length >= 3 && candidateIds.length <= 6);
   assert.equal(result.status, 'complete');
   assert.notEqual(result.outfits[0].id, initial.outfits[0].id,
     'the model must be able to change which outfit is displayed first');
@@ -293,6 +293,49 @@ test('visual-first selection is controlled by the complete MODEL-APPROVED deck, 
   assert.ok(result.outfits.every(look => Array.isArray(look.visualEvidence)));
   assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence, 3);
   assert.ok(result.outfits.every(look => look.items.some(item => item.id === 'shirt-white')));
+});
+
+test('six authorized challengers rescue full deck after one timeout and two quality vetoes', async () => {
+  let sent=[];
+  const result=await recommendFashionDeck({
+    ...base, request:{ sourceMode:'catalog', style:'classic', occasion:'Work',
+      weather:{ temp:20 }, optionalLayer:true },
+    referenceBriefs:[],visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async(batch)=>{
+      sent=batch;
+      // Mimics the observed NVIDIA outcome: one unknown/timed out plus
+      // other rejected candidates. Only actual model-approved looks may show.
+      return batch.slice(0,5).map((candidate,i)=>admittedVisualVerdict(candidate,
+        i===1||i===3?{reject:true,visualCohesion:0.2}:{}));
+    },
+  });
+  assert.ok(sent.length>=5, 'challenger pool must exceed the old four-call cap');
+  assert.ok(sent.length<=6);
+  assert.equal(result.status,'complete','three independently approved alternatives should fill the deck');
+  assert.equal(result.outfits.length,3);
+  assert.equal(result.diagnostics.visualReviewCoverage.displayedEvidence,3);
+  assert.ok(result.outfits.every(look=>Array.isArray(look.visualEvidence)));
+  const rejected=new Set([sent[1].id,sent[3].id,sent[5]?.id]);
+  assert.ok(result.outfits.every(look=>!rejected.has(look.id)));
+});
+
+test('rescue triple count rewards independent fallback directions, not near-duplicate SKUs', () => {
+  const make=(id, top, bottom, shoes) => ({id, items:[
+    garment(`${id}-top`, top+' shirt','top','shirt'),
+    garment(`${id}-bottom`,bottom+' trousers','bottom','trouser'),
+    garment(`${id}-shoes`,shoes+' derby','shoes','derby'),
+  ]});
+  const deck=[make('a','white','black','brown'),make('b','navy','grey','black'),make('c','cream','brown','tan')];
+  assert.equal(visualRescueTripleCount(deck),1);
+  const redundant=make('redundant','white','black','brown');
+  const spare=make('spare','beige','navy','burgundy');
+  const strong=visualRescueTripleCount([...deck,spare]);
+  assert.ok(strong>visualRescueTripleCount([...deck,redundant]));
+  assert.ok(strong>=2);
+  assert.equal(rankVisualChallengerPool([
+    {look:redundant,capacityGain:0,rescueGain:0,difference:0.4},
+    {look:spare,capacityGain:0,rescueGain:strong-1,difference:0.2},
+  ])[0],spare);
 });
 
 test('two visually approved looks produce a truthful partial result, no unreviewed third', async () => {

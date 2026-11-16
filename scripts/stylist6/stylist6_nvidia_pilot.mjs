@@ -49,7 +49,7 @@ export function loadPilotCase(directory, scenarioId) {
           || !/^[A-Z]{3}$/.test(scenario.budget.currency)))) {
     throw new Error('pilot_manifest_mismatch');
   }
-  if (entry.candidates.length !== MAX_VISUAL_CANDIDATES
+  if (entry.candidates.length !== 4 /* frozen historical paired-pilot queue */
       || entry.candidates.filter(({ origin }) => origin === 'v5').length > 1) {
     throw new Error('pilot_candidate_count_mismatch');
   }
