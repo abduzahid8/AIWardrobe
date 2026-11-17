@@ -66,9 +66,10 @@ test('model independently composes three new real SKU combinations, no product i
       assert.equal(body.response_format.type,'json_schema');
       const slotPicks=body.response_format.json_schema.schema.properties.slotPicks;
       assert.equal(slotPicks.properties.top.maxItems,3);
-      assert.equal(slotPicks.properties.top.uniqueItems,true);
-      assert.equal(slotPicks.properties.bottom.uniqueItems,true);
-      assert.equal(slotPicks.properties.shoes.uniqueItems,true);
+      assert.equal(Object.hasOwn(slotPicks.properties.top,'uniqueItems'),false,
+        'NVIDIA strict json_schema subset cannot require uniqueItems');
+      assert.equal(slotPicks.properties.bottom.minItems,3);
+      assert.equal(slotPicks.properties.shoes.maxItems,3);
       assert.doesNotMatch(init.body,/PRIVATE_SKU|images\.zara|www\.zara/);
       assert.match(body.messages[0].content,/CREATE THREE distinct beautiful complete outfits/);
       return result(slotAnswer(pool));

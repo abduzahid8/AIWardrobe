@@ -235,9 +235,11 @@ export async function composeCatalogSkuLooks({
         realMerchantItemMenus:options,
       }),
     ].join('\n');
+    // NVIDIA's strict JSON-schema subset has rejected uniqueItems with an
+    // HTTP provider error in live stage. Do not ship unsupported schema keys:
+    // the trusted post-response validator enforces identity uniqueness.
     const roleArrays=Object.fromEntries(SLOTS.map(slot=>[slot,{
       type:'array',minItems:3,maxItems:3,
-      ...(slot!=='outerwear'||layerRequired?{uniqueItems:true}:{}),
       items:{type:'string',enum:slot==='outerwear'
         ?[...(allowLayer?bySlot.get('outerwear').map(x=>x.token):[]),
           ...(!layerRequired?['none']:[])]
@@ -254,7 +256,9 @@ export async function composeCatalogSkuLooks({
         response_format:{type:'json_schema',json_schema:{
           name:'aiw_personal_sku_composition',strict:true,schema}},
         chat_template_kwargs:{enable_thinking:false}})});
-    if(!res.ok)throw Error('provider_failure');
+    if(!res.ok)return {status:res.status>=400&&res.status<500?
+      'provider_schema_rejected':'provider_unavailable',
+      looks:[],providerCalls:1};
     const max=Number(res.headers?.get?.('content-length'));
     if(Number.isFinite(max)&&max>16000)throw Error('oversized');
     const body=await res.text();if(body.length>16000)throw Error('oversized');

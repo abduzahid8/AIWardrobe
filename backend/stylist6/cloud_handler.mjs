@@ -118,7 +118,7 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     directSkuComposition:f.status==='composed',
     skuCompositionStatus:[
       'not_run','composed','timeout','deadline','invalid_composition',
-      'incomplete','provider_unavailable','insufficient_inventory',
+      'incomplete','provider_unavailable','provider_schema_rejected','insufficient_inventory',
       'not_configured','load_shed','composition_unavailable',
     ].includes(f.skuCompositionReceipt?.status)
       ?f.skuCompositionReceipt.status:'not_run',
