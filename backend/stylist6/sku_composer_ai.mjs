@@ -390,13 +390,55 @@ export function groundedPhotoRevisionFeedback(raw){
         photographedColors,wholeOutfitRelationships:relationships,
         photoQualityAxes:axes}];
     }):[];
+  // When a genuine original-photo jury selects a 2-look verified
+  // collection but omits free-text missingFashionDirection, let the next
+  // autonomous AI see what the independent PHOTO critic actually observed
+  // about those accepted looks. The factual evidence is anonymized and
+  // bounded exactly like rejection evidence. Never transmit raw SKU URLs,
+  // user identity, raw JPEGs or model-controlled extra object fields.
+  const approvedPhotoEvidence=Array.isArray(raw.approvedPhotoEvidence)
+    ?raw.approvedPhotoEvidence.slice(0,2).flatMap(x=>{
+      if(!x||typeof x!=='object')return [];
+      const roles=Object.fromEntries(PHOTO_REVISION_SLOTS.map(slot=>[slot,
+        /^[a-z0-9 -]{1,32}$/i.test(x?.roles?.[slot]||'')
+          ?x.roles[slot]:'']));
+      const observed=Object.fromEntries(PHOTO_REVISION_SLOTS.flatMap(slot=>{
+        const value=photoEvidenceText(x?.observations?.[slot]);
+        return value.length>=8?[[slot,value]]:[];
+      }));
+      const photographedColors=Object.fromEntries(PHOTO_REVISION_SLOTS.flatMap(slot=>{
+        const value=x?.colors?.[slot];
+        return PHOTO_REVISION_COLORS.has(value)?[[slot,value]]:[];
+      }));
+      const relationships=Array.isArray(x.relationships)
+        ?x.relationships.slice(0,3).flatMap(link=>{
+          const slotTokens=Array.isArray(link?.slots)
+            ?link.slots.filter(s=>PHOTO_REVISION_SLOTS.includes(s)).slice(0,4):[];
+          const observation=photoEvidenceText(link?.observation,150);
+          return link?.kind==='outfit'&&slotTokens.length>=2&&observation.length>=8
+            ?[{slots:slotTokens,photographicRelationship:observation}]:[];
+        }):[];
+      const photoQualityAxes=Object.fromEntries(
+        ['visualCohesion','styleFit','occasionFit','formalityFit','confidence']
+          .flatMap(axis=>{
+            const score=boundedPhotoScore(x?.scores?.[axis]);
+            return score===null?[]:[[axis,score]];
+          }));
+      if(!Object.keys(observed).length&&!Object.keys(photographedColors).length&&
+          !relationships.length)return [];
+      return [{roles,photoObservations:observed,photographedColors,
+        wholeOutfitRelationships:relationships,photoQualityAxes}];
+    }):[];
   const editorGap=photoEvidenceText(raw.editorPhotoGap,160);
   return {
     previousRejectedReasons:reasons,
     previousAcceptedArchitectures:approvedArchitectures,
+    approvedPhotoEvidence,
     ...(editorGap.length>=18?{visualEditorMissingFashionDirection:editorGap}:{}),
     rejectedPhotoEvidence:rejected,
-    goal:'Improve complete garment proportions, textile relationships and shoe/formality harmony using independent photo evidence; propose fresh eligible real items.',
+    goal:approvedPhotoEvidence.length>0
+      ?'Design a genuinely NEW third fashion direction complementing the TWO already approved original-photo looks. Use their observed color, silhouette, material and footwear relationships to make your OWN excellent creative choice from unused real merchant SKUs; do not repeat the same outfit architecture.'
+      :'Improve complete garment proportions, textile relationships and shoe/formality harmony using independent photo evidence; propose fresh eligible real items.',
   };
 }
 

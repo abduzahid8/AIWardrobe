@@ -2007,6 +2007,7 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     photoEditorialVisualJury:'not_run',
     photoEditorialVisualMedia:'not_run',
     photoEditorialCreativeRevision:'not_run',
+    photoEditorialCreativeSource:'not_run',
     photoEditorialCreativeRevisionAttempted:null,
     photoEditorialCreativeRevisionApproved:null,
     photoEditorialEligibleTriples:null,photoEditorialEligiblePairs:null,

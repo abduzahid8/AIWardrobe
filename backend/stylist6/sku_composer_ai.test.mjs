@@ -591,3 +591,65 @@ test('vision image-request rejection uses authenticated text composition, never 
   assert.equal(answer.looks.length,6);
   assert.equal(answer.status,'composed');
 });
+
+
+test('real PHOTO jury choosing TWO without optional creativeGap still equips the SECOND AI with sanitized ACCEPTED photo observations',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const evidence=groundedPhotoRevisionFeedback({
+    reasons:['style_mismatch','below_quality_floor'],
+    approvedArchitectures:[
+      {top:'dress shirt',outerwear:'blazer',bottom:'tailored trouser',shoes:'loafer'},
+      {top:'knit polo',outerwear:'cardigan',bottom:'chino',shoes:'derby'},
+    ],
+    approvedPhotoEvidence:[{
+      userId:'PRIVATE_CUSTOMER_UUID',
+      roles:{top:'dress shirt',outerwear:'blazer',bottom:'trousers',shoes:'loafer'},
+      observations:{
+        top:'Fine cream cotton shirt with clean vertical texture and modest collar',
+        outerwear:'Dark sharp structured blazer that adds strong shoulder width',
+        shoes:'Brown burnished leather loafers with soft low-profile toe',
+        secret:'PRIVATE_ACCOUNT_TOKEN',
+      },
+      colors:{top:'cream',outerwear:'navy',shoes:'brown',user:'PRIVATE_ACCOUNT_TOKEN'},
+      relationships:[{kind:'outfit',slots:['top','outerwear','shoes'],
+        observation:'Sharp navy blazer and dark suede loafers make a formal tonal office column'}],
+      scores:{styleFit:.84,occasionFit:.9,confidence:.94,bankBalance:99999},
+    },{
+      roles:{top:'knit polo',outerwear:'cardigan',bottom:'chino',shoes:'derby'},
+      observations:{outerwear:'Brown relaxed knit cardigan with soft draped shoulders'},
+      colors:{outerwear:'brown'},
+      relationships:[],
+    }],
+  });
+  assert.equal(evidence.approvedPhotoEvidence.length,2);
+  assert.equal(evidence.approvedPhotoEvidence[0].photoObservations.top,
+    'Fine cream cotton shirt with clean vertical texture and modest collar');
+  assert.equal(evidence.approvedPhotoEvidence[0].photographedColors.top,'cream');
+  assert.equal(evidence.approvedPhotoEvidence[0].wholeOutfitRelationships.length,1);
+  assert.equal(evidence.approvedPhotoEvidence[0].photoQualityAxes.occasionFit,.9);
+  assert.equal(evidence.approvedPhotoEvidence[0].photoQualityAxes.bankBalance,undefined);
+  assert.match(evidence.goal,/NEW third fashion direction/);
+  assert.equal(evidence.visualEditorMissingFashionDirection,undefined,
+    'no creative text is invented or falsely attributed to VLM');
+  assert.doesNotMatch(JSON.stringify(evidence),/PRIVATE|UUID|ACCOUNT|bankBalance/);
+  const output=await composeCatalogSkuLooks({
+    pool,apiKey:'nvapi-test-safe',critiqueFeedback:{
+      approvedArchitectures:[{top:'shirt',outerwear:'blazer',
+        bottom:'tailored trouser',shoes:'loafer'}],
+      approvedPhotoEvidence:[{
+        roles:{top:'dress shirt',outerwear:'blazer',bottom:'trousers',shoes:'loafer'},
+        observations:{top:'Fine cream cotton with clean vertical texture'},
+        colors:{top:'cream'},relationships:[],
+      }],
+    },
+    context:{style:'classic',occasion:'Work'},
+    fetchImpl:async(_,opts)=>{
+      const prompt=JSON.parse(opts.body).messages[0].content;
+      assert.match(prompt,/NEW third fashion direction/);
+      assert.match(prompt,/Fine cream cotton with clean vertical texture/);
+      assert.doesNotMatch(prompt,/PRIVATE_CUSTOMER_UUID|ACCOUNT_TOKEN/);
+      return result(slotAnswer(pool));
+    },
+  });
+  assert.equal(output.status,'composed');
+});

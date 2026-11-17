@@ -2734,9 +2734,22 @@ export async function recommendFashionDeck({
           // If any step fails or time runs out, retain the fully photo-
           // verified original 1–2 chosen outfits completely unchanged.
           editorial.feedbackRevision='not_run';
+          // Real 120B VLM JSON_OBJECT often chooses the correct verified
+          // two-look F-token but omits the optional free-text gap. The model
+          // has STILL seen their true source-product JPEGs and decided these
+          // two are worth keeping; the independent photo critic also supplied
+          // exact garment-color/material/relationship observations.
+          // Do not let a missing JSON field BLOCK a real next creative
+          // decision: pass only those originally photographed observations
+          // to the next AI SKU designer. A TEXT-only editor cannot trigger
+          // this evidence fallback or pretend to have seen the pictures.
+          const explicitEditorialGap=typeof decision?.creativeGap==='string'&&
+            decision.creativeGap.length>=18;
+          const actualPhotoEditorialDecision=
+            decision?.visualJury==='applied'&&
+            decision?.visualMediaStatus==='ready';
           if(editorial.status==='applied'&&editorial.chosen<3&&
-              typeof decision?.creativeGap==='string'&&
-              decision.creativeGap.length>=18&&
+              (explicitEditorialGap||actualPhotoEditorialDecision)&&
               request.sourceMode==='catalog'&&
               Array.isArray(composerPool)&&
               typeof selectCatalogRescueCompositions==='function'&&
@@ -2769,13 +2782,36 @@ export async function recommendFashionDeck({
                 Object.fromEntries(slots.map(slot=>[slot,
                   String(look.items?.find(it=>it.macroCategory===slot)?.subtype||'')
                     .slice(0,32)])));
+              // No untrusted raw photo text/IDs are shipped to the second
+              // designer: the dedicated SKU composer whitelists slots,
+              // colors, scores and bounded photographic observations.
+              const approvedPhotoEvidence=originalChosen.slice(0,2).flatMap(look=>{
+                const photo=allCritiques.find(x=>
+                  x.candidateId===look.id&&x.reject!==true);
+                if(!photo)return [];
+                return [{
+                  roles:Object.fromEntries(slots.map(slot=>[slot,
+                    String(look.items?.find(it=>it.macroCategory===slot)?.subtype||'')
+                      .slice(0,32)])),
+                  observations:photo.slotObservations,
+                  colors:photo.slotColors,
+                  relationships:photo.relationships,
+                  scores:Object.fromEntries(
+                    ['visualCohesion','styleFit','occasionFit',
+                      'formalityFit','confidence'].map(axis=>[axis,photo[axis]])),
+                }];
+              });
+              editorial.feedbackSource=explicitEditorialGap
+                ?'visual_editor_gap':'approved_photo_evidence';
               let retry=null;
               try{
                 retry=await selectCatalogRescueCompositions({
                   pool:freshPool,
                   critiqueFeedback:{reasons,
-                    editorPhotoGap:decision.creativeGap,
-                    approvedArchitectures:selectedArchitectures},
+                    editorPhotoGap:explicitEditorialGap
+                      ?decision.creativeGap:undefined,
+                    approvedArchitectures:selectedArchitectures,
+                    approvedPhotoEvidence},
                   directions:aiPlans,feedbackTaste,
                   context:{style:context.style,occasion:context.occasion,
                     brief:context.request,preferences:context.preferences,

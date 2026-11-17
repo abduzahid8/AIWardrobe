@@ -2565,12 +2565,16 @@ test('two real PHOTO approvals still activate portfolio fashion judgment and its
     }),
     selectCatalogRescueCompositions:async({pool,critiqueFeedback})=>{
       composerRescues++;
-      if(!critiqueFeedback.editorPhotoGap){
+      if(!critiqueFeedback.approvedPhotoEvidence){
         // The EXISTING first-vision correction could not help. The
         // NEW whole-collection PHOTO editor must still review two.
         return {status:'provider_unavailable',looks:[],providerCalls:1};
       }
-      assert.match(critiqueFeedback.editorPhotoGap,/relaxed.*suede/i);
+      assert.equal(critiqueFeedback.editorPhotoGap,undefined,
+        'real photo editor can omit optional free-text despite seeing JPEGs');
+      assert.equal(critiqueFeedback.approvedPhotoEvidence.length,2);
+      assert.ok(critiqueFeedback.approvedPhotoEvidence.some(photo=>
+        photo.observations?.outerwear&&photo.colors?.top));
       assert.deepEqual(critiqueFeedback.approvedArchitectures.length,2);
       return {status:'composed',looks:Array.from({length:3},(_,i)=>
         slots.map((slot,j)=>
@@ -2585,6 +2589,12 @@ test('two real PHOTO approvals still activate portfolio fashion judgment and its
         slotColors:{top:['cream','sky blue','stone'][i%3],
           outerwear:['navy','brown','olive'][i%3],
           bottom:['grey','beige','charcoal'][i%3],shoes:'brown'},
+        slotObservations:{top:'Lightweight classic textured cotton upper',
+          outerwear:'Structured dark tailored layer with pronounced shoulder',
+          bottom:'Gracefully draped tailored trouser line',
+          shoes:'Fine leather shoe with streamlined understated profile'},
+        relationships:[{kind:'outfit',slots:['top','outerwear'],
+          observation:'The sharply structured jacket sits above a soft shirting texture'}],
       }));
       for(const v of verdicts)if(!v.reject)photoApproved.add(v.candidateId);
       return verdicts;
@@ -2597,7 +2607,11 @@ test('two real PHOTO approvals still activate portfolio fashion judgment and its
         const pair=portfolios.find(p=>p.size===2);
         assert.ok(pair,'both original judged looks form a feasible pair');
         return {status:'selected',tokens:pair.orderedLooks,
-          creativeGap:'Missing relaxed suede tailoring and softly flowing wide trouser proportions'};
+          visualJury:'applied',visualMediaStatus:'ready'};
+          // The REAL hosted 120B Vision model often omits the optional
+          // missingFashionDirection even when its valid F-token is applied.
+          // This case must still trigger an autonomous new design based
+          // on the original independently photographed observations.
       }
       assert.ok(looks.length>=3,'second editor must inspect NEW photo-judged source looks');
       const triple=portfolios.find(p=>p.size===3&&p.orderedLooks.some(
@@ -2613,6 +2627,8 @@ test('two real PHOTO approvals still activate portfolio fashion judgment and its
   assert.equal(composerRescues,2,
     'the second composer call is creatively grounded in missing whole-deck direction');
   assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.feedbackRevision,'applied');
+  assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.feedbackSource,
+    'approved_photo_evidence');
   assert.equal(result.outfits.length,3);
   assert.ok(result.outfits.every(x=>photoApproved.has(x.id)));
   assert.ok(result.outfits.every(x=>x.items.length===4));

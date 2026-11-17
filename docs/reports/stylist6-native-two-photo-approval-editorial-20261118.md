@@ -74,3 +74,46 @@ third), anonymized F-token visual VLM selection with sanitized
 `missingFashionDirection`, and preserve refusal for one source look.
 A live direct iOS request on this latest patch is still required
 before declaring the end-to-end photo-feedback repair functional.
+
+## Another actual VLM JSON omission — do not lose the artist's second decision
+
+A further real authenticated native Classic/Work Render request on
+`ecd4294` at 2026-11-17 19:27:15 UTC **successfully sent real source
+JPG contact sheet to the 120B VISION editor**:
+`photoEditorialStatus:applied`,
+`photoEditorialVisualJury:applied`,
+`photoEditorialVisualMedia:ready`, 2 exact photo-approved
+portfolio choices, 33.7 seconds, no invented/weak third.
+However `photoEditorialCreativeRevision:not_run` AGAIN. Once
+the VLM has selected its exact server-feasible two-look F-token, its
+OPTIONAL free-text `missingFashionDirection` sometimes comes back
+empty/too short or omitted in the NVIDIA `json_object` response.
+
+The proper creative solution is to preserve the model's actual choice
+and transfer bounded **FACTUAL source-image observations of the
+approved looks** to a separate AI composer as creative context.
+This can run only after the real multimodal 120B jury returned
+`visualJury:applied` with `visualMediaStatus:ready`, or when the
+original editor supplied a valid explicit gap. The approved evidence
+includes PHOTO-observed silhouettes/texture/color/footwear and
+whole-outfit relationships, not raw product URLs, user IDs, merchant
+records or untrusted commands. The follow-up AI independently decides
+what *new fashion* direction to compose from unused merchant SKU
+tokens. New items MUST pass all hard/source/media rights and actual
+independent NVIDIA PHOTO quality gates again, and the second editor
+must select from server-verified complete portfolios. No automatic
+"good third", no relaxation.
+
+Diagnostic `photoEditorialCreativeSource`: bounded enum
+`visual_editor_gap` or `approved_photo_evidence`; no private
+image data or raw model free-text in logs. Regression simulates a
+120B real-photo editor selecting TWO but omitting the optional field,
+and tests that the next AI composes a third idea from original
+critic photographic observations, with an independent SECOND image
+critic and final portfolio-editor decision. A separate sanitizer
+test proves these real approved descriptions cannot leak URL,
+identity, untrusted object keys or raw photos.
+
+This repair remains **staging-only** until a real pinned iPhone
+generation verifies that `photoEditorialCreativeRevision` actually
+runs. Strict photo quality/no-padding floors remain unchanged.
