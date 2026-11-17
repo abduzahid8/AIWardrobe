@@ -2006,7 +2006,7 @@ export async function recommendFashionDeck({
           .filter(item=>!excludedBases.has(baseProductId(String(item.id))))
           .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
         const pool=sourceBoundCompositionPool(reviewable,{
-          additionalItems:extra,explorationSlots:4,directions:aiPlans,
+          additionalItems:extra,explorationSlots:4,directions:aiPlans,feedbackTaste,
         });
         composerPool=pool;
         skuCompositionReceipt.previewProducts=pool.length;
@@ -2015,7 +2015,7 @@ export async function recommendFashionDeck({
           !reviewable.some(look=>look.items.some(item=>item.id===p.item.id))).length;
         try{
           const composition=await selectCatalogCompositions({
-            pool,directions:aiPlans,outfitCount:6,context:{
+            pool,directions:aiPlans,outfitCount:6,feedbackTaste,context:{
               style:context.style,occasion:context.occasion,brief:context.request,
               weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
               preferences:context.preferences,
@@ -2378,7 +2378,7 @@ export async function recommendFashionDeck({
         let retry={status:'unavailable',looks:[]};
         try{
           retry=await selectCatalogRescueCompositions({
-            pool:freshPool,critiqueFeedback:feedback,directions:aiPlans,
+            pool:freshPool,critiqueFeedback:feedback,directions:aiPlans,feedbackTaste,
             context:{style:context.style,occasion:context.occasion,
               brief:context.request,preferences:context.preferences,
               weatherCelsius:Number.isFinite(context.weather?.temp)
