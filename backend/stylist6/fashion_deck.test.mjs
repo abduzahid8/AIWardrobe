@@ -1661,3 +1661,48 @@ test('strict personal colors preferentially spend paid visual calls on photograp
     'the model should see multiple actual-photo grounded alternatives, not only uncertain-color text metadata');
   assert.ok(sent.length<=8);
 });
+
+
+test('AI Fashion Director chooses real shortlisted whole looks before independent photo critique', async()=>{
+  let called=0,reviewed=[];
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:1200000,currency:'UZS'},requiredIds:[]};
+  const deck=await recommendFashionDeck({
+    ...base,request,referenceBriefs:[],visualDeckReview:true,
+    canJudgeOutfit:async()=>true,
+    selectDirectorFinalists:async({options,context})=>{
+      called++;
+      assert.ok(options.length>=6,'real complete candidates must exist for the model');
+      assert.equal(context.style,'classic');
+      assert.ok(options.every(x=>!Object.hasOwn(x,'look')&&!Object.hasOwn(x,'id')),
+        'neither raw SKUs nor original look objects reach the hosted selector');
+      return {status:'selected',tokens:options.slice(0,6).map(x=>x.token),providerCalls:1};
+    },
+    visualCritic:async batch=>{
+      reviewed=batch;return batch.map(candidate=>admittedVisualVerdict(candidate));
+    },
+  });
+  assert.equal(called,1);
+  assert.equal(deck.diagnostics.modelFashionSelection.status,'selected');
+  assert.equal(deck.diagnostics.modelFashionSelection.chosen,6);
+  assert.ok(reviewed.length>=6&&reviewed.length<=8);
+  assert.ok(deck.outfits.every(look=>reviewed.some(x=>x.id===look.id)));
+  assert.ok(deck.outfits.every(look=>Array.isArray(look.visualEvidence)),
+    'only independently photo-approved model choices are displayed');
+});
+test('AI Fashion Director provider timeout restores legacy editorial admission',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:1200000,currency:'UZS'},requiredIds:[]};
+  const deck=await recommendFashionDeck({
+    ...base,request,referenceBriefs:[],visualDeckReview:true,
+    canJudgeOutfit:async()=>true,
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[],providerCalls:1}),
+    visualCritic:async batch=>batch.map(candidate=>admittedVisualVerdict(candidate)),
+  });
+  assert.equal(deck.diagnostics.modelFashionSelection.status,'timeout');
+  assert.equal(deck.diagnostics.modelFashionSelection.chosen,0);
+  assert.ok(deck.outfits.every(look=>Array.isArray(look.visualEvidence)),
+    'an AI outage is not an unreviewed-fashion approval');
+});
