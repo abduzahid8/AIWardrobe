@@ -1,0 +1,63 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import sharp from 'sharp';
+import {buildPhotoEditorialContactSheet,PHOTO_CONTACT_SHEET_VERSION}
+  from './photo_editor_contact_sheet.mjs';
+
+const slots=['top','outerwear','bottom','shoes'];
+const looks=Array.from({length:5},(_,i)=>({
+  id:'private-user-identifier-'+i,
+  items:slots.filter((slot)=>i%2===0||slot!=='outerwear')
+    .map((macroCategory,j)=>({
+      id:'PRIVATE_SKU_SECRET_'+i+'_'+j,
+      macroCategory,imageUrl:'https://catalog-photos.example/'+i+'/'+j+'.jpg',
+      name:'PRIVATE USER GARMENT',
+    })),
+}));
+const jpeg=await sharp({create:{width:120,height:130,channels:3,background:'#657c8a'}})
+  .jpeg({quality:75}).toBuffer();
+
+test('one exact original-photo collage contains real garments in fixed four-slot L rows',async()=>{
+  let calls=0,auth=0;
+  const sheet=await buildPhotoEditorialContactSheet(looks,{
+    resolvePhoto:async()=>{calls++;return {bytes:jpeg};},
+    authorizePhoto:url=>{auth++;return url.startsWith('https://catalog-photos.example/');},
+  });
+  assert.equal(PHOTO_CONTACT_SHEET_VERSION,'s6-real-photo-portfolio-sheet-v1');
+  assert.ok(sheet,'all preapproved original merchant photographs must be representable');
+  assert.deepEqual(sheet.lookTokens,['L00','L01','L02','L03','L04']);
+  assert.equal(calls,18,'all 4+3+4+3+4 whole-outfit photos, never invented layers');
+  assert.equal(auth,18,'each independent source image re-authorized');
+  const meta=await sharp(sheet.bytes).metadata();
+  assert.equal(meta.format,'jpeg');
+  assert.equal(meta.width,sheet.width);
+  assert.equal(meta.height,sheet.height);
+  assert.ok(sheet.bytes.length<540000);
+});
+test('a missing or unlicensed source photograph can NEVER become visual inference evidence',async()=>{
+  let fetches=0;
+  const unauthorized=await buildPhotoEditorialContactSheet(looks,{
+    resolvePhoto:async()=>{fetches++;return {bytes:jpeg};},
+    authorizePhoto:url=>!url.includes('/1/'),
+  });
+  assert.equal(unauthorized,null);
+  assert.equal(fetches,0,'do not fetch any media after eligibility fails');
+  const missing=await buildPhotoEditorialContactSheet(looks,{
+    resolvePhoto:async item=>item.imageUrl.endsWith('/2/0.jpg')
+      ?null:{bytes:jpeg},
+    authorizePhoto:()=>true,
+  });
+  assert.equal(missing,null);
+  assert.equal(await buildPhotoEditorialContactSheet(looks.slice(0,2),{
+    resolvePhoto:async()=>({bytes:jpeg}),authorizePhoto:()=>true,
+  }),null,'insufficient approved looks do not create a fake image board');
+});
+test('contact sheet media preparation has a hard finite deadline',async()=>{
+  const before=Date.now();
+  const sheet=await buildPhotoEditorialContactSheet(looks,{
+    resolvePhoto:async()=>new Promise(()=>{}),
+    authorizePhoto:()=>true,deadlineMs:300,
+  });
+  assert.equal(sheet,null);
+  assert.ok(Date.now()-before<1600,'no CDN stall can exhaust a 72s styling request');
+});

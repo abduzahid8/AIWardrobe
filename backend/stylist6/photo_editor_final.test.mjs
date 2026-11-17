@@ -1,7 +1,8 @@
+import sharp from 'sharp';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  PHOTO_EDITOR_FINAL_VERSION,anonymousPhotoEditorialOptions,
+  PHOTO_EDITOR_FINAL_VERSION,PHOTO_PORTFOLIO_VISION_MODEL,anonymousPhotoEditorialOptions,
   anonymousPhotoEditorialPortfolios,validatePhotoEditorialPortfolioChoice,selectPhotoEditorialDeck,
 } from './photo_editor_final.mjs';
 const looks=Array.from({length:5},(_,i)=>({
@@ -88,4 +89,104 @@ test('provider failure, duplicate, invented SKU and missing approvals fail safel
     portfolios:verifiedMenu,apiKey:key,
     fetchImpl:async()=>Response.json({error:'fail'},{status:502})});
   assert.equal(down.status,'provider_unavailable');
+});
+
+
+test('real original product-photo visual jury chooses only a fully verified whole deck',async()=>{
+  const jpeg=await sharp({create:{width:110,height:130,channels:3,
+    background:'#8c958d'}}).jpeg().toBuffer();
+  let calls=0,photos=0;
+  const selection=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    context:{style:'classic',occasion:'Date night',
+      preferences:{fitPreference:'relaxed'}},
+    apiKey:'nvapi-test-visual-key',timeoutMs:8500,
+    authorizePhoto:()=>true,
+    resolvePhoto:async()=>{photos++;return {bytes:jpeg};},
+    fetchImpl:async(_,opts)=>{
+      calls++;
+      const body=JSON.parse(opts.body);
+      assert.equal(body.model,PHOTO_PORTFOLIO_VISION_MODEL);
+      assert.equal(body.messages[0].content,'/no_think');
+      assert.equal(body.messages[1].content.length,2);
+      assert.equal(body.messages[1].content[1].type,'image_url');
+      assert.match(body.messages[1].content[1].image_url.url,
+        /^data:image\/jpeg;base64,/);
+      assert.match(body.messages[1].content[0].text,/photo contact sheet/i);
+      assert.match(body.messages[1].content[0].text,/luxury personal styling atelier/i);
+      assert.doesNotMatch(body.messages[1].content[0].text,
+        /PRIVATE|SECRET|client|private\.example|https:\/\//);
+      return result('F01');
+    },
+  });
+  assert.equal(calls,1,'one complete photographic portfolio decision, no additional LLM');
+  assert.equal(photos,20,'real photo board includes original 5 x 4 SKU images');
+  assert.equal(selection.status,'selected');
+  assert.equal(selection.visualJury,'applied');
+  assert.deepEqual(selection.tokens,['L02','L00']);
+  assert.equal(selection.portfolioToken,'F01');
+  assert.equal(selection.providerCalls,1);
+});
+
+test('visual provider HTTP failure keeps the proven source-safe text editor, never weakens gates',async()=>{
+  const jpeg=await sharp({create:{width:70,height:75,channels:3,
+    background:'#a8aec0'}}).jpeg().toBuffer();
+  let calls=0;
+  const selection=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    context:{style:'classic',occasion:'Work'},timeoutMs:8500,
+    apiKey:'nvapi-test-visual-key',
+    authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:jpeg}),
+    fetchImpl:async(_url,opts)=>{
+      calls++;
+      const body=JSON.parse(opts.body);
+      if(body.model===PHOTO_PORTFOLIO_VISION_MODEL)
+        return Response.json({error:'visual model not configured'},{status:400});
+      assert.equal(body.model,'nvidia/nemotron-3.5-lightning-30b-a3b');
+      return result('F02');
+    },
+  });
+  assert.equal(calls,2);
+  assert.equal(selection.status,'selected');
+  assert.equal(selection.visualJury,'unavailable');
+  assert.deepEqual(selection.tokens,['L04']);
+  assert.equal(selection.providerCalls,2);
+});
+
+test('missing authorized fashion photo degrades honestly to text, never invented visual inspection',async()=>{
+  let calls=0;
+  const selection=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    timeoutMs:8500,apiKey:'nvapi-test-visual-key',
+    authorizePhoto:()=>true,resolvePhoto:async()=>null,
+    fetchImpl:async(_,opts)=>{
+      calls++;
+      assert.equal(JSON.parse(opts.body).model,
+        'nvidia/nemotron-3.5-lightning-30b-a3b');
+      return result('F02');
+    },
+  });
+  assert.equal(calls,1);
+  assert.equal(selection.visualJury,'image_unavailable');
+  assert.equal(selection.status,'selected');
+});
+
+test('invalid photo-jury decision never unlocks an unverified portfolio token',async()=>{
+  const jpeg=await sharp({create:{width:70,height:70,channels:3,
+    background:'#c9c9c9'}}).jpeg().toBuffer();
+  let calls=0;
+  const selection=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    timeoutMs:8500,apiKey:'nvapi-test-visual-key',
+    authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:jpeg}),
+    fetchImpl:async(_url,opts)=>{
+      calls++;
+      return JSON.parse(opts.body).model===PHOTO_PORTFOLIO_VISION_MODEL
+        ?result('F99'):result('F01');
+    },
+  });
+  assert.equal(calls,2);
+  assert.equal(selection.status,'selected');
+  assert.equal(selection.visualJury,'invalid_selection');
+  assert.deepEqual(selection.tokens,['L02','L00']);
 });

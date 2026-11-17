@@ -135,6 +135,10 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       'invalid_combination','invalid_selection','not_enough_approved']
       .includes(f.photoEditorial?.status)?f.photoEditorial.status:'not_run',
     photoEditorialChosen:safe(f.photoEditorial?.chosen,3),
+    photoEditorialVisualJury:['applied','not_run','image_unavailable',
+      'invalid_selection','timeout','provider_unavailable','unavailable']
+      .includes(f.photoEditorial?.visualJury)
+      ?f.photoEditorial.visualJury:'not_run',
     photoEditorialEligibleTriples:safe(f.photoEditorial?.eligibleTriples,24),
     photoEditorialEligiblePairs:safe(f.photoEditorial?.eligiblePairs,12),
     formalPhotoProbe:f.formalPhotoProbe===true,
@@ -1292,9 +1296,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         : (/^(1|true)$/i.test(String(env.STYLIST6_DEFAULT_VISUAL_EVAL || '').trim()) ? 'server_default' : 'default_off');
     const nvidiaKey = env.NVIDIA_API_KEY || '';
     const photoCache = new Map();
+    // Exact image bytes are shared with the independent photo-critic cache.
+    let photoPortfolioResolver=null;
     if (visualAsked && !visualDisabled && nvidiaKey.startsWith('nvapi-')) {
       const resolveProduct = (product) => resolveProductAsset(product.imageUrl || product.image_url, photoCache,
         fetchImpl ? (prodUrl, prodOptions) => fetchImpl(prodUrl, prodOptions) : undefined);
+      photoPortfolioResolver=resolveProduct;
       // Even an explicitly unreviewed third catalog card must have real,
       // decodable product photos. Reuse the request-scoped image cache and
       // avoid new paid NVIDIA calls. Never let expired request time preflight.
@@ -1436,9 +1443,14 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           nextPhase('final_photo_portfolio_editor');
           return selectPhotoEditorialDeck({
             looks,critiques,portfolios,context,apiKey:nvidiaKey,
+            // The optional visual jury sees ONLY source photos independently
+            // authorized and photo-judged earlier in this same request.
+            // A slow/unavailable visual model retains the original text editor.
+            resolvePhoto:photoPortfolioResolver,
+            authorizePhoto:isInferenceAuthorized,
             ...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
-            timeoutMs:Math.min(3200,Math.max(500,left-2800)),
+            timeoutMs:Math.min(9600,Math.max(500,left-3300)),
           });
         } : null;
     const deck = await runWithinRemainingDeadline(() => recommendFashionDeck({

@@ -2591,6 +2591,9 @@ export async function recommendFashionDeck({
             eligiblePairs:verifiedPortfolios.filter(p=>p.size===2).length,
             eligibleSingles:verifiedPortfolios.filter(p=>p.size===1).length,
             chosen:0,
+            visualJury:['applied','not_run','image_unavailable',
+              'invalid_selection','timeout','provider_unavailable','unavailable']
+              .includes(decision?.visualJury)?decision.visualJury:'not_run',
           };
           if(decision?.status==='selected'&&Array.isArray(decision.tokens)){
             const chosen=[...new Set(decision.tokens)]
