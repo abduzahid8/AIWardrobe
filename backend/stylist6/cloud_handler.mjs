@@ -1397,12 +1397,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // production S5 route and 50s Vercel preview do not pay for it.
     const selectCatalogCompositions=modelSlateEnabled&&budgetMs>=70000 &&
       sourceMode==='catalog' && !requiredIds.length
-      ? async({pool,context,layerRequired,allowLayer})=>{
+      ? async({pool,context,directions,layerRequired,allowLayer})=>{
           const left=remainingMs();
           if(left<27000)return {status:'deadline',looks:[],providerCalls:0};
           nextPhase('ai_direct_sku_composition');
           return composeCatalogSkuLooks({
-            pool,context,layerRequired,allowLayer,
+            pool,context,directions,layerRequired,allowLayer,
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:Math.min(3000,Math.max(500,left-24500)),
@@ -1546,7 +1546,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       const safeTrace=stylist6SafeQualityTrace(
         deck.diagnostics,deck.outfits.length,Date.now()-started);
       console.info('stylist6_safe_visual_quality', {
-        ...safeTrace, phases:{...phaseAt,
+        ...safeTrace,
+        creativePlanCount:Math.min(3,creativePlan.briefs.length),
+        creativePlanStatus:['planned','planned_partial','cached','invalid_plan',
+          'disabled_or_deadline','timeout','provider_unavailable','not_configured']
+          .includes(creativePlan.status)?creativePlan.status:'other',
+        phases:{...phaseAt,
           [activePhase]:Date.now()-phaseStart},
       });
     }

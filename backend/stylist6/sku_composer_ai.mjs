@@ -46,7 +46,7 @@ function photoFacts(item){
  * must STILL accept any AI-composed new combinations.
  */
 export function sourceBoundCompositionPool(looks, {
-  perSlot=MAX_PER_SLOT,additionalItems=[],explorationSlots=4,
+  perSlot=MAX_PER_SLOT,additionalItems=[],explorationSlots=4,directions=[],
 }={}){
   if(!Array.isArray(looks))return [];
   const limit=Math.max(1,Math.min(MAX_PER_SLOT,perSlot));
@@ -63,6 +63,13 @@ export function sourceBoundCompositionPool(looks, {
     }
   }
   const exploration=Array.isArray(additionalItems)?additionalItems.slice(0,650):[];
+  // The autonomous Creative Director already generated 3 inventory-backed
+  // outfit directions. The source-item composer previously never received
+  // them and thus kept inventing 3 unrelated generic shirt/trouser sets.
+  // Surface real garments from those planned SUBTYPES in the allowed menu
+  // before filling generic popular items. A plan never approves a SKU.
+  const planned=Array.isArray(directions)?directions.slice(0,3).filter(x=>
+    x?.generatedBy==='s6-creative-director-v1'&&x.roles):[];
   const extraCapacity=Math.max(0,Math.min(4,explorationSlots,limit-3));
   const result=[];
   for(const slot of SLOTS){
@@ -79,8 +86,37 @@ export function sourceBoundCompositionPool(looks, {
       used.add(key);families.add(group);chosen.push(x);
       return true;
     };
-    // Present the AI with multiple DIFFERENT known garment architectures,
-    // rather than the top 12 SKUs of one legacy concept.
+    // Reserve actual merchandise for each independent AI planning direction
+    // where available. Include directly prepared catalog alternatives; the
+    // preceding ranker may have left fine knits, softer shoes or non-office
+    // layers OUT of the prebuilt shortlist. Only source-verified products
+    // and this bounded pool may ever be selected, still subject to full
+    // independent photo review.
+    const plannedCandidates=[...pool,
+      ...exploration.filter(x=>slotOf(x)===slot&&x.isShopItem===true)
+        .map(item=>({item,strength:0.65}))];
+    for(const direction of planned){
+      if(chosen.length>=limit)break;
+      const subtypes=Array.isArray(direction.roles?.[slot])
+        ?direction.roles[slot].filter(x=>typeof x==='string').slice(0,3):[];
+      if(!subtypes.length)continue;
+      const palettes=new Set(Array.isArray(direction.palette)
+        ?direction.palette.filter(x=>typeof x==='string').map(x=>x.toLowerCase()):[]);
+      const best=plannedCandidates
+        .filter(x=>subtypes.includes(x.item.subtype)&&
+          !used.has(productKey(x.item)))
+        .sort((a,b)=>{
+          const palette=item=>{
+            const observed=photoFacts(item).color||item.color||'';
+            return palettes.has(String(observed).toLowerCase())?1:0;
+          };
+          return palette(b.item)-palette(a.item)||b.strength-a.strength||
+            String(a.item.id).localeCompare(String(b.item.id));
+        })[0];
+      if(best)append(best);
+    }
+    // Fill remaining options with diverse, strong real products; the model
+    // decides if a planned direction should be revised for visual harmony.
     const seededCap=Math.max(3,limit-extraCapacity);
     for(const x of pool){
       if(families.has(family(x.item)))continue;
@@ -176,8 +212,34 @@ export function validateSkuCompositions(answer,pool,{layerRequired=false,allowLa
   return looks;
 }
 
+/** Present only grounded AI direction plans that can be executed using the
+ * exact permitted SKU menu. A missing planned subtype is UNKNOWN/optional,
+ * never an instruction to invent merchandise.
+ */
+export function groundedSkuDirections(directions,pool){
+  if(!Array.isArray(directions)||!Array.isArray(pool))return [];
+  const available=Object.fromEntries(SLOTS.map(slot=>[slot,
+    new Set(pool.filter(x=>x.slot===slot).map(x=>x.item?.subtype))]));
+  return directions.slice(0,3).flatMap((d,i)=>{
+    if(d?.generatedBy!=='s6-creative-director-v1'||!d.roles)return [];
+    const roles=Object.fromEntries(SLOTS.map(slot=>[slot,
+      (Array.isArray(d.roles[slot])?d.roles[slot]:[]).slice(0,3)
+        .filter(x=>typeof x==='string'&&available[slot].has(x))]));
+    if(['top','bottom','shoes'].some(slot=>roles[slot].length===0))return [];
+    return [{
+      lookNumber:i+1,
+      designConcept:safe(d.name,65),
+      desiredSilhouette:safe(d.silhouette,50),
+      desiredColors:Array.isArray(d.palette)
+        ?d.palette.slice(0,5).map(x=>safe(x,24)).filter(Boolean):[],
+      preferredAvailableSubtypes:roles,
+      removableLayer:d.layerPolicy==='optional',
+    }];
+  });
+}
+
 export async function composeCatalogSkuLooks({
-  pool,context,apiKey,fetchImpl=fetch,signal,timeoutMs=2600,
+  pool,context,directions=[],apiKey,fetchImpl=fetch,signal,timeoutMs=2600,
   layerRequired=false,allowLayer=true,
 }={}){
   const visible=Array.isArray(pool)?pool.slice(0,48).map(x=>x.public):[];
@@ -194,6 +256,7 @@ export async function composeCatalogSkuLooks({
   inflight++;
   try{
     const options=Object.fromEntries(SLOTS.map(slot=>[slot,bySlot.get(slot)]));
+    const groundedPlans=groundedSkuDirections(directions,pool);
     const preface=[
       'You are an expert HUMAN-CALIBER personal menswear stylist.',
       'CREATE THREE distinct beautiful complete outfits FROM THE EXACT REAL PRODUCTS',
@@ -209,6 +272,12 @@ export async function composeCatalogSkuLooks({
         :allowLayer?'Outerwear is OPTIONAL; do not add a jacket merely to pad a look.'
           :'Outerwear is forbidden by the requested silhouette.',
       'Use three materially DISTINCT directions (not a new shoe color alone).',
+      'If inventory-backed Creative Director concepts are provided, use their',
+      'lookNumber to compose that specific outfit (index = lookNumber - 1).',
+      'Each concept proposes a DIFFERENT silhouette, materials and color harmony.',
+      'Honour an attainable plan where it looks beautiful, but do not force',
+      'mismatched garments or invent missing products to match a palette.',
+      'A concept is aesthetic design advice, NOT a hard item/stock/size approval.',
       'NEVER REUSE a P-token across outfits; make source-backed shopping outfits.',
       'Respect the requested style, context, fit and explicit dislikes.',
       'Look for impressive outfit-level relationships, not individual popular SKUs.',
@@ -233,6 +302,7 @@ export async function composeCatalogSkuLooks({
           avoidColors:Array.isArray(context?.preferences?.avoidColors)?
             context.preferences.avoidColors.slice(0,7).map(x=>safe(x,25)):[]},
         realMerchantItemMenus:options,
+        inventoryGroundedDesignDirections:groundedPlans,
       }),
     ].join('\n');
     // NVIDIA's strict JSON-schema subset has rejected uniqueItems with an

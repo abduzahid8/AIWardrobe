@@ -1998,14 +1998,15 @@ export async function recommendFashionDeck({
           .filter(item=>!excludedBases.has(baseProductId(String(item.id))))
           .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
         const pool=sourceBoundCompositionPool(reviewable,{
-          additionalItems:extra,explorationSlots:4,
+          additionalItems:extra,explorationSlots:4,directions:aiPlans,
         });
         skuCompositionReceipt.previewProducts=pool.length;
+        skuCompositionReceipt.designDirections=aiPlans.length;
         skuCompositionReceipt.exploratoryProducts=pool.filter(p=>
           !reviewable.some(look=>look.items.some(item=>item.id===p.item.id))).length;
         try{
           const composition=await selectCatalogCompositions({
-            pool,context:{
+            pool,directions:aiPlans,context:{
               style:context.style,occasion:context.occasion,brief:context.request,
               weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
               preferences:context.preferences,

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {sourceBoundCompositionPool,validateSkuCompositions,composeCatalogSkuLooks,
+import {sourceBoundCompositionPool,groundedSkuDirections,
+  validateSkuCompositions,composeCatalogSkuLooks,
   sourceVerifyComposedOutfits,AI_SKU_COMPOSER_VERSION} from './sku_composer_ai.mjs';
 const slots=['top','outerwear','bottom','shoes'];
 const items=Array.from({length:6},(_,i)=>slots.map((slot,j)=>({
@@ -158,4 +159,73 @@ test('slot-column output assembles three user-facing real looks without repeatin
     slotPicks:{...response.slotPicks,
       outerwear:['none',...response.slotPicks.outerwear.slice(1)]},
   },pool,{layerRequired:true}),[],'required layer cannot be bypassed');
+});
+
+
+test('Creative Director planning actually influences real SKU menu and the THREE assembled look directions',async()=>{
+  const extra=[
+    {...items[4][0],id:'EXTRA-MERINO',subtype:'fine-knit',
+      name:'Merino Polo Neck Sweater',color:'camel'},
+    {...items[4][1],id:'EXTRA-OVERSHIRT',subtype:'overshirt',
+      name:'Cotton Twill Overshirt',color:'olive'},
+    {...items[4][2],id:'EXTRA-CHINO',subtype:'chino',
+      name:'Refined Pleated Cotton Chinos',color:'stone'},
+    {...items[4][3],id:'EXTRA-LOAFER',subtype:'loafer',
+      name:'Soft Suede Penny Loafers',color:'brown'},
+  ];
+  const directions=[
+    {id:'ai-director-1',generatedBy:'s6-creative-director-v1',
+      name:'Modern warm neutral knit ensemble',
+      silhouette:'relaxed',palette:['camel','stone','brown'],
+      roles:{top:['fine-knit'],outerwear:[],bottom:['chino'],shoes:['loafer']},
+      layerPolicy:'absent'},
+    {id:'ai-director-2',generatedBy:'s6-creative-director-v1',
+      name:'Soft precision tailoring',silhouette:'tailored',palette:['navy','grey'],
+      roles:{top:['dress-shirt'],outerwear:['blazer'],
+        bottom:['tailored-trouser'],shoes:['oxford']},layerPolicy:'optional'},
+    {id:'ai-director-3',generatedBy:'s6-creative-director-v1',
+      name:'Textural city casual',silhouette:'balanced',palette:['olive','cream'],
+      roles:{top:['dress-shirt'],outerwear:['overshirt'],
+        bottom:['tailored-trouser'],shoes:['loafer']},layerPolicy:'optional'},
+  ];
+  const pool=sourceBoundCompositionPool(looks,{additionalItems:extra,
+    explorationSlots:4,directions});
+  for(const candidate of extra){
+    assert.ok(pool.some(x=>x.item===candidate),
+      'the plan must be executable with the REAL catalog item '+candidate.id);
+  }
+  const safeDirections=groundedSkuDirections(directions,pool);
+  assert.equal(safeDirections.length,3);
+  assert.equal(safeDirections[0].lookNumber,1);
+  assert.ok(safeDirections[0].preferredAvailableSubtypes.top.includes('fine-knit'));
+  assert.ok(safeDirections[2].preferredAvailableSubtypes.outerwear.includes('overshirt'));
+  assert.doesNotMatch(JSON.stringify(safeDirections),/EXTRA-MERINO|EXTRA-OVERSHIRT/);
+  const accepted=await composeCatalogSkuLooks({
+    pool,directions,layerRequired:false,allowLayer:true,apiKey:'nvapi-test',
+    context:{style:'classic',occasion:'Casual'},
+    fetchImpl:async(_,init)=>{
+      const message=JSON.parse(init.body).messages[0].content;
+      assert.match(message,/Modern warm neutral knit ensemble/);
+      assert.match(message,/Soft precision tailoring/);
+      assert.match(message,/Textural city casual/);
+      assert.match(message,/inventoryGroundedDesignDirections/);
+      assert.doesNotMatch(message,/EXTRA-MERINO|EXTRA-OVERSHIRT|https:\/\//);
+      return result(slotAnswer(pool));
+    },
+  });
+  assert.equal(accepted.status,'composed');
+  assert.equal(accepted.looks.length,3);
+  assert.equal(new Set(accepted.looks.flat().map(x=>x.id)).size,12);
+});
+
+test('malformed and unavailable AI fashion directions never invent missing merchandise',()=>{
+  const missing={id:'ai-director-1',generatedBy:'s6-creative-director-v1',
+    name:'Impossible',palette:['red'],roles:{
+      top:['unobtainium'],outerwear:[],bottom:['chino'],shoes:['oxford'],
+    }};
+  const sample=sourceBoundCompositionPool(looks,{directions:[missing]});
+  assert.deepEqual(groundedSkuDirections([missing],sample),[]);
+  assert.equal(groundedSkuDirections([{
+    ...missing,generatedBy:'user-supplied-impersonation',
+  }],sample).length,0);
 });
