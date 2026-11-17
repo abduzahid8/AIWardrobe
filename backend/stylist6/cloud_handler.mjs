@@ -1441,6 +1441,15 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const modelSlateEnabled=serverFashionSlateEnabled(env,{
       visualAsked,visualCriticAvailable:!!visualCritic,
     });
+    // REAL native iOS fashion QA on dbefcdd/6ae1c2c/45428a8 showed
+    // merchant photo-board TIMEOUT and only 1/6 approved looks. Do not
+    // impose unreliable multi-CDN downloads on end users by default.
+    // Reenable PHOTO-FIRST only after a source-hash-verified, explicitly
+    // authorized original-photo cache can provide all four garment roles.
+    // TEXT AI-first and the proven independent final PHOTO editor remain on.
+    const photoFirstCatalogReady=
+      env.STYLIST6_PHOTO_FIRST_COMPOSER_ENABLED==='true' &&
+      env.STYLIST6_PHOTO_ASSETS_READY==='source-hash-verified';
     const selectDirectorFinalists=modelSlateEnabled
       ? async({options,context})=>{
           const timeLeftMs=Math.max(0,Math.floor(remainingMs()));
@@ -1473,8 +1482,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           return composeCatalogSkuLooks({
             pool,context,directions,layerRequired,allowLayer,outfitCount,
             feedbackTaste,parallel,
-            resolvePhoto:parallel?photoPortfolioResolver:null,
-            authorizePhoto:parallel?isInferenceAuthorized:null,
+            resolvePhoto:parallel&&photoFirstCatalogReady?photoPortfolioResolver:null,
+            authorizePhoto:parallel&&photoFirstCatalogReady?isInferenceAuthorized:null,
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:parallel
