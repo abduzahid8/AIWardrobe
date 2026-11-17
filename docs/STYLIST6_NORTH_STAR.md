@@ -196,6 +196,20 @@ fulfill the owner's four-product contract.
 ## Each work session's completion report must include
 GitHub SHA; staging Supabase function version + pinned READY compute SHA; code/quality changes; real scenario IDs & images; what objectively improved; what deteriorated; how many looks were provider-judged vs fallback; product stock/rights truth; QA gate counts; production status; exact NEXT highest-leverage root cause.
 
+## 2026-11-18 — two PHOTO-approved native looks MUST receive a real editorial AI opportunity
+
+The first LIVE native response after stable completed-deck recovery
+confirmed 2 source-shoppable iPhone cards, 9 NVIDIA whole-outfit photo
+judgments / only 2 approvals and an unused ~40-second server creative
+budget. The final PHOTO portfolio editor was silently not run due to an
+artificial >=3-approved precondition. On isolated 72s staging, now
+invoke that genuine independent visual fashion editor for 2 approved
+looks as well: it can critique the missing THIRD direction and request
+a new AI source-SKU design, then its photo-verified second pass. Never
+invent an unphotographed third look. Exact QA and source-backed
+regression: `docs/reports/stylist6-native-two-photo-approval-editorial-20261118.md`.
+User-visible two looks is a transport PASS, NOT aesthetic acceptance.
+
 ## 2026-11-17 — photo portfolio fashion editor now can CREATE corrective new styling directions
 
 Previously the final independent actual-photo fashion editor could only

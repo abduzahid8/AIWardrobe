@@ -2662,7 +2662,14 @@ export async function recommendFashionDeck({
             .filter(row=>row.reason==='approved').map(row=>row.candidateId));
         const approvedLooks=candidates.filter(c=>approvedIds.has(c.id))
           .slice(0,MAX_VISUAL_CANDIDATES);
-        if(approvedLooks.length>=3){
+        // A REAL iPhone Classic/Work paid run at 84ba6a8 had 2/9 PHOTO
+        // approvals and ~40 seconds of engine budget left. The independent
+        // whole-collection fashion editor was NEVER invoked, because this
+        // artificial >=3 gate short-circuited it. Exactly two approved
+        // photographed looks are a VALID editorial comparison: ask the AI
+        // whether they are truly different and what artistic direction the
+        // third must take. Any NEW SKU idea STILL needs real photo approval.
+        if(approvedLooks.length>=2){
           // The menu is a real, finite, ALREADY VERIFIED set of cohesive
           // portfolios. This is an existence proof, not a new taste veto:
           // the AI now exercises its own fashion judgment among feasible

@@ -2536,3 +2536,85 @@ test('visual editorial revision cannot display a newly rejected or unlicensed fo
   assert.equal(result.outfits.length,2,'previously judged pair survives new photo rejection');
   assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
 });
+
+test('two real PHOTO approvals still activate portfolio fashion judgment and its NEW AI creative direction',async()=>{
+  const slots=['top','outerwear','bottom','shoes'];
+  const roles=[
+    ['shirt','polo','turtleneck','oxford','merino-crew','knit-polo'],
+    ['blazer','cardigan','suede-jacket','overshirt','coat','wool-jacket'],
+    ['tailored-trouser','chino','pleated-trouser','wide-trouser','wool-trouser','relaxed-chino'],
+    ['loafer','derby','chelsea-boot','oxford','suede-loafer','minimal-sneaker'],
+  ];
+  const catalog=slots.flatMap((slot,j)=>Array.from({length:12},(_,i)=>
+    garment('two-approvals-'+slot+'-'+i,
+      ['Fine shirt','Textured jacket','Tailored trouser','Leather footwear'][j]+' '+i,
+      slot,roles[j][i%6])));
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:16},optionalLayer:false,preferences:{},requiredIds:[],
+    budget:{amount:3000000,currency:'UZS'}};
+  let photoWaves=0,editorCalls=0,composerRescues=0;
+  const photoApproved=new Set();
+  const result=await recommendFashionDeck({
+    ...base,request,catalog,
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
+    selectCatalogCompositions:async({pool})=>({
+      status:'composed',
+      looks:Array.from({length:6},(_,i)=>
+        slots.map(slot=>pool.filter(p=>p.slot===slot)[i].item)),
+      providerCalls:1,
+    }),
+    selectCatalogRescueCompositions:async({pool,critiqueFeedback})=>{
+      composerRescues++;
+      if(!critiqueFeedback.editorPhotoGap){
+        // The EXISTING first-vision correction could not help. The
+        // NEW whole-collection PHOTO editor must still review two.
+        return {status:'provider_unavailable',looks:[],providerCalls:1};
+      }
+      assert.match(critiqueFeedback.editorPhotoGap,/relaxed.*suede/i);
+      assert.deepEqual(critiqueFeedback.approvedArchitectures.length,2);
+      return {status:'composed',looks:Array.from({length:3},(_,i)=>
+        slots.map((slot,j)=>
+          pool.filter(p=>p.slot===slot)[(i+j)%6].item)),providerCalls:1};
+    },
+    photoRescueRemainingMs:()=>41000,
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      photoWaves++;
+      const verdicts=batch.map((look,i)=>admittedVisualVerdict(look,{
+        reject:photoWaves===1&&i>=2,
+        slotColors:{top:['cream','sky blue','stone'][i%3],
+          outerwear:['navy','brown','olive'][i%3],
+          bottom:['grey','beige','charcoal'][i%3],shoes:'brown'},
+      }));
+      for(const v of verdicts)if(!v.reject)photoApproved.add(v.candidateId);
+      return verdicts;
+    },
+    selectPhotoApprovedPortfolio:async({looks,portfolios})=>{
+      editorCalls++;
+      assert.ok(portfolios.every(p=>p.size<=3));
+      if(editorCalls===1){
+        assert.equal(looks.length,2,'initial real VLM passed ONLY two of six');
+        const pair=portfolios.find(p=>p.size===2);
+        assert.ok(pair,'both original judged looks form a feasible pair');
+        return {status:'selected',tokens:pair.orderedLooks,
+          creativeGap:'Missing relaxed suede tailoring and softly flowing wide trouser proportions'};
+      }
+      assert.ok(looks.length>=3,'second editor must inspect NEW photo-judged source looks');
+      const triple=portfolios.find(p=>p.size===3&&p.orderedLooks.some(
+        token=>Number(token.slice(1))>=2));
+      assert.ok(triple,'new photographed garment must form a feasible different three-look portfolio');
+      return {status:'selected',tokens:triple.orderedLooks};
+    },
+  });
+  assert.equal(photoWaves,2,
+    'new artist-created proposals require a real independent SECOND PHOTO verdict');
+  assert.equal(editorCalls,2,
+    'photo editor must work on initial TWO approved looks AND re-curate after creative correction');
+  assert.equal(composerRescues,2,
+    'the second composer call is creatively grounded in missing whole-deck direction');
+  assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.feedbackRevision,'applied');
+  assert.equal(result.outfits.length,3);
+  assert.ok(result.outfits.every(x=>photoApproved.has(x.id)));
+  assert.ok(result.outfits.every(x=>x.items.length===4));
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+});
