@@ -36,6 +36,28 @@ export const STYLIST6_CLOUD_ENABLED = STYLIST6_DEV_ENABLED || (
 export const STYLIST6_RENDER_CANARY_ENABLED =
   STYLIST6_DEV_ENABLED && process.env.EXPO_PUBLIC_STYLIST6_RENDER_CANARY === 'true';
 
+/** Stylist 6 recency must not permanently exhaust a finite real catalog.
+ * A professional stylist can reuse great shoes in NEW complete outfits
+ * after a cooling-off deck. Reject exact products shown in the PREVIOUS
+ * displayed deck; preserve older full-look signatures as a soft fashion
+ * repetition penalty handled by the backend. Keep real user preferences,
+ * explicitly forbidden colors/brands, exact budget and anchor hard.
+ * Stylist 5 keeps its existing separate strict SKU-history logic.
+ */
+export function stylist6CloudRecentExclusions(
+  history: {previousDeckProductKeys?: readonly string[]; olderRecentProductKeys?: readonly string[]} | null,
+  anchorId?: string | null,
+): string[] {
+  const keys=Array.isArray(history?.previousDeckProductKeys)
+    ? history.previousDeckProductKeys : [];
+  const required=typeof anchorId==='string'?anchorId.trim():'';
+  const ids=[...new Set(keys
+    .filter((x): x is string => typeof x==='string' && x.startsWith('id:'))
+    .map(x=>x.slice(3).trim())
+    .filter(x=>x.length>0 && x.length<=200 && x!==required))];
+  return ids.slice(-12);
+}
+
 export type DevEngine = 'stylist5' | 'stylist6' | 'stylist6cloud';
 
 const devPort = (): number => {

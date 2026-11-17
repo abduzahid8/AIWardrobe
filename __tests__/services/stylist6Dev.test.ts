@@ -593,3 +593,32 @@ describe('stylist6 cloud staging client', () => {
   });
 
 });
+
+
+describe('Stylist 6 bounded catalog rotation without global SKU starvation',()=>{
+  test('only the immediately previous deck is hard-excluded; older looks remain eligible',()=>{
+    const { stylist6CloudRecentExclusions }=loadDevModule();
+    const h={
+      previousDeckProductKeys:['id:top-fresh','id:shoe-fresh','id:top-fresh',
+        'url:https://example.com/img.jpg','id:locked-anchor'],
+      olderRecentProductKeys:Array.from({length:150},(_,i)=>'id:older-'+i),
+    };
+    expect(stylist6CloudRecentExclusions(h,'locked-anchor'))
+      .toEqual(['top-fresh','shoe-fresh']);
+    expect(stylist6CloudRecentExclusions({
+      previousDeckProductKeys:[],olderRecentProductKeys:h.olderRecentProductKeys,
+    })).toEqual([]);
+  });
+  test('bounded exclusions do not starve the next generation with 150 previous items',()=>{
+    const {stylist6CloudRecentExclusions}=loadDevModule();
+    const raw=Array.from({length:150},(_,i)=>'id:recent-'+i);
+    const ids=stylist6CloudRecentExclusions({previousDeckProductKeys:raw});
+    expect(ids).toHaveLength(12);
+    expect(ids[0]).toBe('recent-138');
+    expect(ids.at(-1)).toBe('recent-149');
+    expect(stylist6CloudRecentExclusions(null)).toEqual([]);
+    expect(stylist6CloudRecentExclusions({
+      previousDeckProductKeys:['id:', 'id:   ', 'garbage', 'id:'+ 'x'.repeat(220), 'id:good'],
+    })).toEqual(['good']);
+  });
+});

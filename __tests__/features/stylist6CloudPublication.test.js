@@ -132,3 +132,10 @@ test('cloud rendering failures retain a classified code rather than hiding rejec
   expect(source).toContain("'stylist6_incomplete_cloud_deck'");
   expect(source).toContain("'stylist6_render'");
 });
+
+
+test('S6 cloud repeats whole new looks without exhausting finite catalog SKUs; Stylist 5 keeps its own rotation',()=>{
+  expect(source).toContain('excludeItemIds: stylist6CloudRecentExclusions(history, baseItemId)');
+  expect(source).toContain('const excludeProductKeys = [...new Set([...history.olderRecentProductKeys,...history.previousDeckProductKeys])]');
+  expect(source).toContain('const excludeItemIds = excludeProductKeys.filter');
+});

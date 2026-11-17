@@ -3,7 +3,7 @@ import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveO
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6CloudCompletion, stylist6Language, stylist6VisualDiagnostic, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6CloudCompletion, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, type DevEngine} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -1733,7 +1733,11 @@ const AIOutfitGenerator = () => {
             budget: shopBudget ? {amount: shopBudget.amount, currency: shopBudget.currency} : undefined,
             preferences: useStylePreferenceStore.getState().preferences,
             recentSignatures: history.recentLookSignatures,
-            excludeItemIds,
+            // Never hard-ban the full historic cross-style catalog in S6:
+            // after a few requests it exhausted all good athletic shoes.
+            // Exclude just the LAST displayed deck; older whole-look
+            // signatures remain a soft novelty penalty on the backend.
+            excludeItemIds: stylist6CloudRecentExclusions(history, baseItemId),
             requiredIds: baseItemId ? [baseItemId] : [],
             // baseItemId is always an owned piece (locked from the closet).
             // A locked owned anchor with catalog clothing mirrors the S5
