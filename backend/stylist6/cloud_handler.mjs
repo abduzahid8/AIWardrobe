@@ -1406,24 +1406,24 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // production S5 route and 50s Vercel preview do not pay for it.
     const selectCatalogCompositions=modelSlateEnabled&&budgetMs>=70000 &&
       sourceMode==='catalog' && !requiredIds.length
-      ? async({pool,context,directions,layerRequired,allowLayer,outfitCount=3})=>{
+      ? async({pool,context,directions,layerRequired,allowLayer,outfitCount=3,feedbackTaste})=>{
           const left=remainingMs();
           if(left<27000)return {status:'deadline',looks:[],providerCalls:0};
           nextPhase('ai_direct_sku_composition');
           return composeCatalogSkuLooks({
-            pool,context,directions,layerRequired,allowLayer,outfitCount,
+            pool,context,directions,layerRequired,allowLayer,outfitCount,feedbackTaste,
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:Math.min(3000,Math.max(500,left-24500)),
           });
         }:null;
     const selectCatalogRescueCompositions=selectCatalogCompositions
-      ? async({pool,context,directions,critiqueFeedback,layerRequired,allowLayer})=>{
+      ? async({pool,context,directions,critiqueFeedback,layerRequired,allowLayer,feedbackTaste})=>{
           const left=remainingMs();
           if(left<16500)return {status:'deadline',looks:[],providerCalls:0};
           nextPhase('ai_vision_feedback_revision');
           return composeCatalogSkuLooks({
-            pool,context,directions,critiqueFeedback,layerRequired,allowLayer,
+            pool,context,directions,critiqueFeedback,layerRequired,allowLayer,feedbackTaste,
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:Math.min(2400,Math.max(550,left-13900)),
