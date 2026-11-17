@@ -2339,13 +2339,38 @@ export async function recommendFashionDeck({
         // the verified original partial deck remains intact.
         const freshPool=composerPool.filter(p=>
           !firstProductKeys.has(baseProductId(String(p.item?.id))));
+        // Transfer concrete photographic evidence from the exact FAILED
+        // outfit to the autonomous composer. Generic reason codes alone do
+        // not tell a stylist whether the shoe shape, proportion or fabric
+        // relationship should change. The composer further anonymizes and
+        // bounds every observation; real source identity never leaves here.
+        const decisions=(reviewed.diagnostics.visualQualityDecisions||[]);
+        const reasonById=new Map(decisions.map(d=>[d.candidateId,d.reason]));
+        const photoById=new Map(primaryCritiques.map(row=>[row.candidateId,row]));
+        const rejectedOutfits=candidates.flatMap(look=>{
+          const reason=reasonById.get(look.id),photo=photoById.get(look.id);
+          if(!reason||reason==='approved'||!photo)return [];
+          return [{
+            reason,
+            roles:Object.fromEntries(slots.map(slot=>[slot,
+              String(look.items.find(it=>it.macroCategory===slot)?.subtype||'')
+                .slice(0,32)])),
+            observations:photo.slotObservations,
+            colors:photo.slotColors,
+            relationships:photo.relationships,
+            scores:Object.fromEntries(
+              ['visualCohesion','styleFit','occasionFit','formalityFit','confidence']
+                .map(axis=>[axis,photo[axis]])),
+          }];
+        }).slice(0,4);
         const feedback={
-          reasons:(reviewed.diagnostics.visualQualityDecisions||[])
-            .filter(row=>row.reason!=='approved').map(row=>row.reason).slice(0,8),
+          reasons:decisions.filter(row=>row.reason!=='approved')
+            .map(row=>row.reason).slice(0,8),
           approvedArchitectures:approvedFirst.slice(0,3).map(look=>
             Object.fromEntries(slots.map(slot=>[slot,
               String(look.items.find(it=>it.macroCategory===slot)?.subtype||'')
                 .slice(0,32)]))),
+          rejectedOutfits,
         };
         let retry={status:'unavailable',looks:[]};
         try{
