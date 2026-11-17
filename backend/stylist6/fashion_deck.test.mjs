@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, chooseIndependentPhotoReviewTrio, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -1745,4 +1745,36 @@ test('model-led taste deferral never leaks banned product into legacy timeout re
   assert.ok(result.outfits.every(look=>
     look.items.every(item=>item.id!==improbable.id)),
     'timeout must restore full old product-level stylistic admission, not only the late cross-slot veto');
+});
+
+test('AI photo review portfolio rescues three truly disjoint, independent outfits before paid vision',()=>{
+  const mk=(id,top,bottom,shoes,layer)=>({
+    id,briefId:layer?'layer':'base',fashion:{score:0.89},
+    items:[
+      garment(id+'-top',top+' shirt','top',top),
+      ...(layer?[garment(id+'-layer',layer+' coat','outerwear',layer)]:[]),
+      garment(id+'-bottom',bottom+' trousers','bottom',bottom),
+      garment(id+'-shoes',shoes+' shoes','shoes',shoes),
+    ],
+  });
+  const clones=Array.from({length:6},(_,i)=>({
+    ...mk('clone-'+i,'shirt','trouser','loafer',null),
+    items:[garment('COMMON-TOP','White Shirt','top','shirt'),
+      garment('COMMON-BOTTOM','Grey Trousers','bottom','trouser'),
+      garment('shoe-'+i,'Loafer '+i,'shoes','loafer')],
+    fashion:{score:0.95},
+  }));
+  const knit=mk('knit','fine-knit','chino','chelsea','cardigan');
+  const suit=mk('suit','dress-shirt','tailored-trouser','oxford','blazer');
+  const relaxed=mk('relaxed','polo','jeans','minimal-sneaker',null);
+  const options=[...clones,knit,suit,relaxed];
+  assert.equal(visualProductUniqueTripleCount(clones),0);
+  const trio=chooseIndependentPhotoReviewTrio(options,clones);
+  assert.equal(trio.length,3);
+  assert.equal(visualProductUniqueTripleCount(trio),1);
+  assert.ok(trio.some(x=>x.id==='knit'));
+  assert.ok(trio.some(x=>x.id==='suit'));
+  assert.ok(trio.filter(x=>!x.id.startsWith('clone-')).length>=2,
+    'the slate must include two structural directions rather than repeated base items');
+  assert.ok(trio.every(look=>options.some(x=>x.id===look.id)));
 });

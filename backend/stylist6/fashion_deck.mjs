@@ -1316,6 +1316,51 @@ export function visualProductUniqueTripleCount(looks, requiredIds = []) {
   return count;
 }
 
+/**
+ * Put at least one independent, product-unique TRIPLE into the expensive
+ * photo-review slate whenever the admitted catalog can support it.
+ *
+ * The Fashion Director's six ranked choices are strongly preferred, but its
+ * output alone is not proof that those choices can coexist as three distinct
+ * outfits (its original prompt could not see repeated SKUs). This bounded
+ * optimization only assembles already admissible looks; the actual photo
+ * critic retains sole authority to approve them. No hidden third-card fill.
+ */
+export function chooseIndependentPhotoReviewTrio(looks, modelChoices = [], requiredIds = [], metrics) {
+  if (!Array.isArray(looks) || !Array.isArray(modelChoices)) return [];
+  const pool=looks.slice(0,72).filter(look=>Array.isArray(look?.items) &&
+    Number.isFinite(look.fashion?.score));
+  if(pool.length<3)return [];
+  const preferred=new Map(modelChoices.map((look,i)=>[look.id,i]));
+  const pinned=new Set((requiredIds||[]).map(String));
+  const eligible=(a,b)=>{
+    if(!independentOutfitDirection(a,b,requiredIds))return false;
+    if(a.items.some(x=>!pinned.has(String(x.id)) && b.items.some(y=>
+      !pinned.has(String(y.id)) && sameProduct(x,y))))return false;
+    if(metrics && directionDifference(a,b,metrics.featuresOf,metrics.featureDistance).distance<0.12)
+      return false;
+    return true;
+  };
+  const edges=Array.from({length:pool.length},()=>new Uint8Array(pool.length));
+  for(let i=0;i<pool.length;i++)for(let j=i+1;j<pool.length;j++)
+    edges[i][j]=eligible(pool[i],pool[j])?1:0;
+  let winner=null,best=-Infinity;
+  for(let i=0;i<pool.length;i++)for(let j=i+1;j<pool.length;j++){
+    if(!edges[i][j])continue;
+    for(let k=j+1;k<pool.length;k++){
+      if(!edges[i][k]||!edges[j][k])continue;
+      const trio=[pool[i],pool[j],pool[k]];
+      const modelBonus=trio.reduce((sum,look)=>sum+(preferred.has(look.id)?
+        0.22+0.06*(1-preferred.get(look.id)/Math.max(1,modelChoices.length)):0),0);
+      const archetypes=new Set(trio.map(x=>outerwearArchetype(x,requiredIds)).filter(Boolean));
+      const quality=trio.reduce((sum,x)=>sum+x.fashion.score,0);
+      const utility=quality+modelBonus+0.12*archetypes.size;
+      if(utility>best){best=utility;winner=trio;}
+    }
+  }
+  return winner||[];
+}
+
 export function visualRescueTripleCount(looks, requiredIds = []) {
   if (!Array.isArray(looks) || looks.length > MAX_VISUAL_CANDIDATES) return 0;
   let count = 0;
@@ -1472,6 +1517,7 @@ export function directorSlatePreview(looks, aiPlans = []) {
   }
   const attrs=['color','subtype','formality','texture','pattern','volume',
     'length','bulk','soleProfile','footwearPurpose','collar'];
+  const opaqueProducts=new Map();
   return chosen.map((look,index)=>({
     token:'L'+String(index).padStart(2,'0'),
     direction:aiKeys.includes(String(look.briefId||''))?'ai':'house',
@@ -1481,7 +1527,13 @@ export function directorSlatePreview(looks, aiPlans = []) {
         const o=profile?.attributes?.[name];
         if(confidentVisual(o)&&typeof o.value==='string')photo[name]=o.value;
       }
-      return {slot:item.macroCategory,subtype:item.subtype,photo};
+      // Anonymous per-request product identity lets the model recognize when
+      // two complete outfits reuse the same item, without revealing its SKU.
+      const key=baseProductId(String(item.id));
+      if(!opaqueProducts.has(key))opaqueProducts.set(key,
+        'P'+String(opaqueProducts.size).padStart(3,'0'));
+      return {slot:item.macroCategory,subtype:item.subtype,
+        itemToken:opaqueProducts.get(key),photo};
     }),
     look,
   }));
@@ -1613,7 +1665,7 @@ export async function recommendFashionDeck({
   const permitted = async (look) => {
     try { return await canJudgeOutfit(look, reference?.referenceId ?? null) === true; } catch { return false; }
   };
-  if (visualDeckReview && selected.length && typeof visualCritic === 'function' &&
+  if (visualDeckReview && (selected.length || modelLed) && typeof visualCritic === 'function' &&
       typeof canJudgeOutfit === 'function') {
     // Budgeted and source-verified finalist pool. Expand beyond the three
     // displayed directions: one timed-out NVIDIA call and one real fashion
@@ -1629,7 +1681,9 @@ export async function recommendFashionDeck({
       verifiedAvoidColors(context.preferences?.avoidColors).length>0;
     let modelChosen=false;
     if(modelLed){
-      const preview=directorSlatePreview(selectable,aiPlans);
+      const reviewable=[];
+      for(const look of selectable)if(await permitted(look))reviewable.push(look);
+      const preview=directorSlatePreview(reviewable,aiPlans);
       modelFashionSelection={status:'insufficient_candidates',candidatesSeen:preview.length,chosen:0};
       if(preview.length>=6){
         try{
@@ -1657,6 +1711,22 @@ export async function recommendFashionDeck({
             }
             modelChosen=candidates.length>=3;
             modelFashionSelection.chosen=candidates.length;
+            if(modelChosen){
+              const original=[...candidates];
+              const metrics=creativeMetrics(deckContext);
+              const core=chooseIndependentPhotoReviewTrio(
+                reviewable,original,requiredIds,metrics);
+              modelFashionSelection.uniqueTripleBefore=
+                visualProductUniqueTripleCount(original,requiredIds)>0;
+              modelFashionSelection.uniqueTripleAvailable=core.length===3;
+              if(core.length===3){
+                const extras=original.filter(x=>!core.some(y=>y.id===x.id))
+                  .slice(0,Math.max(0,reviewedLimit-3));
+                candidates.splice(0,candidates.length,...core,...extras);
+                modelFashionSelection.coreModelChoices=
+                  core.filter(x=>original.some(y=>y.id===x.id)).length;
+              }
+            }
           }
         }catch{
           modelFashionSelection={status:'selection_unavailable',
@@ -1697,7 +1767,7 @@ export async function recommendFashionDeck({
       if (await permitted(look)) candidates.push(look);
     }
     const metrics = creativeMetrics(deckContext);
-    const leadScore = selected[0].fashion?.score ?? -Infinity;
+    const leadScore = selected[0]?.fashion?.score ?? -Infinity;
     // Strongly photographed, PERSONALIZED catalog alternatives are reserved
     // before weakly evidenced lookalikes can exhaust 8 paid NVIDIA calls.
     // Only complete photos whose color intelligence matches the CURRENT

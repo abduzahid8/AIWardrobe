@@ -22,6 +22,12 @@ test('sanitized photo-informed candidates never disclose raw SKU, merchant or ga
   assert.equal(options.length,12);
   assert.equal(options[0].token,'L00');
   assert.equal(options[0].items[0].photographed.color,'cream');
+  const withOpaque=anonymousFashionOptions(items.map(x=>({
+    ...x,items:x.items.map((it,i)=>({...it,itemToken:'P'+String(i).padStart(3,'0')})),
+  })));
+  assert.equal(withOpaque[0].items[0].itemToken,'P000');
+  assert.equal(withOpaque[1].items[0].itemToken,'P000',
+    'the model can recognize repeat product use without receiving SKU IDs');
   assert.equal(JSON.stringify(options).includes('PRIVATE-USER-SKU'),false);
   assert.equal(JSON.stringify(options).includes('PRIVATE GARMENT'),false);
 });

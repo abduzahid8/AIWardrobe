@@ -1753,6 +1753,22 @@ const AIOutfitGenerator = () => {
         };
         try {
           data = await withRequestDeadline((signal) => invokeStylist6Cloud(cloudBody, {signal}), EDGE_TIMEOUT_MS, cancelSignal);
+          // Dev simulator only: disclose fashion-quality RECEIPTS without
+          // products, profile data, user IDs, merchant links or credentials.
+          // A successful request is not proof that the model formed three
+          // independent, photo-judged outfits.
+          if (__DEV__ && data?.diagnostics?.modelFashionSelection) {
+            const qa = data.diagnostics;
+            console.warn('[S6 FASHION QA]', JSON.stringify({
+              director: qa.modelFashionSelection,
+              review: qa.visualReviewCoverage,
+              decisions: (qa.visualQualityDecisions || []).map((decision: any) => ({
+                quality: decision.quality, reason: decision.reason,
+                scores: decision.scores,
+              })),
+              displayed: Array.isArray(data.outfits) ? data.outfits.length : 0,
+            }));
+          }
         } catch (error) { invokeError = error; }
       } else if (s6Active) {
         const s6SourceMode = (currentSource === 'wardrobe'

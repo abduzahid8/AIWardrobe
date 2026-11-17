@@ -22,6 +22,7 @@ export function anonymousFashionOptions(options) {
       .filter(item=>['top','outerwear','bottom','shoes'].includes(item?.slot))
       .map(item=>({
         slot:item.slot,
+        itemToken:/^P[0-9]{3}$/.test(item?.itemToken||'')?item.itemToken:'unknown',
         subtype:/^[a-z0-9 -]{1,40}$/i.test(item.subtype||'')?item.subtype:'unknown',
         photographed:Object.fromEntries(ALLOWED.filter(k=>
           /^[a-z0-9 -]{1,40}$/i.test(item?.photo?.[k]||''))
@@ -70,6 +71,9 @@ export async function selectFashionSlate({
       'Treat entire silhouettes, footwear, construction, material relationships, elegance,',
       'personal taste, occasion and genuine diversity as one creative decision.',
       'Choose three distinctly excellent leads and three strong rescue alternatives.',
+      'The SAME itemToken means the SAME real product, even in different looks.',
+      'The three leads should use different unpinned itemTokens whenever possible.',
+      'Never call a changed shoe color alone a new outfit architecture.',
       'Do NOT reward bland outfits for a matching palette; do not rank by template.',
       'Photographed fields come from exact source-image vision evidence.',
       'Absent photographed fields are UNKNOWN: do not pretend to see the photograph.',
