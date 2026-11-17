@@ -1,6 +1,7 @@
 // Experimental catalog/wardrobe recommendation path. Callers own inventory,
 // permission and provider admission. Local styling never requires image upload.
 import { shortlistRetrievalDeck, evaluateVisualShortlist, selectVisualDeck, independentOutfitDirection, outerwearArchetype } from './prototype.mjs';
+import { sourceBoundCompositionPool, sourceVerifyComposedOutfits } from './sku_composer_ai.mjs';
 import { MAX_VISUAL_CANDIDATES, verifiedAvoidColors } from './visual_critic_hosted.mjs';
 import { baseProductId } from './catalog_adapter.mjs';
 import { describeGarment, prepareGarment } from '../../src/domain/garmentDescriptor.ts';
@@ -1843,6 +1844,9 @@ export async function recommendFashionDeck({
   // photo approval. It cannot introduce unapproved merchandise. Any
   // cross-look selection still passes the unchanged selectVisualDeck gates.
   selectPhotoApprovedPortfolio = null,
+  // Isolated STAGING-only: the AI creates novel COMPLETE outfits by choosing
+  // actual approved SKU tokens, not by choosing the old ranker's prebuilt cards.
+  selectCatalogCompositions = null,
 }) {
   const reviewedLimit = Number.isInteger(visualCandidateLimit)
     ? Math.max(3,Math.min(MAX_VISUAL_CANDIDATES,visualCandidateLimit)) : MAX_VISUAL_CANDIDATES;
@@ -1897,13 +1901,20 @@ export async function recommendFashionDeck({
     .map(adaptLayer).filter(Boolean).slice(0, 10);
   if (!briefs.length) return { status: 'no_feasible_looks', outfits: [], diagnostics: { visualVerdict: 'NOT_RUN' } };
   const priceProfile = buildPriceProfile(catalog,valueFxRates);
+  // Reuse this EXACT scorer for AI-selected new combinations. Its WeakMaps
+  // contain the already prepared real catalog items from this retrieval,
+  // and its structure/weather constraints cannot be overridden by the LLM.
+  const fashionScorer=makeFashionScorer(context,reference,
+    Array.isArray(request.recentSignatures)?request.recentSignatures.slice(-32):[],{
+      priceProfile,budgeted:!!request.budget,
+      layerOptional:context.optionalLayer===true&&!forceLayer,
+      requiredIds,feedbackTaste,photoDirectorEnabled:modelLed,
+    });
   const retrieval = await shortlistRetrievalDeck({
     request: { ...request, requiredIds }, catalog, hardGate, priceToBudgetCurrency,
     creativeDirector: async () => briefs,
-    options: { fashion: makeFashionScorer(context, reference, Array.isArray(request.recentSignatures) ? request.recentSignatures.slice(-32) : [], {
-      priceProfile, budgeted: !!request.budget, layerOptional: context.optionalLayer === true && !forceLayer,
-      requiredIds, feedbackTaste, photoDirectorEnabled:modelLed,
-    }), perRole: verifiedAvoidColors(context.preferences?.avoidColors).length?12:8,
+    options: { fashion: fashionScorer,
+      perRole: verifiedAvoidColors(context.preferences?.avoidColors).length?12:8,
     perBrief: 100, maxVisual: 72 },
   });
   // A single cross-slot veto applies to selection AND visual challengers.
@@ -1963,7 +1974,56 @@ export async function recommendFashionDeck({
         includePublicCatalogNames:request.sourceMode==='catalog',
       });
       modelFashionSelection={status:'insufficient_candidates',candidatesSeen:preview.length,chosen:0};
-      if(preview.length>=6){
+      // PRIMARY AI composition path: the model is given 12 different real
+      // merchandise pieces per role, and CREATES new looks across them.
+      // Previously it merely selected ranker-prebuilt L cards and rejected
+      // 7/8 in real Classic/Work because the combinations were already bad.
+      // Every new combination is rerun through the REAL source/budget/weather
+      // hard gate, the existing scorer and the independent NVIDIA photo judge.
+      // If the composer abstains, the existing model-led selector is retained.
+      if(typeof selectCatalogCompositions==='function'&&
+          request.sourceMode==='catalog'&&!requiredIds.length&&reviewable.length>=6){
+        const pool=sourceBoundCompositionPool(reviewable);
+        try{
+          const composition=await selectCatalogCompositions({
+            pool,context:{
+              style:context.style,occasion:context.occasion,brief:context.request,
+              weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
+              preferences:context.preferences,
+            },layerRequired:forceLayer,allowLayer:!noLayer,
+          });
+          modelFashionSelection={
+            status:String(composition?.status||'unavailable').slice(0,40),
+            candidatesSeen:pool.length,
+            chosen:0,
+            providerCalls:Math.min(1,Math.max(0,Number(composition?.providerCalls)||0)),
+            compositionMode:true,
+          };
+          if(composition?.status==='composed'&&Array.isArray(composition.looks)){
+            const admitted=await sourceVerifyComposedOutfits({
+              looks:composition.looks,
+              request:{...request,requiredIds},requiredIds,
+              hardGate,priceToBudgetCurrency,scorer:fashionScorer,
+              sourceMode:request.sourceMode,
+            });
+            for(const look of admitted){
+              if(explicitColorPreferences&&
+                photographicPaletteEvidence(look,context.preferences,requiredIds).blocked)continue;
+              if(await permitted(look))candidates.push(look);
+            }
+            modelFashionSelection.chosen=candidates.length;
+            // One surviving composition isn't enough to ignore existing
+            // director's six alternatives. Fall back to ordinary choices.
+            modelChosen=candidates.length>=2;
+            if(!modelChosen)candidates.length=0;
+            else modelFashionSelection.status='composed';
+          }
+        }catch{
+          modelFashionSelection={status:'composition_unavailable',
+            candidatesSeen:pool.length,chosen:0,compositionMode:true};
+        }
+      }
+      if(!modelChosen&&preview.length>=6){
         try{
           const decision=await selectDirectorFinalists({
             options:preview.map(({look,...safe})=>safe),

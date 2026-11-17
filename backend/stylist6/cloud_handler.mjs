@@ -28,6 +28,7 @@ import { recommendFashionDeck } from './fashion_deck.mjs';
 import { designCreativeBriefs, CREATIVE_DIRECTOR_VERSION } from './creative_director_ai.mjs';
 import { selectFashionSlate } from './fashion_director_slate.mjs';
 import { selectPhotoEditorialDeck } from './photo_editor_final.mjs';
+import { composeCatalogSkuLooks } from './sku_composer_ai.mjs';
 import { feedbackTasteModel, FEEDBACK_TASTE_VERSION, FEEDBACK_TASTE_MAX_ROWS } from './feedback_taste.mjs';
 import { referenceFirstBriefs, explicitLookbookPhotoRequested } from './lookbook_briefs.mjs';
 import { buildReferenceBlueprints } from './reference_blueprint.mjs';
@@ -113,7 +114,8 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     attempted:safe(r.attempted,12),
     approved:safe(r.approved,12),
     displayedEvidence:safe(r.displayedEvidence,3),
-    directorSelected:f.status==='selected',
+    directorSelected:f.status==='selected'||f.status==='composed',
+    directSkuComposition:f.status==='composed',
     photoEditorialStatus:['applied','deadline','timeout','provider_unavailable',
       'invalid_combination','invalid_selection','not_enough_approved']
       .includes(f.photoEditorial?.status)?f.photoEditorial.status:'not_run',
@@ -1381,6 +1383,22 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         } : null;
     deadline();
     nextPhase('catalog_fashion_and_selection');
+    // An actual personal stylist must COMPOSE from real clothing pieces.
+    // Keep this new paid text call on the isolated 72s staging only; the
+    // production S5 route and 50s Vercel preview do not pay for it.
+    const selectCatalogCompositions=modelSlateEnabled&&budgetMs>=70000 &&
+      sourceMode==='catalog' && !requiredIds.length
+      ? async({pool,context,layerRequired,allowLayer})=>{
+          const left=remainingMs();
+          if(left<27000)return {status:'deadline',looks:[],providerCalls:0};
+          nextPhase('ai_direct_sku_composition');
+          return composeCatalogSkuLooks({
+            pool,context,layerRequired,allowLayer,
+            apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
+            signal:deadlineController.signal,
+            timeoutMs:Math.min(3000,Math.max(500,left-24500)),
+          });
+        }:null;
     const selectPhotoApprovedPortfolio=modelSlateEnabled&&budgetMs>=70000
       ? async({looks,critiques,portfolios,context})=>{
           const left=remainingMs();
@@ -1399,6 +1417,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       referenceBriefs: refs,
       aiCreativeBriefs: creativePlan.briefs,
       ...(selectDirectorFinalists?{selectDirectorFinalists}:{}),
+      ...(selectCatalogCompositions?{selectCatalogCompositions}:{}),
       hardGate: async (items) => devLookFeasibility(items),
       priceToBudgetCurrency,
       feedbackTaste,

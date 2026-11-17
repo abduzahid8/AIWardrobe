@@ -2081,3 +2081,69 @@ test('whole-deck menu omits repeated merchandise even if independent individual 
   assert.ok(menus.every(p=>!(p.orderedLooks.includes('L00')&&p.orderedLooks.includes('L01'))),
     'two looks with the same physical blazer cannot appear in ANY AI-selectable menu');
 });
+
+test('real AI catalog SKU Composer creates entirely new 4-piece looks BEFORE hosted photo review',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:1400000,currency:'UZS'},requiredIds:[]};
+  let composerCalls=0,oldSlateCalls=0,photos=[];
+  const result=await recommendFashionDeck({
+    ...base,request,
+    referenceBriefs:refs,
+    selectDirectorFinalists:async()=>{
+      oldSlateCalls++;return {status:'timeout',tokens:[]};
+    },
+    selectCatalogCompositions:async({pool,layerRequired})=>{
+      composerCalls++;
+      assert.ok(pool.length>=12,'model gets choices of real source-approved merchandise');
+      const picked=[];
+      for(let n=0;n<3;n++){
+        const used=new Set(picked.flatMap(arr=>arr.map(x=>x.id)));
+        const outfit=['top','outerwear','bottom','shoes'].map(slot=>
+          pool.filter(p=>p.slot===slot&&
+            !used.has(p.item.id)&&
+            !picked.flat().some(x=>x.id===p.item.id))[n].item);
+        assert.ok(outfit.every(Boolean));
+        picked.push(outfit);
+      }
+      assert.ok(typeof layerRequired==='boolean');
+      return {status:'composed',looks:picked,providerCalls:1};
+    },
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      photos=batch;
+      return batch.map(look=>admittedVisualVerdict(look));
+    },
+  });
+  assert.equal(composerCalls,1);
+  assert.equal(oldSlateCalls,0,'successful composition must replace merely picking prebuilt cards');
+  assert.equal(result.diagnostics.modelFashionSelection.status,'composed');
+  assert.ok(result.diagnostics.modelFashionSelection.chosen>=2);
+  assert.ok(photos.some(look=>look.id.startsWith('s6_ai_')),
+    'the DIRECT assembled real SKUs reach the actual whole-look photo reviewer');
+  assert.ok(result.outfits.every(look=>
+    photos.some(candidate=>candidate.id===look.id)),
+    'no unreviewed compositional invention may enter the final cards');
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+});
+
+test('catalog AI SKU Composer failing a new combination reverts to original safe slate',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:1400000,currency:'UZS'},requiredIds:[]};
+  let oldSlateCalls=0;
+  const result=await recommendFashionDeck({
+    ...base,request,referenceBriefs:refs,
+    selectDirectorFinalists:async({options})=>{
+      oldSlateCalls++;return {status:'selected',
+        tokens:options.slice(0,6).map(x=>x.token),providerCalls:1};
+    },
+    selectCatalogCompositions:async()=>({status:'provider_unavailable',looks:[]}),
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>batch.map(look=>admittedVisualVerdict(look)),
+  });
+  assert.equal(oldSlateCalls,1,'outage must preserve existing fully authenticated generation path');
+  assert.ok(result.outfits.length>=1);
+  assert.ok(result.outfits.every(look=>Array.isArray(look.visualEvidence)));
+  assert.ok(result.outfits.every(look=>!look.id.startsWith('s6_ai_')));
+});
