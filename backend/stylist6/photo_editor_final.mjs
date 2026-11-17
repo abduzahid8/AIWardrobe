@@ -12,10 +12,12 @@ import {buildPhotoEditorialContactSheet} from './photo_editor_contact_sheet.mjs'
 export const PHOTO_EDITOR_FINAL_VERSION='s6-photo-grounded-multimodal-portfolio-director-v2';
 const URL='https://integrate.api.nvidia.com/v1/chat/completions';
 const MODEL='nvidia/nemotron-3.5-lightning-30b-a3b';
-// Official NVIDIA-hosted small vision-language model, separate from the
-// independent 120B quality judge. It sees ONE authorized photo contact sheet
-// of the already photo-approved looks, not raw user information or URLs.
-export const PHOTO_PORTFOLIO_VISION_MODEL='nvidia/nemotron-nano-12b-v2-vl';
+// NVIDIA has retired the old Nano-VL hosted endpoint (HTTP 410 Gone).
+// The CURRENT live model is separately invoked as a collection-level visual
+// fashion editor AFTER another independent call judged each full outfit.
+// Same provider family, different prompt and verified portfolio menu. It
+// sees one authorized garment photo collage, never private image URLs.
+export const PHOTO_PORTFOLIO_VISION_MODEL='nvidia/nemotron-3.5-super-vl-120b-a12b';
 const SLOTS=['top','outerwear','bottom','shoes'];
 let inFlight=0;
 const safe=(v,n=120)=>typeof v==='string'
@@ -173,8 +175,12 @@ export async function selectPhotoEditorialDeck({
         signal:combined,onStatus:status=>{visualMediaStatus=status;},
       });
       if(sheet&&!combined.aborted){
-        const visionRemaining=Math.min(5500,Math.max(600,
-          timeoutMs-(Date.now()-photoStart)-2400));
+        // The working 120B VL endpoint takes longer on a full garment board
+        // than the old unavailable Nano-VL did. Give the REAL visual editor
+        // most of its bounded 9.6s window while reserving a fast and honest
+        // text-only fallback on stalled/invalid visual decisions.
+        const visionRemaining=Math.min(7800,Math.max(600,
+          timeoutMs-(Date.now()-photoStart)-1200));
         const visionController=new AbortController();
         const visionTimer=setTimeout(()=>visionController.abort(),visionRemaining);
         const visionSignal=AbortSignal.any([combined,visionController.signal]);
@@ -216,8 +222,9 @@ export async function selectPhotoEditorialDeck({
                   {type:'image_url',image_url:{url:
                     'data:image/jpeg;base64,'+sheet.bytes.toString('base64')}},
                 ]}],
-              temperature:0.1,top_p:0.9,max_tokens:180,stream:false,
+              temperature:0.1,top_p:0.9,max_tokens:420,stream:false,
               response_format:{type:'json_object'},
+              chat_template_kwargs:{enable_thinking:false},
             }),
           });
           if(v.ok){

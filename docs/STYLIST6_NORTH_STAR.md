@@ -73,6 +73,18 @@ The target is not 100% subjective approval (cannot be guaranteed); the measurabl
 - Regression test `__tests__/features/stylist6CloudPublication.test.js` now protects the default QA route against reverting to a 50-second compute path where the full composer/editor is silently disabled. New code test has not been locally executed here; CI result must be checked.
 - Next: run the existing authenticated visual worker for the bounded pending jobs when its operator access is available; verify how many finished with image-observed attributes and are used by actual outfit candidate discovery. Audit exact rejected outfit photos before changing editorial thresholds.
 
+## 2026-11-17 — visual photo jury must be CURRENT and actually image-capable
+
+A real NVIDIA API probe found the old final visual jury endpoint
+`nvidia/nemotron-nano-12b-v2-vl` returns **410 Gone** despite old docs
+advertising it. Replaced with the currently hosted
+`nvidia/nemotron-3.5-super-vl-120b-a12b` in a separate final
+fashion-portfolio editing call. It may select only source/physical/photo
+verified 1–3-look portfolios and retains text fallback. The image-board +
+live model worked on synthetic imagery (HTTP 200, one valid F-token),
+but REAL iOS 3+ source-photo approvals and visual-jury
+`applied/ready` are still required for acceptance.
+
 ## 2026-11-17 — owner correction: exactly FOUR real shoppable items per look
 
 The owner explicitly identified a regression: the native iPhone Stylist6

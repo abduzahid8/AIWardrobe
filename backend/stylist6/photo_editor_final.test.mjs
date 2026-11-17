@@ -107,6 +107,9 @@ test('real original product-photo visual jury chooses only a fully verified whol
       calls++;
       const body=JSON.parse(opts.body);
       assert.equal(body.model,PHOTO_PORTFOLIO_VISION_MODEL);
+      assert.equal(body.model,'nvidia/nemotron-3.5-super-vl-120b-a12b');
+      assert.equal(body.chat_template_kwargs.enable_thinking,false);
+      assert.equal(body.max_tokens,420);
       assert.equal(body.messages[0].content,'/no_think');
       assert.equal(body.messages[1].content.length,2);
       assert.equal(body.messages[1].content[1].type,'image_url');

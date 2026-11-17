@@ -255,3 +255,42 @@ budget remain unchanged. This is staging only.
 **Do NOT count as fashion acceptance before a new pinned Render deployment
 and two native iOS screenshots.** The primary benchmark, the logo, the
 model API status and tests are not a human fashion panel.
+
+
+## 2026-11-17 — retired visual-editor model replaced with LIVE vision AI
+
+The optional visual portfolio editor was hard-coded to
+`nvidia/nemotron-nano-12b-v2-vl`. An authenticated direct NVIDIA image
+request on the LIVE provider now returns HTTP **410 Gone**; this was an
+unavailable decision provider, not a successfully working luxury editor.
+Official documentation and older tests do not prove current API availability.
+
+Replaced only the optional source-photo portfolio editor model with
+`nvidia/nemotron-3.5-super-vl-120b-a12b`, which is already the
+**LIVE independent whole-look photographic critic** model. This is a separate
+model call with a completely different final editorial prompt/portfolio
+decision, not an independent model provider. It must still select one
+server-verified F-token; it cannot invent an extra look or override the
+earlier photo verdict.
+
+Bounded, personally authorized synthetic-photo integration evidence:
+- Direct NVIDIA full-image request to 120B-VL: **HTTP 200**, correctly
+  identified the navy quadrant in a generated 2x2 image, valid JSON.
+- After increasing the bounded vision-editor window from 5.5s to at most
+  7.8s (the shared request deadline stays 9.6s), the real provider was
+  exercised through the actual `selectPhotoEditorialDeck` code using a
+  newly generated four-source-photo x three-look collage.
+- **Real provider HTTP 200**, returned one allowed complete portfolio F01
+  comprising two of three independently mocked photo-approved outfits;
+  `visualJury:applied`, `visualMediaStatus:ready`,
+  `providerCalls:1`, ~1.4s. Synthetic tests are proof the IMAGE/editor
+  INTEGRATION functions, not proof these invented solid-color products
+  are beautiful.
+- The fallback-only text editor was previously used on most REAL native
+  iOS logs; require a pinned new Render LIVE deployment and a real native
+  3+ approved photograph scenario with both visual-jury flags before
+  claiming the new editor works on true merchant outfit photographs.
+
+The original independent NVIDIA visual critic is unchanged. No model
+credentials, user data, product URLs or uploaded private photos are added
+to reports.
