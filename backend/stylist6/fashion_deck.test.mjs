@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -1804,6 +1804,8 @@ test('photo critic gets a portfolio of independent SKU-unique rescue looks, not 
   const slate=assembleIndependentVisualPortfolio(goods,nominated,[],undefined,8);
   assert.equal(slate.length,8,'all eight paid slots can reach independent photos');
   assert.ok(visualProductUniqueTripleCount(slate)>0);
+  assert.ok(visualPortfolioSingleVetoResilience(slate)>0,
+    'any ONE rejected NVIDIA candidate must still leave a real independently purchasable triple');
   for(let i=0;i<slate.length;i++)for(let j=i+1;j<slate.length;j++){
     assert.ok(slate[i].items.every(a=>slate[j].items.every(b=>a.id!==b.id)),
       'no single SKU should be used in multiple paid-review slots when inventory suffices');
@@ -1825,4 +1827,21 @@ test('catalog-only public fashion title context never leaks from owned wardrobe 
   assert.ok(catalogLook[0].items[0].merchantLabel.includes('Resort Terry'),
     'public catalog titles should tell the AI the garment purpose');
   assert.equal(catalogLook[0].qualityHint,0.91);
+});
+
+
+test('visual portfolio resilience is grounded in product-unique triples, not fabricated approvals',()=>{
+  assert.equal(visualPortfolioSingleVetoResilience([],[]),0);
+  assert.equal(visualPortfolioSingleVetoResilience([{id:'x'}],[]),0);
+  const make=(n,slot)=>garment('r-'+slot+'-'+n,slot+' '+n,slot,slot);
+  const three=[0,1,2].map(n=>({
+    id:'slot-'+n,items:[
+      make(n,'top'),make(n,'bottom'),make(n,'shoes')],
+    fashion:{score:0.91},
+  }));
+  assert.equal(visualPortfolioSingleVetoResilience(three),0,
+    'a three-card slate has no backup even when all photos pass');
+  const broken=[...three,{...three[0],id:'duplicate',items:three[0].items}];
+  assert.equal(visualPortfolioSingleVetoResilience(broken),0,
+    'a repeat of one source product is not a genuine independent backup');
 });

@@ -1386,6 +1386,7 @@ export function assembleIndependentVisualPortfolio(
   const ceiling=Math.max(...pool.map(x=>x.fashion.score));
   while(selected.length<limit){
     let next=null,best=-Infinity;
+    const currentTriples=visualProductUniqueTripleCount(selected,requiredIds);
     for(let pass=0;pass<3&&!next;pass++){
       for(const look of pool){
         if(ids.has(look.id)||look.fashion.score < ceiling-(pass===2?0.25:0.20))continue;
@@ -1401,11 +1402,25 @@ export function assembleIndependentVisualPortfolio(
         const existingLayers=new Set(selected.map(x=>outerwearArchetype(x,requiredIds)));
         const confidentPhotos=look.items.filter(x=>currentVisual(x)).length/
           Math.max(1,look.items.length);
+        const hypothetical=[...selected,look];
+        // Optimize actual independently combinable TRIPLES rather than
+        // incidental color/role novelty. The previous selection spent paid
+        // review slots on 5 individually approved training outfits but had
+        // only 2 mutually compatible complete cards after an NVIDIA veto.
+        // A marginal three-look combination provides a real replacement
+        // option. A robust portfolio should also retain triples when any
+        // one candidate is rejected by photo judgement.
+        const tripleGain=visualProductUniqueTripleCount(
+          hypothetical,requiredIds)-currentTriples;
+        const afterOneVeto=visualPortfolioSingleVetoResilience(
+          hypothetical,requiredIds);
+        const resilience=0.028*Math.min(14,tripleGain)+
+          0.011*Math.min(12,afterOneVeto);
         const score=look.fashion.score +
-          (nominated.has(look.id)?0.10:0) +
-          (layer&&!existingLayers.has(layer)?0.085:0) +
+          (nominated.has(look.id)?0.07:0) +
+          (layer&&!existingLayers.has(layer)?0.065:0) +
           0.035*confidentPhotos +
-          0.04*independent -
+          0.025*independent + resilience -
           0.4*shared;
         if(score>best){best=score;next=look;}
       }
@@ -1417,6 +1432,16 @@ export function assembleIndependentVisualPortfolio(
   // model shortlist for an honest partial visual review; no fake 3-card fill.
   if(!core.length)return modelChoices.slice(0,limit);
   return selected;
+}
+
+/** How many independent triples survive the worst *single* photo veto?
+ * Zero means the eight-candidate slate still has a fragile one-SKU bottleneck.
+ * Uses the EXACT final independent-product deck feasibility semantics.
+ */
+export function visualPortfolioSingleVetoResilience(looks, requiredIds = []) {
+  if(!Array.isArray(looks)||looks.length<4||looks.length>MAX_VISUAL_CANDIDATES)return 0;
+  return Math.min(...looks.map((_,i)=>visualProductUniqueTripleCount(
+    looks.filter((_,j)=>j!==i),requiredIds)));
 }
 
 export function visualRescueTripleCount(looks, requiredIds = []) {
@@ -1799,6 +1824,8 @@ export async function recommendFashionDeck({
                 modelFashionSelection.portfolioSize=candidates.length;
                 modelFashionSelection.portfolioTriples=
                   visualProductUniqueTripleCount(candidates,requiredIds);
+                modelFashionSelection.portfolioSingleVetoResilience=
+                  visualPortfolioSingleVetoResilience(candidates,requiredIds);
               }
             }
           }
