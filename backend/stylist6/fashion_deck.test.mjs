@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -1876,4 +1876,86 @@ test('formal photo portfolio inspects eight independent genuine suit sets even w
   }));
   assert.deepEqual(assembleFormalPhotoProbePortfolio(thin,thin.slice(0,6)),[],
     'no honest three-look product uniqueness when every outfit shares the same blazer');
+});
+
+
+test('formal photo rescue sends up to four NEW source-backed full outfits for independent second review, never inventing approvals',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Formal',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:2500000,currency:'UZS'},requiredIds:[]};
+  let calls=0,judged=[];
+  const result=await recommendFashionDeck({
+    ...base,request,referenceBriefs:refs,
+    selectDirectorFinalists:async({options})=>({
+      status:'selected',tokens:options.slice(0,6).map(x=>x.token),providerCalls:1,
+    }),
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    photoRescueRemainingMs:()=>60000,
+    visualCritic:async batch=>{
+      calls++;judged.push(batch);
+      return batch.map((look,i)=>{
+        const jacket=(calls===1?['navy','grey','black','brown','beige','olive','navy','grey']:
+          ['brown','olive','cream','black'])[i]||'brown';
+        return admittedVisualVerdict(look,{
+          referenceless:true,
+          slotColors:{top:'white',outerwear:jacket,bottom:jacket,shoes:'black'},
+          reject:calls===1&&i>=2,
+        });
+      });
+    },
+  });
+  assert.equal(calls,2,'partial real primary review must trigger timeboxed second wave');
+  assert.equal(judged[0].length,8);
+  assert.ok(judged[1].length>=1&&judged[1].length<=4);
+  assert.ok(judged[1].every(look=>!judged[0].some(other=>other.id===look.id)),
+    'rescue sends NEW actual catalog outfits, not rejected first-wave reruns');
+  assert.equal(result.diagnostics.modelFashionSelection.photoRescueAttempted,judged[1].length);
+  assert.ok(result.diagnostics.visualReviewCoverage.attempted>=9);
+  assert.ok(result.diagnostics.visualReviewCoverage.attempted<=12);
+  assert.equal(result.diagnostics.visualReviewCoverage.fallbackUnreviewed,false);
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+  assert.ok(result.outfits.every(look=>Array.isArray(look.visualEvidence)),
+    'every displayed recommendation passed the full independent NVIDIA verdict');
+  assert.ok(result.outfits.length>=2&&result.outfits.length<=3,
+    'only genuine quality and real inventory determine whether three are available');
+});
+
+test('staging Fashion Director photo rescue respects remaining deadline and never runs on a normal 50s budget',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Formal',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:2500000,currency:'UZS'},requiredIds:[]};
+  let calls=0;
+  const result=await recommendFashionDeck({...base,request,
+    selectDirectorFinalists:async({options})=>({
+      status:'selected',tokens:options.slice(0,6).map(x=>x.token),providerCalls:1,
+    }),
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    photoRescueRemainingMs:()=>12000,
+    visualCritic:async batch=>{
+      calls++;
+      return batch.map((look,i)=>admittedVisualVerdict(look,{reject:i>=2}));
+    },
+  });
+  assert.equal(calls,1,'no extra paid NVIDIA calls inside an unsafe deadline');
+  assert.equal(result.diagnostics.modelFashionSelection.photoRescueAttempted,undefined);
+  assert.ok(result.outfits.every(look=>Array.isArray(look.visualEvidence)));
+});
+
+test('formal photo rescue never reuses approved merchant SKUs or repeats judged candidates',()=>{
+  const mk=(i,shared=false)=>({
+    id:'r-look-'+i,fashion:{score:.90-i*.006},items:[
+      garment('r-top-'+i,'White Formal Shirt','top','dress-shirt'),
+      garment(shared?'same-formal-jacket':'r-blazer-'+i,'Navy Suit Blazer','outerwear','blazer'),
+      garment('r-trouser-'+i,'Tailored Grey Trousers','bottom','tailored-trouser'),
+      garment('r-shoes-'+i,'Leather Oxford Shoes','shoes','oxford'),
+    ],
+  });
+  const pool=Array.from({length:10},(_,i)=>mk(i));
+  const approved=[mk(100),mk(101)];
+  const used=pool.slice(0,3);
+  const rescue=chooseFormalPhotoRescueCandidates(pool,used,approved,[],4);
+  assert.ok(rescue.length>=1&&rescue.length<=4);
+  assert.ok(rescue.every(l=>!used.some(x=>x.id===l.id)));
+  assert.ok(rescue.every(l=>!approved.some(a=>l.items.some(it=>
+    a.items.some(ot=>ot.id===it.id)))));
 });

@@ -109,8 +109,8 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     elapsedMs:safe(elapsedMs,180000),
     displayed:safe(displayed,3),
     requestedPhoto:r.mode==='displayed_deck',
-    attempted:safe(r.attempted,8),
-    approved:safe(r.approved,8),
+    attempted:safe(r.attempted,12),
+    approved:safe(r.approved,12),
     displayedEvidence:safe(r.displayedEvidence,3),
     directorSelected:f.status==='selected',
     formalPhotoProbe:f.formalPhotoProbe===true,
@@ -1397,6 +1397,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // unreviewed third. An honest partial recommendation beats a pretty
       // three-card count with unverified fashion quality.
       allowUnreviewedVisualFill: false,
+      // Only the isolated 72s authenticated Render staging has enough time
+      // for a small SECOND real-photo review wave after an initial fashion
+      // rejection. Never widen paid inference or deadlines in Vercel/S5.
+      photoRescueRemainingMs: budgetMs >= 70000 ? remainingMs : null,
       ...(visualCritic ? { visualCritic, canJudgeOutfit, canDisplayOutfit } : {}),
     }));
     nextPhase('result_mapping');

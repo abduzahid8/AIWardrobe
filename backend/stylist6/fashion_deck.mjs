@@ -1,6 +1,6 @@
 // Experimental catalog/wardrobe recommendation path. Callers own inventory,
 // permission and provider admission. Local styling never requires image upload.
-import { shortlistRetrievalDeck, evaluateVisualShortlist, independentOutfitDirection, outerwearArchetype } from './prototype.mjs';
+import { shortlistRetrievalDeck, evaluateVisualShortlist, selectVisualDeck, independentOutfitDirection, outerwearArchetype } from './prototype.mjs';
 import { MAX_VISUAL_CANDIDATES, verifiedAvoidColors } from './visual_critic_hosted.mjs';
 import { baseProductId } from './catalog_adapter.mjs';
 import { describeGarment, prepareGarment } from '../../src/domain/garmentDescriptor.ts';
@@ -1518,6 +1518,40 @@ export function assembleFormalPhotoProbePortfolio(
   return result;
 }
 
+/** Choose a real, SECOND set of formal ensembles only after the whole-look
+ * photo critic has failed to approve three from the first wave. Each new
+ * outfit uses different actual merchandise from the APPROVED first wave;
+ * all remain unreviewed until the independent NVIDIA follow-up.
+ * This is a shortlist composition step, not a styling verdict.
+ */
+export function chooseFormalPhotoRescueCandidates(
+  pool, firstBatch, firstApproved, requiredIds=[], limit=4,
+) {
+  if(!Array.isArray(pool)||!Array.isArray(firstBatch)||!Array.isArray(firstApproved)||
+    !Number.isInteger(limit)||limit<1||limit>4)return [];
+  const judged=new Set(firstBatch.map(x=>x?.id));
+  const pinned=new Set((requiredIds||[]).map(String));
+  const shares=(a,b)=>(a?.items||[]).some(item=>
+    !pinned.has(String(item.id))&&(b?.items||[]).some(other=>
+      !pinned.has(String(other.id))&&sameProduct(item,other)));
+  const eligible=pool.filter(x=>x?.id&&!judged.has(x.id)&&
+    Number.isFinite(x?.fashion?.score) && Array.isArray(x?.items)&&
+    firstApproved.every(a=>!shares(x,a)));
+  // A new source-verified portfolio of actual suits (not a synthetic third).
+  const probe=assembleFormalPhotoProbePortfolio(eligible,[],requiredIds,Math.max(3,limit));
+  if(probe.length>=1)return probe.slice(0,limit);
+  // Sparse real inventory: one or two independent outfits can still improve
+  // the final collection; never reintroduce a rejected first-wave garment.
+  const chosen=[];
+  for(const look of eligible.sort((a,b)=>b.fashion.score-a.fashion.score)){
+    if(chosen.every(other=>!shares(look,other))){
+      chosen.push(look);
+      if(chosen.length>=limit)break;
+    }
+  }
+  return chosen;
+}
+
 /** How many independent triples survive the worst *single* photo veto?
  * Zero means the eight-candidate slate still has a fragile one-SKU bottleneck.
  * Uses the EXACT final independent-product deck feasibility semantics.
@@ -1741,6 +1775,10 @@ export async function recommendFashionDeck({
   // that was NOT sent to NVIDIA. It is explicitly NOT_JUDGED in the response;
   // never reintroduce a model-vetoed or timed-out candidate, or invent evidence.
   allowUnreviewedVisualFill = false,
+  // Server-owned REAL staging time left, never a client-provided budget.
+  // A second paid photo wave is forbidden unless the Render compute still
+  // has enough time to return a valid response (not a deadline 504).
+  photoRescueRemainingMs = null,
 }) {
   const reviewedLimit = Number.isInteger(visualCandidateLimit)
     ? Math.max(3,Math.min(MAX_VISUAL_CANDIDATES,visualCandidateLimit)) : MAX_VISUAL_CANDIDATES;
@@ -2077,9 +2115,9 @@ export async function recommendFashionDeck({
       candidates.push(alternate);
     }
     if (candidates.length) {
-      const reviewed = await evaluateVisualShortlist(
-        { ...retrieval, shortlist: candidates }, request, visualCritic,
-        { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds,
+      let primaryCritiques=[];
+      const reviewOptions={
+        target:Math.min(3,candidates.length), minNovelty:0.12, requiredIds,
           requireDistinctArchitectures: true,
           // Server-owned FORMAL-only alternative: the critic must positively
           // identify different blazer AND shirt/trouser photos. No other occasion
@@ -2110,10 +2148,106 @@ export async function recommendFashionDeck({
             return directions.every((direction)=>direction.qualified) ? 0.12 : 0;
           },
           preferValue: request.sourceMode === 'catalog' && !request.budget &&
-            !requiredIds.length && !explicitlyRequestsLuxury(context) },
-      );
+            !requiredIds.length && !explicitlyRequestsLuxury(context),
+          onCritiques:rows=>{primaryCritiques=rows;},
+      };
+      let reviewed=await evaluateVisualShortlist(
+        {...retrieval,shortlist:candidates},request,visualCritic,reviewOptions);
+      let rescueAttempted=0;
+      // The first photo review is NOT allowed to define the last available
+      // style choice. When seven of eight real formal outfits fail NVIDIA,
+      // sample up to four NEW, entirely source-approved real merchandise sets
+      // and have the same independent critic inspect their photographs.
+      //
+      // This correction is Render staging ONLY and runs only if the server
+      // still owns a bounded photo time budget; a deadline failure must
+      // return the original verified two rather than an HTTP 504. Every final
+      // displayed look MUST come from a real passed critic verdict.
+      if(context.sourceMode==='catalog'&&context.dressCode==='formal'&&
+          modelLed&&typeof photoRescueRemainingMs==='function'&&
+          reviewed.outfits.length<3&&
+          reviewed.diagnostics.visualValid>=4&&
+          reviewed.diagnostics.visualApproved>0&&
+          photoRescueRemainingMs()>=17500){
+        const approvedIds=new Set(
+          (reviewed.diagnostics.visualQualityDecisions||[])
+            .filter(row=>row.reason==='approved').map(row=>row.candidateId));
+        const approvedFirst=candidates.filter(look=>approvedIds.has(look.id));
+        const unreviewed=selectable.filter(look=>
+          !candidates.some(x=>x.id===look.id)&&
+          (!explicitColorPreferences||
+            !photographicPaletteEvidence(look,context.preferences,requiredIds).blocked));
+        let extra=chooseFormalPhotoRescueCandidates(
+          unreviewed,[],approvedFirst,requiredIds,4);
+        // The helper's supplied pool has already excluded ALL judged IDs.
+        // The actual reviewer still separately gates every image host.
+        const permittedExtra=[];
+        for(const look of extra){
+          if(photoRescueRemainingMs()<15000)break;
+          if(await permitted(look))permittedExtra.push(look);
+        }
+        extra=permittedExtra;
+        if(extra.length>0&&photoRescueRemainingMs()>=14500){
+          const allowedMs=Math.max(1000,Math.min(14000,
+            Math.floor(photoRescueRemainingMs()-3500)));
+          let rescueCritiques=[];
+          const firstDiagnostics=reviewed.diagnostics;
+          const rescue=await evaluateVisualShortlist(
+            {...retrieval,shortlist:extra},request,visualCritic,{
+              ...reviewOptions,target:Math.min(3,extra.length),
+              criticSignal:AbortSignal.timeout(allowedMs),
+              onCritiques:rows=>{rescueCritiques=rows;},
+            });
+          rescueAttempted=rescue.diagnostics.visualAttempted;
+          const orderedApproved=[...reviewed.outfits.map(x=>
+            candidates.find(c=>c.id===x.id)).filter(Boolean),
+            ...approvedFirst].filter((x,i,arr)=>arr.findIndex(y=>y.id===x.id)===i)
+            .slice(0,MAX_VISUAL_CANDIDATES-extra.length);
+          const judged=[...orderedApproved,...extra];
+          const keepIds=new Set(orderedApproved.map(x=>x.id));
+          const combinedCritiques=[
+            ...primaryCritiques.filter(row=>keepIds.has(row.candidateId)),
+            ...rescueCritiques,
+          ];
+          // SelectVisualDeck is still constrained to EIGHT source identities
+          // per execution, and EVERY member has a genuine photo verdict.
+          const combined=selectVisualDeck({
+            ...retrieval,shortlist:judged,
+          },combinedCritiques,reviewOptions);
+          const summary={
+            visualAttempted:firstDiagnostics.visualAttempted+
+              rescue.diagnostics.visualAttempted,
+            visualValid:firstDiagnostics.visualValid+
+              rescue.diagnostics.visualValid,
+            visualApproved:firstDiagnostics.visualApproved+
+              rescue.diagnostics.visualApproved,
+            visualAbstained:firstDiagnostics.visualAbstained+
+              rescue.diagnostics.visualAbstained,
+            visualRejected:firstDiagnostics.visualRejected+
+              rescue.diagnostics.visualRejected,
+            rejectedCandidateIds:[...new Set([
+              ...(firstDiagnostics.rejectedCandidateIds||[]),
+              ...(rescue.diagnostics.rejectedCandidateIds||[]),
+            ])],
+            visualQualityDecisions:[
+              ...(firstDiagnostics.visualQualityDecisions||[]),
+              ...(rescue.diagnostics.visualQualityDecisions||[]),
+            ],
+            criticFailed:firstDiagnostics.criticFailed||rescue.diagnostics.criticFailed,
+          };
+          // If provider latency/poor choices made the second wave worse,
+          // NEVER discard an already verified original 1-2 outfit deck.
+          reviewed=combined.outfits.length>=reviewed.outfits.length
+            ? {...combined,diagnostics:{...combined.diagnostics,...summary}}
+            : {...reviewed,diagnostics:{...firstDiagnostics,...summary}};
+          candidates.push(...extra);
+          modelFashionSelection.photoRescueAttempted=rescueAttempted;
+          modelFashionSelection.photoRescueApproved=rescue.diagnostics.visualApproved;
+        }
+      }
       visualQualityDecisions = Array.isArray(reviewed.diagnostics.visualQualityDecisions)
-        ? reviewed.diagnostics.visualQualityDecisions.slice(0, reviewedLimit) : [];
+        ? reviewed.diagnostics.visualQualityDecisions.slice(
+            0,reviewedLimit+rescueAttempted) : [];
       visualVerdict = reviewed.diagnostics.visualValid > 0 ? 'JUDGED' : 'ABSTAINED';
       const rejected = new Set(reviewed.diagnostics.rejectedCandidateIds);
       // The hosted critic has already applied visual quality, confidence,
@@ -2173,7 +2307,7 @@ export async function recommendFashionDeck({
       }
       visualReviewCoverage = {
         mode: 'displayed_deck',
-        inferenceCandidateCap: reviewedLimit,
+        inferenceCandidateCap: reviewedLimit+rescueAttempted,
         attempted: reviewed.diagnostics.visualAttempted,
         valid: reviewed.diagnostics.visualValid,
         rejected: rejected.size,

@@ -320,9 +320,16 @@ export async function evaluateVisualShortlist(retrieval,request,visualCritic,opt
         // Only bounded explicit user exclusions reach the PHOTO judge. They
         // affect style approval, so the critic cache also keys on them.
         avoidColors: verifiedAvoidColors(request.preferences?.avoidColors),
-        dislikedPatterns: request.preferences?.dislikedPatterns});
-      if(Array.isArray(rows)&&rows.length<=limit)critiques=rows;
-      else criticFailed=true;
+        dislikedPatterns: request.preferences?.dislikedPatterns},
+        options.criticSignal ? {signal:options.criticSignal} : undefined);
+      if(Array.isArray(rows)&&rows.length<=limit){
+        critiques=rows;
+        // Only an in-process staging planner can observe the actual verdicts
+        // for a later review wave. No unreviewed goods may be selected.
+        if(typeof options.onCritiques==='function'){
+          try{options.onCritiques(rows)}catch{/* advisory callback only */}
+        }
+      }else criticFailed=true;
     }catch{criticFailed=true}
   }
   return selectVisualDeck({...retrieval,shortlist},critiques,options,criticFailed);
