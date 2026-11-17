@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, chooseIndependentPhotoReviewTrio, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -1777,4 +1777,52 @@ test('AI photo review portfolio rescues three truly disjoint, independent outfit
   assert.ok(trio.filter(x=>!x.id.startsWith('clone-')).length>=2,
     'the slate must include two structural directions rather than repeated base items');
   assert.ok(trio.every(look=>options.some(x=>x.id===look.id)));
+});
+
+test('photo critic gets a portfolio of independent SKU-unique rescue looks, not repeated model favorites',()=>{
+  const mk=(i,top,bottom,shoe,layer)=>({
+    id:'portfolio-'+i,briefId:'portfolio-brief-'+i,
+    fashion:{score:0.94-i*0.006},
+    items:[
+      garment('portfolio-'+i+'-top',top+' shirt','top',top),
+      ...(layer?[garment('portfolio-'+i+'-coat',layer+' layer','outerwear',layer)]:[]),
+      garment('portfolio-'+i+'-bottom',bottom+' trouser','bottom',bottom),
+      garment('portfolio-'+i+'-shoes',shoe+' shoes','shoes',shoe),
+    ],
+  });
+  const goods=[
+    mk(0,'dress-shirt','tailored-trouser','oxford','blazer'),
+    mk(1,'fine-knit','chino','loafer','cardigan'),
+    mk(2,'polo','jeans','chelsea','coat'),
+    mk(3,'shirt','trouser','derby','overshirt'),
+    mk(4,'dress-shirt','chino','loafer','coat'),
+    mk(5,'fine-knit','trouser','chelsea','blazer'),
+    mk(6,'shirt','tailored-trouser','derby','cardigan'),
+    mk(7,'polo','jeans','oxford','overshirt'),
+  ];
+  const nominated=goods.slice(0,6);
+  const slate=assembleIndependentVisualPortfolio(goods,nominated,[],undefined,8);
+  assert.equal(slate.length,8,'all eight paid slots can reach independent photos');
+  assert.ok(visualProductUniqueTripleCount(slate)>0);
+  for(let i=0;i<slate.length;i++)for(let j=i+1;j<slate.length;j++){
+    assert.ok(slate[i].items.every(a=>slate[j].items.every(b=>a.id!==b.id)),
+      'no single SKU should be used in multiple paid-review slots when inventory suffices');
+  }
+});
+
+test('catalog-only public fashion title context never leaks from owned wardrobe preview',()=>{
+  const testLook={id:'abc',briefId:'house',fashion:{score:0.91},
+    items:[
+      garment('private-top','PUBLIC Resort Terry Shirt','top','shirt'),
+      garment('private-bottom','Stone Tailored Trousers','bottom','trouser'),
+      garment('private-shoes','Brown Leather Loafers','shoes','loafer'),
+    ]};
+  const privateLook=directorSlatePreview([testLook]);
+  assert.equal(privateLook[0].items[0].merchantLabel,undefined,
+    'default and wardrobe preview must never transmit user-owned names');
+  const catalogLook=directorSlatePreview([testLook],[],
+    {includePublicCatalogNames:true});
+  assert.ok(catalogLook[0].items[0].merchantLabel.includes('Resort Terry'),
+    'public catalog titles should tell the AI the garment purpose');
+  assert.equal(catalogLook[0].qualityHint,0.91);
 });

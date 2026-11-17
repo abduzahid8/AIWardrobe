@@ -332,8 +332,26 @@ async function cloudFailureFromInvokeError(invokeError: unknown): Promise<Outfit
   const context = (invokeError as { context?: unknown } | null)?.context;
   if (context && typeof (context as Response).json === 'function') {
     try {
-      const body = await (context as Response).json() as { code?: unknown; stage?: unknown } | null;
+      const body = await (context as Response).json() as {
+        code?: unknown; stage?: unknown; diagnostics?: {
+          modelFashionSelection?: unknown; visualReviewCoverage?: unknown;
+          visualQualityDecisions?: Array<{reason?: string; quality?: number; scores?: unknown}>;
+        };
+      } | null;
       if (body && typeof body.code === 'string') {
+        // Development QA only: a paid photo-quality failure must reveal the
+        // safe aggregate AI decision receipt; never user IDs, SKU names,
+        // merchant links, JWTs or images.
+        if (__DEV__ && body.diagnostics) {
+          console.warn('[S6 FASHION QA FAIL]', JSON.stringify({
+            code:body.code,
+            director:body.diagnostics.modelFashionSelection,
+            coverage:body.diagnostics.visualReviewCoverage,
+            decisions:(body.diagnostics.visualQualityDecisions || []).map(row=>({
+              reason:row.reason,quality:row.quality,scores:row.scores,
+            })),
+          }));
+        }
         return failureForCloud(body.code, typeof body.stage === 'string' ? body.stage : 'stylist6_cloud');
       }
     } catch {

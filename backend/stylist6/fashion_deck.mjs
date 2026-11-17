@@ -1361,6 +1361,64 @@ export function chooseIndependentPhotoReviewTrio(looks, modelChoices = [], requi
   return winner||[];
 }
 
+/**
+ * Build a PHOTO-REVIEW PORTFOLIO, not six stylistically identical model
+ * favorites. When three independent whole looks exist, keep them as
+ * foundation; then spend remaining scarce NVIDIA slots on strong,
+ * product-unique and structurally distinct alternatives. Every input still
+ * comes from the server-vetted shortlist; no look is approved here.
+ */
+export function assembleIndependentVisualPortfolio(
+  looks, modelChoices = [], requiredIds = [], metrics, limit = MAX_VISUAL_CANDIDATES,
+) {
+  if(!Array.isArray(looks)||!Array.isArray(modelChoices)||
+      !Number.isInteger(limit)||limit<3||limit>MAX_VISUAL_CANDIDATES)return [];
+  const pool=looks.slice(0,72).filter(x=>Array.isArray(x?.items)&&
+    Number.isFinite(x.fashion?.score));
+  const core=chooseIndependentPhotoReviewTrio(pool,modelChoices,requiredIds,metrics);
+  const selected=[...core], ids=new Set(selected.map(x=>x.id));
+  const nominated=new Set(modelChoices.map(x=>x.id));
+  const pinned=new Set((requiredIds||[]).map(String));
+  const sharesProduct=(a,b)=>a.items.some(item=>!pinned.has(String(item.id)) &&
+    b.items.some(other=>!pinned.has(String(other.id))&&sameProduct(item,other)));
+  // Skip weak one-off concepts before expensive vision when strong, fully
+  // documented alternatives exist in the same current inventory.
+  const ceiling=Math.max(...pool.map(x=>x.fashion.score));
+  while(selected.length<limit){
+    let next=null,best=-Infinity;
+    for(let pass=0;pass<3&&!next;pass++){
+      for(const look of pool){
+        if(ids.has(look.id)||look.fashion.score < ceiling-(pass===2?0.25:0.20))continue;
+        const shared=selected.filter(x=>sharesProduct(x,look)).length;
+        const independent=selected.filter(x=>
+          independentOutfitDirection(x,look,requiredIds)).length;
+        const minDiff=metrics&&selected.length?Math.min(...selected.map(x=>
+          directionDifference(x,look,metrics.featuresOf,metrics.featureDistance).distance)):1;
+        if(pass===0 && (shared>0||independent!==selected.length||minDiff<0.12))continue;
+        if(pass===1 && (shared>0||independent===0))continue;
+        if(pass===2 && selected.length&&independent===0)continue;
+        const layer=outerwearArchetype(look,requiredIds);
+        const existingLayers=new Set(selected.map(x=>outerwearArchetype(x,requiredIds)));
+        const confidentPhotos=look.items.filter(x=>currentVisual(x)).length/
+          Math.max(1,look.items.length);
+        const score=look.fashion.score +
+          (nominated.has(look.id)?0.10:0) +
+          (layer&&!existingLayers.has(layer)?0.085:0) +
+          0.035*confidentPhotos +
+          0.04*independent -
+          0.4*shared;
+        if(score>best){best=score;next=look;}
+      }
+    }
+    if(!next)break;
+    selected.push(next);ids.add(next.id);
+  }
+  // If the catalog genuinely lacks an independent triple, preserve the
+  // model shortlist for an honest partial visual review; no fake 3-card fill.
+  if(!core.length)return modelChoices.slice(0,limit);
+  return selected;
+}
+
 export function visualRescueTripleCount(looks, requiredIds = []) {
   if (!Array.isArray(looks) || looks.length > MAX_VISUAL_CANDIDATES) return 0;
   let count = 0;
@@ -1492,7 +1550,7 @@ export function polishedEveningLayerRequired(context) {
  * Fashion Director. The model sees ANONYMOUS tokens and attributes observed
  * in current source-hash-verified photos, not merchant names or raw IDs.
  */
-export function directorSlatePreview(looks, aiPlans = []) {
+export function directorSlatePreview(looks, aiPlans = [], { includePublicCatalogNames = false } = {}) {
   const canon=x=>String(x||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
   const aiKeys=(Array.isArray(aiPlans)?aiPlans:[]).map(p=>canon(p.id));
   const groups=new Map();
@@ -1521,6 +1579,7 @@ export function directorSlatePreview(looks, aiPlans = []) {
   return chosen.map((look,index)=>({
     token:'L'+String(index).padStart(2,'0'),
     direction:aiKeys.includes(String(look.briefId||''))?'ai':'house',
+    qualityHint:look.fashion.score,
     items:look.items.map(item=>{
       const profile=currentVisual(item),photo={};
       for(const name of attrs){
@@ -1532,8 +1591,14 @@ export function directorSlatePreview(looks, aiPlans = []) {
       const key=baseProductId(String(item.id));
       if(!opaqueProducts.has(key))opaqueProducts.set(key,
         'P'+String(opaqueProducts.size).padStart(3,'0'));
+      // Catalog-only public product labels convey purpose (resort, technical,
+      // dress) that photo color/slot vectors cannot establish. Explicitly
+      // opt-in only for sourceMode=catalog; no user-owned item names go out.
+      const merchantLabel=includePublicCatalogNames && typeof item.name==='string'
+        ? item.name.replace(/[<>{}\u0000-\u001f]/g,' ').trim().slice(0,64):'';
       return {slot:item.macroCategory,subtype:item.subtype,
-        itemToken:opaqueProducts.get(key),photo};
+        itemToken:opaqueProducts.get(key),photo,
+        ...(merchantLabel?{merchantLabel}:{})};
     }),
     look,
   }));
@@ -1683,7 +1748,9 @@ export async function recommendFashionDeck({
     if(modelLed){
       const reviewable=[];
       for(const look of selectable)if(await permitted(look))reviewable.push(look);
-      const preview=directorSlatePreview(reviewable,aiPlans);
+      const preview=directorSlatePreview(reviewable,aiPlans,{
+        includePublicCatalogNames:request.sourceMode==='catalog',
+      });
       modelFashionSelection={status:'insufficient_candidates',candidatesSeen:preview.length,chosen:0};
       if(preview.length>=6){
         try{
@@ -1718,17 +1785,20 @@ export async function recommendFashionDeck({
             if(modelChosen){
               const original=[...candidates];
               const metrics=creativeMetrics(deckContext);
-              const core=chooseIndependentPhotoReviewTrio(
-                reviewable,original,requiredIds,metrics);
+              const portfolio=assembleIndependentVisualPortfolio(
+                reviewable,original,requiredIds,metrics,reviewedLimit);
+              const core=portfolio.slice(0,3);
               modelFashionSelection.uniqueTripleBefore=
                 visualProductUniqueTripleCount(original,requiredIds)>0;
-              modelFashionSelection.uniqueTripleAvailable=core.length===3;
-              if(core.length===3){
-                const extras=original.filter(x=>!core.some(y=>y.id===x.id))
-                  .slice(0,Math.max(0,reviewedLimit-3));
-                candidates.splice(0,candidates.length,...core,...extras);
+              modelFashionSelection.uniqueTripleAvailable=
+                core.length===3&&visualProductUniqueTripleCount(core,requiredIds)>0;
+              if(modelFashionSelection.uniqueTripleAvailable){
+                candidates.splice(0,candidates.length,...portfolio);
                 modelFashionSelection.coreModelChoices=
                   core.filter(x=>original.some(y=>y.id===x.id)).length;
+                modelFashionSelection.portfolioSize=candidates.length;
+                modelFashionSelection.portfolioTriples=
+                  visualProductUniqueTripleCount(candidates,requiredIds);
               }
             }
           }
