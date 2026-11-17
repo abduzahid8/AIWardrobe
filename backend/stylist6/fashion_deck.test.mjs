@@ -2093,8 +2093,9 @@ test('real AI catalog SKU Composer creates entirely new 4-piece looks BEFORE hos
     selectDirectorFinalists:async()=>{
       oldSlateCalls++;return {status:'timeout',tokens:[]};
     },
-    selectCatalogCompositions:async({pool,layerRequired})=>{
+    selectCatalogCompositions:async({pool,layerRequired,outfitCount})=>{
       composerCalls++;
+      assert.equal(outfitCount,6,'AI should autonomously audition six outfits for one eight-photo review');
       assert.ok(pool.length>=12,'model gets choices of real source-approved merchandise');
       const picked=[];
       for(let n=0;n<3;n++){
