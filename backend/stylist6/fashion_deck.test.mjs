@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -1844,4 +1844,36 @@ test('visual portfolio resilience is grounded in product-unique triples, not fab
   const broken=[...three,{...three[0],id:'duplicate',items:three[0].items}];
   assert.equal(visualPortfolioSingleVetoResilience(broken),0,
     'a repeat of one source product is not a genuine independent backup');
+});
+
+
+test('formal photo portfolio inspects eight independent genuine suit sets even with same four role subtypes',()=>{
+  const mk=(i)=>({
+    id:'tailoring-'+i,briefId:'formal-brief',fashion:{score:.93-i*.004},
+    items:[
+      garment('tailoring-shirt-'+i,'White Oxford Shirt '+i,'top','dress-shirt'),
+      garment('tailoring-jacket-'+i,['navy','grey','brown','black'][i%4]+' Wool Suit Blazer','outerwear','blazer',{
+        color:['navy','grey','brown','black'][i%4],
+      }),
+      garment('tailoring-bottom-'+i,['navy','grey','brown','black'][i%4]+' Tailored Trousers','bottom','tailored-trouser',{
+        color:['navy','grey','brown','black'][i%4],
+      }),
+      garment('tailoring-shoes-'+i,'Leather Oxford Shoes '+i,'shoes','oxford'),
+    ],
+  });
+  const catalog=Array.from({length:12},(_,i)=>mk(i));
+  const modelChoices=catalog.slice(0,6);
+  assert.equal(assembleIndependentVisualPortfolio(catalog,modelChoices).length,6,
+    'old strict-architecture selector cannot prove palette variety before photos');
+  const probe=assembleFormalPhotoProbePortfolio(catalog,modelChoices);
+  assert.equal(probe.length,8,'same styling formula is legitimate for multiple formal outfits');
+  const ids=probe.flatMap(l=>l.items.map(x=>x.id));
+  assert.equal(new Set(ids).size,32,
+    'each of eight photo reviews uses a completely different real product set');
+  const thin=catalog.map((look,i)=>({
+    ...look,items:look.items.map(item=>item.macroCategory==='outerwear'
+      ? {...item,id:'one-shared-wool-blazer'}:item),
+  }));
+  assert.deepEqual(assembleFormalPhotoProbePortfolio(thin,thin.slice(0,6)),[],
+    'no honest three-look product uniqueness when every outfit shares the same blazer');
 });

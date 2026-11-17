@@ -370,6 +370,45 @@ export function independentOutfitDirection(a, b, requiredIds = []) {
   return structure > 0 || texture >= 2 || palette >= (anchored.size ? 2 : 3);
 }
 
+/** Formal dress codes legitimately constrain silhouette: a shirt, suit blazer,
+ * tailored trousers and leather dress shoes cannot be replaced by a casual
+ * hoodie just to satisfy a 3-direction taxonomy. Two real outfits are
+ * materially different when NVIDIA has SEEN BOTH distinct blazer and trouser
+ * color families in the actual source photos. This is a SUPPLEMENT to strict
+ * garment-architecture independence, never permission to invent palette
+ * difference from SKU titles. It runs only AFTER each whole outfit has passed
+ * independent visual quality and occasion gates.
+ */
+export function photoGroundedFormalPaletteDirection(a,b,verdictA,verdictB,requiredIds=[]){
+  if(!a?.items||!b?.items||!verdictA||!verdictB)return false;
+  const pinned=new Set((requiredIds||[]).map(String));
+  const get=(look,slot)=>look.items.find(item=>item.macroCategory===slot);
+  const skeleton=(look)=>{
+    const top=get(look,'top'),layer=get(look,'outerwear');
+    const bottom=get(look,'bottom'),shoes=get(look,'shoes');
+    return !!(top&&layer&&bottom&&shoes&&
+      ['shirt','dress_shirt'].includes(text(top.subtype))&&
+      ['blazer','suit_jacket','tailored_jacket'].includes(text(layer.subtype))&&
+      ['tailored_trouser','pleated_trouser','trouser'].includes(text(bottom.subtype))&&
+      ['oxford','derby','monk','dress_boot'].includes(text(shoes.subtype)));
+  };
+  if(!skeleton(a)||!skeleton(b))return false;
+  if(a.items.some(x=>!pinned.has(String(x.id))&&
+    b.items.some(y=>!pinned.has(String(y.id))&&sameProduct(x,y))))return false;
+  // The same color family (including grey/charcoal aliases) is NOT novel.
+  const color=(v,slot)=>{
+    const raw=String(v?.slotColors?.[slot]||'').toLowerCase();
+    return raw==='charcoal'?'grey':
+      VISUAL_SLOT_COLORS.includes(raw)&&raw!=='unknown'?raw:null;
+  };
+  // Strong outer+lower color contrast. Shoes or shirt swaps alone are
+  // insufficient. Both colors must be explicit photographic observations.
+  return ['outerwear','bottom'].every(slot=>{
+    const x=color(verdictA,slot),y=color(verdictB,slot);
+    return !!x&&!!y&&x!==y;
+  });
+}
+
 /** Replay verdicts against the exact judged candidate set without provider I/O. */
 export function selectVisualDeck({generationVersion,shortlist,diagnostics},critiques,options={},criticFailed=false){
   assert(shortlist.length<=MAX_VISUAL_CANDIDATES,'invalid_visual_limit');
@@ -541,7 +580,10 @@ export function selectVisualDeck({generationVersion,shortlist,diagnostics},criti
       // when choosing the second look. An earlier >=2 guard let a pair of
       // near-clones through and falsely called three looks "distinct".
       if(options.requireDistinctArchitectures===true &&
-        deck.some(other=>!independentOutfitDirection(c,other,options.requiredIds)))continue;
+        deck.some(other=>!independentOutfitDirection(c,other,options.requiredIds)&&
+          !(options.allowFormalPhotoPaletteDirections===true &&
+            photoGroundedFormalPaletteDirection(
+              c,other,accepted.get(c.id),accepted.get(other.id),options.requiredIds))))continue;
       const difference=Math.min(...deck.map(other=>novelty(c,other)));
       if(difference<(options.minNovelty??0.30)||difference===0)continue;
       const repeats=deck.some(other=>other.briefId===c.briefId);

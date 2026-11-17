@@ -1434,6 +1434,89 @@ export function assembleIndependentVisualPortfolio(
   return selected;
 }
 
+/** Formal tuxedo/suit requests constrain permissible garment architecture.
+ * If every genuinely formal option has the same shirt/blazer/trouser/oxford
+ * roles, the ordinary pre-photo architecture test is correctly inconclusive,
+ * NOT proof that the photographed styles are identical. Reserve 8 independent
+ * REAL merchandise sets for the photo critic to inspect; the final three
+ * still need actual-photo evidence of both jacket and trouser palette shifts.
+ * No extra provider calls, no SKU invention, no unreviewed third card.
+ */
+export function assembleFormalPhotoProbePortfolio(
+  looks, modelChoices = [], requiredIds = [], limit = MAX_VISUAL_CANDIDATES,
+) {
+  if(!Array.isArray(looks)||!Array.isArray(modelChoices)||
+      !Number.isInteger(limit)||limit<3||limit>MAX_VISUAL_CANDIDATES)return [];
+  const pinned=new Set((requiredIds||[]).map(String));
+  const pool=looks.slice(0,72).filter(x=>Array.isArray(x?.items)&&
+    Number.isFinite(x.fashion?.score) && ['top','outerwear','bottom','shoes'].every(slot=>
+      x.items.some(item=>item.macroCategory===slot)));
+  const disjoint=(a,b)=>!(a.items||[]).some(item=>
+    !pinned.has(String(item.id)) && (b.items||[]).some(other=>
+      !pinned.has(String(other.id))&&sameProduct(item,other)));
+  const chosenByAI=new Map(modelChoices.map((look,i)=>[look.id,i]));
+  // Only trustworthy current-image observations (or clearly sourced catalog
+  // color fields) GUIDE pre-review variety. They never APPROVE a direction.
+  const color=(look,slot)=>{
+    const item=look.items.find(x=>x.macroCategory===slot);
+    if(!item)return null;
+    const profile=currentVisual(item),attr=profile?.attributes?.color;
+    if(confidentVisual(attr)&&typeof attr.value==='string'&&attr.value!=='unknown')
+      return attr.value;
+    const raw=String(item.color||'').toLowerCase();
+    return raw && raw!=='unknown'&&raw!=='neutral'?raw:null;
+  };
+  const photoPaletteBonus=trio=>{
+    let bonus=0;
+    for(const slot of ['outerwear','bottom']){
+      const colors=trio.map(x=>color(x,slot)).filter(Boolean);
+      bonus+=0.075*new Set(colors).size;
+    }
+    return bonus;
+  };
+  let core=null,best=-Infinity;
+  // <=72 candidates => <=60k triples, bounded without N+1 SKU searches.
+  for(let i=0;i<pool.length;i++)for(let j=i+1;j<pool.length;j++){
+    if(!disjoint(pool[i],pool[j]))continue;
+    for(let k=j+1;k<pool.length;k++){
+      if(!disjoint(pool[i],pool[k])||!disjoint(pool[j],pool[k]))continue;
+      const triple=[pool[i],pool[j],pool[k]];
+      const utility=triple.reduce((sum,look)=>sum+look.fashion.score+
+        (chosenByAI.has(look.id)?0.09:0),0)+photoPaletteBonus(triple);
+      if(utility>best){best=utility;core=triple;}
+    }
+  }
+  if(!core)return []; // Never claim availability when exact SKU choice is thin.
+  const result=[...core],ids=new Set(core.map(x=>x.id));
+  while(result.length<limit){
+    let next=null,highest=-Infinity;
+    for(const candidate of pool){
+      if(ids.has(candidate.id)||!result.every(x=>disjoint(x,candidate)))continue;
+      const newPhotoPalette=photoPaletteBonus([...result,candidate])-
+        photoPaletteBonus(result);
+      const novelty=0.04*['outerwear','bottom'].filter(slot=>{
+        const c=color(candidate,slot);
+        return c&&!result.some(x=>color(x,slot)===c);
+      }).length;
+      const score=candidate.fashion.score+newPhotoPalette+novelty+
+        (chosenByAI.has(candidate.id)?0.09:0);
+      if(score>highest){highest=score;next=candidate;}
+    }
+    if(!next)break;
+    result.push(next);ids.add(next.id);
+  }
+  // Fill remaining paid critique slots with plausible near substitutes only
+  // if the independent SKU inventory itself is genuinely exhausted. The
+  // final display still forbids reuse unless the user pinned an anchor.
+  for(const look of modelChoices){
+    if(result.length>=limit)break;
+    if(!ids.has(look.id)&&pool.some(x=>x.id===look.id)){
+      result.push(look);ids.add(look.id);
+    }
+  }
+  return result;
+}
+
 /** How many independent triples survive the worst *single* photo veto?
  * Zero means the eight-candidate slate still has a fragile one-SKU bottleneck.
  * Uses the EXACT final independent-product deck feasibility semantics.
@@ -1826,6 +1909,21 @@ export async function recommendFashionDeck({
                   visualProductUniqueTripleCount(candidates,requiredIds);
                 modelFashionSelection.portfolioSingleVetoResilience=
                   visualPortfolioSingleVetoResilience(candidates,requiredIds);
+              } else if(context.dressCode==='formal'&&request.sourceMode==='catalog'){
+                // A strict formal dress code can force identical four ROLE
+                // names even when two genuine suit palettes are visually
+                // different. Photograph product-independent complete outfits
+                // and let NVIDIA verify their real jacket/trouser color shifts
+                // before calling them separate tailored directions.
+                const probe=assembleFormalPhotoProbePortfolio(
+                  reviewable,original,requiredIds,reviewedLimit);
+                if(probe.length>=3){
+                  candidates.splice(0,candidates.length,...probe);
+                  modelFashionSelection.formalPhotoProbe=true;
+                  modelFashionSelection.portfolioSize=candidates.length;
+                  modelFashionSelection.coreModelChoices=
+                    probe.slice(0,3).filter(x=>original.some(y=>y.id===x.id)).length;
+                }
               }
             }
           }
@@ -1982,6 +2080,11 @@ export async function recommendFashionDeck({
         { ...retrieval, shortlist: candidates }, request, visualCritic,
         { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds,
           requireDistinctArchitectures: true,
+          // Server-owned FORMAL-only alternative: the critic must positively
+          // identify different blazer AND trouser photos. No other occasion
+          // gets a softer architecture rule, and all photo quality floors stay.
+          allowFormalPhotoPaletteDirections: context.dressCode==='formal'&&
+            request.sourceMode==='catalog',
           requireNoProductReuse: request.sourceMode==='catalog',
           // Whole-outfit quality is conjunctive: correct colors cannot excuse
           // an unsuitable dress code or occasion. These are per-axis NVIDIA

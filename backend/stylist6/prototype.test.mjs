@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {proposeVisualFirstDeck,shortlistRetrievalDeck,selectVisualDeck,diversifyBriefHead,outerwearArchetype,STYLIST6_VERSION} from './prototype.mjs';
+import {proposeVisualFirstDeck,shortlistRetrievalDeck,selectVisualDeck,diversifyBriefHead,outerwearArchetype,photoGroundedFormalPaletteDirection,STYLIST6_VERSION} from './prototype.mjs';
 
 const catalog=[];
 function add(slot,subtype,colors,price=170000){
@@ -564,4 +564,63 @@ test('catalog-quality visual selector refuses to repeat the exact same cardigan 
   const pinned=selectVisualDeck(input,verdicts,{target:3,requireNoProductReuse:true,
     requiredIds:['same-cardigan']});
   assert.equal(pinned.status,'complete','an explicitly pinned shared wardrobe anchor may legitimately repeat');
+});
+
+
+test('photographed formal palette directions are real complete tailoring, not three renamed suits',()=>{
+  const make=(id,jacket,trouser)=>({
+    id,briefId:id,brief:{id,name:id},fashion:{score:.90},
+    items:[
+      {id:id+'-top',macroCategory:'top',subtype:'dress-shirt',name:'White Oxford shirt'},
+      {id:id+'-jacket',macroCategory:'outerwear',subtype:'blazer',name:'Wool suit blazer'},
+      {id:id+'-trouser',macroCategory:'bottom',subtype:'tailored-trouser',name:'Tailored trousers'},
+      {id:id+'-shoes',macroCategory:'shoes',subtype:'oxford',name:'Black dress oxfords'},
+    ],
+    photographed:{top:'white',outerwear:jacket,bottom:trouser,shoes:'black'},
+  });
+  const looks=[
+    make('navy','navy','navy'),
+    make('grey','grey','grey'),
+    make('brown','brown','brown'),
+  ];
+  const verdicts=looks.map(l=>({
+    candidateId:l.id,referenceless:true,visualCohesion:.95,
+    styleFit:.94,occasionFit:.95,formalityFit:.94,confidence:.98,
+    reject:false,slotColors:l.photographed,
+    evidence:['Photo of blazer','Photo of trousers','Photo of shoes'],
+  }));
+  const envelope={generationVersion:STYLIST6_VERSION,shortlist:looks,diagnostics:{}};
+  const common={target:3,minNovelty:.12,requireNoProductReuse:true,
+    requireDistinctArchitectures:true,minStyleFit:.72,minOccasionFit:.75,minFormalityFit:.70};
+  const before=selectVisualDeck(envelope,verdicts,common);
+  assert.equal(before.outfits.length,1,
+    'same four tailoring roles previously left only one look despite distinct photographed palettes');
+  const after=selectVisualDeck(envelope,verdicts,{
+    ...common,allowFormalPhotoPaletteDirections:true,
+  });
+  assert.equal(after.outfits.length,3,
+    'NVIDIA-verified contrasting JACKET and TROUSERS can support actual distinct formal outfits');
+  assert.ok(looks.every(l=>after.outfits.some(x=>x.id===l.id)));
+  assert.equal(photoGroundedFormalPaletteDirection(looks[0],looks[1],
+    verdicts[0],verdicts[1]),true);
+  assert.equal(photoGroundedFormalPaletteDirection(looks[0],looks[1],
+    verdicts[0],{...verdicts[1],slotColors:{...verdicts[1].slotColors,bottom:'navy'}}),false,
+    'shirt/shoes or blazer alone cannot fake formal diversity');
+  assert.equal(photoGroundedFormalPaletteDirection(looks[0],looks[1],
+    verdicts[0],{...verdicts[1],slotColors:{...verdicts[1].slotColors,bottom:'unknown'}}),false,
+    'missing photographic color proof does not become an invented direction');
+  assert.equal(photoGroundedFormalPaletteDirection(looks[0],looks[1],
+    verdicts[0],{...verdicts[1],slotColors:{...verdicts[1].slotColors,outerwear:'unknown'}}),false);
+  const casual={...looks[1],items:looks[1].items.map(it=>
+    it.macroCategory==='outerwear'?{...it,subtype:'hoodie'}:it)};
+  assert.equal(photoGroundedFormalPaletteDirection(looks[0],casual,
+    verdicts[0],verdicts[1]),false,
+    'no hoodie can piggyback on a formal color rule');
+  const shared={...looks[1],items:looks[1].items.map(it=>
+    it.macroCategory==='outerwear'?looks[0].items[1]:it)};
+  assert.equal(photoGroundedFormalPaletteDirection(looks[0],shared,
+    verdicts[0],verdicts[1]),false,
+    'exact same blazer product still cannot be reused in catalog mode');
+  const nonFormal=selectVisualDeck(envelope,verdicts,common);
+  assert.equal(nonFormal.outfits.length,1,'all other contexts retain the strict architecture rule');
 });
