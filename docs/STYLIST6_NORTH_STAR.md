@@ -55,5 +55,14 @@ The target is not 100% subjective approval (cannot be guaranteed); the measurabl
 - Active shoe visual profiles rose to 671/1,649 (the historic 114/1,649 in 2026-11-16 blockers is not current). Merchant stock, rights, checkout and Uzbekistan delivered prices are unverified.
 - Complete grounded evidence and failures: docs/reports/stylist6-direct-sku-composition-20261117/README.md.
 
+## 2026-11-17 — LIVE gateway correction and photographic rejection evidence
+
+- Root-cause environment finding: the normal iOS QA gateway was still bound to a 50s Vercel runtime; the real AI SKU composer and final portfolio editor in `cloud_handler.mjs` are deliberately enabled only for server budgets >=70s. Code existing in GitHub was therefore NOT enough to make the default QA endpoint use it.
+- Correction: commit `4a85034` changes only the `aiw-stylist6-node-staging` source entrypoint to import the existing 85s Render proxy. Supabase function **v61 ACTIVE**, `verify_jwt=true`; Render staging compute **33fb1b1 LIVE**, 72s internal budget. Preserved JWT, HMAC, merchant/budget/source checks and no-retry quota semantics. Production `generate-outfits` (Stylist 5) untouched.
+- Critical distinction: v61 deployment and source inspection are proven; an authenticated **post-v61** iOS generation and end-to-end quality assessment have NOT yet been confirmed.
+- Fresh Render structured traces from before the gateway switch on the same compute code: at 10:03 UTC **3 SKU-composed and admitted; 3/8 photographic approvals; 2 displayed; editor applied** (47.1s). At 10:07 UTC **3 SKU-composed and admitted; 1/8 photographic approvals; 1 displayed; editor not run** (59.0s). Multiple rejects were `style_mismatch` or `below_quality_floor`.
+- These are **counterexamples** to treating a successful model composition, a green deploy, or previous 3-card runs as proof of great taste. Most recent real failures originate in aesthetic **proposal quality**, not missing valid SKUs; the full-photo critic is correctly stopping unconvincing results.
+- NEXT highest-leverage improvement: inspect exact photo contact sheets and rejected whole-look relationships on the fixed failed scenarios; make the model propose better *complete* silhouette/material/footwear combinations before admission or use photo-critic feedback for a bounded second composition. Prove improvement on the SAME items and preferences, not via new regex bans or changing the acceptance threshold. Then rerun an authenticated v61 request and independent >=30-scenario human blind quality gate. Keep offer/rights/size claims honest.
+
 ## Each work session's completion report must include
 GitHub SHA; staging Supabase function version + pinned READY compute SHA; code/quality changes; real scenario IDs & images; what objectively improved; what deteriorated; how many looks were provider-judged vs fallback; product stock/rights truth; QA gate counts; production status; exact NEXT highest-leverage root cause.
