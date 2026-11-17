@@ -13,6 +13,7 @@ import {
   STYLIST6_CLOUD_VERSION,
   fashionSlateDecisionBudgetMs,
   prewarmProductPhotos,
+  stylist6SafeQualityTrace,
   serverFashionSlateEnabled,
   canonicalRequestFingerprint,
 } from './cloud_handler.mjs';
@@ -1963,4 +1964,29 @@ test('regression: authenticated S6 critic callback REALLY uses concurrent photo 
     'prewarm helper MUST be wired into the production S6 visualCritic closure');
   assert.doesNotMatch(handler,/urls\.slice\(i, i \+ 6\)|for\s*\(let i\s*=\s*0;\s*i\s*<\s*urls\.length/,
     'never regress to serial 6-CDN waves that starve NVIDIA of its deadline');
+});
+
+
+test('safe Stage 6 quality trace includes only bounded status counters and reason codes',()=>{
+  const out=stylist6SafeQualityTrace({
+    personalSecret:'private-identity',request:'disclose this',
+    modelFashionSelection:{status:'selected',formalPhotoProbe:true,
+      uniqueTripleAvailable:false,chosen:5,customerEmail:'test@example.com'},
+    visualReviewCoverage:{mode:'displayed_deck',attempted:8,
+      approved:4,displayedEvidence:2,rawPhoto:'super-secret-raw-bytes'},
+    visualQualityDecisions:[
+      {reason:'approved',title:'private coat'},
+      {reason:'style_mismatch',prompt:'private query'},
+      {reason:'<malicious user text with contact info>'},
+    ],
+  },2,48888);
+  assert.deepEqual(out,{
+    elapsedMs:48888,displayed:2,requestedPhoto:true,
+    attempted:8,approved:4,displayedEvidence:2,
+    directorSelected:true,formalPhotoProbe:true,prePhotoUniqueTriple:false,
+    reasons:['approved','style_mismatch','other'],
+  });
+  assert.doesNotMatch(JSON.stringify(out),/secret|example|private|contact info/);
+  assert.equal(stylist6SafeQualityTrace(null,5,-1).displayed,null,
+    'trace cannot invent out-of-range deck counts');
 });

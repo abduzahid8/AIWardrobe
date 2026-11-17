@@ -84,6 +84,41 @@ const VISUAL_PROFILE_CHUNK = 100;
 const PRODUCT_FETCH_TIMEOUT_MS = 8000;
 const MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
+/** Safe staging-only quality trace: never log private user data, SKU IDs,
+ * prompts, merchant links, reference images or auth material. Exact review
+ * reasons show whether a 2-look deck failed from image quality or from the
+ * portfolio's inability to combine otherwise approved outfits.
+ */
+export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
+  const d=diagnostics&&typeof diagnostics==='object'?diagnostics:{};
+  const r=d.visualReviewCoverage&&typeof d.visualReviewCoverage==='object'
+    ?d.visualReviewCoverage:{};
+  const f=d.modelFashionSelection&&typeof d.modelFashionSelection==='object'
+    ?d.modelFashionSelection:{};
+  const allow=new Set([
+    'approved','below_quality_floor','style_mismatch','occasion_mismatch',
+    'formality_mismatch','model_veto','low_confidence','excluded_visual_color',
+    'visual_color_unverified',
+  ]);
+  const reasons=Array.isArray(d.visualQualityDecisions)
+    ?d.visualQualityDecisions.slice(0,8).map(x=>
+      allow.has(x?.reason)?x.reason:'other')
+    :[];
+  const safe=(n,max=100000)=>Number.isSafeInteger(n)&&n>=0&&n<=max?n:null;
+  return {
+    elapsedMs:safe(elapsedMs,180000),
+    displayed:safe(displayed,3),
+    requestedPhoto:r.mode==='displayed_deck',
+    attempted:safe(r.attempted,8),
+    approved:safe(r.approved,8),
+    displayedEvidence:safe(r.displayedEvidence,3),
+    directorSelected:f.status==='selected',
+    formalPhotoProbe:f.formalPhotoProbe===true,
+    prePhotoUniqueTriple:f.uniqueTripleAvailable===true,
+    reasons,
+  };
+}
+
 const REQUEST_TIMEOUT_MS = 50_000;
 /** Trusted styling-first discovery vocabulary. The existing Supabase RPC
  * gives preferredSubtypes two relevance points and matching dressCode one,
@@ -942,6 +977,13 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
 
   const budgetMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : REQUEST_TIMEOUT_MS;
   const started = Date.now();
+  const phaseAt = {};
+  let activePhase = 'fx_and_admission';
+  let phaseStart = started;
+  const nextPhase = (name) => {
+    phaseAt[activePhase] = Date.now() - phaseStart;
+    activePhase = name; phaseStart = Date.now();
+  };
   const remainingMs = () => budgetMs - (Date.now() - started);
   const deadline = () => {
     if (remainingMs() <= 0) throw new Error('stylist6_timeout');
@@ -1019,12 +1061,14 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // extra RPCs or cross-user data. Keep anchored inventory stable.
     const discoverySeed = requiredIds.length ? null : createHash('sha256')
       .update(userId).update('|').update(body).digest('hex').slice(0, 16);
+    nextPhase('catalog_discovery');
     const [shopRows, wardrobeRows] = await Promise.all([
       sourceMode === 'wardrobe' ? [] : io.fetchShopRows(discoverySeed, discoveryContext,
         isWorkoutOccasion(request.occasion) ? 'workout' : Number(request.weather?.temp) < 5 ? 'cold' : null),
       sourceMode === 'catalog' ? [] : io.fetchWardrobeRows(userId),
     ]);
     deadline();
+    nextPhase('visual_profile_hydration');
     const visualHydration = await io.fetchVisualProfiles(shopRows.map((row) => row.id))
       .then((profiles) => hydrateProfiles(shopRows, profiles));
     deadline();
@@ -1052,6 +1096,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     if (!pool.length) {
       return fail('stylist6_empty_catalog', 502, { stage: 'catalog_adaptation', serverInventory: true, clientInventoryIgnored });
     }
+    nextPhase('claim_and_feedback');
     // Locked anchors are validated against the server pool BEFORE any
     // quota debit: invalid anchors fail without a generation charge and
     // are never silently dropped.
@@ -1190,6 +1235,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const creativeDirectorEnabled =
       /^(1|true)$/i.test(String(env.STYLIST6_CREATIVE_DIRECTOR_ENABLED || '').trim()) &&
       !isWorkoutOccasion(occasion) && remainingMs() >= 12000;
+    nextPhase('creative_architecture');
     const creativePlan = creativeDirectorEnabled
       ? await designCreativeBriefs({
           catalog: feasible, request: input,
@@ -1288,12 +1334,14 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         // path. Previously the helper existed but this closure still ran
         // serial batches of six; formal 4-slot looks repeatedly timed out.
         // The critic itself retains all photo authorization/quality gates.
+        nextPhase('merchant_photos');
         await prewarmProductPhotos(urls, resolveProduct, {
           remainingMs, signal: deadlineController.signal,
         });
         const combinedSignal = criticOptions?.signal
           ? AbortSignal.any([deadlineController.signal, criticOptions.signal])
           : deadlineController.signal;
+        nextPhase('nvidia_visual_critic');
         return rawVisualCritic(candidates, critiqueRequest, { ...criticOptions, signal: combinedSignal });
       };
       // Transmission gate, separate from download eligibility: every product
@@ -1325,6 +1373,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           return {...result,timeLeftMs,timeoutMs};
         } : null;
     deadline();
+    nextPhase('catalog_fashion_and_selection');
     const deck = await runWithinRemainingDeadline(() => recommendFashionDeck({
       request: input,
       catalog: feasible,
@@ -1350,6 +1399,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       allowUnreviewedVisualFill: false,
       ...(visualCritic ? { visualCritic, canJudgeOutfit, canDisplayOutfit } : {}),
     }));
+    nextPhase('result_mapping');
     const visualStatus = mapCloudVisualStatus(deck);
     if ((deck.status !== 'complete' && deck.status !== 'partial') || !deck.outfits.length) {
       // Distinguish a real feasibility shortage from an actual visual
@@ -1437,6 +1487,17 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     });
     const offerVerification = summarizeDeckOffers(mappedOutfits);
     const idempotencyRecorded = await finish(200, deck.status);
+    // The request-scoped data is sensitive; expose only bounded counters and
+    // enumerated reasons in Render server logs. This is not a fashion verdict
+    // and never changes the number of shown outfits.
+    if(modelSlateEnabled && visualAsked) {
+      const safeTrace=stylist6SafeQualityTrace(
+        deck.diagnostics,deck.outfits.length,Date.now()-started);
+      console.info('stylist6_safe_visual_quality', {
+        ...safeTrace, phases:{...phaseAt,
+          [activePhase]:Date.now()-phaseStart},
+      });
+    }
     return {
       status: 200,
       body: {
@@ -1531,6 +1592,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       .test(String(error?.code || '')) ? error.code : null;
     console.error('stylist6_cloud_failure', {
       failureCode, errorClass, systemCode, firstServerFrame, claimed, debited,
+      activePhase,
+      safeWallMs:Math.min(180000,Math.max(0,Date.now()-started)),
+      phaseTimings:{...phaseAt,[activePhase]:Date.now()-phaseStart},
     });
     if (claimed) {
       await finish(debited ? status : 503, debited ? failureCode : 'aborted_pre_debit').catch(() => {});
