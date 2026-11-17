@@ -1959,3 +1959,66 @@ test('formal photo rescue never reuses approved merchant SKUs or repeats judged 
   assert.ok(rescue.every(l=>!approved.some(a=>l.items.some(it=>
     a.items.some(ot=>ot.id===it.id)))));
 });
+
+
+test('real photo-approved Fashion Editor may REMOVE a redundant third without ever fabricating an outfit',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Formal',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:2500000,currency:'UZS'},requiredIds:[]};
+  const common={...base,request,referenceBriefs:refs,
+    selectDirectorFinalists:async({options})=>({
+      status:'selected',tokens:options.slice(0,6).map(x=>x.token),providerCalls:1,
+    }),
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>batch.map((look,i)=>admittedVisualVerdict(look,{
+      referenceless:true,
+      slotColors:{top:i%2?'blue':'white',
+        outerwear:['navy','grey','brown','olive','black','grey','brown','navy'][i],
+        bottom:['navy','grey','brown','olive','grey','beige','brown','navy'][i],
+        shoes:'black'},
+    })),
+  };
+  const normal=await recommendFashionDeck(common);
+  assert.ok(normal.outfits.length>=1);
+  let aiCalled=0;
+  const revised=await recommendFashionDeck({...common,
+    selectPhotoApprovedPortfolio:async({looks,critiques,context})=>{
+      aiCalled++;
+      assert.ok(looks.length>=3,'fashion editor only sees already approved real looks');
+      assert.equal(context.occasion,'formal');
+      assert.ok(critiques.length>=looks.length);
+      const index=looks.findIndex(x=>x.id===normal.outfits[0].id);
+      assert.ok(index>=0,'a normal already verified outfit exists in the approved photo pool');
+      return {status:'selected',tokens:['L'+String(index).padStart(2,'0')]};
+    },
+  });
+  assert.equal(aiCalled,1);
+  assert.equal(revised.outfits.length,1,
+    'model can decline an unconvincing third even when numeric review permits three');
+  assert.equal(revised.outfits[0].id,normal.outfits[0].id);
+  assert.equal(revised.diagnostics.modelFashionSelection.photoEditorial.status,'applied');
+  assert.ok(revised.outfits.every(x=>Array.isArray(x.visualEvidence)));
+  assert.equal(revised.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+});
+
+test('untrusted whole-deck photo editor cannot override original accepted verdicts with invented tokens',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Formal',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:2500000,currency:'UZS'},requiredIds:[]};
+  const common={...base,request,referenceBriefs:refs,
+    selectDirectorFinalists:async({options})=>({
+      status:'selected',tokens:options.slice(0,6).map(x=>x.token),providerCalls:1,
+    }),
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>batch.map(c=>admittedVisualVerdict(c,{referenceless:true})),
+  };
+  const normal=await recommendFashionDeck(common);
+  const spoofed=await recommendFashionDeck({...common,
+    selectPhotoApprovedPortfolio:async()=>({
+      status:'selected',tokens:['L99','L99','L99'],
+    }),
+  });
+  assert.deepEqual(spoofed.outfits.map(x=>x.id),normal.outfits.map(x=>x.id),
+    'injected/duplicate final tokens cannot alter a single original approved outfit');
+  assert.equal(spoofed.diagnostics.modelFashionSelection.photoEditorial.status,'invalid_selection');
+});

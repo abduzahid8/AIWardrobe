@@ -1779,6 +1779,10 @@ export async function recommendFashionDeck({
   // A second paid photo wave is forbidden unless the Render compute still
   // has enough time to return a valid response (not a deadline 504).
   photoRescueRemainingMs = null,
+  // Model-level whole-deck EDITORIAL decision after independent garment
+  // photo approval. It cannot introduce unapproved merchandise. Any
+  // cross-look selection still passes the unchanged selectVisualDeck gates.
+  selectPhotoApprovedPortfolio = null,
 }) {
   const reviewedLimit = Number.isInteger(visualCandidateLimit)
     ? Math.max(3,Math.min(MAX_VISUAL_CANDIDATES,visualCandidateLimit)) : MAX_VISUAL_CANDIDATES;
@@ -2154,6 +2158,7 @@ export async function recommendFashionDeck({
       let reviewed=await evaluateVisualShortlist(
         {...retrieval,shortlist:candidates},request,visualCritic,reviewOptions);
       let rescueAttempted=0;
+      let secondaryCritiques=[];
       // The first photo review is NOT allowed to define the last available
       // style choice. When seven of eight real formal outfits fail NVIDIA,
       // sample up to four NEW, entirely source-approved real merchandise sets
@@ -2199,6 +2204,7 @@ export async function recommendFashionDeck({
               onCritiques:rows=>{rescueCritiques=rows;},
             });
           rescueAttempted=rescue.diagnostics.visualAttempted;
+          secondaryCritiques=rescueCritiques;
           const orderedApproved=[...reviewed.outfits.map(x=>
             candidates.find(c=>c.id===x.id)).filter(Boolean),
             ...approvedFirst].filter((x,i,arr)=>arr.findIndex(y=>y.id===x.id)===i)
@@ -2243,6 +2249,63 @@ export async function recommendFashionDeck({
           candidates.push(...extra);
           modelFashionSelection.photoRescueAttempted=rescueAttempted;
           modelFashionSelection.photoRescueApproved=rescue.diagnostics.visualApproved;
+        }
+      }
+      // THIRD artistic decision: independently photographed outfits are
+      // each individually acceptable, but three similar blazer uniforms
+      // do NOT automatically make a professionally curated collection.
+      // Let a separate AI director choose the best *whole portfolio* using
+      // the critic's actual per-slot PHOTO observations and relationships,
+      // not catalog keyword heuristics or invented products. This advisor
+      // can return fewer, more worthwhile looks, or select three compelling
+      // candidates from a larger pool of already approved looks.
+      // If unavailable, keep the original independently approved deck.
+      if(modelLed&&typeof selectPhotoApprovedPortfolio==='function'&&
+          reviewed.diagnostics.visualValid>=3){
+        const allCritiques=[...primaryCritiques,...secondaryCritiques];
+        const approvedIds=new Set(
+          (reviewed.diagnostics.visualQualityDecisions||[])
+            .filter(row=>row.reason==='approved').map(row=>row.candidateId));
+        const approvedLooks=candidates.filter(c=>approvedIds.has(c.id))
+          .slice(0,MAX_VISUAL_CANDIDATES);
+        if(approvedLooks.length>=3){
+          let decision;
+          try{
+            decision=await selectPhotoApprovedPortfolio({
+              looks:approvedLooks,critiques:allCritiques,
+              context:{style:context.style,occasion:context.occasion,
+                brief:context.request,preferences:context.preferences},
+            });
+          }catch{decision={status:'unavailable'};}
+          const editorial={
+            status:String(decision?.status||'not_available').slice(0,32),
+            approvedSeen:approvedLooks.length,
+            chosen:0,
+          };
+          if(decision?.status==='selected'&&Array.isArray(decision.tokens)){
+            const chosen=[...new Set(decision.tokens)]
+              .map(t=>/^L[0-9]{2}$/.test(t)?
+                approvedLooks[Number(t.slice(1))]:null).filter(Boolean)
+              .slice(0,3);
+            if(chosen.length===decision.tokens.length){
+              // Replay ORIGINAL NVIDIA verdicts against precisely the
+              // editor-chosen candidates. Invalid novelty, duplicate SKUs
+              // or other structural failures CANNOT be approved by the AI.
+              const replay=selectVisualDeck(
+                {...retrieval,shortlist:chosen},allCritiques,
+                {...reviewOptions,target:chosen.length,
+                  onCritiques:undefined});
+              if(replay.outfits.length===chosen.length){
+                const byId=new Map(replay.outfits.map(x=>[x.id,x]));
+                reviewed={...reviewed,
+                  status:replay.status,
+                  outfits:chosen.map(x=>byId.get(x.id))};
+                editorial.chosen=chosen.length;
+                editorial.status='applied';
+              } else editorial.status='invalid_combination';
+            } else editorial.status='invalid_selection';
+          }
+          modelFashionSelection.photoEditorial=editorial;
         }
       }
       visualQualityDecisions = Array.isArray(reviewed.diagnostics.visualQualityDecisions)

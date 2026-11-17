@@ -1983,7 +1983,8 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
   assert.deepEqual(out,{
     elapsedMs:48888,displayed:2,requestedPhoto:true,
     attempted:8,approved:4,displayedEvidence:2,
-    directorSelected:true,formalPhotoProbe:true,prePhotoUniqueTriple:false,
+    directorSelected:true,photoEditorialStatus:'not_run',photoEditorialChosen:null,
+    formalPhotoProbe:true,prePhotoUniqueTriple:false,
     reasons:['approved','style_mismatch','other'],
   });
   assert.doesNotMatch(JSON.stringify(out),/secret|example|private|contact info/);

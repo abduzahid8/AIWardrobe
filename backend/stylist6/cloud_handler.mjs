@@ -27,6 +27,7 @@ import { hydrateCatalogObservations } from './catalog_observation.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
 import { designCreativeBriefs, CREATIVE_DIRECTOR_VERSION } from './creative_director_ai.mjs';
 import { selectFashionSlate } from './fashion_director_slate.mjs';
+import { selectPhotoEditorialDeck } from './photo_editor_final.mjs';
 import { feedbackTasteModel, FEEDBACK_TASTE_VERSION, FEEDBACK_TASTE_MAX_ROWS } from './feedback_taste.mjs';
 import { referenceFirstBriefs, explicitLookbookPhotoRequested } from './lookbook_briefs.mjs';
 import { buildReferenceBlueprints } from './reference_blueprint.mjs';
@@ -113,6 +114,10 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     approved:safe(r.approved,12),
     displayedEvidence:safe(r.displayedEvidence,3),
     directorSelected:f.status==='selected',
+    photoEditorialStatus:['applied','deadline','timeout','provider_unavailable',
+      'invalid_combination','invalid_selection','not_enough_approved']
+      .includes(f.photoEditorial?.status)?f.photoEditorial.status:'not_run',
+    photoEditorialChosen:safe(f.photoEditorial?.chosen,3),
     formalPhotoProbe:f.formalPhotoProbe===true,
     prePhotoUniqueTriple:f.uniqueTripleAvailable===true,
     reasons,
@@ -1374,6 +1379,18 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         } : null;
     deadline();
     nextPhase('catalog_fashion_and_selection');
+    const selectPhotoApprovedPortfolio=modelSlateEnabled&&budgetMs>=70000
+      ? async({looks,critiques,context})=>{
+          const left=remainingMs();
+          if(left<6500)return {status:'deadline',tokens:[],providerCalls:0};
+          nextPhase('final_photo_portfolio_editor');
+          return selectPhotoEditorialDeck({
+            looks,critiques,context,apiKey:nvidiaKey,
+            ...(fetchImpl?{fetchImpl}:{}),
+            signal:deadlineController.signal,
+            timeoutMs:Math.min(3200,Math.max(500,left-2800)),
+          });
+        } : null;
     const deck = await runWithinRemainingDeadline(() => recommendFashionDeck({
       request: input,
       catalog: feasible,
@@ -1401,6 +1418,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // for a small SECOND real-photo review wave after an initial fashion
       // rejection. Never widen paid inference or deadlines in Vercel/S5.
       photoRescueRemainingMs: budgetMs >= 70000 ? remainingMs : null,
+      ...(selectPhotoApprovedPortfolio?{selectPhotoApprovedPortfolio}:{}),
       ...(visualCritic ? { visualCritic, canJudgeOutfit, canDisplayOutfit } : {}),
     }));
     nextPhase('result_mapping');
