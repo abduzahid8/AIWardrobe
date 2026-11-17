@@ -160,5 +160,5 @@ test('default Stylist 6 iOS staging gateway reaches the real AI SKU composer run
   expect(cloudHandler).toContain('budgetMs>=70000');
   expect(cloudHandler).toContain('composeCatalogSkuLooks(');
   expect(cloudHandler).toContain('selectPhotoEditorialDeck(');
-  expect(renderGateway).not.toContain("generate-outfits'"); // Never route to S5.
+  expect(renderGateway).toContain("RENDER_PATH='/api/stylist6-generate-outfits'");
 });
