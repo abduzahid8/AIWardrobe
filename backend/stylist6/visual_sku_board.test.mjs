@@ -69,3 +69,25 @@ test('visual fashion board finishes on per-slot photo QUORUM without waiting for
     'slow irrelevant merchants must never block a valid creative decision');
   assert.equal(new Set(board.seenTokens).size,24);
 });
+
+test('three real image choices per role allow a genuine complete visual fashion design',async()=>{
+  const start=Date.now();const selected=[];
+  const sheet=await buildVisualSkuBoard(pool,{
+    minimumPerSlot:3,
+    deadlineMs:1400,
+    authorizePhoto:()=>true,
+    resolvePhoto:async item=>{
+      const n=Number(item.id.slice(-1));
+      if(n>=3)return new Promise(()=>{});
+      return {bytes:photo};
+    },
+    onStatus:x=>selected.push(x),
+  });
+  assert.equal(selected.at(-1),'ready');
+  assert.equal(sheet.photoCount,12);
+  assert.ok(Date.now()-start<1000,
+    'twelve genuine photographs should not wait for 20 blocked source CDNs');
+  const counts=roles.map(slot=>pool.filter(p=>
+    p.slot===slot&&sheet.seenTokens.includes(p.token)).length);
+  assert.deepEqual(counts,[3,3,3,3]);
+});

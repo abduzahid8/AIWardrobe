@@ -376,3 +376,38 @@ deployed SHA and require the stage counter
 `skuCompositionPhotoFirst:'applied'`, full source permission, and
 independent photo-approved four-product silhouettes. An actual 70% blinded
 human S6/S5 win remains the launch gate.
+
+
+## Visual product-board follow-up: minimum 3 real images per merchandise role
+
+After the per-role six-photo quorum fix on Render `6ae1c2c`, a fresh
+native authenticated Date night at 14:04:19 UTC STILL logged
+`skuCompositionPhotoFirst:'deadline'`, source-valid fallback 6/6,
+**1/6 independently photo-approved** and one four-item outfit displayed.
+Even waiting for six successful merchant images EACH of four clothing
+roles is not feasible in a 4.2s request window for the current mixed
+external catalog. This is not a styling win.
+
+Next isolated 72s staging experiment instead requests at least THREE
+source-verified, authorized, truly loaded and correctly decoded ORIGINAL
+merchant photos per each top/layer/bottom/shoes role: twelve genuine
+source product photographs are a sufficient creative candidate menu
+for THREE whole outfits. The separate full-outfit photo critic and source,
+budget, fixed four-role, seller, size, identity, authorization gates are
+not relaxed at all. Vision model sees the board and creates exactly three
+source-unique whole-look combinations (not six recolors). If fewer than
+three per role load, the normal source-verified six-look TEXT composer
+remains the original fallback.
+
+This is an availability/architecture experiment, not a quality claim.
+Local synthetic images + REAL NVIDIA hosted VLM HTTP200 returned 3
+source-valid looks from a visual board in 1.66s with no text model call.
+An end-to-end real merchant iOS QA on exact deployed SHA must demonstrate
+`skuCompositionPhotoFirst:'applied'` before asserting the visual
+composer is operational at scale. The remaining true scalability work is
+a licensed, source-hash-bound first-party photo asset cache; Supabase
+currently has 3,853 storage.objects in public `shop-catalog` but among
+8,554 active catalog records only 1,534 point to these: all in SHOES,
+zero TOP/BOTTOM records. Therefore non-shoe 48-photo vision boards
+still incur unreliable multi-merchant live downloads; bulk copying
+third-party images without provenance/usage permissions is not acceptable.

@@ -524,13 +524,13 @@ test('parallel six-look creative decision survives the OLD 3-second fashion mode
   assert.ok(composed.looks.flat().every(item=>item.isShopItem));
 });
 
-test('fashion AI actually LOOKS at authenticated merchant product photos before composing six distinct source SKUs',async()=>{
+test('fashion AI actually LOOKS at authenticated merchant product photos before composing three curated real-SKU looks',async()=>{
   const sharp=(await import('sharp')).default;
   const photo=await sharp({create:{width:120,height:145,channels:3,
     background:'#776e63'}}).jpeg().toBuffer();
   const pool=sourceBoundCompositionPool(looks);
   const slotPicks=Object.fromEntries(slots.map(slot=>[
-    slot,Array.from({length:6},(_,i)=>pool.find(x=>x.slot===slot&&
+    slot,Array.from({length:3},(_,i)=>pool.find(x=>x.slot===slot&&
       x.item===items[i][slots.indexOf(slot)]).token),
   ]));
   let calls=0;
@@ -557,8 +557,8 @@ test('fashion AI actually LOOKS at authenticated merchant product photos before 
   assert.equal(calls,1,'successful photo-first AI avoids the text composer');
   assert.equal(answer.visualMenuStatus,'applied');
   assert.equal(answer.status,'composed');
-  assert.equal(answer.looks.length,6);
-  assert.equal(new Set(answer.looks.flat().map(item=>item.id)).size,24);
+  assert.equal(answer.looks.length,3);
+  assert.equal(new Set(answer.looks.flat().map(item=>item.id)).size,12);
 });
 
 test('vision provider outage uses original authenticated text composition, never fabricated photo approval',async()=>{

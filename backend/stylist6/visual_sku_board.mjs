@@ -21,10 +21,12 @@ const tokenOk=x=>typeof x==='string'&&/^P\d{1,4}$/.test(x);
 const safeUrl=x=>typeof x==='string'&&/^https:\/\//.test(x);
 
 export async function buildVisualSkuBoard(pool,{
-  resolvePhoto,authorizePhoto,deadlineMs=4000,signal,onStatus,
+  resolvePhoto,authorizePhoto,deadlineMs=4000,signal,onStatus,minimumPerSlot=6,
 }={}){
   const note=x=>{try{onStatus?.(x);}catch{}};
-  if(!Array.isArray(pool)||pool.length<24||pool.length>48||
+  if(!Number.isInteger(minimumPerSlot)||minimumPerSlot<3||minimumPerSlot>6)
+    {note('invalid_input');return null;}
+  if(!Array.isArray(pool)||pool.length<minimumPerSlot*4||pool.length>48||
      typeof resolvePhoto!=='function'||typeof authorizePhoto!=='function'||
      signal?.aborted){note('invalid_input');return null;}
   const rows=new Map(SLOTS.map(slot=>[slot,[]]));
@@ -39,7 +41,7 @@ export async function buildVisualSkuBoard(pool,{
     rows.get(value.slot).push(value);
   }
   const raw=Array.from(rows.values());
-  if(raw.some(a=>a.length<6)){note('insufficient_inventory');return null;}
+  if(raw.some(a=>a.length<minimumPerSlot)){note('insufficient_inventory');return null;}
   const all=raw.flat();
   const controller=new AbortController();
   const ms=Math.max(350,Math.min(5000,Math.floor(deadlineMs)));
@@ -52,7 +54,7 @@ export async function buildVisualSkuBoard(pool,{
   try{
     // QUORUM, not all merchants: real iOS logs showed a 4.2s deadline
     // because Promise.allSettled waited for the SLOWEST of 48 CDN photos.
-    // A fashion decision needs >=6 distinct REAL PHOTOS PER ROLE, not every
+    // A fashion decision needs an adequate exact photo quorum per role, not every
     // irrelevant vendor asset. Start permitted fetches concurrently, and
     // close after the first sufficient source-photo portfolio plus a short
     // grace period for better choice. Lagging failures warm the request-scoped
@@ -68,7 +70,7 @@ export async function buildVisualSkuBoard(pool,{
       };
       const maybeClose=()=>{
         if(completed)return;
-        if(SLOTS.every(slot=>counts.get(slot)>=6)){
+        if(SLOTS.every(slot=>counts.get(slot)>=minimumPerSlot)){
           if(remaining===0)finish();
           else if(grace===null)grace=setTimeout(finish,160);
           return;
@@ -100,7 +102,7 @@ export async function buildVisualSkuBoard(pool,{
     }),untilAbort]);
     if(combined.aborted){note('deadline');return null;}
     const permitted=new Set(successful.keys());
-    if(raw.some(items=>items.filter(x=>permitted.has(x.token)).length<6)){
+    if(raw.some(items=>items.filter(x=>permitted.has(x.token)).length<minimumPerSlot)){
       note('insufficient_photo_inventory');return null;
     }
     // A single plain SVG overlays role labels and opaque tokens. Do NOT

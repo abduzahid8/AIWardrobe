@@ -73,6 +73,26 @@ The target is not 100% subjective approval (cannot be guaranteed); the measurabl
 - Regression test `__tests__/features/stylist6CloudPublication.test.js` now protects the default QA route against reverting to a 50-second compute path where the full composer/editor is silently disabled. New code test has not been locally executed here; CI result must be checked.
 - Next: run the existing authenticated visual worker for the bounded pending jobs when its operator access is available; verify how many finished with image-observed attributes and are used by actual outfit candidate discovery. Audit exact rejected outfit photos before changing editorial thresholds.
 
+## 2026-11-17 — correct photo-first availability and licensed image-cache gap
+
+Native iOS tests of primary product-photo visual composition (`dbefcdd`,
+`6ae1c2c`) failed: both recorded photo-board `deadline`, text AI
+fallback, and only **1 independently photo-approved look out of six**.
+Even the six-photo-per-role asynchronous quorum was too slow for
+unreliable source CDNs. The next staging attempt uses a photo board of
+**at least three independently authorized and decoded real product images
+per category**, composing three real four-product looks from pictured
+SKU tokens; full budget/merchant/photo/hard gates are unchanged. It is
+a bounded, testable availability experiment, NOT an aesthetic guarantee.
+
+Supabase has 3,853 existing public `shop-catalog` objects but only
+1,534/8,554 ACTIVE item image_url values point to first-party assets,
+ALL shoes. No top/bottom first-party product URLs exist in the current
+shop_catalog. A source-hash-verified, licensed local photo-cache ingest
+is needed for cheap reliable worldwide merchant scale. Never silently
+substitute cached photos for an updated SKU or duplicate third-party
+merchant photos without confirmed rights and provenance.
+
 ## 2026-11-17 — primary creative decision must see REAL source PRODUCT PHOTOS
 
 Real iPhone QA on b9b7863 proved the AI-first catalog composer and
