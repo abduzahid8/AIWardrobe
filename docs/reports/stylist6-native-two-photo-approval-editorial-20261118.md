@@ -117,3 +117,76 @@ identity, untrusted object keys or raw photos.
 This repair remains **staging-only** until a real pinned iPhone
 generation verifies that `photoEditorialCreativeRevision` actually
 runs. Strict photo quality/no-padding floors remain unchanged.
+
+## Real 120B creative feedback finally runs — but source candidate recall is the next bottleneck
+
+**Pinned af5e8ed**, actual authenticated iPhone New clothing / Classic / Work,
+2026-11-17 19:36:18 UTC: 6 first AI compositions admitted,
+11 total original-photo full-look evaluations, three total approvals.
+The independent actual-JPEG PHOTO fashion editor genuinely applied.
+`photoEditorialCreativeRevision:applied`,
+`photoEditorialCreativeSource:visual_editor_gap`,
+3 NEW four-item outfits were composed and independently photo-reviewed,
+1 passed, final editor included an accepted alternative in the
+2-outfit displayed portfolio. 41.8 seconds end-to-end.
+The app actually rendered two shoppable 4-item cards, with image tiles.
+
+However the final deck still used the SAME tailored jacket architecture
+twice (dark blazer/shirt/trousers/boots vs brown tailored blazer/poplin
+shirt/chino/loafers). The AI creative loop works, **human-quality
+distinctive fashion does NOT yet**.
+
+**Same pinned af5e8ed**, correctly selected native iPhone New clothing /
+Classic / Date night, 2026-11-17 19:47:04 UTC: five of six initial
+AI looks source-admitted; first independent PHOTO review 3/5 approved;
+true photographic final portfolio VLM `applied/ready` selected 2
+despite one feasible three-look portfolio; 3 independently composed
+alternative looks reviewed, ZERO approved. The two actually displayed
+ensembles repeat near-identical construction: black wool henley +
+brown shawl cardigan + tan chinos + brown Chelsea, and striped
+poplin shirt + wool fine-knit cardigan + chinos + navy suede loafers.
+35.3 seconds. This is NOT an excellent distinct-date outfit set.
+
+## Underlying architecture correction: a real SECOND source-inventory SEARCH
+
+The initial AI sees at most 48 source-verified SKU options (12 per
+garment role). The prior "independent" creative repair only filtered
+out used products and STILL composed from exactly this same, already
+rejected 48-product sampling. This is not real fashion exploration,
+even when a new AI request and a PHOTO review are involved.
+The already authenticated catalogue discovery has ~400 available
+pre-admitted original rows (up to 100 per garment role) in memory;
+we need no extra service calls.
+
+For isolated >=72s staging only, after an actual full-photo editor
+determines a missing third direction, now:
+1. Retain the two original photo-verified looks unmodified.
+2. Build a brand-new source-bound 12/slot SKU menu from catalog
+   inventory **NOT SHOWN** to the first composer (or worn in any
+   approved outfit). Re-apply scorer.prepare, owner exclusions
+   (including excludedIds), exact source proof and final original
+   stock/budget/physical/merchant gates. No fake inventory.
+3. Give this independent *new merchandise* assortment plus the
+   photo critic's bounded observations to a SECOND 120B creator.
+4. Real NVIDIA visual critic evaluates every proposed actual-source
+   four-item outfit. Then the final independent collection VLM must
+   select a proven compatible 1–3 look portfolio, including at least
+   one NEW independent photo-approved design, or preserve the
+   original partial deck.
+5. If there are not >=3 qualified unshown items in every role,
+   preserve the old source-safe correction pool. Never loosen quality
+   or source/photo rights requirements, do not add extra server
+   time/quota requests.
+
+New bounded diagnostic `photoEditorialCreativeInventory` is
+`unseen_source_skus` or `original_source_skus` so a real
+native test can prove whether the creative retry genuinely
+searched new apparel. Regression mocks 24 source products per
+role and checks that the secondary AI sees ZERO first-pass SKU
+identities and ZERO user-excluded product IDs, then verifies new
+real-photo critic approval and exact full-outfit four-item
+feasibility before display.
+
+This is a candidate-recall architecture change, **not** merchant
+title regexes, an artificial third-card floor or a photo-judge veto
+override. Human blind 70% / 30+ scenario acceptance remains OPEN.

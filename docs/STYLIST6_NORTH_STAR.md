@@ -196,6 +196,29 @@ fulfill the owner's four-product contract.
 ## Each work session's completion report must include
 GitHub SHA; staging Supabase function version + pinned READY compute SHA; code/quality changes; real scenario IDs & images; what objectively improved; what deteriorated; how many looks were provider-judged vs fallback; product stock/rights truth; QA gate counts; production status; exact NEXT highest-leverage root cause.
 
+## 2026-11-18 — AI creative repair explores NEW merchant items, not the same 48 rejected tokens
+
+Real 120B Classic/Work finally ran the genuine PHOTO portfolio VLM ->
+second AI source-SKU composer -> independent NEW PHOTO review -> final
+portfolio choice; one alternative was approved, but both displayed
+looks still used tailored jackets. Real Classic/Date night had three
+initial PHOTO-approved outfits but final visual editor selected two
+very similar cardigan/chino looks; new source re-composition from the
+SAME 48 source items sent three proposals to the critic and earned
+ZERO approvals. Core issue is narrow creative candidate search.
+
+On isolated staging, the second AI now gets a **new** exact-SKU menu
+from previously UNSEEN authenticated catalog garments across four
+roles, still sourced from the existing 400-row snapshot, honoring
+owner-excluded IDs, visual evidence and all original physical,
+photo/license, budget, merchant and final-replay gates. Only if this
+menu cannot cover every garment role does it fall back to the original
+source candidate pool. Diagnostic:
+`photoEditorialCreativeInventory=unseen_source_skus`.
+See `docs/reports/stylist6-native-two-photo-approval-editorial-20261118.md`.
+This expands real AI fashion decisions; it does NOT guarantee a
+great third look or satisfy the human blind acceptance gate.
+
 ## 2026-11-18 — two PHOTO-approved native looks MUST receive a real editorial AI opportunity
 
 The first LIVE native response after stable completed-deck recovery

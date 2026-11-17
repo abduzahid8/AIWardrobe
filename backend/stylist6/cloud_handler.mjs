@@ -169,6 +169,10 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       'visual_editor_gap','approved_photo_evidence',
     ].includes(f.photoEditorial?.feedbackSource)
       ?f.photoEditorial.feedbackSource:'not_run',
+    photoEditorialCreativeInventory:[
+      'unseen_source_skus','original_source_skus',
+    ].includes(f.photoEditorial?.feedbackInventory)
+      ?f.photoEditorial.feedbackInventory:'not_run',
     photoEditorialCreativeRevisionAttempted:
       safe(f.photoEditorial?.feedbackRevisionAttempted,3),
     photoEditorialCreativeRevisionApproved:

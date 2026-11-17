@@ -2545,24 +2545,28 @@ test('two real PHOTO approvals still activate portfolio fashion judgment and its
     ['tailored-trouser','chino','pleated-trouser','wide-trouser','wool-trouser','relaxed-chino'],
     ['loafer','derby','chelsea-boot','oxford','suede-loafer','minimal-sneaker'],
   ];
-  const catalog=slots.flatMap((slot,j)=>Array.from({length:12},(_,i)=>
+  const catalog=slots.flatMap((slot,j)=>Array.from({length:24},(_,i)=>
     garment('two-approvals-'+slot+'-'+i,
       ['Fine shirt','Textured jacket','Tailored trouser','Leather footwear'][j]+' '+i,
       slot,roles[j][i%6])));
   const request={sourceMode:'catalog',style:'classic',occasion:'Work',
     weather:{temp:16},optionalLayer:false,preferences:{},requiredIds:[],
+    excludedIds:['two-approvals-top-23'],
     budget:{amount:3000000,currency:'UZS'}};
   let photoWaves=0,editorCalls=0,composerRescues=0;
+  const firstArtistProducts=new Set();
   const photoApproved=new Set();
   const result=await recommendFashionDeck({
     ...base,request,catalog,
     selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
-    selectCatalogCompositions:async({pool})=>({
+    selectCatalogCompositions:async({pool})=>{
+      for(const p of pool)firstArtistProducts.add(p.item.id);
+      return {
       status:'composed',
       looks:Array.from({length:6},(_,i)=>
         slots.map(slot=>pool.filter(p=>p.slot===slot)[i].item)),
       providerCalls:1,
-    }),
+    };},
     selectCatalogRescueCompositions:async({pool,critiqueFeedback})=>{
       composerRescues++;
       if(!critiqueFeedback.approvedPhotoEvidence){
@@ -2573,6 +2577,13 @@ test('two real PHOTO approvals still activate portfolio fashion judgment and its
       assert.equal(critiqueFeedback.editorPhotoGap,undefined,
         'real photo editor can omit optional free-text despite seeing JPEGs');
       assert.equal(critiqueFeedback.approvedPhotoEvidence.length,2);
+      assert.ok(pool.length>=12);
+      assert.ok(pool.every(p=>!firstArtistProducts.has(p.item.id)),
+        'the creative correction must get INVENTORY never seen by the first AI');
+      assert.ok(!pool.some(p=>p.item.id==='two-approvals-top-23'),
+        'owner-excluded SKU is never shown to an AI in the discovery fallback');
+      assert.ok(['top','outerwear','bottom','shoes'].every(slot=>
+        pool.some(p=>p.slot===slot)));
       assert.ok(critiqueFeedback.approvedPhotoEvidence.some(photo=>
         photo.observations?.outerwear&&photo.colors?.top));
       assert.deepEqual(critiqueFeedback.approvedArchitectures.length,2);
@@ -2629,6 +2640,9 @@ test('two real PHOTO approvals still activate portfolio fashion judgment and its
   assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.feedbackRevision,'applied');
   assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.feedbackSource,
     'approved_photo_evidence');
+  assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.feedbackInventory,
+    'unseen_source_skus',
+    'a brand new untouched inventory pool must make the second creative AI independent');
   assert.equal(result.outfits.length,3);
   assert.ok(result.outfits.every(x=>photoApproved.has(x.id)));
   assert.ok(result.outfits.every(x=>x.items.length===4));

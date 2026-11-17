@@ -2764,8 +2764,41 @@ export async function recommendFashionDeck({
             const freshPool=composerPool.filter(token=>
               !alreadyApprovedProductKeys.has(
                 baseProductId(String(token.item?.id))));
+            // The *first* 120B designer only saw up to 12 source SKUs/slot.
+            // Real iPhone Date night repeatedly made cardigan + chinos and
+            // a second critique of the SAME 48 already-overused products
+            // approved zero replacements. The entire already-discovered
+            // ~400-SKU trusted inventory is available here without NEW DB
+            // calls. Let a photo-critic-informed SECOND independent creator
+            // explore previously UNSEEN merchandise (new textures, shapes,
+            // layers and shoe constructions), not recirculate stale tokens.
+            // Always re-prepare genuine source rows and re-apply original
+            // SKU/stock/budget/merchant/physical/PHOTO gates afterwards.
+            const initialComposerProducts=new Set(composerPool.map(token=>
+              baseProductId(String(token.item?.id))));
+            const forbiddenSourceIds=new Set(
+              (Array.isArray(request.excludedIds)?request.excludedIds:[])
+                .map(id=>baseProductId(String(id))));
+            const unseenPrepared=Array.isArray(catalog)?catalog
+              .filter(item=>item?.isShopItem===true&&
+                !forbiddenSourceIds.has(baseProductId(String(item.id)))&&
+                !initialComposerProducts.has(baseProductId(String(item.id)))&&
+                !alreadyApprovedProductKeys.has(baseProductId(String(item.id))))
+              .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
+            const unseenPool=sourceBoundCompositionPool([],{
+              additionalItems:unseenPrepared,inventoryFirst:true,
+              explorationSlots:4,directions:aiPlans,feedbackTaste,
+            });
+            // Never replace a viable original correction menu with a sparse
+            // sample. This uses no new provider/SQL requests and does not
+            // change ANY safety/quality floor or paid-photo budget.
+            const unseenFeasible=slots.every(slot=>
+              unseenPool.filter(p=>p.slot===slot).length>=3);
+            const correctionPool=unseenFeasible?unseenPool:freshPool;
+            editorial.feedbackInventory=unseenFeasible
+              ?'unseen_source_skus':'original_source_skus';
             const enoughFresh=slots.every(slot=>
-              freshPool.filter(p=>p.slot===slot).length>=3);
+              correctionPool.filter(p=>p.slot===slot).length>=3);
             if(photoQuota>0&&enoughFresh){
               editorial.feedbackRevision='attempted';
               // selectVisualDeck returns display-ready look shells with
@@ -2806,7 +2839,7 @@ export async function recommendFashionDeck({
               let retry=null;
               try{
                 retry=await selectCatalogRescueCompositions({
-                  pool:freshPool,
+                  pool:correctionPool,
                   critiqueFeedback:{reasons,
                     editorPhotoGap:explicitEditorialGap
                       ?decision.creativeGap:undefined,
