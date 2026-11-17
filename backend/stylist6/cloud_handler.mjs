@@ -48,6 +48,16 @@ import { deliberatelyRelaxedIntent } from './editorial_intent.mjs';
 import { BUDGET_CURRENCIES, parseCbuBudgetRates, validateBudgetFxSnapshot, referenceAmount } from '../../src/domain/budgetFx.ts';
 import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46.json' with { type: 'json' };
 
+/** Leave the actual photographic judge enough time while admitting the
+ * smaller model-led fashion slate even on real cloud catalog retrievals.
+ * A hard 22.5s reservation previously made the Director NOT_RUN on live iOS
+ * despite 28 perfectly valid real outfits. No server deadline is extended.
+ */
+export function fashionSlateDecisionBudgetMs(remainingMs) {
+  if (!Number.isFinite(remainingMs) || remainingMs < 11500) return 0;
+  return Math.min(2600, Math.max(600, Math.floor(remainingMs - 9000)));
+}
+
 export const STYLIST6_CLOUD_VERSION = 'stylist-6-cloud-staging-1';
 const QUOTA_FEATURE = 'aiw-stylist6-staging';
 const RATE_LIMIT_PER_MINUTE = 10;
@@ -1235,13 +1245,16 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       /^(1|true)$/i.test(String(env.STYLIST6_AI_SLATE_ENABLED||'').trim());
     const selectDirectorFinalists=modelSlateEnabled
       ? async({options,context})=>{
-          if(remainingMs()<22500)return {status:'deadline',tokens:[],providerCalls:0};
-          return selectFashionSlate({
+          const timeLeftMs=Math.max(0,Math.floor(remainingMs()));
+          const timeoutMs=fashionSlateDecisionBudgetMs(timeLeftMs);
+          if(!timeoutMs)return {status:'deadline',tokens:[],providerCalls:0,timeLeftMs};
+          const result=await selectFashionSlate({
             options,context,apiKey:nvidiaKey,
             ...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
-            timeoutMs:Math.min(3200,Math.max(600,remainingMs()-19500)),
+            timeoutMs,
           });
+          return {...result,timeLeftMs,timeoutMs};
         } : null;
     deadline();
     const deck = await runWithinRemainingDeadline(() => recommendFashionDeck({

@@ -10,6 +10,7 @@ import {
   projectWardrobeItem,
   fitVisualBytesCloud,
   STYLIST6_CLOUD_VERSION,
+  fashionSlateDecisionBudgetMs,
   canonicalRequestFingerprint,
 } from './cloud_handler.mjs';
 import { HOST_ALLOWLIST, INFERENCE_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/image_access.mjs';
@@ -1834,4 +1835,15 @@ test('authenticated stylist forwards fixed event/subtype hints to Supabase disco
   assert.ok(!captured.preferredSubtypes.includes('t-shirt'));
   assert.ok(!captured.preferredSubtypes.includes('sneaker'));
   assert.ok(!JSON.stringify(captured).includes('arbitrary-client-SQL-text'));
+});
+
+test('live AI slate budget reserves visual photo review while no longer demanding 22.5 seconds',()=>{
+  assert.equal(fashionSlateDecisionBudgetMs(NaN),0);
+  assert.equal(fashionSlateDecisionBudgetMs(8900),0);
+  assert.equal(fashionSlateDecisionBudgetMs(11499),0);
+  assert.equal(fashionSlateDecisionBudgetMs(11500),2500);
+  assert.equal(fashionSlateDecisionBudgetMs(12000),2600);
+  assert.equal(fashionSlateDecisionBudgetMs(18000),2600);
+  assert.equal(fashionSlateDecisionBudgetMs(22500),2600);
+  assert.equal(fashionSlateDecisionBudgetMs(49000),2600);
 });

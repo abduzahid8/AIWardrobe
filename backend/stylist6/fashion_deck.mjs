@@ -1699,6 +1699,10 @@ export async function recommendFashionDeck({
             status:String(decision?.status||'no_decision').slice(0,40),
             candidatesSeen:preview.length,chosen:0,
             providerCalls:Math.min(1,Math.max(0,Number(decision?.providerCalls)||0)),
+            ...(Number.isFinite(decision?.timeLeftMs)?
+              {timeLeftMs:Math.round(decision.timeLeftMs)}:{}),
+            ...(Number.isFinite(decision?.timeoutMs)?
+              {timeoutMs:Math.round(decision.timeoutMs)}:{}),
           };
           if(decision?.status==='selected'&&Array.isArray(decision.tokens)){
             const byToken=new Map(preview.map(x=>[x.token,x.look]));
