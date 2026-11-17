@@ -339,16 +339,111 @@ describe('safe visual receipt reporting for owner iOS screenshots',()=>{
 
 describe('stylist6 cloud staging client', () => {
   const mockInvoke = jest.fn();
+  const mockFrom = jest.fn();
   beforeEach(() => {
     mockInvoke.mockReset();
+    mockFrom.mockReset();
     // The cloud client resolves supabase lazily; mock the whole module so no
     // network or real client is involved.
     jest.mock('../../lib/supabase', () => ({
       supabase: {
         auth: { getSession: async () => ({ data: { session: { access_token: 'test-token' } } }) },
         functions: { invoke: mockInvoke },
+        from: mockFrom,
       },
     }));
+  });
+
+  const recoverablePhotoDeck=(id='qa-native-paid-request-0001')=>{
+    const roles=['top','outerwear','bottom','shoes'];
+    const outfit=(n:number)=>({
+      id:'complete-look-'+n,
+      items:roles.map(role=>({
+        id:'actual-source-'+role+'-'+n,macroCategory:role,
+        isShopItem:true,imageUrl:'https://example.com/source-'+role+n+'.jpg',
+        shopUrl:'https://example.com/merchant/'+role+n,
+        price:1000,currency:'UZS',
+      })),
+      fashionDiagnostics:{visualVerdict:'JUDGED'},
+    });
+    return {
+      generationRequestId:id,success:true,generationVersion:'stylist-6-cloud-staging-1',
+      status:'partial',sourceMode:'catalog',visualStatus:'NVIDIA_APPLIED',
+      visualReceipt:{visualApproval:'verified_partial',displayedJudged:2,
+        displayedLooks:2},
+      outfits:[outfit(1),outfit(2)],
+    };
+  };
+  test('a paid complete photo-approved response is restored READ-ONLY without a second generation',async()=>{
+    (globalThis as any).__DEV__=true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE='true';
+    const mod=loadDevModule();
+    const id='qa-native-paid-request-0001';
+    const accepted=recoverablePhotoDeck(id);
+    const query={
+      select:jest.fn(),eq:jest.fn(),abortSignal:jest.fn(),maybeSingle:jest.fn(),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.abortSignal.mockReturnValue(query);
+    query.maybeSingle.mockResolvedValue({data:{response_payload:accepted},error:null});
+    mockFrom.mockReturnValue(query);
+    const controller=new AbortController();
+    expect(await mod.recoverStylist6CloudResult(id,{signal:controller.signal}))
+      .toEqual(accepted);
+    expect(mockFrom).toHaveBeenCalledTimes(1);
+    expect(mockFrom).toHaveBeenCalledWith('stylist6_completed_results');
+    expect(query.eq).toHaveBeenCalledWith('request_id',id);
+    expect(query.abortSignal).toHaveBeenCalledWith(controller.signal);
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+  test('unauthorized/missing/wrong-identity or unphotographed result fails CLOSED',async()=>{
+    (globalThis as any).__DEV__=true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE='true';
+    const mod=loadDevModule();
+    const query={
+      select:jest.fn().mockReturnThis(),
+      eq:jest.fn().mockReturnThis(),
+      maybeSingle:jest.fn(),
+    };
+    mockFrom.mockReturnValue(query);
+    query.maybeSingle.mockResolvedValueOnce({data:null,error:null});
+    expect(await mod.recoverStylist6CloudResult('qa-native-paid-request-0001')).toBeNull();
+    query.maybeSingle.mockResolvedValueOnce({
+      data:{response_payload:recoverablePhotoDeck('some-other-user-request')},
+      error:null,
+    });
+    expect(await mod.recoverStylist6CloudResult('qa-native-paid-request-0001')).toBeNull();
+    query.maybeSingle.mockResolvedValueOnce({
+      data:{response_payload:{...recoverablePhotoDeck(),
+        visualReceipt:{displayedJudged:1,displayedLooks:2,
+          visualApproval:'verified_partial'}}},
+      error:null,
+    });
+    expect(await mod.recoverStylist6CloudResult('qa-native-paid-request-0001')).toBeNull();
+    query.maybeSingle.mockResolvedValueOnce({
+      data:{response_payload:{...recoverablePhotoDeck(),
+        outfits:recoverablePhotoDeck().outfits.map((look,i)=>i===1
+          ?{...look,items:look.items.slice(0,3)}:look)}},
+      error:null,
+    });
+    expect(await mod.recoverStylist6CloudResult('qa-native-paid-request-0001')).toBeNull();
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+  test('cancelled, disabled or malformed id never reads cached private customer data',async()=>{
+    (globalThis as any).__DEV__=true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE='true';
+    const module=loadDevModule();
+    const cancelled=new AbortController();cancelled.abort();
+    expect(await module.recoverStylist6CloudResult(
+      'qa-native-paid-request-0001',{signal:cancelled.signal})).toBeNull();
+    expect(await module.recoverStylist6CloudResult('../other-customer')).toBeNull();
+    expect(mockFrom).not.toHaveBeenCalled();
+    (globalThis as any).__DEV__=false;
+    const disabled=loadDevModule();
+    expect(await disabled.recoverStylist6CloudResult('qa-native-paid-request-0001'))
+      .toBeNull();
+    expect(mockFrom).not.toHaveBeenCalled();
   });
 
   test('cloud versions are recognized only with the stylist-6-cloud prefix', () => {
@@ -420,6 +515,23 @@ describe('stylist6 cloud staging client', () => {
     expect(failure?.name).toBe('OutfitGenerationFailure');
     expect(failure?.code).toBe('anchor_not_found');
     expect(failure?.stage).toBe('stylist6_admission');
+  });
+
+  test('lost HTTP response after a paid server run is classified as read-only recoverable transport',async()=>{
+    (globalThis as any).__DEV__=true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE='true';
+    const {invokeStylist6Cloud}=loadDevModule();
+    mockInvoke.mockResolvedValueOnce({data:null,error:Object.assign(
+      new Error('untrusted remote error text'),
+      {name:'FunctionsFetchError'},
+    )});
+    await expect(invokeStylist6Cloud({request:{
+      style:'classic',occasion:'Work',brief:'',
+    }})).rejects.toMatchObject({
+      code:'staging_compute_unavailable',stage:'stylist6_transport',
+    });
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    expect(mockFrom).not.toHaveBeenCalled();
   });
 
   test('an error response without a JSON body still fails with a transport-safe code', async () => {

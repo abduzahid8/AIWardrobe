@@ -1,6 +1,7 @@
 /** @jest-environment node */
 import { createClient } from '@supabase/supabase-js';
 import { outfitGenerationFailure } from '../../src/services/outfitGenerationFailure';
+import { RequestTimeoutError } from '../../src/lib/requestDeadline';
 
 test.each([
  ['feature_limit_reached','outfitMaker.subscriptionRequired'],
@@ -112,4 +113,15 @@ test('unknown failure diagnostics retain only a bounded category and status',asy
 test('operator-disabled paid generation maps to the existing unavailable/local-alternative path', async () => {
   expect((await outfitGenerationFailure({error:'feature_disabled'})).translationKey).toBe('outfitMaker.aiUnavailable');
   expect((await outfitGenerationFailure(null,{context:new Response(JSON.stringify({error:'feature_disabled'}),{status:503})})).translationKey).toBe('outfitMaker.aiUnavailable');
+});
+
+
+test('a delivered server deck whose iOS fetch subsequently TIMES OUT is never mislabeled as bad fashion',async()=>{
+  const value=await outfitGenerationFailure(null,new RequestTimeoutError());
+  expect(value.translationKey).toBe('outfitMaker.requestTimeout');
+  expect(value.code).toBe('request_timeout');
+  expect(value.stage).toBe('transport');
+  // A genuine server fashion-quality rejection is a different outcome.
+  const fashion=await outfitGenerationFailure({code:'stylist6_visual_quality_unmet'});
+  expect(fashion.translationKey).toBe('outfitMaker.visualQualityUnmet');
 });

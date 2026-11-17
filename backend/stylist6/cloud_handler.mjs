@@ -471,6 +471,29 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
      * otherwise successful generation — the claim itself already prevents
      * double billing.
      */
+    // The long-lived native Supabase HTTP response can be lost AFTER a
+    // successful paid generation (confirmed in real iOS QA). Persist
+    // the EXACT already-approved deck for owner-only read-only recovery.
+    // Never issue new NVIDIA calls or debit quota during a recovery read.
+    async saveCompletedResult(userId,requestId,payload) {
+      if(typeof userId!=='string'||typeof requestId!=='string'||
+         requestId.length>128||payload?.success!==true||
+         payload?.generationRequestId!==requestId||
+         !Array.isArray(payload?.outfits)||
+         payload.outfits.length<1||payload.outfits.length>3)
+        return false;
+      const admin=this.adminClient();
+      try{
+        const {error}=await admin.from('stylist6_completed_results')
+          .insert({user_id:userId,request_id:requestId,
+            response_payload:payload,
+            // No wardrobe/person details beyond original response.
+            // The owner cannot SELECT this after the short TTL.
+            expires_at:new Date(Date.now()+45*60*1000).toISOString()})
+          .abortSignal(AbortSignal.timeout(2500));
+        return !error;
+      }catch{return false;}
+    },
     async finishRequest(userId, requestId, status, code) {
       const admin = this.adminClient();
       try {
@@ -1757,9 +1780,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           [activePhase]:Date.now()-phaseStart},
       });
     }
-    return {
-      status: 200,
-      body: {
+    const completedBody={
         success: true,
         generationVersion: STYLIST6_CLOUD_VERSION,
         source: 'stylist-6-cloud-staging',
@@ -1833,8 +1854,24 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           version: FEEDBACK_TASTE_VERSION,
         },
         outfits: mappedOutfits,
-      },
-    };
+      };
+    // A failed recovery-store write NEVER invalidates an already paid,
+    // independently PHOTO approved deck. Save once, before the HTTP response,
+    // for the same request owner; no use of client-supplied inventory.
+    let recoveryStored=false;
+    try{
+      if(typeof io.saveCompletedResult==='function')
+        recoveryStored=await io.saveCompletedResult(
+          userId,requestId,completedBody)===true;
+    }catch{/* response remains authoritative; no second charge/retry */}
+    if(modelSlateEnabled && visualAsked)console.info(
+      'stylist6_result_delivery',{
+        outcome:'completed_paid_deck',
+        recoverable:recoveryStored,
+        displayed:Math.min(3,mappedOutfits.length),
+        wallMs:Math.min(180000,Math.max(0,Date.now()-started)),
+      });
+    return {status:200,body:completedBody};
   } catch (error) {
     const timedOut = error?.message === 'stylist6_timeout';
     const status = timedOut ? 504 : 500;

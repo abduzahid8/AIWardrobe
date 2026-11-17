@@ -380,6 +380,13 @@ async function cloudFailureFromInvokeError(invokeError: unknown): Promise<Outfit
       // Body already consumed or not JSON: fall through to the generic form.
     }
   }
+  // SDK fetch/relay failures have NO server payload. They may happen AFTER
+  // an already-paid generation was completed and logged HTTP200 by Supabase.
+  // Classify only this transport failure for READ-ONLY same-ID recovery.
+  // Never classify a genuine FunctionsHttpError / photo-veto as recoverable.
+  const sdkName=(invokeError as {name?:unknown}|null)?.name;
+  if(sdkName==='FunctionsFetchError'||sdkName==='FunctionsRelayError')
+    return failureForCloud('staging_compute_unavailable','stylist6_transport');
   const message = (invokeError as { message?: unknown } | null)?.message;
   return failureForCloud(typeof message === 'string' ? message : 'stylist6_ranking_failed');
 }
@@ -436,6 +443,49 @@ export async function invokeStylist6Cloud(
     throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_wrong_engine', 'stylist6_cloud');
   }
   return data;
+}
+
+/**
+ * READ-ONLY recovery of an ALREADY CHARGED, COMPLETE Stylist 6 generation.
+ * Never calls the paid Edge Function, never retries POST and never bypasses
+ * original source/PHOTO acceptance. Supabase RLS restricts SELECT to the
+ * current authenticated owner, and rows expire after 45 minutes.
+ * A missing/stale/invalid row gives null, never a fabricated outfit.
+ */
+export async function recoverStylist6CloudResult(
+  requestId: string,options?: {signal?: AbortSignal},
+): Promise<Record<string, any>|null> {
+  if (!STYLIST6_CLOUD_ENABLED ||
+      !/^[A-Za-z0-9_-]{8,128}$/.test(String(requestId||'')) ||
+      options?.signal?.aborted) return null;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const {supabase}=require('../../lib/supabase') as typeof import('../../lib/supabase');
+  try{
+    const {data:session}=await supabase.auth.getSession();
+    if(!session?.session?.access_token || options?.signal?.aborted)return null;
+    let query=supabase.from('stylist6_completed_results')
+      .select('response_payload').eq('request_id',requestId);
+    if(options?.signal)query=query.abortSignal(options.signal);
+    const {data,error}=await query.maybeSingle();
+    if(error || !data || options?.signal?.aborted)return null;
+    const response=(data as {response_payload?:unknown}).response_payload;
+    if(!response || typeof response!=='object' || Array.isArray(response))
+      return null;
+    const deck=response as Record<string,any>;
+    if(deck.generationRequestId!==requestId ||
+       !stylist6CloudCompletion(deck) ||
+       deck.visualStatus!=='NVIDIA_APPLIED' ||
+       deck.visualReceipt?.displayedJudged!==deck.outfits.length ||
+       !deck.outfits.every((look:any)=>
+         look?.fashionDiagnostics?.visualVerdict==='JUDGED' &&
+         Array.isArray(look?.items) &&
+         (deck.sourceMode!=='catalog'||look.items.length===4)))
+      return null;
+    const accepted=acceptStylist6CloudDeck(deck.outfits,deck.sourceMode);
+    if(accepted.accepted.length!==deck.outfits.length ||
+       Object.keys(accepted.rejections).length>0)return null;
+    return deck;
+  }catch{return null;}
 }
 
 /**

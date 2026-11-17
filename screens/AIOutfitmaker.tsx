@@ -3,7 +3,7 @@ import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveO
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6CloudCompletion, stylist6CuratedPartial, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, recoverStylist6CloudResult, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6CloudCompletion, stylist6CuratedPartial, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, type DevEngine} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -1773,7 +1773,34 @@ const AIOutfitGenerator = () => {
               displayed: Array.isArray(data.outfits) ? data.outfits.length : 0,
             }));
           }
-        } catch (error) { invokeError = error; }
+        } catch (error) {
+          // Actual iOS QA: Supabase returned HTTP200/7.8KB for two
+          // independently judged outfits, but CFNetwork lost the original
+          // long-held response. Read only the SAME settled paid request
+          // within a bounded window; NEVER POST another NVIDIA/paid call.
+          // A user cancellation or explicit source/quality refusal never
+          // triggers result recovery.
+          const code=error instanceof OutfitGenerationFailure?error.code:'';
+          const transportFailure=error instanceof RequestTimeoutError ||
+            (error instanceof OutfitGenerationFailure &&
+              (code==='staging_compute_unavailable' ||
+               code==='stylist6_ranking_failed'));
+          if(transportFailure && !cancelSignal?.aborted && isCurrentGeneration()){
+            try{
+              const saved=await withRequestDeadline(
+                signal=>recoverStylist6CloudResult(requestId,{signal}),
+                6500,cancelSignal);
+              if(saved){
+                data=saved;
+                invokeError=null;
+                if(__DEV__)console.warn('[S6 RECOVERY QA]',{
+                  outcome:'verified_completed_result',
+                  looks:saved.outfits.length,
+                });
+              }else invokeError=error;
+            }catch{invokeError=error;}
+          }else invokeError=error;
+        }
       } else if (s6Active) {
         const s6SourceMode = (currentSource === 'wardrobe'
           ? 'wardrobe'

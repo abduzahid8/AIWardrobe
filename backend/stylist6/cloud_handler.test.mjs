@@ -53,6 +53,7 @@ const WARDROBE = [
 function makeIo(overrides = {}) {
   const calls = {
     verifyUser: 0, checkRate: 0, debitQuota: 0, claimRequest: 0, finishRequest: 0,
+    saveCompletedResult:0,
     fetchShopRows: 0, fetchWardrobeRows: 0, fetchVisualProfiles: 0, fetchFeedbackTaste: 0,
   };
   const claims = new Map();
@@ -96,6 +97,16 @@ function makeIo(overrides = {}) {
       async finishRequest(userId, requestId, status, code) {
         calls.finishRequest += 1;
         claims.set(requestId, { ...claims.get(requestId), status, code });
+      },
+      async saveCompletedResult(userId,requestId,payload) {
+        calls.saveCompletedResult++;
+        assert.equal(userId,USER);
+        assert.equal(payload.generationRequestId,requestId);
+        assert.equal(claims.get(requestId)?.status,200,
+          'only settle exactly-once paid generation BEFORE recording recoverable result');
+        if(overrides.completedSaveFail)return false;
+        if(overrides.onSaveCompleted)overrides.onSaveCompleted({userId,requestId,payload});
+        return true;
       },
       async fetchShopRows(seed, context) {
         calls.fetchShopRows += 1;
@@ -2088,4 +2099,46 @@ test('licensed cached original-photo evidence is read ONLY with privileged bound
       Array.from({length:401},(_,i)=>'sku-'+i)),
       /stylist6_photo_cache_query_limit/);
   }finally{globalThis.fetch=originalFetch;}
+});
+
+
+test('one already-paid source-verified Stylist 6 deck is saved ONCE for owner-only read-only mobile recovery',async()=>{
+  const saved=[];
+  const harness=makeIo({onSaveCompleted:x=>saved.push(x)});
+  const body=JSON.stringify({request:{...baseRequest,
+    generationRequestId:'qa-once-safely-recoverable-20261117'}});
+  const authorization='Bearer '+JWT;
+  const signature=await signStylistTransport({secret:SECRET,body,authorization});
+  const headers={authorization,...signature};
+  const invoke=()=>handleStylist6CloudGenerate({
+    method:'POST',headers,bodyText:body,env,io:harness.io,
+  });
+  const first=await invoke();
+  assert.equal(first.status,200);
+  assert.equal(harness.calls.debitQuota,1);
+  assert.equal(harness.calls.saveCompletedResult,1);
+  assert.equal(saved.length,1);
+  assert.equal(saved[0].payload.generationRequestId,
+    'qa-once-safely-recoverable-20261117');
+  assert.equal(saved[0].payload.success,true);
+  assert.ok(saved[0].payload.outfits.every(o=>
+    o.items.every(item=>item.isShopItem===true)));
+  assert.deepEqual(saved[0].payload,first.body,
+    'saved response is EXACTLY the same source-backed deck already delivered');
+  const second=await invoke();
+  assert.equal(second.status,409,'identical ID never reruns paid styling');
+  assert.equal(second.body.code,'duplicate_request');
+  assert.equal(harness.calls.debitQuota,1);
+  assert.equal(harness.calls.saveCompletedResult,1);
+});
+
+test('failed optional result-store write NEVER reclassifies an approved paid deck as AI failure',async()=>{
+  const data=await signedCall({request:{...baseRequest,
+    generationRequestId:'qa-optional-result-store-outage-20261117'}},
+    {},{completedSaveFail:true});
+  assert.equal(data.status,200);
+  assert.equal(data.body.success,true);
+  assert.equal(data.calls.debitQuota,1);
+  assert.equal(data.calls.finishRequest,1);
+  assert.equal(data.calls.saveCompletedResult,1);
 });

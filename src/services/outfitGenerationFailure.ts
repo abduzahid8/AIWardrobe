@@ -1,4 +1,4 @@
-import { withRequestDeadline } from '../lib/requestDeadline';
+import { withRequestDeadline, RequestTimeoutError } from '../lib/requestDeadline';
 
 const messages = {
   feature_limit_reached: 'outfitMaker.subscriptionRequired',
@@ -86,6 +86,14 @@ function safeFailureField(payload:unknown,key:string):string|undefined {
 
 /** Decode only known server codes; never display raw provider/server messages. */
 export async function outfitGenerationFailure(data: unknown, error?: unknown): Promise<OutfitGenerationFailure> {
+  // A long-running cloud style request can be committed successfully on
+  // Render/Supabase, yet iOS CFNetwork may never deliver its reply before
+  // the 120-second mobile deadline. Never label this as a vague AI style
+  // failure, and NEVER automatically retry a potentially charged request.
+  if(error instanceof RequestTimeoutError ||
+     (error as {name?:unknown}|null)?.name==='RequestTimeoutError')
+    return new OutfitGenerationFailure('outfitMaker.requestTimeout',
+      'request_timeout','transport');
   const direct = messageFrom(data);
   if (direct) return new OutfitGenerationFailure(direct, safeFailureField(data,'code') || safeFailureField(data,'error'),safeFailureField(data,'stage'));
   const context = (error as { context?: Response } | null)?.context;
