@@ -84,3 +84,46 @@ photographic diversity, 1/2/3 selection, latency/timeout and any product image
 failures. A healthy deploy, more candidates, a VLM returning 200 and passing
 unit tests are NOT fashion excellence. Keep production Stylist 5 untouched
 until the >=70% independent human blind comparison succeeds.
+
+## Staging v1 (f1f000e) — mandatory adverse LIVE native iOS evidence
+
+Real Render deployment `f1f000e` went LIVE; the booted native iOS
+simulator generated through the Supabase v61 gateway. Results worsened,
+which invalidates any automatic rollout decision:
+
+| Same scenario | UTC logged | Source-admitted AI compositions | Hosted photo approved/attempted | Shown | Visual jury | Other failure | Server elapsed |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Classic / Work | 12:13:32 | 6 / 6 | **1 / 8** | **1** | not run (only one photo-approved) | photo revision: invalid_composition | 47,868 ms |
+| Classic / Date night | 12:16:58 | 6 / 6 | **3 / 8** | **2** | image_unavailable; existing text editor used | Creative Director timed out (0 plans) | 58,008 ms |
+
+These are counterexamples to "all green / 3 cards / new vision" and are NOT
+proof of an improved fashion stylist. They show two key recovery deficits.
+
+## Next staging revision — salvage genuine photo-feedback improvements
+
+- Exact root for Work failure: the independent critic correctly rejected 7/8.
+  A second AI apparel recomposition was attempted, but its validator rejected
+  the ENTIRE three-proposal response if even ONE SKU was duplicated, leaving
+  no second photographic wave. The new code distinguishes six-look initial
+  audition (still needs >=3 unique full looks) from independently photo-informed
+  rescue. In rescue only, 1–2 fully source-bound, physical-SKU-unique,
+  structurally sound outfits survive a third malformed AI combination.
+  Revalidate each one against the SAME budget/merchant/weather/source hard
+  gates then independently rejudge real product photographs; no synthetic
+  quality approval, SKU reuse, fee loophole or lower photo thresholds.
+- Date visual jury failure had only the broad `image_unavailable` status.
+  Added bounded, privacy-safe exact collage statuses: ready,
+  invalid_input, unauthorized_or_missing, deadline, source_missing,
+  photo_processing and oversized. Increases only the **staging** pre-existing
+  image board budget from 1.35s to 2.6s without increasing paid visual
+  evaluation budgets or altering production. This distinguishes missing
+  merchant image, processing error and tight deadline in the next REAL log.
+- Verified locally against the same source tree: **481/481 Stylist6 tests
+  PASS**, backend/stylist-node build PASS, original production Stylist5
+  auth+quota bundle hash unchanged.
+- Still require new exact deployed SHA and actual native iOS outcomes:
+  `photoEditorialVisualJury:applied` and `photoEditorialVisualMedia:ready`
+  must be seen together before asserting the visual fashion jury WORKS.
+  If the vision model fails (or is not permitted), only the photo-approved
+  text director can pick final looks. No claim of improvement until a
+  blind human assessment of the actual outfit photographs.

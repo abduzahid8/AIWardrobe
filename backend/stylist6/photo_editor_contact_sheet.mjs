@@ -33,11 +33,12 @@ const svgText=(text,x,y,{size=15,bold=false,height}={})=>Buffer.from(
  * over rather than silently deleting a candidate or claiming to see an image.
  */
 export async function buildPhotoEditorialContactSheet(looks,{
-  resolvePhoto,authorizePhoto,deadlineMs=2200,signal,
+  resolvePhoto,authorizePhoto,deadlineMs=2200,signal,onStatus,
 }={}){
+  const note=status=>{try{onStatus?.(status);}catch{}};
   if(!Array.isArray(looks)||looks.length<3||looks.length>MAX_LOOKS||
     typeof resolvePhoto!=='function'||typeof authorizePhoto!=='function'||
-    signal?.aborted)return null;
+    signal?.aborted){note('invalid_input');return null;}
   const sources=looks.map((look,index)=>{
     if(!Array.isArray(look?.items))return null;
     const seen=new Set();
@@ -52,7 +53,7 @@ export async function buildPhotoEditorialContactSheet(looks,{
     return cells.includes(false)||['top','bottom','shoes'].some((s,i)=>
       !cells[PHOTO_CONTACT_SLOTS.indexOf(s)])?null:{token:'L'+String(index).padStart(2,'0'),cells};
   });
-  if(sources.some(x=>!x))return null;
+  if(sources.some(x=>!x)){note('unauthorized_or_missing');return null;}
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),Math.min(3400,Math.max(300,deadlineMs)));
   const combined=signal?AbortSignal.any([signal,controller.signal]):controller.signal;
@@ -81,7 +82,7 @@ export async function buildPhotoEditorialContactSheet(looks,{
       return {input:image,left:LABEL_W+j*CELL_W+5,top:HEADER+i*CELL_H+18};
     }))),abortPromise]);
     for(const cell of cells)if(cell)overlays.push(cell);
-    if(combined.aborted)return null;
+    if(combined.aborted){note('deadline');return null;}
     for(let i=0;i<sources.length;i++){
       overlays.push({input:svgText(sources[i].token,4,HEADER+i*CELL_H+33,
         {size:15,bold:true,height}),left:0,top:0});
@@ -92,9 +93,15 @@ export async function buildPhotoEditorialContactSheet(looks,{
     const png=sharp({create:{width:WIDTH,height,channels:3,background:'#f0f3f7'}})
       .composite(overlays).jpeg(jpegOptions);
     const result=await Promise.race([png.toBuffer(),abortPromise]);
-    if(combined.aborted||result.length>MAX_BYTES)return null;
+    if(combined.aborted){note('deadline');return null;}
+    if(result.length>MAX_BYTES){note('oversized');return null;}
+    note('ready');
     return {bytes:result,mimeType:'image/jpeg',width:WIDTH,height,
       lookTokens:sources.map(x=>x.token),
       version:PHOTO_CONTACT_SHEET_VERSION};
-  }catch{return null;}finally{clearTimeout(timer);controller.abort();}
+  }catch(error){
+    note(combined.aborted?'deadline':
+      error?.message==='missing_or_oversized_photo'?'source_missing':'photo_processing');
+    return null;
+  }finally{clearTimeout(timer);controller.abort();}
 }

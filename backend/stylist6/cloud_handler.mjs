@@ -139,6 +139,11 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       'invalid_selection','timeout','provider_unavailable','unavailable']
       .includes(f.photoEditorial?.visualJury)
       ?f.photoEditorial.visualJury:'not_run',
+    photoEditorialVisualMedia:['ready','not_run','invalid_input',
+      'unauthorized_or_missing','deadline','source_missing',
+      'photo_processing','oversized']
+      .includes(f.photoEditorial?.visualMediaStatus)
+      ?f.photoEditorial.visualMediaStatus:'not_run',
     photoEditorialEligibleTriples:safe(f.photoEditorial?.eligibleTriples,24),
     photoEditorialEligiblePairs:safe(f.photoEditorial?.eligiblePairs,12),
     formalPhotoProbe:f.formalPhotoProbe===true,

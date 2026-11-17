@@ -220,6 +220,7 @@ export function sourceBoundCompositionPool(looks, {
 }
 export function validateSkuCompositions(answer,pool,{
   layerRequired=false,allowLayer=true,count=3,allowPartial=false,
+  minimumValid=3,
 }={}){
   // A six-look AI audition explores more distinct outfits for the independent
   // photo critic. A malformed/reused look must never invalidate the five
@@ -271,7 +272,14 @@ export function validateSkuCompositions(answer,pool,{
     for(const key of keys)seen.add(key);
     looks.push(items);
   }
-  if(looks.length<(allowPartial?3:target))return [];
+  // The INITIAL six-look audition must still offer >=3 coherent source sets.
+  // A SECOND PHOTO-CRITIC REVISION is different: any independently valid
+  // fresh whole outfit is worth rejudging. A single duplicate token must not
+  // discard two valid new garments/looks while a user received only one.
+  // Every salvaged set retains exact SKU identity, no reuse and hard gates.
+  const minimum=allowPartial&&Number.isInteger(minimumValid)
+    ?Math.max(1,Math.min(target,minimumValid)):target;
+  if(looks.length<minimum)return [];
   return looks;
 }
 
@@ -510,9 +518,13 @@ export async function composeCatalogSkuLooks({
     const answer=JSON.parse(body)?.choices?.[0];
     if(answer?.finish_reason!=='stop'||typeof answer?.message?.content!=='string')
       return {status:'incomplete',looks:[],providerCalls:1};
+    const rescue=revision!==null;
+    const minimumValid=rescue?1:3;
     const choices=validateSkuCompositions(JSON.parse(answer.message.content),pool,
-      {layerRequired,allowLayer,count:target,allowPartial:target===6});
-    return choices.length>=3?{status:'composed',looks:choices,providerCalls:1}
+      {layerRequired,allowLayer,count:target,
+        allowPartial:target===6||rescue,minimumValid});
+    return choices.length>=minimumValid
+      ?{status:'composed',looks:choices,providerCalls:1}
       :{status:'invalid_composition',looks:[],providerCalls:1};
   }catch{return {status:combined.aborted?'timeout':'provider_unavailable',
     looks:[],providerCalls:1};

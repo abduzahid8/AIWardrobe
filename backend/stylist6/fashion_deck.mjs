@@ -2594,6 +2594,11 @@ export async function recommendFashionDeck({
             visualJury:['applied','not_run','image_unavailable',
               'invalid_selection','timeout','provider_unavailable','unavailable']
               .includes(decision?.visualJury)?decision.visualJury:'not_run',
+            visualMediaStatus:['ready','not_run','invalid_input',
+              'unauthorized_or_missing','deadline','source_missing',
+              'photo_processing','oversized']
+              .includes(decision?.visualMediaStatus)
+              ?decision.visualMediaStatus:'not_run',
           };
           if(decision?.status==='selected'&&Array.isArray(decision.tokens)){
             const chosen=[...new Set(decision.tokens)]

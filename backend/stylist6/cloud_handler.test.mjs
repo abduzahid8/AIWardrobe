@@ -1990,6 +1990,7 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     photoRevisionApproved:null,
     photoEditorialStatus:'not_run',photoEditorialChosen:null,
     photoEditorialVisualJury:'not_run',
+    photoEditorialVisualMedia:'not_run',
     photoEditorialEligibleTriples:null,photoEditorialEligiblePairs:null,
     formalPhotoProbe:true,prePhotoUniqueTriple:false,
     reasons:['approved','style_mismatch','other'],

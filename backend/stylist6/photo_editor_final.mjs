@@ -102,7 +102,7 @@ export async function selectPhotoEditorialDeck({
   const timer=setTimeout(()=>controller.abort(),Math.max(450,Math.min(10500,timeoutMs)));
   const combined=signal?AbortSignal.any([signal,controller.signal]):controller.signal;
   inFlight++;
-  let visualJury='not_run',providerCalls=0;
+  let visualJury='not_run',visualMediaStatus='not_run',providerCalls=0;
   try{
     const user={
       style:safe(context?.style,45),
@@ -165,8 +165,8 @@ export async function selectPhotoEditorialDeck({
       const photoStart=Date.now();
       const sheet=await buildPhotoEditorialContactSheet(looks,{
         resolvePhoto,authorizePhoto,
-        deadlineMs:Math.min(1350,Math.max(600,Math.floor(timeoutMs/5))),
-        signal:combined,
+        deadlineMs:Math.min(2600,Math.max(750,Math.floor(timeoutMs/3))),
+        signal:combined,onStatus:status=>{visualMediaStatus=status;},
       });
       if(sheet&&!combined.aborted){
         const visionRemaining=Math.min(5500,Math.max(600,
@@ -228,7 +228,7 @@ export async function selectPhotoEditorialDeck({
                     JSON.parse(output.message.content),menu);
                   if(visionSelected)return {status:'selected',
                     tokens:visionSelected.looks,portfolioToken:visionSelected.token,
-                    providerCalls,visualJury:'applied'};
+                    providerCalls,visualJury:'applied',visualMediaStatus};
                   visualJury='invalid_selection';
                 }
               }
@@ -260,10 +260,10 @@ export async function selectPhotoEditorialDeck({
     const selected=validatePhotoEditorialPortfolioChoice(
       JSON.parse(choice.message.content),menu);
     return selected?{status:'selected',tokens:selected.looks,
-      portfolioToken:selected.token,providerCalls,visualJury}
-      :{status:'invalid_selection',tokens:[],providerCalls,visualJury};
+      portfolioToken:selected.token,providerCalls,visualJury,visualMediaStatus}
+      :{status:'invalid_selection',tokens:[],providerCalls,visualJury,visualMediaStatus};
   }catch{
     return {status:combined.aborted?'timeout':'provider_unavailable',
-      tokens:[],providerCalls,visualJury};
+      tokens:[],providerCalls,visualJury,visualMediaStatus};
   }finally{clearTimeout(timer);inFlight--;}
 }

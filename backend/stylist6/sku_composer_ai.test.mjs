@@ -424,3 +424,58 @@ test('untrusted photo observations never inject URL, email or arbitrary object p
   assert.equal(evidence.rejectedPhotoEvidence[0].photoQualityAxes.occasionFit,0.75);
   assert.equal(evidence.rejectedPhotoEvidence[0].photoQualityAxes.styleFit,undefined);
 });
+
+test('real photograph rejection salvages two independently correct new looks despite one invalid AI token',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const original=slotAnswer(pool);
+  const imperfect={slotPicks:{...original.slotPicks,
+    top:[original.slotPicks.top[0],original.slotPicks.top[1],
+      original.slotPicks.top[1]]}};
+  const revision=await composeCatalogSkuLooks({
+    pool,apiKey:'nvapi-test-secret',
+    context:{style:'classic',occasion:'Work'},
+    critiqueFeedback:{reasons:['below_quality_floor','style_mismatch']},
+    fetchImpl:async()=>result(imperfect),
+  });
+  assert.equal(revision.status,'composed',
+    'photo-based retry must never throw away genuine 1-2 strong repair directions');
+  assert.equal(revision.looks.length,2);
+  assert.equal(new Set(revision.looks.flat().map(x=>x.id)).size,8);
+  const firstWave=await composeCatalogSkuLooks({
+    pool,apiKey:'nvapi-test-secret',
+    fetchImpl:async()=>result(imperfect),
+  });
+  assert.equal(firstWave.status,'invalid_composition',
+    'the original primary 3-look contract stays unchanged');
+
+  const admitted=await sourceVerifyComposedOutfits({
+    looks:revision.looks,request:{budget:{amount:800,currency:'USD'}},
+    sourceMode:'catalog',hardGate:async()=>({ok:true}),
+    priceToBudgetCurrency:x=>x.price,
+    scorer:{rankLook:()=>({score:.91})},
+  });
+  assert.equal(admitted.length,2,
+    'every repaired look is independently admitted before ANY extra paid photo critique');
+});
+
+test('one genuinely new source-valid photo-revision look survives two duplicate model mistakes',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const original=slotAnswer(pool);
+  const duplicated={slotPicks:{...original.slotPicks,
+    top:[original.slotPicks.top[0],original.slotPicks.top[0],
+      original.slotPicks.top[0]]}};
+  const resultFromProvider=await composeCatalogSkuLooks({
+    pool,critiqueFeedback:{reasons:['style_mismatch']},
+    apiKey:'nvapi-test-secret',fetchImpl:async()=>result(duplicated),
+  });
+  assert.equal(resultFromProvider.status,'composed');
+  assert.equal(resultFromProvider.looks.length,1);
+  assert.ok(resultFromProvider.looks[0].every(x=>x.isShopItem));
+  assert.deepEqual(validateSkuCompositions(duplicated,pool,{count:3}),[]);
+  assert.equal(validateSkuCompositions(duplicated,pool,
+    {count:3,allowPartial:true,minimumValid:1}).length,1);
+  assert.deepEqual(validateSkuCompositions({slotPicks:{...original.slotPicks,
+    shoes:['P999','P999','P999']}},pool,
+    {count:3,allowPartial:true,minimumValid:1}),[],
+    'no imaginary SKU gets a free pass even in bounded feedback-based rescue');
+});
