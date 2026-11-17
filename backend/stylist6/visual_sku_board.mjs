@@ -50,20 +50,55 @@ export async function buildVisualSkuBoard(pool,{
     else combined.addEventListener('abort',()=>reject(Error('visual_board_deadline')),{once:true});
   });
   try{
-    const cells=await Promise.race([Promise.allSettled(all.map(async value=>{
-      const url=value.item.imageUrl||value.item.image_url;
-      if(!safeUrl(url)||!authorizePhoto(url))return null;
-      const media=await resolvePhoto(value.item);
-      if(!media||!Buffer.isBuffer(media.bytes)||
-        media.bytes.length<128||media.bytes.length>MAX_MERCHANT_IMAGE_BYTES)return null;
-      const bytes=await sharp(media.bytes,{limitInputPixels:4_200_000})
-        .resize(PHOTO_W,PHOTO_H,{fit:'contain',background:'#f8f9fb'})
-        .jpeg({quality:58}).toBuffer();
-      return {token:value.token,slot:value.slot,bytes};
-    })),untilAbort]);
+    // QUORUM, not all merchants: real iOS logs showed a 4.2s deadline
+    // because Promise.allSettled waited for the SLOWEST of 48 CDN photos.
+    // A fashion decision needs >=6 distinct REAL PHOTOS PER ROLE, not every
+    // irrelevant vendor asset. Start permitted fetches concurrently, and
+    // close after the first sufficient source-photo portfolio plus a short
+    // grace period for better choice. Lagging failures warm the request-scoped
+    // photo cache but cannot block independent creative composition.
+    const successful=await Promise.race([new Promise(resolve=>{
+      const ready=new Map(),counts=new Map(SLOTS.map(slot=>[slot,0]));
+      let remaining=all.length,completed=false,grace=null;
+      const finish=()=>{
+        if(completed)return;
+        completed=true;
+        if(grace!==null)clearTimeout(grace);
+        resolve(new Map(ready));
+      };
+      const maybeClose=()=>{
+        if(completed)return;
+        if(SLOTS.every(slot=>counts.get(slot)>=6)){
+          if(remaining===0)finish();
+          else if(grace===null)grace=setTimeout(finish,160);
+          return;
+        }
+        if(remaining===0)finish();
+      };
+      for(const value of all){
+        Promise.resolve().then(async()=>{
+          const url=value.item.imageUrl||value.item.image_url;
+          if(!safeUrl(url)||!authorizePhoto(url))return null;
+          const media=await resolvePhoto(value.item);
+          if(!media||!Buffer.isBuffer(media.bytes)||
+             media.bytes.length<128||
+             media.bytes.length>MAX_MERCHANT_IMAGE_BYTES)return null;
+          const bytes=await sharp(media.bytes,{limitInputPixels:4_200_000})
+            .resize(PHOTO_W,PHOTO_H,{fit:'contain',background:'#f8f9fb'})
+            .jpeg({quality:58}).toBuffer();
+          return {token:value.token,slot:value.slot,bytes};
+        }).then(photo=>{
+          if(photo&&!completed&&!ready.has(photo.token)){
+            ready.set(photo.token,photo);
+            counts.set(photo.slot,counts.get(photo.slot)+1);
+          }
+        }).catch(()=>{}).finally(()=>{
+          remaining--;
+          maybeClose();
+        });
+      }
+    }),untilAbort]);
     if(combined.aborted){note('deadline');return null;}
-    const successful=new Map(cells.flatMap((result,i)=>result.status==='fulfilled'&&result.value
-      ?[[all[i].token,result.value]]:[]));
     const permitted=new Set(successful.keys());
     if(raw.some(items=>items.filter(x=>permitted.has(x.token)).length<6)){
       note('insufficient_photo_inventory');return null;

@@ -343,3 +343,36 @@ Safety/performance:
 - Stage log must show `skuCompositionPhotoFirst:applied` BEFORE anyone
   claims a photo-first personal stylist is already working on merchant
   photos. Always check actual native iOS silhouettes and product images.
+
+## Real native iOS PHOTO-FIRST first attempt: dbefcdd
+
+The native simulator generated Classic / Date night on exact Render LIVE
+`dbefcddf9ed26d5e730a90c77b10869ef83869c9`, via JWT-authenticated
+Supabase gateway v61, finishing 13:56:11 UTC. Honest adverse evidence:
+- `skuCompositionPhotoFirst:'deadline'`, not `applied`.
+- Source-valid TEXT fallback: 6 autonomous outfits, 6 exact-SKU-admitted;
+  6 attempted independent photograph verdicts, only **1 approved**,
+  one four-real-product card shown.
+- ~40.3s server time. This did NOT improve style or raise quality.
+- The photo-board builder's `Promise.allSettled` waited for ALL up to 48
+  unrelated source-CDN images before proceeding; slow or blocked stores
+  consumed the exact 4.2s board deadline, even if enough earlier photos
+  had already been fetched.
+
+NEXT CANDIDATE correction: BOUNDED PER-ROLE PHOTO QUORUM. The source-photo
+board now completes as soon as at least six actual independently authorized,
+decode-valid source images per TOP/LAYER/BOTTOM/SHOES are available, with
+a 160ms optional grace period for a richer choice. **Do not wait for one
+irrelevant slow merchant**. Missing/unlicensed URLs are never sent to the
+vision model or included in its allowed P-token set. Remaining CDN
+downloads continue to warm the same request-scoped photo cache for the
+later independent whole-look judge. This is not a reduced safety gate or
+a fabricated visual profile. New test with 8 source products per role,
+two hanging vendors in EACH role and real JPEG bytes proved a ready
+24-product board after ~290ms with all four six-image role quorums.
+
+Before claiming progress: repeat actual native Date night on exact new
+deployed SHA and require the stage counter
+`skuCompositionPhotoFirst:'applied'`, full source permission, and
+independent photo-approved four-product silhouettes. An actual 70% blinded
+human S6/S5 win remains the launch gate.

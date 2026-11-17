@@ -19,10 +19,10 @@ test('vision composer gets a single board of ACTUAL authorized product-image byt
   });
   assert.equal(VISUAL_SKU_BOARD_VERSION,'s6-original-photo-merchandise-board-v1');
   assert.ok(board?.bytes?.length>1000);
-  assert.equal(board?.photoCount,32);
+  assert.ok(board?.photoCount>=24&&board.photoCount<=32);
   assert.equal(fetches,32);
   assert.equal(auth,32);
-  assert.equal(new Set(board.seenTokens).size,32);
+  assert.equal(new Set(board.seenTokens).size,board.photoCount);
   const meta=await sharp(board.bytes).metadata();
   assert.equal(meta.format,'jpeg');
   assert.equal(meta.width,board.width);
@@ -50,4 +50,22 @@ test('hanging external photo cannot prevent fallback or invent an image board',a
   assert.equal(image,null);
   assert.equal(reason,'deadline');
   assert.ok(Date.now()-at<1300);
+});
+
+
+test('visual fashion board finishes on per-slot photo QUORUM without waiting for stalled shops',async()=>{
+  const began=Date.now();let status='';
+  const board=await buildVisualSkuBoard(pool,{
+    authorizePhoto:()=>true,
+    resolvePhoto:async item=>/[67]$/.test(item.id)
+      ?new Promise(()=>{}):{bytes:photo},
+    deadlineMs:1300,onStatus:x=>{status=x;},
+  });
+  assert.equal(status,'ready');
+  assert.ok(board?.photoCount>=24);
+  assert.equal(board?.seenTokens.length,24,
+    'exactly six original merchant photos per garment role are enough');
+  assert.ok(Date.now()-began<1000,
+    'slow irrelevant merchants must never block a valid creative decision');
+  assert.equal(new Set(board.seenTokens).size,24);
 });
