@@ -2347,6 +2347,9 @@ export async function recommendFashionDeck({
           const editorial={
             status:String(decision?.status||'not_available').slice(0,32),
             approvedSeen:approvedLooks.length,
+            eligibleTriples:verifiedPortfolios.filter(p=>p.size===3).length,
+            eligiblePairs:verifiedPortfolios.filter(p=>p.size===2).length,
+            eligibleSingles:verifiedPortfolios.filter(p=>p.size===1).length,
             chosen:0,
           };
           if(decision?.status==='selected'&&Array.isArray(decision.tokens)){

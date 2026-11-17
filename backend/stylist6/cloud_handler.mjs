@@ -118,6 +118,8 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       'invalid_combination','invalid_selection','not_enough_approved']
       .includes(f.photoEditorial?.status)?f.photoEditorial.status:'not_run',
     photoEditorialChosen:safe(f.photoEditorial?.chosen,3),
+    photoEditorialEligibleTriples:safe(f.photoEditorial?.eligibleTriples,24),
+    photoEditorialEligiblePairs:safe(f.photoEditorial?.eligiblePairs,12),
     formalPhotoProbe:f.formalPhotoProbe===true,
     prePhotoUniqueTriple:f.uniqueTripleAvailable===true,
     reasons,
