@@ -26,6 +26,7 @@ import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.
 import { hydrateCatalogObservations } from './catalog_observation.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
 import { designCreativeBriefs, CREATIVE_DIRECTOR_VERSION } from './creative_director_ai.mjs';
+import { selectFashionSlate } from './fashion_director_slate.mjs';
 import { feedbackTasteModel, FEEDBACK_TASTE_VERSION, FEEDBACK_TASTE_MAX_ROWS } from './feedback_taste.mjs';
 import { referenceFirstBriefs, explicitLookbookPhotoRequested } from './lookbook_briefs.mjs';
 import { buildReferenceBlueprints } from './reference_blueprint.mjs';
@@ -1228,12 +1229,27 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       canJudgeOutfit = async (look) => (look?.items || []).every((item) =>
         isInferenceAuthorized(item.imageUrl || item.image_url));
     }
+    // Server-only canary: one short model decision over admitted WHOLE looks.
+    // It cannot bypass SKU/merchant/weather/budget gates or visual approval.
+    const modelSlateEnabled=creativeDirectorEnabled&&visualAsked&&!!visualCritic&&
+      /^(1|true)$/i.test(String(env.STYLIST6_AI_SLATE_ENABLED||'').trim());
+    const selectDirectorFinalists=modelSlateEnabled
+      ? async({options,context})=>{
+          if(remainingMs()<22500)return {status:'deadline',tokens:[],providerCalls:0};
+          return selectFashionSlate({
+            options,context,apiKey:nvidiaKey,
+            ...(fetchImpl?{fetchImpl}:{}),
+            signal:deadlineController.signal,
+            timeoutMs:Math.min(3200,Math.max(600,remainingMs()-19500)),
+          });
+        } : null;
     deadline();
     const deck = await runWithinRemainingDeadline(() => recommendFashionDeck({
       request: input,
       catalog: feasible,
       referenceBriefs: refs,
       aiCreativeBriefs: creativePlan.briefs,
+      ...(selectDirectorFinalists?{selectDirectorFinalists}:{}),
       hardGate: async (items) => devLookFeasibility(items),
       priceToBudgetCurrency,
       feedbackTaste,

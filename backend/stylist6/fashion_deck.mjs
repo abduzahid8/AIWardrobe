@@ -1428,11 +1428,58 @@ export function polishedEveningLayerRequired(context) {
   return true;
 }
 
+/**
+ * Present a diverse, provenance-safe cross-brief sample to the model-led
+ * Fashion Director. The model sees ANONYMOUS tokens and attributes observed
+ * in current source-hash-verified photos, not merchant names or raw IDs.
+ */
+export function directorSlatePreview(looks, aiPlans = []) {
+  const canon=x=>String(x||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+  const aiKeys=(Array.isArray(aiPlans)?aiPlans:[]).map(p=>canon(p.id));
+  const groups=new Map();
+  for(const look of Array.isArray(looks)?looks:[]){
+    if(!Number.isFinite(look?.fashion?.score)||!Array.isArray(look.items))continue;
+    const key=String(look.briefId||'unplanned');
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(look);
+  }
+  const keys=[...new Set([...aiKeys,...groups.keys()])].filter(k=>groups.has(k));
+  const chosen=[],used=new Set();
+  for(let round=0;round<9&&chosen.length<28;round++){
+    for(const key of keys){
+      const arr=groups.get(key)||[];
+      const diverse=arr.find(look=>!used.has(look.id)&&chosen.every(prev=>
+        overlaps(prev,look)<Math.min(prev.items.length,look.items.length)-1));
+      const look=diverse||arr.find(x=>!used.has(x.id));
+      if(!look)continue;
+      chosen.push(look);used.add(look.id);
+      if(chosen.length>=28)break;
+    }
+  }
+  const attrs=['color','subtype','formality','texture','pattern','volume',
+    'length','bulk','soleProfile','footwearPurpose','collar'];
+  return chosen.map((look,index)=>({
+    token:'L'+String(index).padStart(2,'0'),
+    direction:aiKeys.includes(String(look.briefId||''))?'ai':'house',
+    items:look.items.map(item=>{
+      const profile=currentVisual(item),photo={};
+      for(const name of attrs){
+        const o=profile?.attributes?.[name];
+        if(confidentVisual(o)&&typeof o.value==='string')photo[name]=o.value;
+      }
+      return {slot:item.macroCategory,subtype:item.subtype,photo};
+    }),
+    look,
+  }));
+}
+
 export async function recommendFashionDeck({
   request, catalog, referenceBriefs = [], hardGate, priceToBudgetCurrency, visualCritic, canJudgeOutfit,
   // Optional trusted inventory-grounded AI directions; still subject to the
   // exact same retrieval, price, wardrobe, weather and visual checks.
   aiCreativeBriefs = [],
+  // Server-only AI chooser of REAL outfit finalists (no invented SKU access).
+  selectDirectorFinalists,
   // Optional prebuilt model from feedback_taste.mjs (explicit thumbs rows).
   // Absent/inert model = byte-identical legacy ranking (back-compat).
   feedbackTaste,
@@ -1518,9 +1565,14 @@ export async function recommendFashionDeck({
   // The pre-reviewed critic must never fill a rejected outfit from another
   // path after an NVIDIA verdict. Retain exact SKU and feasibility admission.
   const editorialVetoes = {};
-  const selectable = retrieval.shortlist.filter((look) => {
+  // The new photo-backed AI path owns taste and occasion/editorial choices,
+  // rather than accumulating product-title regexes. Keep the hard physical
+  // weather gate, and restore ALL legacy fashion gates if AI abstains.
+  const modelLed=visualDeckReview&&typeof visualCritic==='function'&&
+    typeof canJudgeOutfit==='function'&&typeof selectDirectorFinalists==='function';
+  let selectable = retrieval.shortlist.filter((look) => {
     const reason = editorialRegisterVeto(look, context);
-    if (!reason) return true;
+    if (!reason || (modelLed && reason !== 'cool_weather_sleeveless_single_layer')) return true;
     editorialVetoes[reason] = (editorialVetoes[reason] || 0) + 1;
     return false;
   });
@@ -1538,6 +1590,7 @@ export async function recommendFashionDeck({
   const visualReferenceModeById = new Map();
   let visualReviewCoverage = null;
   let visualQualityDecisions = null;
+  let modelFashionSelection = {status:'not_enabled',candidatesSeen:0,chosen:0};
   // Reference-optional review: a deck with no matching reference brief is
   // still visually judged on its product images alone (the critic marks such
   // verdicts referenceless and never claims a reference comparison). With a
@@ -1559,7 +1612,53 @@ export async function recommendFashionDeck({
     // if there is insufficient verified merchandise.
     const explicitColorPreferences=context.sourceMode==='catalog' &&
       verifiedAvoidColors(context.preferences?.avoidColors).length>0;
-    for (const look of selected) {
+    let modelChosen=false;
+    if(modelLed){
+      const preview=directorSlatePreview(selectable,aiPlans);
+      modelFashionSelection={status:'insufficient_candidates',candidatesSeen:preview.length,chosen:0};
+      if(preview.length>=6){
+        try{
+          const decision=await selectDirectorFinalists({
+            options:preview.map(({look,...safe})=>safe),
+            context:{
+              style:context.style,occasion:context.occasion,brief:context.request,
+              weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
+              preferences:context.preferences,
+            },
+          });
+          modelFashionSelection={
+            status:String(decision?.status||'no_decision').slice(0,40),
+            candidatesSeen:preview.length,chosen:0,
+            providerCalls:Math.min(1,Math.max(0,Number(decision?.providerCalls)||0)),
+          };
+          if(decision?.status==='selected'&&Array.isArray(decision.tokens)){
+            const byToken=new Map(preview.map(x=>[x.token,x.look]));
+            for(const token of decision.tokens.slice(0,6)){
+              const look=byToken.get(token);
+              if(!look||candidates.some(x=>x.id===look.id))continue;
+              if(explicitColorPreferences&&
+                photographicPaletteEvidence(look,context.preferences,requiredIds).blocked)continue;
+              if(await permitted(look))candidates.push(look);
+            }
+            modelChosen=candidates.length>=3;
+            modelFashionSelection.chosen=candidates.length;
+          }
+        }catch{
+          modelFashionSelection={status:'selection_unavailable',
+            candidatesSeen:preview.length,chosen:0};
+        }
+      }
+      if(!modelChosen){
+        // The model timeout is NOT permission to show casually mismatched
+        // combinations. Reapply proven legacy editorial admission.
+        candidates.length=0;
+        selectable=selectable.filter(x=>!editorialRegisterVeto(x,context));
+        selected=chooseDeck(selectable,deckContext);
+        if(modelFashionSelection.status==='selected')
+          modelFashionSelection.status='insufficient_admitted_selection';
+      }
+    }
+    if(!modelChosen)for(const look of selected) {
       if (explicitColorPreferences) {
         const evidence=photographicPaletteEvidence(look,context.preferences,requiredIds);
         if (!sufficientPhotographicPaletteEvidence(evidence)) continue;
@@ -1685,7 +1784,9 @@ export async function recommendFashionDeck({
           // Whole-outfit quality is conjunctive: correct colors cannot excuse
           // an unsuitable dress code or occasion. These are per-axis NVIDIA
           // verdict scores, never inferred user attributes or SKU heuristics.
-          minStyleFit: 0.72, minOccasionFit: 0.75, minFormalityFit: 0.70,
+          minStyleFit: modelChosen?0.80:0.72,
+          minOccasionFit: modelChosen?0.82:0.75,
+          minFormalityFit: modelChosen?0.80:0.70,
           avoidColors: context.preferences?.avoidColors || [],
           // Among already model-approved sets, a true signature/refresh/
           // discovery triple may outrank a near-tie with an "alternative"
@@ -1838,6 +1939,7 @@ export async function recommendFashionDeck({
       deckCopyVersion: DECK_COPY_VERSION,
       feedbackTasteVersion: FEEDBACK_TASTE_VERSION,
       feedbackTasteActive: !!(feedbackTaste && feedbackTaste.active),
+      modelFashionSelection,
       ...(visualReviewCoverage ? { visualReviewCoverage } : {}),
       ...(visualQualityDecisions ? { visualQualityDecisions } : {}),
       directions: directions.map((d) => d.id),
