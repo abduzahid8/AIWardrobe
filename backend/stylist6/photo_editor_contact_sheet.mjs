@@ -16,10 +16,14 @@ import sharp from 'sharp';
 export const PHOTO_CONTACT_SHEET_VERSION='s6-real-photo-portfolio-sheet-v1';
 export const PHOTO_CONTACT_SLOTS=['top','outerwear','bottom','shoes'];
 const MAX_LOOKS=8;
-const CELL_W=174,CELL_H=174,HEADER=35,LABEL_W=44;
+// One fairly small real-photo editorial board per request, not a catalog PDF.
+// The Render free CPU took >2.6s for the older 740px MozJPEG montage.
+const CELL_W=160,CELL_H=160,HEADER=34,LABEL_W=44;
 const WIDTH=LABEL_W+CELL_W*PHOTO_CONTACT_SLOTS.length;
 const MAX_BYTES=540_000;
-const jpegOptions={quality:68,mozjpeg:true};
+// MozJPEG runs expensive second-pass compression on a shared CPU and was
+// timing out under live Render. Default libvips JPEG is much faster.
+const jpegOptions={quality:68};
 
 const svgText=(text,x,y,{size=15,bold=false,height}={})=>Buffer.from(
   `<svg width="${WIDTH}" height="${height}" xmlns="http://www.w3.org/2000/svg">
@@ -55,7 +59,7 @@ export async function buildPhotoEditorialContactSheet(looks,{
   });
   if(sources.some(x=>!x)){note('unauthorized_or_missing');return null;}
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),Math.min(3400,Math.max(300,deadlineMs)));
+  const timer=setTimeout(()=>controller.abort(),Math.min(4600,Math.max(300,deadlineMs)));
   const combined=signal?AbortSignal.any([signal,controller.signal]):controller.signal;
   const abortPromise=new Promise((_,reject)=>{
     if(combined.aborted)reject(Error('contact_deadline'));
@@ -78,7 +82,7 @@ export async function buildPhotoEditorialContactSheet(looks,{
         asset.bytes.length>512*1024)throw Error('missing_or_oversized_photo');
       const image=await sharp(asset.bytes,{limitInputPixels:4_200_000})
         .resize(CELL_W-10,CELL_H-27,{fit:'contain',background:'#f8fafc'})
-        .jpeg({quality:68}).toBuffer();
+        .jpeg({quality:63}).toBuffer();
       return {input:image,left:LABEL_W+j*CELL_W+5,top:HEADER+i*CELL_H+18};
     }))),abortPromise]);
     for(const cell of cells)if(cell)overlays.push(cell);

@@ -412,11 +412,13 @@ export async function composeCatalogSkuLooks({
     return {status:'not_configured',looks:[],providerCalls:0};
   if(inflight>=2)return {status:'load_shed',looks:[],providerCalls:0};
   const abort=new AbortController();
-  // A six-look model call needs more than a 3s leftover from legacy ranking.
-  // Only the parallel, isolated S6 staging path may spend 8.5s IN PARALLEL
-  // with ranker work. Old callers and all non-catalog paths keep their limit.
+  // For a six-look composition the earlier eight-second canary still timed
+  // out on a REAL hosted request while retrieval spent 26s. Give this
+  // independent creative call up to 16s IN PARALLEL, not after the ranker.
+  // Other callers retain their original <=4s provider deadline, and the
+  // server-owned total + photo critic deadlines remain unchanged.
   const timer=setTimeout(()=>abort.abort(),
-    Math.min(parallel?9000:4000,Math.max(500,timeoutMs)));
+    Math.min(parallel?16500:4000,Math.max(500,timeoutMs)));
   const combined=signal?AbortSignal.any([signal,abort.signal]):abort.signal;
   inflight++;
   try{

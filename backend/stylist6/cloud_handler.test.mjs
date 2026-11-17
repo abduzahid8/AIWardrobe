@@ -13,7 +13,7 @@ import {
   STYLIST6_CLOUD_VERSION,
   fashionSlateDecisionBudgetMs,
   prewarmProductPhotos,
-  stylist6SafeQualityTrace,
+  stylist6SafeQualityTrace,enforceCatalogFourItemDeck,
   serverFashionSlateEnabled,
   canonicalRequestFingerprint,
 } from './cloud_handler.mjs';
@@ -1987,6 +1987,7 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     skuCompositionStatus:'not_run',skuCompositionProposed:null,
     skuCompositionAdmitted:null,skuCompositionExploration:null,
     skuCompositionParallel:false,
+    catalogFourItemContract:false,catalogFourItemDropped:null,
     photoRevisionStatus:'not_run',photoRevisionAttempted:null,
     photoRevisionApproved:null,
     photoEditorialStatus:'not_run',photoEditorialChosen:null,
@@ -1999,4 +2000,56 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
   assert.doesNotMatch(JSON.stringify(out),/secret|example|private|contact info/);
   assert.equal(stylist6SafeQualityTrace(null,5,-1).displayed,null,
     'trace cannot invent out-of-range deck counts');
+});
+
+test('four actual source SKUs per shoppable catalog outfit, never fake/empty fourth card',()=>{
+  const ids=['shirt-real','blazer-real','trouser-real','loafer-real'];
+  const roles=['top','outerwear','bottom','shoes'];
+  const complete={id:'complete',items:roles.map((macroCategory,i)=>({
+    id:ids[i],macroCategory,isShopItem:true}))};
+  const missingLayer={id:'missing-layer',items:complete.items.filter(x=>x.macroCategory!=='outerwear')};
+  const repeated={id:'repeated',items:complete.items.map((x,i)=>i===1?{...x,id:ids[0]}:x)};
+  const mislabeled={id:'mislabeled',items:complete.items.map((x,i)=>i===1?{...x,macroCategory:'top'}:x)};
+  const notSourceBound={id:'synthetic',items:complete.items.map((x,i)=>i===1?{...x,isShopItem:false}:x)};
+  const raw={status:'complete',outfits:[missingLayer,complete,repeated,mislabeled,notSourceBound],
+    diagnostics:{visualVerdict:'JUDGED'}};
+  const checked=enforceCatalogFourItemDeck(raw,'catalog');
+  assert.equal(checked.status,'partial');
+  assert.deepEqual(checked.outfits.map(x=>x.id),['complete']);
+  assert.equal(checked.diagnostics.catalogFourItemContract,true);
+  assert.equal(checked.diagnostics.catalogFourItemDropped,4);
+  assert.equal(checked.diagnostics.visualVerdict,'JUDGED',
+    'no original photo evidence / quality gate can be rewritten');
+  const empty=enforceCatalogFourItemDeck({...raw,outfits:[missingLayer]},'catalog');
+  assert.equal(empty.status,'no_feasible_looks');
+  assert.equal(empty.outfits.length,0,'do not pad a missing fourth garment');
+  assert.equal(enforceCatalogFourItemDeck(raw,'wardrobe'),raw,
+    'owned wardrobe mode retains real user choice');
+  assert.equal(enforceCatalogFourItemDeck(raw,'mixed'),raw);
+});
+
+test('72-second authenticated catalog cloud request never publishes three garment items',async()=>{
+  const body=JSON.stringify({...baseRequest,style:'classic',occasion:'Work',
+    brief:'Smart business casual office',
+    generationRequestId:'4c97c812-02f9-4b4b-9a36-0ef988ca0004'});
+  const authorization='Bearer '+JWT;
+  const signed=await signStylistTransport({secret:SECRET,body,authorization});
+  const merchantRows=[
+    ...SHOP,
+    ...['Navy Wool Blazer','Grey Tailored Blazer','Beige Linen Overshirt']
+      .map((name,i)=>({...shopRow('actual-layer-'+i,'outerwear',230000),
+        name})),
+  ];
+  const {io}=makeIo({shopRows:merchantRows});
+  const result=await handleStylist6CloudGenerate({
+    method:'POST',headers:{authorization,...signed},bodyText:body,env,io,
+    timeoutMs:72000,
+  });
+  assert.equal(result.status,200,
+    'a real merchant catalog with authorized outer layers can form a four-piece deck');
+  assert.ok(result.body.outfits.length>=1);
+  assert.ok(result.body.outfits.every(look=>look.items.length===4),
+    'all displayed stylist-6 catalog outfit cards have exactly four products');
+  assert.ok(result.body.outfits.every(look=>
+    new Set(look.items.map(item=>item.macroCategory)).size===4));
 });

@@ -165,7 +165,11 @@ export async function selectPhotoEditorialDeck({
       const photoStart=Date.now();
       const sheet=await buildPhotoEditorialContactSheet(looks,{
         resolvePhoto,authorizePhoto,
-        deadlineMs:Math.min(2600,Math.max(750,Math.floor(timeoutMs/3))),
+        // Prior real iOS evidence: photo montage deadline, even when its
+        // source images were independently photo-approved. Reserve a genuine
+        // 3.8-second fast-JPEG board window while keeping >=2.4 seconds for
+        // the already-proven text editor if visual media cannot be built.
+        deadlineMs:Math.min(3800,Math.max(750,Math.floor(timeoutMs*.45))),
         signal:combined,onStatus:status=>{visualMediaStatus=status;},
       });
       if(sheet&&!combined.aborted){

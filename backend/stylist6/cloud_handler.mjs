@@ -126,6 +126,8 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     skuCompositionAdmitted:safe(f.skuCompositionReceipt?.admitted,6),
     skuCompositionExploration:safe(f.skuCompositionReceipt?.exploratoryProducts,48),
     skuCompositionParallel:f.skuCompositionReceipt?.parallel===true,
+    catalogFourItemContract:f.catalogFourItemContract===true,
+    catalogFourItemDropped:safe(f.catalogFourItemDropped,3),
     photoRevisionStatus:['composed','unavailable','deadline','timeout',
       'invalid_composition','incomplete','provider_unavailable',
       'provider_schema_rejected','insufficient_inventory','load_shed']
@@ -150,6 +152,32 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     formalPhotoProbe:f.formalPhotoProbe===true,
     prePhotoUniqueTriple:f.uniqueTripleAvailable===true,
     reasons,
+  };
+}
+
+/**
+ * Catalog-shoppable stylist contract: one COMPLETE photographed outfit has
+ * exactly four different merchandise roles (top, meaningful outer layer,
+ * bottom, shoes), not three items padded in the app.
+ *
+ * All other hard gates and NVIDIA verdicts already ran in recommendFashionDeck.
+ * Never invent a fourth SKU or relabel an unjudged garment as approved.
+ * Owned wardrobe / mixed-mode requests retain their original semantics.
+ */
+export function enforceCatalogFourItemDeck(deck,sourceMode){
+  if(sourceMode!=='catalog'||!deck||!Array.isArray(deck.outfits))return deck;
+  const slots=['top','outerwear','bottom','shoes'];
+  const isComplete=look=>Array.isArray(look?.items)&&look.items.length===4&&
+    slots.every(slot=>look.items.filter(item=>item?.macroCategory===slot).length===1)&&
+    new Set(look.items.map(item=>String(item.id||''))).size===4&&
+    look.items.every(item=>item?.isShopItem===true&&typeof item.id==='string');
+  const kept=deck.outfits.filter(isComplete);
+  return {...deck,
+    outfits:kept,
+    status:kept.length===3?'complete':kept.length?'partial':'no_feasible_looks',
+    diagnostics:{...deck.diagnostics,
+      catalogFourItemContract:true,
+      catalogFourItemDropped:deck.outfits.length-kept.length},
   };
 }
 
@@ -1253,7 +1281,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       budget,
       style,
       occasion,
-      optionalLayer: true,
+      // Owner requirement: every shoppable CATALOG look has 4 real items.
+      // The fourth is a meaningful photo-verifiable layer (not a filler).
+      // Other existing owned/mixed compositions retain optional layering.
+      optionalLayer: !(sourceMode==='catalog' && budgetMs>=70000),
       preferences: request.preferences && typeof request.preferences === 'object' ? request.preferences : {},
       // Language pass-through: fashionStylingContext spreads the request into
       // the styling context, so deck_editorial_copy reads it from there. The
@@ -1434,7 +1465,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:parallel
-              ?Math.min(8500,Math.max(2000,left-24500))
+              ?Math.min(16000,Math.max(2000,left-24500))
               :Math.min(3000,Math.max(500,left-24500)),
           });
         }:null;
@@ -1467,7 +1498,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             timeoutMs:Math.min(9600,Math.max(500,left-3300)),
           });
         } : null;
-    const deck = await runWithinRemainingDeadline(() => recommendFashionDeck({
+    const computedDeck = await runWithinRemainingDeadline(() => recommendFashionDeck({
       request: input,
       catalog: feasible,
       referenceBriefs: refs,
@@ -1499,6 +1530,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       ...(selectPhotoApprovedPortfolio?{selectPhotoApprovedPortfolio}:{}),
       ...(visualCritic ? { visualCritic, canJudgeOutfit, canDisplayOutfit } : {}),
     }));
+    // Enforce the complete four-SKU contract at the FINAL cloud boundary.
+    // No client-side card can silently lose the outerwear and claim an outfit.
+    const deck=budgetMs>=70000
+      ?enforceCatalogFourItemDeck(computedDeck,sourceMode)
+      :computedDeck;
     nextPhase('result_mapping');
     const visualStatus = mapCloudVisualStatus(deck);
     if ((deck.status !== 'complete' && deck.status !== 'partial') || !deck.outfits.length) {

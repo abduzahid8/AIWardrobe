@@ -2293,3 +2293,23 @@ test('parallel catalogue-first fashion AI starts BEFORE prebuilt look retrieval 
   assert.ok(result.outfits.every(look=>photoReviewed.some(x=>x.id===look.id)));
   assert.ok(result.outfits.every(look=>look.items.every(item=>item.isShopItem===true)));
 });
+
+test('catalog four-item request requires a genuine photographed outer layer in every outfit',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:18},optionalLayer:false,
+    preferences:{},requiredIds:[],
+    budget:{amount:2100000,currency:'UZS'}};
+  const result=await recommendFashionDeck({
+    ...base,request,referenceBriefs:refs,
+    visualDeckReview:true,
+    canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>batch.map(look=>admittedVisualVerdict(look)),
+  });
+  assert.ok(result.outfits.length>=1,
+    'a wardrobe with real wool blazers can fulfill four-item Work styling');
+  assert.ok(result.outfits.every(o=>o.items.length===4));
+  assert.ok(result.outfits.every(o=>
+    ['top','outerwear','bottom','shoes'].every(slot=>
+      o.items.filter(item=>item.macroCategory===slot).length===1)));
+  assert.ok(result.outfits.every(o=>o.visualEvidence?.length>=0));
+});

@@ -73,6 +73,39 @@ The target is not 100% subjective approval (cannot be guaranteed); the measurabl
 - Regression test `__tests__/features/stylist6CloudPublication.test.js` now protects the default QA route against reverting to a 50-second compute path where the full composer/editor is silently disabled. New code test has not been locally executed here; CI result must be checked.
 - Next: run the existing authenticated visual worker for the bounded pending jobs when its operator access is available; verify how many finished with image-observed attributes and are used by actual outfit candidate discovery. Audit exact rejected outfit photos before changing editorial thresholds.
 
+## 2026-11-17 — owner correction: exactly FOUR real shoppable items per look
+
+The owner explicitly identified a regression: the native iPhone Stylist6
+generated three-garment catalog looks even though each shoppable recommendation
+must contain FOUR actual products. Root cause: cloud input always set
+`optionalLayer:true`; `resolveOutfitComposition` allowed an omitted
+outerwear slot and the AI SKU composer legitimately emitted `outerwear:'none'`.
+An attractive photo verdict on the three remaining items cannot silently
+fulfill the owner's four-product contract.
+
+- On the isolated >=70s Stylist6 Render catalog staging path, every full look
+  must contain **one real top + one real appropriate outer layer + one real
+  bottom + one real pair of shoes**. `optionalLayer:false` is sent to the
+  original outfit designer; no invented synthetic fourth product.
+- The cloud response **enforces all four SKU-backed roles again** before
+  mapping to iOS, rejecting missing/repeated/unsourced fourth items.
+  The fallback may honestly return one/two complete looks, or a non-success
+  when none passes. Never pad a rejected/missing fourth item, suppress
+  NVIDIA objections or claim a three-item look fulfills four-item styling.
+- Wardrobe and mixed user-owned sourcing, and short-budget Vercel/S5
+  deployment paths are not changed by this staging contract. Production
+  Stylist5 remains untouched. Dedicated acceptance tests include 72s
+  authenticated cloud with four real merchant SKUs, partial invalid deck
+  filtering and independent whole-look photo evaluation.
+- **Known product-design constraint:** physically sensible dressing at 30°C
+  or an explicit request to avoid a jacket may call for an accessory instead
+  of a layer. This existing four-slot catalog schema has NO independently
+  sourced accessory role. We must not silently turn a 30°C request into a
+  heavy jacket; an accessory-capable four-product outfit needs real merchant
+  accessory inventory, schema and independent full-photo judgment. Until
+  those exist, strict four-item staging may have fewer/no suitable looks
+  rather than a fabricated perfect result. This is OPEN product work.
+
 ## 2026-11-17 — six-look autonomous AI fashion audition and real personalized taste
 
 - Original 72s Render feedback loop from c459bef was **LIVE**, not merely in a branch. Three logged Real-photo runs after it: 10:27 UTC -> 6/8 photo approved, 3 displayed, final editor applied; 10:31 UTC -> 5/8 photo approved, 3 displayed, editor applied; 10:36 UTC -> 4/8 photo approved, 2 displayed, editor applied. This is mixed evidence, NOT a blinded human quality win. All three showed 3 independently AI-composed and source-admitted candidates; the proposed second photo revision was not run in these traces.

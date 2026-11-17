@@ -172,3 +172,22 @@ No new LIVE aesthetic acceptance or post-deploy server result is claimed here.
 Require actual iOS Classic/Work and Classic/Date night, source-admitted model
 slate, full photo-review rejection breakdown, independent human blind quality
 and a truthful `photoEditorialVisualMedia`/visual-jury event.
+
+
+## 2026-11-17 — fixed missing fourth product in actual catalog looks
+
+Explicit owner correction: four real items per shoppable look, not merely three.
+Existing cloud input had `optionalLayer:true` and warm/optional look-policy
+would omit outerwear; AI `outerwear:none` was valid, so a photo-approved deck
+could still have only top, bottom and shoes.
+
+Strict 72s Render catalog canary now passes non-optional layering to the
+actual outfit planner and independently verifies the *returned* whole deck
+contains exactly one each of top/outerwear/bottom/shoes, all unique
+source-verified merchant SKUs. A missing fourth NEVER gets a made-up SKU
+or an undeserved NVIDIA photo verdict. Smaller-budget routes and mixed or
+wardrobe sources remain unchanged. A four-piece wardrobe test (photo reviewed)
+and a signed, 72s full cloud handler test with actual source-backed blazers
+pass. The real iOS after-deploy screenshot is still required before claiming
+this reached the user. No guarantee of climate-suitable fourth product in
+very hot weather until real accessory catalog infrastructure is introduced.
