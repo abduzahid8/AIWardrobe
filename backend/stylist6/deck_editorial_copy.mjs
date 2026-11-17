@@ -19,7 +19,7 @@ import { describeGarment } from '../../src/domain/garmentDescriptor.ts';
 import { lookConcept } from '../../src/domain/outfitConcepts.ts';
 import { normalizeStylistLanguage } from '../../src/domain/stylingContext.ts';
 
-export const DECK_COPY_VERSION = 's6-grounded-deck-copy-v4';
+export const DECK_COPY_VERSION = 's6-grounded-deck-copy-v5';
 const slotOrder = ['top','outerwear','bottom','shoes'];
 const known = x => typeof x === 'string' && !!x &&
   !['unknown','neutral','missing'].includes(x.toLowerCase());
@@ -31,21 +31,32 @@ const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 const enRole = d => {
   if (!d) return '';
   const names = {
-    'top': { 'fine-knit':'knitwear','t-shirt':'tee','shirt':'shirt','dress-shirt':'dress shirt',
+    'top': { 'fine-knit':'knitwear','t-shirt':'tee','tank-top':'tank top','shirt':'shirt','dress-shirt':'dress shirt',
       'polo':'polo','knit-polo':'knit polo','sweater':'sweater' },
     'outerwear': { 'blazer':'blazer','cardigan':'cardigan','coat':'coat','jacket':'jacket',
       'overshirt':'overshirt','bomber':'bomber' },
     'bottom': { 'chino':'chinos','jeans':'jeans','tailored-trouser':'tailored trousers',
-      'trouser':'trousers','shorts':'shorts' },
+      'trouser':'trousers','shorts':'shorts','athletic-trouser':'joggers',
+      'knit-trouser':'knit trousers' },
     'shoes': { 'loafer':'loafers','derby':'derbies','oxford':'oxfords',
       'chelsea':'Chelsea boots','minimal-sneaker':'minimal sneakers',
-      'sneaker':'sneakers','sport-sneaker':'sport sneakers','dress-boot':'dress boots' },
+      'sneaker':'sneakers','sport-sneaker':'training sneakers','dress-boot':'dress boots' },
   };
   return names[d.slot]?.[d.subtype] || '';
 };
 
 function details(items) {
-  const descriptors = (items || []).map(describeGarment);
+  // Copy only: a stale cached catalog taxonomy must not call a visibly
+  // named technical T-SHIRT "knitwear". No admission, SKU or vision edits.
+  const descriptors=(items||[]).map(item=>{
+    const d=describeGarment(item);
+    if(d.slot!=='top'||typeof item?.name!=='string')return d;
+    if(/\b(?:tank(?:[ -]?top)?|sleeveless[ -]?(?:top|shirt|vest))\b/i.test(item.name))
+      return {...d,subtype:'tank-top'};
+    if(/\bt[ -]?shirts?\b/i.test(item.name) && d.subtype!=='t-shirt')
+      return {...d,subtype:'t-shirt'};
+    return d;
+  });
   return Object.fromEntries(slotOrder.map(slot => [slot,
     descriptors.find(d => d.slot === slot) || null]));
 }
@@ -61,6 +72,7 @@ const RU = {
     'top': {
       'fine-knit': {nom:'трикотаж',gen:'трикотажа',acc:'трикотаж',g:'m'},
       't-shirt': {nom:'футболка',gen:'футболки',acc:'футболку',g:'f'},
+      'tank-top': {nom:'майка',gen:'майки',acc:'майку',g:'f'},
       'shirt': {nom:'рубашка',gen:'рубашки',acc:'рубашку',g:'f'},
       'dress-shirt': {nom:'рубашка',gen:'рубашки',acc:'рубашку',g:'f'},
       'polo': {nom:'поло',gen:'поло',acc:'поло',g:'n'},
@@ -80,6 +92,8 @@ const RU = {
       'jeans': {nom:'джинсы',gen:'джинсов',acc:'джинсы',g:'p'},
       'tailored-trouser': {nom:'классические брюки',gen:'классических брюк',acc:'классические брюки',g:'p'},
       'trouser': {nom:'брюки',gen:'брюк',acc:'брюки',g:'p'},
+      'athletic-trouser': {nom:'джоггеры',gen:'джоггеров',acc:'джоггеры',g:'p'},
+      'knit-trouser': {nom:'трикотажные брюки',gen:'трикотажных брюк',acc:'трикотажные брюки',g:'p'},
       'shorts': {nom:'шорты',gen:'шорт',acc:'шорты',g:'p'},
     },
     'shoes': {
@@ -206,6 +220,7 @@ const UZ = {
     'top': {
       'fine-knit': 'trikotaj','t-shirt': 'futbolka','shirt': "ko'ylak",
       'dress-shirt': "klassik ko'ylak",'polo': 'polo','knit-polo': 'trikotaj polo',
+      'tank-top': 'mayka',
       'sweater': 'sviter',
     },
     'outerwear': {
@@ -214,7 +229,8 @@ const UZ = {
     },
     'bottom': {
       'chino': 'chino shim','jeans': 'jinsi shim','tailored-trouser': "klassik shim",
-      'trouser': 'shim','shorts': 'shorti',
+      'trouser': 'shim','shorts': 'shorti','athletic-trouser': 'sport shim',
+      'knit-trouser': 'trikotaj shim',
     },
     'shoes': {
       'loafer': 'lofer','derby': 'derbi','oxford': 'oksford',
@@ -465,6 +481,12 @@ function localizedPrefix(lang, context, direction) {
 function localizedNativeHeadline(lang, nativeTitle, part) {
   const L = COPY_LOCALES[lang];
   const title = String(nativeTitle || '');
+  if(/^(?:shirt|polo|knitwear|blazer|sport sneakers|shoes|tee)$/i.test(title)){
+    const top=roleFor(lang,part?.top),bottom=roleFor(lang,part?.bottom);
+    const layer=roleFor(lang,part?.outerwear);
+    if(layer&&bottom&&/blazer/i.test(title))return L.pairTitle(layer.nom,bottom.nom);
+    if(top&&bottom)return L.pairTitle(top.nom,bottom.nom);
+  }
   if (!(part?.outerwear || !/\blayer(?:s|ing)?\b/i.test(title))) {
     // The layering headline is ungrounded without an actual layer: same
     // replacement rule as English, in the display language.
@@ -477,40 +499,34 @@ function localizedNativeHeadline(lang, nativeTitle, part) {
 }
 
 function localizedHeadlineCandidates(lang, part, direction) {
-  const L = COPY_LOCALES[lang];
-  const e = direction?.evidence || {};
-  const focusSlots = [...new Set([
-    ...(Array.isArray(e.structuralSlots) ? e.structuralSlots : []),
-    ...(Array.isArray(e.paletteSlots) ? e.paletteSlots : []),
-    ...slotOrder,
+  const L=COPY_LOCALES[lang],e=direction?.evidence||{};
+  const focusSlots=[...new Set([
+    ...(Array.isArray(e.structuralSlots)?e.structuralSlots:[]),
+    ...(Array.isArray(e.paletteSlots)?e.paletteSlots:[]),...slotOrder,
   ])];
-  const result = [];
-  const roleOnly = [];
-  for (const slot of focusSlots) {
-    const d = part[slot];
-    const role = roleFor(lang, d);
-    if (!role) continue;
-    if (known(d.color)) {
-      const color = colorFor(lang, d.color, role.g || role.gender);
-      if (color) {
-        result.push(lang === 'en'
-          ? `${titleCase(color)} ${titleCase(role.name)}`
-          : L.colorRoleTitle(color, role.nom));
-      } else if (lang !== 'en') {
-        // Unknown color: the color-led candidate falls back to English —
-        // same wording rules, never a mixed-language string.
-        result.push(`${titleCase(d.color)} ${titleCase(enRole(d))}`);
-      }
+  const result=[],roleOnly=[];
+  const top=roleFor(lang,part.top),bottom=roleFor(lang,part.bottom);
+  const layer=roleFor(lang,part.outerwear),shoes=roleFor(lang,part.shoes);
+  const pair=(a,b)=>lang==='en'
+    ? titleCase(a.name)+' & '+titleCase(b.name)
+    : L.pairTitle(a.nom,b.nom);
+  // A pairing describes a real outfit; "Polo" alone is only one garment.
+  if(layer&&bottom)result.push(pair(layer,bottom));
+  if(top&&bottom)result.push(pair(top,bottom));
+  if(!top&&bottom&&shoes)result.push(pair(bottom,shoes));
+  for(const slot of focusSlots){
+    const d=part[slot],role=roleFor(lang,d);
+    if(!role)continue;
+    if(known(d.color)){
+      const color=colorFor(lang,d.color,role.g||role.gender);
+      if(color)result.push(lang==='en'
+        ? titleCase(color)+' '+titleCase(role.name)
+        : L.colorRoleTitle(color,role.nom));
+      else if(lang!=='en'&&enRole(d))
+        result.push(titleCase(d.color)+' '+titleCase(enRole(d)));
     }
-    roleOnly.push(lang === 'en' ? titleCase(role.name) : cap(role.nom));
+    roleOnly.push(lang==='en'?titleCase(role.name):cap(role.nom));
   }
-  const top = roleFor(lang, part.top), bottom = roleFor(lang, part.bottom);
-  const layer = roleFor(lang, part.outerwear);
-  const pair = (a, b) => lang === 'en'
-    ? `${titleCase(a.name)} & ${titleCase(b.name)}`
-    : L.pairTitle(a.nom, b.nom);
-  if (top && bottom) result.push(pair(top, bottom));
-  if (layer && bottom) result.push(pair(layer, bottom));
   result.push(...roleOnly);
   return [...new Set(result)];
 }
@@ -613,31 +629,34 @@ export function groundedNativeHeadline(nativeTitle, part, language) {
   if (language && language !== 'en') {
     return localizedNativeHeadline(language, title, part) ?? title;
   }
+  if(/^(?:shirt|polo|knitwear|blazer|sport sneakers|shoes|tee)$/i.test(title)){
+    const top=enRole(part?.top),bottom=enRole(part?.bottom),layer=enRole(part?.outerwear);
+    if(layer&&bottom&&/blazer/i.test(title))
+      return titleCase(layer)+' & '+titleCase(bottom);
+    if(top&&bottom)return titleCase(top)+' & '+titleCase(bottom);
+  }
   if (part?.outerwear || !/\blayer(?:s|ing)?\b/i.test(title)) return title;
   const top = enRole(part?.top), bottom = enRole(part?.bottom);
   return top && bottom ? `${titleCase(top)} & ${titleCase(bottom)}` : 'Clean separates';
 }
 
-function headlineCandidates(part, direction) {
-  const e = direction?.evidence || {};
-  const focusSlots = [...new Set([
-    ...(Array.isArray(e.structuralSlots) ? e.structuralSlots : []),
-    ...(Array.isArray(e.paletteSlots) ? e.paletteSlots : []),
-    ...slotOrder,
+function headlineCandidates(part,direction) {
+  const e=direction?.evidence||{};
+  const focusSlots=[...new Set([
+    ...(Array.isArray(e.structuralSlots)?e.structuralSlots:[]),
+    ...(Array.isArray(e.paletteSlots)?e.paletteSlots:[]),...slotOrder,
   ])];
-  const result = [];
-  for (const slot of focusSlots) {
-    const d = part[slot];
-    if (!enRole(d)) continue;
-    if (known(d.color)) result.push(`${titleCase(d.color)} ${titleCase(enRole(d))}`);
-    result.push(titleCase(enRole(d)));
-  }
-  const top = part.top, bottom = part.bottom, layer = part.outerwear;
-  if (top && bottom && enRole(top) && enRole(bottom)) {
-    result.push(`${titleCase(enRole(top))} & ${titleCase(enRole(bottom))}`);
-  }
-  if (layer && bottom && enRole(layer) && enRole(bottom)) {
-    result.push(`${titleCase(enRole(layer))} & ${titleCase(enRole(bottom))}`);
+  const result=[];
+  const top=enRole(part.top),bottom=enRole(part.bottom),layer=enRole(part.outerwear);
+  const shoes=enRole(part.shoes);
+  if(layer&&bottom)result.push(titleCase(layer)+' & '+titleCase(bottom));
+  if(top&&bottom)result.push(titleCase(top)+' & '+titleCase(bottom));
+  if(!top&&bottom&&shoes)result.push(titleCase(bottom)+' & '+titleCase(shoes));
+  for(const slot of focusSlots){
+    const d=part[slot],role=enRole(d);
+    if(!role)continue;
+    if(known(d.color))result.push(titleCase(d.color)+' '+titleCase(role));
+    result.push(titleCase(role));
   }
   return [...new Set(result)];
 }

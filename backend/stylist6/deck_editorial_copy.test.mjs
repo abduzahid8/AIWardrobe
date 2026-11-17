@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { editorialDeckCopy, DECK_COPY_VERSION, groundedNativeHeadline } from './deck_editorial_copy.mjs';
 import { stylingContext } from '../../src/domain/stylingContext.ts';
+import { prepareGarment, describeGarment } from '../../src/domain/garmentDescriptor.ts';
 import { lookConcept } from '../../src/domain/outfitConcepts.ts';
 
 const context = stylingContext({style:'classic', occasion:'Work', request:'', optionalLayer:true});
@@ -37,7 +38,7 @@ test('three cards have distinct, deterministic, evidence-grounded headings',()=>
   const native=lookConcept(looks[0].items,context).concept;
   const firstPass=editorialDeckCopy(looks,context,directions);
   const secondPass=editorialDeckCopy(looks,context,directions);
-  assert.equal(DECK_COPY_VERSION,'s6-grounded-deck-copy-v4');
+  assert.equal(DECK_COPY_VERSION,'s6-grounded-deck-copy-v5');
   assert.deepEqual(firstPass,secondPass);
   assert.equal(firstPass[0].concept.title,native.title);
   assert.equal(new Set(firstPass.map(x=>x.concept.title.toLowerCase())).size,3);
@@ -251,4 +252,50 @@ test('uzbek card headlines stay capitalized, prefer paired nouns over bare slot 
   );
   assert.ok(bareDeck.some(c=>/va /i.test(c.concept.title)),`expected paired headline before bare role noun, got: ${bareDeck.map(c=>c.concept.title).join(', ')}`);
   assert.ok(bareDeck.every(c=>/^[A-ZА-ЯЁ]/.test(c.concept.title)));
+});
+
+
+test('real training tee with stale knit taxonomy gets a grounded full-outfit headline, not Knitwear',()=>{
+  const top={id:'training-tee',macroCategory:'top',
+    name:'TRAINING TECHNICAL LONG SLEEVE T-SHIRT'};
+  const bottom={id:'training-joggers',macroCategory:'bottom',name:'Joggers'};
+  const shoes={id:'training-shoes',macroCategory:'shoes',name:'TRAINING TRAINERS'};
+  // Simulate the real prepared source snapshot that previously produced the
+  // misleading native card "Knitwear" for a technical training T-shirt.
+  const prepared=[
+    prepareGarment(top,{...describeGarment(top),subtype:'fine-knit'}),
+    prepareGarment(bottom,{...describeGarment(bottom),subtype:'athletic-trouser'}),
+    prepareGarment(shoes),
+  ];
+  const sportCtx=stylingContext({style:'casual',occasion:'Sport',optionalLayer:true});
+  const cards=editorialDeckCopy([looks[0],{id:'training-card',items:prepared}],sportCtx,[
+    {id:'signature',qualified:true,evidence:{structuralSlots:[],paletteSlots:[]}},
+    {id:'refresh',qualified:true,evidence:{structuralSlots:['top'],paletteSlots:[]}},
+  ]);
+  assert.match(cards[1].concept.title,/Tee & Joggers/i,
+    'an actual technical shirt and athletic trousers form a real outfit');
+  assert.doesNotMatch(cards[1].concept.title,/Knitwear|Sport Sneakers/i);
+  assert.equal(describeGarment(prepared[0]).subtype,'fine-knit',
+    'fashion admission taxonomy stays untouched; only copy is corrected');
+  const realPart={top:{slot:'top',subtype:'t-shirt'},
+    bottom:{slot:'bottom',subtype:'athletic-trouser'}};
+  assert.equal(groundedNativeHeadline('Knitwear',realPart),'Tee & Joggers');
+  assert.equal(groundedNativeHeadline('Knitwear',realPart,'ru'),'Футболка и джоггеры');
+  assert.equal(groundedNativeHeadline('Knitwear',realPart,'uz'),'Futbolka va sport shim');
+});
+
+test('catalog fashion cards name combinations instead of single shoes or one generic top',()=>{
+  const sportCtx=stylingContext({style:'casual',occasion:'Sport',optionalLayer:true});
+  const cards=editorialDeckCopy([looks[0],{
+    id:'gym-set',items:[
+      garment('tank','Tank Vigor 7 slim fit technical fabric','top'),
+      garment('joggers','Joggers','bottom'),
+      garment('trainers','TRAINING TRAINERS','shoes'),
+    ],
+  }],sportCtx,[
+    {id:'signature',qualified:true,evidence:{structuralSlots:[],paletteSlots:[]}},
+    {id:'refresh',qualified:true,evidence:{structuralSlots:['shoes'],paletteSlots:[]}},
+  ]);
+  assert.match(cards[1].concept.title,/Tank Top & (?:Joggers|Trousers)/i);
+  assert.doesNotMatch(cards[1].concept.title,/^(?:Sport Sneakers|Tank Top)$/i);
 });
