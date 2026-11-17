@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {sourceBoundCompositionPool,groundedSkuDirections,
-  validateSkuCompositions,composeCatalogSkuLooks,
+  groundedPhotoRevisionFeedback,validateSkuCompositions,composeCatalogSkuLooks,
   sourceVerifyComposedOutfits,AI_SKU_COMPOSER_VERSION} from './sku_composer_ai.mjs';
 const slots=['top','outerwear','bottom','shoes'];
 const items=Array.from({length:6},(_,i)=>slots.map((slot,j)=>({
@@ -228,4 +228,38 @@ test('malformed and unavailable AI fashion directions never invent missing merch
   assert.equal(groundedSkuDirections([{
     ...missing,generatedBy:'user-supplied-impersonation',
   }],sample).length,0);
+});
+
+
+test('true photo-critic rejection feedback guides independent SKU re-composition without leaking private data',async()=>{
+  const source=sourceBoundCompositionPool(looks);
+  const critique={
+    reasons:['style_mismatch','below_quality_floor','occasion_mismatch',
+      'my secret JWT','approved','low_confidence'],
+    approvedArchitectures:[{top:'shirt',outerwear:'blazer',
+      bottom:'tailored-trouser',shoes:'oxford',
+      secret:'USER_IDENTIFYING_TOKEN',id:'PRIVATE_SKU_333'}],
+  };
+  const sanitized=groundedPhotoRevisionFeedback(critique);
+  assert.deepEqual(sanitized.previousRejectedReasons,[
+    'style_mismatch','below_quality_floor','occasion_mismatch','low_confidence']);
+  assert.equal(sanitized.previousAcceptedArchitectures.length,1);
+  assert.doesNotMatch(JSON.stringify(sanitized),/my secret|JWT|PRIVATE|USER_IDENTIFYING/);
+  let times=0;
+  const output=await composeCatalogSkuLooks({
+    pool:source,critiqueFeedback:critique,apiKey:'nvapi-test',
+    context:{style:'classic',occasion:'Date night'},
+    fetchImpl:async(_,options)=>{
+      times++;
+      const data=JSON.parse(options.body),prompt=data.messages[0].content;
+      assert.match(prompt,/SECOND CREATIVE PASS/);
+      assert.match(prompt,/independentPhotoCriticRevision/);
+      assert.match(prompt,/below_quality_floor/);
+      assert.doesNotMatch(prompt,/my secret|PRIVATE_SKU|USER_IDENTIFYING/);
+      return result(slotAnswer(source));
+    },
+  });
+  assert.equal(output.status,'composed');
+  assert.equal(times,1);
+  assert.equal(output.looks.length,3);
 });

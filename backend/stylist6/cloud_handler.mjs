@@ -125,6 +125,12 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     skuCompositionProposed:safe(f.skuCompositionReceipt?.proposed,3),
     skuCompositionAdmitted:safe(f.skuCompositionReceipt?.admitted,3),
     skuCompositionExploration:safe(f.skuCompositionReceipt?.exploratoryProducts,48),
+    photoRevisionStatus:['composed','unavailable','deadline','timeout',
+      'invalid_composition','incomplete','provider_unavailable',
+      'provider_schema_rejected','insufficient_inventory','load_shed']
+      .includes(f.photoRevisionStatus)?f.photoRevisionStatus:'not_run',
+    photoRevisionAttempted:safe(f.photoRevisionAttempted,3),
+    photoRevisionApproved:safe(f.photoRevisionApproved,3),
     photoEditorialStatus:['applied','deadline','timeout','provider_unavailable',
       'invalid_combination','invalid_selection','not_enough_approved']
       .includes(f.photoEditorial?.status)?f.photoEditorial.status:'not_run',
@@ -1348,17 +1354,20 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
               .filter((imageUrl) => isInferenceAuthorized(imageUrl)),
           ),
         )];
+        // A second/third photo wave must share its own shorter deadline
+        // through BOTH merchant prewarm and the NVIDIA critic. Otherwise a
+        // CDN stall can consume the remaining 72s staging request budget.
+        const combinedSignal = criticOptions?.signal
+          ? AbortSignal.any([deadlineController.signal, criticOptions.signal])
+          : deadlineController.signal;
         // CRITICAL: use the tested parallel prewarm on the REAL request
         // path. Previously the helper existed but this closure still ran
         // serial batches of six; formal 4-slot looks repeatedly timed out.
         // The critic itself retains all photo authorization/quality gates.
         nextPhase('merchant_photos');
         await prewarmProductPhotos(urls, resolveProduct, {
-          remainingMs, signal: deadlineController.signal,
+          remainingMs, signal: combinedSignal,
         });
-        const combinedSignal = criticOptions?.signal
-          ? AbortSignal.any([deadlineController.signal, criticOptions.signal])
-          : deadlineController.signal;
         nextPhase('nvidia_visual_critic');
         return rawVisualCritic(candidates, critiqueRequest, { ...criticOptions, signal: combinedSignal });
       };
@@ -1408,6 +1417,18 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             timeoutMs:Math.min(3000,Math.max(500,left-24500)),
           });
         }:null;
+    const selectCatalogRescueCompositions=selectCatalogCompositions
+      ? async({pool,context,directions,critiqueFeedback,layerRequired,allowLayer})=>{
+          const left=remainingMs();
+          if(left<16500)return {status:'deadline',looks:[],providerCalls:0};
+          nextPhase('ai_vision_feedback_revision');
+          return composeCatalogSkuLooks({
+            pool,context,directions,critiqueFeedback,layerRequired,allowLayer,
+            apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
+            signal:deadlineController.signal,
+            timeoutMs:Math.min(2400,Math.max(550,left-13900)),
+          });
+        }:null;
     const selectPhotoApprovedPortfolio=modelSlateEnabled&&budgetMs>=70000
       ? async({looks,critiques,portfolios,context})=>{
           const left=remainingMs();
@@ -1427,6 +1448,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       aiCreativeBriefs: creativePlan.briefs,
       ...(selectDirectorFinalists?{selectDirectorFinalists}:{}),
       ...(selectCatalogCompositions?{selectCatalogCompositions}:{}),
+      ...(selectCatalogRescueCompositions?{selectCatalogRescueCompositions}:{}),
       hardGate: async (items) => devLookFeasibility(items),
       priceToBudgetCurrency,
       feedbackTaste,

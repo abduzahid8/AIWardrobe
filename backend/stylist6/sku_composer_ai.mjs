@@ -238,8 +238,32 @@ export function groundedSkuDirections(directions,pool){
   });
 }
 
+/** The PHOTO critic, not a catalog title parser, tells the next model WHY
+ * the first ensemble wave underperformed. Never expose private IDs, user
+ * text, URLs or unconstrained natural-language model output in a retry.
+ */
+export function groundedPhotoRevisionFeedback(raw){
+  if(!raw||typeof raw!=='object')return null;
+  const allowed=new Set(['below_quality_floor','style_mismatch',
+    'occasion_mismatch','formality_mismatch','model_veto',
+    'low_confidence','excluded_visual_color','visual_color_unverified']);
+  const reasons=Array.isArray(raw.reasons)
+    ?raw.reasons.slice(0,10).filter(x=>allowed.has(x)): [];
+  const approvedArchitectures=Array.isArray(raw.approvedArchitectures)
+    ?raw.approvedArchitectures.slice(0,3).map(x=>({
+      top:safe(x?.top,32),outerwear:safe(x?.outerwear,32),
+      bottom:safe(x?.bottom,32),shoes:safe(x?.shoes,32),
+    })): [];
+  return {
+    previousRejectedReasons:reasons,
+    previousAcceptedArchitectures:approvedArchitectures,
+    goal:'Create fresh visual outfit solutions that address the earlier photo critic and add a distinct direction.',
+  };
+}
+
 export async function composeCatalogSkuLooks({
-  pool,context,directions=[],apiKey,fetchImpl=fetch,signal,timeoutMs=2600,
+  pool,context,directions=[],critiqueFeedback=null,
+  apiKey,fetchImpl=fetch,signal,timeoutMs=2600,
   layerRequired=false,allowLayer=true,
 }={}){
   const visible=Array.isArray(pool)?pool.slice(0,48).map(x=>x.public):[];
@@ -257,6 +281,7 @@ export async function composeCatalogSkuLooks({
   try{
     const options=Object.fromEntries(SLOTS.map(slot=>[slot,bySlot.get(slot)]));
     const groundedPlans=groundedSkuDirections(directions,pool);
+    const revision=groundedPhotoRevisionFeedback(critiqueFeedback);
     const preface=[
       'You are an expert HUMAN-CALIBER personal menswear stylist.',
       'CREATE THREE distinct beautiful complete outfits FROM THE EXACT REAL PRODUCTS',
@@ -278,6 +303,16 @@ export async function composeCatalogSkuLooks({
       'Honour an attainable plan where it looks beautiful, but do not force',
       'mismatched garments or invent missing products to match a palette.',
       'A concept is aesthetic design advice, NOT a hard item/stock/size approval.',
+      ...(revision?[
+        'SECOND CREATIVE PASS: an independent model has already reviewed the',
+        'first set of actual product photos and rejected weak combinations.',
+        'Use its explicit rejection reasons to make a genuinely IMPROVED',
+        'selection from the REMAINING real merchandise. Avoid the previously',
+        'accepted garment architectures: find a fresh silhouette, proportions,',
+        'palette or fabric composition without departing from this occasion.',
+        'Every new look will be rejected again unless its COMPLETE product',
+        'photographs pass the independent critic. Prefer stronger harmony.',
+      ]:[]),
       'NEVER REUSE a P-token across outfits; make source-backed shopping outfits.',
       'Respect the requested style, context, fit and explicit dislikes.',
       'Look for impressive outfit-level relationships, not individual popular SKUs.',
@@ -303,6 +338,7 @@ export async function composeCatalogSkuLooks({
             context.preferences.avoidColors.slice(0,7).map(x=>safe(x,25)):[]},
         realMerchantItemMenus:options,
         inventoryGroundedDesignDirections:groundedPlans,
+        ...(revision?{independentPhotoCriticRevision:revision}:{}),
       }),
     ].join('\n');
     // NVIDIA's strict JSON-schema subset has rejected uniqueItems with an

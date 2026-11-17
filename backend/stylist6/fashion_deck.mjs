@@ -1847,6 +1847,10 @@ export async function recommendFashionDeck({
   // Isolated STAGING-only: the AI creates novel COMPLETE outfits by choosing
   // actual approved SKU tokens, not by choosing the old ranker's prebuilt cards.
   selectCatalogCompositions = null,
+  // A second photo-critic-informed CREATIVE SKU pass for insufficient
+  // casual/date portfolios (isolated 72s staging only). The server is the
+  // sole authority for this paid inference callback and remaining deadline.
+  selectCatalogRescueCompositions = null,
 }) {
   const reviewedLimit = Number.isInteger(visualCandidateLimit)
     ? Math.max(3,Math.min(MAX_VISUAL_CANDIDATES,visualCandidateLimit)) : MAX_VISUAL_CANDIDATES;
@@ -1945,6 +1949,7 @@ export async function recommendFashionDeck({
   let visualReviewCoverage = null;
   let visualQualityDecisions = null;
   let modelFashionSelection = {status:'not_enabled',candidatesSeen:0,chosen:0};
+  let composerPool=null;
   // Reference-optional review: a deck with no matching reference brief is
   // still visually judged on its product images alone (the critic marks such
   // verdicts referenceless and never claims a reference comparison). With a
@@ -2000,6 +2005,7 @@ export async function recommendFashionDeck({
         const pool=sourceBoundCompositionPool(reviewable,{
           additionalItems:extra,explorationSlots:4,directions:aiPlans,
         });
+        composerPool=pool;
         skuCompositionReceipt.previewProducts=pool.length;
         skuCompositionReceipt.designDirections=aiPlans.length;
         skuCompositionReceipt.exploratoryProducts=pool.filter(p=>
@@ -2305,6 +2311,126 @@ export async function recommendFashionDeck({
         {...retrieval,shortlist:candidates},request,visualCritic,reviewOptions);
       let rescueAttempted=0;
       let secondaryCritiques=[];
+      // THE FASHION-LEARNING LOOP: The first set of real product photographs
+      // sometimes leaves only one poor date look or two generic tee/jeans
+      // casual looks. A professional stylist must not stop there or fabricate
+      // a third: use the independent model's real refusal reasons to create
+      // NEW source-backed combinations, then independently re-judge the new
+      // merchandise photos. This is not a numeric boost or a product regex.
+      //
+      // One bounded extra LLM call, <=3 real looks, <=3 additional photo
+      // calls, only on 72s Render staging with a live deadline; never S5.
+      if(context.sourceMode==='catalog'&&context.dressCode!=='formal'&&
+          modelLed&&typeof selectCatalogRescueCompositions==='function'&&
+          Array.isArray(composerPool)&&composerPool.length>=12&&
+          typeof photoRescueRemainingMs==='function'&&
+          reviewed.outfits.length<3&&
+          reviewed.diagnostics.visualValid>=4&&
+          reviewed.diagnostics.visualApproved>=1&&
+          photoRescueRemainingMs()>=19000){
+        const firstApprovedIds=new Set(
+          (reviewed.diagnostics.visualQualityDecisions||[])
+            .filter(row=>row.reason==='approved').map(row=>row.candidateId));
+        const approvedFirst=candidates.filter(x=>firstApprovedIds.has(x.id));
+        const firstProductKeys=new Set(approvedFirst.flatMap(x=>
+          (x.items||[]).map(it=>baseProductId(String(it.id)))));
+        // Exclude already APPROVED real garments from the NEW proposal pool.
+        // The photo judge may still reject the new choices, and if it does
+        // the verified original partial deck remains intact.
+        const freshPool=composerPool.filter(p=>
+          !firstProductKeys.has(baseProductId(String(p.item?.id))));
+        const feedback={
+          reasons:(reviewed.diagnostics.visualQualityDecisions||[])
+            .filter(row=>row.reason!=='approved').map(row=>row.reason).slice(0,8),
+          approvedArchitectures:approvedFirst.slice(0,3).map(look=>
+            Object.fromEntries(slots.map(slot=>[slot,
+              String(look.items.find(it=>it.macroCategory===slot)?.subtype||'')
+                .slice(0,32)]))),
+        };
+        let retry={status:'unavailable',looks:[]};
+        try{
+          retry=await selectCatalogRescueCompositions({
+            pool:freshPool,critiqueFeedback:feedback,directions:aiPlans,
+            context:{style:context.style,occasion:context.occasion,
+              brief:context.request,preferences:context.preferences,
+              weatherCelsius:Number.isFinite(context.weather?.temp)
+                ?context.weather.temp:null},
+            layerRequired:forceLayer,allowLayer:!noLayer,
+          });
+        }catch{/* always keep the already judged original deck */}
+        modelFashionSelection.photoRevisionStatus=
+          String(retry?.status||'unavailable').slice(0,32);
+        if(retry?.status==='composed'&&Array.isArray(retry.looks)&&
+            photoRescueRemainingMs()>=14000){
+          const admitted=await sourceVerifyComposedOutfits({
+            looks:retry.looks,request:{...request,requiredIds},requiredIds,
+            hardGate,priceToBudgetCurrency,scorer:fashionScorer,
+            sourceMode:request.sourceMode,
+          });
+          const extras=[];
+          for(const look of admitted){
+            if(extras.length>=3||photoRescueRemainingMs()<13500)break;
+            if(candidates.some(x=>x.id===look.id))continue;
+            if(explicitColorPreferences&&
+              photographicPaletteEvidence(look,context.preferences,requiredIds).blocked)continue;
+            if(await permitted(look))extras.push(look);
+          }
+          modelFashionSelection.photoRevisionAdmitted=extras.length;
+          if(extras.length>0&&photoRescueRemainingMs()>=13500){
+            const firstDiagnostics=reviewed.diagnostics;
+            const allowedMs=Math.max(1000,Math.min(11500,
+              Math.floor(photoRescueRemainingMs()-3500)));
+            let revisionCritiques=[];
+            const revision=await evaluateVisualShortlist(
+              {...retrieval,shortlist:extras},request,visualCritic,{
+                ...reviewOptions,target:Math.min(3,extras.length),
+                criticSignal:AbortSignal.timeout(allowedMs),
+                onCritiques:rows=>{revisionCritiques=rows;},
+              });
+            rescueAttempted=revision.diagnostics.visualAttempted;
+            secondaryCritiques=revisionCritiques;
+            const keepFirst=approvedFirst.slice(
+              0,Math.max(0,MAX_VISUAL_CANDIDATES-extras.length));
+            const keepIds=new Set(keepFirst.map(x=>x.id));
+            const allCritiques=[
+              ...primaryCritiques.filter(row=>keepIds.has(row.candidateId)),
+              ...revisionCritiques,
+            ];
+            const combined=selectVisualDeck({
+              ...retrieval,shortlist:[...keepFirst,...extras],
+            },allCritiques,reviewOptions);
+            const summary={
+              visualAttempted:firstDiagnostics.visualAttempted+
+                revision.diagnostics.visualAttempted,
+              visualValid:firstDiagnostics.visualValid+
+                revision.diagnostics.visualValid,
+              visualApproved:firstDiagnostics.visualApproved+
+                revision.diagnostics.visualApproved,
+              visualAbstained:firstDiagnostics.visualAbstained+
+                revision.diagnostics.visualAbstained,
+              visualRejected:firstDiagnostics.visualRejected+
+                revision.diagnostics.visualRejected,
+              rejectedCandidateIds:[...new Set([
+                ...(firstDiagnostics.rejectedCandidateIds||[]),
+                ...(revision.diagnostics.rejectedCandidateIds||[]),
+              ])],
+              visualQualityDecisions:[
+                ...(firstDiagnostics.visualQualityDecisions||[]),
+                ...(revision.diagnostics.visualQualityDecisions||[]),
+              ],
+              criticFailed:firstDiagnostics.criticFailed||
+                revision.diagnostics.criticFailed,
+            };
+            reviewed=combined.outfits.length>=reviewed.outfits.length
+              ?{...combined,diagnostics:{...combined.diagnostics,...summary}}
+              :{...reviewed,diagnostics:{...firstDiagnostics,...summary}};
+            candidates.push(...extras);
+            modelFashionSelection.photoRevisionAttempted=rescueAttempted;
+            modelFashionSelection.photoRevisionApproved=
+              revision.diagnostics.visualApproved;
+          }
+        }
+      }
       // The first photo review is NOT allowed to define the last available
       // style choice. When seven of eight real formal outfits fail NVIDIA,
       // sample up to four NEW, entirely source-approved real merchandise sets

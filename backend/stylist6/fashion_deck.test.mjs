@@ -2147,3 +2147,77 @@ test('catalog AI SKU Composer failing a new combination reverts to original safe
   assert.ok(result.outfits.every(look=>Array.isArray(look.visualEvidence)));
   assert.ok(result.outfits.every(look=>!look.id.startsWith('s6_ai_')));
 });
+
+
+test('image-model rejection launches bounded SECOND AI SKU composition and real photo quality re-review, never a filler',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Casual',
+    weather:{temp:22},optionalLayer:true,preferences:{},
+    budget:{amount:2000000,currency:'UZS'},requiredIds:[]};
+  let critiques=0,revisions=0,revisionIDs=[];
+  const r=await recommendFashionDeck({...base,request,referenceBriefs:refs,
+    selectDirectorFinalists:async({options})=>({
+      status:'selected',tokens:options.slice(0,6).map(x=>x.token),providerCalls:1,
+    }),
+    // Primary model may be unavailable. The independent photo evidence
+    // still feeds the second creative pass, not a rule-specific fallback.
+    selectCatalogCompositions:async()=>({
+      status:'provider_unavailable',looks:[],providerCalls:1,
+    }),
+    selectCatalogRescueCompositions:async({pool,critiqueFeedback})=>{
+      revisions++;
+      assert.ok(critiqueFeedback.reasons.length>0);
+      assert.ok(critiqueFeedback.reasons.includes('model_veto'));
+      assert.ok(pool.length>=9,'new fashion alternatives remain from REAL source inventory');
+      const outfits=Array.from({length:3},(_,i)=>['top','bottom','shoes']
+        .map(slot=>pool.filter(x=>x.slot===slot)[i]?.item));
+      assert.ok(outfits.every(l=>l.every(Boolean)));
+      revisionIDs=outfits.flat().map(x=>x.id);
+      return {status:'composed',looks:outfits,providerCalls:1};
+    },
+    photoRescueRemainingMs:()=>40000,
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      critiques++;
+      if(critiques===1)return batch.map((look,i)=>
+        admittedVisualVerdict(look,{reject:i>=1}));
+      return batch.map((look,i)=>admittedVisualVerdict(look,{
+        slotColors:{top:['white','navy','cream'][i]||'white',
+          bottom:['navy','beige','brown'][i]||'navy',
+          shoes:['brown','black','tan'][i]||'brown'},
+      }));
+    },
+  });
+  assert.equal(revisions,1,'photo feedback must actually reach another AI composing real SKU looks');
+  assert.equal(critiques,2,'a SECOND independent whole-look photo review must occur');
+  assert.ok(r.diagnostics.modelFashionSelection.photoRevisionAttempted>0);
+  assert.equal(r.diagnostics.modelFashionSelection.photoRevisionStatus,'composed');
+  assert.ok(r.diagnostics.visualReviewCoverage.attempted>8);
+  assert.equal(r.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+  assert.ok(r.outfits.every(l=>Array.isArray(l.visualEvidence)));
+  assert.ok(r.outfits.every(l=>l.items.every(x=>x.isShopItem)));
+  assert.ok(revisionIDs.length>=9);
+});
+
+test('visual feedback second AI wave never runs inside inadequate remaining staging deadline',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Casual',
+    weather:{temp:22},optionalLayer:true,preferences:{},
+    budget:{amount:2000000,currency:'UZS'},requiredIds:[]};
+  let reviews=0;
+  const r=await recommendFashionDeck({...base,request,referenceBriefs:refs,
+    selectDirectorFinalists:async({options})=>({
+      status:'selected',tokens:options.slice(0,6).map(x=>x.token),providerCalls:1,
+    }),
+    selectCatalogCompositions:async()=>({status:'provider_unavailable'}),
+    selectCatalogRescueCompositions:async()=>assert.fail('must not pay for extra inference at 12s'),
+    photoRescueRemainingMs:()=>12000,
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      reviews++;
+      return batch.map((x,i)=>admittedVisualVerdict(x,{reject:i>=1}));
+    },
+  });
+  assert.equal(reviews,1);
+  assert.equal(r.diagnostics.modelFashionSelection.photoRevisionStatus,undefined);
+  assert.equal(r.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+  assert.ok(r.outfits.every(o=>Array.isArray(o.visualEvidence)));
+});
