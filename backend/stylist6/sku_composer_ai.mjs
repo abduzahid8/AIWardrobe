@@ -250,8 +250,8 @@ const PHOTO_REVISION_COLORS=new Set(['unknown','white','black','cream','beige',
   'brown','navy','blue','grey','charcoal','green','olive','burgundy',
   'red','pink','purple','yellow','orange','tan','camel','stone','khaki','taupe']);
 const photoEvidenceText=(value,max=135)=>typeof value==='string'
-  ?value.replace(/https?:\\/\\/[^\\s]+|\\b[\\w.%+-]+@[\\w.-]+\\.[a-z]{2,}\\b/gi,'[redacted]')
-    .replace(/[\\u0000-\\u001f<>{}]/g,' ').trim().slice(0,max):'';
+  ?value.replace(/https?:\/\/[^\s]+|\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi,'[redacted]')
+    .replace(/[\u0000-\u001f<>{}]/g,' ').trim().slice(0,max):'';
 const boundedPhotoScore=x=>typeof x==='number'&&Number.isFinite(x)&&x>=0&&x<=1
   ?Math.round(x*100)/100:null;
 
