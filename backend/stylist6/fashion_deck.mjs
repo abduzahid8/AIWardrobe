@@ -1045,6 +1045,10 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
   const contextScores = new WeakMap(), personalScores = new WeakMap(), coherent = new Map();
   const feedbackScores = new WeakMap();
   const taste = personalTaste(context.preferences);
+  // Photo Director owns the aesthetic decision in the isolated catalog canary.
+  // Keep actual owner exclusions, activity, weather, provenance and formal
+  // safety. Older clients and wardrobe/mixed modes retain old behavior.
+  const modelOwnsTaste = extras.photoDirectorEnabled === true && context.sourceMode === 'catalog';
   const feedbackTaste = extras.feedbackTaste?.active ? extras.feedbackTaste : null;
   const lockedIds = new Set((extras.requiredIds || []).map(String));
   // Evidence about this retrieval's admitted shoe pool, collected during
@@ -1058,19 +1062,23 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       const prepared = prepareGarment(item.color ? item : { ...item, color: undefined }), descriptor = describeGarment(prepared);
       if (workoutItemTruthReason(prepared, context) ||
           freezingCatalogVestReason(prepared, context) ||
-          (!lockedIds.has(String(prepared.id)) &&
-            rejectUnrequestedOfficeRegisterPiece(prepared, context)) ||
           rejectForRequestIntent(prepared, context.request, context.weather) ||
           descriptor.slot !== item.macroCategory || descriptor.productKind === 'complete-suit' ||
-          garmentContextReason(prepared, context) || rejectForClimate(prepared, context.weather) ||
-          rejectForStyleOccasion(prepared, context.style, context.occasion) ||
-          rejectForUnsuitableDateNight(descriptor, context, prepared) ||
-          rejectQuietSmartLeisureLayer(descriptor, context, prepared) ||
-          quietLuxuryHoodieReason(prepared, descriptor, context) ||
-          rejectUnrequestedRivieraPiece(descriptor, context, prepared) ||
+          garmentContextReason(prepared, context,
+            {deferStylistic:modelOwnsTaste}) ||
+          rejectForClimate(prepared, context.weather) ||
           (!lockedIds.has(String(prepared.id)) &&
             extremeUnrequestedCatalogPriceReason(prepared, extras.priceProfile, context)) ||
-          rejectPolishedContextMismatch(descriptor, context, prepared)) return null;
+          (!modelOwnsTaste && (
+            (!lockedIds.has(String(prepared.id)) &&
+              rejectUnrequestedOfficeRegisterPiece(prepared, context)) ||
+            rejectForStyleOccasion(prepared, context.style, context.occasion) ||
+            rejectForUnsuitableDateNight(descriptor, context, prepared) ||
+            rejectQuietSmartLeisureLayer(descriptor, context, prepared) ||
+            quietLuxuryHoodieReason(prepared, descriptor, context) ||
+            rejectUnrequestedRivieraPiece(descriptor, context, prepared) ||
+            rejectPolishedContextMismatch(descriptor, context, prepared)
+          ))) return null;
       if (descriptor.slot === 'shoes') {
         shoePool[trainerFootwearDescriptor(descriptor, prepared) ? 'trainer' : 'nonTrainer'] += 1;
       }
@@ -1110,11 +1118,17 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
           ? unbudgetedPriceSeedAdjustment(item,extras.priceProfile) : 0);
     },
     rankLook(items, brief) {
-      if (namedCardiganBriefMismatch(items, brief, context, extras.requiredIds || [])) return null;
+      if (!modelOwnsTaste && namedCardiganBriefMismatch(items, brief, context, extras.requiredIds || [])) return null;
       const identity = JSON.stringify([brief?.id || null, ...items.map(({ id }) => id).sort()]);
       if (coherent.has(identity)) return coherent.get(identity);
       const assessment = outfitCoherence(items, context);
-      if (!assessment.valid || rejectUnpolishedDateNightLook(items, context) || outfitStructureReason(items, false) ||
+      // Leave whole-outfit AESTHETIC clashes to the visual fashion judge in
+      // model-led mode. Physical winter/summer mismatch and structural
+      // defects still cannot enter the paid model slate.
+      const criticalWeatherConflict=assessment.reasons.includes('insulated_layer_with_summer_footwear');
+      if ((!modelOwnsTaste && (!assessment.valid || rejectUnpolishedDateNightLook(items, context))) ||
+          (modelOwnsTaste && criticalWeatherConflict) ||
+          outfitStructureReason(items, false) ||
           items.some((item, index) => items.slice(0, index).some((other) => sameProduct(item, other)))) {
         coherent.set(identity, null);
         return null;
@@ -1505,6 +1519,9 @@ export async function recommendFashionDeck({
   const reviewedLimit = Number.isInteger(visualCandidateLimit)
     ? Math.max(3,Math.min(MAX_VISUAL_CANDIDATES,visualCandidateLimit)) : MAX_VISUAL_CANDIDATES;
   const context = fashionStylingContext(request);
+  const modelLed = context.sourceMode === 'catalog' &&
+    visualDeckReview && typeof visualCritic === 'function' &&
+    typeof canJudgeOutfit === 'function' && typeof selectDirectorFinalists === 'function';
   const weather = context.weather;
   const reference = referenceBriefs.find(({ referenceId }) => referenceId === request.referenceId);
   const forceLayer = !context.optionalLayer || hasColdLayerIntent(weather) ||
@@ -1557,7 +1574,7 @@ export async function recommendFashionDeck({
     creativeDirector: async () => briefs,
     options: { fashion: makeFashionScorer(context, reference, Array.isArray(request.recentSignatures) ? request.recentSignatures.slice(-32) : [], {
       priceProfile, budgeted: !!request.budget, layerOptional: context.optionalLayer === true && !forceLayer,
-      requiredIds, feedbackTaste,
+      requiredIds, feedbackTaste, photoDirectorEnabled:modelLed,
     }), perRole: verifiedAvoidColors(context.preferences?.avoidColors).length?12:8,
     perBrief: 100, maxVisual: 72 },
   });
@@ -1568,8 +1585,6 @@ export async function recommendFashionDeck({
   // The new photo-backed AI path owns taste and occasion/editorial choices,
   // rather than accumulating product-title regexes. Keep the hard physical
   // weather gate, and restore ALL legacy fashion gates if AI abstains.
-  const modelLed=visualDeckReview&&typeof visualCritic==='function'&&
-    typeof canJudgeOutfit==='function'&&typeof selectDirectorFinalists==='function';
   let selectable = retrieval.shortlist.filter((look) => {
     const reason = editorialRegisterVeto(look, context);
     if (!reason || (modelLed && reason !== 'cool_weather_sleeveless_single_layer')) return true;

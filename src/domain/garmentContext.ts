@@ -38,13 +38,14 @@ function vividRedConflict(item: GarmentEvidence, context: StylingContext): boole
 /** Same hard dress/activity exclusions before pool caps and after construction. */
 export function garmentContextReason(
   item: GarmentEvidence,
-  context: StylingContext
+  context: StylingContext,
+  options: { deferStylistic?: boolean } = {},
 ): string | null {
   const shop = item.isShopItem === true || String(item.id || '').startsWith('shop_');
   if (context.sourceMode === 'wardrobe' && shop) return 'source_requires_wardrobe';
   if (context.sourceMode === 'catalog' && !shop) return 'source_requires_catalog';
   const d = describeGarment(item);
-  if (context.dressCode === 'smart' && /\b(work|office|business)\b/.test(context.occasion)
+  if (!options.deferStylistic && context.dressCode === 'smart' && /\b(work|office|business)\b/.test(context.occasion)
     && ['classic','old_money','semi_classic','business_casual'].includes(context.style)) {
     if (d.slot === 'top' && d.subtype === 't-shirt') return 'work_requires_smart_base';
     const text = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
@@ -81,7 +82,7 @@ export function garmentContextReason(
     )
   )
     return 'excluded_pattern';
-  if (vividRedConflict(item, context)) return 'vivid_red_conflicts_with_quiet_palette';
+  if (!options.deferStylistic && vividRedConflict(item, context)) return 'vivid_red_conflicts_with_quiet_palette';
   if (context.dressCode === 'formal') {
     const baseText = normalizeGarmentText(`${item.name || ''} ${item.description || ''}`);
     if (d.slot === 'top' && (d.utilityConstruction || /\b(seaside|resort|hawaiian)\b/.test(baseText)))
@@ -123,7 +124,7 @@ export function garmentContextReason(
     context.weather?.temp != null &&
     context.weather.temp < 5 &&
     /snow|ice/i.test(context.weather.condition || '');
-  if (context.dressCode === 'smart' && d.slot === 'shoes' && d.rugged && !outdoor && !severe)
+  if (!options.deferStylistic && context.dressCode === 'smart' && d.slot === 'shoes' && d.rugged && !outdoor && !severe)
     return 'rugged_footwear_conflicts_with_smart_context';
   if (context.dressCode === 'athletic') {
     if (d.slot === 'shoes' && !d.athletic) return 'workout_requires_athletic_footwear';

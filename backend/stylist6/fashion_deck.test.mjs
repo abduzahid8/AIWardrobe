@@ -1706,3 +1706,20 @@ test('AI Fashion Director provider timeout restores legacy editorial admission',
   assert.ok(deck.outfits.every(look=>Array.isArray(look.visualEvidence)),
     'an AI outage is not an unreviewed-fashion approval');
 });
+
+
+test('AI-led catalog defers stylistic product vetoes but preserves user hard exclusions',()=>{
+  const {item,context}={item:garment('cotton-tee','Plain Cotton T-shirt','top','t-shirt'),
+    context:{sourceMode:'catalog',style:'classic',occasion:'work',dressCode:'smart',preferences:{}}};
+  // Import the domain gate via a direct dynamic module to prove its real
+  // default contract is unchanged for production S5 and legacy S6.
+  return import('../../src/domain/garmentContext.ts').then(({garmentContextReason})=>{
+    assert.equal(garmentContextReason(item,context),'work_requires_smart_base');
+    assert.equal(garmentContextReason(item,context,{deferStylistic:true}),null);
+    assert.equal(garmentContextReason(item,{...context,preferences:{avoidColors:['red']}},
+      {deferStylistic:true}),null);
+    const red=garment('red','Red Cotton T-shirt','top','t-shirt');
+    assert.equal(garmentContextReason(red,{...context,preferences:{avoidColors:['red']}},
+      {deferStylistic:true}),'excluded_color');
+  });
+});
