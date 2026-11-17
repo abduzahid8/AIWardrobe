@@ -76,7 +76,7 @@ test('the final director may choose two truly distinct photo-approved looks inst
 });
 test('provider failure, duplicate, invented SKU and missing approvals fail safely',async()=>{
   const key='nvapi-a-test-safe-key';
-  assert.equal((await selectPhotoEditorialDeck({looks:looks.slice(0,2),
+  assert.equal((await selectPhotoEditorialDeck({looks:looks.slice(0,1),
     critiques:reviews,apiKey:key})).status,'not_enough_approved');
   assert.equal((await selectPhotoEditorialDeck({looks,critiques:reviews,
     portfolios:verifiedMenu,apiKey:'bad-key'})).status,'not_configured');
@@ -235,4 +235,41 @@ test('genuine PHOTO fashion editor returns sanitized missing creative direction 
   });
   assert.equal(invalid.status,'invalid_selection',
     'a fake portfolio can never use a gap to create source-unauthorized products');
+});
+
+
+test('TWO independently photo-approved outfits receive real contact-sheet VLM critique and original source-safe F-token',async()=>{
+  const photo=await sharp({create:{width:120,height:130,channels:3,
+    background:'#596981'}}).jpeg().toBuffer();
+  const gap='Missing relaxed suede tailoring and subtly flowing wide-leg trousers to break the repeated office suit uniform';
+  let providerCalls=0,photoReads=0;
+  const two=await selectPhotoEditorialDeck({
+    looks:looks.slice(0,2),critiques:reviews,
+    portfolios:[
+      {portfolioToken:'F00',orderedLooks:['L00','L01']},
+      {portfolioToken:'F01',orderedLooks:['L01']},
+    ],
+    context:{style:'classic',occasion:'Work'},
+    apiKey:'nvapi-a-test-photo-editor-two',timeoutMs:9300,
+    resolvePhoto:async()=>{photoReads++;return {bytes:photo};},
+    authorizePhoto:()=>true,
+    fetchImpl:async(_,opts)=>{
+      providerCalls++;
+      const body=JSON.parse(opts.body);
+      assert.equal(body.model,PHOTO_PORTFOLIO_VISION_MODEL);
+      assert.ok(body.messages[1].content[1].image_url.url.startsWith('data:image/jpeg;base64,'));
+      assert.match(body.messages[1].content[0].text,/missingFashionDirection/);
+      assert.match(body.messages[1].content[0].text,/F00/);
+      assert.doesNotMatch(opts.body,/PRIVATE|SECRET|private\.example/);
+      return Response.json({choices:[{finish_reason:'stop',
+        message:{content:JSON.stringify({portfolio:'F00',missingFashionDirection:gap})}}]});
+    },
+  });
+  assert.equal(photoReads,8,'two actual 4-item outfits must supply eight genuine product photos');
+  assert.equal(providerCalls,1);
+  assert.equal(two.status,'selected');
+  assert.equal(two.visualJury,'applied');
+  assert.deepEqual(two.tokens,['L00','L01']);
+  assert.equal(two.creativeGap,gap);
+  assert.equal(two.portfolioToken,'F00');
 });

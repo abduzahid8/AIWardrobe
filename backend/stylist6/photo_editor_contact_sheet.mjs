@@ -40,7 +40,10 @@ export async function buildPhotoEditorialContactSheet(looks,{
   resolvePhoto,authorizePhoto,deadlineMs=2200,signal,onStatus,
 }={}){
   const note=status=>{try{onStatus?.(status);}catch{}};
-  if(!Array.isArray(looks)||looks.length<3||looks.length>MAX_LOOKS||
+  // A two-row actual-SKU photo board is meaningful: it lets the final
+  // VLM identify why two photographed work outfits are too similar.
+  // Never invent a blank third row or relax original media authorization.
+  if(!Array.isArray(looks)||looks.length<2||looks.length>MAX_LOOKS||
     typeof resolvePhoto!=='function'||typeof authorizePhoto!=='function'||
     signal?.aborted){note('invalid_input');return null;}
   const sources=looks.map((look,index)=>{

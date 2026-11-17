@@ -48,9 +48,9 @@ test('a missing or unlicensed source photograph can NEVER become visual inferenc
     authorizePhoto:()=>true,
   });
   assert.equal(missing,null);
-  assert.equal(await buildPhotoEditorialContactSheet(looks.slice(0,2),{
+  assert.equal(await buildPhotoEditorialContactSheet(looks.slice(0,1),{
     resolvePhoto:async()=>({bytes:jpeg}),authorizePhoto:()=>true,
-  }),null,'insufficient approved looks do not create a fake image board');
+  }),null,'a single outfit is not a collection and cannot imply a missing peer');
 });
 test('contact sheet media preparation has a hard finite deadline',async()=>{
   const before=Date.now();
@@ -60,4 +60,20 @@ test('contact sheet media preparation has a hard finite deadline',async()=>{
   });
   assert.equal(sheet,null);
   assert.ok(Date.now()-before<1600,'no CDN stall can exhaust a 72s styling request');
+});
+
+
+test('exact two source-approved looks create a REAL non-fabricated 2-row photo collage',async()=>{
+  let reads=0;
+  const sheet=await buildPhotoEditorialContactSheet(looks.slice(0,2),{
+    resolvePhoto:async()=>{reads++;return {bytes:jpeg};},
+    authorizePhoto:url=>url.startsWith('https://catalog-photos.example/'),
+  });
+  assert.ok(sheet,'the fashion editor must see TWO approved outfit photographs');
+  assert.deepEqual(sheet.lookTokens,['L00','L01']);
+  assert.equal(reads,7,'four real photos plus three real photos (optional layer absent)');
+  const meta=await sharp(sheet.bytes).metadata();
+  assert.equal(meta.format,'jpeg');
+  assert.equal(meta.height,34+160*2,'exactly two image rows, no invented third');
+  assert.ok(sheet.bytes.length<540000);
 });

@@ -107,7 +107,12 @@ export async function selectPhotoEditorialDeck({
   resolvePhoto=null,authorizePhoto=null,
 }={}){
   const options=anonymousPhotoEditorialOptions(looks,critiques);
-  if(options.length<3)return {status:'not_enough_approved',tokens:[],providerCalls:0};
+  // Real native Work PHOTO QA (f87e93d): exactly 2 independent approvals
+  // made it past the fashion deck's outer guard, but this hidden >=3
+  // requirement still vetoed the final visual curator. Two independently
+  // photo-reviewed, complete source SKU looks are enough to identify
+  // a MISSING third direction; the editor cannot fabricate the third.
+  if(options.length<2)return {status:'not_enough_approved',tokens:[],providerCalls:0};
   const menu=anonymousPhotoEditorialPortfolios(portfolios,options);
   if(!menu.length)return {status:'no_valid_portfolios',tokens:[],providerCalls:0};
   if(typeof apiKey!=='string'||!apiKey.startsWith('nvapi-'))

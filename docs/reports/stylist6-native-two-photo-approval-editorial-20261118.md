@@ -49,3 +49,28 @@ Production remains NO-GO until LIVE native requests repeatedly
 show genuinely different, visually convincing, buyable works;
 human blind preference >=70% against S5 with >=30 held-out cases,
 three human reviewers.
+
+## Follow-up live QA revealed two MORE hidden gates
+
+Pinned f87e93d REAL authenticated native Work request at 2026-11-17
+19:21:34 UTC: two real PHOTO-approved looks displayed, 8 attempts,
+32 seconds total server work, one verified feasible 2-look portfolio.
+But `photoEditorialStatus='not_enough_approved'`,
+`photoEditorialVisualJury='not_run'`,
+`photoEditorialCreativeRevision='not_run'` even after the outer caller
+was corrected to allow two. Reason: `selectPhotoEditorialDeck` itself
+independently enforced `options.length>=3` and the REAL photo
+contact-sheet builder enforced `looks.length>=3`.
+
+Now BOTH actual source-photo downstream stages accept exactly **two**
+previously approved real whole looks, build an authentic 2-row contact
+sheet with their true 4-piece SKU photos, and ask the independent
+120B photographic fashion jury to select its proven pair/single token
+and describe the missing third direction. One look still fails closed:
+one photograph is not a meaningful **collection** comparison.
+
+New tests prove real two-row original licensed images (no invented
+third), anonymized F-token visual VLM selection with sanitized
+`missingFashionDirection`, and preserve refusal for one source look.
+A live direct iOS request on this latest patch is still required
+before declaring the end-to-end photo-feedback repair functional.
