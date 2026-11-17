@@ -139,3 +139,26 @@ test('S6 cloud repeats whole new looks without exhausting finite catalog SKUs; S
   expect(source).toContain('const excludeProductKeys = [...new Set([...history.olderRecentProductKeys,...history.previousDeckProductKeys])]');
   expect(source).toContain('const excludeItemIds = excludeProductKeys.filter');
 });
+
+
+test('default Stylist 6 iOS staging gateway reaches the real AI SKU composer runtime, not the 50s Vercel fallback', () => {
+  const fs = require('fs');
+  const defaultGateway = fs.readFileSync('backend/supabase/functions/aiw-stylist6-node-staging/index.ts', 'utf8');
+  const renderGateway = fs.readFileSync('backend/stylist-proxy/stylist6-render-staging.ts', 'utf8');
+  const nodeRoute = fs.readFileSync('backend/stylist-node/api/stylist6-generate-outfits.ts', 'utf8');
+  const cloudHandler = fs.readFileSync('backend/stylist6/cloud_handler.mjs', 'utf8');
+
+  // A 50-second fallback silently disables both real-SKU composition and final
+  // portfolio editing. Keep the normal QA route on the already-authenticated
+  // 72-second Render canary, without touching production Stylist 5.
+  expect(defaultGateway).toContain('stylist6-render-staging.ts');
+  expect(defaultGateway).not.toMatch(/^import .*stylist6-staging\.ts/m);
+  expect(renderGateway).toContain("STYLIST6_RENDER_NODE_SHARED_SECRET");
+  expect(renderGateway).toContain('AbortSignal.timeout(85000)');
+  expect(renderGateway).toContain('signStylistTransport');
+  expect(nodeRoute).toContain('STYLIST6_RENDER_CANARY_BUDGET_MS = 72_000');
+  expect(cloudHandler).toContain('budgetMs>=70000');
+  expect(cloudHandler).toContain('composeCatalogSkuLooks(');
+  expect(cloudHandler).toContain('selectPhotoEditorialDeck(');
+  expect(renderGateway).not.toContain("generate-outfits'"); // Never route to S5.
+});
