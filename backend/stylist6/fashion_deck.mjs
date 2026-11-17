@@ -1921,6 +1921,7 @@ export async function recommendFashionDeck({
   // scorer. The early AI's returned SKU selections are NEVER displayed until
   // the same independent full-look hard gate and NVIDIA PHOTO judge approve.
   let parallelComposition=null;
+  let sourceVerifiedAiFirst=[];
   if(modelLed&&typeof selectCatalogCompositions==='function'&&
       request.sourceMode==='catalog'&&!requiredIds.length){
     const excludedBases=new Set(
@@ -1956,16 +1957,53 @@ export async function recommendFashionDeck({
         promise=Promise.resolve({status:'provider_unavailable',
           looks:[],providerCalls:1});
       }
-      parallelComposition={pool,promise};
+      // IMPORTANT: the legacy retrieval is CPU-heavy and synchronous for
+      // ~20-26s in LIVE Render requests. Letting it run while awaiting a
+      // network AI promise blocks the Node event loop; an otherwise-fast
+      // NVIDIA answer is incorrectly timed out before callbacks can run.
+      // AI is the PRIMARY designer. Await its independently submitted
+      // source-bound outfit design FIRST, before any legacy CPU work.
+      const initial=await promise;
+      parallelComposition={pool,promise:Promise.resolve(initial)};
+      if(initial?.status==='composed'&&Array.isArray(initial.looks)){
+        const admitted=await sourceVerifyComposedOutfits({
+          looks:initial.looks,request:{...request,requiredIds},requiredIds,
+          hardGate,priceToBudgetCurrency,scorer:fashionScorer,
+          sourceMode:request.sourceMode,
+        });
+        // Source/budget/physical admission, original item identities and
+        // transmission permission are all mandatory. This is NOT photo
+        // approval. Every surviving whole look still goes through NVIDIA.
+        const palette=context.preferences;
+        for(const look of admitted){
+          if(verifiedAvoidColors(palette?.avoidColors).length&&
+            photographicPaletteEvidence(look,palette,requiredIds).blocked)continue;
+          try{
+            if(await canJudgeOutfit(look,reference?.referenceId??null)===true)
+              sourceVerifiedAiFirst.push(look);
+          }catch{}
+        }
+      }
     }
   }
-  const retrieval = await shortlistRetrievalDeck({
-    request: { ...request, requiredIds }, catalog, hardGate, priceToBudgetCurrency,
-    creativeDirector: async () => briefs,
-    options: { fashion: fashionScorer,
-      perRole: verifiedAvoidColors(context.preferences?.avoidColors).length?12:8,
-    perBrief: 100, maxVisual: 72 },
-  });
+  const aiFirstFastTrack=sourceVerifiedAiFirst.length>=3;
+  // The proven legacy retrieval is only a FALLBACK if the independent AI
+  // did not construct at least three complete, source-admitted looks.
+  // It must never slow a successful AI fashion design or consume the CPU
+  // while the model's network request is still in flight.
+  const retrieval=aiFirstFastTrack
+    ?{shortlist:sourceVerifiedAiFirst,diagnostics:{
+      retrievalMode:'source_verified_ai_first',
+      candidateCount:sourceVerifiedAiFirst.length,
+      exclusions:{requested:0},
+    }}
+    :await shortlistRetrievalDeck({
+      request: { ...request, requiredIds }, catalog, hardGate, priceToBudgetCurrency,
+      creativeDirector: async () => briefs,
+      options: { fashion: fashionScorer,
+        perRole: verifiedAvoidColors(context.preferences?.avoidColors).length?12:8,
+        perBrief: 100, maxVisual: 72 },
+    });
   // A single cross-slot veto applies to selection AND visual challengers.
   // The pre-reviewed critic must never fill a rejected outfit from another
   // path after an NVIDIA verdict. Retain exact SKU and feasibility admission.
@@ -2020,6 +2058,8 @@ export async function recommendFashionDeck({
     const skuCompositionReceipt={
       status:'not_run',proposed:0,admitted:0,previewProducts:0,
       exploratoryProducts:0,parallel:!!parallelComposition,
+      aiFirst:!!parallelComposition,
+      retrievalSkipped:aiFirstFastTrack,
     };
     if(modelLed){
       const reviewable=[];

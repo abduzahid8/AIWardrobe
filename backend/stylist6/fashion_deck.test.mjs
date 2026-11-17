@@ -2144,6 +2144,8 @@ test('catalog AI SKU Composer failing a new combination reverts to original safe
     visualCritic:async batch=>batch.map(look=>admittedVisualVerdict(look)),
   });
   assert.equal(oldSlateCalls,1,'outage must preserve existing fully authenticated generation path');
+  assert.notEqual(result.diagnostics.retrievalMode,'source_verified_ai_first',
+    'AI outage must restore the original full legacy fallback retrieval');
   assert.ok(result.outfits.length>=1);
   assert.ok(result.outfits.every(look=>Array.isArray(look.visualEvidence)));
   assert.ok(result.outfits.every(look=>!look.id.startsWith('s6_ai_')));
@@ -2288,6 +2290,9 @@ test('parallel catalogue-first fashion AI starts BEFORE prebuilt look retrieval 
   assert.equal(parallel,true);
   assert.equal(result.diagnostics.modelFashionSelection.skuCompositionReceipt.parallel,true);
   assert.equal(result.diagnostics.modelFashionSelection.skuCompositionReceipt.status,'composed');
+  assert.equal(result.diagnostics.retrievalMode,'source_verified_ai_first',
+    'successful AI-only design skips the expensive ranker entirely');
+  assert.equal(result.diagnostics.modelFashionSelection.skuCompositionReceipt.retrievalSkipped,true);
   assert.ok(photoReviewed.some(look=>look.id.startsWith('s6_ai_')),
     'source-verified early AI combinations must reach independent actual photo admission');
   assert.ok(result.outfits.every(look=>photoReviewed.some(x=>x.id===look.id)));
@@ -2312,4 +2317,44 @@ test('catalog four-item request requires a genuine photographed outer layer in e
     ['top','outerwear','bottom','shoes'].every(slot=>
       o.items.filter(item=>item.macroCategory===slot).length===1)));
   assert.ok(result.outfits.every(o=>o.visualEvidence?.length>=0));
+});
+
+test('slow but valid source-SKU AI response is received BEFORE legacy CPU-heavy retrieval can starve its timer',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:17},optionalLayer:false,preferences:{},
+    budget:{amount:2500000,currency:'UZS'},requiredIds:[]};
+  const expanded=[
+    ...products,
+    garment('extra-oxford-six','White Oxford shirt','top','shirt'),
+    garment('extra-trouser-six','Olive tailored trousers','bottom','tailored-trouser'),
+    garment('extra-loafer-six','Brown sleek leather loafer','shoes','loafer'),
+    ...Array.from({length:6},(_,i)=>garment('additional-layer-'+i,
+      'Wool tailored layer '+i,'outerwear','blazer')),
+  ];
+  let designerDone=false,gateBeforeDesigner=false,vision=[];
+  const result=await recommendFashionDeck({...base,request,catalog:expanded,
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
+    hardGate:async()=>{
+      if(!designerDone)gateBeforeDesigner=true;
+      return {ok:true};
+    },
+    selectCatalogCompositions:async({pool,parallel,layerRequired})=>{
+      assert.equal(parallel,true);
+      assert.equal(layerRequired,true,'four-item owner contract remains mandatory');
+      await new Promise(resolve=>setTimeout(resolve,35));
+      designerDone=true;
+      const picks=Array.from({length:6},(_,i)=>
+        ['top','outerwear','bottom','shoes']
+          .map(slot=>pool.filter(item=>item.slot===slot)[i].item));
+      return {status:'composed',looks:picks,providerCalls:1};
+    },
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async items=>{vision=items;return items.map(x=>admittedVisualVerdict(x));},
+  });
+  assert.equal(designerDone,true);
+  assert.equal(gateBeforeDesigner,false,
+    'CPU-bound legacy retrieval must NOT starve a live fashion model network response');
+  assert.equal(result.diagnostics.retrievalMode,'source_verified_ai_first');
+  assert.ok(vision.length>=3);
+  assert.ok(vision.every(x=>x.products.length===4));
 });

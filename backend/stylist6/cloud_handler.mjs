@@ -126,6 +126,8 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     skuCompositionAdmitted:safe(f.skuCompositionReceipt?.admitted,6),
     skuCompositionExploration:safe(f.skuCompositionReceipt?.exploratoryProducts,48),
     skuCompositionParallel:f.skuCompositionReceipt?.parallel===true,
+    skuCompositionAiFirst:f.skuCompositionReceipt?.aiFirst===true,
+    skuCompositionRetrievalSkipped:f.skuCompositionReceipt?.retrievalSkipped===true,
     // This source-of-truth guard lives on the FINAL cloud deck diagnostics,
     // not nested inside the earlier modelFashionSelection receipt.
     catalogFourItemContract:d.catalogFourItemContract===true,

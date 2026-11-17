@@ -221,3 +221,37 @@ LIVE. Classic / Work QA completed at 13:12:52 UTC:
   contain four items; this is evidenced independently by native screenshots.
 - Strict rule is intentionally limited to catalog on >=70s Render staging;
   wardrobe/mixed/production Stylist5 contracts unaffected.
+
+## 2026-11-17 — AI-FIRST fashion decision, skip CPU-heavy formula retrieval on success
+
+Live b958e16/0685040 outcomes proved that merely starting a network AI
+composer in parallel to the OLD synchronous ranker was insufficient:
+`skuCompositionParallel=true` but `status=timeout` after 16s, with
+`catalog_fashion_and_selection` using ~23s CPU and fallback concepts.
+On the same day, an isolated real NVIDIA API benchmark (with mock merchant
+catalog; no user products or identifiers sent) finished 3 new whole looks in
+1.6s and 6 new whole looks in 2.4s. This is evidence of a server scheduling
+problem, not proof of aesthetic strength or typical provider latency.
+
+**Architecture:** let the actual six-look AI composer complete its network
+call BEFORE any synchronous legacy outfit-ranker work. Independently
+re-validate every model-picked four-source-SKU outfit via original buyer
+budget/FX, excluded-product, complete-role and weather hard gates,
+`fashionScorer.rankLook`, and the source photo transmission authorization.
+If at least three complete AI combinations survive, SKIP `shortlistRetrievalDeck`
+entirely: use ONLY those original, source-verified AI outfits as photographic
+NVIDIA critic candidates. On model timeout/invalid/insufficient
+admission, invoke the existing complete legacy shortlist. No user-facing
+unreviewed model decision, source substitution or extra quota.
+
+New sanitized diagnostics: `skuCompositionAiFirst`,
+`skuCompositionRetrievalSkipped`; exact `retrievalMode` is
+`source_verified_ai_first` only when that source/physical validation has
+succeeded. Automated regression tests assert that successful model decisions
+reach photo review before the old ranker can run, and that failure restores
+the original retrieval path. The long 16s model timeout and 72s request
+budget remain unchanged. This is staging only.
+
+**Do NOT count as fashion acceptance before a new pinned Render deployment
+and two native iOS screenshots.** The primary benchmark, the logo, the
+model API status and tests are not a human fashion panel.
