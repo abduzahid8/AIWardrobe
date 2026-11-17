@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import sharp from 'sharp';
 import { signStylistTransport } from '../stylist-node/transport/signature.mjs';
 import {
@@ -1913,4 +1914,15 @@ test('media prewarm only reaches inference-authorized hosts, is bounded and cann
   assert.deepEqual(visited,['https://static.zara.net/product.jpg']);
   assert.deepEqual(await prewarmProductPhotos(urls,async()=>{},{
     remainingMs:()=>1000}),{attempted:0,completed:0});
+});
+
+
+test('regression: authenticated S6 critic callback REALLY uses concurrent photo prewarm',()=>{
+  const source=readFileSync(new URL('./cloud_handler.mjs',import.meta.url),'utf8');
+  const handler=source.slice(source.indexOf('visualCritic = async (candidates, critiqueRequest'),
+    source.indexOf('// Transmission gate, separate from download eligibility'));
+  assert.match(handler,/await prewarmProductPhotos\(urls, resolveProduct,/,
+    'prewarm helper MUST be wired into the production S6 visualCritic closure');
+  assert.doesNotMatch(handler,/urls\.slice\(i, i \+ 6\)|for\s*\(let i\s*=\s*0;\s*i\s*<\s*urls\.length/,
+    'never regress to serial 6-CDN waves that starve NVIDIA of its deadline');
 });

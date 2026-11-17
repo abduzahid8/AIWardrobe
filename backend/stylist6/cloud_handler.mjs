@@ -1279,11 +1279,13 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
               .filter((imageUrl) => isInferenceAuthorized(imageUrl)),
           ),
         )];
-        for (let i = 0; i < urls.length; i += 6) {
-          if (remainingMs() <= 5000 || deadlineController.signal.aborted) break;
-          await Promise.allSettled(urls.slice(i, i + 6).map((imageUrl) =>
-            resolveProduct({ imageUrl }).catch(() => null)));
-        }
+        // CRITICAL: use the tested parallel prewarm on the REAL request
+        // path. Previously the helper existed but this closure still ran
+        // serial batches of six; formal 4-slot looks repeatedly timed out.
+        // The critic itself retains all photo authorization/quality gates.
+        await prewarmProductPhotos(urls, resolveProduct, {
+          remainingMs, signal: deadlineController.signal,
+        });
         const combinedSignal = criticOptions?.signal
           ? AbortSignal.any([deadlineController.signal, criticOptions.signal])
           : deadlineController.signal;
