@@ -416,12 +416,21 @@ export function createHostedVisualCritic({
     try { onEvent?.(event); } catch { /* keep telemetry out of the decision */ }
   };
 
-  return async function hostedVisualCritic(payload, request) {
+  return async function hostedVisualCritic(payload, request, options = {}) {
     if (payload.length > MAX_VISUAL_CANDIDATES || new Set(payload.map((c) => c.id)).size !== payload.length) {
       throw new Error('invalid_visual_batch');
     }
+    // Render's second fashion pass has a shorter remaining-time deadline.
+    // The caller already supplies it to product-photo prewarm, but the
+    // actual hosted visual critic MUST honor that same signal during every
+    // image fetch and provider call. Never let a second wave steal the
+    // server's final response/settlement budget.
+    const waveSignal=options?.signal;
+    if(waveSignal!==undefined&&!(waveSignal instanceof AbortSignal))
+      throw new Error('invalid_visual_wave_signal');
     const controller = new AbortController();
-    const signal = callerSignal ? AbortSignal.any([controller.signal, callerSignal]) : controller.signal;
+    const signals=[controller.signal,callerSignal,waveSignal].filter(Boolean);
+    const signal = signals.length===1?controller.signal:AbortSignal.any(signals);
     const batchStarted = performance.now();
     const batchDeadline = batchStarted + timeoutMs;
     const timer = setTimeout(() => controller.abort(), timeoutMs);
