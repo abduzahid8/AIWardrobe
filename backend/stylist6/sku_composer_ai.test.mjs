@@ -74,6 +74,10 @@ test('model independently composes three new real SKU combinations, no product i
       assert.equal(slotPicks.properties.shoes.maxItems,3);
       assert.doesNotMatch(init.body,/PRIVATE_SKU|images\.zara|www\.zara/);
       assert.match(body.messages[0].content,/CREATE THREE distinct beautiful complete outfits/);
+      assert.match(body.messages[0].content,/optionalUserTextLookbookIdeas/);
+      assert.match(body.messages[0].content,/different|diverse|contrast|silhouette/i);
+      assert.doesNotMatch(body.messages[0].content,
+        /photo_[0-9]+_2026|rights_status|media_sha256|source_account/);
       return result(slotAnswer(pool));
     },
   });

@@ -93,6 +93,10 @@ test('the real provider path returns directions, caches by anonymized context, a
     assert.equal(body.model,'nvidia/nemotron-3.5-lightning-30b-a3b',
       'text planning must not use the much larger photo judge');
     assert.match(body.messages[0].content, /inventory/);
+    assert.match(body.messages[0].content, /optionalTextLookbookIdeas/);
+    assert.match(body.messages[0].content, /blazer|cardigan|overshirt|overcoat/);
+    assert.doesNotMatch(body.messages[0].content,
+      /photo_[0-9]+_2026|rights_status|media_sha256|source_account/);
     assert.ok(!init.body.includes('SECRET-SKU-SHIRT'));
     assert.ok(!init.body.includes('Private user-owned shirt'));
     assert.ok(!init.body.includes('PRIVATE BRAND'));

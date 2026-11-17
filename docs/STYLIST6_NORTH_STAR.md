@@ -196,6 +196,29 @@ fulfill the owner's four-product contract.
 ## Each work session's completion report must include
 GitHub SHA; staging Supabase function version + pinned READY compute SHA; code/quality changes; real scenario IDs & images; what objectively improved; what deteriorated; how many looks were provider-judged vs fallback; product stock/rights truth; QA gate counts; production status; exact NEXT highest-leverage root cause.
 
+## 2026-11-18 — genuine TEXT fashion inspiration, not product-title rules or unlicensed pictures
+
+Real iOS Classic/Date night PHOTO judged 3/5 initial source looks, and
+rejected all 3 alternative ensembles even when the second AI saw
+unseen merchant inventory; the two displayed choices were still
+cardigan/chino variants. More SKU choice alone is insufficient.
+
+The project already holds 46 user-uploaded MANUAL visual-outfit
+captions (not a certified human taste corpus; photo-media rights
+are explicitly UNVERIFIED). We now retrieve up to three distinctive
+**text-only outfit architecture references** for the user's actual
+style+occasion before the 30B Fashion Creative Director and 120B
+exact-source-SKU composer make their own design decisions. This
+helps the AI see varied silhouette, layer, shoes and material
+relationships without inventing a SKU, requiring a photographed
+item's appearance without permission, repeating a tiny banned-title
+rule, or overriding user exclusions. Full source, four-product,
+budget/merchant/weather, physical and independent visual PHOTO
+approval remains mandatory. We NEVER send the original reference
+JPEGs or their filenames to provider APIs. Tests and full provenance:
+`docs/reports/stylist6-user-reference-text-fashion-memory-20261118.md`.
+Real iOS and 70% human blind taste validation remain OPEN.
+
 ## 2026-11-18 — AI creative repair explores NEW merchant items, not the same 48 rejected tokens
 
 Real 120B Classic/Work finally ran the genuine PHOTO portfolio VLM ->
