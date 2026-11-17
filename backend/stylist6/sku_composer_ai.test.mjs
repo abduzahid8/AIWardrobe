@@ -81,6 +81,54 @@ test('model independently composes three new real SKU combinations, no product i
   assert.equal(r.looks.length,3);
   assert.equal(new Set(r.looks.flat().map(x=>x.id)).size,12);
 });
+
+test('six independent AI fashion decisions reach photo audition as real unique source SKUs',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const sixOutfits=Array.from({length:6},(_,i)=>Object.fromEntries(
+    slots.map((slot,j)=>[slot,pool.find(x=>x.slot===slot&&x.item===items[i][j])?.token])));
+  assert.ok(sixOutfits.every(o=>slots.every(slot=>typeof o[slot]==='string')));
+  const sixColumns={slotPicks:Object.fromEntries(slots.map(slot=>
+    [slot,sixOutfits.map(look=>look[slot])]))};
+  let calls=0;
+  const audition=await composeCatalogSkuLooks({
+    pool,outfitCount:6,layerRequired:true,context:{style:'classic',occasion:'Work'},
+    apiKey:'nvapi-test',
+    fetchImpl:async(_url,init)=>{
+      calls++;
+      const body=JSON.parse(init.body);
+      const roles=body.response_format.json_schema.schema.properties.slotPicks.properties;
+      assert.equal(roles.top.minItems,6);
+      assert.equal(roles.shoes.maxItems,6);
+      assert.equal(roles.outerwear.minItems,6);
+      assert.match(body.messages[0].content,/SIX distinct beautiful complete outfits/);
+      assert.match(body.messages[0].content,/candidate AUDITION/);
+      assert.doesNotMatch(init.body,/PRIVATE_SKU|images\.zara|www\.zara/);
+      return result(sixColumns);
+    },
+  });
+  assert.equal(calls,1,'one provider roundtrip, not six separate LLM calls');
+  assert.equal(audition.status,'composed');
+  assert.equal(audition.looks.length,6);
+  assert.equal(new Set(audition.looks.flat().map(x=>x.id)).size,24);
+  const scored=await sourceVerifyComposedOutfits({
+    looks:audition.looks,request:{},sourceMode:'catalog',
+    scorer:{rankLook:()=>({score:.9})},
+    hardGate:async()=>({ok:true}),
+  });
+  assert.equal(scored.length,6,'all six proposed full looks must pass the original real-item hard gate');
+  assert.equal(new Set(scored.map(x=>x.id)).size,6);
+  assert.equal(new Set(scored.flatMap(x=>x.items.map(i=>i.id))).size,24);
+
+  const withOneDuplicate={slotPicks:{...sixColumns.slotPicks,
+    top:[...sixColumns.slotPicks.top.slice(0,5),sixColumns.slotPicks.top[0]]}};
+  const accepted=validateSkuCompositions(withOneDuplicate,pool,
+    {count:6,layerRequired:true,allowPartial:true});
+  assert.equal(accepted.length,5,'invalid sixth concept cannot erase five source-bound valid looks');
+  assert.equal(new Set(accepted.flat().map(x=>x.id)).size,20);
+  assert.deepEqual(validateSkuCompositions(withOneDuplicate,pool,
+    {count:6,layerRequired:true,allowPartial:false}),[]);
+});
+
 test('composed choices rerun combination-level hard gate, budget and scorer; never invent approval',async()=>{
   const pool=sourceBoundCompositionPool(looks);
   const raw=validateSkuCompositions(validAnswer(pool),pool,{layerRequired:true});
