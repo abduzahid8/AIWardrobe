@@ -108,13 +108,22 @@ export function catalogStylingDiscoveryHints({style,occasion,brief='',weather=nu
   const dressCode=formal?'formal':casual?'casual':'smart';
   const workRole=['dress-shirt','shirt','blazer','coat','tailored-trouser',
     'trouser','oxford','derby','loafer','chelsea','monk'];
+  // Formal is not ordinary office-smart: allocating the same 100-shoe
+  // discovery slots to casual loafers/Chelseas crowded OUT real dress
+  // Oxfords/Derbies/Monks. On the real 2026-11-17 catalog (247 formal
+  // shoes), exact RPC replay improved explicit formal shoes from 45/100
+  // to 68/100 with this narrower relevance hint. It is a SOURCE-SORT
+  // preference, not a hard ban: the independent photo critic still owns
+  // full-look style, footwear and occasion suitability.
+  const formalRole=['dress-shirt','shirt','blazer','tailored-trouser',
+    'trouser','oxford','derby','monk'];
   const dateRole=['dress-shirt','shirt','fine-knit','polo','blazer','cardigan',
     'coat','tailored-trouser','trouser','chino','loafer','derby','chelsea','oxford'];
   const weekendRole=['shirt','fine-knit','polo','cardigan','overshirt',
     'blazer','coat','chino','tailored-trouser','trouser','loafer','derby','chelsea','boot'];
   const casualRole=['shirt','polo','fine-knit','cardigan','overshirt',
     'chino','trouser','jeans','loafer','driver','minimal-sneaker','chelsea'];
-  const roles=formal?workRole:casual?casualRole:work?workRole:date?dateRole:weekendRole;
+  const roles=formal?formalRole:casual?casualRole:work?workRole:date?dateRole:weekendRole;
   // At <=5°C prefer coats and actual boots within the existing bounded
   // inventory rather than extra uninsulated polos or summer slippers.
   const cold=Number.isFinite(weather?.temp) && weather.temp<=5;

@@ -605,7 +605,15 @@ test('photographed formal palette directions are real complete tailoring, not th
     verdicts[0],verdicts[1]),true);
   assert.equal(photoGroundedFormalPaletteDirection(looks[0],looks[1],
     verdicts[0],{...verdicts[1],slotColors:{...verdicts[1].slotColors,bottom:'navy'}}),false,
-    'shirt/shoes or blazer alone cannot fake formal diversity');
+    'a blazer-only change with identical shirt and trousers is not formal diversity');
+  assert.equal(photoGroundedFormalPaletteDirection(looks[0],looks[1],
+    verdicts[0],{...verdicts[1],slotColors:{...verdicts[1].slotColors,
+      bottom:'navy',top:'blue'}}),true,
+    'a different blazer AND real photographed shirt color can define a formal look even with shared black trousers');
+  assert.equal(photoGroundedFormalPaletteDirection(looks[0],looks[1],
+    verdicts[0],{...verdicts[1],slotColors:{...verdicts[1].slotColors,
+      outerwear:'navy',top:'blue'}}),false,
+    'shirt-and-pants change with the SAME blazer palette is not a distinct formal jacket direction');
   assert.equal(photoGroundedFormalPaletteDirection(looks[0],looks[1],
     verdicts[0],{...verdicts[1],slotColors:{...verdicts[1].slotColors,bottom:'unknown'}}),false,
     'missing photographic color proof does not become an invented direction');

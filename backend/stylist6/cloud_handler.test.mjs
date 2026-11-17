@@ -1818,6 +1818,14 @@ test('server-owned catalog discovery retrieves occasion-appropriate types before
   assert.equal(casual.dressCode,'casual');
   const formal=catalogStylingDiscoveryHints({style:'classic',occasion:'Wedding'});
   assert.equal(formal.dressCode,'formal');
+  for(const subtype of ['dress-shirt','blazer','tailored-trouser','oxford','derby','monk'])
+    assert.ok(formal.preferredSubtypes.includes(subtype));
+  for(const subtype of ['loafer','chelsea','minimal-sneaker','coat'])
+    assert.ok(!formal.preferredSubtypes.includes(subtype),
+      'formal source relevance prefers dress footwear, not the generic office mix');
+  const formalNoWedding=catalogStylingDiscoveryHints({style:'classic',occasion:'Formal'});
+  assert.deepEqual(formalNoWedding,formal,
+    'plain Formal and Wedding should source the same verified formal roles');
   assert.deepEqual(catalogStylingDiscoveryHints({style:'casual',occasion:'Weekend'}),{});
   assert.deepEqual(catalogStylingDiscoveryHints({style:'classic',occasion:'Workout'}),{});
   assert.ok(!JSON.stringify(date).includes('Refined semi-classic outfit'),

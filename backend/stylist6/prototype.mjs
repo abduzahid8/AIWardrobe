@@ -373,8 +373,10 @@ export function independentOutfitDirection(a, b, requiredIds = []) {
 /** Formal dress codes legitimately constrain silhouette: a shirt, suit blazer,
  * tailored trousers and leather dress shoes cannot be replaced by a casual
  * hoodie just to satisfy a 3-direction taxonomy. Two real outfits are
- * materially different when NVIDIA has SEEN BOTH distinct blazer and trouser
- * color families in the actual source photos. This is a SUPPLEMENT to strict
+ * materially different when NVIDIA has SEEN a different blazer AND a
+ * different shirt or trouser color in the actual source photographs. Formal
+ * suits may rightly share black trousers while styling different shirt/jacket
+ * palettes. This is a SUPPLEMENT to strict
  * garment-architecture independence, never permission to invent palette
  * difference from SKU titles. It runs only AFTER each whole outfit has passed
  * independent visual quality and occasion gates.
@@ -401,12 +403,15 @@ export function photoGroundedFormalPaletteDirection(a,b,verdictA,verdictB,requir
     return raw==='charcoal'?'grey':
       VISUAL_SLOT_COLORS.includes(raw)&&raw!=='unknown'?raw:null;
   };
-  // Strong outer+lower color contrast. Shoes or shirt swaps alone are
-  // insufficient. Both colors must be explicit photographic observations.
-  return ['outerwear','bottom'].every(slot=>{
+  // The visually dominant blazer MUST shift, plus a second core apparel
+  // area (shirt OR trousers). A lone shoe, shirt, or blazer color swap
+  // never proves separate formal styling. All compared colors are direct
+  // independently observed photos, never merchant-name guesses.
+  const differs=(slot)=>{
     const x=color(verdictA,slot),y=color(verdictB,slot);
     return !!x&&!!y&&x!==y;
-  });
+  };
+  return differs('outerwear')&&(differs('bottom')||differs('top'));
 }
 
 /** Replay verdicts against the exact judged candidate set without provider I/O. */

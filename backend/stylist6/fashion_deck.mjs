@@ -1439,7 +1439,8 @@ export function assembleIndependentVisualPortfolio(
  * roles, the ordinary pre-photo architecture test is correctly inconclusive,
  * NOT proof that the photographed styles are identical. Reserve 8 independent
  * REAL merchandise sets for the photo critic to inspect; the final three
- * still need actual-photo evidence of both jacket and trouser palette shifts.
+ * still need actual-photo evidence of a jacket shift plus a second core
+ * apparel color shift.
  * No extra provider calls, no SKU invention, no unreviewed third card.
  */
 export function assembleFormalPhotoProbePortfolio(
@@ -1468,9 +1469,9 @@ export function assembleFormalPhotoProbePortfolio(
   };
   const photoPaletteBonus=trio=>{
     let bonus=0;
-    for(const slot of ['outerwear','bottom']){
+    for(const slot of ['outerwear','bottom','top']){
       const colors=trio.map(x=>color(x,slot)).filter(Boolean);
-      bonus+=0.075*new Set(colors).size;
+      bonus+=(slot==='top'?0.04:0.075)*new Set(colors).size;
     }
     return bonus;
   };
@@ -2081,7 +2082,7 @@ export async function recommendFashionDeck({
         { target: Math.min(3, candidates.length), minNovelty: 0.12, requiredIds,
           requireDistinctArchitectures: true,
           // Server-owned FORMAL-only alternative: the critic must positively
-          // identify different blazer AND trouser photos. No other occasion
+          // identify different blazer AND shirt/trouser photos. No other occasion
           // gets a softer architecture rule, and all photo quality floors stay.
           allowFormalPhotoPaletteDirections: context.dressCode==='formal'&&
             request.sourceMode==='catalog',
