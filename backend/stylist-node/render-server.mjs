@@ -39,8 +39,11 @@ export function createStylist6RenderServer(post=POST){
       const headers=new Headers();
       for(const [key,val] of Object.entries(req.headers))if(val!==undefined)
         headers.set(key,Array.isArray(val)?val.join(', '):String(val));
+      // In-process trusted Render entrypoint only. The user cannot choose
+      // this budget via headers or body, and the HMAC/JWT handler still owns
+      // verification and billing. The Vercel route keeps the default 50s.
       const response=await post(new Request('http://localhost'+RENDER_STYLIST6_ROUTE,
-        {method:'POST',headers,body}));
+        {method:'POST',headers,body}),{renderCanary:true});
       const data=Buffer.from(await response.arrayBuffer());
       const outHeaders={'Content-Type':'application/json','Cache-Control':'no-store'};
       const timing=response.headers.get('server-timing');

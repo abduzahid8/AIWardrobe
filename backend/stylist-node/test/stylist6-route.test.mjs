@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { POST, GET, stylist6CreativeServerConfig } from '../api/stylist6-generate-outfits.ts';
+import { POST, GET, stylist6CreativeServerConfig, stylist6ComputeBudgetMs, STYLIST6_RENDER_CANARY_BUDGET_MS } from '../api/stylist6-generate-outfits.ts';
 import { STYLIST6_CLOUD_VERSION } from '../../stylist6/cloud_handler.mjs';
 
 test('route and handler report the identical engine version', async () => {
@@ -67,4 +67,15 @@ test('both server-owned AI director switches reach the cloud handler without cli
       else process.env[name]=originals[name];
     }
   }
+});
+
+
+test('Render-only Stylist 6 compute budget cannot be forged by clients or Vercel',()=>{
+  assert.equal(STYLIST6_RENDER_CANARY_BUDGET_MS,72000);
+  assert.equal(stylist6ComputeBudgetMs(),undefined);
+  assert.equal(stylist6ComputeBudgetMs({}),undefined);
+  assert.equal(stylist6ComputeBudgetMs({renderCanary:false}),undefined);
+  assert.equal(stylist6ComputeBudgetMs({renderCanary:true}),72000);
+  assert.ok(STYLIST6_RENDER_CANARY_BUDGET_MS < 85000,
+    'signed Supabase Render proxy must still have time to read complete JSON');
 });

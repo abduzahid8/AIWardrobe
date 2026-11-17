@@ -27,6 +27,7 @@ type CloudHandler = {
     bodyText: string;
     env: Record<string, string>;
     io: unknown;
+    timeoutMs?: number;
   }) => Promise<{ status: number; body: unknown }>;
   createCloudIo: (input: {
     url: string; anonKey: string; serviceKey: string; supabaseJs: unknown;
@@ -76,7 +77,18 @@ export function stylist6CreativeServerConfig() {
   };
 }
 
-export async function POST(request: Request): Promise<Response> {
+/** Render-only S6 staging deadline. The signed Supabase Render proxy has an
+ * 85-second compute deadline; reserve 13 seconds for proxy/cold-start/return
+ * JSON. Vercel staging and ALL Stylist 5 routes keep the existing 50s bound.
+ * This flag is passed ONLY by the server's in-process Render entrypoint,
+ * never read from user headers, body, or environment supplied by a client.
+ */
+export const STYLIST6_RENDER_CANARY_BUDGET_MS = 72_000;
+export function stylist6ComputeBudgetMs(runtime?: { renderCanary?: boolean }): number | undefined {
+  return runtime?.renderCanary === true ? STYLIST6_RENDER_CANARY_BUDGET_MS : undefined;
+}
+
+export async function POST(request: Request, runtime?: { renderCanary?: boolean }): Promise<Response> {
   // Dedicated Stylist 6 staging secret, independent of the Stylist 5
   // shared secret. Never fall back to the S5 value.
   const secret = envOf('STYLIST6_NODE_SHARED_SECRET');
@@ -147,6 +159,8 @@ export async function POST(request: Request): Promise<Response> {
     });
     const { status, body: responseBody } = await handler.handleStylist6CloudGenerate({
       method: 'POST', headers, bodyText: body, env, io,
+      ...(stylist6ComputeBudgetMs(runtime) === undefined
+        ? {} : { timeoutMs: stylist6ComputeBudgetMs(runtime) }),
     });
     const cpu = process.cpuUsage(cpuStart);
     const cpuMs = (cpu.user + cpu.system) / 1000;
