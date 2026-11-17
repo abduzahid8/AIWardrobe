@@ -11,6 +11,7 @@ import {
   fitVisualBytesCloud,
   STYLIST6_CLOUD_VERSION,
   fashionSlateDecisionBudgetMs,
+  serverFashionSlateEnabled,
   canonicalRequestFingerprint,
 } from './cloud_handler.mjs';
 import { HOST_ALLOWLIST, INFERENCE_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/image_access.mjs';
@@ -1846,4 +1847,23 @@ test('live AI slate budget reserves visual photo review while no longer demandin
   assert.equal(fashionSlateDecisionBudgetMs(18000),2600);
   assert.equal(fashionSlateDecisionBudgetMs(22500),2600);
   assert.equal(fashionSlateDecisionBudgetMs(49000),2600);
+});
+
+test('workout SKU-only Fashion Director is independent from freeform creative planner',()=>{
+  const enabled={STYLIST6_CREATIVE_DIRECTOR_ENABLED:'1',STYLIST6_AI_SLATE_ENABLED:'1'};
+  assert.equal(serverFashionSlateEnabled(enabled,{
+    visualAsked:true,visualCriticAvailable:true,
+  }),true,'Sport can choose already feasible training outfits before costly photo review');
+  for(const disabled of [
+    {...enabled,STYLIST6_CREATIVE_DIRECTOR_ENABLED:''},
+    {...enabled,STYLIST6_AI_SLATE_ENABLED:''},
+  ])assert.equal(serverFashionSlateEnabled(disabled,{
+    visualAsked:true,visualCriticAvailable:true,
+  }),false,'server-owned switches must fail closed');
+  assert.equal(serverFashionSlateEnabled(enabled,{
+    visualAsked:false,visualCriticAvailable:true,
+  }),false,'client did not request paid vision');
+  assert.equal(serverFashionSlateEnabled(enabled,{
+    visualAsked:true,visualCriticAvailable:false,
+  }),false,'selector cannot pretend the actual-photo critic is configured');
 });

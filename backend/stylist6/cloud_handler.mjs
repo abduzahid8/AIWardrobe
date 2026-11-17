@@ -53,6 +53,18 @@ import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46
  * A hard 22.5s reservation previously made the Director NOT_RUN on live iOS
  * despite 28 perfectly valid real outfits. No server deadline is extended.
  */
+/** The quick whole-look fashion selector is permitted for workouts too.
+ * It selects EXISTING admitted gear; unlike the AI architecture generator,
+ * it cannot invent a training plan. The workout item-name and physical hard
+ * gates remain in the retrieval scorer. Both switches are server-owned and
+ * a genuine photo critic must be enabled before any selection occurs.
+ */
+export function serverFashionSlateEnabled(env, {visualAsked, visualCriticAvailable} = {}) {
+  return /^(1|true)$/i.test(String(env?.STYLIST6_CREATIVE_DIRECTOR_ENABLED||'').trim())
+    && /^(1|true)$/i.test(String(env?.STYLIST6_AI_SLATE_ENABLED||'').trim())
+    && visualAsked===true && visualCriticAvailable===true;
+}
+
 export function fashionSlateDecisionBudgetMs(remainingMs) {
   if (!Number.isFinite(remainingMs) || remainingMs < 11500) return 0;
   return Math.min(2600, Math.max(600, Math.floor(remainingMs - 9000)));
@@ -1241,8 +1253,13 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     }
     // Server-only canary: one short model decision over admitted WHOLE looks.
     // It cannot bypass SKU/merchant/weather/budget gates or visual approval.
-    const modelSlateEnabled=creativeDirectorEnabled&&visualAsked&&!!visualCritic&&
-      /^(1|true)$/i.test(String(env.STYLIST6_AI_SLATE_ENABLED||'').trim());
+    // Do not couple the SKU-only slate to the separate freeform architecture
+    // planner, which is deliberately disabled for workouts. That coupling
+    // stranded Sport on eight overlapping deterministic finalists: four
+    // independently photo-approved sets but only two SKU-disjoint cards.
+    const modelSlateEnabled=serverFashionSlateEnabled(env,{
+      visualAsked,visualCriticAvailable:!!visualCritic,
+    });
     const selectDirectorFinalists=modelSlateEnabled
       ? async({options,context})=>{
           const timeLeftMs=Math.max(0,Math.floor(remainingMs()));
