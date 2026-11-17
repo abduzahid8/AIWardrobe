@@ -103,9 +103,12 @@ test('server-admitted cloud success does not trigger a second client quota consu
   expect(quota).toHaveBeenCalledWith('aiOutfits', { cancelSignal: undefined });
 });
 
-test('Stylist 6 defaults to the reliable editorial deck, not the unreliable hosted prototype critique', () => {
-  expect(source).toContain('const [nvidiaVisual, setNvidiaVisual] = useState(false)');
+test('Stylist 6 cloud beta defaults to independent full-photo fashion review; production Stylist 5 stays unchanged', () => {
+  // This is a source-contract test: the real screen must default to visual
+  // judgement ONLY inside the explicit Stylist 6 cloud beta (never S5).
+  expect(source).toContain('const [nvidiaVisual, setNvidiaVisual] = useState(STYLIST6_CLOUD_ENABLED)');
   expect(source).toContain('enableVisual: nvidiaVisual === true');
+  expect(source).toContain("const [devEngine, setDevEngine] = useState<DevEngine>(STYLIST6_CLOUD_ENABLED ? 'stylist6cloud' : 'stylist5')");
   expect(source).toContain('NVIDIA visual review (optional)');
 });
 
