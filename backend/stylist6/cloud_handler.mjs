@@ -126,8 +126,10 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     skuCompositionAdmitted:safe(f.skuCompositionReceipt?.admitted,6),
     skuCompositionExploration:safe(f.skuCompositionReceipt?.exploratoryProducts,48),
     skuCompositionParallel:f.skuCompositionReceipt?.parallel===true,
-    catalogFourItemContract:f.catalogFourItemContract===true,
-    catalogFourItemDropped:safe(f.catalogFourItemDropped,3),
+    // This source-of-truth guard lives on the FINAL cloud deck diagnostics,
+    // not nested inside the earlier modelFashionSelection receipt.
+    catalogFourItemContract:d.catalogFourItemContract===true,
+    catalogFourItemDropped:safe(d.catalogFourItemDropped,12),
     photoRevisionStatus:['composed','unavailable','deadline','timeout',
       'invalid_composition','incomplete','provider_unavailable',
       'provider_schema_rejected','insufficient_inventory','load_shed']

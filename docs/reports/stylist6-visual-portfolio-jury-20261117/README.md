@@ -191,3 +191,33 @@ and a signed, 72s full cloud handler test with actual source-backed blazers
 pass. The real iOS after-deploy screenshot is still required before claiming
 this reached the user. No guarantee of climate-suitable fourth product in
 very hot weather until real accessory catalog infrastructure is introduced.
+
+
+## Real iOS result after four-item owner correction: b958e16, Nov 17
+
+Authenticated *native iOS simulator* (AIWardrobe-S6-QA-20261115), cloud
+gateway v61, exact Render deployment `b958e1640a1b24b4aaea66d6047f1162a3dc7f28`
+LIVE. Classic / Work QA completed at 13:12:52 UTC:
+
+- Actual server `stylist6_safe_visual_quality`: 59,025ms; 8 attempted
+  whole-look photo reviews, 2 independently approved, **2 displayed**.
+  Primary direct-SKU model timed out despite parallel invocation (not a
+  fashion-quality victory); fallback fashion selector produced the approved
+  looks. No unreviewed padding.
+- **Inspected both iPhone cards and scrolled to the bottom**. Card 01:
+  TOP Soft Cotton Polo Shirt; LAYER Regular-Fit Wool Cardigan;
+  BOTTOM relaxed chinos; SHOES suede shoes. Card 02:
+  TOP Relaxed-Fit Knit Polo; LAYER Comfort Stretch Knit Cardigan;
+  BOTTOM brown slim trousers; SHOES leather loafers.
+  **Each has exactly FOUR real merchandise tiles and merchant links**, in
+  the 2x2 grid. The entire first and second outfit screens were viewed.
+- Some merchant photo tiles were blank in screenshots (not missing
+  products): separate reliability defect in source image/display.
+  Neither look is proven world-class by this count check.
+- The new sanitized `catalogFourItemContract` field incorrectly reported
+  `false` in initial b958e16 logs because it accessed
+  `modelFashionSelection` rather than final deck diagnostics; corrected
+  log plumbing in the follow-up commit. The actual displayed UI **did**
+  contain four items; this is evidenced independently by native screenshots.
+- Strict rule is intentionally limited to catalog on >=70s Render staging;
+  wardrobe/mixed/production Stylist5 contracts unaffected.

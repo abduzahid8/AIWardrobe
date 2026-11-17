@@ -2026,6 +2026,10 @@ test('four actual source SKUs per shoppable catalog outfit, never fake/empty fou
   assert.equal(enforceCatalogFourItemDeck(raw,'wardrobe'),raw,
     'owned wardrobe mode retains real user choice');
   assert.equal(enforceCatalogFourItemDeck(raw,'mixed'),raw);
+  const trace=stylist6SafeQualityTrace(checked.diagnostics,1,45000);
+  assert.equal(trace.catalogFourItemContract,true);
+  assert.equal(trace.catalogFourItemDropped,4,
+    'live quality trace reports the ACTUAL enforced boundary, not old AI nesting');
 });
 
 test('72-second authenticated catalog cloud request never publishes three garment items',async()=>{
