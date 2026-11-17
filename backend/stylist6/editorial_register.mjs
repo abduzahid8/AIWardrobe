@@ -7,6 +7,7 @@
  * A pinned item cannot be quietly swapped: if it causes a collision,
  * return a short deck rather than violating the user's hard constraints.
  */
+import { deliberatelyRelaxedIntent } from './editorial_intent.mjs';
 export const EDITORIAL_REGISTER_VERSION = 's6-cross-slot-register-v1';
 
 const norm = (value) => String(value || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
@@ -43,7 +44,7 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '', reque
   // and personally pinned owned clothing are not blocked.
   const classicPolishedOffice = sourceMode === 'catalog' && norm(style) === 'classic' &&
     /\b(work|office|business|meeting|conference)\b/.test(norm(occasion)) &&
-    !/\b(casual|relaxed|informal|dress-down)\b/i.test(`${brief} ${request}`);
+    !deliberatelyRelaxedIntent(`${brief} ${request}`);
   const pinned = new Set(Array.isArray(requiredIds) ? requiredIds.map(String) : []);
   if (classicPolishedOffice && !(look?.items || []).some(it => pinned.has(String(it.id)))) {
     const outer = slot(look, 'outerwear');
@@ -80,7 +81,7 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '', reque
   // eligible, including elegant knitwear worn with tailored trousers.
   const polishedDate = sourceMode === 'catalog' && norm(style)==='semi classic' &&
     /\b(date|dinner|romantic)\b/.test(norm(occasion)) &&
-    !/\b(casual|relaxed|sporty|weekend|informal)\b/i.test(`${brief} ${request}`);
+    !deliberatelyRelaxedIntent(`${brief} ${request}`);
   if(polishedDate && !(look?.items||[]).some(it=>pinned.has(String(it.id)))){
     const tailoredTop=/\b(dress shirt|poplin dress|formal shirt)\b/.test(top);
     const tailoredLayer=/\b(blazer|suit jacket|tailored jacket|overcoat|topcoat|dress coat)\b/.test(layer) ||

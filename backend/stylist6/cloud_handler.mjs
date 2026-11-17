@@ -43,6 +43,7 @@ import { HOST_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/im
 import { prepareCloudVisualMedia } from './cloud_visual_media.mjs';
 import { verifyStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 import { verifyMerchantOffer, summarizeDeckOffers } from './merchant_offers.mjs';
+import { deliberatelyRelaxedIntent } from './editorial_intent.mjs';
 import { BUDGET_CURRENCIES, parseCbuBudgetRates, validateBudgetFxSnapshot, referenceAmount } from '../../src/domain/budgetFx.ts';
 import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46.json' with { type: 'json' };
 
@@ -74,7 +75,7 @@ export function catalogStylingDiscoveryHints({style,occasion,brief='',weather=nu
   const intent=String(brief||'').toLowerCase().slice(0,300);
   const work=/\b(work|office|business|meeting|conference)\b/.test(event);
   const date=/\b(date|dinner|romantic|cocktail|evening)\b/.test(event);
-  const casual=/\b(casual|relaxed|informal|sporty)\b/.test(intent);
+  const casual=deliberatelyRelaxedIntent(intent);
   const quiet=['classic','semi_classic','old_money','business_casual','minimalist'].includes(s);
   const athletic=/\b(workout|gym|training|fitness|sport)\b/.test(event);
   if(athletic)return {};// dedicated activity-specific source discovery is already active

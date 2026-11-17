@@ -24,6 +24,7 @@ import { isNonOutfitItem, outfitStructureReason } from '../../src/domain/outfitS
 import { rejectForClimate, rejectForStyleOccasion, rejectForRequestIntent, isWorkoutOccasion } from '../../src/domain/occasionRules.ts';
 import { editorialDeckCopy, DECK_COPY_VERSION } from './deck_editorial_copy.mjs';
 import { editorialRegisterVeto, EDITORIAL_REGISTER_VERSION } from './editorial_register.mjs';
+import { deliberatelyRelaxedIntent } from './editorial_intent.mjs';
 
 const slots = ['top', 'outerwear', 'bottom', 'shoes'];
 
@@ -1411,7 +1412,7 @@ export function polishedEveningLayerRequired(context) {
   if(!['semi_classic','classic','old_money','business_casual'].includes(style))return false;
   if(!/\b(date|dinner|romantic|cocktail|evening)\b/i.test(String(context.occasion||'')))return false;
   const text=String(context.request||'');
-  if(/\b(casual|relaxed|informal|sporty)\b/i.test(text))return false;
+  if(deliberatelyRelaxedIntent(text))return false;
   if(/\b(?:no|without|skip)\s+(?:(?:an?|any|extra|additional)\s+){0,3}(?:layers?|outerwear|jacket|blazer|coat|cardigan)\b/i.test(text) ||
     /без\s+(?:(?:лишнего|дополнительного)\s+)?(?:пиджака|куртки|пальто|кардигана|верхней\s+одежды|слоёв|слоя)/i.test(text))return false;
   return true;
