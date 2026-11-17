@@ -11,7 +11,7 @@
 import {createHash} from 'node:crypto';
 import {baseProductId} from './catalog_adapter.mjs';
 import {currentVisual,confidentVisual} from '../../src/domain/visualFashion.ts';
-export const AI_SKU_COMPOSER_VERSION='s6-catalog-direct-sku-composer-v1';
+export const AI_SKU_COMPOSER_VERSION='s6-catalog-direct-sku-composer-v2-six-independent-candidates';
 const ENDPOINT='https://integrate.api.nvidia.com/v1/chat/completions';
 const MODEL='nvidia/nemotron-3.5-lightning-30b-a3b';
 const SLOTS=['top','outerwear','bottom','shoes'];
@@ -170,45 +170,60 @@ export function sourceBoundCompositionPool(looks, {
     },
   }));
 }
-export function validateSkuCompositions(answer,pool,{layerRequired=false,allowLayer=true}={}){
-  // The original free-form [{top,bottom,shoes,...}] schema led NVIDIA to
-  // repeat the same attractive SKU in two different outfits when we opened
-  // more catalog choices (live 2026-11-17: invalid_composition). The stronger
-  // slot-column schema makes three DIFFERENT tops/bottoms/shoes an explicit
-  // structural property of the model response; index i is outfit i.
+export function validateSkuCompositions(answer,pool,{
+  layerRequired=false,allowLayer=true,count=3,allowPartial=false,
+}={}){
+  // A six-look AI audition explores more distinct outfits for the independent
+  // photo critic. A malformed/reused look must never invalidate the five
+  // *different* source-valid looks from the same model answer. The original
+  // three-look API remains all-or-nothing for backwards compatibility.
+  const target=Number.isInteger(count)?Math.max(3,Math.min(6,count)):3;
   const rolePicks=answer?.slotPicks;
   const choices=Array.isArray(answer?.outfits)?answer.outfits:
     rolePicks&&typeof rolePicks==='object'&&!Array.isArray(rolePicks)&&
     SLOTS.every(slot=>Array.isArray(rolePicks[slot])&&
-      rolePicks[slot].length===3)
-      ?Array.from({length:3},(_,i)=>Object.fromEntries(
+      rolePicks[slot].length===target)
+      ?Array.from({length:target},(_,i)=>Object.fromEntries(
         SLOTS.map(slot=>[slot,rolePicks[slot][i]]))):null;
-  if(!Array.isArray(choices)||choices.length!==3)return [];
+  if(!Array.isArray(choices)||choices.length!==target)return [];
   const entries=new Map(pool.map(x=>[x.token,x]));
   const seen=new Set(),looks=[];
   for(const choice of choices){
-    if(!choice||typeof choice!=='object'||Array.isArray(choice))return [];
-    const fields=[...SLOTS];
-    const expected=new Set(fields);
-    if(Object.keys(choice).some(key=>!expected.has(key))||
-       fields.some(key=>!Object.hasOwn(choice,key)))return [];
-    if(layerRequired&&choice.outerwear==='none')return [];
-    if(!allowLayer&&choice.outerwear!=='none')return [];
-    const items=[];
+    if(!choice||typeof choice!=='object'||Array.isArray(choice)){
+      if(allowPartial)continue;
+      return [];
+    }
+    if(Object.keys(choice).some(key=>!SLOTS.includes(key))||
+       SLOTS.some(key=>!Object.hasOwn(choice,key))||
+       (layerRequired&&choice.outerwear==='none')||
+       (!allowLayer&&choice.outerwear!=='none')){
+      if(allowPartial)continue;
+      return [];
+    }
+    const items=[],keys=new Set();
+    let valid=true;
     for(const slot of SLOTS){
       const tok=choice[slot];
       if(slot==='outerwear'&&tok==='none')continue;
       const source=entries.get(tok);
-      if(!source||source.slot!==slot)return [];
+      if(!source||source.slot!==slot){
+        valid=false;break;
+      }
       const key=productKey(source.item);
-      if(seen.has(key))return []; // A personally styled deck must not recycle products.
-      seen.add(key);items.push(source.item);
+      if(!key||seen.has(key)||keys.has(key)){
+        valid=false;break;
+      }
+      keys.add(key);
+      items.push(source.item);
     }
-    if(items.length<3)return [];
+    if(!valid||items.length<3){
+      if(allowPartial)continue;
+      return [];
+    }
+    for(const key of keys)seen.add(key);
     looks.push(items);
   }
-  if(looks.length!==3||new Set(looks.flatMap(x=>x.map(productKey))).size!==
-      looks.reduce((n,l)=>n+l.length,0))return [];
+  if(looks.length<(allowPartial?3:target))return [];
   return looks;
 }
 
@@ -310,12 +325,18 @@ export function groundedPhotoRevisionFeedback(raw){
 }
 
 export async function composeCatalogSkuLooks({
-  pool,context,directions=[],critiqueFeedback=null,
+  pool,context,directions=[],critiqueFeedback=null,outfitCount=3,
   apiKey,fetchImpl=fetch,signal,timeoutMs=2600,
   layerRequired=false,allowLayer=true,
 }={}){
   const visible=Array.isArray(pool)?pool.slice(0,48).map(x=>x.public):[];
   const bySlot=new Map(SLOTS.map(slot=>[slot,visible.filter(v=>v.slot===slot)]));
+  // Six is an audition slate, NOT six promised cards. The photo editor still
+  // decides if only one, two or three complete outfits actually deserve display.
+  const sixReady=outfitCount===6&&
+    ['top','bottom','shoes',...(layerRequired?['outerwear']:[])]
+      .every(s=>bySlot.get(s).length>=6);
+  const target=sixReady?6:3;
   if(['top','bottom','shoes'].some(s=>bySlot.get(s).length<3)||
       (layerRequired&&bySlot.get('outerwear').length<3))
     return {status:'insufficient_inventory',looks:[],providerCalls:0};
@@ -332,7 +353,7 @@ export async function composeCatalogSkuLooks({
     const revision=groundedPhotoRevisionFeedback(critiqueFeedback);
     const preface=[
       'You are an expert HUMAN-CALIBER personal menswear stylist.',
-      'CREATE THREE distinct beautiful complete outfits FROM THE EXACT REAL PRODUCTS',
+      'CREATE '+(target===6?'SIX':'THREE')+' distinct beautiful complete outfits FROM THE EXACT REAL PRODUCTS',
       'below, rather than selecting combinations prepared by a ranking algorithm.',
       'Decide actual construction, silhouette, fit, drape, material, color,',
       'footwear and polish for the specific occasion and personal taste.',
@@ -348,6 +369,15 @@ export async function composeCatalogSkuLooks({
       'If inventory-backed Creative Director concepts are provided, use their',
       'lookNumber to compose that specific outfit (index = lookNumber - 1).',
       'Each concept proposes a DIFFERENT silhouette, materials and color harmony.',
+      ...(target===6?[
+        'Looks 1, 2, 3 each embody Creative Director plans 1, 2, 3 when feasible.',
+        'Looks 4, 5, 6 are YOUR three independent alternative fashion ideas:',
+        'different convincing outfit-level silhouettes, garment textures,',
+        'proportions and footwear relationships, not recolors of the first three.',
+        'These SIX are a candidate AUDITION, not six required recommendations:',
+        'an independent photo critic may reject any and the final editor',
+        'will choose ONLY the best convincing one, two or three looks.',
+      ]:[]),
       'Honour an attainable plan where it looks beautiful, but do not force',
       'mismatched garments or invent missing products to match a palette.',
       'A concept is aesthetic design advice, NOT a hard item/stock/size approval.',
@@ -370,11 +400,11 @@ export async function composeCatalogSkuLooks({
       'Look for impressive outfit-level relationships, not individual popular SKUs.',
       'Do not invent products, photo facts, brands, prices or merchant links.',
       'Return a JSON object containing slotPicks with four ARRAYS.',
-      'Each array has exactly THREE P-tokens, one per look from left to right:',
+      'Each array has exactly '+(target===6?'SIX':'THREE')+' entries, one per look from left to right:',
       'slotPicks.top[0], slotPicks.bottom[0], slotPicks.shoes[0],',
       'and slotPicks.outerwear[0] together form FIRST complete outfit;',
       'index 1 = SECOND complete outfit, index 2 = THIRD complete outfit.',
-      'Each of top, bottom and shoes arrays MUST have three UNIQUE product tokens.',
+      'Each of top, bottom and shoes arrays MUST have '+target+' UNIQUE product tokens.',
       'outerwear may contain "none" more than once; never repeat a real jacket.',
       'Think deeply about color, garment construction and how the FOUR arrays',
       'combine at the same index. This is your autonomous outfit composition.',
@@ -397,7 +427,7 @@ export async function composeCatalogSkuLooks({
     // HTTP provider error in live stage. Do not ship unsupported schema keys:
     // the trusted post-response validator enforces identity uniqueness.
     const roleArrays=Object.fromEntries(SLOTS.map(slot=>[slot,{
-      type:'array',minItems:3,maxItems:3,
+      type:'array',minItems:target,maxItems:target,
       items:{type:'string',enum:slot==='outerwear'
         ?[...(allowLayer?bySlot.get('outerwear').map(x=>x.token):[]),
           ...(!layerRequired?['none']:[])]
@@ -410,7 +440,7 @@ export async function composeCatalogSkuLooks({
     const res=await fetchImpl(ENDPOINT,{method:'POST',signal:combined,
       headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},
       body:JSON.stringify({model:MODEL,messages:[{role:'user',content:preface}],
-        temperature:.35,top_p:.93,max_tokens:550,stream:false,
+        temperature:.35,top_p:.93,max_tokens:target===6?850:550,stream:false,
         response_format:{type:'json_schema',json_schema:{
           name:'aiw_personal_sku_composition',strict:true,schema}},
         chat_template_kwargs:{enable_thinking:false}})});
@@ -424,8 +454,8 @@ export async function composeCatalogSkuLooks({
     if(answer?.finish_reason!=='stop'||typeof answer?.message?.content!=='string')
       return {status:'incomplete',looks:[],providerCalls:1};
     const choices=validateSkuCompositions(JSON.parse(answer.message.content),pool,
-      {layerRequired,allowLayer});
-    return choices.length===3?{status:'composed',looks:choices,providerCalls:1}
+      {layerRequired,allowLayer,count:target,allowPartial:target===6});
+    return choices.length>=3?{status:'composed',looks:choices,providerCalls:1}
       :{status:'invalid_composition',looks:[],providerCalls:1};
   }catch{return {status:combined.aborted?'timeout':'provider_unavailable',
     looks:[],providerCalls:1};
@@ -443,7 +473,7 @@ export async function sourceVerifyComposedOutfits({
   if(!Array.isArray(looks)||typeof hardGate!=='function'||
     typeof scorer?.rankLook!=='function'||sourceMode!=='catalog')return [];
   const produced=[],shared=new Set();
-  for(let i=0;i<Math.min(3,looks.length);i++){
+  for(let i=0;i<Math.min(6,looks.length);i++){
     const items=looks[i];
     if(!Array.isArray(items)||items.length<3||items.length>4||
       !['top','bottom','shoes'].every(slot=>items.some(x=>slotOf(x)===slot))||
