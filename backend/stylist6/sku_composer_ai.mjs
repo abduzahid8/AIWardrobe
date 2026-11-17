@@ -390,9 +390,11 @@ export function groundedPhotoRevisionFeedback(raw){
         photographedColors,wholeOutfitRelationships:relationships,
         photoQualityAxes:axes}];
     }):[];
+  const editorGap=photoEvidenceText(raw.editorPhotoGap,160);
   return {
     previousRejectedReasons:reasons,
     previousAcceptedArchitectures:approvedArchitectures,
+    ...(editorGap.length>=18?{visualEditorMissingFashionDirection:editorGap}:{}),
     rejectedPhotoEvidence:rejected,
     goal:'Improve complete garment proportions, textile relationships and shoe/formality harmony using independent photo evidence; propose fresh eligible real items.',
   };

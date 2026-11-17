@@ -196,6 +196,24 @@ fulfill the owner's four-product contract.
 ## Each work session's completion report must include
 GitHub SHA; staging Supabase function version + pinned READY compute SHA; code/quality changes; real scenario IDs & images; what objectively improved; what deteriorated; how many looks were provider-judged vs fallback; product stock/rights truth; QA gate counts; production status; exact NEXT highest-leverage root cause.
 
+## 2026-11-17 — photo portfolio fashion editor now can CREATE corrective new styling directions
+
+Previously the final independent actual-photo fashion editor could only
+discard near-clone card 3, never request a new genuinely different
+fashion direction. On isolated 72s staging only, a photo editor may now
+return a machine-validated `missingFashionDirection` in addition to
+its ORIGINAL exact verified F-token choice. When there is >=22.5s
+server time and unused independent-photo quota, a bounded second
+AI Fashion Director chooses unused merchant SOURCE SKUs informed by
+the photographic complaint. Every new 4-item outfit is re-source-,
+price-, physical- and merchant-verified and independently PHOTO
+critic-reviewed. A second real photo portfolio choice and original
+NVIDIA replay are required before any changed look is shown. If
+anything fails, keep the original approved partial deck. No weak
+padding, no model-skipping, no S5 production change. See
+`docs/reports/stylist6-photo-editorial-creative-revision-20261117/README.md`.
+This is not an aesthetic win until real iOS and human blind evaluation.
+
 ## 2026-11-17 — 120B fashion designer staging audition (NOT acceptance)
 
 Correct native iPhone scenario NEW CLOTHING / CLASSIC / WORK on the

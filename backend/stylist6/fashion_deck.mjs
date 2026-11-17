@@ -2717,6 +2717,184 @@ export async function recommendFashionDeck({
               } else editorial.status='invalid_combination';
             } else editorial.status='invalid_selection';
           }
+          // SECOND TRUE CREATIVE DECISION, ONLY on isolated 72s staging.
+          // The independent photographic COLLECTION editor may identify
+          // exactly what novel silhouette is MISSING after selecting only
+          // two of >=3 already NVIDIA-approved near-clones. The original
+          // source SKU artist gets that image-observed gap, proposes unused
+          // SKUs and must earn NEW independent photographic approval.
+          // No title regex bans, no relaxed quality floor, no weak padding.
+          // If any step fails or time runs out, retain the fully photo-
+          // verified original 1–2 chosen outfits completely unchanged.
+          editorial.feedbackRevision='not_run';
+          if(editorial.status==='applied'&&editorial.chosen<3&&
+              typeof decision?.creativeGap==='string'&&
+              decision.creativeGap.length>=18&&
+              request.sourceMode==='catalog'&&
+              Array.isArray(composerPool)&&
+              typeof selectCatalogRescueCompositions==='function'&&
+              typeof photoRescueRemainingMs==='function'&&
+              photoRescueRemainingMs()>=22500){
+            const remainingPhotoQuota=Math.max(0,
+              MAX_VISUAL_CANDIDATES+3-
+              (reviewed.diagnostics.visualAttempted||0));
+            const photoQuota=Math.min(3,remainingPhotoQuota);
+            const alreadyApprovedProductKeys=new Set(approvedLooks.flatMap(
+              look=>(look.items||[]).map(it=>baseProductId(String(it.id)))));
+            const freshPool=composerPool.filter(token=>
+              !alreadyApprovedProductKeys.has(
+                baseProductId(String(token.item?.id))));
+            const enoughFresh=slots.every(slot=>
+              freshPool.filter(p=>p.slot===slot).length>=3);
+            if(photoQuota>0&&enoughFresh){
+              editorial.feedbackRevision='attempted';
+              // selectVisualDeck returns display-ready look shells with
+              // concept/evidence but WITHOUT the original brief+fashion.
+              // Second portfolio feasibility replays MUST use the exact
+              // initial approved SOURCE candidates, never display shells.
+              const originalChosen=reviewed.outfits.flatMap(look=>{
+                const source=candidates.find(x=>x.id===look.id);
+                return source?[source]:[];
+              });
+              const reasons=(reviewed.diagnostics.visualQualityDecisions||[])
+                .filter(row=>row.reason!=='approved').map(row=>row.reason).slice(0,6);
+              const selectedArchitectures=originalChosen.slice(0,2).map(look=>
+                Object.fromEntries(slots.map(slot=>[slot,
+                  String(look.items?.find(it=>it.macroCategory===slot)?.subtype||'')
+                    .slice(0,32)])));
+              let retry=null;
+              try{
+                retry=await selectCatalogRescueCompositions({
+                  pool:freshPool,
+                  critiqueFeedback:{reasons,
+                    editorPhotoGap:decision.creativeGap,
+                    approvedArchitectures:selectedArchitectures},
+                  directions:aiPlans,feedbackTaste,
+                  context:{style:context.style,occasion:context.occasion,
+                    brief:context.request,preferences:context.preferences,
+                    weatherCelsius:Number.isFinite(context.weather?.temp)
+                      ?context.weather.temp:null},
+                  layerRequired:forceLayer,allowLayer:!noLayer,
+                });
+              }catch{/* preserve original PHOTO approved set */}
+              editorial.feedbackRevisionStatus=
+                String(retry?.status||'unavailable').slice(0,32);
+              if(retry?.status==='composed'&&Array.isArray(retry.looks)&&
+                  photoRescueRemainingMs()>=16000){
+                const validated=await sourceVerifyComposedOutfits({
+                  looks:retry.looks,request:{...request,requiredIds},
+                  requiredIds,hardGate,priceToBudgetCurrency,
+                  scorer:fashionScorer,sourceMode:request.sourceMode,
+                });
+                const extras=[];
+                for(const look of validated){
+                  if(extras.length>=photoQuota||photoRescueRemainingMs()<15000)break;
+                  if(candidates.some(c=>c.id===look.id))continue;
+                  if(look.items.some(it=>alreadyApprovedProductKeys.has(
+                       baseProductId(String(it.id)))))continue;
+                  if(explicitColorPreferences&&
+                    photographicPaletteEvidence(look,context.preferences,
+                      requiredIds).blocked)continue;
+                  if(await permitted(look))extras.push(look);
+                }
+                editorial.feedbackRevisionAdmitted=extras.length;
+                if(extras.length>0&&photoRescueRemainingMs()>=14500){
+                  const allowedMs=Math.max(1000,Math.min(8200,
+                    Math.floor(photoRescueRemainingMs()-8300)));
+                  let extraCritiques=[];
+                  let revised=null;
+                  try{
+                    revised=await evaluateVisualShortlist(
+                      {...retrieval,shortlist:extras},request,visualCritic,{
+                        ...reviewOptions,target:extras.length,
+                        criticSignal:AbortSignal.timeout(allowedMs),
+                        onCritiques:rows=>{extraCritiques=rows;},
+                      });
+                  }catch{/* independent photo veto: original deck remains */}
+                  editorial.feedbackRevisionAttempted=
+                    revised?.diagnostics?.visualAttempted||0;
+                  editorial.feedbackRevisionApproved=
+                    revised?.diagnostics?.visualApproved||0;
+                  if(revised?.outfits?.length>0&&
+                      photoRescueRemainingMs()>=7300){
+                    const acceptedExtraIds=new Set(
+                      (revised.diagnostics.visualQualityDecisions||[])
+                        .filter(row=>row.reason==='approved')
+                        .map(row=>row.candidateId));
+                    const approvedExtra=extras.filter(x=>
+                      acceptedExtraIds.has(x.id));
+                    // Reopen the original full source/photo feasibility menu:
+                    // the new VLM editor can select only ORIGINAL approved
+                    // looks + independently photo-accepted alternatives.
+                    const allApproved=[...originalChosen,...approvedExtra]
+                      .slice(0,MAX_VISUAL_CANDIDATES);
+                    const allCritiquesRevised=[
+                      ...allCritiques,...extraCritiques,
+                    ];
+                    const newMenus=verifiedPhotoEditorialPortfolios(
+                      allApproved,allCritiquesRevised,reviewOptions);
+                    if(approvedExtra.length>0&&newMenus.length>0){
+                      let revisedDecision=null;
+                      try{
+                        revisedDecision=await selectPhotoApprovedPortfolio({
+                          looks:allApproved,critiques:allCritiquesRevised,
+                          portfolios:newMenus,
+                          context:{style:context.style,occasion:context.occasion,
+                            brief:context.request,preferences:context.preferences},
+                        });
+                      }catch{/* original editorial deck remains */}
+                      if(revisedDecision?.status==='selected'&&
+                        Array.isArray(revisedDecision.tokens)){
+                        const rescored=[...new Set(revisedDecision.tokens)]
+                          .map(token=>/^L[0-9]{2}$/.test(token)
+                            ?allApproved[Number(token.slice(1))]:null)
+                          .filter(Boolean).slice(0,3);
+                        if(rescored.length===revisedDecision.tokens.length&&
+                          rescored.some(look=>approvedExtra.some(x=>x.id===look.id))){
+                          const replay=selectVisualDeck(
+                            {...retrieval,shortlist:rescored},
+                            allCritiquesRevised,
+                            {...reviewOptions,target:rescored.length,
+                              onCritiques:undefined});
+                          if(replay.outfits.length===rescored.length){
+                            const replayById=new Map(
+                              replay.outfits.map(x=>[x.id,x]));
+                            const first=reviewed.diagnostics;
+                            reviewed={...reviewed,status:replay.status,
+                              outfits:rescored.map(x=>replayById.get(x.id)),
+                              diagnostics:{...first,
+                                visualAttempted:first.visualAttempted+
+                                  (revised.diagnostics.visualAttempted||0),
+                                visualValid:first.visualValid+
+                                  (revised.diagnostics.visualValid||0),
+                                visualApproved:first.visualApproved+
+                                  (revised.diagnostics.visualApproved||0),
+                                visualRejected:first.visualRejected+
+                                  (revised.diagnostics.visualRejected||0),
+                                visualAbstained:first.visualAbstained+
+                                  (revised.diagnostics.visualAbstained||0),
+                                rejectedCandidateIds:[...new Set([
+                                  ...(first.rejectedCandidateIds||[]),
+                                  ...(revised.diagnostics.rejectedCandidateIds||[]),
+                                ])],
+                                visualQualityDecisions:[
+                                  ...(first.visualQualityDecisions||[]),
+                                  ...(revised.diagnostics.visualQualityDecisions||[]),
+                                ],
+                              }};
+                            candidates.push(...extras);
+                            editorial.chosen=rescored.length;
+                            editorial.feedbackRevision='applied';
+                            editorial.status='applied';
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }else editorial.feedbackRevision='insufficient_safe_capacity';
+          }
           modelFashionSelection.photoEditorial=editorial;
         }
       }

@@ -161,6 +161,14 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       ?f.photoEditorial.visualMediaStatus:'not_run',
     photoEditorialEligibleTriples:safe(f.photoEditorial?.eligibleTriples,24),
     photoEditorialEligiblePairs:safe(f.photoEditorial?.eligiblePairs,12),
+    photoEditorialCreativeRevision:[
+      'not_run','attempted','applied','insufficient_safe_capacity',
+    ].includes(f.photoEditorial?.feedbackRevision)
+      ?f.photoEditorial.feedbackRevision:'not_run',
+    photoEditorialCreativeRevisionAttempted:
+      safe(f.photoEditorial?.feedbackRevisionAttempted,3),
+    photoEditorialCreativeRevisionApproved:
+      safe(f.photoEditorial?.feedbackRevisionApproved,3),
     formalPhotoProbe:f.formalPhotoProbe===true,
     prePhotoUniqueTriple:f.uniqueTripleAvailable===true,
     reasons,

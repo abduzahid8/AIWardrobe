@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   PHOTO_EDITOR_FINAL_VERSION,PHOTO_PORTFOLIO_VISION_MODEL,anonymousPhotoEditorialOptions,
   anonymousPhotoEditorialPortfolios,validatePhotoEditorialPortfolioChoice,selectPhotoEditorialDeck,
+  safePhotoEditorialCreativeGap,
 } from './photo_editor_final.mjs';
 const looks=Array.from({length:5},(_,i)=>({
   id:'SECRET-CLIENT-SKU-'+i,
@@ -192,4 +193,46 @@ test('invalid photo-jury decision never unlocks an unverified portfolio token',a
   assert.equal(selection.status,'selected');
   assert.equal(selection.visualJury,'invalid_selection');
   assert.deepEqual(selection.tokens,['L02','L00']);
+});
+
+
+test('genuine PHOTO fashion editor returns sanitized missing creative direction ONLY after a verified F-token selection',async()=>{
+  const jpeg=await sharp({create:{width:110,height:130,channels:3,
+    background:'#8d806f'}}).jpeg().toBuffer();
+  const gap='A tailored suede overshirt with relaxed cream linen trousers adds a softer vertical silhouette instead of two identical cardigans';
+  let calls=0;
+  const edited=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    context:{style:'classic',occasion:'Date night'},timeoutMs:9200,
+    apiKey:'nvapi-test-good',authorizePhoto:()=>true,
+    resolvePhoto:async()=>({bytes:jpeg}),
+    fetchImpl:async(_url,req)=>{
+      calls++;
+      const body=JSON.parse(req.body);
+      assert.equal(body.model,PHOTO_PORTFOLIO_VISION_MODEL);
+      assert.match(body.messages[1].content[0].text,/missingFashionDirection/);
+      return Response.json({choices:[{finish_reason:'stop',message:{
+        content:JSON.stringify({portfolio:'F01',missingFashionDirection:gap}),
+      }}]});
+    },
+  });
+  assert.equal(calls,1);
+  assert.equal(edited.visualJury,'applied');
+  assert.equal(edited.creativeGap,gap);
+  assert.deepEqual(edited.tokens,['L02','L00']);
+  assert.equal(safePhotoEditorialCreativeGap(''),null);
+  assert.equal(safePhotoEditorialCreativeGap('Short'),null);
+  assert.match(safePhotoEditorialCreativeGap('A fresh https://evil.example P003 SKU991 jacket cut with a broader silhouette'),/\[redacted\]/);
+  assert.doesNotMatch(safePhotoEditorialCreativeGap('A fresh https://evil.example P003 SKU991 jacket cut with a broader silhouette'),
+    /https|P003|SKU991/);
+  const invalid=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    apiKey:'nvapi-test-good',timeoutMs:8500,authorizePhoto:()=>true,
+    resolvePhoto:async()=>({bytes:jpeg}),
+    fetchImpl:async()=>Response.json({choices:[{finish_reason:'stop',message:{
+      content:JSON.stringify({portfolio:'F99',missingFashionDirection:gap}),
+    }}]}),
+  });
+  assert.equal(invalid.status,'invalid_selection',
+    'a fake portfolio can never use a gap to create source-unauthorized products');
 });

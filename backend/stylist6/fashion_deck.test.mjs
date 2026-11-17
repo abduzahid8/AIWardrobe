@@ -2358,3 +2358,181 @@ test('slow but valid source-SKU AI response is received BEFORE legacy CPU-heavy 
   assert.ok(vision.length>=3);
   assert.ok(vision.every(x=>x.products.length===4));
 });
+
+test('real visual editor missing-direction feedback triggers NEW AI SKU compositions with second independent PHOTO approval',async()=>{
+  const expanded=['top','outerwear','bottom','shoes'].flatMap((slot,j)=>
+    Array.from({length:12},(_,i)=>garment('editor-photo-'+slot+'-'+i,
+      ['Structured cotton poplin','Suede tailored layer','Relaxed wool pleats',
+        'Soft leather designer shoe'][j]+' '+i,
+      slot,[
+        ['shirt','polo','turtleneck','oxford','merino-crew','knit-polo'],
+        ['blazer','cardigan','suede-jacket','overshirt','coat','wool-jacket'],
+        ['tailored-trouser','chino','pleated-trouser','wide-trouser','wool-trouser','relaxed-chino'],
+        ['loafer','derby','chelsea-boot','oxford','suede-loafer','minimal-sneaker'],
+      ][j][i%6])));
+  const request={sourceMode:'catalog',style:'classic',occasion:'Date night',
+    weather:{temp:16},optionalLayer:false,preferences:{},requiredIds:[],
+    budget:{amount:3000000,currency:'UZS'}};
+  let visionWaves=0,editorCalls=0,revisionCalls=0,realImageApprovedIds=[];
+  const result=await recommendFashionDeck({
+    ...base,request,catalog:expanded,
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
+    selectCatalogCompositions:async({pool,parallel,outfitCount})=>{
+      assert.equal(parallel,true);
+      assert.equal(outfitCount,6);
+      return {status:'composed',looks:Array.from({length:6},(_,i)=>
+        ['top','outerwear','bottom','shoes']
+          .map(slot=>pool.filter(p=>p.slot===slot)[i].item)),
+        providerCalls:1};
+    },
+    selectCatalogRescueCompositions:async({pool,critiqueFeedback,layerRequired})=>{
+      revisionCalls++;
+      assert.equal(layerRequired,true);
+      assert.match(critiqueFeedback.editorPhotoGap,/suede.*relaxed/i);
+      assert.ok(Array.isArray(critiqueFeedback.approvedArchitectures));
+      assert.ok(pool.length>=12);
+      return {status:'composed',looks:Array.from({length:3},(_,i)=>
+        ['top','outerwear','bottom','shoes']
+          .map(slot=>pool.filter(p=>p.slot===slot)[i].item)),
+        providerCalls:1};
+    },
+    photoRescueRemainingMs:()=>40000,
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      visionWaves++;
+      const verdicts=batch.map((look,i)=>admittedVisualVerdict(look,{
+        slotColors:{top:['white','navy','beige'][i%3],
+          outerwear:['brown','navy','olive'][i%3],
+          bottom:['grey','beige','brown'][i%3],shoes:'black'},
+      }));
+      realImageApprovedIds.push(...verdicts.filter(x=>x.reject===false)
+        .map(x=>x.candidateId));
+      return verdicts;
+    },
+    selectPhotoApprovedPortfolio:async({looks,portfolios})=>{
+      editorCalls++;
+      assert.ok(portfolios.length>0);
+      if(editorCalls===1){
+        const pair=portfolios.find(p=>p.size===2);
+        assert.ok(pair,'the first editor can omit near-clone third');
+        return {status:'selected',tokens:pair.orderedLooks,
+          creativeGap:'Use a suede outer layer and relaxed trouser silhouette instead of repetitive formal tailoring'};
+      }
+      const fresh=looks.filter(x=>x.id.startsWith('s6_ai_'));
+      assert.ok(fresh.length>=3);
+      const triple=portfolios.find(p=>p.size===3&&p.orderedLooks.some(
+        token=>looks[Number(token.slice(1))]?.items.some(it=>
+          Number(it.id.split('-').at(-1))>=6)));
+      assert.ok(triple,'the final editor should see independently approved NEW source SKU garments');
+      return {status:'selected',tokens:triple.orderedLooks};
+    },
+  });
+  assert.equal(revisionCalls,1,'photo-observed missing style must reach a fresh AI composition');
+  assert.equal(visionWaves,2,'new clothes MUST receive a second independent real-photo critique');
+  assert.equal(editorCalls,2,'original and second photo-approved collections are both curated');
+  assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.feedbackRevision,'applied');
+  assert.ok(result.outfits.length>=2);
+  assert.ok(result.outfits.every(x=>realImageApprovedIds.includes(x.id)));
+  assert.ok(result.outfits.every(x=>x.items.length===4&&x.items.every(y=>y.isShopItem)));
+  assert.ok(result.outfits.flatMap(x=>x.items).every(y=>!!y.shopUrl));
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+});
+
+test('failed second visual editorial AI never replaces previously photo-approved outfits',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:18},optionalLayer:false,preferences:{},
+    budget:{amount:2500000,currency:'UZS'},requiredIds:[]};
+  const expanded=['top','outerwear','bottom','shoes'].flatMap((slot,j)=>
+    Array.from({length:9},(_,i)=>garment('safe-'+slot+'-'+i,
+      'Real source category '+slot+' '+i,slot,
+      [
+        ['shirt','polo','turtleneck','oxford','merino-crew','knit-polo'],
+        ['blazer','cardigan','suede-jacket','overshirt','coat','wool-jacket'],
+        ['tailored-trouser','chino','pleated-trouser','wide-trouser','wool-trouser','relaxed-chino'],
+        ['loafer','derby','chelsea-boot','oxford','suede-loafer','minimal-sneaker'],
+      ][j][i%6])));
+  const common={...base,request,catalog:expanded,referenceBriefs:refs,
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
+    selectCatalogCompositions:async({pool})=>({
+      status:'composed',looks:Array.from({length:6},(_,i)=>
+        ['top','outerwear','bottom','shoes'].map(slot=>
+          pool.filter(p=>p.slot===slot)[i].item)),providerCalls:1,
+    }),
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>batch.map(x=>admittedVisualVerdict(x)),
+    selectPhotoApprovedPortfolio:async({portfolios})=>{
+      const pair=portfolios.find(p=>p.size===2);
+      return {status:'selected',tokens:pair.orderedLooks,
+        creativeGap:'Consider a genuinely different relaxed suede weekend-tailoring silhouette'};
+    },
+    photoRescueRemainingMs:()=>40000,
+  };
+  const baseline=await recommendFashionDeck({
+    ...common,selectCatalogRescueCompositions:undefined});
+  let calls=0;
+  const rejected=await recommendFashionDeck({
+    ...common,
+    selectCatalogRescueCompositions:async()=>{
+      calls++;return {status:'provider_unavailable',looks:[],providerCalls:1};
+    },
+  });
+  assert.equal(calls,1);
+  assert.deepEqual(rejected.outfits.map(x=>x.id),baseline.outfits.map(x=>x.id));
+  assert.equal(rejected.diagnostics.modelFashionSelection.photoEditorial.feedbackRevision,'attempted');
+  assert.equal(rejected.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+});
+
+test('visual editorial revision cannot display a newly rejected or unlicensed fourth-product look',async()=>{
+  const slots=['top','outerwear','bottom','shoes'];
+  const variants=[
+    ['oxford','knit-polo','shirt','turtleneck','merino-crew','linen-shirt'],
+    ['blazer','cardigan','suede-jacket','overshirt','wool-coat','linen-blazer'],
+    ['pleated-trouser','chino','tailored-trouser','wide-trouser','wool-trouser','relaxed-chino'],
+    ['loafer','derby','chelsea-boot','oxford','suede-loafer','minimal-sneaker'],
+  ];
+  const catalog=slots.flatMap((slot,j)=>Array.from({length:10},(_,i)=>
+    garment('no-padding-'+slot+'-'+i,'Licensed source garment '+i,
+      slot,variants[j][i%6])));
+  const request={sourceMode:'catalog',style:'classic',occasion:'Date night',
+    weather:{temp:18},optionalLayer:false,preferences:{},requiredIds:[],
+    budget:{amount:3000000,currency:'UZS'}};
+  let photos=0,editors=0,revisions=0;
+  const result=await recommendFashionDeck({
+    ...base,request,catalog,referenceBriefs:refs,
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
+    selectCatalogCompositions:async({pool})=>({
+      status:'composed',looks:Array.from({length:6},(_,i)=>
+        slots.map(slot=>pool.filter(p=>p.slot===slot)[i].item)),providerCalls:1,
+    }),
+    selectCatalogRescueCompositions:async({pool,critiqueFeedback})=>{
+      revisions++;
+      assert.match(critiqueFeedback.editorPhotoGap,/soft.*suede/i);
+      return {status:'composed',looks:Array.from({length:3},(_,i)=>
+        slots.map(slot=>pool.filter(p=>p.slot===slot)[i].item)),providerCalls:1};
+    },
+    photoRescueRemainingMs:()=>40000,
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      photos++;
+      return batch.map((x,i)=>admittedVisualVerdict(x,{
+        reject:photos===2,
+        slotColors:{top:['white','blue','grey'][i%3],
+          outerwear:['navy','brown','olive'][i%3],
+          bottom:['grey','stone','brown'][i%3],shoes:'black'},
+      }));
+    },
+    selectPhotoApprovedPortfolio:async({portfolios})=>{
+      editors++;
+      return {status:'selected',
+        tokens:portfolios.find(p=>p.size===2)?.orderedLooks||[],
+        creativeGap:'Build a soft suede outerwear alternative with relaxed tailored trousers'};
+    },
+  });
+  assert.equal(revisions,1);
+  assert.equal(photos,2,'new proposals must be photographed and independently judged');
+  assert.equal(editors,1,'no second editor sees unsupported rejected looks');
+  assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.feedbackRevision,'attempted');
+  assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.feedbackRevisionApproved,0);
+  assert.equal(result.outfits.length,2,'previously judged pair survives new photo rejection');
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+});
