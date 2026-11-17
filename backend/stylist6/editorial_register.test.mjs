@@ -177,3 +177,16 @@ test('actual latest cloud dinner rejects casual overshirt-polo-corduroy without 
     'Tailored wool trousers','Black leather Derbies');
   assert.equal(editorialRegisterVeto(balanced,dinner),null);
 });
+
+
+test('source-evident Oxford cloth button-down counts as the dress shirt anchor on smart-casual dinner',()=>{
+  const date={sourceMode:'catalog',style:'semi_classic',occasion:'Date night',
+    brief:'Refined semi-classic dinner, modern smart casual elegance'};
+  const oxford=look('Striped Brushed Oxford Shirt Crisp Blue',
+    'Wool Blend Cable Knit Cardigan Shadow Brown',
+    'Sand-colored comfort cotton gabardine chinos','Brown leather loafers');
+  assert.equal(editorialRegisterVeto(oxford,date),null);
+  const tee=look('ONSMAX T-shirt','100% Cotton Overshirt with Pocket Detail',
+    'Tapered Slim-Fit Jeans in Stay Black','Leather Chelsea boots');
+  assert.equal(editorialRegisterVeto(tee,date),'polished_date_needs_tailored_anchor');
+});

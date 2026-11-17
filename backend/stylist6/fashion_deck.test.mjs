@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
@@ -1623,4 +1624,40 @@ test('polished +13C dinner needs four intentional garments, while warm, casual a
   assert.ok(r.outfits.length>0,'source-backed catalog should furnish a date outfit in the known fixture');
   assert.ok(r.outfits.every(o=>o.items.some(item=>item.macroCategory==='outerwear') && o.items.length===4),
     'no bare short-sleeve polo and dress trousers at +13°C in a refined dinner deck');
+});
+
+
+test('strict personal colors preferentially spend paid visual calls on photographically verified safe alternatives',async()=>{
+  const hash='d'.repeat(32);
+  const withPhotoColor=item=>{
+    const seen=/(?:white|navy|cream|grey|beige|brown|black|charcoal|tan|burgundy)/i.exec(item.id)?.[0]?.toLowerCase()||'brown';
+    return {...item,visualSourceHash:hash,visualFashion:{version:1,sourceHash:hash,
+      imageUrl:item.imageUrl,imageSha256:createHash('sha256').update(item.id).digest('hex'),
+      model:'siglip2',revision:'qa-safe-1',
+      attributes:{color:{value:seen==='charcoal'?'grey':seen,confidence:.94,margin:.53,evidence:'image-model'}}}};
+  };
+  const catalog=[...products.map(withPhotoColor),
+    garment('camel-cardigan','Fine Wool Camel Cardigan','outerwear','cardigan'),
+    garment('beige-chino','Beige cotton chinos','bottom','chino'),
+    garment('cream-polo','Cream fine-knit polo','top','polo')].map(withPhotoColor);
+  const preferences={avoidColors:['navy'],favoriteColors:['cream','beige','brown']};
+  const request={...base.request,preferences};
+  let sent=[];
+  const result=await recommendFashionDeck({catalog,request,referenceBriefs:refs,
+    hardGate:async()=>({ok:true}),priceToBudgetCurrency:i=>i.price,
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      sent=batch;
+      return batch.map(look=>admittedVisualVerdict(look,{
+        slotColors:Object.fromEntries(look.items.map(i=>[i.macroCategory,'brown'])),
+        referenceless:true,styleFit:.87,occasionFit:.91,formalityFit:.88,
+      }));
+    },
+  });
+  assert.ok(sent.length>=4,'creative fashion shortlist must provide photo-safe alternatives for NVIDIA');
+  assert.ok(sent.every(look=>!photographicPaletteEvidence(look,preferences,request.requiredIds).blocked),
+    'a known banned photographic hue must not consume one of eight 120B calls');
+  assert.ok(sent.filter(look=>{const p=photographicPaletteEvidence(look,preferences,request.requiredIds);return p.verified>=Math.min(3,p.total)}).length>=3,
+    'the model should see multiple actual-photo grounded alternatives, not only uncertain-color text metadata');
+  assert.ok(sent.length<=8);
 });

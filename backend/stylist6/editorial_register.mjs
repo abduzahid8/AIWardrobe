@@ -83,7 +83,8 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '', reque
     /\b(date|dinner|romantic)\b/.test(norm(occasion)) &&
     !deliberatelyRelaxedIntent(`${brief} ${request}`);
   if(polishedDate && !(look?.items||[]).some(it=>pinned.has(String(it.id)))){
-    const tailoredTop=/\b(dress shirt|poplin dress|formal shirt)\b/.test(top);
+    const tailoredTop=/\b(dress shirt|poplin dress|formal shirt|oxford (?:cloth )?(?:button[ -]down )?shirt)\b/.test(top) ||
+      /^(dress-shirt)$/.test(String(slot(look,'top')?.subtype||'').toLowerCase());
     const tailoredLayer=/\b(blazer|suit jacket|tailored jacket|overcoat|topcoat|dress coat)\b/.test(layer) ||
       /^(blazer|coat|overcoat)$/.test(String(slot(look,'outerwear')?.subtype||'').toLowerCase());
     const tailoredBottom=/\b(wool (?:pants|trousers)|tailored|suit (?:pants|trousers)|dress trousers|pleated trousers)\b/.test(bottom) ||

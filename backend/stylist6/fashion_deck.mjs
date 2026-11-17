@@ -94,6 +94,16 @@ const VISUAL_CHALLENGER_QUALITY_WINDOW = 0.16;
  * Unknown items remain eligible in the ordinary fallback path; locked user
  * garment choices must not be filtered by preferences.
  */
+/** User-pinned garments are an explicit instruction, not an unknown
+ * merchant offer that has to use up the remaining photo-color evidence
+ * quota. A complete three-piece outfit with one pinned owned hero has only
+ * TWO independently selected pieces to certify; requiring >=3 is impossible.
+ */
+export function sufficientPhotographicPaletteEvidence(evidence) {
+  return !!evidence && !evidence.blocked && evidence.verified >= Math.min(3,evidence.total) &&
+    evidence.verified >= evidence.total-1;
+}
+
 export function photographicPaletteEvidence(look, preferences, requiredIds = []) {
   const excluded=new Set(verifiedAvoidColors(preferences?.avoidColors));
   const preferred=new Set(verifiedAvoidColors(preferences?.favoriteColors));
@@ -1542,7 +1552,18 @@ export async function recommendFashionDeck({
     // rejection must not force a two-look deck when better alternatives exist.
     // The critic still owns every approval and enforces an eight-call paid cap.
     const candidates = [];
+    // Under explicit color exclusions the deterministic top-3 may carry
+    // UNKNOWN PHOTO COLORS: old code paid NVIDIA for all three, only to veto
+    // them as grey/navy. Prefer image-grounded safe candidates BEFORE paid
+    // vision. Unknown is not a known bad product, it can still be a fallback
+    // if there is insufficient verified merchandise.
+    const explicitColorPreferences=context.sourceMode==='catalog' &&
+      verifiedAvoidColors(context.preferences?.avoidColors).length>0;
     for (const look of selected) {
+      if (explicitColorPreferences) {
+        const evidence=photographicPaletteEvidence(look,context.preferences,requiredIds);
+        if (!sufficientPhotographicPaletteEvidence(evidence)) continue;
+      }
       if (await permitted(look)) candidates.push(look);
     }
     const metrics = creativeMetrics(deckContext);
@@ -1552,27 +1573,29 @@ export async function recommendFashionDeck({
     // Only complete photos whose color intelligence matches the CURRENT
     // image+source hash count as verified. The provider still decides which
     // of these candidates actually looks good and matches the occasion.
-    const explicitColorPreferences=context.sourceMode==='catalog' &&
-      verifiedAvoidColors(context.preferences?.avoidColors).length>0;
     const photoSafe=explicitColorPreferences ? selectable
       .filter(look=>!candidates.some(other=>other.id===look.id) &&
         Number.isFinite(look.fashion?.score) &&
         look.fashion.score>=leadScore-VISUAL_CHALLENGER_QUALITY_WINDOW)
       .map(look=>({look,evidence:photographicPaletteEvidence(look,context.preferences,requiredIds)}))
-      .filter(({evidence})=>!evidence.blocked && evidence.verified>=3 &&
-        evidence.verified>=evidence.total-1)
+      .filter(({evidence})=>sufficientPhotographicPaletteEvidence(evidence))
       .sort((a,b)=>b.evidence.score-a.evidence.score ||
         (b.look.fashion?.score??0)-(a.look.fashion?.score??0)) : [];
     let photoReserved=0;
+    // With a weak/unknown-color initial deck we can use up to five proven
+    // safe photo alternatives. Always reserve two paid-review slots for
+    // distinct Creative Director ideas or independent rescue challengers.
+    const photoSafeReserve=Math.min(5,Math.max(0,reviewedLimit-candidates.length-2));
     // Prefer SKUs not already present anywhere in the model-review batch.
     // Only on the second pass accept a materially different shared-cardigan
     // alternative as a last resort: it can still be useful if the original
     // candidate is vetoed. The displayed deck remains PRODUCT-unique.
-    for(let pass=0;pass<2&&photoReserved<3;pass++)for(const {look} of photoSafe){
-      if(photoReserved>=3 || candidates.length>=reviewedLimit)break;
+    for(let pass=0;pass<2&&photoReserved<photoSafeReserve;pass++)for(const {look} of photoSafe){
+      if(photoReserved>=photoSafeReserve || candidates.length>=reviewedLimit)break;
       if(candidates.some(other=>other.id===look.id))continue;
       if(candidates.some(other=>Math.max(other.items.length,look.items.length)-overlaps(other,look)<2))continue;
-      if(pass===0 && candidates.some(other=>overlaps(other,look)>0))continue;
+      if(pass===0 && candidates.some(other=>overlaps(other,look)>0 ||
+        !independentOutfitDirection(look,other,requiredIds)))continue;
       if(await permitted(look)){candidates.push(look);photoReserved++;}
     }
 
@@ -1590,13 +1613,17 @@ export async function recommendFashionDeck({
       if (candidates.length >= reviewedLimit || (photoReserved>=2 && aiReserved>=2)) break;
       const planned = selectable.filter(look =>
         look.briefId === canonicalBriefId(plan.id) && !candidates.some(other => other.id === look.id) &&
-        Number.isFinite(look.fashion?.score))
+        Number.isFinite(look.fashion?.score) &&
+        (!explicitColorPreferences || !photographicPaletteEvidence(look,context.preferences,requiredIds).blocked))
         .sort((a,b) =>
           // AI plans have multiple actual SKU executions. Prefer the one
           // that adds genuinely NEW products instead of using the same
           // popular cardigan the first two outfits already contain.
           candidates.reduce((n,chosen)=>n+overlaps(chosen,a),0) -
           candidates.reduce((n,chosen)=>n+overlaps(chosen,b),0) ||
+          (explicitColorPreferences ?
+            photographicPaletteEvidence(b,context.preferences,requiredIds).score -
+            photographicPaletteEvidence(a,context.preferences,requiredIds).score : 0) ||
           b.fashion.score - a.fashion.score);
       for (const look of planned.slice(0, 6)) {
         if (await permitted(look)) { candidates.push(look); aiReserved++; break; }
@@ -1620,6 +1647,8 @@ export async function recommendFashionDeck({
       const extras = rankVisualChallengerPool(selectable
         .filter(look => !candidates.some(chosen => chosen.id === look.id) &&
           Number.isFinite(look.fashion?.score) &&
+          (!explicitColorPreferences ||
+            !photographicPaletteEvidence(look,context.preferences,requiredIds).blocked) &&
           look.fashion.score >= leadScore - VISUAL_CHALLENGER_QUALITY_WINDOW &&
           // A challenger only needs to be materially different from SOME
           // existing direction. Near substitutes can replace a visually
