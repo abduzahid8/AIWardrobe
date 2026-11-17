@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -1605,4 +1605,22 @@ test('visual rescue inventory counts only independently styled triples with diff
     {look:{id:'reused',fashion:{score:.93}},uniqueTripleGain:0,
     rescueGain:1,capacityGain:0,difference:.6}];
   assert.deepEqual(rankVisualChallengerPool(candidates).map(c=>c.id),['unique','reused']);
+});
+
+
+test('polished +13C dinner needs four intentional garments, while warm, casual and explicit no-jacket requests stay personal', async()=>{
+  const baseDate={sourceMode:'catalog',style:'semi_classic',occasion:'Date night',
+    brief:'Refined semi-classic outfit for a nice dinner date with polished footwear',
+    weather:{temp:13},optionalLayer:true,preferences:{avoidColors:['navy','grey']}};
+  const context=fashionStylingContext(baseDate);
+  assert.equal(polishedEveningLayerRequired(context),true);
+  assert.equal(polishedEveningLayerRequired(fashionStylingContext({...baseDate,weather:{temp:25}})),false);
+  assert.equal(polishedEveningLayerRequired(fashionStylingContext({...baseDate,occasion:'Weekend'})),false);
+  assert.equal(polishedEveningLayerRequired(fashionStylingContext({...baseDate,brief:'Relaxed casual walk and a date'})),false);
+  assert.equal(polishedEveningLayerRequired(fashionStylingContext({...baseDate,brief:'Polished dinner, without jacket'})),false);
+  assert.equal(polishedEveningLayerRequired(fashionStylingContext({...baseDate,sourceMode:'wardrobe'})),false);
+  const r=await recommendFashionDeck({...base,request:{...baseDate,preferences:{}}});
+  assert.ok(r.outfits.length>0,'source-backed catalog should furnish a date outfit in the known fixture');
+  assert.ok(r.outfits.every(o=>o.items.some(item=>item.macroCategory==='outerwear') && o.items.length===4),
+    'no bare short-sleeve polo and dress trousers at +13°C in a refined dinner deck');
 });

@@ -1396,6 +1396,27 @@ export function fashionStylingContext(request) {
   return wedding && !casualWedding ? { ...context, dressCode: 'formal' } : context;
 }
 
+/** A polished catalog dinner at 12–17°C needs an intentional outer layer.
+ * The weather policy already treats <18°C as cool, but the cloud's default
+ * `optionalLayer:true` + the narrower `hasColdLayerIntent(<12)` let the
+ * house concepts still nominate bare polo/trousers/boots at 13°C. Respect
+ * an explicit request for no jacket and warmer/relaxed scenarios. This is
+ * a structural shortlist policy, not fabricated weather or a visual verdict.
+ */
+export function polishedEveningLayerRequired(context) {
+  if(context?.sourceMode!=='catalog')return false;
+  const temperature=context.weather?.temp;
+  if(!Number.isFinite(temperature)||temperature>=18)return false;
+  const style=String(context.style||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+  if(!['semi_classic','classic','old_money','business_casual'].includes(style))return false;
+  if(!/\b(date|dinner|romantic|cocktail|evening)\b/i.test(String(context.occasion||'')))return false;
+  const text=String(context.request||'');
+  if(/\b(casual|relaxed|informal|sporty)\b/i.test(text))return false;
+  if(/\b(?:no|without|skip)\s+(?:(?:an?|any|extra|additional)\s+){0,3}(?:layers?|outerwear|jacket|blazer|coat|cardigan)\b/i.test(text) ||
+    /без\s+(?:(?:лишнего|дополнительного)\s+)?(?:пиджака|куртки|пальто|кардигана|верхней\s+одежды|слоёв|слоя)/i.test(text))return false;
+  return true;
+}
+
 export async function recommendFashionDeck({
   request, catalog, referenceBriefs = [], hardGate, priceToBudgetCurrency, visualCritic, canJudgeOutfit,
   // Optional trusted inventory-grounded AI directions; still subject to the
@@ -1428,7 +1449,8 @@ export async function recommendFashionDeck({
   const context = fashionStylingContext(request);
   const weather = context.weather;
   const reference = referenceBriefs.find(({ referenceId }) => referenceId === request.referenceId);
-  const forceLayer = !context.optionalLayer || hasColdLayerIntent(weather) || context.dressCode === 'formal';
+  const forceLayer = !context.optionalLayer || hasColdLayerIntent(weather) ||
+    context.dressCode === 'formal' || polishedEveningLayerRequired(context);
   const composition = resolveOutfitComposition(context.style, weather, context.request, context.optionalLayer);
   const noLayer = !forceLayer && !composition.layered;
   const requiredIds = [...new Set([...(request.requiredIds || []), ...(context.anchorId ? [context.anchorId] : [])])];

@@ -90,7 +90,18 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '', reque
     const zipLayer=/\b(?:zip|zipper|zip-front|half zip|quarter zip)\b/.test(layer);
     const casualLower=/\b(chinos?|jeans|joggers?|cargo pants)\b/.test(bottom) ||
       /^(chino|jeans|jogger|cargo)$/.test(String(slot(look,'bottom')?.subtype||'').toLowerCase());
-    if(zipLayer && casualLower && !tailoredTop && !tailoredLayer && !tailoredBottom)
+    // Not only zipped cardigans: a polo under a cotton overshirt with
+    // corduroys also has NO polished element, despite a harmonized palette.
+    // Require some SOURCE-OBSERVED sartorial anchor for a deliberately
+    // refined date. Incomplete merchant evidence still abstains.
+    const informalTop=/\b(polo|tee|t shirt|henley|hoodie|graphic|half zip|quarter zip|zippered)\b/.test(top) ||
+      /^(polo|t-shirt|henley)$/.test(String(slot(look,'top')?.subtype||'').toLowerCase());
+    const informalLayer=/\b(overshirt|hoodie|fleece|shirt jacket|track jacket)\b/.test(layer) ||
+      /^(overshirt|hoodie|sweatshirt)$/.test(String(slot(look,'outerwear')?.subtype||'').toLowerCase());
+    const informalBottom=/\b(corduroys?|chinos?|jeans|joggers?|cargo pants)\b/.test(bottom) ||
+      /^(chino|jeans|jogger|cargo)$/.test(String(slot(look,'bottom')?.subtype||'').toLowerCase());
+    if(!tailoredTop && !tailoredLayer && !tailoredBottom &&
+      (zipLayer || informalTop || informalLayer || informalBottom || casualLower))
       return 'polished_date_needs_tailored_anchor';
     // A graphic statement item has a different editorial purpose from an
     // understated semi-classic date. This is only an opt-out for unsolicited

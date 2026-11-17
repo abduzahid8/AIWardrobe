@@ -158,3 +158,22 @@ test('unrequested statement prints are not silently treated as understated semi-
   assert.equal(editorialRegisterVeto(look('Muted pinstripe shirt','Mahogany Blazer',
     'Wool trousers','Brown loafers'),request),null);
 });
+
+
+test('actual latest cloud dinner rejects casual overshirt-polo-corduroy without sartorial anchor',()=>{
+  const dinner={style:'semi_classic',occasion:'Date night',sourceMode:'catalog',
+    brief:'Refined semi-classic outfit for a nice dinner date with polished footwear'};
+  const actual=look('Burgundy wool and cashmere zippered polo shirt with nubuck details',
+    '100% Cotton Overshirt with Pocket Detail','Beige Corduroy Metropolitan Trousers',
+    'Herring Mountbatten Chelsea boots in dark brown calf');
+  assert.equal(editorialRegisterVeto(actual,dinner),'polished_date_needs_tailored_anchor');
+  assert.equal(editorialRegisterVeto(actual,{...dinner,occasion:'Weekend'}),null);
+  assert.equal(editorialRegisterVeto(actual,{...dinner,brief:'Casual weekend coffee date'}),null);
+  assert.equal(editorialRegisterVeto(actual,{...dinner,sourceMode:'wardrobe'}),null);
+  const elevated=look('Burgundy fine knit polo','Chocolate Wool Blazer',
+    'Beige Corduroy Metropolitan Trousers','Dark brown Chelsea boots');
+  assert.equal(editorialRegisterVeto(elevated,dinner),null);
+  const balanced=look('Dark charcoal fine-knit','Brown wool zip cardigan',
+    'Tailored wool trousers','Black leather Derbies');
+  assert.equal(editorialRegisterVeto(balanced,dinner),null);
+});
