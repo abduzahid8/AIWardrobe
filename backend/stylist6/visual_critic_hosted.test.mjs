@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createHostedVisualCritic, NVIDIA_VISION_MODEL, validVisualVerdict, nvidiaVerdictResponseFormat } from './visual_critic_hosted.mjs';
+import { createHostedVisualCritic, NVIDIA_VISION_MODEL, validVisualVerdict, nvidiaVerdictResponseFormat, formalPhotoDressCodeRubric, HOSTED_VISUAL_CRITIC_VERSION } from './visual_critic_hosted.mjs';
 
 const apiKey = 'test-api-key-0123456789abcdef';
 function asset(fill = 7, width = 16) {
@@ -799,3 +799,30 @@ test('abstentions and failures are never cached; only valid judged verdicts are'
   assert.equal(calls, 2, 'an abstained candidate must not poison the verdict cache');
 });
 
+
+
+test('traditional Formal photo critic cannot excuse a visible casual short-sleeve shirt with an all-black palette',async()=>{
+  assert.match(HOSTED_VISUAL_CRITIC_VERSION,/v14/);
+  assert.equal(formalPhotoDressCodeRubric({occasion:'Casual'}).length,0);
+  assert.equal(formalPhotoDressCodeRubric({occasion:'Formal',brief:'Creative avant-garde runway formal'}).length,0);
+  assert.equal(formalPhotoDressCodeRubric({occasion:'Wedding',brief:'Beach casual attire'}).length,0);
+  assert.equal(formalPhotoDressCodeRubric({occasion:'Formal'}).length,3);
+  const captured=[];
+  const look={...candidate,id:'s6_formal_short_sleeve',products:candidate.products.map(p=>
+    p.slot==='top'?{...p,name:'Maddox Oversized Cotton-Poplin Shirt'}:p)};
+  const critic=createHostedVisualCritic({
+    provider:'nvidia',apiKey,
+    resolveReference:()=>asset(8),resolveProduct:()=>asset(9),
+    fetchImpl:async(_,init)=>{captured.push(JSON.parse(init.body));return nvidiaResponse({
+      ...verdict,candidateId:look.id,
+    });},
+  });
+  const result=await critic([look],{style:'classic',occasion:'Formal',brief:'Traditional ceremony'});
+  assert.equal(result.length,1);
+  const prompt=captured[0].messages[0].content[0].text;
+  assert.match(prompt,/sleeve length/);
+  assert.match(prompt,/short-sleeved or boxy casual/);
+  assert.match(prompt,/Do NOT claim short sleeves when the photo does not show them/);
+  assert.match(prompt,/below 0\.70/);
+  assert.ok(!prompt.includes('always reject this brand'));
+});
