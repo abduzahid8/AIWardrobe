@@ -1967,6 +1967,10 @@ export async function recommendFashionDeck({
     const explicitColorPreferences=context.sourceMode==='catalog' &&
       verifiedAvoidColors(context.preferences?.avoidColors).length>0;
     let modelChosen=false;
+    const skuCompositionReceipt={
+      status:'not_run',proposed:0,admitted:0,previewProducts:0,
+      exploratoryProducts:0,
+    };
     if(modelLed){
       const reviewable=[];
       for(const look of selectable)if(await permitted(look))reviewable.push(look);
@@ -1996,6 +2000,9 @@ export async function recommendFashionDeck({
         const pool=sourceBoundCompositionPool(reviewable,{
           additionalItems:extra,explorationSlots:4,
         });
+        skuCompositionReceipt.previewProducts=pool.length;
+        skuCompositionReceipt.exploratoryProducts=pool.filter(p=>
+          !reviewable.some(look=>look.items.some(item=>item.id===p.item.id))).length;
         try{
           const composition=await selectCatalogCompositions({
             pool,context:{
@@ -2004,6 +2011,9 @@ export async function recommendFashionDeck({
               preferences:context.preferences,
             },layerRequired:forceLayer,allowLayer:!noLayer,
           });
+          skuCompositionReceipt.status=String(composition?.status||'unavailable').slice(0,40);
+          skuCompositionReceipt.proposed=Array.isArray(composition?.looks)
+            ?composition.looks.length:0;
           modelFashionSelection={
             status:String(composition?.status||'unavailable').slice(0,40),
             candidatesSeen:pool.length,
@@ -2023,6 +2033,7 @@ export async function recommendFashionDeck({
                 photographicPaletteEvidence(look,context.preferences,requiredIds).blocked)continue;
               if(await permitted(look))candidates.push(look);
             }
+            skuCompositionReceipt.admitted=candidates.length;
             modelFashionSelection.chosen=candidates.length;
             // One surviving composition isn't enough to ignore existing
             // director's six alternatives. Fall back to ordinary choices.
@@ -2031,6 +2042,7 @@ export async function recommendFashionDeck({
             else modelFashionSelection.status='composed';
           }
         }catch{
+          skuCompositionReceipt.status='composition_unavailable';
           modelFashionSelection={status:'composition_unavailable',
             candidatesSeen:pool.length,chosen:0,compositionMode:true};
         }
@@ -2133,6 +2145,7 @@ export async function recommendFashionDeck({
           modelFashionSelection.status='insufficient_admitted_selection';
       }
     }
+    if(modelLed)modelFashionSelection.skuCompositionReceipt=skuCompositionReceipt;
     if(!modelChosen)for(const look of selected) {
       if (explicitColorPreferences) {
         const evidence=photographicPaletteEvidence(look,context.preferences,requiredIds);

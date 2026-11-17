@@ -116,6 +116,15 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     displayedEvidence:safe(r.displayedEvidence,3),
     directorSelected:f.status==='selected'||f.status==='composed',
     directSkuComposition:f.status==='composed',
+    skuCompositionStatus:[
+      'not_run','composed','timeout','deadline','invalid_composition',
+      'incomplete','provider_unavailable','insufficient_inventory',
+      'not_configured','load_shed','composition_unavailable',
+    ].includes(f.skuCompositionReceipt?.status)
+      ?f.skuCompositionReceipt.status:'not_run',
+    skuCompositionProposed:safe(f.skuCompositionReceipt?.proposed,3),
+    skuCompositionAdmitted:safe(f.skuCompositionReceipt?.admitted,3),
+    skuCompositionExploration:safe(f.skuCompositionReceipt?.exploratoryProducts,48),
     photoEditorialStatus:['applied','deadline','timeout','provider_unavailable',
       'invalid_combination','invalid_selection','not_enough_approved']
       .includes(f.photoEditorial?.status)?f.photoEditorial.status:'not_run',
