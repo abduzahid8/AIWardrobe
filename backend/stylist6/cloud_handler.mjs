@@ -481,25 +481,30 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       return rows;
     },
     async fetchVisualProfiles(ids) {
-      const profiles = [];
-      for (let offset = 0; offset < ids.length; offset += VISUAL_PROFILE_CHUNK) {
-        const chunk = ids.slice(offset, offset + VISUAL_PROFILE_CHUNK);
-        const params = new URLSearchParams({
-          // hydrateProfiles checks entry.version === 1. Filtering the DB
-          // query by version WITHOUT selecting that column made EVERY
-          // perfectly valid profile look versionless and silently discard.
-          // The user's visual color exclusions were consequently ignored.
-          select: 'product_id,version,source_hash,image_url,profile',
-          version: 'eq.1',
-          product_id: `in.(${chunk.map((id) => `"${String(id).replace(/"/g, '')}"`).join(',')})`,
-        });
-        const response = await fetch(`${url}/rest/v1/catalog_visual_fashion?${params}`, {
-          headers: { ...authHeaders(serviceKey), Authorization: `Bearer ${serviceKey}` },
-        });
-        const data = await check(response, 'stylist6_catalog_unavailable');
-        if (Array.isArray(data)) profiles.push(...data);
+      // The trusted server already caps catalog discovery at 400 SKUs.
+      // Four 100-row REST reads were SERIAL, consuming precious NVIDIA time.
+      // Concurrent source-hash versioned reads preserve one atomic result:
+      // any failed page aborts the entire hydration, never partial evidence.
+      if (!Array.isArray(ids) || ids.length > CATALOG_PER_SLOT * CATALOG_SLOTS.length) {
+        throw new Error('stylist6_visual_hydration_limit_exceeded');
       }
-      return profiles;
+      const chunks = [];
+      for (let offset=0;offset<ids.length;offset+=VISUAL_PROFILE_CHUNK) {
+        chunks.push(ids.slice(offset,offset+VISUAL_PROFILE_CHUNK));
+      }
+      const pages=await Promise.all(chunks.map(async chunk=>{
+        const params=new URLSearchParams({
+          select:'product_id,version,source_hash,image_url,profile',
+          version:'eq.1',
+          product_id:'in.(' + chunk.map(id => '"' + String(id).replace(/"/g,'') + '"').join(',') + ')',
+        });
+        const response=await fetch(url+'/rest/v1/catalog_visual_fashion?'+params,{
+          headers:{...authHeaders(serviceKey),Authorization:'Bearer '+serviceKey},
+        });
+        const data=await check(response,'stylist6_catalog_unavailable');
+        return Array.isArray(data)?data:[];
+      }));
+      return pages.flat();
     },
     // Gate D taste source: this user's own explicit thumbs rows, newest
     // first, bounded to the pure module's row cap. One indexed query on

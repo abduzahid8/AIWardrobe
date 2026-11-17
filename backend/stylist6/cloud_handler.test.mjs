@@ -1762,6 +1762,44 @@ test('cloud visual-profile REST query actually selects the version needed to hyd
     'missing version caused all expensive already-computed image intelligence to be ignored');
 });
 
+test('all four 100-SKU visual-profile reads start together, not behind serialized HTTP waits',async()=>{
+  const prior=globalThis.fetch, pending=[], urls=[];
+  try{
+    globalThis.fetch=(url)=>{
+      const location=new URL(String(url));
+      urls.push(location);
+      return new Promise(resolve=>pending.push(resolve));
+    };
+    const io=createCloudIo({url:'https://fake-supabase.example',
+      anonKey:'anon-test',serviceKey:'service-test',supabaseJs:{}});
+    const ids=Array.from({length:400},(_,i)=>'safe-product-'+i);
+    const read=io.fetchVisualProfiles(ids);
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(urls.length,4,'all four REST reads start before any response');
+    for(const location of urls){
+      assert.equal(location.pathname,'/rest/v1/catalog_visual_fashion');
+      assert.equal(location.searchParams.get('version'),'eq.1');
+      assert.deepEqual(location.searchParams.get('select').split(','),
+        ['product_id','version','source_hash','image_url','profile']);
+      const chosen=location.searchParams.get('product_id')||'';
+      assert.match(chosen,/^in\./);
+      assert.equal((chosen.match(/safe-product-/g)||[]).length,100);
+    }
+    pending.forEach((resolve,i)=>resolve(Response.json([
+      {product_id:'safe-product-'+(i*100),version:1,
+       source_hash:'a'.repeat(32),image_url:'https://example.com/product-'+i+'.jpg',
+       profile:{version:1}},
+    ])));
+    const result=await read;
+    assert.deepEqual(result.map(x=>x.product_id),
+      ['safe-product-0','safe-product-100','safe-product-200','safe-product-300'],
+      'result ordering and source-hash evidence remain stable');
+    await assert.rejects(io.fetchVisualProfiles(Array.from({length:401},(_,i)=>'id-'+i)),
+      /stylist6_visual_hydration_limit_exceeded/);
+  }finally{globalThis.fetch=prior}
+});
+
 test('fresh visual image colors exclude otherwise unknown-colored merchant cardigan from personal palette', () => {
   const row={...shopRow('grey-photo-no-color-title','outerwear'),
     name:'100% WOOL REGULAR-FIT CARDIGAN',description:'Wool cardigan. Plain product photo',
