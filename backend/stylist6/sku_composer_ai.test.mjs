@@ -479,3 +479,47 @@ test('one genuinely new source-valid photo-revision look survives two duplicate 
     {count:3,allowPartial:true,minimumValid:1}),[],
     'no imaginary SKU gets a free pass even in bounded feedback-based rescue');
 });
+
+test('inventory-first source menu lets AI design before any ranker has built an outfit',()=>{
+  const pool=sourceBoundCompositionPool([],{
+    additionalItems:items.flat(),
+    inventoryFirst:true,explorationSlots:4,
+  });
+  assert.equal(pool.length,24);
+  assert.ok(slots.every(slot=>pool.filter(p=>p.slot===slot).length>=6));
+  assert.equal(new Set(pool.map(x=>x.token)).size,24);
+  assert.equal(new Set(pool.map(x=>x.item.id)).size,24);
+  assert.doesNotMatch(JSON.stringify(pool.map(x=>x.public)),
+    /PRIVATE_SKU|images\.zara|www\.zara|shopUrl|imageUrl/);
+  const choices=Array.from({length:6},(_,i)=>Object.fromEntries(
+    slots.map(slot=>[slot,pool.filter(p=>p.slot===slot)[i].token])));
+  assert.equal(validateSkuCompositions({outfits:choices},pool,
+    {count:6,layerRequired:true}).length,6);
+});
+
+test('parallel six-look creative decision survives the OLD 3-second fashion model cutoff',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  let fulfilled=0;
+  const composed=await composeCatalogSkuLooks({
+    pool,parallel:true,timeoutMs:5100,
+    apiKey:'nvapi-test-six-real-garments',
+    fetchImpl:async(_url,opts)=>{
+      const body=JSON.parse(opts.body);
+      assert.equal(body.response_format.json_schema.name,'aiw_personal_sku_composition');
+      assert.equal(opts.signal.aborted,false);
+      return await new Promise((resolve,reject)=>{
+        const delayed=setTimeout(()=>{
+          fulfilled++;resolve(result(slotAnswer(pool)));
+        },4200);
+        opts.signal.addEventListener('abort',()=>{
+          clearTimeout(delayed);reject(new Error('aborted provider before response'));
+        },{once:true});
+      });
+    },
+  });
+  assert.equal(fulfilled,1,
+    'the old 3s deadline would lose an otherwise valid real SKU design');
+  assert.equal(composed.status,'composed');
+  assert.equal(composed.looks.length,3);
+  assert.ok(composed.looks.flat().every(item=>item.isShopItem));
+});

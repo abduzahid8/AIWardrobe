@@ -125,6 +125,7 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     skuCompositionProposed:safe(f.skuCompositionReceipt?.proposed,6),
     skuCompositionAdmitted:safe(f.skuCompositionReceipt?.admitted,6),
     skuCompositionExploration:safe(f.skuCompositionReceipt?.exploratoryProducts,48),
+    skuCompositionParallel:f.skuCompositionReceipt?.parallel===true,
     photoRevisionStatus:['composed','unavailable','deadline','timeout',
       'invalid_composition','incomplete','provider_unavailable',
       'provider_schema_rejected','insufficient_inventory','load_shed']
@@ -1418,15 +1419,23 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // production S5 route and 50s Vercel preview do not pay for it.
     const selectCatalogCompositions=modelSlateEnabled&&budgetMs>=70000 &&
       sourceMode==='catalog' && !requiredIds.length
-      ? async({pool,context,directions,layerRequired,allowLayer,outfitCount=3,feedbackTaste})=>{
+      ? async({pool,context,directions,layerRequired,allowLayer,outfitCount=3,
+          feedbackTaste,parallel=false})=>{
           const left=remainingMs();
           if(left<27000)return {status:'deadline',looks:[],providerCalls:0};
-          nextPhase('ai_direct_sku_composition');
+          // Parallel creative call starts BEFORE the old 18-21s retrieval.
+          // Do not switch the sequential phase timer while that retrieval
+          // continues: this call overlaps it by design, without changing
+          // the native Supabase gateway, safety or paid photo-review budget.
+          if(!parallel)nextPhase('ai_direct_sku_composition');
           return composeCatalogSkuLooks({
-            pool,context,directions,layerRequired,allowLayer,outfitCount,feedbackTaste,
+            pool,context,directions,layerRequired,allowLayer,outfitCount,
+            feedbackTaste,parallel,
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
-            timeoutMs:Math.min(3000,Math.max(500,left-24500)),
+            timeoutMs:parallel
+              ?Math.min(8500,Math.max(2000,left-24500))
+              :Math.min(3000,Math.max(500,left-24500)),
           });
         }:null;
     const selectCatalogRescueCompositions=selectCatalogCompositions

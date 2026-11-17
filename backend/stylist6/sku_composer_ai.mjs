@@ -92,7 +92,7 @@ function explicitItemAffinity(item,model){
  */
 export function sourceBoundCompositionPool(looks, {
   perSlot=MAX_PER_SLOT,additionalItems=[],explorationSlots=4,directions=[],
-  feedbackTaste=null,
+  feedbackTaste=null,inventoryFirst=false,
 }={}){
   if(!Array.isArray(looks))return [];
   const limit=Math.max(1,Math.min(MAX_PER_SLOT,perSlot));
@@ -109,6 +109,17 @@ export function sourceBoundCompositionPool(looks, {
     }
   }
   const exploration=Array.isArray(additionalItems)?additionalItems.slice(0,650):[];
+  // A model capable of styling MUST SEE REAL CLOTHES before a legacy engine
+  // assembles hundreds of formula outfits. On the parallel canary path the
+  // source-admitted, request-prepared inventory is the menu's PRIMARY seed.
+  // Photo confidence provides only merchandising order, not a fashion veto.
+  // The AI owns every actual whole-outfit aesthetic decision.
+  if(inventoryFirst)for(const item of exploration){
+    const slot=slotOf(item),key=productKey(item);
+    if(!candidates.has(slot)||!key||item?.isShopItem!==true)continue;
+    const attributes=Object.keys(photoFacts(item)).length;
+    candidates.get(slot).set(key,{item,strength:.65+Math.min(.12,attributes*.025)});
+  }
   // The autonomous Creative Director already generated 3 inventory-backed
   // outfit directions. The source-item composer previously never received
   // them and thus kept inventing 3 unrelated generic shirt/trouser sets.
@@ -383,7 +394,7 @@ export function groundedPhotoRevisionFeedback(raw){
 export async function composeCatalogSkuLooks({
   pool,context,directions=[],critiqueFeedback=null,outfitCount=3,
   feedbackTaste=null,
-  apiKey,fetchImpl=fetch,signal,timeoutMs=2600,
+  apiKey,fetchImpl=fetch,signal,timeoutMs=2600,parallel=false,
   layerRequired=false,allowLayer=true,
 }={}){
   const visible=Array.isArray(pool)?pool.slice(0,48).map(x=>x.public):[];
@@ -401,7 +412,11 @@ export async function composeCatalogSkuLooks({
     return {status:'not_configured',looks:[],providerCalls:0};
   if(inflight>=2)return {status:'load_shed',looks:[],providerCalls:0};
   const abort=new AbortController();
-  const timer=setTimeout(()=>abort.abort(),Math.min(4000,Math.max(500,timeoutMs)));
+  // A six-look model call needs more than a 3s leftover from legacy ranking.
+  // Only the parallel, isolated S6 staging path may spend 8.5s IN PARALLEL
+  // with ranker work. Old callers and all non-catalog paths keep their limit.
+  const timer=setTimeout(()=>abort.abort(),
+    Math.min(parallel?9000:4000,Math.max(500,timeoutMs)));
   const combined=signal?AbortSignal.any([signal,abort.signal]):abort.signal;
   inflight++;
   try{

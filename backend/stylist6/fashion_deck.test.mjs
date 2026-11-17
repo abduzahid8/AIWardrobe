@@ -2233,3 +2233,63 @@ test('visual feedback second AI wave never runs inside inadequate remaining stag
   assert.equal(r.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
   assert.ok(r.outfits.every(o=>Array.isArray(o.visualEvidence)));
 });
+
+test('parallel catalogue-first fashion AI starts BEFORE prebuilt look retrieval and remains source-verified',async()=>{
+  const extraCatalog=[
+    ...products,
+    ...Array.from({length:4},(_,i)=>garment('new-oxford-'+i,
+      ['White','Ice blue','Sage','Ivory'][i]+' Premium Cotton Oxford Shirt',
+      'top','shirt')),
+    ...Array.from({length:4},(_,i)=>garment('new-pleated-'+i,
+      ['Stone','Olive','Chocolate','Sand'][i]+' Tailored Pleated Trousers',
+      'bottom','tailored-trouser')),
+    ...Array.from({length:4},(_,i)=>garment('new-loafer-'+i,
+      ['Brown','Black','Tan','Suede'][i]+' Penny Leather Loafers',
+      'shoes','loafer')),
+    ...Array.from({length:4},(_,i)=>garment('new-layer-'+i,
+      ['Navy','Grey','Taupe','Black'][i]+' Italian Wool Blazer',
+      'outerwear','blazer')),
+  ];
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:1800000,currency:'UZS'},requiredIds:[]};
+  let firstGate=false,initialStarts=0,parallel=false,photoReviewed=[];
+  const result=await recommendFashionDeck({
+    ...base,request,catalog:extraCatalog,referenceBriefs:refs,
+    hardGate:async()=>{firstGate=true;return {ok:true};},
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
+    selectCatalogCompositions:async({pool,parallel:isParallel,outfitCount})=>{
+      initialStarts++;
+      parallel=isParallel;
+      assert.equal(isParallel,true,
+        'AI sees real source items BEFORE the slower preassembled outfit ranker');
+      assert.equal(firstGate,false,
+        'the first model decision starts before ranker ever verifies whole looks');
+      assert.equal(outfitCount,6);
+      assert.ok(['top','bottom','shoes'].every(slot=>
+        pool.filter(item=>item.slot===slot).length>=6));
+      assert.ok(pool.length>=24);
+      const chosen=[];
+      for(let i=0;i<6;i++){
+        const items=['top','bottom','shoes'].map(slot=>pool.filter(p=>p.slot===slot)[i].item);
+        if(pool.filter(p=>p.slot==='outerwear').length>=6)
+          items.push(pool.filter(p=>p.slot==='outerwear')[i].item);
+        chosen.push(items);
+      }
+      return {status:'composed',looks:chosen,providerCalls:1};
+    },
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      photoReviewed=batch;
+      return batch.map(look=>admittedVisualVerdict(look));
+    },
+  });
+  assert.equal(initialStarts,1,'one bounded early model call, not a sequential ranker retry');
+  assert.equal(parallel,true);
+  assert.equal(result.diagnostics.modelFashionSelection.skuCompositionReceipt.parallel,true);
+  assert.equal(result.diagnostics.modelFashionSelection.skuCompositionReceipt.status,'composed');
+  assert.ok(photoReviewed.some(look=>look.id.startsWith('s6_ai_')),
+    'source-verified early AI combinations must reach independent actual photo admission');
+  assert.ok(result.outfits.every(look=>photoReviewed.some(x=>x.id===look.id)));
+  assert.ok(result.outfits.every(look=>look.items.every(item=>item.isShopItem===true)));
+});

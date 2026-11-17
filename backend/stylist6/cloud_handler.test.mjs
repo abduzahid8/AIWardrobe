@@ -1986,6 +1986,7 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     directorSelected:true,directSkuComposition:false,
     skuCompositionStatus:'not_run',skuCompositionProposed:null,
     skuCompositionAdmitted:null,skuCompositionExploration:null,
+    skuCompositionParallel:false,
     photoRevisionStatus:'not_run',photoRevisionAttempted:null,
     photoRevisionApproved:null,
     photoEditorialStatus:'not_run',photoEditorialChosen:null,

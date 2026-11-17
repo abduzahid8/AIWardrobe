@@ -127,3 +127,48 @@ proof of an improved fashion stylist. They show two key recovery deficits.
   If the vision model fails (or is not permitted), only the photo-approved
   text director can pick final looks. No claim of improvement until a
   blind human assessment of the actual outfit photographs.
+
+## 2026-11-17 — actual AI-first architecture (not another styling rule)
+
+The last deployed live `1599b98` Date night trace at 12:24:47 UTC was a
+counterexample: the model timed out AFTER waiting for ~17.7 seconds of legacy
+catalog fashion/ranker selection; only 2/8 independently photo-approved looks
+remained, two cards displayed, zero final visual editorial call. The fashion
+decision had a strict ~3s model timeout AFTER the expensive prebuilt candidate
+generation. This is a critical architecture flaw, not a source-title rule.
+
+The NEXT STAGING code runs the autonomous real-product outfit creator **before
+the legacy look builder**:
+
+1. Build an anonymous source-backed menu of up to 12 real, user-admissible,
+   independent merchandise SKUs per garment role directly from the trusted
+   inventory, WITHOUT first demanding a ranker-produced outfit. Use actual
+   current photo fashion facts and the existing inventory-grounded Creative
+   Director plans, with a diverse whole-outfit decision owned by the model.
+2. Start the independent six-look AI call immediately on catalog readiness and
+   let existing legacy retrieval continue as a CONCURRENT fallback, not a
+   prerequisite. The staging-specific model call may run up to 8.5s instead of
+   losing a valid decision after ~3s. This does NOT increase the trusted request
+   deadline, eight-photo NVIDIA critic cap, owner quota units or production cost.
+3. After the ranker returns, validate EVERY AI-chosen combination again through
+   the SAME unchanged whole-outfit source, budget, size/slot/weather, physical
+   constraints and real-NVIDIA photo evaluation. A loose/source-unverified set
+   cannot ever be displayed; timeout/error uses the original safe selector.
+4. Limit scope strictly to the existing 72s Render Stylist6 staging with
+   `modelSlateEnabled`, catalog-only, no locked anchor. Wardrobe/mixed/S5
+   production keep prior behavior. No private merchant URLs or user identifiers
+   are sent to the composer.
+5. Report `skuCompositionParallel` in sanitized Render quality traces. This
+   flag MUST be true before claiming new architecture was exercised in an
+   authenticated iPhone QA request.
+
+Exact local evidence: **484/484** Stylist6 unit tests passed, including a
+case where an otherwise valid model response arrives after 4.2s (was formerly
+cut off at 3s), and an integration case proving AI sees direct inventory
+BEFORE the legacy ranker's first hard-gate call. The portable Node/Render build
+passed and the original Stylist5 auth/quota bundle hash remains `f90ced33...`.
+
+No new LIVE aesthetic acceptance or post-deploy server result is claimed here.
+Require actual iOS Classic/Work and Classic/Date night, source-admitted model
+slate, full photo-review rejection breakdown, independent human blind quality
+and a truthful `photoEditorialVisualMedia`/visual-jury event.

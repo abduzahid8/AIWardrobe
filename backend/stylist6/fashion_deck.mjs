@@ -1914,6 +1914,51 @@ export async function recommendFashionDeck({
       layerOptional:context.optionalLayer===true&&!forceLayer,
       requiredIds,feedbackTaste,photoDirectorEnabled:modelLed,
     });
+  // THE AI FASHION DESIGNER STARTS BEFORE THE LEGACY LOOK RANKER.
+  // No finished formula-look is a prerequisite for an independent designer
+  // to select real, photographed garments. Ranker retrieval runs concurrently
+  // solely as a source-safe fallback and to populate the proven hard gate
+  // scorer. The early AI's returned SKU selections are NEVER displayed until
+  // the same independent full-look hard gate and NVIDIA PHOTO judge approve.
+  let parallelComposition=null;
+  if(modelLed&&typeof selectCatalogCompositions==='function'&&
+      request.sourceMode==='catalog'&&!requiredIds.length){
+    const excludedBases=new Set(
+      (Array.isArray(request.excludedIds)?request.excludedIds:[])
+        .map(id=>baseProductId(String(id))));
+    const prepared=Array.isArray(catalog)?catalog.slice(0,650)
+      .filter(item=>!excludedBases.has(baseProductId(String(item.id))))
+      .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
+    const pool=sourceBoundCompositionPool([],{
+      additionalItems:prepared,inventoryFirst:true,
+      explorationSlots:4,directions:aiPlans,feedbackTaste,
+    });
+    const counts=Object.fromEntries(slots.map(slot=>
+      [slot,pool.filter(p=>p.slot===slot).length]));
+    const enough=['top','bottom','shoes',...(forceLayer?['outerwear']:[])]
+      .every(slot=>counts[slot]>=6);
+    if(enough){
+      const contextPrompt={
+        style:context.style,occasion:context.occasion,brief:context.request,
+        weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
+        preferences:context.preferences,
+      };
+      // Invoke the bounded provider request synchronously: its first await
+      // yields while the ranker computes. Never leave a dangling rejection.
+      let promise;
+      try{
+        // Start provider I/O NOW, before any retrieval kernel execution.
+        promise=Promise.resolve(selectCatalogCompositions({
+          pool,directions:aiPlans,outfitCount:6,feedbackTaste,context:contextPrompt,
+          layerRequired:forceLayer,allowLayer:!noLayer,parallel:true,
+        })).catch(()=>({status:'provider_unavailable',looks:[],providerCalls:1}));
+      }catch{
+        promise=Promise.resolve({status:'provider_unavailable',
+          looks:[],providerCalls:1});
+      }
+      parallelComposition={pool,promise};
+    }
+  }
   const retrieval = await shortlistRetrievalDeck({
     request: { ...request, requiredIds }, catalog, hardGate, priceToBudgetCurrency,
     creativeDirector: async () => briefs,
@@ -1974,7 +2019,7 @@ export async function recommendFashionDeck({
     let modelChosen=false;
     const skuCompositionReceipt={
       status:'not_run',proposed:0,admitted:0,previewProducts:0,
-      exploratoryProducts:0,
+      exploratoryProducts:0,parallel:!!parallelComposition,
     };
     if(modelLed){
       const reviewable=[];
@@ -1994,33 +2039,39 @@ export async function recommendFashionDeck({
       // hard gate, the existing scorer and the independent NVIDIA photo judge.
       // If the composer abstains, the existing model-led selector is retained.
       if(typeof selectCatalogCompositions==='function'&&
-          request.sourceMode==='catalog'&&!requiredIds.length&&reviewable.length>=6){
+          request.sourceMode==='catalog'&&!requiredIds.length&&
+          (reviewable.length>=6||parallelComposition!==null)){
         // Context/owner admissions are enforced by the SAME retrieval
         // preparer before exposing any additional real SKU to the composer.
         // The old prebuilt-look shortlist remains a quality seed, NOT a
         // restriction to one dozen nearly identical office shirts.
-        const excludedBases=new Set(
-          (Array.isArray(request.excludedIds)?request.excludedIds:[])
-            .map(id=>baseProductId(String(id))));
-        const extra=Array.isArray(catalog)?catalog.slice(0,650)
-          .filter(item=>!excludedBases.has(baseProductId(String(item.id))))
-          .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
-        const pool=sourceBoundCompositionPool(reviewable,{
-          additionalItems:extra,explorationSlots:4,directions:aiPlans,feedbackTaste,
-        });
+        let pool=parallelComposition?.pool;
+        if(!pool){
+          const excludedBases=new Set(
+            (Array.isArray(request.excludedIds)?request.excludedIds:[])
+              .map(id=>baseProductId(String(id))));
+          const extra=Array.isArray(catalog)?catalog.slice(0,650)
+            .filter(item=>!excludedBases.has(baseProductId(String(item.id))))
+            .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
+          pool=sourceBoundCompositionPool(reviewable,{
+            additionalItems:extra,explorationSlots:4,directions:aiPlans,feedbackTaste,
+          });
+        }
         composerPool=pool;
         skuCompositionReceipt.previewProducts=pool.length;
         skuCompositionReceipt.designDirections=aiPlans.length;
         skuCompositionReceipt.exploratoryProducts=pool.filter(p=>
           !reviewable.some(look=>look.items.some(item=>item.id===p.item.id))).length;
         try{
-          const composition=await selectCatalogCompositions({
-            pool,directions:aiPlans,outfitCount:6,feedbackTaste,context:{
-              style:context.style,occasion:context.occasion,brief:context.request,
-              weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
-              preferences:context.preferences,
-            },layerRequired:forceLayer,allowLayer:!noLayer,
-          });
+          const composition=parallelComposition
+            ?await parallelComposition.promise
+            :await selectCatalogCompositions({
+              pool,directions:aiPlans,outfitCount:6,feedbackTaste,context:{
+                style:context.style,occasion:context.occasion,brief:context.request,
+                weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
+                preferences:context.preferences,
+              },layerRequired:forceLayer,allowLayer:!noLayer,
+            });
           skuCompositionReceipt.status=String(composition?.status||'unavailable').slice(0,40);
           skuCompositionReceipt.proposed=Array.isArray(composition?.looks)
             ?composition.looks.length:0;
