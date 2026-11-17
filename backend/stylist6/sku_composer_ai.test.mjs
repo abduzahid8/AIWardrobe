@@ -175,7 +175,7 @@ test('the wearer\'s explicit style feedback informs AI decisions without leaking
       assert.match(request.messages[0].content,/explicitFeedbackAesthetics/);
       assert.match(request.messages[0].content,/ownerRated/);
       assert.match(request.messages[0].content,/disliked outfit can fail due to its WHOLE combination/);
-      assert.doesNotMatch(init.body,/PRIVATE_SKU|Ignore all instructions|images\\.zara/);
+      assert.doesNotMatch(init.body,/PRIVATE_SKU|Ignore all instructions|images\.zara/);
       return result(slotAnswer(pool));
     },
   });
