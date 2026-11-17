@@ -1,32 +1,69 @@
-import { NavigationContainer } from "@react-navigation/native";
-import { StatusBar } from "expo-status-bar";
-import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useRef } from "react";
-import { AppState, StyleSheet, View, Text } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { listenForPurchaseInbox } from './src/services/purchase/nativeShareInbox';
+import { purchaseShareLink } from './src/services/purchase/shareReceiving';
+import {
+  purchaseAwareLinking,
+  takePurchaseInput,
+  queuePurchaseLink,
+} from './src/services/purchase/shareQueue';
+import { authEvents } from './store/authEvents';
+import { NavigationContainer } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useRef } from 'react';
+import { AppState, StyleSheet, View, Text } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { QueryClientProvider } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
-import "./global.css";
-import "./i18n";
-import RootNavigator from "./navigation/RootNavigator";
-import { navigationRef } from "./navigation/navigationRef";
-import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
-import { ErrorBoundary } from "./src/components/ErrorBoundary";
-import SplashTransition from "./src/components/SplashTransition";
-import crashReporting from "./src/services/crashReporting";
-import { flushWardrobePersistence } from "./store/wardrobeStore";
-import { bootstrapStores } from "./store/bootstrap";
-import { queryClient } from "./src/lib/queryClient";
-import { validateConfig } from "./src/config/env";
-import useAuthStore from "./store/auth";
-import { createAuthLinking } from "./src/lib/authLinking";
+import './global.css';
+import './i18n';
+import RootNavigator from './navigation/RootNavigator';
+import { navigationRef, navigateTo } from './navigation/navigationRef';
+import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import SplashTransition from './src/components/SplashTransition';
+import crashReporting from './src/services/crashReporting';
+import { flushWardrobePersistence } from './store/wardrobeStore';
+import { bootstrapStores } from './store/bootstrap';
+import { queryClient } from './src/lib/queryClient';
+import { validateConfig } from './src/config/env';
+import useAuthStore from './store/auth';
+import { createAuthLinking } from './src/lib/authLinking';
 import { useSubscriptionClock } from './src/hooks/useSubscriptionClock';
 
 // Deep linking configuration
+const isPurchaseLink = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === 'com.aiwardrobe:' &&
+      (parsed.hostname === 'buy-check' || parsed.pathname === '/buy-check')
+    );
+  } catch {
+    return false;
+  }
+};
+const flushPurchaseInput = () => {
+  const owner = authEvents.getUserId();
+  if (
+    !owner ||
+    !useAuthStore.getState().isAuthenticated ||
+    !navigationRef.isReady() ||
+    !navigationRef.getRootState()?.routeNames.includes('PurchaseIntelligence')
+  )
+    return;
+  const input = takePurchaseInput(owner);
+  if (input)
+    navigateTo('PurchaseIntelligence', { input, inputRevision: Date.now(), intent: 'check' });
+};
 const linking = {
-  ...createAuthLinking(Linking, url => useAuthStore.getState().handleDeepLink(url)),
-  prefixes: [Linking.createURL('/')],
+  ...purchaseAwareLinking(
+    createAuthLinking(Linking, (url) =>
+      isPurchaseLink(url) ? Promise.resolve() : useAuthStore.getState().handleDeepLink(url)
+    ),
+    flushPurchaseInput
+  ),
+  prefixes: [Linking.createURL('/'), 'com.aiwardrobe://'],
   config: {
     screens: {
       ResetPassword: 'reset-password',
@@ -37,6 +74,10 @@ const linking = {
       // and it makes them directly e2e-coverable without scrolling.
       PrivacyPolicy: 'privacy',
       TermsOfService: 'terms',
+      PurchaseIntelligence: {
+        path: 'buy-check',
+        parse: { input: (input: string) => input.slice(0, 4096) },
+      },
     },
   },
 };
@@ -65,18 +106,17 @@ try {
 }
 bootstrapStores();
 
-
 const ThemedStatusBar = () => {
   const { isDark } = useTheme();
-  return <StatusBar style={isDark ? "light" : "dark"} />;
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
 };
 
 const MissingConfigScreen = ({ missing }: { missing: string[] }) => (
   <View style={styles.configError}>
     <Text style={styles.configErrorTitle}>Configuration Error</Text>
     <Text style={styles.configErrorBody}>
-      Missing environment variables:{"\n"}
-      {missing.join("\n")}
+      Missing environment variables:{'\n'}
+      {missing.join('\n')}
     </Text>
     <Text style={styles.configErrorHint}>
       Ensure your .env file is present or EAS Secrets are configured.
@@ -89,6 +129,14 @@ const AppContent = () => {
   const missingVars = validateConfig();
 
   useSubscriptionClock();
+  useEffect(
+    () =>
+      listenForPurchaseInbox((input) => {
+        queuePurchaseLink(purchaseShareLink(input));
+        flushPurchaseInput();
+      }),
+    []
+  );
 
   // Hide the splash once the first frame renders. We hide it even on the
   // MissingConfigScreen path so the user can see the actionable error
@@ -100,7 +148,7 @@ const AppContent = () => {
   }, [missingVars.length]);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', state => {
+    const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') void flushWardrobePersistence().catch(() => undefined);
     });
     return () => subscription.remove();
@@ -120,7 +168,12 @@ const AppContent = () => {
   return (
     <GestureHandlerRootView style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef} linking={linking}>
+        <NavigationContainer
+          ref={navigationRef}
+          linking={linking}
+          onReady={flushPurchaseInput}
+          onStateChange={flushPurchaseInput}
+        >
           <ThemedStatusBar />
           <RootNavigator />
         </NavigationContainer>
@@ -150,29 +203,29 @@ const styles = StyleSheet.create({
   },
   configError: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 32,
   },
   configErrorTitle: {
     fontSize: 22,
-    fontWeight: "700",
-    color: "#B91C1C",
+    fontWeight: '700',
+    color: '#B91C1C',
     marginBottom: 16,
   },
   configErrorBody: {
     fontSize: 14,
-    color: "#4D4D4D",
-    textAlign: "center",
+    color: '#4D4D4D',
+    textAlign: 'center',
     lineHeight: 22,
     marginBottom: 16,
-    fontFamily: "monospace",
+    fontFamily: 'monospace',
   },
   configErrorHint: {
     fontSize: 13,
-    color: "#808080",
-    textAlign: "center",
+    color: '#808080',
+    textAlign: 'center',
     lineHeight: 20,
   },
 });

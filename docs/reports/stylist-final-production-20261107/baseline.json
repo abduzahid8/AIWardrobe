@@ -1,0 +1,13 @@
+{
+  "id": "f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a",
+  "slug": "generate-outfits",
+  "name": "generate-outfits",
+  "status": "ACTIVE",
+  "version": 187,
+  "created_at": 1774491523714,
+  "updated_at": 1793995120257,
+  "verify_jwt": false,
+  "import_map": false,
+  "entrypoint_path": "file:///tmp/user_fn_fyqpifmrsftsfqibhwhy_f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a_187/source/index.ts",
+  "ezbr_sha256": "5cba0adbd335dcdb57e0be7295a1908c3ef195b86f7877f45e6597ed0e573fc9"
+}

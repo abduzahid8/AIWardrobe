@@ -1,0 +1,16 @@
+{
+  "scope": "reachable revisions of the one previously affected document only; not a full repository history scan",
+  "commitsInspected": 1,
+  "historicalFindings": [
+    {
+      "commit": "4e5125365a73254f17d5df6e1378b7d95c6921a1",
+      "path": "docs/CLEANUP_CANDIDATES.md",
+      "pattern": "google_key",
+      "valueSha256": "1c2b23609938e280d586b92fa4a15679767b883fc8abbc54c1fbb6bc7c7069d0",
+      "length": 39,
+      "validity": "not tested; no provider requests or rotation authorized"
+    }
+  ],
+  "remoteActionPerformed": false,
+  "decision": "owner classification and rotation approval still required if genuine"
+}

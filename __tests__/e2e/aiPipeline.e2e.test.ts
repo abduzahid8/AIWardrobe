@@ -238,9 +238,14 @@ describe('AI pipeline e2e — real catalog → real code', () => {
     }
   });
 
-  it('production does not ship an obsolete outfit seed', () => {
-    // Production uses live inventory; offline fixtures must not reintroduce bundled products.
-    expect(SHOP_OUTFITS).toEqual([]);
+  it('the offline outfit seed preserves concrete merchant links and unique identities', () => {
+    // The reviewed product-only seed now supports offline shopping; it is not live price evidence.
+    expect(new Set(SHOP_OUTFITS.map(item => item.id)).size).toBe(SHOP_OUTFITS.length);
+    for (const item of SHOP_OUTFITS) {
+      expect(item.garmentType).toBe('outfit');
+      expect(item.sourceUrl).toMatch(/^https:\/\//);
+      expect(item.imageUrl).toMatch(/^https:\/\//);
+    }
   });
 
   it('explicit clothing types survive hostile description words (belt-loops regression)', () => {

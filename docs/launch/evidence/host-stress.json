@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "device": "Node host",
+  "buildType": "Jest transformed TypeScript; non-release",
+  "method": "performance.now around real buyCheck; 25 sequential calls; 220 synthetic items",
+  "samples": 25,
+  "p50Ms": 31.652499999996508,
+  "rangeMs": [
+    29.953999999997905,
+    37.36458300000231
+  ],
+  "heapDeltaBytes": 12354104,
+  "heapMethod": "process.memoryUsage, no forced GC; diagnostic only",
+  "productionClaim": false,
+  "notMeasured": [
+    "startup",
+    "native images",
+    "scroll",
+    "background",
+    "VTON result decoding"
+  ]
+}

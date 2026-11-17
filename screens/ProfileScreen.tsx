@@ -1,3 +1,5 @@
+import {savedQuartetReason} from '../src/services/savedOutfitContract';
+import { BetaFeedbackButton } from '../components/BetaFeedbackButton';
 import { AccountNameError, assertHandleAvailable, displayNameOf, profileNameUpdates } from '../src/services/accountNames';
 import readinessLogger from '../src/utils/logger';
 /**
@@ -613,7 +615,7 @@ const ProfileScreen = () => {
       // not here. Profile Saved Looks is for single-clothing saves (wardrobe +
       // shop) + manual/AI-maker outfits. Legacy saves without savedFrom stay
       // visible in both for backward compat.
-      .filter((outfit) => outfit.saved && (outfit as { savedFrom?: string }).savedFrom !== 'home')
+      .filter((outfit) => outfit.saved && (outfit as { savedFrom?: string }).savedFrom !== 'home' && outfit.itemIds.length===4 && !savedQuartetReason(resolveOutfitCollageItemsWithMaps(outfit,wardrobeMap,shopMap)))
       .map((outfit) => {
         const coverImage =
           typeof outfit.previewImageUrl === 'string' && isValidUri(outfit.previewImageUrl)
@@ -659,7 +661,7 @@ const ProfileScreen = () => {
 
       if (data) {
         setCloudOutfits(
-          data.map((outfit) => {
+          data.filter(outfit=>!savedQuartetReason(outfit.items)).map((outfit) => {
             const rawItems = Array.isArray(outfit.items)
               ? (outfit.items as Array<{ id?: string; image?: string; imageUrl?: string; category?: string; macroCategory?: string; type?: string; name?: string }>)
               : [];
@@ -1756,6 +1758,12 @@ const ProfileScreen = () => {
           <ScaledText style={styles.groupHeading}>{t('profile.preferencesHeading')}</ScaledText>
           <GlassPanel radius={28}>
             <MenuRow
+              icon="bag-check-outline"
+              label={t('purchase.hubTitle','Shopping & fit intelligence')}
+              onPress={() => navigation.navigate('PurchaseIntelligence')}
+            />
+            <View style={styles.menuSeparator} />
+            <MenuRow
               icon="language-outline"
               label={t('language.selectLanguage')}
               trailing={LANGUAGE_NAMES[currentLanguage]}
@@ -1789,6 +1797,8 @@ const ProfileScreen = () => {
             />
           </GlassPanel>
         </Animated.View>
+
+        <View style={styles.sectionBlock}><BetaFeedbackButton /></View>
 
         {__DEV__ && isAdminUser && (
           <Animated.View entering={FadeInDown.delay(190).duration(350)} style={styles.sectionBlock}>

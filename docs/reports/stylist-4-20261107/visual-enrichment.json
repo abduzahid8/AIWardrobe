@@ -1,0 +1,28 @@
+{
+  "requested": 32,
+  "enriched": 22,
+  "failedDownloads": 10,
+  "paidInferenceCalls": 0,
+  "model": "google/siglip2-base-patch16-224",
+  "revision": "75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2",
+  "pipelineSha256": "3991f3eba91e2fa8d1d2685cfab61f5598ab9501bf7b62e2a3c6820eaaf9f2af",
+  "sourceCatalogUnchanged": true,
+  "embeddingDimensions": 768,
+  "attributes": {
+    "slot": 18,
+    "subtype": 3,
+    "color": 12,
+    "volume": 1,
+    "texture": 4,
+    "pattern": 17,
+    "formality": 2,
+    "soleProfile": 1
+  },
+  "imageKindCorroboration": "OCR or human/pixel evidence required for rejection; model-only labels advisory",
+  "limitations": [
+    "Partial catalog coverage.",
+    "Similarity scores are not calibrated probabilities.",
+    "Image hosts may reject requests.",
+    "Exact fiber/measurements/cloth weight remain unknown."
+  ]
+}

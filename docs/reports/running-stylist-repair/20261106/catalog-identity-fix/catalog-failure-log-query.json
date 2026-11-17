@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "data": {
+    "result": [
+      {
+        "event_message": "catalog_retrieval { strategy: \"bounded-keyset-cache\", slot: \"top\" }\n",
+        "timestamp": "2026-11-06T06:16:59.459000"
+      },
+      {
+        "event_message": "catalog_retrieval {\n  strategy: \"bounded-keyset-cache\",\n  slot: \"top\",\n  pages: 6,\n  distinctFresh: 0,\n  exhaustive: false\n}\n",
+        "timestamp": "2026-11-06T06:17:02.535000"
+      }
+    ]
+  }
+}

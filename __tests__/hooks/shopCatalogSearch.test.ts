@@ -7,7 +7,7 @@ jest.mock('../../data/shopCatalogItems', () => ({ SHOP_CATALOG_ITEMS: [{id: 'see
 jest.mock('../../data/inspoMensShopItems', () => ({ CLASSIC_MENS_ITEMS: [] }));
 jest.mock('../../src/utils/shopCatalogOrder', () => ({spreadSimilarCatalogItems:(items:unknown[])=>items}));
 jest.mock('../../src/utils/imageUrl', () => ({getThumbnailUrl:(url:string)=>url}));
-const row=(id:string)=>({id,name:id,price:150,currency:'USD',garment_type:'upper_body',image_url:'https://fixture.invalid/image.jpg'});
+const row=(id:string)=>({id,name:id,price:150,currency:'USD',garment_type:'upper_body',description:'product-only fixture',image_url:'https://fixture.invalid/image.jpg'});
 function query(result:Promise<any>) {
  const q:any={then:result.then.bind(result)};
  for(const method of ['select','eq','order','range','or','abortSignal']) q[method]=jest.fn(()=>q);
@@ -59,4 +59,17 @@ test('retries after connectivity returns while a catalog request is still failin
  await act(async()=>{finish({data:null,error:{message:'service unavailable'}});});
  await waitFor(()=>expect(hook.result.current.items[0]?.id).toBe('recovered-catalog'));
  expect(supabase.from).toHaveBeenCalledTimes(2);
+});
+
+test('opt-in discovery maps later concrete rows and appends variants while retaining pagination contracts',async()=>{
+ const discovery=require('../../src/services/catalogDiscovery');
+ const load=jest.spyOn(discovery,'loadCatalogDiscovery').mockResolvedValueOnce({rows:[{...row('later-900'),source:'product-only'}],hasMore:true,strategy:'balanced-rpc'})
+   .mockResolvedValueOnce({rows:[{...row('later-901'),source:'product-only'}],hasMore:false,strategy:'balanced-rpc'});
+ const hook=renderHook(()=>useShopCatalog({source:'discovery-fixture',discovery:true}));
+ await waitFor(()=>expect(hook.result.current.items[0]?.id).toBe('later-900'));
+ act(()=>hook.result.current.loadMore());
+ await waitFor(()=>expect(hook.result.current.items.map(item=>item.id)).toEqual(['later-900','later-901']));
+ expect(load.mock.calls[0][0]).toMatchObject({slot:'all',page:0,limit:100});
+ expect((load.mock.calls[1][0] as import('../../src/services/catalogDiscovery').CatalogDiscoveryQuery)?.seed).toBe((load.mock.calls[0][0] as import('../../src/services/catalogDiscovery').CatalogDiscoveryQuery)?.seed);
+ expect(hook.result.current.hasMore).toBe(false);load.mockRestore();
 });

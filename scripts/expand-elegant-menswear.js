@@ -15,18 +15,18 @@ const root = path.resolve(__dirname, '..');
 const PRODUCT_ONLY_SOURCE = /(?:no[-\s]?model|no[-\s]?mannequin|product[-\s]?only|plain[-\s]?background|white[-\s]?(?:bg|background))/i;
 const TIER_BY_FEED = {
   affordable: [
-    'american_eagle', 'gap', 'mango', 'old_navy', 'only_sons', 'uniqlo',
+    'a_p_c', 'american_eagle', 'asos_design', 'bershka', 'bonobos', 'burton', 'c_a', 'c_p_company', 'carhartt_wip', 'barbour', 'celio', 'cos_affordable', 'defacto', 'fatface', 'gap', 'hm_premium', 'jack_jones_premium', 'jack_wills', 'kiabi', 'lc_waikiki', 'lefties', 'mango', 'marks_spencer', 'new_yorker', 'next', 'old_navy', 'only_sons', 'oviesse', 'pepe_jeans', 'primark_elegant', 'pull_bear', 'reserved', 'river_island', 's_oliver', 'springfield', 'stradivarius_man', 'superdry', 'terranova', 'todd_snyder', 'topman', 'uniqlo', 'uniqlo_u',
     'zara_downloader', 'zara_new_2026',
   ],
   midrange: [
-    'allsaints', 'arket', 'banana_republic', 'cos', 'ecco_20261030',
+    'allsaints', 'arket', 'banana_republic', 'charles_tyrwhitt', 'cos', 'ecco_20261030',
     'everlane', 'gant_downloader', 'geox_shoes_20261030', 'jack_jones', 'jcrew',
-    'johnston_murphy', 'selected_homme',
+    'john_smedley', 'm_j_bale', 'moss', 'nn07', 'theory', 'tiger_of_sweden', 'vince', 'johnston_murphy', 'selected_homme', 'uz_gant',
   ],
   premium: [
-    'armani_exchange', 'aurelien', 'aurelien_global', 'boss', 'brunello', 'calvin_klein', 'canali', 'ea7', 'emporio_armani', 'emporio_global',
-    'giorgio_armani', 'harmont_blaine', 'lacoste', 'loro_piana',
-    'massimo_dutti', 'paul_shark', 'ralph_lauren', 'reiss', 'tommy_hilfiger',
+    'alden', 'allen_edmonds', 'armani_exchange', 'aurelien', 'aurelien_global', 'berluti_shoes', 'berwick_1707', 'duke_shoes', 'boss', 'brunello', 'calvin_klein', 'canali', 'carlos_santos', 'carmina', 'cobbler_union', 'crockett_jones', 'ea7', 'emporio_armani', 'emporio_global',
+    'eidos', 'giorgio_armani', 'hackett', 'harmont_blaine', 'herno', 'herring_shoes', 'incotex', 'lacoste', 'lemaire', 'loake', 'loake2', 'loro_piana', 'luca_faloni',
+    'alfred_sargent', 'andre_shoes', 'barker', 'bexley', 'bow_tie_shoes', 'church_english', 'jl_co_shoes', 'churchs_shoes', 'clarks_originals', 'corthay', 'ecco_shoes2', 'enzo_bonafe', 'finsbury', 'loding', 'gaziano_girling', 'grenson_shoes', 'john_doe_shoes', 'magnanni', 'malfini_shoes', 'nettle_shoes', 'john_lobb_2', 'john_white', 'johnston_murphy_shoes', 'massimo_dutti', 'meermin', 'morjas_shoes', 'oliver_cabell', 'paraboot', 'paul_evans', 'rm_williams', 'saxone', 'scarosso', 'septieme_largeur', 'stefano_bemer', 'trickers', 'trickers2', 'vass', 'velasca', 'paul_shark', 'private_white_vc', 'ralph_lauren', 'reiss', 'orlebar_brown', 'ring_jacket', 'rubato', 'pini_parma', 'santoni', 'sunspel', 'tommy_hilfiger', 'oscar_jacobson', 'the_armoury', 'valstar', 'frescobol_carioca',
   ],
 };
 const elegant = /\b(chinos?|trousers?|pants?|oxford|blazer|merino|cashmere|polo|linen|dress shirt|suit|loafer|derby|overcoat|poplin|cardigan|overshirt|knitwear?|wool|shirt|jacket|coat|belt|tie|shoe|boots?|sneakers?|brogues?|monk)\b/i;
@@ -86,7 +86,7 @@ for (const [tier, names] of Object.entries(TIER_BY_FEED)) {
       if (!categories.has(item.category)) { selected.push(item); categories.add(item.category); }
     }
     for (const item of candidates) if (!selected.includes(item)) selected.push(item);
-    for (const item of selected.slice(0, 8)) add(item, tier, file);
+    for (const item of selected.slice(0, 150)) add(item, tier, file);
   }
 }
 const items = [...rows.values()];

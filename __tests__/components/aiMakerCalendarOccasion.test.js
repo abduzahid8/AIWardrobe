@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 const calendar = require('../../features/calendar/types');
+const { stylistCalendarItems } = require('../../features/calendar/outfitSlots');
 const source = ts.createSourceFile('AIOutfitmaker.tsx', fs.readFileSync(path.resolve(__dirname, '../../screens/AIOutfitmaker.tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 function initializer(name) {
   let found;
@@ -20,7 +21,7 @@ test.each(['work','casual','date','formal','sport','travel'])('the shipped calen
   const selectedStyle = 'classic', logs = {}, alert = jest.fn();
   const getCalendarOccasion = callback('getCalendarOccasion', { selectedOccasion, resolveCalendarOccasion: calendar.resolveCalendarOccasion });
   const bindings = {
-    selectedStyle, selectedOccasion, getCalendarOccasion,
+    selectedStyle, selectedOccasion, getCalendarOccasion, stylistCalendarItems,
     authEvents: { getRevision: () => 7 }, createOutfitLog: calendar.createOutfitLog,
     readCalendarLogs: async () => ({}), updateCalendarLogs: async (mutate, revision) => { expect(revision).toBe(7); mutate(logs); },
     Haptics: { notificationAsync: jest.fn(), NotificationFeedbackType: { Success: 'success' } },
@@ -29,8 +30,9 @@ test.each(['work','casual','date','formal','sport','travel'])('the shipped calen
   };
   const add = callback('addToCalendar', bindings);
   const item = { id: 'catalog-top', type: 'top', imageUrl: 'https://images.example/top.jpg', name: 'Catalog shirt' };
-  await add({ items: [item] }, new Date(2026,9,26,12));
+  const items = [item, { id: 'pants', type: 'bottom', name: 'Chinos', imageUrl: 'pants.jpg' }, { id: 'shoes', type: 'shoes', name: 'Loafers', imageUrl: 'shoes.jpg' }, { id: 'layer', type: 'outerwear', name: 'Cardigan', imageUrl: 'layer.jpg' }];
+  await add({ items }, new Date(2026,9,26,12));
   expect(logs['2026-10-26']).toMatchObject({ date: '2026-10-26', occasion: selectedOccasion,
-    items: [{ id: item.id, type: item.type, image: item.imageUrl, name: item.name }] });
+    items: items.map(({id,type,imageUrl,name}) => ({id,type,image:imageUrl,name})) });
   expect(alert).toHaveBeenCalledWith('outfitMaker.savedToCalendar','outfitMaker.savedToCalendarSubtitle',expect.any(Array));
 });

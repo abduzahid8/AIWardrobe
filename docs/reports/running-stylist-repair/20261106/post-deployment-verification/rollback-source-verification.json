@@ -1,0 +1,8 @@
+{
+  "rollbackFunctionVersion": 181,
+  "matchesVerifiedV179Source": true,
+  "sourceFilesCompared": 16,
+  "missingSourceFiles": [],
+  "changedSourceFiles": [],
+  "excludedArchiveMetadata": "macOS AppleDouble ._* files are not source files"
+}

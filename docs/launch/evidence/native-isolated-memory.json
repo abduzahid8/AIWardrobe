@@ -1,0 +1,315 @@
+{
+  "schemaVersion": 1,
+  "bundleId": "com.aiwardrobe.rclocal",
+  "simulatorId": "AD2C6D1C-096E-4D89-86B8-22D600E30C86",
+  "scope": "isolated Release native harness, not normal client RC",
+  "productionClaim": false,
+  "method": "host ps RSS of iOS Simulator app process at 1s intervals; includes native caches; not physical-device RAM and not JS retained heap",
+  "pid": 1748,
+  "samples": [
+    {
+      "elapsedSeconds": 0.002868583000000008,
+      "rssKiB": 316160,
+      "harnessStatus": "idle"
+    },
+    {
+      "elapsedSeconds": 1.014475666,
+      "rssKiB": 316160,
+      "harnessStatus": "idle"
+    },
+    {
+      "elapsedSeconds": 2.0280625829999996,
+      "rssKiB": 316160,
+      "harnessStatus": "idle"
+    },
+    {
+      "elapsedSeconds": 3.0361627909999997,
+      "rssKiB": 316160,
+      "harnessStatus": "idle"
+    },
+    {
+      "elapsedSeconds": 4.050054458,
+      "rssKiB": 316160,
+      "harnessStatus": "idle"
+    },
+    {
+      "elapsedSeconds": 5.064154375,
+      "rssKiB": 288192,
+      "harnessStatus": "idle"
+    },
+    {
+      "elapsedSeconds": 6.074111916,
+      "rssKiB": 288192,
+      "harnessStatus": "idle"
+    },
+    {
+      "elapsedSeconds": 7.08441925,
+      "rssKiB": 288192,
+      "harnessStatus": "idle"
+    },
+    {
+      "elapsedSeconds": 8.090457833,
+      "rssKiB": 309232,
+      "harnessStatus": "running"
+    },
+    {
+      "elapsedSeconds": 9.100959958,
+      "rssKiB": 702928,
+      "harnessStatus": "running"
+    },
+    {
+      "elapsedSeconds": 10.11229125,
+      "rssKiB": 728736,
+      "harnessStatus": "running"
+    },
+    {
+      "elapsedSeconds": 11.120899791000001,
+      "rssKiB": 734944,
+      "harnessStatus": "running"
+    },
+    {
+      "elapsedSeconds": 12.133305333000001,
+      "rssKiB": 724160,
+      "harnessStatus": "running"
+    },
+    {
+      "elapsedSeconds": 13.140836375000001,
+      "rssKiB": 736016,
+      "harnessStatus": "running"
+    },
+    {
+      "elapsedSeconds": 14.150868625000001,
+      "rssKiB": 733600,
+      "harnessStatus": "running"
+    },
+    {
+      "elapsedSeconds": 15.163425833000002,
+      "rssKiB": 734464,
+      "harnessStatus": "running"
+    },
+    {
+      "elapsedSeconds": 16.174129958,
+      "rssKiB": 734624,
+      "harnessStatus": "running"
+    },
+    {
+      "elapsedSeconds": 17.183339541000002,
+      "rssKiB": 336880,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 18.193932458,
+      "rssKiB": 336784,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 19.20437725,
+      "rssKiB": 336784,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 20.218004625,
+      "rssKiB": 336352,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 21.230898708,
+      "rssKiB": 336352,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 22.244475,
+      "rssKiB": 336272,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 23.256519125,
+      "rssKiB": 336128,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 24.266460791,
+      "rssKiB": 336128,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 25.2758255,
+      "rssKiB": 323152,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 26.290394208000002,
+      "rssKiB": 323296,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 27.302127541,
+      "rssKiB": 323296,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 28.312532041,
+      "rssKiB": 323296,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 29.325626375000002,
+      "rssKiB": 323296,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 30.335809916000002,
+      "rssKiB": 323296,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 31.345696666000002,
+      "rssKiB": 323248,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 32.358475833,
+      "rssKiB": 323216,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 33.372103540999994,
+      "rssKiB": 323216,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 34.383824041,
+      "rssKiB": 323216,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 35.392721416,
+      "rssKiB": 323216,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 36.407887083,
+      "rssKiB": 323216,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 37.421334625,
+      "rssKiB": 320752,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 38.429474541,
+      "rssKiB": 315056,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 39.438009791,
+      "rssKiB": 299376,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 40.447184666,
+      "rssKiB": 298880,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 41.460589999999996,
+      "rssKiB": 298880,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 42.46951825,
+      "rssKiB": 298880,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 43.480684165999996,
+      "rssKiB": 290032,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 44.496636249999995,
+      "rssKiB": 289328,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 45.506707999999996,
+      "rssKiB": 289328,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 46.517536041,
+      "rssKiB": 289328,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 47.527092833,
+      "rssKiB": 289328,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 48.541654707999996,
+      "rssKiB": 289328,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 49.551680958,
+      "rssKiB": 289328,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 50.562887583,
+      "rssKiB": 289296,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 51.573670832999994,
+      "rssKiB": 289296,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 52.587093499999995,
+      "rssKiB": 289168,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 53.599363415999996,
+      "rssKiB": 289200,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 54.611527875,
+      "rssKiB": 289200,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 55.621845791,
+      "rssKiB": 289200,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 56.636796415999996,
+      "rssKiB": 289200,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 57.649513416,
+      "rssKiB": 289200,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 58.659821666,
+      "rssKiB": 289200,
+      "harnessStatus": "passed"
+    },
+    {
+      "elapsedSeconds": 59.672853499999995,
+      "rssKiB": 289200,
+      "harnessStatus": "passed"
+    }
+  ],
+  "baselineKiB": 316160,
+  "peakKiB": 736016,
+  "finalKiB": 289200,
+  "leakConclusion": "not established; no controlled GC or repeat-cycle baseline"
+}

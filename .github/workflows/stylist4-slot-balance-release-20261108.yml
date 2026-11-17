@@ -1,0 +1,79 @@
+name: One-time v199 balanced candidate pools release build
+on:
+  push:
+    branches:
+      - hotfix/v199-balanced-outfit-pools-20261108
+    paths-ignore:
+      - '.v199-balanced-build/**'
+permissions:
+  contents: write
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify actual per-slot selection logic and compile old/new Edge source
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process');
+          const esbuild=require('esbuild');
+          (async()=>{
+            const entry='backend/supabase/functions/generate-outfits/index.ts';
+            const current=fs.readFileSync(entry,'utf8');
+            const start=current.indexOf('function retainBudgetFloorCandidates(');
+            const end=current.indexOf('\nfunction deckHashEdge(',start);
+            if(start<0||end<start)throw Error('Cannot locate tested helper');
+            const helpers=`
+              function isDressGarment(item){return false;}
+              function productIdentityKeys(item){return [String(item.id)];}
+              function canonicalProductKey(item){return String(item.id);}
+              function collapseBySimEdge(items,keyFn){const seen=new Set();return items.filter(item=>{const key=keyFn(item);if(seen.has(key))return false;seen.add(key);return true;});}
+              function spreadSuitableProducts(items){return items;}
+              function stylingCandidateRepresentatives(items,_a,_b,_context,max){return items.slice(0,max);}
+            `;
+            const extracted=esbuild.transformSync(helpers+current.slice(start,end),{loader:'ts',target:'es2022'}).code;
+            const func=new Function(extracted+'; return retainBudgetFloorCandidates;')();
+            const slots=['top','outerwear','bottom','shoes'];
+            const rows=slots.flatMap(slot=>Array.from({length:32},(_,i)=>({id:slot+'-'+i,macroCategory:slot,price:i+1,isShopItem:true})));
+            for(const context of [undefined,{style:'Old Money',occasion:'Work'}]){
+              const out=func(rows,rows,item=>item.price,()=>true,undefined,24,()=>1,context);
+              const counts=Object.fromEntries(slots.map(slot=>[slot,out.filter(row=>row.macroCategory===slot).length]));
+              if(slots.some(slot=>counts[slot]!==24)||out.length!==96)throw Error('Slot balance regression: '+JSON.stringify(counts));
+              if(new Set(out.map(item=>item.id)).size!==out.length)throw Error('Duplicate physical items');
+              for(const slot of slots)if(!out.some(row=>row.id===slot+'-0'))throw Error('Cheapest slot floor lost '+slot);
+            }
+            console.log('Two slot-balanced paths passed: 24/24/24/24 and cheapest floors preserved');
+            const build=async()=>{const r=await esbuild.build({
+              absWorkingDir:process.cwd(),entryPoints:[entry],bundle:true,format:'esm',
+              platform:'neutral',target:'es2022',external:['https://*'],write:false,metafile:true,logLevel:'silent'
+            });return r.outputFiles[0].contents;};
+            const original=cp.execFileSync('git',['show','14bdf90a704e3dfd64fc1b9683d1dd194049794f:'+entry],{encoding:'utf8'});
+            let oldBundle;
+            try {fs.writeFileSync(entry,original);oldBundle=await build();}
+            finally{fs.writeFileSync(entry,current);}
+            const nextBundle=await build();
+            fs.mkdirSync('.v199-balanced-build',{recursive:true});
+            fs.writeFileSync('.v199-balanced-build/v199.ts',oldBundle);
+            fs.writeFileSync('.v199-balanced-build/v200.ts',nextBundle);
+            const sum=b=>crypto.createHash('sha256').update(b).digest('hex');
+            fs.writeFileSync('.v199-balanced-build/hashes.txt',
+              'v199 '+sum(oldBundle)+' '+oldBundle.length+'\n'+'v200 '+sum(nextBundle)+' '+nextBundle.length+'\n');
+            if(oldBundle.length<250000||nextBundle.length<250000)throw Error('Unexpected bundle size');
+            if(Buffer.from(oldBundle).equals(Buffer.from(nextBundle)))throw Error('No changed behavior compiled');
+            console.log('Both Edge bundles built and SHA-256 recorded');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Commit exact built artifacts
+        run: |
+          git config user.name 'AIWardrobe release build'
+          git config user.email 'actions@users.noreply.github.com'
+          git add .v199-balanced-build/v199.ts .v199-balanced-build/v200.ts .v199-balanced-build/hashes.txt
+          git commit -m 'build: preserve exact v199 rollback and balanced v200 artifacts'
+          git push

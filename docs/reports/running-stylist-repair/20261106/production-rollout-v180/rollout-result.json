@@ -1,0 +1,17 @@
+{
+  "status": "DEPLOYED",
+  "previousVersion": 179,
+  "newVersion": 180,
+  "active": true,
+  "verify_jwt": false,
+  "generationVersion": "stylist-runtime-repair-v2",
+  "generationVersionEvidence": "Downloaded hosted source exactly matches uploaded self-contained bundle; successful generation response unavailable",
+  "sourceBundleSha256": "194e5c8f42ffb099bde0bb527062fe88a1b456c14ec89dd90fc3fcb5a3012826",
+  "derivedArchiveSha256": "36ec6d56f80b177ff5933d58c0e3cd53b9dcce24ea2f9f312c0fb18db447949d",
+  "sourceTransformation": "esbuild ESM bundle; all 37 local inputs from checksum-verified candidate archive; existing remote dependencies preserved; no business logic edits",
+  "liveGenerationLimitation": "Designated E2E account returns 403 feature_limit_reached; remaining generation scenarios not requested to avoid unnecessary calls",
+  "rollbackRequired": false,
+  "otherFunctionsUnchanged": true,
+  "otherProductionResourcesDeployedOrReconfigured": false,
+  "testSideEffects": "Normal test-account authentication and existing admission counters only; no direct database writes, schema, RLS, secrets, billing, Vercel or Render changes"
+}

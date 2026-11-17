@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "scope": "Actual App root, signed-out offline QA; not authenticated startup, real backend, billing or production configuration",
+  "bundleId": "com.aiwardrobe.rcoffline",
+  "simulatorId": "AD2C6D1C-096E-4D89-86B8-22D600E30C86",
+  "method": "simctl process-cold launches preserving local language; existing RN native-start-to-revealed-screen metric plus process-to-file receipt including CLI/IO",
+  "buildType": "Release simulator arm64",
+  "productionClaim": false,
+  "samples": [
+    {
+      "run": 1,
+      "processToReceiptMs": 2863.273541,
+      "nativeVisibleMs": 663,
+      "nativeBudgetPassed": true,
+      "nativeOrigin": "native-app-start",
+      "route": "SignIn",
+      "blockedRequestCount": 2,
+      "localAssetRequests": 0,
+      "disabledServiceCalls": [
+        "analytics.initialize",
+        "notifications.initialize",
+        "iap.initialize"
+      ]
+    },
+    {
+      "run": 2,
+      "processToReceiptMs": 1892.2922499999997,
+      "nativeVisibleMs": 433,
+      "nativeBudgetPassed": true,
+      "nativeOrigin": "native-app-start",
+      "route": "SignIn",
+      "blockedRequestCount": 2,
+      "localAssetRequests": 0,
+      "disabledServiceCalls": [
+        "analytics.initialize",
+        "notifications.initialize",
+        "iap.initialize"
+      ]
+    },
+    {
+      "run": 3,
+      "processToReceiptMs": 1844.1434159999997,
+      "nativeVisibleMs": 429,
+      "nativeBudgetPassed": true,
+      "nativeOrigin": "native-app-start",
+      "route": "SignIn",
+      "blockedRequestCount": 2,
+      "localAssetRequests": 0,
+      "disabledServiceCalls": [
+        "analytics.initialize",
+        "notifications.initialize",
+        "iap.initialize"
+      ]
+    },
+    {
+      "run": 4,
+      "processToReceiptMs": 1839.9460409999992,
+      "nativeVisibleMs": 429,
+      "nativeBudgetPassed": true,
+      "nativeOrigin": "native-app-start",
+      "route": "SignIn",
+      "blockedRequestCount": 2,
+      "localAssetRequests": 0,
+      "disabledServiceCalls": [
+        "analytics.initialize",
+        "notifications.initialize",
+        "iap.initialize"
+      ]
+    },
+    {
+      "run": 5,
+      "processToReceiptMs": 1802.1322920000032,
+      "nativeVisibleMs": 386,
+      "nativeBudgetPassed": true,
+      "nativeOrigin": "native-app-start",
+      "route": "SignIn",
+      "blockedRequestCount": 2,
+      "localAssetRequests": 0,
+      "disabledServiceCalls": [
+        "analytics.initialize",
+        "notifications.initialize",
+        "iap.initialize"
+      ]
+    },
+    {
+      "run": 6,
+      "processToReceiptMs": 1854.1640420000008,
+      "nativeVisibleMs": 431,
+      "nativeBudgetPassed": true,
+      "nativeOrigin": "native-app-start",
+      "route": "SignIn",
+      "blockedRequestCount": 2,
+      "localAssetRequests": 0,
+      "disabledServiceCalls": [
+        "analytics.initialize",
+        "notifications.initialize",
+        "iap.initialize"
+      ]
+    },
+    {
+      "run": 7,
+      "processToReceiptMs": 1837.1305420000006,
+      "nativeVisibleMs": 420,
+      "nativeBudgetPassed": true,
+      "nativeOrigin": "native-app-start",
+      "route": "SignIn",
+      "blockedRequestCount": 2,
+      "localAssetRequests": 0,
+      "disabledServiceCalls": [
+        "analytics.initialize",
+        "notifications.initialize",
+        "iap.initialize"
+      ]
+    },
+    {
+      "run": 8,
+      "processToReceiptMs": 1855.0394170000004,
+      "nativeVisibleMs": 411,
+      "nativeBudgetPassed": true,
+      "nativeOrigin": "native-app-start",
+      "route": "SignIn",
+      "blockedRequestCount": 2,
+      "localAssetRequests": 0,
+      "disabledServiceCalls": [
+        "analytics.initialize",
+        "notifications.initialize",
+        "iap.initialize"
+      ]
+    },
+    {
+      "run": 9,
+      "processToReceiptMs": 1846.720624999996,
+      "nativeVisibleMs": 413,
+      "nativeBudgetPassed": true,
+      "nativeOrigin": "native-app-start",
+      "route": "SignIn",
+      "blockedRequestCount": 2,
+      "localAssetRequests": 0,
+      "disabledServiceCalls": [
+        "analytics.initialize",
+        "notifications.initialize",
+        "iap.initialize"
+      ]
+    },
+    {
+      "run": 10,
+      "processToReceiptMs": 1849.454541,
+      "nativeVisibleMs": 438,
+      "nativeBudgetPassed": true,
+      "nativeOrigin": "native-app-start",
+      "route": "SignIn",
+      "blockedRequestCount": 2,
+      "localAssetRequests": 0,
+      "disabledServiceCalls": [
+        "analytics.initialize",
+        "notifications.initialize",
+        "iap.initialize"
+      ]
+    }
+  ],
+  "nativeVisibleP50Ms": 429.0,
+  "nativeVisibleRangeMs": [
+    386,
+    663
+  ],
+  "nativeBudgetPassedAll": true,
+  "processToReceiptP50Ms": 1848.0875829999982,
+  "processToReceiptRangeMs": [
+    1802.1322920000032,
+    2863.273541
+  ]
+}

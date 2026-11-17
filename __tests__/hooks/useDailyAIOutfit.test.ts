@@ -247,3 +247,6 @@ it('retries if connectivity recovers while the first request is still failing', 
   await waitFor(() => expect(result.current.outfits).toEqual(deck('recovered-late')));
   expect(generate).toHaveBeenCalledTimes(2);
 });
+test('quality-rule updates cannot reuse an old daily deck cache',()=>{
+ expect(dailyOutfitCacheKey('user','casual','Weekend')).toContain('v21_stylist_quality');
+});

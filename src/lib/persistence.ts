@@ -71,6 +71,7 @@ export const PERSISTED_ASYNC_STORAGE_KEYS: readonly string[] = [
     '@ai_chat_history',
     '@selected_style',
     'savedInspo', // savedShopStore
+    'purchase-intelligence-v1', // owner-scoped fit evidence and local price watches
     'aiRecentShownItemIds',
     'aiExcludeShownItemIds',
     'notificationLastScheduled',
@@ -125,6 +126,8 @@ export function resetInMemoryUserState(): Promise<void> {
         const { resetUploadQueueState } = require('../store/uploadQueueStore');
         resetUploadQueueState();
     } catch {}
+
+    try { retain(require('../../store/purchaseIntelligenceStore').resetPurchaseIntelligence()); } catch {}
 
     // Wardrobe — the biggest leak: items/outfits/wearLogs/lastSyncedAt.
     // Also drops any in-flight rehydrate so user A's fetch can neither block
@@ -254,6 +257,7 @@ export function resetInMemoryUserState(): Promise<void> {
         () => require('../../store/wardrobeStore').flushWardrobePersistence?.(),
         () => require('../store/uploadQueueStore').flushUploadQueuePersistence?.(),
         () => require('../../store/savedShopStore').flushSavedShopPersistence?.(),
+        () => require('../../store/purchaseIntelligenceStore').flushPurchaseIntelligence?.(),
     ]) {
         try {
             const work = flush();

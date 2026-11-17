@@ -1,0 +1,22 @@
+DO
+SET
+DO
+RESET
+SET
+DO
+RESET
+                                                              QUERY PLAN                                                              
+--------------------------------------------------------------------------------------------------------------------------------------
+ Function Scan on catalog_discovery_candidates  (cost=0.25..10.25 rows=1000 width=32) (actual time=124.945..124.947 rows=100 loops=1)
+   Buffers: shared hit=204
+ Planning Time: 0.012 ms
+ Execution Time: 124.952 ms
+(4 rows)
+
+PASS replay 20261103120000_phase3_style_os.sql
+PASS replay 20261104120000_phase4_visual_os.sql
+PASS replay 20261105120000_phase5_platform.sql
+PASS replay 20261106120000_phase6_growth.sql
+PASS phase3-6 isolation, explicit grants, reward write denial, indexes, reverse disable/data retention
+PASS purchase schema: private owner RLS, public offer/history RLS, service writes, changed-price coalescing, immutable identity, non-destructive rollback
+PASS local discovery: coverage, filters, RLS, bounds, pagination, rotation, native floors, invalid inputs, rollback

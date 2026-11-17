@@ -1,0 +1,1692 @@
+{
+  "version": 2,
+  "description": "Stylist 6 architectural A/B fixtures (v2). No output is pre-labelled success; execute identical catalog snapshot and same inputs for V5 and V6. Scenario names are inputs, not subjective quality labels. Version 2 splits the fixture set into a development block (iteration feedback allowed) and a held-out evaluation block (run once, human blind review), keeping every version-1 scenario unchanged and appending new coverage after them.",
+  "date": "2026-11-13",
+  "supersedes": "version 1 (2026-11-10, 35 scenarios, single `scenarios` array)",
+  "backendVersions": {
+    "baseline": "Stylist 5 v207",
+    "candidate": "Stylist 6 unimplemented"
+  },
+  "testsNotRun": true,
+  "realPaidRequests": false,
+  "requireHumanBlindPreference": true,
+  "split": {
+    "development": "Iteration set. New scenarios may be tuned/extended between runs; engine authors may read results.",
+    "heldOutEvaluation": "Locked evaluation set. Run after feature freeze; includes the five version-1 budget scenarios S6-B01..S6-B05 unchanged."
+  },
+  "scenarioFields": {
+    "inherited": "id, style, occasion, mode, region, currency, budget, seed, assertions (same schema as version 1)",
+    "added_v2": {
+      "weather": "optional {temp}; pinned deterministic destination temperature. Absent on version-1 rows, which keep the replay index rotation.",
+      "preferences": "optional personal-taste payload; accepted engine fields are favoriteColors, favoriteBrands, avoidBrands, likedPatterns, fitPreference (plus avoidColors / dislikedPatterns, which act as hard exclusions). Absent on version-1 rows."
+    }
+  },
+  "frozenCatalog": {
+    "path": ".private/catalog-uz-20261113.json",
+    "sha256": "b4bb7ae09ffef1a5c44c2df309236beb739b2c9e1e49bc4291e4d63b91a933d0",
+    "perSlot": 96,
+    "rows": 384,
+    "built": "2026-11-13",
+    "note": "Tight budgets below the cheapest feasible four-slot outfit (1,424,702 UZS; three-slot 1,166,702 UZS) are deliberate sparse probes; fewer than 3 looks or an honest no_feasible_looks status is the expected truthful outcome, not a failure."
+  },
+  "counts": {
+    "development": 45,
+    "heldOutEvaluation": 23,
+    "total": 68
+  },
+  "development": [
+    {
+      "id": "S6-01",
+      "style": "old_money",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 1,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-02",
+      "style": "old_money",
+      "occasion": "Casual",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 2,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-03",
+      "style": "old_money",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 3,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-04",
+      "style": "old_money",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 4,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-05",
+      "style": "old_money",
+      "occasion": "Dinner",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 5,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-06",
+      "style": "classic",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 6,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-07",
+      "style": "classic",
+      "occasion": "Business meeting",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 7,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-08",
+      "style": "classic",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 8,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-09",
+      "style": "classic",
+      "occasion": "Wedding",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 9,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-10",
+      "style": "classic",
+      "occasion": "Dinner",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 10,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-11",
+      "style": "semi_classic",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 11,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-12",
+      "style": "semi_classic",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 12,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-13",
+      "style": "semi_classic",
+      "occasion": "Casual",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 13,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-14",
+      "style": "semi_classic",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 14,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-15",
+      "style": "semi_classic",
+      "occasion": "Dinner",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 15,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-16",
+      "style": "minimalist",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 16,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-17",
+      "style": "minimalist",
+      "occasion": "Casual",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 17,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-18",
+      "style": "minimalist",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 18,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-19",
+      "style": "minimalist",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 19,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-20",
+      "style": "minimalist",
+      "occasion": "Weekend",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 20,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-21",
+      "style": "business_casual",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 21,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-22",
+      "style": "business_casual",
+      "occasion": "Conference",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 22,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-23",
+      "style": "business_casual",
+      "occasion": "Casual",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 23,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-24",
+      "style": "business_casual",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 24,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-25",
+      "style": "business_casual",
+      "occasion": "Dinner",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 25,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-26",
+      "style": "casual",
+      "occasion": "Casual",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 26,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-27",
+      "style": "casual",
+      "occasion": "Weekend",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 27,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-28",
+      "style": "casual",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 28,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-29",
+      "style": "casual",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 29,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-30",
+      "style": "casual",
+      "occasion": "Brunch",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 30,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-D01",
+      "style": "smart_casual",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 2001,
+      "weather": {
+        "temp": 26
+      },
+      "preferences": {
+        "favoriteColors": [
+          "navy",
+          "grey"
+        ],
+        "fitPreference": "fitted"
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough"
+      ]
+    },
+    {
+      "id": "S6-D02",
+      "style": "smart_casual",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 2002,
+      "weather": {
+        "temp": 22
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding"
+      ]
+    },
+    {
+      "id": "S6-D03",
+      "style": "smart_casual",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 2003,
+      "weather": {
+        "temp": 24
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-D04",
+      "style": "casual",
+      "occasion": "Weekend",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 400000,
+        "currency": "UZS"
+      },
+      "seed": 2004,
+      "weather": {
+        "temp": 28
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-D05",
+      "style": "old_money",
+      "occasion": "Business meeting",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 800000,
+        "currency": "UZS"
+      },
+      "seed": 2005,
+      "weather": {
+        "temp": 27
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-D06",
+      "style": "minimalist",
+      "occasion": "Dinner",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1200000,
+        "currency": "UZS"
+      },
+      "seed": 2006,
+      "weather": {
+        "temp": 25
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-D07",
+      "style": "classic",
+      "occasion": "Wedding",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 2007,
+      "weather": {
+        "temp": 19
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "reference_metadata_not_guaranteed"
+      ]
+    },
+    {
+      "id": "S6-D08",
+      "style": "casual",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 2008,
+      "weather": {
+        "temp": 26
+      },
+      "preferences": {
+        "avoidColors": [
+          "black"
+        ],
+        "fitPreference": "loose"
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-D09",
+      "style": "semi_classic",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 2009,
+      "weather": {
+        "temp": 9
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-D10",
+      "style": "business_casual",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 2010,
+      "weather": {
+        "temp": 7
+      },
+      "preferences": {
+        "favoriteBrands": [
+          "Massimo Dutti"
+        ],
+        "avoidBrands": [
+          "Zara"
+        ]
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough"
+      ]
+    },
+    {
+      "id": "S6-D11",
+      "style": "old_money",
+      "occasion": "Dinner",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 2011,
+      "weather": {
+        "temp": 20
+      },
+      "preferences": {
+        "likedPatterns": [
+          "stripe",
+          "check"
+        ],
+        "favoriteColors": [
+          "brown"
+        ]
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-D12",
+      "style": "minimalist",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 2012,
+      "weather": {
+        "temp": 5
+      },
+      "preferences": {
+        "dislikedPatterns": [
+          "logo"
+        ],
+        "favoriteColors": [
+          "olive"
+        ]
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough"
+      ]
+    },
+    {
+      "id": "S6-D13",
+      "style": "casual",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 2013,
+      "weather": {
+        "temp": 21
+      },
+      "preferences": {
+        "favoriteColors": [
+          "burgundy"
+        ],
+        "fitPreference": "loose"
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough"
+      ]
+    },
+    {
+      "id": "S6-D14",
+      "style": "smart_casual",
+      "occasion": "Casual",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 2014,
+      "weather": {
+        "temp": 28
+      },
+      "preferences": {
+        "avoidBrands": [
+          "MANGO"
+        ],
+        "likedPatterns": [
+          "texture"
+        ]
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-D15",
+      "style": "old_money",
+      "occasion": "Weekend",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 2015,
+      "weather": {
+        "temp": 30
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422"
+      ]
+    }
+  ],
+  "heldOutEvaluation": [
+    {
+      "id": "S6-B01",
+      "style": "old_money",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1500000,
+        "currency": "UZS"
+      },
+      "seed": 1000,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422"
+      ]
+    },
+    {
+      "id": "S6-B02",
+      "style": "classic",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 3000000,
+        "currency": "UZS"
+      },
+      "seed": 1005,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422"
+      ]
+    },
+    {
+      "id": "S6-B03",
+      "style": "semi_classic",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 8000000,
+        "currency": "UZS"
+      },
+      "seed": 1010,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422"
+      ]
+    },
+    {
+      "id": "S6-B04",
+      "style": "minimalist",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2000000,
+        "currency": "UZS"
+      },
+      "seed": 1015,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422"
+      ]
+    },
+    {
+      "id": "S6-B05",
+      "style": "business_casual",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 6000000,
+        "currency": "UZS"
+      },
+      "seed": 1020,
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422"
+      ]
+    },
+    {
+      "id": "S6-H01",
+      "style": "smart_casual",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 3001,
+      "weather": {
+        "temp": 18
+      },
+      "preferences": {
+        "favoriteColors": [
+          "white",
+          "navy"
+        ],
+        "fitPreference": "fitted"
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough"
+      ]
+    },
+    {
+      "id": "S6-H02",
+      "style": "smart_casual",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 3002,
+      "weather": {
+        "temp": 25
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-H03",
+      "style": "smart_casual",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 400000,
+        "currency": "UZS"
+      },
+      "seed": 3003,
+      "weather": {
+        "temp": 27
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-H04",
+      "style": "old_money",
+      "occasion": "Casual",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 3004,
+      "weather": {
+        "temp": 16
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-H05",
+      "style": "old_money",
+      "occasion": "Weekend",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 3005,
+      "weather": {
+        "temp": 8
+      },
+      "preferences": {
+        "favoriteColors": [
+          "brown",
+          "burgundy"
+        ]
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough"
+      ]
+    },
+    {
+      "id": "S6-H06",
+      "style": "classic",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 3006,
+      "weather": {
+        "temp": 9
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422"
+      ]
+    },
+    {
+      "id": "S6-H07",
+      "style": "classic",
+      "occasion": "Weekend",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 3007,
+      "weather": {
+        "temp": 26
+      },
+      "preferences": {
+        "likedPatterns": [
+          "check"
+        ]
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-H08",
+      "style": "minimalist",
+      "occasion": "Travel",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1200000,
+        "currency": "UZS"
+      },
+      "seed": 3008,
+      "weather": {
+        "temp": 25
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-H09",
+      "style": "minimalist",
+      "occasion": "Brunch",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 3009,
+      "weather": {
+        "temp": 21
+      },
+      "preferences": {
+        "avoidColors": [
+          "black"
+        ]
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough"
+      ]
+    },
+    {
+      "id": "S6-H10",
+      "style": "semi_classic",
+      "occasion": "Weekend",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 3010,
+      "weather": {
+        "temp": 27
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-H11",
+      "style": "semi_classic",
+      "occasion": "Business meeting",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 3011,
+      "weather": {
+        "temp": 6
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422"
+      ]
+    },
+    {
+      "id": "S6-H12",
+      "style": "casual",
+      "occasion": "Work",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 3012,
+      "weather": {
+        "temp": 19
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-H13",
+      "style": "casual",
+      "occasion": "Dinner",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 3013,
+      "weather": {
+        "temp": 24
+      },
+      "preferences": {
+        "favoriteBrands": [
+          "GANT"
+        ],
+        "avoidBrands": [
+          "MANGO"
+        ]
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "preferences_engine_passthrough"
+      ]
+    },
+    {
+      "id": "S6-H14",
+      "style": "business_casual",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1800000,
+        "currency": "UZS"
+      },
+      "seed": 3014,
+      "weather": {
+        "temp": 18
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-H15",
+      "style": "business_casual",
+      "occasion": "Weekend",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 800000,
+        "currency": "UZS"
+      },
+      "seed": 3015,
+      "weather": {
+        "temp": 28
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-H16",
+      "style": "casual",
+      "occasion": "Conference",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 2500000,
+        "currency": "UZS"
+      },
+      "seed": 3016,
+      "weather": {
+        "temp": 20
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "reference_metadata_not_guaranteed"
+      ]
+    },
+    {
+      "id": "S6-H17",
+      "style": "minimalist",
+      "occasion": "Date night",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": {
+        "amount": 1200000,
+        "currency": "UZS"
+      },
+      "seed": 3017,
+      "weather": {
+        "temp": 25
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "hard_total_budget_or_honest_422",
+        "honest_sparse_deck_or_budget_infeasible"
+      ]
+    },
+    {
+      "id": "S6-H18",
+      "style": "old_money",
+      "occasion": "Gallery opening",
+      "mode": "catalog",
+      "region": "UZ",
+      "currency": "UZS",
+      "budget": null,
+      "seed": 3018,
+      "weather": {
+        "temp": 19
+      },
+      "assertions": [
+        "real_catalog_only",
+        "occasion_and_style",
+        "physical_identity",
+        "shop_links",
+        "photo_links",
+        "look_distinctness",
+        "evidence_grounding",
+        "reference_metadata_not_guaranteed"
+      ]
+    }
+  ]
+}

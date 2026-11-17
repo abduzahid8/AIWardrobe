@@ -1,0 +1,20 @@
+{
+  "scope": "Bundled module startup and no-network request paths; remote imports stubbed",
+  "results": [
+    {
+      "method": "OPTIONS",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "status": 405,
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "status": 401,
+      "passed": true
+    }
+  ]
+}

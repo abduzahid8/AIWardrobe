@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "reviewedDate": "2026-11-13",
+  "brand": "MANGO",
+  "country": "UZ",
+  "currency": "UZS",
+  "sourceCollection": "https://shop.mango.com/uz/en/c/men/shoes/formal-shoes/ffd4d43e",
+  "evidenceLevel": "indexed_official_collection_unverified_live",
+  "note": "Publicly indexed Uzbekistan collection listings. Listed price and size ranges are NOT checkout stock. No deep product URL, no photo rights, no offer authorization, and no database import.",
+  "leads": [
+    {
+      "merchantArticle": "27061326-00",
+      "name": "Split leather suit shoes",
+      "family": "formal-shoes",
+      "color": "Brown",
+      "indexedPriceUZS": 1999000,
+      "displayedSizeRangeEU": ["39", "40", "41", "42", "43", "44", "45", "46"],
+      "sourceNote": "Mango UZ men's dress shoes collection: brown, article reference shown on merchant image label"
+    },
+    {
+      "merchantArticle": "27071325-00",
+      "name": "Double buckle leather shoe",
+      "family": "monk-strap",
+      "color": "Brown",
+      "indexedPriceUZS": 2999000,
+      "displayedSizeRangeEU": ["40", "41", "42", "43", "44", "45"],
+      "sourceNote": "Brown merchant image label, separate from black"
+    },
+    {
+      "merchantArticle": "27071325-00",
+      "name": "Double buckle leather shoe",
+      "family": "monk-strap",
+      "color": "Black",
+      "indexedPriceUZS": 2999000,
+      "displayedSizeRangeEU": ["39", "40", "41", "42", "43", "44", "45", "46"],
+      "sourceNote": "Black merchant image label, separate from brown"
+    },
+    {
+      "merchantArticle": "27081254-00",
+      "name": "Blucher suit shoes",
+      "family": "derby",
+      "color": "Brown",
+      "indexedPriceUZS": 1299000,
+      "displayedSizeRangeEU": ["39", "40", "41", "42", "43", "44", "45", "46"],
+      "sourceNote": "Blucher is a derby-style closure; leather composition NOT established"
+    },
+    {
+      "merchantArticle": "27081254-00",
+      "name": "Blucher suit shoes",
+      "family": "derby",
+      "color": "Black",
+      "indexedPriceUZS": 1299000,
+      "displayedSizeRangeEU": ["39", "40", "41", "42", "43", "44", "45", "46"],
+      "sourceNote": "Blucher is a derby-style closure; leather composition NOT established"
+    },
+    {
+      "merchantArticle": "27081302-00",
+      "name": "Oxford style leather shoe",
+      "family": "oxford",
+      "color": "Brown",
+      "indexedPriceUZS": 2299000,
+      "displayedSizeRangeEU": ["39", "40", "41", "42", "43", "44", "45", "46"],
+      "sourceNote": "Official collection lists leather; no size-specific stock verified"
+    },
+    {
+      "merchantArticle": "27081302-00",
+      "name": "Oxford style leather shoe",
+      "family": "oxford",
+      "color": "Black",
+      "indexedPriceUZS": 2299000,
+      "displayedSizeRangeEU": ["39", "40", "41", "42", "43", "44", "45", "46"],
+      "sourceNote": "Official collection lists leather; no size-specific stock verified"
+    },
+    {
+      "merchantArticle": "27094408-00",
+      "name": "Leather suit shoes",
+      "family": "formal-shoes",
+      "color": "Black",
+      "indexedPriceUZS": 1799000,
+      "displayedSizeRangeEU": ["39", "40", "41", "42", "43", "44", "45", "46"],
+      "sourceNote": "Black merchant image label; separate official search-based cognac row remains unconfirmed"
+    }
+  ]
+}

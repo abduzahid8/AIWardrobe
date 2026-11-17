@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "bundleId": "com.aiwardrobe.rclocal",
+  "simulatorId": "AD2C6D1C-096E-4D89-86B8-22D600E30C86",
+  "scope": "isolated Release native harness, not normal client RC",
+  "productionClaim": false,
+  "method": "simctl process launch to first-layout JSON receipt; includes launch tool and receipt IO; excludes full app root; OS caches retained",
+  "samples": [
+    {
+      "run": 1,
+      "processToReceiptMs": 1388.2494580000002,
+      "moduleToFirstLayoutMs": 79.74449999630451,
+      "pid": 98644
+    },
+    {
+      "run": 2,
+      "processToReceiptMs": 1377.5456250000002,
+      "moduleToFirstLayoutMs": 64.24591600894928,
+      "pid": 98654
+    },
+    {
+      "run": 3,
+      "processToReceiptMs": 1362.264584,
+      "moduleToFirstLayoutMs": 54.80816599726677,
+      "pid": 98663
+    },
+    {
+      "run": 4,
+      "processToReceiptMs": 1342.0703340000007,
+      "moduleToFirstLayoutMs": 56.72145800292492,
+      "pid": 98672
+    },
+    {
+      "run": 5,
+      "processToReceiptMs": 1376.3987909999996,
+      "moduleToFirstLayoutMs": 54.973040997982025,
+      "pid": 98682
+    },
+    {
+      "run": 6,
+      "processToReceiptMs": 1342.399416000001,
+      "moduleToFirstLayoutMs": 64.07720801234245,
+      "pid": 98691
+    },
+    {
+      "run": 7,
+      "processToReceiptMs": 1364.5832920000007,
+      "moduleToFirstLayoutMs": 57.93725000321865,
+      "pid": 98701
+    },
+    {
+      "run": 8,
+      "processToReceiptMs": 1392.8100829999987,
+      "moduleToFirstLayoutMs": 55.65125000476837,
+      "pid": 98710
+    },
+    {
+      "run": 9,
+      "processToReceiptMs": 1368.9410409999994,
+      "moduleToFirstLayoutMs": 55.9696249961853,
+      "pid": 98721
+    },
+    {
+      "run": 10,
+      "processToReceiptMs": 1392.154957999999,
+      "moduleToFirstLayoutMs": 69.35450001060963,
+      "pid": 98731
+    }
+  ],
+  "p50Ms": 1372.6699159999994,
+  "rangeMs": [
+    1342.0703340000007,
+    1392.8100829999987
+  ],
+  "moduleLayoutP50Ms": 57.329354003071785
+}

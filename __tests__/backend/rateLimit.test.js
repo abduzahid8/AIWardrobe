@@ -107,3 +107,42 @@ test('rate-only admission does not consume a paid quota', async () => {
   expect(mockRpc).toHaveBeenCalledTimes(1);
   expect(mockRpc.mock.calls[0][0]).toBe('increment_rate_bucket');
 });
+
+test.each(['true', ' TRUE ', 'yes'])('server paid-work stop %s denies before rate/quota writes', async value => {
+  env.set('AIWARDROBE_PAID_WORK_DISABLED', value);
+  const result = await enforceRateLimit(request('Bearer jwt'), opts);
+  expect(result.status).toBe(503);
+  expect(await result.json()).toEqual({ error: 'feature_disabled' });
+  expect(result.headers.get('Access-Control-Allow-Origin')).toBe('*');
+  expect(mockGetUser).toHaveBeenCalledWith('jwt');
+  expect(mockRpc).not.toHaveBeenCalled();
+});
+test('per-endpoint stop is selective and cannot be overridden by client headers', async () => {
+  env.set('AIWARDROBE_DISABLED_PAID_FEATURES', ' try-on, ai-chat ');
+  const forged = new Request('https://example.test', {headers: {authorization:'Bearer jwt','x-enable-paid-work':'true'}});
+  expect((await enforceRateLimit(forged, {...opts,feature:'try-on'})).status).toBe(503);
+  expect(mockRpc).not.toHaveBeenCalled();
+  expect(await enforceRateLimit(request('Bearer jwt'), {...opts,feature:'ai-process'})).toBeNull();
+  expect(mockRpc).toHaveBeenCalledWith('consume_edge_quota', {p_user:'user-1',p_endpoint:'ai-process'});
+});
+test('paid-work stop preserves authenticated billing recovery without consuming paid quota', async () => {
+  env.set('AIWARDROBE_PAID_WORK_DISABLED', 'true');
+  expect(await enforceRateLimit(request('Bearer jwt'), {...opts,feature:'sync-subscription',meterPaidWork:false})).toBeNull();
+  expect(mockRpc).toHaveBeenCalledWith('increment_rate_bucket',expect.any(Object));
+  expect(mockRpc).not.toHaveBeenCalledWith('consume_edge_quota',expect.any(Object));
+});
+test('disabled paid work still requires a valid authenticated identity', async () => {
+  env.set('AIWARDROBE_PAID_WORK_DISABLED', 'true');
+  mockGetUser.mockResolvedValue({data:{user:null},error:null});
+  expect((await enforceRateLimit(request('Bearer jwt'),opts)).status).toBe(401);
+  expect(mockRpc).not.toHaveBeenCalled();
+});
+
+test('clearing the global stop restores exactly one normal quota admission on the next request', async () => {
+  env.set('AIWARDROBE_PAID_WORK_DISABLED','true');
+  expect((await enforceRateLimit(request('Bearer jwt'),opts)).status).toBe(503);
+  env.set('AIWARDROBE_PAID_WORK_DISABLED','false');
+  expect(await enforceRateLimit(request('Bearer jwt'),opts)).toBeNull();
+  expect(mockRpc.mock.calls.filter(([name])=>name==='increment_rate_bucket')).toHaveLength(1);
+  expect(mockRpc.mock.calls.filter(([name])=>name==='consume_edge_quota')).toHaveLength(1);
+});

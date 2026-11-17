@@ -1,0 +1,37 @@
+{"target":{"kind":"linked","project_ref":"fyqpifmrsftsfqibhwhy","environment":"unverified"},"_tag":"Error","error":{"code":"FunctionsApiStatusError","message":"unexpected deploy status 400: {\"message\":\"Failed to bundle the function (reason: Module not found \\\"file:///tmp/user_fn_fyqpifmrsftsfqibhwhy_f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a_180/src/domain/garmentContext.ts\\\".\\n    at file:///tmp/user_fn_fyqpifmrsftsfqibhwhy_f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a_180/source/supabase/functions/generate-outfits/index.ts:1:59).\"}"}}
+
+Target: project fyqpifmrsftsfqibhwhy
+Confirmed by --yes: Deploy 1 Function on project fyqpifmrsftsfqibhwhy
+Uploading asset (generate-outfits): supabase/functions/generate-outfits/index.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/garmentContext.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitVisualSignature.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/validatedQuartets.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/stylingContext.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/catalogCandidates.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/styleInference.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/occasionRules.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/occasionRules.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitComposition.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitComposition.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitRotation.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitRotation.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitDiversity.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitDiversity.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitStructure.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitStructure.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/rateLimit.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/modelOutfitResponse.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitBudgetFeedback.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitBudgetSelection.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitBudgetSelection.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitBudgetFeasibility.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/budgetFxCache.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/budgetFx.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/budgetFx.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitBudgetText.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitBudgetText.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitGenerationRequest.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitGenerationRequest.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitGenerationRequest.ts
+Uploading asset (generate-outfits): supabase/functions/_shared/outfitChoices.ts
+WARN: Skipping import path outside source root: /var/folders/qr/76tl80710_lbndwg62c8rvhm0000gn/T/aiwardrobe-approved-rollout-wwi40rz4/candidate/src/domain/outfitChoices.ts

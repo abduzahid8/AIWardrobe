@@ -53,6 +53,7 @@ const PromoCodeScreen = lazyScreen(() => import("../screens/PromoCodeScreen"));
 const AdminPanelScreen = lazyScreen(() => import("../screens/AdminPanelScreen"));
 const GuideScreen = lazyScreen(() => import("../screens/GuideScreen"));
 const StyleQuizScreen = lazyScreen(() => import("../screens/StyleQuizScreen"));
+const PurchaseIntelligenceScreen = lazyScreen(() => import("../screens/PurchaseIntelligenceScreen"));
 const BodyProfileScreen = lazyScreen(() => import("../screens/BodyProfileScreen"));
 import useAuthStore, { cleanupAuthSubscription, identifyRestoredPurchases } from "../store/auth";
 import useSubscriptionStore, { recoverSubscriptionAfterNetworkChange } from "../store/subscriptionStore";
@@ -346,6 +347,7 @@ const RootNavigator = () => {
         ) : (
           <>
             <Stack.Screen name="Main" getComponent={getTabNavigator} />
+            <Stack.Screen name="PurchaseIntelligence" component={PurchaseIntelligenceScreen} />
 
             {/* Main tab navigation with Home, Add, and Profile */}
             {/* <Stack.Screen name="Home" component={TabNavigator} /> */}

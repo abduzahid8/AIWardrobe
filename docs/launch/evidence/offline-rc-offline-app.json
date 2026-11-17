@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "scope": "Actual App root, signed out, local offline fixture; SDK/registration/sending/prewarm explicitly disabled",
+  "releaseBuild": true,
+  "readyMs": 110.60649999976158,
+  "isInitialized": true,
+  "authenticated": false,
+  "currentRoute": "LanguageSelection",
+  "config": {
+    "backend": "loopback only",
+    "billing": "stubbed; no store validation",
+    "analyticsSending": false,
+    "notificationRegistration": false,
+    "prewarm": false
+  },
+  "blockedRequests": [
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    },
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    },
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    },
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    },
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    },
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    },
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    },
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    },
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    },
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    },
+    {
+      "transport": "fetch",
+      "hostClass": "external"
+    }
+  ],
+  "disabledServiceCalls": [
+    "analytics.initialize",
+    "notifications.initialize",
+    "iap.initialize",
+    "prewarmTabs"
+  ]
+}

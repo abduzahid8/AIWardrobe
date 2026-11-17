@@ -1,0 +1,38 @@
+PASS __tests__/purchase/screen.test.tsx
+PASS __tests__/launch/stress.test.ts
+PASS __tests__/components/betaFeedback.test.tsx
+PASS __tests__/purchase/fitFeedback.test.tsx
+PASS __tests__/purchase/wardrobeTools.test.ts
+PASS __tests__/backend/rateLimit.test.js
+PASS __tests__/purchase/performance.test.ts
+PASS __tests__/purchase/buyCheck.test.ts
+PASS __tests__/backend/paidWorkCoverage.test.js
+PASS __tests__/backend/tryOnContract.test.js
+PASS __tests__/launch/launch.test.ts
+PASS __tests__/services/outfitGenerationFailure.test.ts
+PASS __tests__/purchase/store.test.ts
+PASS __tests__/purchase/merchantShare.test.ts
+PASS __tests__/purchase/price.test.ts
+PASS __tests__/growth/monetization.test.ts
+PASS __tests__/purchase/fitEvidence.test.ts
+PASS __tests__/features/closestWardrobeOutfits.test.ts
+PASS __tests__/platform/security.test.ts
+PASS __tests__/growth/subscription-safety.test.ts
+PASS __tests__/launch/telemetry.test.ts
+PASS __tests__/growth/entitlements.test.ts
+PASS __tests__/growth/activation.test.ts
+PASS __tests__/platform/evaluation.test.ts
+PASS __tests__/platform/release.test.ts
+PASS __tests__/purchase/priceRepository.test.ts
+PASS __tests__/platform/decisions.test.ts
+PASS __tests__/purchase/nativeInbox.test.ts
+PASS __tests__/platform/experimentation.test.ts
+PASS __tests__/platform/resilience.test.ts
+PASS __tests__/platform/analytics.test.ts
+PASS __tests__/platform/budgets.test.ts
+PASS __tests__/launch/validationLoop.test.ts
+
+Test Suites: 33 passed, 33 total
+Tests:       239 passed, 239 total
+Snapshots:   0 total
+Time:        5.199 s

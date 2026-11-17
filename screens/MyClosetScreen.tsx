@@ -1,3 +1,4 @@
+import {savedQuartetReason} from '../src/services/savedOutfitContract';
 import * as ImageManipulator from 'expo-image-manipulator';
 import readinessLogger from '../src/utils/logger';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -410,17 +411,6 @@ const MyClosetScreen = () => {
     // Home swipe-likes (savedFrom='home', collectionCategory='saved') land here.
     // Single-clothing saves go to Profile → Saved Looks instead.
     const outfits = useWardrobeStore((state) => state.outfits);
-    const savedOutfits = useMemo(() => outfits.filter((o: Outfit) => o.saved), [outfits]);
-    // "Saved" collection = Home likes. Occasion filters still work via o.occasion.
-    const visibleSavedOutfits = useMemo(() => {
-        if (selectedCollectionFilter === 'all') return savedOutfits;
-        if (selectedCollectionFilter === 'saved') {
-            return savedOutfits.filter(
-                (o) => (o as Outfit).collectionCategory === 'saved' || (o as Outfit).savedFrom === 'home',
-            );
-        }
-        return savedOutfits.filter((o) => o.occasion === selectedCollectionFilter);
-    }, [savedOutfits, selectedCollectionFilter]);
     const shopCatalogItems = useShopCatalogStore((state) => state.items);
 
     // Lookup Maps built ONCE per data change and shared by every card.
@@ -434,6 +424,17 @@ const MyClosetScreen = () => {
         [shopCatalogItems],
     );
 
+    const savedOutfits = useMemo(() => outfits.filter((o: Outfit) => o.saved && o.itemIds.length===4 && !savedQuartetReason(resolveOutfitCollageItemsWithMaps(o,wardrobeMap,shopMap))), [outfits,wardrobeMap,shopMap]);
+    // "Saved" collection = Home likes. Occasion filters still work via o.occasion.
+    const visibleSavedOutfits = useMemo(() => {
+        if (selectedCollectionFilter === 'all') return savedOutfits;
+        if (selectedCollectionFilter === 'saved') {
+            return savedOutfits.filter(
+                (o) => (o as Outfit).collectionCategory === 'saved' || (o as Outfit).savedFrom === 'home',
+            );
+        }
+        return savedOutfits.filter((o) => o.occasion === selectedCollectionFilter);
+    }, [savedOutfits, selectedCollectionFilter]);
     // Pre-resolve all visible collages once per data change — renderItem
     // becomes a pure memoized cell lookup (no Map rebuilds mid-scroll).
     const collageByOutfitId = useMemo(() => {

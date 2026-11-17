@@ -43,6 +43,12 @@ const SUPABASE_URL  = process.env.SUPABASE_URL  || process.env.EXPO_PUBLIC_SUPAB
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY;
 const ACTOR_ID      = 'datasaurus~massimodutti'; // same as datasaurus/massimodutti
 const SOURCE        = 'apify-massimodutti';
+// Gate F currency honesty: the hard-coded GBP below is correct ONLY for the
+// /gb storefront locale (the actor's prices arrive in minor units of the
+// scraped locale's currency). A configured feed URL or an item's own product
+// URL resolved to any other locale would be mislabeled, so it is skipped and
+// counted in the run report instead.
+const FEED_LOCALE   = 'gb';
 
 /** Men-only category pages to scrape. */
 const START_URLS = [
@@ -125,12 +131,12 @@ function apiFetch(path, opts = {}) {
     });
 }
 
-async function startRun() {
+async function startRun(startUrls = START_URLS) {
     console.log('▶  Starting Apify actor run…');
     const res = await apiFetch(`/acts/${ACTOR_ID}/runs`, {
         method: 'POST',
         body: {
-            startUrls:                   START_URLS,
+            startUrls,
             maxResultsPerStartUrl:        MAX_RESULTS_PER_URL,
             deduplicateAcrossAllStartUrls: true,
         },
@@ -313,6 +319,20 @@ function parsePrice(raw) {
     return n;
 }
 
+/**
+ * Locale segment of a Massimo Dutti URL (e.g. 'gb' from /gb/men/...), or
+ * null when the URL carries no recognizable locale segment.
+ */
+function feedLocaleOf(url) {
+    try {
+        const segments = new URL(String(url)).pathname.split('/').filter(Boolean);
+        const locale = segments.find((segment) => /^[a-z]{2}(-[a-z]{2})?$/i.test(segment));
+        return locale ? locale.toLowerCase() : null;
+    } catch {
+        return null;
+    }
+}
+
 function mapItem(raw, index, syncTimestamp) {
     // Drop women's items
     if (isWomensItem(raw)) return null;
@@ -330,10 +350,15 @@ function mapItem(raw, index, syncTimestamp) {
     const { garment_type, category } = categoryToGarmentType(catInput);
 
     const price    = parsePrice(pick(raw, 'price', 'currentPrice', 'salePrice'));
+    // GBP is only truthful for /gb items: an item whose own product URL
+    // resolves to another locale is skipped into the run report rather than
+    // priced in the wrong currency.
+    const sourceUrl = pick(raw, 'productPage', 'url', 'productUrl', 'link', 'pageUrl');
+    const itemLocale = feedLocaleOf(sourceUrl);
+    if (itemLocale && itemLocale !== FEED_LOCALE) return null;
     const currency = 'GBP';
 
     const externalId = String(raw.id || raw.productId || raw.itemId || '');
-    const sourceUrl  = pick(raw, 'productPage', 'url', 'productUrl', 'link', 'pageUrl');
 
     const id  = externalId
         ? `md-apify-${externalId}`
@@ -428,13 +453,26 @@ async function main() {
         process.exit(1);
     }
 
+    // Gate F feed-locale guard: GBP only holds for the /gb storefront. Any
+    // configured category URL on another locale is excluded from the run and
+    // reported rather than silently priced in the wrong currency.
+    const localeMismatched = START_URLS.filter(({ url }) => {
+        const locale = feedLocaleOf(url);
+        return locale !== FEED_LOCALE;
+    });
+    const feedUrls = START_URLS.filter(({ url }) => feedLocaleOf(url) === FEED_LOCALE);
+    if (localeMismatched.length) {
+        console.log(`   ⚠  Skipping ${localeMismatched.length} start URL(s) outside /${FEED_LOCALE}/ (currency would be mislabeled):`);
+        for (const { url } of localeMismatched) console.log(`      - ${url}`);
+    }
+
     console.log(`\n🛍  Massimo Dutti Men → shop_catalog sync`);
     console.log(`   max results per URL : ${MAX_RESULTS_PER_URL}`);
-    console.log(`   start URLs          : ${START_URLS.length}`);
+    console.log(`   start URLs          : ${feedUrls.length}`);
     console.log(`   dry run             : ${DRY_RUN}\n`);
 
     const syncTimestamp = new Date().toISOString();
-    const runId  = await startRun();
+    const runId  = await startRun(feedUrls);
     await waitForRun(runId);
     const items  = await fetchDataset(runId);
 
@@ -442,14 +480,20 @@ async function main() {
 
     const rows = [];
     let skippedWomens = 0;
+    let skippedLocale = 0;
     for (let i = 0; i < items.length; i++) {
-        const row = mapItem(items[i], i, syncTimestamp);
+        const raw = items[i];
+        const itemLocale = feedLocaleOf(pick(raw, 'productPage', 'url', 'productUrl', 'link', 'pageUrl'));
+        const wrongLocale = !!itemLocale && itemLocale !== FEED_LOCALE;
+        const row = wrongLocale ? null : mapItem(raw, i, syncTimestamp);
         if (row) rows.push(row);
+        else if (wrongLocale) skippedLocale++;
         else skippedWomens++;
     }
 
     console.log(`   Mapped rows (men's)  : ${rows.length}`);
     console.log(`   Skipped (women's)    : ${skippedWomens}`);
+    if (skippedLocale) console.log(`   Skipped (non-/${FEED_LOCALE} locale): ${skippedLocale}`);
 
     if (rows.length === 0) {
         console.log('\n⚠  Nothing to upsert. The actor may have returned empty results.');
@@ -463,7 +507,14 @@ async function main() {
     console.log(`\n✅  Done — ${rows.length} Massimo Dutti items synced to shop_catalog.\n`);
 }
 
-main().catch((err) => {
-    console.error('\n❌', err.message || err);
-    process.exit(1);
-});
+module.exports = {
+    feedLocaleOf,
+    mapItem,
+};
+
+if (require.main === module) {
+    main().catch((err) => {
+        console.error('\n❌', err.message || err);
+        process.exit(1);
+    });
+}

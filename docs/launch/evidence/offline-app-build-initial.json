@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "scope": "Actual App root, separate signed-out offline environment, native billing/notifications/analytics sending/prewarm stubbed; not production configuration or authenticated-core QA",
+  "simulatorId": "AD2C6D1C-096E-4D89-86B8-22D600E30C86",
+  "bundleId": "com.aiwardrobe.rcoffline",
+  "appPath": "/tmp/aiwardrobe-rc-native/Build/Products/Release-iphonesimulator/AIWardrobe.app",
+  "buildType": "Release simulator arm64; signing disabled",
+  "entryPoint": "scripts/validation/launch-rc-offline-app-entry.tsx",
+  "entrySha256": "a88665c629016a6c9ef09d76e7ada64636155357e4cb3c55d78a03893763f432",
+  "bundleSha256": "9369911a9bd87aed3faa4ca1588ad453787fe8db5aa18a1723368c94a42d6caf",
+  "status": "BUILT_PENDING_NATIVE_UI"
+}

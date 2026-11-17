@@ -1,0 +1,271 @@
+ M .env.example
+ M .eslintrc.js
+ M .gitignore
+ M __tests__/backend/analyzeOutfitOwnership.test.js
+ M __tests__/backend/budgetFx.test.js
+ M __tests__/backend/fourSlotHosted.test.js
+ M __tests__/backend/generateOutfitsFallback.test.js
+ M __tests__/backend/generationCandidatePool.test.js
+ M __tests__/backend/mixedCurrencySpend.test.js
+ M __tests__/backend/outfitBudgetSelection.test.js
+ M __tests__/backend/outfitBudgetText.test.ts
+ M __tests__/backend/outfitBudgetWire.test.js
+ M __tests__/backend/outfitCandidateCurrency.test.js
+ M __tests__/backend/outfitGenerationRequest.test.js
+ M __tests__/backend/scanClassification.test.js
+ M __tests__/e2e/aiOccasion.e2e.test.ts
+ M __tests__/e2e/personaHarness.ts
+ M __tests__/features/closestWardrobeOutfits.test.ts
+ M __tests__/features/clothingEditorAnalysis.test.js
+ M __tests__/features/clothingEditorMetadata.test.js
+ M __tests__/features/outfitNormalize.test.ts
+ M __tests__/fixtures/budgetFx.ts
+ M __tests__/fixtures/catalogDiscovery.sql
+ M __tests__/fixtures/releaseIsolation.sql
+ M __tests__/services/aiService.test.ts
+ M __tests__/services/fourSlotRequirement.test.ts
+ M __tests__/services/offlineQueue.test.ts
+ M __tests__/services/outfitCacheKey.test.ts
+ M __tests__/services/outfitChoices.test.ts
+ M __tests__/services/outfitDescriptionCopy.test.ts
+ M __tests__/services/outfitGenerationVariety.test.ts
+ M __tests__/services/outfitQuality.test.ts
+ M __tests__/services/outfitRotation.test.ts
+ M __tests__/services/outfitStructure.test.ts
+ M __tests__/services/recentOutfitIds.test.ts
+ M __tests__/services/savedOutfitMedia.test.ts
+ M __tests__/services/savedOutfitService.test.ts
+ M __tests__/services/shoeRotation.test.ts
+ M __tests__/services/shoppingCatalogPool.test.ts
+ M __tests__/services/stylistAgentAdversarial.test.ts
+ M __tests__/services/stylistAgentChaos.test.ts
+ M __tests__/store/wardrobeOutfitsDedup.test.ts
+ M __tests__/store/wardrobePhotoStaging.test.ts
+ M __tests__/styleOS/evidence.test.ts
+ M __tests__/utils/mappingUtils.test.ts
+ M backend/api/package.json
+ M backend/supabase/functions/_shared/analyticsPayload.ts
+ M backend/supabase/functions/_shared/budgetFx.ts
+ M backend/supabase/functions/_shared/occasionRules.ts
+ M backend/supabase/functions/_shared/outfitBudgetSelection.ts
+ M backend/supabase/functions/_shared/outfitBudgetText.ts
+ M backend/supabase/functions/_shared/outfitChoices.ts
+ M backend/supabase/functions/_shared/outfitComposition.ts
+ M backend/supabase/functions/_shared/outfitDiversity.ts
+ M backend/supabase/functions/_shared/outfitGenerationRequest.ts
+ M backend/supabase/functions/_shared/outfitRotation.ts
+ M backend/supabase/functions/_shared/outfitStructure.ts
+ M backend/supabase/functions/ai-process/index.ts
+ M backend/supabase/functions/analyze-outfit/index.ts
+ M backend/supabase/functions/generate-outfits/index.ts
+ M components/ClothingDetailEditor.tsx
+ M docs/ARCHITECTURE.md
+ M docs/launch/README.md
+ M eas.json
+ M features/calendar/outfitSlots.ts
+ M features/outfit-generator/utils/closestWardrobeOutfits.ts
+ M features/outfit-generator/utils/normalizeSlots.ts
+ M features/outfit-generator/utils/occasionRules.ts
+ M features/outfit-generator/utils/outfitDiversity.ts
+ M features/outfit-generator/utils/sanitizeGeneratedOutfit.ts
+ M features/outfit-generator/utils/styleInference.ts
+ M features/outfit-generator/utils/stylistAvailability.ts
+ M hooks/useUzsPrice.ts
+ M i18n/locales/en.json
+ M i18n/locales/ru.json
+ M i18n/locales/uz.json
+ M screens/AIAssistant.tsx
+ M screens/AIOutfitmaker.tsx
+ M screens/ClothingDetailScreen.tsx
+ M screens/HomeScreen.tsx
+ M screens/MyClosetScreen.tsx
+ M screens/OutfitAIScreen.tsx
+ M screens/ProfileScreen.tsx
+ D screens/ScreenWardrobe.tsx
+ M screens/StyleQuizScreen.tsx
+ M screens/WardrobeVideoScreen.tsx
+ M scripts/stylist-diversity-report.ts
+ M scripts/validation/budget-rates-sdk-deadline.mjs
+ M scripts/validation/catalog-discovery-local.mjs
+ M scripts/validation/launch-rc-native-entry.tsx
+ M scripts/validation/load-outfit-budget-helpers.mjs
+ M scripts/validation/production-activity-pool.mjs
+ M scripts/validation/production-budget-rates.mjs
+ M scripts/validation/production-category-feasibility.mjs
+ M scripts/validation/production-old-money-work.mjs
+ M src/config/env.ts
+ M src/lib/api.ts
+ M src/services/adminService.ts
+ D src/services/ai/chatService.ts
+ D src/services/ai/healthService.ts
+ D src/services/ai/index.ts
+ D src/services/ai/outfitService.ts
+ D src/services/ai/scanService.ts
+ D src/services/ai/shared.ts
+ M src/services/aiProviderService.ts
+ D src/services/aiService.ts
+ M src/services/aiVisionService.ts
+ M src/services/analyticsService.ts
+ D src/services/apiClient.ts
+ M src/services/apiHealthCheck.ts
+ M src/services/budgetRates.ts
+ M src/services/catalogDiscovery.ts
+ M src/services/dailyOutfitCache.ts
+ M src/services/displayExchangeRates.ts
+ M src/services/fitService.ts
+ M src/services/launch/telemetry.ts
+ D src/services/llmService.ts
+ D src/services/offlineQueue.ts
+ M src/services/outfitGenerationService.ts
+ M src/services/purchase/buyCheck.ts
+ M src/services/purchase/priceIntelligence.ts
+ M src/services/recentOutfitIds.ts
+ M src/services/savedOutfitService.ts
+ M src/services/shoppingAdvisor.ts
+ M src/services/shoppingService.ts
+ M src/services/stylistCatalogInventory.ts
+ D src/services/visionService.ts
+ M src/services/wardrobeItemMedia.ts
+ M src/services/wardrobeMedia.ts
+ M src/types/domain.ts
+ M src/types/garment.ts
+ M src/types/purchase/price.ts
+ M src/types/shop.ts
+ M src/utils/catalogIdentity.ts
+ M src/utils/mappingUtils.ts
+ M src/utils/outfitBudget.ts
+ M src/utils/shopCatalogOrder.ts
+ M src/utils/shopPriceLabel.ts
+ M src/utils/uzsPrice.ts
+ M store/slices/wardrobeItemsSlice.ts
+ M store/slices/wardrobeOutfitsSlice.ts
+ M store/slices/wardrobeSyncSlice.ts
+ M store/wardrobeStore.ts
+ M store/wardrobeSyncService.ts
+?? .maestro/photo_improvement_offline.yaml
+?? __tests__/backend/architectureBoundary.test.ts
+?? __tests__/backend/catalogCandidateRetrieval.test.ts
+?? __tests__/backend/improveGarmentPhoto.test.js
+?? __tests__/features/photoOrientation.test.ts
+?? __tests__/features/studioPresentation.test.ts
+?? __tests__/fixtures/architectureAuthority.sql
+?? __tests__/fixtures/wardrobePhotoAssertions.sql
+?? __tests__/services/aiVisionContract.test.ts
+?? __tests__/services/apiHealthCheck.test.ts
+?? __tests__/services/catalogMissionBenchmark.test.ts
+?? __tests__/services/domainVisionPolicy.test.ts
+?? __tests__/services/layerCompatibility.test.ts
+?? __tests__/services/outfitCandidateProvider.test.ts
+?? __tests__/services/outfitCoherence.test.ts
+?? __tests__/services/outfitVisualSignature.test.ts
+?? __tests__/services/photoImprovement.test.ts
+?? __tests__/services/priceWatchContract.test.ts
+?? __tests__/services/stylingContext.test.ts
+?? __tests__/services/validatedQuartets.test.ts
+?? __tests__/store/wardrobePhotoSync.test.ts
+?? backend/legacy-mobile/README.md
+?? backend/legacy-mobile/config.ts
+?? backend/legacy-mobile/screens/ScreenWardrobe.tsx
+?? backend/legacy-mobile/src/lib/api.ts
+?? backend/legacy-mobile/src/services/ai/chatService.ts
+?? backend/legacy-mobile/src/services/ai/healthService.ts
+?? backend/legacy-mobile/src/services/ai/index.ts
+?? backend/legacy-mobile/src/services/ai/outfitService.ts
+?? backend/legacy-mobile/src/services/ai/scanService.ts
+?? backend/legacy-mobile/src/services/ai/shared.ts
+?? backend/legacy-mobile/src/services/aiService.ts
+?? backend/legacy-mobile/src/services/apiClient.ts
+?? backend/legacy-mobile/src/services/llmService.ts
+?? backend/legacy-mobile/src/services/offlineQueue.ts
+?? backend/legacy-mobile/src/services/visionService.ts
+?? backend/supabase/functions/_shared/catalogCandidateRetrieval.ts
+?? backend/supabase/functions/_shared/studioImage.ts
+?? backend/supabase/functions/improve-garment-photo/index.ts
+?? backend/supabase/functions/upgrade-photo-quality/README.md
+?? backend/supabase/migrations/20261104180000_wardrobe_photo_provenance.sql
+?? backend/supabase/migrations/20261106120100_architecture_authority_consolidation.sql
+?? backend/supabase/rollback/architecture_consolidation_disable.sql
+?? backend/supabase/rollback/wardrobe_photo_improvement_disable.sql
+?? components/PhotoImprovementControl.tsx
+?? docs/reports/architecture-consolidation/REPORT.md
+?? docs/reports/architecture-consolidation/REQUIREMENTS.md
+?? docs/reports/architecture-consolidation/VALIDATION.md
+?? docs/reports/architecture-consolidation/evidence/budget-harness.log
+?? docs/reports/architecture-consolidation/evidence/domain-typecheck.log
+?? docs/reports/architecture-consolidation/evidence/edge-typecheck.log
+?? docs/reports/architecture-consolidation/evidence/focused-lint.log
+?? docs/reports/architecture-consolidation/evidence/jest.log
+?? docs/reports/architecture-consolidation/evidence/migrations.log
+?? docs/reports/architecture-consolidation/evidence/production-export.log
+?? docs/reports/architecture-consolidation/evidence/source-snapshot.json
+?? docs/reports/architecture-consolidation/evidence/typecheck.log
+?? docs/reports/integrated-mission/DATAFLOW.md
+?? docs/reports/integrated-mission/README.md
+?? docs/reports/integrated-mission/catalog-coverage.json
+?? docs/reports/integrated-mission/native-photo-qa/preview.png
+?? docs/reports/integrated-mission/native-photo-qa/restored-after-relaunch.png
+?? docs/reports/integrated-mission/native-photo-qa/result.json
+?? docs/reports/integrated-mission/native-photo-qa/undo.png
+?? docs/reports/integrated-mission/photo-fixtures/coat-after.png
+?? docs/reports/integrated-mission/photo-fixtures/coat-before.png
+?? docs/reports/integrated-mission/photo-fixtures/shoes-after.png
+?? docs/reports/integrated-mission/photo-fixtures/shoes-before.png
+?? docs/reports/integrated-mission/photo-fixtures/top-after.png
+?? docs/reports/integrated-mission/photo-fixtures/top-before.png
+?? docs/reports/integrated-mission/photo-fixtures/trousers-after.png
+?? docs/reports/integrated-mission/photo-fixtures/trousers-before.png
+?? docs/reports/integrated-mission/synthetic-benchmark.json
+?? docs/reports/integrated-mission/validation-results.json
+?? docs/reports/stylist-quality/WORKLOG.md
+?? docs/reports/stylist-quality/after.json
+?? docs/reports/stylist-quality/baseline.json
+?? docs/reports/stylist-quality/catalog-snapshot.json.gz
+?? docs/reports/stylist-quality/external-deployment-evidence.json
+?? docs/reports/stylist-quality/github-readonly-preflight.json
+?? docs/reports/stylist-quality/visual-manifest.json
+?? docs/reports/stylist-quality/worktree-current.txt
+?? scripts/validation/catalog-coverage-readonly.mjs
+?? scripts/validation/photo-improvement-native-entry.tsx
+?? scripts/validation/photo-improvement-native.mjs
+?? scripts/validation/stylist-quality-baseline.json
+?? scripts/validation/stylist-quality-baseline.ts
+?? scripts/validation/stylist-quality-catalog.mjs
+?? scripts/validation/stylist-quality-contact-sheet.py
+?? scripts/validation/stylist-quality-evaluate.ts
+?? scripts/validation/stylist-quality-parity.ts
+?? src/domain/README.md
+?? src/domain/analyticsPayload.ts
+?? src/domain/budgetFx.ts
+?? src/domain/catalogCandidates.ts
+?? src/domain/catalogIdentity.ts
+?? src/domain/commerce.ts
+?? src/domain/garmentContext.ts
+?? src/domain/garmentDescriptor.ts
+?? src/domain/garmentText.ts
+?? src/domain/layerCompatibility.ts
+?? src/domain/occasionRules.ts
+?? src/domain/outfitBudgetSelection.ts
+?? src/domain/outfitBudgetText.ts
+?? src/domain/outfitChoices.ts
+?? src/domain/outfitCoherence.ts
+?? src/domain/outfitComposition.ts
+?? src/domain/outfitDiversity.ts
+?? src/domain/outfitGenerationRequest.ts
+?? src/domain/outfitRotation.ts
+?? src/domain/outfitStructure.ts
+?? src/domain/outfitVisualSignature.ts
+?? src/domain/photoOrientation.ts
+?? src/domain/priceWatch.ts
+?? src/domain/shopCatalogOrder.ts
+?? src/domain/studioPresentation.ts
+?? src/domain/styleInference.ts
+?? src/domain/stylingContext.ts
+?? src/domain/stylingExplanation.ts
+?? src/domain/stylingProfiles.ts
+?? src/domain/validatedQuartets.ts
+?? src/domain/visionPolicy.ts
+?? src/services/legacyAdminTransport.ts
+?? src/services/outfitCandidateProvider.ts
+?? src/services/photoImprovement.ts
+?? src/services/savedOutfitContract.ts
+?? src/services/stylingCopy.ts

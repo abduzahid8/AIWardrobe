@@ -1,0 +1,305 @@
+{
+  "baseRevision": "203dfbf25885f17e197b4d50afab6780f22ba5db",
+  "scope": "offline deterministic fixture comparisons and checked-in catalog audit; no simulator or production verification",
+  "selectionAlgorithmUnchanged": [
+    {
+      "file": "src/domain/outfitDiversity.ts",
+      "sha256": "589afcfccdf5897299ae1d91a6b38ae0ea0eab716d220b6369ee79912e0908ac"
+    },
+    {
+      "file": "src/domain/outfitRotation.ts",
+      "sha256": "4426f181228fd9e62f063d9817850d14cb9b7868fa35f1d6a4f09ca9f6a06d1a"
+    },
+    {
+      "file": "src/domain/validatedQuartets.ts",
+      "sha256": "194a1649b4c3a3b44bab5901009dbb9dc7a3db730bea017324678e063160764f"
+    }
+  ],
+  "postProviderHandlerUnchanged": true,
+  "comparisons": [
+    {
+      "fixture": "strict-formal-short-sleeve",
+      "before": {
+        "score": 0.875,
+        "reason": "item \"White short-sleeve cotton poplin shirt\": short sleeves underdress a polished look"
+      },
+      "after": {
+        "score": 0,
+        "reason": "item \"White short-sleeve cotton poplin shirt\": formal_requires_long_sleeve_dress_base",
+        "dimensions": {
+          "layer": 0.95,
+          "dressCode": 0,
+          "palette": 0.95,
+          "proportion": 0.9,
+          "texture": 0.9,
+          "footwear": 1,
+          "style": 0.825
+        }
+      }
+    },
+    {
+      "fixture": "office-flextride",
+      "before": {
+        "score": 0.8950892857142857,
+        "reason": null
+      },
+      "after": {
+        "score": 0.8008928571428572,
+        "reason": null,
+        "dimensions": {
+          "layer": 0.95,
+          "dressCode": 0.8562500000000001,
+          "palette": 1,
+          "proportion": 0.9,
+          "texture": 0.9,
+          "footwear": 0.35,
+          "style": 0.65
+        }
+      }
+    },
+    {
+      "fixture": "technical-leisure-sport-stripe",
+      "before": {
+        "score": 0.8299107142857143,
+        "reason": null
+      },
+      "after": {
+        "score": 0.7383928571428572,
+        "reason": null,
+        "dimensions": {
+          "layer": 0.8,
+          "dressCode": 0.76875,
+          "palette": 0.75,
+          "proportion": 0.7,
+          "texture": 0.7,
+          "footwear": 1,
+          "style": 0.44999999999999996
+        }
+      }
+    },
+    {
+      "fixture": "matching-tailoring",
+      "before": {
+        "score": 0.875,
+        "reason": null
+      },
+      "after": {
+        "score": 0.9321428571428572,
+        "reason": null,
+        "dimensions": {
+          "layer": 0.95,
+          "dressCode": 1,
+          "palette": 0.95,
+          "proportion": 0.9,
+          "texture": 0.9,
+          "footwear": 1,
+          "style": 0.825
+        }
+      }
+    },
+    {
+      "fixture": "mismatched-volumes",
+      "before": {
+        "score": 0.8879464285714286,
+        "reason": null
+      },
+      "after": {
+        "score": 0.8522321428571429,
+        "reason": null,
+        "dimensions": {
+          "layer": 0.95,
+          "dressCode": 0.9437500000000001,
+          "palette": 0.95,
+          "proportion": 0.45,
+          "texture": 0.7,
+          "footwear": 1,
+          "style": 0.971875
+        }
+      }
+    },
+    {
+      "fixture": "competing-office-patterns",
+      "before": {
+        "score": 0.8736607142857143,
+        "reason": null
+      },
+      "after": {
+        "score": 0.8379464285714286,
+        "reason": null,
+        "dimensions": {
+          "layer": 0.8,
+          "dressCode": 0.9437500000000001,
+          "palette": 0.55,
+          "proportion": 0.7,
+          "texture": 0.9,
+          "footwear": 1,
+          "style": 0.971875
+        }
+      }
+    }
+  ],
+  "catalogAudit": {
+    "scope": "checked-in catalog snapshots only; no live database reads/writes",
+    "rowsChecked": 40989,
+    "titleSlotDisagreements": 170,
+    "examples": [
+      {
+        "file": "shop_catalog_additional_500.json",
+        "id": "selected-homme-16101349-bracken-1264359",
+        "name": "RELAXED FIT SHORT SLEEVED SHIRT",
+        "claimed": "bottoms",
+        "detected": "top"
+      },
+      {
+        "file": "shop_catalog_aurelien_global.json",
+        "id": "aurelien-16011499766090",
+        "name": "Light Blue Shortsleeve Buttonless Polo White Trim",
+        "claimed": "bottoms",
+        "detected": "top"
+      },
+      {
+        "file": "shop_catalog_aurelien_global.json",
+        "id": "aurelien-16011500618058",
+        "name": "Sargasso Blue Shortsleeve Buttonless Polo White Trim",
+        "claimed": "bottoms",
+        "detected": "top"
+      },
+      {
+        "file": "shop_catalog_aurelien_global.json",
+        "id": "aurelien-15490504458570",
+        "name": "Shortsleeve Buttonless Polo Beige",
+        "claimed": "bottoms",
+        "detected": "top"
+      },
+      {
+        "file": "shop_catalog_aurelien_global.json",
+        "id": "aurelien-15161195954506",
+        "name": "Shortsleeve Buttonless Polo Black",
+        "claimed": "bottoms",
+        "detected": "top"
+      },
+      {
+        "file": "shop_catalog_aurelien_global.json",
+        "id": "aurelien-15490504360266",
+        "name": "Shortsleeve Buttonless Polo Blue Turquoise",
+        "claimed": "bottoms",
+        "detected": "top"
+      }
+    ],
+    "flextrideImageAliases": [
+      [
+        {
+          "id": "geox-u66mac0009bc9999",
+          "name": "Flextride Plus Leather Loafers - Black",
+          "source_url": "https://www.geox.com/en-GB/leather_loafers-black-flextride_plus_man-U66MAC0009BC9999.html"
+        },
+        {
+          "id": "geox-u66mac0009bc9999-v23",
+          "name": "Flextride Plus Leather Loafers - Burgundy",
+          "source_url": "https://www.geox.com/en-GB/leather_loafers-black-flextride_plus_man-U66MAC0009BC9999.html-v23"
+        }
+      ],
+      [
+        {
+          "id": "geox-u66mac000ffc6005",
+          "name": "Flextride Plus Leather Loafers - Chocolate",
+          "source_url": "https://www.geox.com/en-GB/leather_loafers-chocolate-flextride_plus_man-U66MAC000FFC6005.html"
+        },
+        {
+          "id": "geox-u66mac000ffc6005-v24",
+          "name": "Flextride Plus Leather Loafers - Chocolate Tan",
+          "source_url": "https://www.geox.com/en-GB/leather_loafers-chocolate-flextride_plus_man-U66MAC000FFC6005.html-v24"
+        }
+      ]
+    ]
+  },
+  "verifiedProductEvidence": {
+    "url": "https://www.geox.com/en-GB/leather_loafers-black-flextride_plus_man-U66MAC0009BC9999.html",
+    "itemCode": "U66MAC0009BC9999",
+    "observed": "Manufacturer describes cushioning, a synthetic/rubber outsole, and city use; office/formal suitability is a styling judgment, not a manufacturer classification."
+  },
+  "cpuReplay": {
+    "budgetMs": 500,
+    "scope": "actual post-provider handler replay; no remote calls; process CPU excludes module compilation",
+    "reports": [
+      {
+        "occasion": "Work",
+        "anchored": false,
+        "mode": "fresh",
+        "cpuMs": 130.644,
+        "status": 200,
+        "outfits": 3
+      },
+      {
+        "occasion": "Formal",
+        "anchored": false,
+        "mode": "fresh",
+        "cpuMs": 101.398,
+        "status": 200,
+        "outfits": 3
+      },
+      {
+        "occasion": "Work",
+        "anchored": true,
+        "mode": "fresh",
+        "cpuMs": 84.359,
+        "status": 200,
+        "outfits": 3
+      },
+      {
+        "occasion": "Formal",
+        "anchored": true,
+        "mode": "fresh",
+        "cpuMs": 55.489,
+        "status": 200,
+        "outfits": 3
+      },
+      {
+        "occasion": "Work",
+        "anchored": false,
+        "mode": "repair",
+        "cpuMs": 91.092,
+        "status": 200,
+        "outfits": 3
+      },
+      {
+        "occasion": "Formal",
+        "anchored": true,
+        "mode": "repair",
+        "cpuMs": 90.951,
+        "status": 200,
+        "outfits": 3
+      },
+      {
+        "occasion": "Work",
+        "anchored": false,
+        "mode": "budget-pressure",
+        "cpuMs": 51.67,
+        "status": 200,
+        "outfits": 3
+      },
+      {
+        "occasion": "Formal",
+        "anchored": true,
+        "mode": "budget-pressure",
+        "cpuMs": 54.621,
+        "status": 200,
+        "outfits": 3
+      },
+      {
+        "occasion": "Work",
+        "anchored": false,
+        "mode": "rejected-reserve",
+        "cpuMs": 117.728,
+        "status": 200,
+        "outfits": 3
+      }
+    ]
+  },
+  "focusedTests": {
+    "domainAndCpuTests": 51,
+    "hostedHandlerSubset": 11,
+    "budgetAuthSourceSubset": 8,
+    "unbudgetedValueIntegration": 1
+  }
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "platform": "ios",
+    "sourceWorktreeSha256": "3df0c34ea3530b2edc13d60aa48811e116d8e02f2eb99b0599dba41f1ce974d6",
+    "buildType": "production Hermes JavaScript export; not a signed/configured native client",
+    "outputPath": "/tmp/aiwardrobe-rc-ios-export",
+    "files": [
+      {
+        "path": "/tmp/aiwardrobe-rc-ios-export/_expo/static/js/ios/index-f98810bc830c95db436bc742245cdea3.hbc",
+        "sizeBytes": 12226339,
+        "sha256": "f23ebfa2c55768b81569c77acc21ce8d46bf87eff9d1179e22e5060d066bf745"
+      },
+      {
+        "path": "/tmp/aiwardrobe-rc-ios-export/metadata.json",
+        "sizeBytes": 1905,
+        "sha256": "2a148960aed37640351568dcb64c6db1e646c6e3269d360ab6ec45a166515e88"
+      }
+    ]
+  },
+  {
+    "platform": "android",
+    "sourceWorktreeSha256": "3df0c34ea3530b2edc13d60aa48811e116d8e02f2eb99b0599dba41f1ce974d6",
+    "buildType": "production Hermes JavaScript export; not a signed/configured native client",
+    "outputPath": "/tmp/aiwardrobe-rc-android-export",
+    "files": [
+      {
+        "path": "/tmp/aiwardrobe-rc-android-export/_expo/static/js/android/index-a5d44e9e2440dc09723af95c84d85730.hbc",
+        "sizeBytes": 12245525,
+        "sha256": "8b65538176e622236a54a577915ad0f5619d59f2b4662b4658815b0b9acdd0c4"
+      },
+      {
+        "path": "/tmp/aiwardrobe-rc-android-export/metadata.json",
+        "sizeBytes": 1976,
+        "sha256": "d0dbfd99b714d10a5bdb3a33768da4edb05218f9d1a7b02e9c6d6a1ab95ae321"
+      }
+    ]
+  }
+]

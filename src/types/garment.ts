@@ -12,7 +12,7 @@
  * something to work with. Month 5 will wire the admin/catalog ingestion.
  */
 
-import { Confidence } from './bodyProfile';
+import { Confidence } from './bodyProfile.ts';
 
 /** How the garment is meant to fit the body, driven by design intent. */
 export type FitIntent = 'compression' | 'slim' | 'regular' | 'relaxed' | 'oversized';

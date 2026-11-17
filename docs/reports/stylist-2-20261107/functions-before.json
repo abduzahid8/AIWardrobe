@@ -1,0 +1,107 @@
+[
+  {
+    "slug": "generate-outfits",
+    "version": 194,
+    "status": "ACTIVE",
+    "verify_jwt": false,
+    "ezbr_sha256": "d33c2854bd2b7622108abb7eeb98d4cec95207735c44d111df38728ee09709f6"
+  },
+  {
+    "slug": "ai-process",
+    "version": 53,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "8410be93b6e0ecf58d4ea421a892e333c44a19f70b9726df7d39f4575b0de8f9"
+  },
+  {
+    "slug": "try-on",
+    "version": 39,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "f813d6d9d3e6d565a22567d4b236532325f1c836dad0c61280d28ab4b43b9456"
+  },
+  {
+    "slug": "mannequin-tryon",
+    "version": 108,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "f6d107378a0ed93f316c6a085ebfe0fb5e39a3b5a684c4936a579f9275bac93a"
+  },
+  {
+    "slug": "delete-account",
+    "version": 16,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "82b3ed888a2d1040ae986ccfcdaa562712d8410c7a51f476e6cdc4c35eba6375"
+  },
+  {
+    "slug": "revenuecat-webhook",
+    "version": 21,
+    "status": "ACTIVE",
+    "verify_jwt": false,
+    "ezbr_sha256": "d11ac858a6e2dc23a6e47a10ea99241c97d59d029b3a263ff76c114774d7da7b"
+  },
+  {
+    "slug": "redeem-promo",
+    "version": 13,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "7e7b40213ae7a77a52865ce957c072e12fb2c520cbe385a6d439cc5fb1bf6569"
+  },
+  {
+    "slug": "upgrade-photo-quality",
+    "version": 21,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "a6f2c4a1d9976e4e290cde8cc69cc8bbde61599e7de991e034898c541c2c8fc2"
+  },
+  {
+    "slug": "yandex-reviews",
+    "version": 8,
+    "status": "ACTIVE",
+    "verify_jwt": false,
+    "ezbr_sha256": "0c083aecd3da72cae2152d0eb512110a58475ae954ce44abf73a8480e2b446df"
+  },
+  {
+    "slug": "analyze-outfit",
+    "version": 24,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "0d045d114382eb4471b29ea281eb70af88bfbcc7fb8bc48a9c5b7f5211707233"
+  },
+  {
+    "slug": "ai-chat",
+    "version": 10,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "03597c52fd6d43ce51f9a7ca3ee8896cccd55dc4ed5c7324373f84526ac89115"
+  },
+  {
+    "slug": "body-profiles",
+    "version": 7,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "8741e9089d47d023e20d3792fbdb37bbfa6a8fb5c42f2bf75011b33ed3af8d70"
+  },
+  {
+    "slug": "analytics",
+    "version": 8,
+    "status": "ACTIVE",
+    "verify_jwt": false,
+    "ezbr_sha256": "46c16282d3b037d397ff817a11b575516ab237e8c333f7a59aec1ca0fe4c1be5"
+  },
+  {
+    "slug": "sync-subscription",
+    "version": 6,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "82e756218b154585920f0edbd116222e547af3b577751e264220b910d51d0cda"
+  },
+  {
+    "slug": "budget-rates",
+    "version": 8,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "b347526ab24e9e34c4805ef0293b8c33c8492204e2366c55c2259a0deed92791"
+  }
+]

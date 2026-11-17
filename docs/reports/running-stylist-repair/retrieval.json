@@ -1,0 +1,433 @@
+{
+  "kind": "read-only execution of actual candidate retrieval source, not a deployed Edge or simulator test",
+  "measurements": [
+    {
+      "run": "cold",
+      "latencyMs": 9247,
+      "requests": 12,
+      "discovered": 48,
+      "slots": {
+        "top": 10,
+        "outerwear": 10,
+        "bottom": 10,
+        "shoes": 10
+      },
+      "products": [
+        {
+          "id": "shop_aurelien-16011499471178",
+          "name": "Navy Cashmere Blend Leisure Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_arket-1255889003",
+          "name": "Relaxed Poplin Shirt - White/Blue",
+          "slot": "top"
+        },
+        {
+          "id": "shop_barbour-mtr0809gn91",
+          "name": "Fairford Herringbone Tailored Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_geox-u56q6a00022c4002",
+          "name": "Moner W 2Fit Suede Loafers - Navy",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_aurelien-10066008899914",
+          "name": "Navy Technical Leisure Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_c-and-a-2237100-2",
+          "name": "Mix & match tailored jacket - regular fit - linen blend",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_armani_exchange-xm003526_af28320_ub101",
+          "name": "regular fit blazer stretch viscose blend",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_aurelien-15501547143498",
+          "name": "Ecru Technical Leisure Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_c-and-a-2237098-2",
+          "name": "Mix & match tailored jacket - slim fit - Flex",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_c-and-a-2257014-1",
+          "name": "Mix & match tailored jacket - regular fit",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_c-and-a-2257024-2",
+          "name": "Mix & match tailored jacket - regular fit - Flex",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_c-and-a-2257028-2",
+          "name": "Mix & match corduroy tailored jacket - regular fit - stretch",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_arket-1264654001",
+          "name": "Relaxed Button-Down Shirt - Light Blue Stripe",
+          "slot": "top"
+        },
+        {
+          "id": "shop_arket-1318266001",
+          "name": "Relaxed Pinpoint Shirt - Blue Check",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm108sf-2732",
+          "name": "Bond Regular-Fit Tencel Shirt ",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm109sf-9688",
+          "name": "Ward Regular-Fit Tencel Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm111sf-10175",
+          "name": "Duke Regular-Fit Striped Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm125sf-8834",
+          "name": "Hanway Regular-Fit Tencel Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm128sf-2824",
+          "name": "Court Regular-Fit Double-Faced Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm132sf-4938",
+          "name": "Bower Regular-Fit Check Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm134sf-10186",
+          "name": "Judd Regular-Fit Striped Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_barbour-mtr0810br76",
+          "name": "Carlton Wool-Cashmere Tailored Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_aurelien-10228846690634",
+          "name": "Navy Pleated Metropolitan Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_aurelien-15179534139722",
+          "name": "Beige Flannel Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_aurelien-15501547110730",
+          "name": "Light Beige Pleated Metropolitan Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_barbour-mtr0728sn71",
+          "name": "Washed Stretch Tailored Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_barbour-mtr0738gn13",
+          "name": "Moleskin Tailored Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_barbour-mtr0739gn91",
+          "name": "Stretch Cord Tailored Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_aurelien-10228846723402",
+          "name": "Ivory Pleated Metropolitan Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_aurelien-15190749544778",
+          "name": "Ivory Pleated Corduroy Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_geox-u66h9a00022c4002",
+          "name": "Massimiano Suede Loafers - Navy",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_ecco-500354-01001",
+          "name": "HELSINKI 2 Leather Penny Loafer - Black",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_mango-37021465-99",
+          "name": "Leather Penny Loafers - Black",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_thursday-253390159881",
+          "name": "Executive | Black",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_thursday-6859648467034",
+          "name": "Chairman | Black",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_geox-u56q6a00022c6372",
+          "name": "Moner W 2Fit Suede Loafers - Mud",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_geox-u65hyb00022c6021",
+          "name": "Spherica Ec16 Suede Loafers",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_geox-u66h9a00022c6005",
+          "name": "Massimiano Suede Loafers - Chocolate",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_geox-u66nwb00038c7357",
+          "name": "Ellmoor Leather Loafers - Dark Burgundy",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_aurelien-6039891935412",
+          "name": "Extrafine Merino Zipper Vest Navy",
+          "slot": "outerwear"
+        }
+      ]
+    },
+    {
+      "run": "warm",
+      "latencyMs": 78,
+      "requests": 0,
+      "discovered": 48,
+      "slots": {
+        "top": 10,
+        "outerwear": 10,
+        "bottom": 10,
+        "shoes": 10
+      },
+      "products": [
+        {
+          "id": "shop_aurelien-16011499471178",
+          "name": "Navy Cashmere Blend Leisure Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_arket-1255889003",
+          "name": "Relaxed Poplin Shirt - White/Blue",
+          "slot": "top"
+        },
+        {
+          "id": "shop_barbour-mtr0809gn91",
+          "name": "Fairford Herringbone Tailored Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_geox-u56q6a00022c4002",
+          "name": "Moner W 2Fit Suede Loafers - Navy",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_aurelien-10066008899914",
+          "name": "Navy Technical Leisure Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_c-and-a-2237100-2",
+          "name": "Mix & match tailored jacket - regular fit - linen blend",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_armani_exchange-xm003526_af28320_ub101",
+          "name": "regular fit blazer stretch viscose blend",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_aurelien-15501547143498",
+          "name": "Ecru Technical Leisure Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_c-and-a-2237098-2",
+          "name": "Mix & match tailored jacket - slim fit - Flex",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_c-and-a-2257014-1",
+          "name": "Mix & match tailored jacket - regular fit",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_c-and-a-2257024-2",
+          "name": "Mix & match tailored jacket - regular fit - Flex",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_c-and-a-2257028-2",
+          "name": "Mix & match corduroy tailored jacket - regular fit - stretch",
+          "slot": "outerwear"
+        },
+        {
+          "id": "shop_arket-1264654001",
+          "name": "Relaxed Button-Down Shirt - Light Blue Stripe",
+          "slot": "top"
+        },
+        {
+          "id": "shop_arket-1318266001",
+          "name": "Relaxed Pinpoint Shirt - Blue Check",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm108sf-2732",
+          "name": "Bond Regular-Fit Tencel Shirt ",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm109sf-9688",
+          "name": "Ward Regular-Fit Tencel Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm111sf-10175",
+          "name": "Duke Regular-Fit Striped Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm125sf-8834",
+          "name": "Hanway Regular-Fit Tencel Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm128sf-2824",
+          "name": "Court Regular-Fit Double-Faced Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm132sf-4938",
+          "name": "Bower Regular-Fit Check Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_allsaints-usm134sf-10186",
+          "name": "Judd Regular-Fit Striped Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "shop_barbour-mtr0810br76",
+          "name": "Carlton Wool-Cashmere Tailored Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_aurelien-10228846690634",
+          "name": "Navy Pleated Metropolitan Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_aurelien-15179534139722",
+          "name": "Beige Flannel Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_aurelien-15501547110730",
+          "name": "Light Beige Pleated Metropolitan Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_barbour-mtr0728sn71",
+          "name": "Washed Stretch Tailored Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_barbour-mtr0738gn13",
+          "name": "Moleskin Tailored Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_barbour-mtr0739gn91",
+          "name": "Stretch Cord Tailored Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_aurelien-10228846723402",
+          "name": "Ivory Pleated Metropolitan Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_aurelien-15190749544778",
+          "name": "Ivory Pleated Corduroy Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_geox-u66h9a00022c4002",
+          "name": "Massimiano Suede Loafers - Navy",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_ecco-500354-01001",
+          "name": "HELSINKI 2 Leather Penny Loafer - Black",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_mango-37021465-99",
+          "name": "Leather Penny Loafers - Black",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_thursday-253390159881",
+          "name": "Executive | Black",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_thursday-6859648467034",
+          "name": "Chairman | Black",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_geox-u56q6a00022c6372",
+          "name": "Moner W 2Fit Suede Loafers - Mud",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_geox-u65hyb00022c6021",
+          "name": "Spherica Ec16 Suede Loafers",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_geox-u66h9a00022c6005",
+          "name": "Massimiano Suede Loafers - Chocolate",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_geox-u66nwb00038c7357",
+          "name": "Ellmoor Leather Loafers - Dark Burgundy",
+          "slot": "shoes"
+        },
+        {
+          "id": "shop_aurelien-6039891935412",
+          "name": "Extrafine Merino Zipper Vest Navy",
+          "slot": "outerwear"
+        }
+      ]
+    }
+  ]
+}

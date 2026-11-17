@@ -1,0 +1,20 @@
+{
+  "status": "BENCHMARKED_UI_PENDING",
+  "simulatorId": "AD2C6D1C-096E-4D89-86B8-22D600E30C86",
+  "simulatorModel": "iPhone 17 Pro",
+  "runtime": "iOS 26.5",
+  "bundleId": "com.aiwardrobe.rclocal",
+  "entryPoint": "scripts/validation/launch-rc-native-entry.tsx",
+  "scope": "Isolated native release harness, not normal client RC. No auth/backend/provider/analytics sink configured. JS fetch/XHR are denied; local images only.",
+  "derivedData": "/tmp/aiwardrobe-rc-native",
+  "buildLog": "/tmp/aiwardrobe-rc-native-build.log",
+  "entrySha256": "9d29c2c363e0443e1d3f132fca3f52907dd47c87263ce79371d50ddab4606bf7",
+  "bundleSha256": "8d62eba89a4b800a93c964a583dedf3a97a35a39d8850ba5b8ef4d515c990231",
+  "bundleBytes": 3952602,
+  "binarySha256": "f722da088eedccd7f82e88665994f143f2048cf80007a2c1d07dd7a525a081a2",
+  "buildType": "Release, simulator arm64, code signing disabled",
+  "appPath": "/tmp/aiwardrobe-rc-native/Build/Products/Release-iphonesimulator/AIWardrobe.app",
+  "startupReceipt": "native-isolated-startup.json",
+  "uiStatus": "Blocked: computer-use tool reported Mac locked; manual unlock requested. No visible interaction verified.",
+  "stressStatus": "Not executed: requires Run isolated stress button; no UI action attempted after lock notice"
+}

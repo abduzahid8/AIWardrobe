@@ -1,0 +1,70 @@
+{
+  "status": "ROLLED_BACK",
+  "originalTestAccount": {
+    "effectiveTier": "free",
+    "trialStartedAt": "2026-10-28T03:13:45.034665+00:00",
+    "trialEndedAt": "2026-11-04T03:13:45.034665+00:00",
+    "denial": "403 feature_limit_reached",
+    "expected": true
+  },
+  "authorizedSimulatorTestAccount": {
+    "serverSubscriptionReadStatus": 200,
+    "paidTier": "free",
+    "trialStartedAt": "2026-11-05T16:31:41.903977+00:00",
+    "trialActiveAtTest": true,
+    "userExplicitlyApprovedAccount": true
+  },
+  "liveTests": [
+    {
+      "style": "classic",
+      "occasion": "work",
+      "httpStatus": 503,
+      "latencyMs": 7612,
+      "error": "catalog_lookup_unavailable",
+      "returnedOutfits": 0,
+      "displayedOutfits": 0,
+      "requestIncludedActualDisplayedHistory": true,
+      "productOverlap": null,
+      "slotsAndIdentityAndLinksAndCoherence": "not_verifiable_no_outfits"
+    }
+  ],
+  "unrunScenarios": [
+    "classic_formal",
+    "casual",
+    "travel",
+    "rotation_repeat"
+  ],
+  "iosObservedError": "Do‘kon katalogi hozir mavjud emas. Qayta urinib ko‘ring.",
+  "descriptionRendering": "not_verified_no_successful_v180_response",
+  "clientFix": {
+    "serverCode": "feature_limit_reached",
+    "translationKey": "outfitMaker.subscriptionRequired",
+    "locales": [
+      "en",
+      "ru",
+      "uz"
+    ],
+    "screens": [
+      "AIOutfitmaker",
+      "OutfitAIScreen"
+    ],
+    "behavior": "show localized subscription guidance and navigate to existing Paywall; no fallback or extra quota consumption",
+    "deployment": "local repaired iOS worktree only",
+    "focusedTestsPassed": 32,
+    "typecheck": "passed"
+  },
+  "productionChanges": "Only generate-outfits rolled back. Other function metadata unchanged; no subscriptions, billing, secrets or database configuration changes. Normal test authentication and admission counters only.",
+  "endToEndVerified": false,
+  "versions": {
+    "original": 179,
+    "failedCandidate": 180,
+    "currentRollback": 181
+  },
+  "rollback": {
+    "active": true,
+    "verify_jwt": false,
+    "matchesVerifiedV179Source": true,
+    "sourceFilesCompared": 16,
+    "reason": "Eligible active-trial account Classic + Work returned HTTP503 catalog_lookup_unavailable with zero outfits"
+  }
+}

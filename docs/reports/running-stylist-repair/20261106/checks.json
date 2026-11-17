@@ -1,0 +1,11 @@
+{
+  "fullJestSuiteRun": false,
+  "targetedRegressionsPassed": [
+    "Formal recovery rejects checked bases competing with patterned tailoring",
+    "Formal bases reject selected Henley and unverified merino button-through shirts",
+    "Formal recovery recognizes pinstriped tailoring, matching patterns, hybrid footwear and explicit geometric evidence"
+  ],
+  "clientTypecheck": "passed",
+  "edgeTypecheck": "passed",
+  "passingScenariosRetriedAfterFormalOnlyCorrections": false
+}

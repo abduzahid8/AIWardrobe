@@ -1,7 +1,7 @@
 /** @jest-environment node */
 const fs=require('fs'),ts=require('typescript');const core={};
 const compile=s=>ts.transpileModule(s,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-Function('exports',compile(fs.readFileSync('backend/supabase/functions/_shared/budgetFx.ts','utf8')))(core);
+Object.assign(core,require('../../backend/supabase/functions/_shared/budgetFx'));
 const now=Date.parse('2026-10-20T12:00:00Z');
 const rows=()=>[['USD','12044.72'],['EUR','13525.02'],['GBP','16062.84']].map(([Ccy,Rate])=>({Ccy,Rate,Nominal:'1',Date:'20.10.2026'}));
 const snapshot=()=>core.parseCbuBudgetRates(rows(),now);

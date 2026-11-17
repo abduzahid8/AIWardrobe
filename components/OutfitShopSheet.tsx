@@ -16,7 +16,9 @@ import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { ScaledText } from './ui/ScaledText';
 import { getShopDestination } from '../src/utils/shopDestination';
+import { offerCaveatLabel, shopCardActionMode, shopCardHasDirectListing } from '../src/services/stylingCopy';
 import { ExpoImage } from '../src/components/MediaImage';
+import { ImageUnavailablePlaceholder, useProductImageRetry } from '../src/components/ProductImageFallback';
 
 
 export interface ShopSheetItem {
@@ -33,6 +35,9 @@ export interface ShopSheetItem {
   macroCategory?: string;
   category?: string;
   isShopItem?: boolean;
+  isWardrobe?: boolean;
+  priceFreshness?: string;
+  offerVerification?: Record<string, unknown> | null;
 }
 
 interface OutfitShopSheetProps {
@@ -71,10 +76,30 @@ const getCategoryLabel = (item: ShopSheetItem): string => {
   return raw ? String(raw) : 'Item';
 };
 
+// Image honesty: a missing URL or a failed load renders an explicit labeled
+// 'photo unavailable' tile — never a silent thumb pretending to be the
+// product photo. One bounded cache-busting retry absorbs transient CDN hiccups.
+const SheetThumb = ({ rawImage, unavailableLabel }: { rawImage: string; unavailableLabel: string }) => {
+  const { phase, activeUri, onImageError } = useProductImageRetry(rawImage);
+  if (phase === 'unavailable' || !activeUri) {
+    return <ImageUnavailablePlaceholder label={unavailableLabel} style={styles.thumb} />;
+  }
+  return (
+    <ExpoImage
+      source={{ uri: activeUri }}
+      style={styles.thumb}
+      contentFit="cover"
+      cachePolicy="memory-disk"
+      onError={onImageError}
+    />
+  );
+};
+
 
 export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: OutfitShopSheetProps) => {
   const { t, i18n } = useTranslation();
   const displayRates = useUzsDisplayRates(visible);
+  const photoUnavailableLabel = t('common.photoUnavailable', 'Photo unavailable');
 
   const openShopUrl = useCallback(async (url?: string, itemName?: string) => {
     if (!url && !itemName) return;
@@ -117,16 +142,17 @@ export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: Ou
               const retailer = getRetailerLabel(shopUrl);
               const price = shopPriceLabel(item, i18n?.resolvedLanguage || i18n?.language, displayRates);
               const name = item.name || item.type || `Item ${index + 1}`;
+              const offerCaveat = offerCaveatLabel(item);
+              const showBuyButton = item.isWardrobe !== true
+                && (item.isShopItem !== false || Boolean(shopUrl))
+                && shopCardHasDirectListing({ ...item, shopUrl });
+              const actionLabel = shopCardActionMode(item) === 'view_store'
+                ? t('outfitMaker.viewProductAtStore', 'Check at store')
+                : t('home.buy', 'Buy');
               return (
                 <View key={String(item.id ?? `${name}-${index}`)} style={styles.row}>
                   <View style={styles.thumbWrap}>
-                    {image ? (
-                      <ExpoImage source={{ uri: image }} style={styles.thumb} contentFit="cover" cachePolicy="memory-disk" />
-                    ) : (
-                      <View style={[styles.thumb, styles.thumbPlaceholder]}>
-                        <Ionicons name="shirt-outline" size={22} color="#8A97A8" />
-                      </View>
-                    )}
+                    <SheetThumb rawImage={image} unavailableLabel={photoUnavailableLabel} />
                   </View>
                   <View style={styles.rowInfo}>
                     <ScaledText style={styles.rowCategory}>{getCategoryLabel(item).toUpperCase()}</ScaledText>
@@ -136,6 +162,9 @@ export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: Ou
                         {[item.brand, price].filter(Boolean).join(' · ')}
                       </ScaledText>
                     )}
+                    {offerCaveat ? (
+                      <ScaledText style={styles.rowCaveat} numberOfLines={1}>{offerCaveat}</ScaledText>
+                    ) : null}
                     {retailer ? (
                       <View style={styles.retailerRow}>
                         <Ionicons name="storefront-outline" size={12} color="#58734E" />
@@ -148,15 +177,17 @@ export const OutfitShopSheet = ({ visible, onClose, items, occasion, style }: Ou
                       </View>
                     )}
                   </View>
-                  <TouchableOpacity
-                    style={styles.buyButton}
-                    onPress={() => openShopUrl(shopUrl, name)}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('home.buyItem', 'Buy {{name}}', { name })}
-                  >
-                    <Ionicons name="cart-outline" size={15} color="#FFFFFF" />
-                    <ScaledText style={styles.buyButtonText}>{t('home.buy', 'Buy')}</ScaledText>
-                  </TouchableOpacity>
+                  {showBuyButton ? (
+                    <TouchableOpacity
+                      style={styles.buyButton}
+                      onPress={() => openShopUrl(shopUrl, name)}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('home.buyItem', 'Buy {{name}}', { name })}
+                    >
+                      <Ionicons name="cart-outline" size={15} color="#FFFFFF" />
+                      <ScaledText style={styles.buyButtonText}>{actionLabel}</ScaledText>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               );
             })}
@@ -256,11 +287,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  thumbPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EEF2F7',
-  },
   rowInfo: {
     flex: 1,
     minWidth: 0,
@@ -281,6 +307,11 @@ const styles = StyleSheet.create({
   rowMeta: {
     fontSize: 11,
     color: '#4A5568',
+    marginTop: 2,
+  },
+  rowCaveat: {
+    fontSize: 10,
+    color: '#718096',
     marginTop: 2,
   },
   retailerRow: {

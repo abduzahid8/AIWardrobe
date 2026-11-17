@@ -1,0 +1,572 @@
+{
+  "scope": "Three directly observed simulator scenarios on initial v188; final r2 source deployed as v189 after the Formal visual correction; further generations stopped on user request",
+  "scenarios": [
+    {
+      "requestId": "mw64ygql-1",
+      "httpStatus": 200,
+      "generationVersion": "stylist-runtime-repair-v3-final-quality-20261107",
+      "clientRevision": "940f39a5c836",
+      "style": "old_money",
+      "occasion": "work",
+      "sourceVersion": 188,
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_armani_exchange-6dzfhl_zj2zz_17ab",
+              "name": "Mercerized Cotton Regular Fit Polo",
+              "slot": "top"
+            },
+            {
+              "id": "shop_c-and-a-2237098-2",
+              "name": "Mix & match tailored jacket - slim fit - Flex",
+              "slot": "outerwear"
+            },
+            {
+              "id": "shop_allsaints-usm033tf-2732",
+              "name": "Blunt Slim-Fit Tailored Pants",
+              "slot": "bottom"
+            },
+            {
+              "id": "shop_ecco-552264-01001",
+              "name": "METROPOLE VERONA Leather Loafer - Black",
+              "slot": "shoes"
+            }
+          ],
+          "acceptance": {
+            "passed": true,
+            "score": 0.8484375,
+            "minimum": 0.75,
+            "reason": null
+          }
+        },
+        {
+          "items": [
+            {
+              "id": "shop_allsaints-usm132sf-4938",
+              "name": "Bower Regular-Fit Check Shirt",
+              "slot": "top"
+            },
+            {
+              "id": "shop_emporio-armani-em002428_af19441_ub118",
+              "name": "Double-breasted blazer in a plain-knit wool blend",
+              "slot": "outerwear"
+            },
+            {
+              "id": "shop_barbour-mtr0738gn13",
+              "name": "Moleskin Tailored Trousers",
+              "slot": "bottom"
+            },
+            {
+              "id": "shop_thursday-6865670045786",
+              "name": "Lincoln | Black",
+              "slot": "shoes"
+            }
+          ],
+          "acceptance": {
+            "passed": true,
+            "score": 0.8299107142857143,
+            "minimum": 0.75,
+            "reason": null
+          }
+        },
+        {
+          "items": [
+            {
+              "id": "shop_armani_exchange-xm002265_af24533_u0009",
+              "name": "Classic Casual Cotton Poplin Shirt",
+              "slot": "top"
+            },
+            {
+              "id": "shop_aurelien-16011499471178",
+              "name": "Navy Cashmere Blend Leisure Blazer",
+              "slot": "outerwear"
+            },
+            {
+              "id": "shop_aurelien-10147023946058",
+              "name": "Beige Linen Soleil Trousers",
+              "slot": "bottom"
+            },
+            {
+              "id": "shop_geox-u66nwb00038c9999",
+              "name": "Ellmoor Leather Loafers - Black",
+              "slot": "shoes"
+            }
+          ],
+          "acceptance": {
+            "passed": true,
+            "score": 0.7781250000000001,
+            "minimum": 0.75,
+            "reason": null
+          }
+        }
+      ],
+      "displayedProducts": [
+        [
+          {
+            "id": "shop_armani_exchange-6dzfhl_zj2zz_17ab",
+            "name": "Mercerized Cotton Regular Fit Polo",
+            "slot": "top"
+          },
+          {
+            "id": "shop_c-and-a-2237098-2",
+            "name": "Mix & match tailored jacket - slim fit - Flex",
+            "slot": "outerwear"
+          },
+          {
+            "id": "shop_allsaints-usm033tf-2732",
+            "name": "Blunt Slim-Fit Tailored Pants",
+            "slot": "bottom"
+          },
+          {
+            "id": "shop_ecco-552264-01001",
+            "name": "Metropole Verona Leather Loafer - Black",
+            "slot": "shoes"
+          }
+        ],
+        [
+          {
+            "id": "shop_allsaints-usm132sf-4938",
+            "name": "Bower Regular-Fit Check Shirt",
+            "slot": "top"
+          },
+          {
+            "id": "shop_emporio-armani-em002428_af19441_ub118",
+            "name": "Double-breasted blazer in a plain-knit wool blend",
+            "slot": "outerwear"
+          },
+          {
+            "id": "shop_barbour-mtr0738gn13",
+            "name": "Moleskin Tailored Trousers",
+            "slot": "bottom"
+          },
+          {
+            "id": "shop_thursday-6865670045786",
+            "name": "Lincoln | Black",
+            "slot": "shoes"
+          }
+        ],
+        [
+          {
+            "id": "shop_armani_exchange-xm002265_af24533_u0009",
+            "name": "Classic Casual Cotton Poplin Shirt",
+            "slot": "top"
+          },
+          {
+            "id": "shop_aurelien-16011499471178",
+            "name": "Navy Cashmere Blend Leisure Blazer",
+            "slot": "outerwear"
+          },
+          {
+            "id": "shop_aurelien-10147023946058",
+            "name": "Beige Linen Soleil Trousers",
+            "slot": "bottom"
+          },
+          {
+            "id": "shop_geox-u66nwb00038c9999",
+            "name": "Ellmoor Leather Loafers - Black",
+            "slot": "shoes"
+          }
+        ]
+      ],
+      "descriptions": [
+        {
+          "description": "Mercerized Cotton Regular Fit Polo, Mix & match tailored jacket - slim fit - Flex, Blunt Slim-Fit Tailored Pants va Metropole Verona Leather Loafer - Black uyg‘unligi.",
+          "tips": "Klassik poyabzal bichimli shim siluetini to‘ldiradi. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+        },
+        {
+          "description": "Bower Regular-Fit Check Shirt, Double-breasted blazer in a plain-knit wool blend, Moleskin Tailored Trousers va Lincoln | Black uyg‘unligi.",
+          "tips": "Klassik poyabzal bichimli shim siluetini to‘ldiradi. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+        },
+        {
+          "description": "Classic Casual Cotton Poplin Shirt, Navy Cashmere Blend Leisure Blazer, Beige Linen Soleil Trousers va Ellmoor Leather Loafers - Black uyg‘unligi.",
+          "tips": "Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+        }
+      ],
+      "previousDeckOverlapBySlot": {
+        "outerwear": 0,
+        "top": 0,
+        "bottom": 0,
+        "shoes": 0
+      }
+    },
+    {
+      "requestId": "mw64zfpc-2",
+      "httpStatus": 200,
+      "generationVersion": "stylist-runtime-repair-v3-final-quality-20261107",
+      "clientRevision": "940f39a5c836",
+      "style": "minimalist",
+      "occasion": "casual",
+      "sourceVersion": 188,
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_allsaints-usm159sf-2160",
+              "name": "Gleason Denim Shirt",
+              "slot": "top"
+            },
+            {
+              "id": "shop_aurelien-9546520592714",
+              "name": "Beige Reversible Resort Jacket",
+              "slot": "outerwear"
+            },
+            {
+              "id": "shop_allsaints-usm049tf-197",
+              "name": "Haydon Slim-Fit Cotton Chinos",
+              "slot": "bottom"
+            },
+            {
+              "id": "shop_zara-uz-545436416",
+              "name": "BAREFOOT LEATHER TRAINERS",
+              "slot": "shoes"
+            }
+          ],
+          "acceptance": {
+            "passed": true,
+            "score": 0.8044642857142857,
+            "minimum": 0.65,
+            "reason": null
+          }
+        },
+        {
+          "items": [
+            {
+              "id": "shop_allsaints-usm108sf-2732",
+              "name": "Bond Regular-Fit Tencel Shirt ",
+              "slot": "top"
+            },
+            {
+              "id": "shop_aurelien-15190749610314",
+              "name": "Beige City Bomber Jacket",
+              "slot": "outerwear"
+            },
+            {
+              "id": "shop_armani_exchange-xm000049_af12284_mb001",
+              "name": "Five-pocket comfort slim-fit jeans in stretch cotton Icon",
+              "slot": "bottom"
+            },
+            {
+              "id": "shop_zara-uz-582244377",
+              "name": "AARON LEVINE X ZARA LEATHER TRAINERS",
+              "slot": "shoes"
+            }
+          ],
+          "acceptance": {
+            "passed": true,
+            "score": 0.8035714285714287,
+            "minimum": 0.65,
+            "reason": null
+          }
+        },
+        {
+          "items": [
+            {
+              "id": "shop_allsaints-usm002pc-10074",
+              "name": "Redact Oversized Cotton T-Shirt",
+              "slot": "top"
+            },
+            {
+              "id": "shop_allsaints-usm054lf-10262",
+              "name": "Chaiyo Suede Trucker Jacket",
+              "slot": "outerwear"
+            },
+            {
+              "id": "shop_armani_exchange-xm003549_af25539_m8001",
+              "name": "Loose fit five-pocket pants in stretch cotton denim",
+              "slot": "bottom"
+            },
+            {
+              "id": "shop_zara-uz-549311972",
+              "name": "CASUAL LEATHER DETAIL TRAINERS",
+              "slot": "shoes"
+            }
+          ],
+          "acceptance": {
+            "passed": true,
+            "score": 0.7955357142857143,
+            "minimum": 0.65,
+            "reason": null
+          }
+        }
+      ],
+      "displayedProducts": [
+        [
+          {
+            "id": "shop_allsaints-usm159sf-2160",
+            "name": "Gleason Denim Shirt",
+            "slot": "top"
+          },
+          {
+            "id": "shop_aurelien-9546520592714",
+            "name": "Beige Reversible Resort Jacket",
+            "slot": "outerwear"
+          },
+          {
+            "id": "shop_allsaints-usm049tf-197",
+            "name": "Haydon Slim-Fit Cotton Chinos",
+            "slot": "bottom"
+          },
+          {
+            "id": "shop_zara-uz-545436416",
+            "name": "Barefoot Leather Trainers",
+            "slot": "shoes"
+          }
+        ],
+        [
+          {
+            "id": "shop_allsaints-usm108sf-2732",
+            "name": "Bond Regular-Fit Tencel Shirt",
+            "slot": "top"
+          },
+          {
+            "id": "shop_aurelien-15190749610314",
+            "name": "Beige City Bomber Jacket",
+            "slot": "outerwear"
+          },
+          {
+            "id": "shop_armani_exchange-xm000049_af12284_mb001",
+            "name": "Five-pocket comfort slim-fit jeans in stretch cotton Icon",
+            "slot": "bottom"
+          },
+          {
+            "id": "shop_zara-uz-582244377",
+            "name": "Aaron Levine X Zara Leather Trainers",
+            "slot": "shoes"
+          }
+        ],
+        [
+          {
+            "id": "shop_allsaints-usm002pc-10074",
+            "name": "Redact Oversized Cotton T-Shirt",
+            "slot": "top"
+          },
+          {
+            "id": "shop_allsaints-usm054lf-10262",
+            "name": "Chaiyo Suede Trucker Jacket",
+            "slot": "outerwear"
+          },
+          {
+            "id": "shop_armani_exchange-xm003549_af25539_m8001",
+            "name": "Loose fit five-pocket pants in stretch cotton denim",
+            "slot": "bottom"
+          },
+          {
+            "id": "shop_zara-uz-549311972",
+            "name": "Casual Leather Detail Trainers",
+            "slot": "shoes"
+          }
+        ]
+      ],
+      "descriptions": [
+        {
+          "description": "Gleason Denim Shirt, Beige Reversible Resort Jacket, Haydon Slim-Fit Cotton Chinos va Barefoot Leather Trainers uyg‘unligi.",
+          "tips": "Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+        },
+        {
+          "description": "Bond Regular-Fit Tencel Shirt, Beige City Bomber Jacket, Five-pocket comfort slim-fit jeans in stretch cotton Icon va Aaron Levine X Zara Leather Trainers uyg‘unligi.",
+          "tips": "Vazmin ranglar minimalistik uslubni qo‘llab-quvvatlaydi. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+        },
+        {
+          "description": "Redact Oversized Cotton T-Shirt, Chaiyo Suede Trucker Jacket, Loose fit five-pocket pants in stretch cotton denim va Casual Leather Detail Trainers uyg‘unligi.",
+          "tips": "Vazmin ranglar minimalistik uslubni qo‘llab-quvvatlaydi. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+        }
+      ],
+      "previousDeckOverlapBySlot": {
+        "outerwear": 0,
+        "top": 0,
+        "bottom": 0,
+        "shoes": 0
+      }
+    },
+    {
+      "requestId": "mw650zxz-3",
+      "httpStatus": 200,
+      "generationVersion": "stylist-runtime-repair-v3-final-quality-20261107",
+      "clientRevision": "940f39a5c836",
+      "style": "classic",
+      "occasion": "formal",
+      "sourceVersion": 188,
+      "outfits": [
+        {
+          "items": [
+            {
+              "id": "shop_armani_exchange-xm003247_af28657_ub101",
+              "name": "regular fit shirt in cotton poplin",
+              "slot": "top"
+            },
+            {
+              "id": "shop_emporio-armani-em007112_te19332_ub108",
+              "name": "Half-lined blazer in stretch wool plain weave",
+              "slot": "outerwear"
+            },
+            {
+              "id": "shop_canali-pan02368294",
+              "name": "Walnut wool flannel regular-fit pants",
+              "slot": "bottom"
+            },
+            {
+              "id": "shop_thursday-6859648467034",
+              "name": "Chairman | Black",
+              "slot": "shoes"
+            }
+          ],
+          "acceptance": {
+            "passed": true,
+            "score": 0.8750000000000001,
+            "minimum": 0.75,
+            "reason": null
+          }
+        },
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-15489794310474",
+              "name": "Coral Linen Seaside Shirt",
+              "slot": "top"
+            },
+            {
+              "id": "shop_giorgio_armani-gm004574_te23984_mc023",
+              "name": "Blazer Giorgio's regular fit dotted silk blend velvet",
+              "slot": "outerwear"
+            },
+            {
+              "id": "shop_canali-pan02232152",
+              "name": "Navy blue high-waisted pleatless wool pants",
+              "slot": "bottom"
+            },
+            {
+              "id": "shop_mango-37021465-99",
+              "name": "Leather Penny Loafers - Black",
+              "slot": "shoes"
+            }
+          ],
+          "acceptance": {
+            "passed": true,
+            "score": 0.8714285714285713,
+            "minimum": 0.75,
+            "reason": null
+          }
+        },
+        {
+          "items": [
+            {
+              "id": "shop_aurelien-15368784511306",
+              "name": "Sea Green Linen Seaside Shirt",
+              "slot": "top"
+            },
+            {
+              "id": "shop_emporio-armani-em003448_te15992_u6031",
+              "name": "Double-breasted blazer in pure linen",
+              "slot": "outerwear"
+            },
+            {
+              "id": "shop_canali-pan02368250",
+              "name": "Anthracite wool flannel regular-fit pants",
+              "slot": "bottom"
+            },
+            {
+              "id": "shop_geox-u66nxc00043c6009",
+              "name": "Bexford Leather Oxfords - Coffee",
+              "slot": "shoes"
+            }
+          ],
+          "acceptance": {
+            "passed": true,
+            "score": 0.8464285714285715,
+            "minimum": 0.75,
+            "reason": null
+          }
+        }
+      ],
+      "displayedProducts": [
+        [
+          {
+            "id": "shop_armani_exchange-xm003247_af28657_ub101",
+            "name": "Regular fit shirt in cotton poplin",
+            "slot": "top"
+          },
+          {
+            "id": "shop_emporio-armani-em007112_te19332_ub108",
+            "name": "Half-lined blazer in stretch wool plain weave",
+            "slot": "outerwear"
+          },
+          {
+            "id": "shop_canali-pan02368294",
+            "name": "Walnut wool flannel regular-fit pants",
+            "slot": "bottom"
+          },
+          {
+            "id": "shop_thursday-6859648467034",
+            "name": "Chairman | Black",
+            "slot": "shoes"
+          }
+        ],
+        [
+          {
+            "id": "shop_aurelien-15489794310474",
+            "name": "Coral Linen Seaside Shirt",
+            "slot": "top"
+          },
+          {
+            "id": "shop_giorgio_armani-gm004574_te23984_mc023",
+            "name": "Blazer Giorgio's regular fit dotted silk blend velvet",
+            "slot": "outerwear"
+          },
+          {
+            "id": "shop_canali-pan02232152",
+            "name": "Navy blue high-waisted pleatless wool pants",
+            "slot": "bottom"
+          },
+          {
+            "id": "shop_mango-37021465-99",
+            "name": "Leather Penny Loafers - Black",
+            "slot": "shoes"
+          }
+        ],
+        [
+          {
+            "id": "shop_aurelien-15368784511306",
+            "name": "Sea Green Linen Seaside Shirt",
+            "slot": "top"
+          },
+          {
+            "id": "shop_emporio-armani-em003448_te15992_u6031",
+            "name": "Double-breasted blazer in pure linen",
+            "slot": "outerwear"
+          },
+          {
+            "id": "shop_canali-pan02368250",
+            "name": "Anthracite wool flannel regular-fit pants",
+            "slot": "bottom"
+          },
+          {
+            "id": "shop_geox-u66nxc00043c6009",
+            "name": "Bexford Leather Oxfords - Coffee",
+            "slot": "shoes"
+          }
+        ]
+      ],
+      "descriptions": [
+        {
+          "description": "Regular fit shirt in cotton poplin, Half-lined blazer in stretch wool plain weave, Walnut wool flannel regular-fit pants va Chairman | Black uyg‘unligi.",
+          "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi."
+        },
+        {
+          "description": "Coral Linen Seaside Shirt, Blazer Giorgio's regular fit dotted silk blend velvet, Navy blue high-waisted pleatless wool pants va Leather Penny Loafers - Black uyg‘unligi.",
+          "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi."
+        },
+        {
+          "description": "Sea Green Linen Seaside Shirt, Double-breasted blazer in pure linen, Anthracite wool flannel regular-fit pants va Bexford Leather Oxfords - Coffee uyg‘unligi.",
+          "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi."
+        }
+      ],
+      "previousDeckOverlapBySlot": {
+        "outerwear": 0,
+        "top": 0,
+        "bottom": 0,
+        "shoes": 0
+      }
+    }
+  ]
+}

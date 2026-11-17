@@ -1,0 +1,1517 @@
+{
+  "schema_version": 1,
+  "dataset_id": "image-teaste-2026-11-10",
+  "measured_date": "2026-11-10",
+  "source": "read-only active Supabase catalog_garment_intelligence JOIN shop_catalog; class mapping from lookbook_briefs.mjs",
+  "sku_count_notes": "Per-slot counts are subtype row matches; not distinct compatible outfits nor proof of image/color/price correctness.",
+  "references": 46,
+  "all_required_subtypes_exist": 46,
+  "low_inventory_threshold": 20,
+  "low_inventory_briefs_by_role": {
+    "top": 29,
+    "shoes": 3,
+    "outerwear": 0
+  },
+  "active_by_slot": {
+    "top": 3082,
+    "outerwear": 2117,
+    "bottom": 1672,
+    "shoes": 115
+  },
+  "images_were_not_matched_to_products": true,
+  "budget_unchecked": true,
+  "outfit_harmony_unchecked": true,
+  "human_blind_evaluation_complete": false,
+  "results": [
+    {
+      "id": "rt_001",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "overshirt",
+            "jacket"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "minimal-sneaker",
+            "sneaker"
+          ],
+          "candidateCount": 32
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_002",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket",
+            "overshirt"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "minimal-sneaker",
+            "sneaker"
+          ],
+          "candidateCount": 32
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_003",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "cardigan"
+          ],
+          "candidateCount": 120
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_004",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "overshirt",
+            "jacket"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "minimal-sneaker",
+            "sneaker"
+          ],
+          "candidateCount": 32
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_005",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "coat"
+          ],
+          "candidateCount": 111
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "boot"
+          ],
+          "candidateCount": 4
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_006",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket"
+          ],
+          "candidateCount": 459
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_007",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "shirt",
+            "dress-shirt"
+          ],
+          "candidateCount": 1050
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "blazer"
+          ],
+          "candidateCount": 218
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_008",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "shirt",
+            "dress-shirt"
+          ],
+          "candidateCount": 1050
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "cardigan"
+          ],
+          "candidateCount": 120
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_009",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket",
+            "overshirt"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_010",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "overshirt",
+            "jacket"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer",
+            "derby"
+          ],
+          "candidateCount": 33
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_011",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "coat"
+          ],
+          "candidateCount": 111
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "boot"
+          ],
+          "candidateCount": 4
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_012",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "coat"
+          ],
+          "candidateCount": 111
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_013",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "bomber"
+          ],
+          "candidateCount": 64
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "jeans"
+          ],
+          "candidateCount": 350
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "minimal-sneaker",
+            "sneaker"
+          ],
+          "candidateCount": 32
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_014",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket",
+            "overshirt"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer",
+            "derby"
+          ],
+          "candidateCount": 33
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_015",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket"
+          ],
+          "candidateCount": 459
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "minimal-sneaker",
+            "sneaker"
+          ],
+          "candidateCount": 32
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_016",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket"
+          ],
+          "candidateCount": 459
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_017",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket"
+          ],
+          "candidateCount": 459
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "chelsea",
+            "boot"
+          ],
+          "candidateCount": 8
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_018",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket",
+            "overshirt"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_019",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "blazer"
+          ],
+          "candidateCount": 218
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_020",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket",
+            "overshirt"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_021",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "shirt",
+            "dress-shirt"
+          ],
+          "candidateCount": 1050
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "cardigan"
+          ],
+          "candidateCount": 120
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_022",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "blazer"
+          ],
+          "candidateCount": 218
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_023",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "blazer"
+          ],
+          "candidateCount": 218
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_024",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "blazer"
+          ],
+          "candidateCount": 218
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_025",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "coat"
+          ],
+          "candidateCount": 111
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "minimal-sneaker",
+            "sneaker"
+          ],
+          "candidateCount": 32
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_026",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "blazer"
+          ],
+          "candidateCount": 218
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_027",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket",
+            "overshirt"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer",
+            "derby"
+          ],
+          "candidateCount": 33
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_028",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket",
+            "overshirt"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer",
+            "derby"
+          ],
+          "candidateCount": 33
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_029",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket"
+          ],
+          "candidateCount": 459
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "minimal-sneaker",
+            "sneaker"
+          ],
+          "candidateCount": 32
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_030",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket",
+            "overshirt"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_031",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "shirt",
+            "dress-shirt"
+          ],
+          "candidateCount": 1050
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket"
+          ],
+          "candidateCount": 459
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_032",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket",
+            "overshirt"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "minimal-sneaker",
+            "sneaker"
+          ],
+          "candidateCount": 32
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_033",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "fine-knit"
+          ],
+          "candidateCount": 15
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket"
+          ],
+          "candidateCount": 459
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_034",
+      "layer_policy": "absent",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "polo"
+          ],
+          "candidateCount": 691
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [],
+          "candidateCount": 0
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_035",
+      "layer_policy": "absent",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "polo"
+          ],
+          "candidateCount": 691
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [],
+          "candidateCount": 0
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "jeans"
+          ],
+          "candidateCount": 350
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer",
+            "derby"
+          ],
+          "candidateCount": 33
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_036",
+      "layer_policy": "absent",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "t-shirt"
+          ],
+          "candidateCount": 848
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [],
+          "candidateCount": 0
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "jeans"
+          ],
+          "candidateCount": 350
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "minimal-sneaker",
+            "sneaker"
+          ],
+          "candidateCount": 32
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_037",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "shirt",
+            "dress-shirt"
+          ],
+          "candidateCount": 1050
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "blazer"
+          ],
+          "candidateCount": 218
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_038",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "polo"
+          ],
+          "candidateCount": 691
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "overshirt",
+            "jacket"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_039",
+      "layer_policy": "absent",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "polo"
+          ],
+          "candidateCount": 691
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [],
+          "candidateCount": 0
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_040",
+      "layer_policy": "absent",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "polo"
+          ],
+          "candidateCount": 691
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [],
+          "candidateCount": 0
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_041",
+      "layer_policy": "absent",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "polo"
+          ],
+          "candidateCount": 691
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [],
+          "candidateCount": 0
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_042",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "shirt",
+            "dress-shirt"
+          ],
+          "candidateCount": 1050
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "blazer"
+          ],
+          "candidateCount": 218
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_043",
+      "layer_policy": "absent",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "polo"
+          ],
+          "candidateCount": 691
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [],
+          "candidateCount": 0
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_044",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "t-shirt"
+          ],
+          "candidateCount": 848
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "cardigan"
+          ],
+          "candidateCount": 120
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_045",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "polo"
+          ],
+          "candidateCount": 691
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "cardigan"
+          ],
+          "candidateCount": 120
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    },
+    {
+      "id": "rt_046",
+      "layer_policy": "required",
+      "subtypeCandidates": {
+        "top": {
+          "candidateSubtypeOptions": [
+            "polo"
+          ],
+          "candidateCount": 691
+        },
+        "outerwear": {
+          "candidateSubtypeOptions": [
+            "jacket",
+            "overshirt"
+          ],
+          "candidateCount": 617
+        },
+        "bottom": {
+          "candidateSubtypeOptions": [
+            "tailored-trouser",
+            "trouser"
+          ],
+          "candidateCount": 737
+        },
+        "shoes": {
+          "candidateSubtypeOptions": [
+            "loafer"
+          ],
+          "candidateCount": 25
+        }
+      },
+      "individuallyPresent": true
+    }
+  ]
+}

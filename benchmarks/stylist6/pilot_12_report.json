@@ -1,0 +1,2677 @@
+{
+ "pilot": "stylist6-12-scenario-pilot",
+ "generatedAt": "2026-11-10T05:34:40.086Z",
+ "gitSha": "70ccc006bb073d0b6f77c8bcba6fba88bbd2acd2",
+ "provenance": {
+  "v207sha256": "f90ced33ca3b0034c61cd2dfa289b189728dc75398cd72329f0b7c1854efc5e1",
+  "stylist6prototype": "stylist6-visual-first-prototype-1",
+  "catalogAdapter": "catalog-adapter-v1",
+  "catalogSnapshotSha": "239c266503dd056e",
+  "catalogRows": 40989,
+  "catalogAdmitted": 38388,
+  "catalogSkipped": {
+   "inactive": 2331,
+   "non_outfit_category": 270
+  },
+  "referenceIndex": "image-teaste-2026-11-10",
+  "visualVerdict": "NOT_RUN",
+  "visualNotRunReason": "no hosted vision key and no authorized reference bytes in this environment; decks are retrieval shortlists for blind human review"
+ },
+ "scenarios": [
+  {
+   "id": "S6-01",
+   "style": "old_money",
+   "occasion": "Work",
+   "budget": null,
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 204,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 491,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 645,
+        "GBP": 87,
+        "EUR": 255
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 619,
+        "UZS": 28545957
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 775,
+        "GBP": 87
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 5
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 192,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 542,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 340,
+        "GBP": 120,
+        "EUR": 45
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 285,
+        "USD": 710
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 520,
+        "EUR": 750,
+        "GBP": 45
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 2
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 1972,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 424,
+        "UZS": 2749800
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "UZS": 3564088
+       },
+       "amount": 3564088,
+       "currency": "UZS"
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 231,
+        "UZS": 1605974
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 3,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8871552671691327,
+       0.8617011396190475,
+       0.8554577586666667
+      ],
+      "selectedValue": [
+       0.7117691896141585,
+       0.75,
+       0.75
+      ],
+      "evaluations": 256,
+      "proposals": 326,
+      "rejected": 94,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 162,
+      "conceptCounts": {
+       "refined-ivy": 69,
+       "textured-tailoring": 37,
+       "smart-knit-layering": 56
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.8310210291530225,
+       "pairChecks": 13041,
+       "evaluatedLooks": 162,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 6082,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 3503,
+       "utilityBounded": false,
+       "feasibilityComplete": true
+      },
+      "syncMs": 104.89416699999992,
+      "eligible": 26454,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 3102,
+       "structure": 6338,
+       "accessory": 1507,
+       "style": 9073,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 11,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "refined-ivy",
+       "textured-tailoring",
+       "smart-knit-layering"
+      ]
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 10
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": null,
+    "items": 38388
+   }
+  },
+  {
+   "id": "S6-02",
+   "style": "old_money",
+   "occasion": "Casual",
+   "budget": null,
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 228,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 484,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 295,
+        "GBP": 135.5,
+        "UZS": 2379000
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 108.95,
+        "USD": 565
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 135,
+        "UZS": 8137914
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 10,
+      "reachable": 8
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 192,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 520,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 340,
+        "GBP": 120,
+        "EUR": 45
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 285,
+        "USD": 710
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 520,
+        "EUR": 750,
+        "GBP": 45
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 2
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 1794,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "UZS": 1699800,
+        "USD": 265,
+        "GBP": 65
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 86,
+        "UZS": 2705874
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 463,
+        "UZS": 849900
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 3,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8482520321920194,
+       0.8428636915238097,
+       0.841453212
+      ],
+      "selectedValue": [
+       0.7322939547811951,
+       0.75,
+       0.75
+      ],
+      "evaluations": 256,
+      "proposals": 256,
+      "rejected": 89,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 167,
+      "conceptCounts": {
+       "refined-ivy": 54,
+       "textured-tailoring": 28,
+       "smart-knit-layering": 85
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.8156027286167474,
+       "pairChecks": 13861,
+       "evaluatedLooks": 167,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 4565,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 3867,
+       "utilityBounded": false,
+       "feasibilityComplete": true
+      },
+      "syncMs": 76.71462499999961,
+      "eligible": 27882,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 47,
+       "structure": 6338,
+       "accessory": 1507,
+       "style": 7645,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 11,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "refined-ivy",
+       "textured-tailoring",
+       "smart-knit-layering"
+      ]
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 9
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": null,
+    "items": 38388
+   }
+  },
+  {
+   "id": "S6-03",
+   "style": "old_money",
+   "occasion": "Date night",
+   "budget": null,
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 196,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 465,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 295,
+        "GBP": 135.5,
+        "UZS": 2379000
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 108.95,
+        "USD": 565
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 105,
+        "USD": 665
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 11,
+      "reachable": 6
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 192,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 533,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 340,
+        "GBP": 120,
+        "EUR": 45
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 285,
+        "USD": 710
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 520,
+        "EUR": 750,
+        "GBP": 45
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 2
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 1974,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 179,
+        "UZS": 2455874
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 86,
+        "UZS": 2705874
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "UZS": 4149800,
+        "USD": 325
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 3,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8694870384285716,
+       0.8562431558095238,
+       0.85564967276964
+      ],
+      "selectedValue": [
+       0.75,
+       0.75,
+       0.7402041474181194
+      ],
+      "evaluations": 256,
+      "proposals": 312,
+      "rejected": 102,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 154,
+      "conceptCounts": {
+       "refined-ivy": 33,
+       "textured-tailoring": 35,
+       "smart-knit-layering": 86
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.8260921223211203,
+       "pairChecks": 11781,
+       "evaluatedLooks": 154,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 5682,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 1291,
+       "utilityBounded": false,
+       "feasibilityComplete": true
+      },
+      "syncMs": 80.25279199999932,
+      "eligible": 26252,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 75,
+       "structure": 6338,
+       "accessory": 1507,
+       "style": 9284,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 11,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "refined-ivy",
+       "textured-tailoring",
+       "smart-knit-layering"
+      ]
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 9
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": null,
+    "items": 38388
+   }
+  },
+  {
+   "id": "S6-04",
+   "style": "old_money",
+   "occasion": "Travel",
+   "budget": null,
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 213,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 503,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 255,
+        "GBP": 48.5,
+        "USD": 195,
+        "UZS": 989500
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 135,
+        "UZS": 8137914
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "GBP": 152,
+        "UZS": 6643500,
+        "USD": 385
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 11,
+      "reachable": 8
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 192,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 576,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 340,
+        "GBP": 120,
+        "EUR": 45
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 285,
+        "USD": 710
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 520,
+        "EUR": 750,
+        "GBP": 45
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 2
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 1804,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "UZS": 1699800,
+        "USD": 265,
+        "GBP": 65
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 86,
+        "UZS": 2705874
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 134.95,
+        "USD": 590,
+        "UZS": 849900,
+        "GBP": 69
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 3,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8507510289411464,
+       0.8465802093809525,
+       0.8327809690716516
+      ],
+      "selectedValue": [
+       0.7170749409309972,
+       0.75,
+       0.6535651982170718
+      ],
+      "evaluations": 256,
+      "proposals": 256,
+      "rejected": 8,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 248,
+      "conceptCounts": {
+       "refined-ivy": 104,
+       "textured-tailoring": 40,
+       "smart-knit-layering": 104
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.8105331173510106,
+       "pairChecks": 30628,
+       "evaluatedLooks": 248,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 10565,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 3868,
+       "utilityBounded": false,
+       "feasibilityComplete": true
+      },
+      "syncMs": 90.41541700000016,
+      "eligible": 27681,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 47,
+       "structure": 6338,
+       "accessory": 1507,
+       "style": 7856,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 11,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "refined-ivy",
+       "textured-tailoring",
+       "smart-knit-layering"
+      ]
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 9
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": null,
+    "items": 38388
+   }
+  },
+  {
+   "id": "S6-05",
+   "style": "old_money",
+   "occasion": "Dinner",
+   "budget": null,
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 208,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 458,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 295,
+        "GBP": 135.5,
+        "UZS": 2379000
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 108.95,
+        "USD": 565
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 619,
+        "UZS": 28545957
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 11,
+      "reachable": 7
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 192,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 528,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 340,
+        "GBP": 120,
+        "EUR": 45
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 285,
+        "USD": 710
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 520,
+        "EUR": 750,
+        "GBP": 45
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 2
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 1801,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "UZS": 1699800,
+        "USD": 265,
+        "GBP": 65
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 86,
+        "UZS": 2705874
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 463,
+        "UZS": 849900
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 3,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8490129961470566,
+       0.8428636915238097,
+       0.841453212
+      ],
+      "selectedValue": [
+       0.7418060042191603,
+       0.75,
+       0.75
+      ],
+      "evaluations": 256,
+      "proposals": 256,
+      "rejected": 90,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 166,
+      "conceptCounts": {
+       "refined-ivy": 55,
+       "textured-tailoring": 26,
+       "smart-knit-layering": 85
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.816033941524602,
+       "pairChecks": 13695,
+       "evaluatedLooks": 166,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 4554,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 3690,
+       "utilityBounded": false,
+       "feasibilityComplete": true
+      },
+      "syncMs": 76.37783300000046,
+      "eligible": 27276,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 47,
+       "structure": 6338,
+       "accessory": 1507,
+       "style": 8251,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 11,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "refined-ivy",
+       "textured-tailoring",
+       "smart-knit-layering"
+      ]
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 9
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": null,
+    "items": 38388
+   }
+  },
+  {
+   "id": "S6-06",
+   "style": "classic",
+   "occasion": "Work",
+   "budget": null,
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 170,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 520,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "GBP": 120,
+        "USD": 625
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 1260,
+        "GBP": 45
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 765,
+        "GBP": 87
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 4
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 192,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 589,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 340,
+        "GBP": 120,
+        "EUR": 45
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 285,
+        "USD": 710
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 520,
+        "EUR": 750,
+        "GBP": 45
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 2
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 1986,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 39,
+        "UZS": 2749800,
+        "EUR": 49
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 569,
+        "UZS": 849900
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "UZS": 2064288,
+        "USD": 47,
+        "GBP": 69
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 2,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8863652614285715,
+       0.8608620930055066,
+       0.8608246874571546
+      ],
+      "selectedValue": [
+       0.75,
+       0.7418437804259774,
+       0.7247192200001462
+      ],
+      "evaluations": 256,
+      "proposals": 272,
+      "rejected": 81,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 175,
+      "conceptCounts": {
+       "precise-office": 63,
+       "smart-knit-layering": 91,
+       "textured-tailoring": 21
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.8328039066619598,
+       "pairChecks": 15225,
+       "evaluatedLooks": 175,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 6699,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 1802,
+       "utilityBounded": false,
+       "feasibilityComplete": true
+      },
+      "syncMs": 80.11041599999953,
+      "eligible": 26454,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 3102,
+       "structure": 6338,
+       "accessory": 1507,
+       "style": 9073,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 11,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "precise-office",
+       "smart-knit-layering",
+       "textured-tailoring"
+      ]
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 8
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": null,
+    "items": 38388
+   }
+  },
+  {
+   "id": "S6-07",
+   "style": "classic",
+   "occasion": "Business meeting",
+   "budget": null,
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 163,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 539,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "GBP": 120,
+        "USD": 625
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 920,
+        "GBP": 87
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 765,
+        "GBP": 87
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 4
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 192,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 610,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 340,
+        "GBP": 120,
+        "EUR": 45
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 285,
+        "USD": 710
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 520,
+        "EUR": 750,
+        "GBP": 45
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 2
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 2079,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 39,
+        "UZS": 2749800,
+        "EUR": 49
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 569,
+        "UZS": 849900
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "UZS": 2064288,
+        "USD": 47,
+        "GBP": 69
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 2,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8863652614285715,
+       0.8608620930055066,
+       0.8608246874571546
+      ],
+      "selectedValue": [
+       0.75,
+       0.7418437804259774,
+       0.7247192200001462
+      ],
+      "evaluations": 256,
+      "proposals": 272,
+      "rejected": 81,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 175,
+      "conceptCounts": {
+       "precise-office": 63,
+       "smart-knit-layering": 91,
+       "textured-tailoring": 21
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.8328039066619598,
+       "pairChecks": 15225,
+       "evaluatedLooks": 175,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 6699,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 1802,
+       "utilityBounded": false,
+       "feasibilityComplete": true
+      },
+      "syncMs": 81.32287499999802,
+      "eligible": 26454,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 3102,
+       "structure": 6338,
+       "accessory": 1507,
+       "style": 9073,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 11,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "precise-office",
+       "smart-knit-layering",
+       "textured-tailoring"
+      ]
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 8
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": null,
+    "items": 38388
+   }
+  },
+  {
+   "id": "S6-08",
+   "style": "classic",
+   "occasion": "Date night",
+   "budget": null,
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": false,
+     "shortlisted": 48,
+     "candidateCount": 193,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 482,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 1260,
+        "GBP": 45
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "GBP": 152,
+        "USD": 625
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 249.95,
+        "UZS": 3090098,
+        "GBP": 87
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 6
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 192,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 551,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 340,
+        "GBP": 120,
+        "EUR": 45
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 285,
+        "USD": 710
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 520,
+        "EUR": 750,
+        "GBP": 45
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 2
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 1924,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "UZS": 3714188,
+        "EUR": 49
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 393,
+        "EUR": 29
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 19,
+        "UZS": 1099900,
+        "GBP": 107
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 3,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8826407019650283,
+       0.8683420926945109,
+       0.8652662170000001
+      ],
+      "selectedValue": [
+       0.7218604477771391,
+       0.7143132043659084,
+       0.75
+      ],
+      "evaluations": 256,
+      "proposals": 266,
+      "rejected": 28,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 228,
+      "conceptCounts": {
+       "precise-office": 86,
+       "smart-knit-layering": 89,
+       "textured-tailoring": 53
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.8419566529935519,
+       "pairChecks": 25878,
+       "evaluatedLooks": 228,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 9327,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 4096,
+       "utilityBounded": true,
+       "feasibilityComplete": true
+      },
+      "syncMs": 84.01812499999869,
+      "eligible": 27250,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 75,
+       "structure": 6338,
+       "accessory": 1507,
+       "style": 8277,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 11,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "precise-office",
+       "smart-knit-layering",
+       "textured-tailoring"
+      ]
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 6
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": null,
+    "items": 38388
+   }
+  },
+  {
+   "id": "S6-11",
+   "style": "semi_classic",
+   "occasion": "Date night",
+   "budget": null,
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": false,
+     "shortlisted": 48,
+     "candidateCount": 204,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 462,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 645,
+        "UZS": 2559000
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 490,
+        "EUR": 385
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "USD": 1135
+       },
+       "amount": 1135,
+       "currency": "USD"
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 3
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 252,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 541,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 80,
+        "GBP": 87,
+        "UZS": 1284500
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 1790,
+        "USD": 190,
+        "UZS": 1284500
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 420,
+        "GBP": 45,
+        "UZS": 2379000
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 11,
+      "reachable": 6
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 1746,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "UZS": 3421870,
+        "EUR": 245
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "UZS": 964388,
+        "USD": 347,
+        "EUR": 355
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "GBP": 35,
+        "UZS": 1949800,
+        "USD": 325
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 3,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8694551087828556,
+       0.86275750622394,
+       0.8589787851677341
+      ],
+      "selectedValue": [
+       0.7394671038333143,
+       0.723199648334964,
+       0.747510160132389
+      ],
+      "evaluations": 256,
+      "proposals": 256,
+      "rejected": 0,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 256,
+      "conceptCounts": {
+       "tonal-evening": 86,
+       "soft-evening-texture": 85,
+       "modern-evening": 85
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.8326643744981005,
+       "pairChecks": 32640,
+       "evaluatedLooks": 256,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 6249,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 4096,
+       "utilityBounded": true,
+       "feasibilityComplete": true
+      },
+      "syncMs": 85.74895899999683,
+      "eligible": 32027,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 75,
+       "structure": 6338,
+       "accessory": 1507,
+       "style": 3371,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 11,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "tonal-evening",
+       "soft-evening-texture",
+       "modern-evening"
+      ]
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 7
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": null,
+    "items": 38388
+   }
+  },
+  {
+   "id": "S6-12",
+   "style": "semi_classic",
+   "occasion": "Work",
+   "budget": null,
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": false,
+     "shortlisted": 48,
+     "candidateCount": 200,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 468,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "USD": 1135
+       },
+       "amount": 1135,
+       "currency": "USD"
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 490,
+        "EUR": 385
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 645,
+        "UZS": 2559000
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 12,
+      "reachable": 3
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 252,
+     "admittedCatalogItems": 38388,
+     "rejections": {
+      "budget": 0,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 544,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 80,
+        "GBP": 87,
+        "UZS": 1284500
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "EUR": 1790,
+        "USD": 190,
+        "UZS": 1284500
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 420,
+        "GBP": 45,
+        "UZS": 2379000
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "imageReachability": {
+      "items": 11,
+      "reachable": 6
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 1811,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 685,
+        "EUR": 265
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "USD": 549,
+        "UZS": 1899900,
+        "EUR": 227.95
+       },
+       "amount": null,
+       "currency": null
+      },
+      {
+       "singleCurrency": false,
+       "byCurrency": {
+        "UZS": 2844188,
+        "EUR": 395
+       },
+       "amount": null,
+       "currency": null
+      }
+     ],
+     "budgetOk": null,
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 3,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.898615602710034,
+       0.8857432656809118,
+       0.8730574161327215
+      ],
+      "selectedValue": [
+       0.7309223701849504,
+       0.7446590085113994,
+       0.7207452230875894
+      ],
+      "evaluations": 256,
+      "proposals": 291,
+      "rejected": 1,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 255,
+      "conceptCounts": {
+       "classic-separates": 84,
+       "smart-knit-layering": 97,
+       "precise-office": 74
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.849293838635815,
+       "pairChecks": 32385,
+       "evaluatedLooks": 255,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 10626,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 4096,
+       "utilityBounded": true,
+       "feasibilityComplete": true
+      },
+      "syncMs": 82.51029199999903,
+      "eligible": 28574,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 3102,
+       "structure": 6338,
+       "accessory": 1507,
+       "style": 6857,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 11,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "classic-separates",
+       "smart-knit-layering",
+       "precise-office"
+      ]
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 9
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": null,
+    "items": 38388
+   }
+  },
+  {
+   "id": "S6-B01",
+   "style": "old_money",
+   "occasion": "Work",
+   "budget": {
+    "amount": 1500000,
+    "currency": "UZS"
+   },
+   "arms": {
+    "reference-first": {
+     "looks": 0,
+     "distinctInventory": true,
+     "shortlisted": 0,
+     "candidateCount": 0,
+     "admittedCatalogItems": 5322,
+     "rejections": {
+      "budget": 388,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 10408,
+     "visualVerdict": "NOT_RUN",
+     "totals": [],
+     "budgetOk": [],
+     "imageReachability": {
+      "items": 0,
+      "reachable": 0
+     }
+    },
+    "creative-first": {
+     "looks": 0,
+     "distinctInventory": true,
+     "shortlisted": 0,
+     "candidateCount": 0,
+     "admittedCatalogItems": 5322,
+     "rejections": {
+      "budget": 408,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 11352,
+     "visualVerdict": "NOT_RUN",
+     "totals": [],
+     "budgetOk": [],
+     "imageReachability": {
+      "items": 0,
+      "reachable": 0
+     }
+    },
+    "v5-baseline": {
+     "looks": 0,
+     "distinctInventory": true,
+     "wallMs": 336,
+     "visualVerdict": "N/A-control",
+     "totals": [],
+     "budgetOk": [],
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 3,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8879053071428571,
+       0.8580243060140528,
+       0.8573633982857143
+      ],
+      "selectedValue": [
+       0.75,
+       0.7487885531518501,
+       0.75
+      ],
+      "evaluations": 256,
+      "proposals": 314,
+      "rejected": 64,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 192,
+      "conceptCounts": {
+       "refined-ivy": 50,
+       "textured-tailoring": 69,
+       "smart-knit-layering": 73
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.8331038889592199,
+       "pairChecks": 18336,
+       "evaluatedLooks": 192,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 6780,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 4096,
+       "utilityBounded": true,
+       "feasibilityComplete": true
+      },
+      "syncMs": 85.31054099999892,
+      "eligible": 2357,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 841,
+       "structure": 1013,
+       "accessory": 6,
+       "style": 2655,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 1,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "refined-ivy",
+       "textured-tailoring",
+       "smart-knit-layering"
+      ],
+      "budgetNonCompliantDropped": 3
+     },
+     "imageReachability": {
+      "items": 0,
+      "reachable": 0
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": "UZS",
+    "items": 5322
+   }
+  },
+  {
+   "id": "S6-B03",
+   "style": "semi_classic",
+   "occasion": "Date night",
+   "budget": {
+    "amount": 8000000,
+    "currency": "UZS"
+   },
+   "arms": {
+    "reference-first": {
+     "looks": 3,
+     "distinctInventory": false,
+     "shortlisted": 48,
+     "candidateCount": 106,
+     "admittedCatalogItems": 5322,
+     "rejections": {
+      "budget": 290,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 10378,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "UZS": 7622823
+       },
+       "amount": 7622823,
+       "currency": "UZS"
+      },
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "UZS": 6552739
+       },
+       "amount": 6552739,
+       "currency": "UZS"
+      },
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "UZS": 6109757
+       },
+       "amount": 6109757,
+       "currency": "UZS"
+      }
+     ],
+     "budgetOk": [
+      true,
+      true,
+      true
+     ],
+     "imageReachability": {
+      "items": 12,
+      "reachable": 12
+     }
+    },
+    "creative-first": {
+     "looks": 3,
+     "distinctInventory": true,
+     "shortlisted": 48,
+     "candidateCount": 227,
+     "admittedCatalogItems": 5322,
+     "rejections": {
+      "budget": 256,
+      "hardGate": 0,
+      "unpriced": 0
+     },
+     "wallMs": 10429,
+     "visualVerdict": "NOT_RUN",
+     "totals": [
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "UZS": 3970900
+       },
+       "amount": 3970900,
+       "currency": "UZS"
+      },
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "UZS": 7353294
+       },
+       "amount": 7353294,
+       "currency": "UZS"
+      },
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "UZS": 7889404
+       },
+       "amount": 7889404,
+       "currency": "UZS"
+      }
+     ],
+     "budgetOk": [
+      true,
+      true,
+      true
+     ],
+     "imageReachability": {
+      "items": 11,
+      "reachable": 11
+     }
+    },
+    "v5-baseline": {
+     "looks": 3,
+     "distinctInventory": true,
+     "wallMs": 335,
+     "visualVerdict": "N/A-control",
+     "totals": [
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "UZS": 5251770
+       },
+       "amount": 5251770,
+       "currency": "UZS"
+      },
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "UZS": 4164088
+       },
+       "amount": 4164088,
+       "currency": "UZS"
+      },
+      {
+       "singleCurrency": true,
+       "byCurrency": {
+        "UZS": 4455774
+       },
+       "amount": 4455774,
+       "currency": "UZS"
+      }
+     ],
+     "budgetOk": [
+      true,
+      true,
+      true
+     ],
+     "diagnostics": {
+      "counts": {
+       "top": 24,
+       "outerwear": 24,
+       "bottom": 24,
+       "shoes": 24
+      },
+      "conceptsTarget": 3,
+      "conceptsFeasible": 3,
+      "conceptsAchieved": 3,
+      "editorialIdentities": 3,
+      "photoProducts": 0,
+      "selectedQuality": [
+       0.8807632095894379,
+       0.8656231563955735,
+       0.8567868607842591
+      ],
+      "selectedValue": [
+       0.7300464954632119,
+       0.7445171216113349,
+       0.7449396544460959
+      ],
+      "evaluations": 256,
+      "proposals": 256,
+      "rejected": 28,
+      "budgetRejected": 0,
+      "cpuRisk": false,
+      "forcedSlots": [],
+      "validCandidates": 228,
+      "conceptCounts": {
+       "tonal-evening": 67,
+       "soft-evening-texture": 85,
+       "modern-evening": 76
+      },
+      "exploredCompletely": false,
+      "selection": {
+       "algorithm": "outfit-deck-graph-v1",
+       "requested": 3,
+       "selected": 3,
+       "status": "complete",
+       "reusePolicy": "unique",
+       "repeatedSlots": [],
+       "repeatedProducts": 0,
+       "qualityFloor": 0.8319367157950927,
+       "pairChecks": 25878,
+       "evaluatedLooks": 228,
+       "rejectedPairs": {
+        "samePhysicalLook": 0,
+        "semantic": 7265,
+        "crossSlotIdentity": 0
+       },
+       "utilityEvaluations": 4096,
+       "utilityBounded": true,
+       "feasibilityComplete": true
+      },
+      "syncMs": 74.66204199999629,
+      "eligible": 4142,
+      "poolSize": 96,
+      "rejections": {
+       "visual": 0,
+       "context": 51,
+       "structure": 1013,
+       "accessory": 6,
+       "style": 809,
+       "climate": 0,
+       "intent": 0,
+       "activity": 0
+      },
+      "unprojectedPoolRows": 1,
+      "poolSlotSource": "pilot_adapter_projection_v1",
+      "concepts": [
+       "tonal-evening",
+       "soft-evening-texture",
+       "modern-evening"
+      ],
+      "budgetNonCompliantDropped": 0
+     },
+     "imageReachability": {
+      "items": 12,
+      "reachable": 12
+     }
+    }
+   },
+   "inventorySlice": {
+    "currency": "UZS",
+    "items": 5322
+   }
+  }
+ ]
+}

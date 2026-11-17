@@ -8,7 +8,7 @@ if(oldSource===undefined)delete process.env.OUTFIT_WIRE_SOURCE;else process.env.
 const items=[['layer','outerwear','Lightweight linen blazer'],['shirt','top','White cotton shirt'],['pants','bottom','Navy chino trousers'],['shoes','shoes','Brown leather loafers']].map(([id,macroCategory,name])=>({id,macroCategory,name,type:macroCategory,isWardrobe:true,color:'neutral',imageUrl:`https://example.invalid/${id}.jpg`,currency:'USD'}));
 const request=(rows,weather)=>new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify({stylePreferences:'classic',occasion:'Work',prompt:'Work',weather,limit:1,wardrobeItems:rows,useProvidedWardrobeOnly:true,wardrobeOnly:true})});
 test.each([undefined,{temp:35,condition:'sunny'},{temp:5,condition:'snow'}])('hosted handler returns all four categories in %j',async weather=>{
- const rows=weather?.temp===5?items.map(i=>i.id==='layer'?{...i,name:'Wool overcoat'}:i.id==='shoes'?{...i,name:'Leather boots'}:i):items;
+ const rows=weather?.temp===5?items.map(i=>i.id==='layer'?{...i,name:'Charcoal wool overcoat'}:i.id==='shoes'?{...i,name:'Black leather Chelsea boots'}:i):items;
  const {handler}=load(rows.map(i=>i.id));const response=await handler(request(rows,weather));const data=await response.json();
  expect(response.status).toBe(200);expect(data.layered).toBe(true);expect(data.outfits.length).toBeGreaterThan(0);
  for(const outfit of data.outfits)expect(outfit.items.map(i=>i.macroCategory).sort()).toEqual(['bottom','outerwear','shoes','top']);
@@ -56,6 +56,17 @@ const richItems = [
  ['Navy chino trousers','Grey wool trousers','Beige cotton chinos'],
  ['Brown leather loafers','Black leather derby shoes','Burgundy leather oxford shoes'],
 ].flatMap((names,slotIndex)=>names.map((name,index)=>({id:`rich-${slotIndex}-${index}`,macroCategory:['outerwear','top','bottom','shoes'][slotIndex],name,type:['outerwear','shirt','trousers','shoes'][slotIndex],isWardrobe:true,color:['navy','white','navy','brown'][slotIndex],imageUrl:`https://example.invalid/rich-${slotIndex}-${index}.jpg`})));
+test('shop mode ignores provided products and searches every server catalog slot',async()=>{
+ const rows=richItems.map(item=>({...item,id:`shop_${item.id}`,isWardrobe:false,isShopItem:true,price:100,currency:'USD'}));
+ const {handler,catalogRpc}=load(rows.slice(0,4).map(item=>item.id));
+ const body=await (await stylistRequest(rows)).json();
+ body.catalogOnly=true;body.wardrobeOnly=false;body.useProvidedWardrobeOnly=true;
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ expect(response.status).toBe(422);
+ expect((await response.json()).outfits).toEqual([]);
+ expect(catalogRpc.mock.calls.some(([name,args])=>name==='catalog_stylist_candidates_compact'
+  && ['top','outerwear','bottom','shoes'].every(slot=>args.p_slots.includes(slot)))).toBe(true);
+});
 async function stylistRequest(rows){const body=await request(rows).json();return new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify({...body,stylePreferences:'casual',occasion:'Casual',prompt:'Casual',limit:5,deckTarget:3})});}
 test.each([1,2])('replaces a partial %i-card provider deck with three validated four-item cards',async count=>{
  const proposals=Array.from({length:count},(_,i)=>richItems.filter(row=>row.id.endsWith(`-${i}`)).map(row=>row.id));
@@ -66,14 +77,24 @@ test.each([1,2])('replaces a partial %i-card provider deck with three validated 
 });
 test('never calls a one-look Personal Stylist deck successful',async()=>{
  const {handler}=load(items.map(i=>i.id));const response=await handler(await stylistRequest(items));const data=await response.json();
- expect(response.status).toBe(422);expect(data.code).toBe('incomplete_outfit_deck');expect(data.outfits).toEqual([]);
+ expect(response.status).toBe(422);expect(data.code).toBe('incomplete_outfit_selection');expect(data.outfits).toEqual([]);
+});
+test('an opted-in incomplete deck returns its one validated look with an inventory reason',async()=>{
+ const {handler}=load(items.map(i=>i.id));
+ const body=await (await stylistRequest(items)).json();body.allowPartialResults=true;
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ const data=await response.json();
+ expect(response.status).toBe(200);
+ expect(data.outfits).toHaveLength(1);
+ expect(data.inventoryReason).toBe('distinct_editorial_inventory_limited');
+ expect(data.outfits[0].qualityAssessment.acceptance.passed).toBe(true);
 });
 
 const rotationFixtures = ['outerwear','top','bottom','shoes'].flatMap((slot,s)=>Array.from({length:9},(_,i)=>({id:`rotation-${s}-${i}`,name:['Navy cotton blazer','White cotton shirt','Beige cotton chinos','Brown leather loafers'][s]+` edition ${i}`,type:slot,macroCategory:slot,color:['navy','white','beige','brown'][s],isWardrobe:true,imageUrl:`https://example.invalid/rotation-${s}-${i}.jpg`})));
 test('three generations consume 36 distinct physical products from rich inventory, including nine shoes',async()=>{
  const {handler}=load(rotationFixtures.slice(0,4).map(i=>i.id),null,null,null,null,'curated');
  const keys=new Set(),ids=new Set(),generations=[];
- const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ const {productIdentityKeys}=require('../../src/domain/outfitDiversity');
  for(let generation=0;generation<3;generation++){
   const body=await (await stylistRequest(rotationFixtures)).json();body.excludeItemIds=[...ids];body.excludeProductKeys=[...keys];
   const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
@@ -88,7 +109,7 @@ test('three generations consume 36 distinct physical products from rich inventor
 test('exhausted shoes recycle only after all fresh shoes are included, while other slots remain fresh',async()=>{
  const rows=rotationFixtures.filter(i=>i.macroCategory!=='shoes'||i.id==='rotation-3-0'||i.id==='rotation-3-1'||i.id==='rotation-3-2'||i.id==='rotation-3-3');
  const {handler}=load(rows.slice(0,4).map(i=>i.id),null,null,null,null,'curated');
- const old=rows.filter(i=>i.macroCategory==='shoes'&&i.id!=='rotation-3-3');const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ const old=rows.filter(i=>i.macroCategory==='shoes'&&i.id!=='rotation-3-3');const {productIdentityKeys}=require('../../src/domain/outfitDiversity');
  const body=await (await stylistRequest(rows)).json();body.excludeItemIds=old.map(i=>i.id);body.excludeProductKeys=old.flatMap(productIdentityKeys);
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
  expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(data.rotation.recycledSlots).toEqual(['shoes']);
@@ -99,7 +120,7 @@ test('exhausted shoes recycle only after all fresh shoes are included, while oth
 test('a new catalog ID cannot resurrect a recently shown product by name or normalized photo',async()=>{
  const old=rotationFixtures.filter(i=>i.id.endsWith('-0'));
  const aliases=old.flatMap(i=>[{...i,id:'name-alias-'+i.id,name:i.name.toUpperCase(),imageUrl:`https://example.invalid/alias-${i.id}.jpg`},{...i,id:'photo-alias-'+i.id,name:i.name+' renamed',imageUrl:i.imageUrl+'?width=800'}]);
- const {handler}=load([],null,null,null,null,'curated');const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');const history=new Set(old.flatMap(productIdentityKeys));
+ const {handler}=load([],null,null,null,null,'curated');const {productIdentityKeys}=require('../../src/domain/outfitDiversity');const history=new Set(old.flatMap(productIdentityKeys));
  const body=await (await stylistRequest([...rotationFixtures,...aliases])).json();body.excludeItemIds=old.map(i=>i.id);body.excludeProductKeys=[...history];
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
  expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
@@ -108,7 +129,7 @@ test('a new catalog ID cannot resurrect a recently shown product by name or norm
 
 test('deck boundaries avoid previous shoes and exhaust older last-use order in a five-shoe pool',async()=>{
  const rows=rotationFixtures.filter(i=>i.macroCategory!=='shoes'||Number(i.id.split('-').at(-1))<5);
- const {handler}=load([],null,null,null,null,'curated');const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');const decks=[];
+ const {handler}=load([],null,null,null,null,'curated');const {productIdentityKeys}=require('../../src/domain/outfitDiversity');const decks=[];
  for(let g=0;g<3;g++){
   const body=await(await stylistRequest(rows)).json();body.rotationDecks=decks;body.previousDeckProductKeys=decks.at(-1)?.productKeys||[];body.olderRecentProductKeys=decks.slice(0,-1).flatMap(d=>d.productKeys);body.excludeProductKeys=decks.flatMap(d=>d.productKeys);
   const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
@@ -121,7 +142,7 @@ test('deck boundaries avoid previous shoes and exhaust older last-use order in a
 
 test('five same-intent generations keep all physical products fresh in a rich pool',async()=>{
  const rows=['outerwear','top','bottom','shoes'].flatMap((slot,s)=>Array.from({length:15},(_,i)=>({id:`five-${s}-${i}`,name:['Navy cotton blazer','White cotton shirt','Beige cotton chinos','Brown leather loafers'][s]+` edition ${i}`,macroCategory:slot,type:slot,color:['navy','white','beige','brown'][s],isWardrobe:true,imageUrl:`https://example.invalid/five-${s}-${i}.jpg`})));
- const {handler}=load([],null,null,null,null,'curated'),decks=[];const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ const {handler}=load([],null,null,null,null,'curated'),decks=[];const {productIdentityKeys}=require('../../src/domain/outfitDiversity');
  for(let g=0;g<5;g++){
   const body=await(await stylistRequest(rows)).json();body.rotationScope='fixture|wardrobe|casual|casual';body.generationRequestId=`five-request-${g}`;body.rotationDecks=decks;body.previousDeckProductKeys=decks.at(-1)?.productKeys||[];body.olderRecentProductKeys=decks.slice(0,-1).flatMap(d=>d.productKeys);body.excludeProductKeys=decks.flatMap(d=>d.productKeys);
   const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
@@ -134,7 +155,7 @@ test('five same-intent generations keep all physical products fresh in a rich po
 test.each([3,4,5,6,10])('%i admitted shoes meet the minimum across five hosted generations without pinning a favorite',async n=>{
  const rows=['outerwear','top','bottom','shoes'].flatMap((slot,s)=>Array.from({length:s===3?n:15},(_,i)=>({id:`scheduled-${s}-${i}`,name:['Navy cotton blazer','White cotton shirt','Beige cotton chinos','Brown leather loafers'][s]+` edition ${i}`,macroCategory:slot,type:slot,color:['navy','white','beige','brown'][s],isWardrobe:true,imageUrl:`https://example.invalid/scheduled-${s}-${i}.jpg`})));
  const {handler}=load([],null,null,null,null,'curated'),decks=[],usage=new Map(),run=[];
- const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ const {productIdentityKeys}=require('../../src/domain/outfitDiversity');
  for(let g=0;g<5;g++){
   const body=await(await stylistRequest(rows)).json();body.rotationDecks=decks;body.previousDeckProductKeys=decks.at(-1)?.productKeys||[];body.olderRecentProductKeys=decks.slice(0,-1).flatMap(d=>d.productKeys);body.excludeProductKeys=decks.flatMap(d=>d.productKeys);
   const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
@@ -153,9 +174,9 @@ test.each(['outerwear','top','bottom','shoes'])('a locked owned %s remains in al
  const original=rows.find(p=>p.macroCategory===slot);
  const anchor={...original,id:'wardrobe-anchor',isWardrobe:true,isShopItem:false,price:undefined};rows.push(anchor);
  const {handler}=load([],null,null,null,null,'curated');const decks=[];
- const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ const {productIdentityKeys}=require('../../src/domain/outfitDiversity');
  for(let g=0;g<2;g++){
-  const body=await(await stylistRequest(rows)).json();body.anchorItemId=anchor.id;
+  const body=await(await stylistRequest(rows)).json();body.anchorItemId=anchor.id;body.wardrobeOnly=false;
   body.rotationDecks=decks;body.previousDeckProductKeys=decks.at(-1)?.productKeys||[];body.excludeProductKeys=decks.flatMap(d=>d.productKeys);
   const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));const data=await response.json();
   expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
@@ -166,24 +187,39 @@ test.each(['outerwear','top','bottom','shoes'])('a locked owned %s remains in al
  }
 });
 
+// Model the deployed two-stage RPC contract, including per-slot offset pages.
+// The previous query-builder mock silently emitted rows without fashion_slot.
+function catalogPages(pages) {
+ const rpc=jest.fn((name,args)=>{
+  // The compact RPC caps every page at 100 mixed-slot rows. An uncapped mock
+  // would hand the planner an over-full page the real backend never sends and
+  // hide paging regressions behind fixture artefacts.
+  const data=name==='catalog_stylist_candidate_hydration'?[]:
+   args.p_slots.flatMap(slot=>(pages[slot]?.[args.p_offset/100]||[]).map(row=>({...row,fashion_slot:slot}))).slice(0,100);
+  const pending={abortSignal:()=>pending,then:resolve=>Promise.resolve({data,error:null}).then(resolve)};
+  return pending;
+ });
+ return {rpc};
+}
+
 test('searches past incompatible blazers to complete a wardrobe piqué polo with shop companions',async()=>{
  const anchor={id:'owned-polo',name:'Polo Piquet 1',type:'tees',macroCategory:'top',isWardrobe:true,imageUrl:'https://example.invalid/polo.jpg'};
  const rows=[anchor,...rotationFixtures.filter(i=>['bottom','shoes'].includes(i.macroCategory)).map(i=>({...i,isWardrobe:false,isShopItem:true,price:30,currency:'USD'}))];
  const first=Array.from({length:100},(_,i)=>({id:`blocked-${String(i).padStart(3,'0')}`,name:`Wool suit blazer variant${i}`,category:'outerwear',garment_type:'outerwear',price:80,currency:'USD',image_url:`https://example.invalid/blazer${i}.jpg`}));
- const valid=['Cashmere cardigan','Merino wool cardigan','Fine cotton cardigan'].map((name,i)=>({id:`cardigan-${i}`,name,category:'outerwear',garment_type:'outerwear',price:60,currency:'USD',image_url:`https://example.invalid/cardigan${i}.jpg`,source_url:`https://example.invalid/cardigan${i}`}));
- let cursor;const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,order:()=>q,abortSignal:()=>q,gt:jest.fn((_field,value)=>{cursor=value;return q;}),then:resolve=>Promise.resolve({data:cursor?valid:first,error:null}).then(resolve)};
+ const valid=['Cream fine cashmere cardigan','Navy fine merino wool cardigan','Brown fine cotton cardigan'].map((name,i)=>({id:`cardigan-${i}`,name,category:'outerwear',garment_type:'outerwear',price:60,currency:'USD',image_url:`https://example.invalid/cardigan${i}.jpg`,source_url:`https://example.invalid/cardigan${i}`}));
+ const q=catalogPages({outerwear:[first,valid]});
  const {handler}=load([],null,null,null,q,'curated');
  const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',wardrobeOnly:false,anchorItemId:anchor.id});
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
  const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
- expect(q.gt).toHaveBeenCalledWith('id','blocked-099');
+ expect(q.rpc).toHaveBeenCalledWith('catalog_stylist_candidates_compact',expect.objectContaining({p_offset:100,p_slots:['outerwear']}));
  for(const outfit of data.outfits){expect(outfit.items).toHaveLength(4);expect(outfit.items.some(i=>i.id===anchor.id)).toBe(true);expect(outfit.items.find(i=>i.macroCategory==='outerwear').name).toMatch(/cardigan/i);}
 });
 
 test('three different style selections consume different physical shoes using shared footwear history',async()=>{
  const rows=['outerwear','top','bottom','shoes'].flatMap((slot,s)=>Array.from({length:12},(_,i)=>({id:`cross-${s}-${i}`,name:['Navy cotton blazer','White cotton shirt','Beige cotton chinos','Brown leather loafers'][s]+` edition ${i}`,macroCategory:slot,type:slot,color:['navy','white','beige','brown'][s],isWardrobe:true,imageUrl:`https://example.invalid/cross-${s}-${i}.jpg`})));
  const {handler}=load([],null,null,null,null,'curated'),shoeDecks=[];
- const {productIdentityKeys}=require('../../backend/supabase/functions/_shared/outfitDiversity');
+ const {productIdentityKeys}=require('../../src/domain/outfitDiversity');
  for(const style of ['old_money','minimalist','classic']){
   const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:style,occasion:'work',prompt:'Work',rotationDecks:[],previousDeckProductKeys:[],previousShoeProductKeys:shoeDecks.at(-1)?.productKeys||[],recentShoeProductKeys:shoeDecks.flatMap(d=>d.productKeys),shoeRotationDecks:shoeDecks});
   const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
@@ -194,32 +230,32 @@ test('three different style selections consume different physical shoes using sh
  }
 });
 
-test('three date outfits retain the owned jersey trousers through the final quality gate',async()=>{
+test('three date outfits retain owned jersey trousers with compatible smart loafers',async()=>{
  const anchor={id:'owned-jersey',name:'3D jersey knit trousers',type:'pants',macroCategory:'bottom',isWardrobe:true,imageUrl:'https://example.invalid/jersey.jpg'};
- const rows=[anchor,...richItems.filter(i=>i.macroCategory!=='bottom')];
+ const rows=[anchor,...richItems.filter(i=>i.macroCategory!=='bottom').map(i=>i.macroCategory==='shoes'?{...i,name:'Suede smart loafers '+i.id}:i)];
  const {handler}=load([],null,null,null,null,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id});
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
  const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
  for(const o of data.outfits){expect(o.items).toHaveLength(4);expect(o.items.filter(i=>i.id===anchor.id)).toHaveLength(1);expect(o.qualityAssessment.reasons).toEqual([]);}
 });
 
-test('anchored discovery counts tops compatible with the discovered layers before completing a page',async()=>{
+test('anchored discovery pages past incompatible knits without waiving whole-outfit quality',async()=>{
  const anchor={id:'owned-jersey',name:'3D jersey knit trousers',type:'pants',macroCategory:'bottom',isWardrobe:true,imageUrl:'https://example.invalid/jersey.jpg'};
  const rows=[anchor,...rotationFixtures.filter(i=>i.macroCategory==='shoes').map(i=>({...i,isShopItem:true,isWardrobe:false,price:40,currency:'USD'}))];
- const layers=Array.from({length:6},(_,i)=>({id:`cardigan-${i}`,name:`Fine merino sweater edition ${i}`,category:'outerwear',garment_type:'outerwear',price:60,currency:'USD',image_url:`https://example.invalid/cardigan-${i}.jpg`}));
- const knits=Array.from({length:100},(_,i)=>({id:`knit-${String(i).padStart(3,'0')}`,name:`Merino knit polo edition ${i}`,category:'tops',garment_type:'upper_body',price:40,currency:'USD',image_url:`https://example.invalid/knit-${i}.jpg`}));
- const shirts=Array.from({length:6},(_,i)=>({id:`shirt-${i}`,name:`White cotton shirt edition ${i}`,category:'tops',garment_type:'upper_body',price:40,currency:'USD',image_url:`https://example.invalid/shirt-${i}.jpg`}));
- let cursor,slot;const q={select:()=>q,eq:()=>q,limit:()=>q,order:()=>q,abortSignal:()=>q,or:filter=>{slot=filter.includes('category.eq.outerwear')?'outerwear':'top';cursor=undefined;return q;},gt:jest.fn((_field,value)=>{cursor=value;return q;}),then:resolve=>Promise.resolve({data:slot==='outerwear'?layers:cursor?shirts:knits,error:null}).then(resolve)};
+ const layers=Array.from({length:6},(_,i)=>({id:`cardigan-${i}`,name:`Cream fine-gauge merino sweater edition ${i}`,category:'outerwear',garment_type:'outerwear',price:60,currency:'USD',image_url:`https://example.invalid/cardigan-${i}.jpg`}));
+ const knits=Array.from({length:94},(_,i)=>({id:`knit-${String(i).padStart(3,'0')}`,name:`Merino knit polo edition ${i}`,category:'tops',garment_type:'upper_body',price:40,currency:'USD',image_url:`https://example.invalid/knit-${i}.jpg`}));
+ const shirts=Array.from({length:6},(_,i)=>({id:`shirt-${i}`,name:`Lightweight white cotton shirt edition ${i}`,category:'tops',garment_type:'upper_body',price:40,currency:'USD',image_url:`https://example.invalid/shirt-${i}.jpg`}));
+ const q=catalogPages({outerwear:[layers],top:[knits,shirts]});
  const {handler}=load([],null,null,null,q,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id,wardrobeOnly:false});
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
- const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(q.gt).toHaveBeenCalledWith('id','knit-099');
- for(const o of data.outfits){expect(o.items.find(i=>i.macroCategory==='top').name).toMatch(/cotton shirt/);expect(o.items.some(i=>i.id===anchor.id)).toBe(true);}
+ const data=await response.json();expect(response.status).toBe(422);expect(data.code).toBe('outfit_quality_rejected');expect(data.diagnostics.counts).toMatchObject({top:6,outerwear:6});expect(data.outfits).toEqual([]);expect(q.rpc).toHaveBeenCalledWith('catalog_stylist_candidates_compact',expect.objectContaining({p_offset:100,p_slots:['outerwear','top']}));
+ // Retrieval found the shirts, but sparse pullover/jersey evidence does not meet the refined date floor.
 });
 
 test.each(['old_money','classic','minimalist','casual'])('owned Bexford Oxfords remain shoes in all three %s date looks',async style=>{
  const anchor={id:'owned-oxfords',name:'Bexford Leather Oxfords - Black',type:'shoes',category:'shoes',macroCategory:'shoes',isWardrobe:true,isShopItem:false,imageUrl:'https://example.invalid/bexford.jpg'};
  const rows=[anchor,...richItems.filter(i=>i.macroCategory!=='shoes').map(i=>({...i,isWardrobe:false,isShopItem:true,price:40,currency:'USD'}))];
- const {handler}=load([],null,null,null,null,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:style,occasion:'date',prompt:'Date night',anchorItemId:anchor.id});
+ const {handler}=load([],null,null,null,null,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:style,occasion:'date',prompt:'Date night',anchorItemId:anchor.id,wardrobeOnly:false});
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
  const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);
  for(const o of data.outfits){expect(o.items).toHaveLength(4);expect(o.items.find(i=>i.macroCategory==='shoes').id).toBe(anchor.id);expect(o.items.filter(i=>i.id!==anchor.id).every(i=>i.isShopItem)).toBe(true);}
@@ -227,8 +263,8 @@ test.each(['old_money','classic','minimalist','casual'])('owned Bexford Oxfords 
 
 test('date ranking retains three compatible piqué polos instead of creating a falsely sparse top slot',async()=>{
  const anchor={id:'owned-oxfords',name:'Bexford Leather Oxfords - Black',type:'shoes',macroCategory:'shoes',isWardrobe:true,imageUrl:'https://example.invalid/oxford.jpg'};
- const companions=['outerwear','top','bottom'].flatMap((slot,s)=>Array.from({length:3},(_,i)=>({id:`date-pique-${s}-${i}`,name:['Merino cardigan','Cotton piqué polo shirt','Beige cotton chinos'][s]+` edition ${i}`,type:slot,macroCategory:slot,isWardrobe:false,isShopItem:true,price:40,currency:'USD',imageUrl:`https://example.invalid/date-pique-${s}-${i}.jpg`})));
- const {handler}=load([],null,null,null,null,'curated');const body=await(await stylistRequest([anchor,...companions])).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id});
+ const companions=['outerwear','top','bottom'].flatMap((slot,s)=>Array.from({length:3},(_,i)=>({id:`date-pique-${s}-${i}`,name:['Cream fine merino cardigan','Cotton piqué polo shirt','Beige cotton chinos'][s]+` edition ${i}`,type:slot,macroCategory:slot,isWardrobe:false,isShopItem:true,price:40,currency:'USD',imageUrl:`https://example.invalid/date-pique-${s}-${i}.jpg`})));
+ const {handler}=load([],null,null,null,null,'curated');const body=await(await stylistRequest([anchor,...companions])).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id,wardrobeOnly:false});
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
  const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(new Set(data.outfits.flatMap(o=>o.items.filter(i=>i.macroCategory==='top').map(i=>i.id))).size).toBe(3);
 });
@@ -238,9 +274,21 @@ test('misfiled coated jeans cannot complete the outerwear discovery page for an 
  const rows=[anchor,...rotationFixtures.filter(i=>['top','bottom'].includes(i.macroCategory))];
  const bad=Array.from({length:100},(_,i)=>({id:`bad-layer-${String(i).padStart(3,'0')}`,name:`Slim-Straight Leg Metallic Coated Jeans edition ${i}`,category:'outerwear',garment_type:'outerwear',price:60,currency:'USD',image_url:`https://example.invalid/jeans-${i}.jpg`}));
  const good=['Navy wool blazer','Grey wool blazer','Beige cotton blazer'].map((name,i)=>({id:`real-layer-${i}`,name,category:'outerwear',garment_type:'outerwear',price:80,currency:'USD',image_url:`https://example.invalid/blazer-${i}.jpg`}));
- let cursor;const q={select:()=>q,eq:()=>q,limit:()=>q,or:()=>q,order:()=>q,abortSignal:()=>q,gt:jest.fn((_field,value)=>{cursor=value;return q;}),then:resolve=>Promise.resolve({data:cursor?good:bad,error:null}).then(resolve)};
+ const q=catalogPages({outerwear:[bad,good]});
  const {handler}=load([],null,null,null,q,'curated');const body=await(await stylistRequest(rows)).json();Object.assign(body,{stylePreferences:'old_money',occasion:'date',prompt:'Date night',anchorItemId:anchor.id,wardrobeOnly:false});
  const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
- const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(q.gt).toHaveBeenCalledWith('id','bad-layer-099');
+ const data=await response.json();expect(response.status).toBe(200);expect(data.outfits).toHaveLength(3);expect(q.rpc).toHaveBeenCalledWith('catalog_stylist_candidates_compact',expect.objectContaining({p_offset:100,p_slots:['outerwear']}));
  for(const o of data.outfits)expect(o.items.find(i=>i.macroCategory==='outerwear').name).toMatch(/blazer/);
+});
+
+// Prompt guidance recommends charcoal; it must never become a parsed veto.
+test.each(['classic','old_money','business_casual'])('structured %s validation keeps recommended charcoal alternatives',async style=>{
+ const rows=items.map(i=>({...i,id:`shop_${i.id}`,isWardrobe:false,isShopItem:true,price:30,name:i.macroCategory==='outerwear'?'Charcoal wool blazer':i.macroCategory==='bottom'?'Charcoal tailored wool trousers':i.macroCategory==='shoes'?'Black leather Oxford shoes':i.name}));
+ const body=await request(rows).json();body.stylePreferences=style;body.wardrobeOnly=false;
+ const {handler}=load([],null,null,null,null,'curated');
+ const response=await handler(new Request('https://example.invalid',{method:'POST',headers:{Authorization:'Bearer fixture-user'},body:JSON.stringify(body)}));
+ const data=await response.json();
+ if(response.status!==200)throw Error(JSON.stringify(data));expect(response.status).toBe(200);expect(data.outfits).toHaveLength(1);
+ expect(data.outfits[0].items.find(i=>i.macroCategory==='outerwear').name).toBe('Charcoal wool blazer');
+ expect(data.outfits[0].qualityAssessment.acceptance.passed).toBe(true);
 });

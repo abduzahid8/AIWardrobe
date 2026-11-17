@@ -16,12 +16,12 @@ function visit(node:ts.Node){
  ts.forEachChild(node,visit);
 }
 visit(tree);if(!expression)throw new Error('Home status expression not found');
-const bindings='React,ActivityIndicator,ScaledText,TouchableOpacity,Ionicons,isSwipeLocked,canGenerateNewLooks,colors,spacing,suggestionTextStyle,styles,t,dailyAI,stackExhausted,emptyIconName,Haptics,navigation,consumeOrPaywall,logger,style';
+const bindings='regenerationPending,handleRegenerate,React,ActivityIndicator,ScaledText,TouchableOpacity,Ionicons,isSwipeLocked,canGenerateNewLooks,colors,spacing,suggestionTextStyle,styles,t,dailyAI,stackExhausted,emptyIconName,Haptics,navigation,consumeOrPaywall,logger,style';
 const compiled=ts.transpileModule(`function status(scope:any){const {${bindings}}=scope;return (${expression});}`,{compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React}}).outputText;
 const status=new Function(compiled+'\nreturn status;')();
 function setup(loading=false,error:string|null='outfitMaker.budgetTooLow',canGenerateNewLooks=true){
  const regenerate=jest.fn();
- const scope={React,ActivityIndicator,ScaledText:Text,TouchableOpacity,Ionicons:()=>null,isSwipeLocked:false,canGenerateNewLooks,colors:{accent:{primary:'blue'},text:{tertiary:'gray'}},spacing:{md:12,xs:4},suggestionTextStyle:{},styles:{createAvatarButton:{},createAvatarText:{}},t:(key:string)=>key.split('.').reduce((value:any,part)=>value?.[part],en)||key,dailyAI:{loading,error,regenerate},stackExhausted:true,emptyIconName:'alert',Haptics:{impactAsync:jest.fn(),ImpactFeedbackStyle:{Medium:1}},navigation:{navigate:jest.fn()},consumeOrPaywall:async()=>true,logger:{debug:jest.fn()},style:'casual'};
+ const scope={regenerationPending:false,handleRegenerate:regenerate,React,ActivityIndicator,ScaledText:Text,TouchableOpacity,Ionicons:()=>null,isSwipeLocked:false,canGenerateNewLooks,colors:{accent:{primary:'blue'},text:{tertiary:'gray'}},spacing:{md:12,xs:4},suggestionTextStyle:{},styles:{createAvatarButton:{},createAvatarText:{}},t:(key:string)=>key.split('.').reduce((value:any,part)=>value?.[part],en)||key,dailyAI:{loading,error,regenerate},stackExhausted:true,emptyIconName:'alert',Haptics:{impactAsync:jest.fn(),ImpactFeedbackStyle:{Medium:1}},navigation:{navigate:jest.fn()},consumeOrPaywall:async()=>true,logger:{debug:jest.fn()},style:'casual'};
  return {...render(status(scope)),regenerate,navigate:scope.navigation.navigate};
 }
 test('failed refresh on an exhausted deck shows the localized reason and a working retry, not a perpetual preparing state',async()=>{

@@ -10,6 +10,7 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
+const { normalizeCatalogImageUrl } = require('./lib/catalogImageUrl');
 
 const ROOT = path.resolve(__dirname, '..');
 const DOWNLOADER = process.env.WEBSITE_DOWNLOADER_DIR || '/Users/v.zahid/startups/website-downloader';
@@ -25,6 +26,11 @@ const FEEDS = [
 ];
 
 function validateItem(item, input) {
+  // Repair the known Zara `.jpg&w=…` construction before validation. The
+  // downloader emits usable CDN images with a missing query separator; the
+  // old validator rejected all of them. A continuation that cannot be
+  // repaired is still refused below.
+  item.image_url = normalizeCatalogImageUrl(item.image_url);
   for (const field of ['id', 'brand', 'name', 'price', 'currency', 'image_url', 'source_url']) {
     if (item[field] === undefined || item[field] === null || item[field] === '') {
       throw new Error(`${input}: missing ${field} for ${item.id || '(unknown id)'}`);
@@ -32,6 +38,9 @@ function validateItem(item, input) {
   }
   if (!Number.isFinite(Number(item.price)) || Number(item.price) <= 0) {
     throw new Error(`${input}: invalid price for ${item.id}`);
+  }
+  if (/\.(?:jpe?g|png|webp|avif|gif)&/i.test(item.image_url.split('?')[0])) {
+    throw new Error(`${input}: malformed image URL for ${item.id}`);
   }
   for (const url of [item.image_url, item.source_url]) {
     if (new URL(url).protocol !== 'https:') throw new Error(`${input}: expected HTTPS URL for ${item.id}`);

@@ -5,7 +5,6 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from '../utils/logger';
-import { supabase } from '../../lib/supabase';
 import {
     scoreItemForStyle,
     normalizeStyleId,
@@ -13,6 +12,12 @@ import {
 } from '../../features/outfit-generator/utils/styleInference';
 import type { ShopCatalogItem } from '../types/shop';
 import { getShopDestination } from '../utils/shopDestination';
+import { createFixtureCatalogRepository, createSupabaseCatalogRepository } from './catalogRepository';
+import { catalogTitleColor } from '../utils/catalogIdentity';
+import { inferShopRowMacro } from '../utils/shopCatalogOrder';
+import { rankDiverseShoppingCandidates } from './shoppingIntelligence';
+import { loadCatalogDiscovery } from './catalogDiscovery';
+import { findBetterShoppingProducts, evaluateShoppingPurchase } from './shoppingAdvisor';
 import { hasProductOnlyCatalogProvenance } from '../utils/productOnlyCatalog';
 
 // Static catalogs require()d lazily — ~120KB of data modules must not
@@ -68,6 +73,7 @@ export interface ProductSearchParams {
     query: string;
     category?: string;
     color?: string;
+    currency?: string;
     priceMin?: number;
     priceMax?: number;
     brand?: string;
@@ -86,7 +92,7 @@ export interface Product {
     affiliateUrl: string;
     category: string;
     color?: string;
-    inStock: boolean;
+    inStock?: boolean;
     rating?: number;
     reviewCount?: number;
     source: string;
@@ -99,93 +105,9 @@ export interface CompleteYourLookSuggestion {
 }
 
 // ============================================
-// MOCK DATA (Replace with real API in production)
+// Real catalog reads with a lazy bundled fallback; no fabricated stock/ratings.
 // ============================================
-
-const MOCK_PRODUCTS: Product[] = [
-    {
-        id: 'prod-1',
-        name: 'Classic White Button-Down Shirt',
-        brand: 'Everlane',
-        price: 78,
-        currency: 'USD',
-        imageUrl: 'https://example.com/shirt.jpg',
-        productUrl: 'https://everlane.com/shirt',
-        affiliateUrl: 'https://everlane.com/shirt?ref=aiwardrobe',
-        category: 'tops',
-        color: 'white',
-        inStock: true,
-        rating: 4.5,
-        reviewCount: 234,
-        source: 'everlane',
-    },
-    {
-        id: 'prod-2',
-        name: 'High-Rise Straight Jeans',
-        brand: 'Levi\'s',
-        price: 98,
-        originalPrice: 128,
-        currency: 'USD',
-        imageUrl: 'https://example.com/jeans.jpg',
-        productUrl: 'https://levis.com/jeans',
-        affiliateUrl: 'https://levis.com/jeans?ref=aiwardrobe',
-        category: 'bottoms',
-        color: 'blue',
-        inStock: true,
-        rating: 4.7,
-        reviewCount: 567,
-        source: 'levis',
-    },
-    {
-        id: 'prod-3',
-        name: 'Leather Crossbody Bag',
-        brand: 'Madewell',
-        price: 148,
-        currency: 'USD',
-        imageUrl: 'https://example.com/bag.jpg',
-        productUrl: 'https://madewell.com/bag',
-        affiliateUrl: 'https://madewell.com/bag?ref=aiwardrobe',
-        category: 'accessories',
-        color: 'brown',
-        inStock: true,
-        rating: 4.3,
-        reviewCount: 89,
-        source: 'madewell',
-    },
-    {
-        id: 'prod-4',
-        name: 'Minimalist Leather Sneakers',
-        brand: 'Common Projects',
-        price: 425,
-        currency: 'USD',
-        imageUrl: 'https://example.com/sneakers.jpg',
-        productUrl: 'https://commonprojects.com/sneakers',
-        affiliateUrl: 'https://commonprojects.com/sneakers?ref=aiwardrobe',
-        category: 'shoes',
-        color: 'white',
-        inStock: true,
-        rating: 4.8,
-        reviewCount: 312,
-        source: 'commonprojects',
-    },
-    {
-        id: 'prod-5',
-        name: 'Wool Blazer',
-        brand: 'Theory',
-        price: 495,
-        originalPrice: 595,
-        currency: 'USD',
-        imageUrl: 'https://example.com/blazer.jpg',
-        productUrl: 'https://theory.com/blazer',
-        affiliateUrl: 'https://theory.com/blazer?ref=aiwardrobe',
-        category: 'tops',
-        color: 'navy',
-        inStock: true,
-        rating: 4.6,
-        reviewCount: 156,
-        source: 'theory',
-    },
-];
+export const catalogRepository = createSupabaseCatalogRepository(createFixtureCatalogRepository(getStaticSlotPool));
 
 // ============================================
 // SHOPPING SERVICE
@@ -223,7 +145,7 @@ class ShoppingService {
      * Search for products based on query and filters
      */
     async searchProducts(params: ProductSearchParams): Promise<Product[]> {
-        const { query, category, color, priceMin, priceMax, brand, limit = 20 } = params;
+        const { query } = params;
 
         // Add to recent searches
         if (query && !this.recentSearches.includes(query)) {
@@ -231,40 +153,23 @@ class ShoppingService {
             this.saveRecentSearches();
         }
 
-        // In production, call actual shopping APIs
-        // For now, filter mock data
-        let results = [...MOCK_PRODUCTS];
+        const result = await catalogRepository.search(params);
+        return result.items.map(item => ({
+            id:item.id, name:item.name, brand:item.brand, price:item.price,
+            currency:item.currency || '', imageUrl:typeof item.imageUrl === 'string' ? item.imageUrl : '',
+            productUrl:getShopDestination({...item, shopUrl:item.sourceUrl}), affiliateUrl:getShopDestination({...item, shopUrl:item.sourceUrl}),
+            category:({upper_body:'tops',lower_body:'bottoms',accessory:'accessories'} as Record<string,string>)[item.garmentType] || item.garmentType,
+            color:catalogTitleColor(item), source:item.source || result.origin,
+        }));
+    }
 
-        if (query) {
-            const q = query.toLowerCase();
-            results = results.filter(p =>
-                p.name.toLowerCase().includes(q) ||
-                p.brand.toLowerCase().includes(q) ||
-                p.category.toLowerCase().includes(q)
-            );
-        }
+    /** Goal-specific shopping intelligence; generation contracts remain unchanged. */
+    async findBetter(reference: ShopCatalogItem, owned: readonly ShopCatalogItem[], options: Parameters<typeof findBetterShoppingProducts>[2]) {
+        return findBetterShoppingProducts(reference, owned, {...options, repository:catalogRepository});
+    }
 
-        if (category) {
-            results = results.filter(p => p.category === category);
-        }
-
-        if (color) {
-            results = results.filter(p => p.color?.toLowerCase() === color.toLowerCase());
-        }
-
-        if (priceMin !== undefined) {
-            results = results.filter(p => p.price >= priceMin);
-        }
-
-        if (priceMax !== undefined) {
-            results = results.filter(p => p.price <= priceMax);
-        }
-
-        if (brand) {
-            results = results.filter(p => p.brand.toLowerCase() === brand.toLowerCase());
-        }
-
-        return results.slice(0, limit);
+    evaluatePurchase(candidate: ShopCatalogItem, owned: readonly ShopCatalogItem[], context: Parameters<typeof evaluateShoppingPurchase>[2] = {}) {
+        return evaluateShoppingPurchase(candidate, owned, context);
     }
 
     /**
@@ -499,36 +404,9 @@ function inferShopColor(row: Pick<ShopCatalogRow, 'name' | 'description'>): stri
     return 'neutral';
 }
 
-/**
- * Map a missing outfit slot to the Supabase query that narrows shop_catalog
- * to candidates for that slot. We target both `category` and `garment_type`
- * because the two columns evolved independently across ingestion scripts.
- */
-function buildShopQueryForSlot(slot: OutfitSlotId, limit: number) {
-    // NOTE: shop_catalog has no primary_color column — selecting it makes
-    // PostgREST fail the query. Color is inferred via inferShopColor().
-    const base = supabase
-        .from('shop_catalog')
-        .select('id, brand, name, price, currency, image_url, garment_type, category, description, source, source_url')
-        .eq('is_active', true)
-        .limit(limit);
-
-    switch (slot) {
-        case 'outerwear':
-            return base.or('category.eq.outerwear,garment_type.eq.outerwear');
-        case 'top':
-            return base.or('category.eq.tops,garment_type.eq.upper_body');
-        case 'bottom':
-            return base.or('category.eq.bottoms,garment_type.eq.lower_body');
-        case 'shoes':
-            return base.or('category.eq.shoes,garment_type.eq.shoes');
-        default:
-            return base;
-    }
-}
-
 function rowToShopFillItem(row: ShopCatalogRow, slot: OutfitSlotId): ShopFillItem | null {
     if (!row?.id || !row?.image_url || !hasProductOnlyCatalogProvenance(row)) return null;
+    if (inferShopRowMacro(row.garment_type || '', row.name || '') !== slot) return null;
     return {
         id: `shop_${row.id}`,
         name: row.name || row.brand || 'Shop pick',
@@ -610,7 +488,8 @@ export async function fetchShopPoolForStyle(
     const perSlotResults = await Promise.all(
         slots.map(async (slot): Promise<ShopFillItem[]> => {
             try {
-                const { data, error } = await buildShopQueryForSlot(slot, 30);
+                const { data, error } = await loadCatalogDiscovery({slot,limit:30})
+                    .then(page=>({data:page.rows,error:null})).catch(error => ({ data:null, error }));
                 const sourceRows = (!error && data && data.length > 0)
                     ? (data as ShopCatalogRow[])
                     : localCatalogRowsForSlot(slot);
@@ -634,12 +513,30 @@ export async function fetchShopPoolForStyle(
                     }))
                     .sort((a, b) => b.score - a.score);
 
-                const fills: ShopFillItem[] = [];
-                for (const candidate of scored) {
-                    if (fills.length >= perSlot) break;
+                const fillsById = new Map<string, ShopFillItem>();
+                const candidates = scored.flatMap(candidate => {
                     const fill = rowToShopFillItem(candidate.row, slot);
-                    if (fill) fills.push(fill);
+                    if (!fill) return [];
+                    fillsById.set(candidate.row.id, fill);
+                    return [{ score:candidate.score, item:{
+                        id:candidate.row.id, name:fill.name, brand:fill.brand || '', price:fill.price || 0,
+                        currency:fill.currency, imageUrl:fill.image,
+                        garmentType:candidate.row.garment_type as ShopCatalogItem['garmentType'],
+                        source:candidate.row.source || undefined, sourceUrl:candidate.row.source_url || undefined,
+                    } }];
+                });
+                // Eligibility and final outfit validation remain in the existing
+                // pipeline. Only spread admitted physical candidates here.
+                const floors=new Map<string,typeof candidates[number]>();
+                for(const candidate of candidates) {
+                    const currency=candidate.item.currency;
+                    if(currency && candidate.item.price>0 && Number.isFinite(candidate.item.price) &&
+                       (!floors.has(currency) || candidate.item.price<floors.get(currency)!.item.price)) floors.set(currency,candidate);
                 }
+                const floorIds=new Set(floors.size<=perSlot?[...floors.values()].map(candidate=>candidate.item.id):[]);
+                const fills = rankDiverseShoppingCandidates(candidates.map(candidate=>({...candidate,budgetRepresentative:floorIds.has(candidate.item.id)})), {
+                    limit:Math.max(0,Math.min(30,perSlot)), eligible:() => true,
+                }).map(item => fillsById.get(item.id)!);
                 return fills;
             } catch (err) {
                 logger.warn(`fetchShopPoolForStyle failed for slot=${slot}: ${String(err)}`);
@@ -666,7 +563,8 @@ export async function fillMissingSlots(
     const perSlotPicks = await Promise.all(
         missingSlots.map(async (slot): Promise<ShopFillItem | null> => {
             try {
-                const { data, error } = await buildShopQueryForSlot(slot, 30);
+                const { data, error } = await loadCatalogDiscovery({slot,limit:30})
+                    .then(page=>({data:page.rows,error:null})).catch(error => ({ data:null, error }));
                 const sourceRows = (!error && data && data.length > 0)
                     ? (data as ShopCatalogRow[])
                     : localCatalogRowsForSlot(slot);

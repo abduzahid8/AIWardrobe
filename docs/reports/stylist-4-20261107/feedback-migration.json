@@ -1,0 +1,14 @@
+{
+  "version": "20261107233000",
+  "sha256": "afd6bb00a65169838d3c7d58e8f8d5db295781ca3db071fc45cad4794145f38c",
+  "recordsPreserved": true,
+  "security": {
+    "rls": true,
+    "invoker": true,
+    "serviceOnly": true,
+    "footwearGuard": true,
+    "readOnlyVisual": true,
+    "feedbackPolicies": true,
+    "privateEmbeddings": true
+  }
+}

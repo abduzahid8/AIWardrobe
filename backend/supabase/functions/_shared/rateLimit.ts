@@ -66,6 +66,18 @@ export async function enforceRateLimit(
     const userId = userRes?.user?.id;
     if (!userId) return reply('unauthorized', 401);
 
+    // Operator-only controls. Stop before either counter/quota writes or any
+    // caller provider work. Keep receipt recovery and non-paid reads available.
+    // Unset/empty/false preserves the prior behavior; a nonempty unknown global
+    // value stops paid work rather than silently enabling spending after a typo.
+    const paidStop = (Deno.env.get('AIWARDROBE_PAID_WORK_DISABLED') || '').trim().toLowerCase();
+    const disabledFeatures = (Deno.env.get('AIWARDROBE_DISABLED_PAID_FEATURES') || '')
+      .split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+    if (opts.meterPaidWork !== false &&
+        ((paidStop !== '' && paidStop !== 'false') || disabledFeatures.includes(opts.feature.toLowerCase()))) {
+      return reply('feature_disabled', 503);
+    }
+
     const nowMs = Date.now();
     const bucketMs = Math.floor(nowMs / (windowSec * 1000)) * windowSec * 1000;
     const { data, error } = await admin.rpc('increment_rate_bucket', {

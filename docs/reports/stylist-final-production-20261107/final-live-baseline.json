@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-11-07T08:32:06.924Z",
+  "id": "f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a",
+  "slug": "generate-outfits",
+  "name": "generate-outfits",
+  "status": "ACTIVE",
+  "version": 189,
+  "created_at": 1774491523714,
+  "updated_at": 1794040084171,
+  "verify_jwt": false,
+  "import_map": false,
+  "entrypoint_path": "file:///tmp/user_fn_fyqpifmrsftsfqibhwhy_f4624f3a-c8b9-4ce2-8bf1-b03916e7d78a_189/source/index.ts",
+  "ezbr_sha256": "8b0ea0c1008c014a088c0235c4abbf83d347d23a3179e602a84a02008482f0c7",
+  "otherFunctionsUnchanged": true
+}

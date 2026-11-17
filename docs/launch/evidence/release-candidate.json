@@ -1,0 +1,592 @@
+{
+  "schemaVersion": 1,
+  "result": "MANUAL REQUIRED",
+  "decision": "RELEASE CANDIDATE BLOCKED",
+  "manifest": {
+    "schemaVersion": 1,
+    "version": "3.0.2",
+    "buildNumber": {
+      "ios": "65",
+      "android": 63
+    },
+    "gitCommit": "5784fc5cff24381cdae982e937d841fca611c7cd",
+    "dirty": true,
+    "worktreeSha256": "3df0c34ea3530b2edc13d60aa48811e116d8e02f2eb99b0599dba41f1ce974d6",
+    "localMigrationSet": [
+      {
+        "file": "20261102163044_shop_catalog_discovery.sql",
+        "sha256": "63cee810abf8b5cb5894efe59312b98497cca4e354ec83833075b906b497a9b6"
+      },
+      {
+        "file": "20261102173109_purchase_intelligence.sql",
+        "sha256": "0dba11128a1b5ab4672e59006b8f48ade0971c30c99e86af1db929b651b3c1a9"
+      },
+      {
+        "file": "20261103120000_phase3_style_os.sql",
+        "sha256": "18b551b11b4ed7fff8be9db81f34f9d910e3f8b7c4f0157918b39ec4afff985c"
+      },
+      {
+        "file": "20261104120000_phase4_visual_os.sql",
+        "sha256": "970104061488ed90543b5fde45b69b824b3e9da6ee50e04caf6cc723894a8fc2"
+      },
+      {
+        "file": "20261105120000_phase5_platform.sql",
+        "sha256": "ffbd4739a46a47b9678fc2057f46af2c1a73e527d3e8f30dbd51c1854da4ce37"
+      },
+      {
+        "file": "20261106120000_phase6_growth.sql",
+        "sha256": "38ff174c679a46897d5727d22c60c5dfed4848fedc64e5c3dd020454ffd95b2d"
+      }
+    ],
+    "localEdgeFunctionSet": [
+      {
+        "name": "add-clothing-batch",
+        "entrySha256": "570935638754714a53cdeaad1914ab4763f189e27c8af569b21b3f1cf635b9f2"
+      },
+      {
+        "name": "ai-chat",
+        "entrySha256": "fdad6a628c1757460ccb7f21c5a884e742e0f9c5497dcd0d7390c58a30ad1a83"
+      },
+      {
+        "name": "ai-process",
+        "entrySha256": "cfb889f30b51209e97d84f6f086c8af712e244cee80fbff7535f47ca4aecda94"
+      },
+      {
+        "name": "analytics",
+        "entrySha256": "b150b3214d116c1ed0e42b3a949e02ba845a308b8028f62be4780a1b1d2a73e0"
+      },
+      {
+        "name": "analyze-outfit",
+        "entrySha256": "daccc1ab9091fdb615cdf109e26da27b9bfed0ce0f199323c2038009e02dec4d"
+      },
+      {
+        "name": "body-profiles",
+        "entrySha256": "c30d09b00fbc3cd5de6c0ead62114ade1f0869acf87a216b0d75f96d4f8fc4fc"
+      },
+      {
+        "name": "budget-rates",
+        "entrySha256": "d8e297384be6837765e6eba047669355e9c7632ec5474c0105fd8d873515d13a"
+      },
+      {
+        "name": "create-trip-plan",
+        "entrySha256": "72e0b71bb497fb24348610e8d568df2279548c7b44f258c31fc28d80191e1d1e"
+      },
+      {
+        "name": "delete-account",
+        "entrySha256": "d29838ec7ccca559f6c386f1dc4dc23d8462bc1bb88bc1182cc354bd32ef5c96"
+      },
+      {
+        "name": "generate-outfits",
+        "entrySha256": "0e4d1973a3ed31d68c55e254ab404462759c36f6443b532adb5d2de288b769f2"
+      },
+      {
+        "name": "mannequin-tryon",
+        "entrySha256": "3b589361a7cf352cdfe0338921cad8d33c786f8f839e6633967c0e7cc805a234"
+      },
+      {
+        "name": "redeem-promo",
+        "entrySha256": "d5941c60c366bee93a3307253a0368a2142353e6c0e188c47f035e335038bf87"
+      },
+      {
+        "name": "revenuecat-webhook",
+        "entrySha256": "b838bf4ac85161c5b2a23db2a4b0d63894135ef3c78cab68dab99a97e922bbd6"
+      },
+      {
+        "name": "save-wardrobe-items",
+        "entrySha256": "6550ca9976d1dfb35863735d9b85e9fd1a5c5d1254264cc0c8f5c4265b80afbf"
+      },
+      {
+        "name": "sync-subscription",
+        "entrySha256": "94f5f447c808c02f06faa266b866fb76fff475fd708fa2ea64dfc2669c3e0b6e"
+      },
+      {
+        "name": "try-on",
+        "entrySha256": "e0dc1baa984fc624924777cbabd8f0a35d38c00c6b52aac9ede522f462601e67"
+      },
+      {
+        "name": "weather",
+        "entrySha256": "bc09286556bc13b2f1f4e7ed92aeadcf95b09880ee59069c6bff60cf7b496341"
+      }
+    ],
+    "edgeTreeSha256": "ce59e886c23819d09fe49a9a92e7ab26d4fcdc183ab1493eb61e66ac3b2a2a10",
+    "featureFlagDefaults": {
+      "platform": {
+        "fit_dna_v2": false,
+        "buycheck_v2": false,
+        "visual_parser": false,
+        "recreate_look": false,
+        "autonomous_stylist": false,
+        "proactive_recommendations": false,
+        "price_intelligence": false,
+        "wardrobe_graph": true,
+        "daily_stylist": false,
+        "new_retrieval": false,
+        "new_ranking": false
+      },
+      "core": {
+        "wardrobe": true,
+        "outfitGeneration": true,
+        "buyCheck": true,
+        "fitFeedback": true,
+        "familyVariantUI": true
+      },
+      "serverPaidWorkControls": {
+        "globalUnsetDefault": false,
+        "disabledEndpointsUnsetDefault": [],
+        "preparedActivation": {
+          "requiresExplicitApproval": true,
+          "preparationPosture": {
+            "AIWARDROBE_PAID_WORK_DISABLED": "true",
+            "AIWARDROBE_DISABLED_PAID_FEATURES": "try-on"
+          },
+          "coveredMeteredEdgeEntries": [
+            "ai-chat",
+            "ai-process",
+            "analyze-outfit",
+            "create-trip-plan",
+            "generate-outfits",
+            "try-on"
+          ],
+          "hostedValues": "UNVERIFIED; not changed"
+        },
+        "hostedValues": "UNVERIFIED; not changed"
+      },
+      "remoteKillSwitchDrill": "MANUAL REQUIRED"
+    },
+    "entitlementConfigVersion": {
+      "matrix": 1,
+      "sourceSha256": "7740a0e3d89afb27540b80e202b71f0bb2525941fc730e6b165958a9e642dbb1",
+      "revenuecatMappingSha256": "52b846d0296615f2f868afc4f5d2c0ae2ddf6e0ead6f2b5966339c5375c762dc",
+      "hostedConfig": "UNVERIFIED"
+    },
+    "promptSchemaVersions": {
+      "styleEvidence": 1,
+      "visualCache": "v1",
+      "decisionEvent": 1,
+      "betaFeedback": 1,
+      "promptBundleSha256": "0e4d1973a3ed31d68c55e254ab404462759c36f6443b532adb5d2de288b769f2"
+    },
+    "knownLimitations": [
+      "docs/KNOWN_LIMITATIONS.md",
+      "docs/launch/KNOWN_LIMITATIONS.md"
+    ],
+    "blockers": [
+      {
+        "id": "RC-001",
+        "area": "devices/billing",
+        "severity": "BLOCKER",
+        "reproducible": "validation gap",
+        "affectedFlow": "Tier A startup, upgrade, offline and purchase restore",
+        "userImpact": "Cannot exclude startup, data retention or entitlement failures on supported devices",
+        "workaround": "developer-only local testing",
+        "owner": "release owner + mobile QA (names unassigned)",
+        "fixStatus": "open",
+        "regressionTest": "BETA_QA.md scripts Q1-Q8 on four device classes",
+        "launchDecision": "NO-GO until evidence recorded"
+      },
+      {
+        "id": "RC-002",
+        "area": "remote safety",
+        "severity": "BLOCKER",
+        "reproducible": "validation gap",
+        "affectedFlow": "migration activation, provider kill, old/new clients",
+        "userImpact": "Hosted schema drift and rollback/kill behavior unverified",
+        "workaround": "do not activate remote changes",
+        "owner": "backend/on-call (name unassigned)",
+        "fixStatus": "open",
+        "regressionTest": "local migration logs plus separately approved target compatibility and rollback drills",
+        "launchDecision": "NO-GO for remote activation"
+      },
+      {
+        "id": "RC-003",
+        "area": "credential hygiene",
+        "severity": "HIGH",
+        "reproducible": true,
+        "affectedFlow": "release artifacts",
+        "userImpact": "Historical document contained Google-key-shaped material; validity/usage unknown",
+        "workaround": "value redacted locally; do not redistribute old artifacts",
+        "owner": "credential owner (unassigned)",
+        "fixStatus": "local redaction closed; history/rotation review pending approval",
+        "regressionTest": "scripts/security/secret-scan.mjs",
+        "launchDecision": "credential owner must classify and rotate if genuine before distribution"
+      },
+      {
+        "id": "RC-004",
+        "area": "migration grants",
+        "severity": "HIGH",
+        "reproducible": true,
+        "affectedFlow": "Style/visual/platform/growth persistence and reward records",
+        "userImpact": "Implicit grants break reads on restricted defaults; broad writes allow forged reward/savings ledger entries",
+        "workaround": "no hosted application",
+        "owner": "backend",
+        "fixStatus": "closed",
+        "regressionTest": "releaseIsolation.sql and --release SQL replay",
+        "launchDecision": "local fix verified; hosted not applied"
+      },
+      {
+        "id": "RC-005",
+        "area": "analytics",
+        "severity": "HIGH",
+        "reproducible": true,
+        "affectedFlow": "beta feedback evidence",
+        "userImpact": "Edge error responses discarded analytics; in-flight events could be erased",
+        "workaround": "voluntary local feedback export",
+        "owner": "mobile",
+        "fixStatus": "closed",
+        "regressionTest": "__tests__/launch/telemetry.test.ts",
+        "launchDecision": "local fix verified"
+      },
+      {
+        "id": "RC-006",
+        "area": "regression tests",
+        "severity": "MEDIUM",
+        "reproducible": true,
+        "affectedFlow": "outfit/calendar/home/catalog regression gate",
+        "userImpact": "14 stale assertions in five suites hid current contracts",
+        "workaround": "none required after repair",
+        "owner": "mobile QA",
+        "fixStatus": "closed",
+        "regressionTest": "five triage suites; release full_regressions.log",
+        "launchDecision": "rerun full gate for current source"
+      },
+      {
+        "id": "RC-007",
+        "area": "flag enforcement",
+        "severity": "HIGH",
+        "reproducible": true,
+        "affectedFlow": "advanced features and emergency shutdown",
+        "userImpact": "Six metered Edge entries now share locally verified operator stop controls; deployed behavior and legacy/provider route coverage remain unverified. Client helper flags remain in-memory planning controls.",
+        "workaround": "no advanced beta activation; provider-level deny/limits require approved drill",
+        "owner": "backend/mobile release owner",
+        "fixStatus": "server stop prepared and verified locally; deployment/inventory/drill pending approval",
+        "regressionTest": "rateLimit.test.js, paidWorkCoverage.test.js, real-admission tryOnContract test, outfitGenerationFailure and closestWardrobeOutfits tests",
+        "launchDecision": "NO-GO until approved deployed stop/recovery and route-inventory drill; no remote control set here"
+      },
+      {
+        "id": "RC-008",
+        "area": "visual ownership",
+        "severity": "HIGH",
+        "reproducible": true,
+        "affectedFlow": "private visual/reference/try-on links",
+        "userImpact": "Original single-column foreign keys permitted linking owned rows to another owner’s private asset UUID",
+        "workaround": "no hosted application",
+        "owner": "backend",
+        "fixStatus": "closed",
+        "regressionTest": "releaseIsolation.sql cross-owner asset/evidence/reference/try-on insert denials",
+        "launchDecision": "composite owner foreign keys verified locally; hosted not applied"
+      },
+      {
+        "id": "RC-009",
+        "area": "local dependency security",
+        "severity": "HIGH",
+        "reproducible": true,
+        "affectedFlow": "Appium/XCUITest tooling",
+        "userImpact": "Nested shell-quote 1.10.0 failed command-injection regression despite 1.11.0 override",
+        "workaround": "do not run affected quoted command tooling before resolution repair",
+        "owner": "mobile tooling",
+        "fixStatus": "closed",
+        "regressionTest": "dependency-security.test.mjs; all installed copies resolve 1.11.0",
+        "launchDecision": "stale nested lock resolution removed and npm graph reconstructed; full gate rerun required"
+      },
+      {
+        "id": "RC-010",
+        "area": "beta feedback keyboard UX",
+        "severity": "HIGH",
+        "reproducible": true,
+        "affectedFlow": "native correction feedback entry/review",
+        "userImpact": "Correction fields were obscured by the iOS keyboard",
+        "workaround": "dismiss keyboard; fixed locally",
+        "owner": "mobile",
+        "fixStatus": "closed",
+        "regressionTest": "native-feedback-ui.json and feedback-keyboard-fixed.png; component Jest coverage",
+        "launchDecision": "native isolated iOS Release verified; Android and full app device QA remain required"
+      }
+    ],
+    "manualQAStatus": "PENDING — docs/launch/BETA_QA.md",
+    "remoteActivationStatus": "PENDING EXPLICIT APPROVAL; nothing activated",
+    "createdAt": "2026-11-03T15:26:28.369Z"
+  },
+  "checks": [
+    {
+      "check": "typecheck",
+      "result": "PASS",
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 11847,
+      "log": "docs/launch/evidence/typecheck.log"
+    },
+    {
+      "check": "lint",
+      "result": "PASS",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 5645,
+      "log": "docs/launch/evidence/lint.log"
+    },
+    {
+      "check": "edge_typecheck",
+      "result": "PASS",
+      "command": [
+        "/Users/v.zahid/.deno/bin/deno",
+        "check",
+        "--no-config",
+        "--node-modules-dir=none",
+        "--lock=backend/supabase/functions/deno.lock",
+        "--frozen",
+        "backend/supabase/functions/add-clothing-batch/index.ts",
+        "backend/supabase/functions/ai-chat/index.ts",
+        "backend/supabase/functions/ai-process/index.ts",
+        "backend/supabase/functions/analytics/index.ts",
+        "backend/supabase/functions/analyze-outfit/index.ts",
+        "backend/supabase/functions/body-profiles/index.ts",
+        "backend/supabase/functions/budget-rates/index.ts",
+        "backend/supabase/functions/create-trip-plan/index.ts",
+        "backend/supabase/functions/delete-account/index.ts",
+        "backend/supabase/functions/generate-outfits/index.ts",
+        "backend/supabase/functions/mannequin-tryon/index.ts",
+        "backend/supabase/functions/redeem-promo/index.ts",
+        "backend/supabase/functions/revenuecat-webhook/index.ts",
+        "backend/supabase/functions/save-wardrobe-items/index.ts",
+        "backend/supabase/functions/sync-subscription/index.ts",
+        "backend/supabase/functions/try-on/index.ts",
+        "backend/supabase/functions/weather/index.ts"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 125,
+      "log": "docs/launch/evidence/edge_typecheck.log"
+    },
+    {
+      "check": "ios_bundle",
+      "result": "PASS",
+      "command": [
+        "node",
+        "node_modules/expo/bin/cli",
+        "export",
+        "--platform",
+        "ios",
+        "--output-dir",
+        "/tmp/aiwardrobe-rc-ios-export",
+        "--max-workers",
+        "2"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 10249,
+      "log": "docs/launch/evidence/ios_bundle.log"
+    },
+    {
+      "check": "android_bundle",
+      "result": "PASS",
+      "command": [
+        "node",
+        "node_modules/expo/bin/cli",
+        "export",
+        "--platform",
+        "android",
+        "--output-dir",
+        "/tmp/aiwardrobe-rc-android-export",
+        "--max-workers",
+        "2"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 9783,
+      "log": "docs/launch/evidence/android_bundle.log"
+    },
+    {
+      "check": "critical_tests",
+      "result": "PASS",
+      "command": [
+        "node",
+        "node_modules/jest/bin/jest.js",
+        "__tests__/launch",
+        "__tests__/growth",
+        "__tests__/platform",
+        "__tests__/purchase",
+        "__tests__/components/betaFeedback.test.tsx",
+        "__tests__/backend/rateLimit.test.js",
+        "__tests__/backend/paidWorkCoverage.test.js",
+        "__tests__/backend/tryOnContract.test.js",
+        "__tests__/services/outfitGenerationFailure.test.ts",
+        "__tests__/features/closestWardrobeOutfits.test.ts",
+        "--runInBand",
+        "--silent"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 7324,
+      "log": "docs/launch/evidence/critical_tests.log"
+    },
+    {
+      "check": "full_regressions",
+      "result": "PASS",
+      "command": [
+        "node",
+        "node_modules/jest/bin/jest.js",
+        "--runInBand",
+        "--silent"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 102191,
+      "log": "docs/launch/evidence/full_regressions.log"
+    },
+    {
+      "check": "migration_tests",
+      "result": "PASS",
+      "command": [
+        "node",
+        "scripts/validation/catalog-discovery-local.mjs",
+        "--release"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 2322,
+      "log": "docs/launch/evidence/migration_tests.log"
+    },
+    {
+      "check": "security_checks",
+      "result": "PASS",
+      "command": [
+        "node",
+        "--test",
+        "scripts/validation/dependency-security.test.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 1264,
+      "log": "docs/launch/evidence/security_checks.log"
+    },
+    {
+      "check": "secrets_scan",
+      "result": "PASS",
+      "command": [
+        "node",
+        "scripts/security/secret-scan.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 757,
+      "log": "docs/launch/evidence/secrets_scan.log"
+    },
+    {
+      "check": "feature_flags_localization",
+      "result": "PASS",
+      "command": [
+        "node",
+        "scripts/launch/static-checks.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 26,
+      "log": "docs/launch/evidence/feature_flags_localization.log"
+    },
+    {
+      "check": "compatibility_contracts",
+      "result": "PASS",
+      "command": [
+        "node",
+        "node_modules/jest/bin/jest.js",
+        "__tests__/services/catalogDiscovery.test.ts",
+        "__tests__/services/catalogRepository.test.ts",
+        "__tests__/launch/launch.test.ts",
+        "__tests__/services/iapService.test.ts",
+        "--runInBand",
+        "--silent"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 2507,
+      "log": "docs/launch/evidence/compatibility_contracts.log"
+    },
+    {
+      "check": "accessibility_feedback",
+      "result": "PASS",
+      "command": [
+        "node",
+        "node_modules/jest/bin/jest.js",
+        "__tests__/components/betaFeedback.test.tsx",
+        "--runInBand",
+        "--silent"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 1781,
+      "log": "docs/launch/evidence/accessibility_feedback.log"
+    },
+    {
+      "check": "beta_review_tools",
+      "result": "PASS",
+      "command": [
+        "node",
+        "--test",
+        "scripts/launch/beta-review.test.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedMs": 64,
+      "log": "docs/launch/evidence/beta_review_tools.log"
+    },
+    {
+      "check": "accessibility_device",
+      "result": "MANUAL REQUIRED",
+      "detail": "VoiceOver/TalkBack, text scaling, screen-reader result order and contrast on four required devices pending"
+    },
+    {
+      "check": "compatibility_installed_binaries",
+      "result": "MANUAL REQUIRED",
+      "detail": "A/B/C/D backend + installed old/new client matrix not proven by contract tests"
+    },
+    {
+      "check": "migration_hosted_baseline",
+      "result": "MANUAL REQUIRED",
+      "detail": "Pending set tested against bounded fixtures, not hosted schema. Approve schema comparison/backup rehearsal separately."
+    },
+    {
+      "check": "device_qa_performance",
+      "result": "MANUAL REQUIRED",
+      "detail": "Four required devices, native image imports/scroll/memory/background, signed release build and sandbox billing pending"
+    },
+    {
+      "check": "remote_activation",
+      "result": "MANUAL REQUIRED",
+      "detail": "Ordered packet: docs/launch/REMOTE_ACTIVATION.md; all remote mutations require explicit approval"
+    },
+    {
+      "check": "secret_history_rotation",
+      "result": "MANUAL REQUIRED",
+      "detail": "Current text worktree scanned. History/bundles and rotation of historical credential require review; see blockers."
+    },
+    {
+      "check": "source_unchanged_during_check",
+      "result": "PASS",
+      "detail": "Worktree fingerprint excludes generated evidence only"
+    }
+  ],
+  "remoteActivation": "PENDING EXPLICIT APPROVAL"
+}

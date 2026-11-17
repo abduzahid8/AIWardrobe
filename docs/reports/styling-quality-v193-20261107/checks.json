@@ -1,0 +1,76 @@
+{
+  "baselineCommit": "52a97e3f35957e8492c6d1200bc0dc1375b31388",
+  "baselineMandatory": {
+    "suites": 13,
+    "passed": 176,
+    "failed": 15,
+    "failure": "retired summary-copy expectation in adversarial tests"
+  },
+  "testFirst": {
+    "passed": 14,
+    "failed": 6,
+    "total": 20
+  },
+  "mandatory": {
+    "suites": 15,
+    "passed": 217,
+    "failed": 0,
+    "durationSeconds": 88.723
+  },
+  "extended": {
+    "suites": 21,
+    "passed": 468,
+    "failed": 6,
+    "allFailuresReproducedOnBaseline": true,
+    "baselineFailedChecks": [
+      "multi-card shortlist expected 3 received 9",
+      "snow/Work generic boots expected 200 received 503",
+      "partial 1-card deck expected 200 received 422",
+      "anchored discovery expected 200 received 422",
+      "Moner comfort sole geox-u44q6d00043c6009 with dress trousers expected true received false",
+      "Moner comfort sole geox-u56q6a00022c6372 with dress trousers expected true received false"
+    ],
+    "durationSeconds": 313.881
+  },
+  "typecheck": {
+    "full": "failed with 1059 archived bundle diagnostics",
+    "baselineDiagnosticsIdentical": true,
+    "appWithoutArchivedDocs": "passed"
+  },
+  "deno": "passed",
+  "targetedLint": {
+    "errors": 0,
+    "existingWarnings": 5
+  },
+  "cpu": {
+    "cases": 14,
+    "allPassed": true,
+    "limitMs": 500
+  },
+  "visualQa": "named evidence fixtures only; no simulator or image validation",
+  "commands": {
+    "mandatory": "npx jest --runInBand --runTestsByPath __tests__/backend/curatedSelectionQuality.test.js __tests__/backend/qualityFloorHosted.test.js __tests__/backend/stylingV193Hosted.test.js __tests__/services/humanQaStyling.test.ts __tests__/services/outfitSelectionQuality.test.ts __tests__/services/outfitDeckRepetitionRegression.test.ts __tests__/services/shoeRotation.test.ts __tests__/services/outfitRotation.test.ts __tests__/services/outfitQuality.test.ts __tests__/services/fourSlotRequirement.test.ts __tests__/services/outfitDiversityInvariant.test.ts __tests__/services/outfitStructure.test.ts __tests__/services/stylistAgentAdversarial.test.ts __tests__/services/stylistStrictQuality.test.ts __tests__/services/stylingV193.test.ts",
+    "extended": "npx jest --runInBand --runTestsByPath __tests__/services/stylingV193.test.ts __tests__/services/finalConstructionQuality.test.ts __tests__/services/outfitQualityFloor.test.ts __tests__/services/stylingQualityRefinement.test.ts __tests__/services/validatedQuartets.test.ts __tests__/services/layerCompatibility.test.ts __tests__/services/outfitCoherence.test.ts __tests__/services/stylingContext.test.ts __tests__/services/outfitChoices.test.ts __tests__/services/stylistCanonicalRequest.test.ts __tests__/services/personalStylist20.test.ts __tests__/services/suggestionEngine.test.ts __tests__/backend/outfitBudgetWire.test.js __tests__/backend/outfitBudgetText.test.ts __tests__/backend/outfitBudgetSelection.test.js __tests__/backend/budgetFx.test.js __tests__/backend/budgetRatesWire.test.js __tests__/backend/analyzeOutfitOwnership.test.js __tests__/backend/fourSlotHosted.test.js __tests__/backend/outfitGenerationRequest.test.js __tests__/backend/generationCandidatePool.test.js",
+    "appTypes": "npx tsc --noEmit -p /tmp/aiwardrobe-v193-tsconfig.json (extends project tsconfig; excludes backend/docs/node_modules/open-design/test, includes all other TS/TSX; explicit @types root)",
+    "deno": "/Users/v.zahid/.deno/bin/deno check --no-config --node-modules-dir=none --lock=backend/supabase/functions/deno.lock --frozen backend/supabase/functions/generate-outfits/index.ts"
+  },
+  "appTypecheckConfig": {
+    "extends": "/Users/v.zahid/AIWardrobe-styling-v193/tsconfig.json",
+    "include": [
+      "/Users/v.zahid/AIWardrobe-styling-v193/**/*.ts",
+      "/Users/v.zahid/AIWardrobe-styling-v193/**/*.tsx"
+    ],
+    "exclude": [
+      "/Users/v.zahid/AIWardrobe-styling-v193/node_modules",
+      "/Users/v.zahid/AIWardrobe-styling-v193/backend",
+      "/Users/v.zahid/AIWardrobe-styling-v193/docs",
+      "/Users/v.zahid/AIWardrobe-styling-v193/open-design",
+      "/Users/v.zahid/AIWardrobe-styling-v193/test"
+    ],
+    "compilerOptions": {
+      "typeRoots": [
+        "/Users/v.zahid/AIWardrobe-styling-v193/node_modules/@types"
+      ]
+    }
+  }
+}

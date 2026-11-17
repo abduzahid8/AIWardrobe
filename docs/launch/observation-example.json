@@ -1,0 +1,6 @@
+[
+  {"schemaVersion":1,"id":"synthetic-exposure","kind":"observation","feature":"visual","event":"feature_exposed","usageInstrumented":true},
+  {"schemaVersion":1,"id":"synthetic-use","kind":"observation","feature":"visual","event":"feature_used"},
+  {"schemaVersion":1,"id":"synthetic-timing","kind":"observation","feature":"buycheck","event":"timing","latencyMs":25,"measurementSource":"host","device":"Node example only","buildType":"host-test","boundary":"client_overhead"},
+  {"schemaVersion":1,"id":"synthetic-outcome","kind":"observation","feature":"outfit","event":"outcome","outcome":"outfit_saved"}
+]

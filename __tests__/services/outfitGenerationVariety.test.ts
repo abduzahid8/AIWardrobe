@@ -28,6 +28,7 @@ function makeItem(
     return {
         id: `w${idCounter}`,
         userId: 'user-1',
+        name,
         imageUrl: `https://example.com/${name.replace(/\s+/g, '-')}.jpg`,
         category: slot as any,
         subCategory,
@@ -144,7 +145,7 @@ describe('buildLocalOutfits variety (10-item wardrobe)', () => {
         expect(outfits).toEqual([]);
     });
 
-    it.each(['casual', 'minimalist', 'old_money', 'streetwear'])(
+    it.each(['casual', 'minimalist', 'streetwear'])(
         'style %s with 10 items: yields 3 complete looks',
         (style) => {
             const outfits = buildLocalOutfits(
@@ -154,6 +155,12 @@ describe('buildLocalOutfits variety (10-item wardrobe)', () => {
             expect(outfits.length).toBe(3);
         },
     );
+
+    it('does not invent three Old Money looks from a mostly casual wardrobe',()=>{
+        const outfits=buildLocalOutfits(tenItemWardrobe(),baseParams({stylePreferences:'old_money'}));
+        expect(outfits.length).toBeLessThan(3);
+        for(const outfit of outfits)expect(require('../../src/domain/occasionRules').passesStyleJudge(outfit.items,'old_money','Everyday')).toBe(true);
+    });
 
     it('business_casual never fills a shop-only deck with owned wardrobe pieces', () => {
         expect(buildLocalOutfits(tenItemWardrobe(), baseParams({
@@ -215,3 +222,5 @@ describe('buildLocalOutfits variety (10-item wardrobe)', () => {
         expect(outfits.length).toBe(3);
     });
 });
+
+it('a supplied replay seed reproduces selected garment IDs without freezing ordinary generation',()=>{const pool=tenItemWardrobe();const request=baseParams({replaySeed:'quality-debug-7'});const ids=()=>buildLocalOutfits(pool,request).map(o=>o.items.map(i=>i.id));expect(ids()).toEqual(ids());});

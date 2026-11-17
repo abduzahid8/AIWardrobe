@@ -1,3 +1,4 @@
+import { sanitizeAnalyticsProperties } from "../_shared/analyticsPayload.ts"
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -60,14 +61,17 @@ serve(async (req) => {
     }
 
     for (const event of events) {
-        if (!event || typeof event.name !== 'string') continue
+        if (!event || typeof event.name !== 'string' || !/^[a-z][a-z0-9_]{0,63}$/.test(event.name)) continue
+        const safeId = (value: unknown) => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,160}$/.test(value) ? value : undefined
         console.log(JSON.stringify({
             type: 'analytics',
             name: event.name.slice(0, 120),
             userId,
-            sessionId: body.sessionId || event.sessionId,
-            timestamp: event.timestamp,
-            properties: event.properties || {},
+            sessionId: safeId(body.sessionId || event.sessionId),
+            eventId: safeId(event.eventId),
+            schemaVersion: 1,
+            timestamp: typeof event.timestamp === 'string' && Number.isFinite(Date.parse(event.timestamp)) ? new Date(event.timestamp).toISOString() : undefined,
+            properties: sanitizeAnalyticsProperties(event.properties),
         }))
     }
 

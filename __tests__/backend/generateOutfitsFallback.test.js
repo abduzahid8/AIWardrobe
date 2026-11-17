@@ -4,11 +4,10 @@ const root = process.env.NVIDIA_REQUEST_SOURCE_ROOT || path.resolve(__dirname, '
 
 // The shared helpers the edge function imports.
 const shared = {};
-for (const file of ['_shared/occasionRules.ts', '_shared/outfitStructure.ts', '_shared/outfitDiversity.ts']) {
-    new Function('exports', ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
-        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-    }).outputText)(shared);
+for (const file of ['../../../src/domain/occasionRules.ts', '../../../src/domain/outfitStructure.ts', '../../../src/domain/outfitDiversity.ts']) {
+    Object.assign(shared, require(path.join(root,file)));
 }
+shared.styleInference = require('../../src/domain/styleInference');
 const strip = source => source.replace(/^import .*\n/gm, '').replace(/\bexport\s+/g, '');
 const source = ['_shared/modelOutfitResponse.ts', 'generate-outfits/index.ts']
     .map(file => strip(fs.readFileSync(path.join(root, file), 'utf8')))
@@ -19,7 +18,7 @@ const compiled = ts.transpileModule(source, {
 const api = new Function(
     'serve', 'createClient', 'Deno',
     ...Object.keys(shared),
-    compiled + '\nreturn { filterValidOutfits, localFallback, isShopOnlyDeck };',
+    compiled + '\nreturn { filterValidOutfits, isShopOnlyDeck };',
 )(() => {}, () => {}, { env: { get: () => undefined } }, ...Object.values(shared));
 
 const item = (id, macroCategory, name, extra = {}) => ({
@@ -35,14 +34,6 @@ const item = (id, macroCategory, name, extra = {}) => ({
 
 const look = (id, items) => ({ description: `${id} description`, items: items.map(entry => ({ id: entry.id })) });
 
-/** A pool with one garment per slot: the thin inventory. */
-const thinPool = () => [
-    item('thin_o', 'outerwear', 'Navy wool blazer'),
-    item('thin_t', 'top', 'White oxford shirt'),
-    item('thin_b', 'bottom', 'Grey tailored trousers'),
-    item('thin_s', 'shoes', 'Brown penny loafers'),
-];
-
 /** A pool with several garments per slot. */
 const richPool = () => {
     const pool = [];
@@ -55,6 +46,22 @@ const richPool = () => {
 };
 
 const itemMapOf = items => new Map(items.map(entry => [String(entry.id), entry]));
+
+// Real handler with the shared offline transport fixtures.
+const wireHarness = fs
+    .readFileSync(path.join(__dirname, 'outfitBudgetWire.test.js'), 'utf8')
+    .split('const owned=')[0];
+const loadWire = new Function('require', '__dirname', 'jest', wireHarness + '\nreturn load;')(
+    require,
+    __dirname,
+    jest
+);
+const owned = [
+    ['wardrobe-shirt', 'top', 'White cotton shirt'],
+    ['wardrobe-pants', 'bottom', 'Navy tailored cotton trousers'],
+    ['wardrobe-shoes', 'shoes', 'Brown leather dress loafers'],
+    ['wardrobe-layer', 'outerwear', 'Beige linen blazer'],
+].map(([id, macroCategory, name]) => ({ id, macroCategory, name, type: macroCategory, color: 'neutral', isWardrobe: true, imageUrl: `https://example.invalid/${id}.jpg`, currency: 'USD' }));
 
 describe('the edge validates every look independently', () => {
     test('a look that shares a product with an earlier look is still kept', () => {
@@ -85,37 +92,9 @@ describe('the edge validates every look independently', () => {
     });
 });
 
-describe('the deterministic fallback builds candidates, it does not judge the deck', () => {
-    test('it never repeats an exact look', async () => {
-        const pool = thinPool();
-        const candidates = await api.localFallback(pool, 'semi_classic', 'Work', 3, true);
-        const signatures = candidates.map(entry => entry.items.map(item => String(item.id)).sort().join('|'));
-        expect(new Set(signatures).size).toBe(signatures.length);
-    });
-
-    test('it does not enforce cross-look product uniqueness (the global selector owns that rule)', async () => {
-        // Two layers and two tops, but only ONE bottom and ONE pair of shoes:
-        // the rotation can only produce looks that share those two products.
-        // The fallback offers them anyway — whether the deck may repeat them
-        // is the global selector's decision, not the fallback's.
-        const pool = [
-            item('o_0', 'outerwear', 'Navy wool blazer'),
-            item('o_1', 'outerwear', 'Charcoal wool blazer'),
-            item('t_0', 'top', 'White oxford shirt'),
-            item('t_1', 'top', 'Blue poplin shirt'),
-            item('b_0', 'bottom', 'Grey tailored trousers'),
-            item('s_0', 'shoes', 'Brown penny loafers'),
-        ];
-        const candidates = await api.localFallback(pool, 'semi_classic', 'Work', 3, true);
-        expect(candidates.length).toBeGreaterThan(1);
-        const bottomIds = candidates.map(entry => (entry.items || []).filter(item => item.macroCategory === 'bottom').map(item => String(item.id)).join('|'));
-        expect(new Set(bottomIds).size).toBeLessThan(bottomIds.length);
-    });
-
-    test('it returns no candidates for a non-positive limit', async () => {
-        expect(await api.localFallback(thinPool(), 'semi_classic', 'Work', 0, true)).toEqual([]);
-    });
-});
+// The pre-refactor deterministic `localFallback` helper was replaced by the
+// bounded graph planner (`createOutfitPlan`), which is covered directly by
+// __tests__/services/validatedQuartets.test.ts.
 
 describe('provider routing', () => {
     const edgeSource = fs.readFileSync(path.join(root, 'generate-outfits/index.ts'), 'utf8');
@@ -131,13 +110,34 @@ describe('provider routing', () => {
         expect(edgeSource).toMatch(/PROVIDER_ROUTING/);
     });
 
-    test('the retry budget counts logical provider calls, not HTTP attempts', () => {
-        expect(edgeSource).toMatch(/providerCalls/);
-        expect(edgeSource).not.toMatch(/nvidiaAttempts/);
+    test('the edge makes one bounded NVIDIA ranking call and owns no second provider', () => {
+        expect(edgeSource.match(/rankNvidiaLooks\(/g)).toHaveLength(1);
+        expect(edgeSource).toMatch(/providerTrace\.push\(ranking\.attempt\)/);
+        expect(edgeSource).not.toMatch(/nvidiaAttempts|callGemini/);
     });
 
-    test('a provider failure falls through to the deterministic fallback', () => {
-        expect(edgeSource).toMatch(/PROVIDER_GENERATION_FAILED/);
-        expect(edgeSource).toMatch(/DETERMINISTIC_FALLBACK_USED/);
+    test('a provider failure falls through to the deterministic fallback', async () => {
+        const { handler, fetchMock } = loadWire();
+        fetchMock.mockRejectedValue(new Error('provider outage'));
+        const response = await handler(
+            new Request('https://example.invalid', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer fixture-user' },
+                body: JSON.stringify({
+                    prompt: 'Create one casual outfit.',
+                    stylePreferences: 'casual',
+                    occasion: 'Everyday',
+                    weather: { temp: 20 },
+                    limit: 1,
+                    wardrobeItems: owned,
+                    useProvidedWardrobeOnly: true,
+                }),
+            })
+        );
+        expect(response.status).toBe(200);
+        const data = await response.json();
+        // The feasible planner seed survives a failed rank call.
+        expect(data.outfits.length).toBeGreaterThan(0);
+        expect(data.outfits[0].selectionSource).toBe('deterministic_fallback');
     });
 });

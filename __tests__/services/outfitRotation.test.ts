@@ -20,6 +20,21 @@ it('keeps a locked anchor even when history contains it',()=>{
  const rows=Array.from({length:5},(_,i)=>product(`p${i}`));const seen=new Set(productIdentityKeys(rows[0]));
  expect(rotationPool(rows,seen,3,new Set(['p0'])).items).toContain(rows[0]);
 });
+it('exposes recent products pruned from fresh-rich slots, but not recycled scarce ones',()=>{
+ const shoes=[product('s0'),product('s1'),product('s2'),product('s3')];
+ const tops=Array.from({length:5},(_,i)=>product(`t${i}`,'top'));
+ const seen=new Set([
+  ...productIdentityKeys(shoes[0]),...productIdentityKeys(shoes[1]),...productIdentityKeys(tops[0]),
+ ]);
+ const pool=rotationPool([...shoes,...tops],seen,3);
+ // Tops still have four fresh products, so t0 is pruned but retained for a
+ // later feasibility retry. Shoes have only two fresh products, so they are
+ // recycled instead and must not be reported as pruned.
+ expect(pool.recycledSlots).toEqual(['shoes']);
+ expect(pool.pruned.map(i=>i.id)).toEqual(['t0']);
+ expect(pool.items.map(i=>i.id)).not.toContain('t0');
+ expect(pool.items.map(i=>i.id)).toContain('s0');
+});
 
 it('prefers fresh, then older, then previous; chooses the oldest last-use when forced',()=>{
  const {rotationDeckPriority}=require('../../backend/supabase/functions/_shared/outfitRotation');

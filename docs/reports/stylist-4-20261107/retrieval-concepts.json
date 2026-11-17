@@ -1,0 +1,13 @@
+{
+  "measuredAt": "2026-11-07T19:02:41.216Z",
+  "mode": "concepts",
+  "wallMs": 7366,
+  "rows": 290,
+  "slots": {
+    "top": 91,
+    "outerwear": 69,
+    "bottom": 82,
+    "shoes": 48
+  },
+  "providerCalls": 0
+}

@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "entitlement": [
+    {
+      "tier": "free",
+      "expiry_date": null,
+      "trial_started_at": "2026-11-05T16:31:41.903977+00:00"
+    }
+  ]
+}

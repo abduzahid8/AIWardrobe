@@ -1,5 +1,7 @@
 package com.aiwardrobe
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 
@@ -16,7 +18,26 @@ class MainActivity : ReactActivity() {
     // coloring the background, status bar, and navigation bar.
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
+    intent = purchaseShareIntent(intent)
     super.onCreate(null)
+  }
+
+  // Convert bounded ACTION_SEND text into the existing deep-link pathway.
+  // No logging, merchant fetch, image import or background notification.
+  private fun purchaseShareIntent(original: Intent): Intent {
+    if (original.action != Intent.ACTION_SEND || original.type != "text/plain") return original
+    val text = original.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.take(4096) ?: return original
+    return Intent(original).apply {
+      action = Intent.ACTION_VIEW
+      data = Uri.Builder().scheme("com.aiwardrobe").authority("buy-check").appendQueryParameter("input", text).build()
+      removeExtra(Intent.EXTRA_TEXT)
+    }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    val received = purchaseShareIntent(intent)
+    setIntent(received)
+    super.onNewIntent(received)
   }
 
   /**

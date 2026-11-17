@@ -1,0 +1,61 @@
+name: Stylist Node compute candidate
+on:
+  push:
+    branches:
+      - codex/stylist-node-compute-20261109
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-node-compute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout pinned source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Install isolated compute dependencies
+        working-directory: backend/stylist-node
+        run: npm install --no-audit --no-fund
+      - name: Deno 2 (verify Supabase proxy independently)
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Type-check signed Supabase Edge proxy
+        run: deno check --no-config --node-modules-dir=none backend/stylist-proxy/index.ts
+      - name: Type-check isolated staging Edge proxy
+        run: deno check --no-config --node-modules-dir=none backend/stylist-proxy/staging.ts
+      - name: Bundle original production Stylist kernel for Node
+        working-directory: backend/stylist-node
+        run: npm run build
+      - name: Type-check the isolated Vercel Node entry
+        working-directory: backend/stylist-node
+        run: npx tsc --noEmit -p tsconfig.json
+      # Static validation only; do NOT run the paid smoke tool in CI.
+      - name: Syntax-check opt-in paid smoke runner (no requests)
+        working-directory: backend/stylist-node
+        run: node --check scripts/authorized-staging-smoke.mjs
+      - name: Verify signed transport AND real Node-handler admission
+        working-directory: backend/stylist-node
+        run: npm test
+      - name: Verify actual generated Node handler loads
+        working-directory: backend/stylist-node
+        run: |
+          node --input-type=module -e '
+            await import("./dist/stylist-bundle.mjs");
+            if (typeof globalThis.__AIW_STYLIST_HANDLER__ !== "function") {
+              throw new Error("Node generated handler not registered");
+            }
+            console.log("Stylist Node handler registered");
+          '
+      - name: Install mobile domain test dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify Stylist 5 fashion acceptance regressions
+        run: npx jest --runInBand __tests__/services/stylist5DateTailoring.test.ts __tests__/services/humanQaStyling.test.ts __tests__/services/stylist5.test.ts
+      - name: Ensure production files not modified by candidate
+        run: git diff --exit-code -- backend/supabase/functions/generate-outfits/index.ts

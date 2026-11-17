@@ -1,0 +1,50 @@
+# Stylist 4.0 — guarded visual and concept architecture
+
+Branch `codex/stylist-4-visual-intelligence-20261107`, based on `8282f3c7` from the specified hotfix branch. Its original esbuild bundle exactly matches deployed v197: source SHA `06fb242adc0430b48eab97c6905cdef91f3eb087ca18d79811b54525e9cf4cf4`, deployment fingerprint `354eedb16a4948cc3c7a68c0cef2a46c668fe89284f74c6a82709413277dfd71`. The dirty original worktree is untouched.
+
+## Architecture
+
+- **Visual intelligence:** pinned local SigLIP2 image embeddings, source/image hashes, versioned observations, per-field similarity confidence and margin, visible texture/color/fit/pattern/category/shoe descriptors, and optional local Apple Vision OCR geometry. Fibers, garment measurements and uncertain traits stay unknown. An inspected first pass misclassified valid knitwear images as unusable; that behavior was corrected before activation. Rejection of diagrams/advertisements requires OCR or human corroboration; tiny images use pixel evidence. Source-category contradictions are quarantined, never relabeled into shoes. Image caches and embedding vectors stay outside generation. No paid vision inference or catalog price writes.
+- **Concept construction:** request-specific identities include refined Ivy, textured tailoring, smart knit layering, precise office tailoring, classic separates, tonal evening, soft evening texture, modern evening, easy transit, soft utility and relaxed knits. Palette, silhouette, register and texture inform construction and whole-look coherence. These extend the existing unified planner; they do not create a second outfit engine.
+- **Retrieval:** one service-only, invoker RPC searches all requested slots and up to three concept role sets. It reuses the deployed indexed discovery function, source-certified footwear and FX/budget checks. At most two bounded pages; only scarce slots continue. Representatives include brand and visual facets; up to 24 internal candidates per slot, at most 256 full evaluations, and 12 complete options for ranking. Price floors, anchors, source modes and rotation survive trimming. Existing footwear fixes are preserved.
+- **Optimization:** upper-layer compatibility is computed once and reused across concepts. Complete looks retain source/budget/identity authority. A stable deck utility balances whole-look quality, semantic/concept variety and genuine provider rank, after rotation priority. Concept diversity is soft; it cannot reject an otherwise feasible deck.
+- **Ranking and feedback:** one NVIDIA JSON-mode request carries real validated looks, exact allowed IDs, concept identities and current image evidence. A dedicated strict decoder validates the complete ranking; legacy garment-output parsing is removed from this path. Safe failure details contain counts, never product IDs, prompts or response bodies. Private thumbs-up/down feedback stores only concept/request/rating fields; a capped aggregate softly influences future concept scoring. Feedback cannot change admission or budgets.
+- **App:** concept title/story above a complete look, localized English/Russian/Uzbek copy, truthful AI-ranked/fallback labels, optional feedback, and opt-in development diagnostics. Stylist 4 server looks remain immutable through client response preparation. Product shopping images are authentic; no replacement images are generated.
+
+## Confirmed production evidence
+
+`v197-traffic.json` and `traffic-latest.json` contain actual owner-triggered traffic, not synthetic inference. The configured model is `nvidia/nemotron-3.5-lightning-30b-a3b`. NVIDIA returned `ok` while the server reported `rank_contract_mismatch`; later traffic also recorded an accepted ranking. Thus the observed issue is intermittent ranking-contract failure, not a missing key, transport failure or unsupported account model. v197 did not log enough response structure to distinguish omitted, repeated or invented look IDs; the new ranker adds exactly those safe counts. The old prompt's two illustrative IDs were not tied to its shortlist; the new contract contains the actual full required set.
+
+The only observed historical 422 is v196's `catalog_retrieval` event without an error code. No v197 422 has been observed, so its exact cause remains unproven. Hard constraints have not been loosened to hide it. New errors preserve safe codes, stage and inventory gaps.
+
+Production inventory read confirmed 7,020 active products, 115 source-certified shoes and 994 unknown text subtypes. The initial 32-image local batch produced 22 current profiles with 768-dimensional embeddings; ten image downloads failed. Only these 22 catalog products have visual evidence so far; failed downloads remain unknown. See `visual-enrichment.json`. Footwear sourcing is narrow: 39 sneaker/athletic items, one formal monk, four Chelseas (two smart), and twelve shoes with unknown text subtype. These are text-index counts, not a claim of visually verified construction across all 115 shoes. Native-currency price ranges must not be compared across currencies.
+
+## Measured retrieval and local planning
+
+A read-only external comparison with the same seed, smart context and 400 returned rows measured 8,313 ms for four sequential discovery RPCs and 5,297 ms for one batch RPC (36% lower in this single pair). This includes client/network time and is not a production Edge or end-to-end generation benchmark. A separate three-concept Old Money retrieval returned 290 distinct rows in 7,366 ms; the extra SQL searches have a measurable cost. No paid inference was used for these reads.
+
+On that bounded concept-aware catalog sample, one local planner pass for each acceptance context returned three complete looks, with approximately 80–142 ms Node CPU. Classic / Work and Semi-Classic / Date night selected three different concept identities; Old Money / Work and Casual / Travel selected two. The implementation therefore does not yet demonstrate three concepts in every context. Supabase CPU, full request latency and visual quality remain unmeasured after release.
+
+## Verification and limits
+
+Run `node scripts/validation/stylist-4-check.cjs` to repeat the focused gates. See `essential-checks.json`, `critical-catalog.json`, `sql-security.txt` and release artifacts. Focused checks cover authentication, authoritative product attributes, FX/budgets, anchors, physical identity, classification, compilation, SQL invoker privileges, feedback ownership and exact rollback. Feedback request keys now accept the actual mobile time/sequence format and existing UUID callers; a focused SQL check exercises both formats and cross-owner rejection. The app typecheck excludes historical compiled source archives and includes Expo/NativeWind/Node declarations; the repository-wide default typecheck includes historical report bundles and is not a clean baseline.
+
+Local kernel CPU is not Supabase CPU. Local concept coverage is not owner visual acceptance. Three distinct concept identities have not been proven for every context, and scarce compatible layers/footwear may reduce semantic variety. No improvement in production end-to-end latency or absence of CPU 546 is claimed without post-release traffic.
+
+## Release and rollback
+
+`SUPABASE_ACCESS_TOKEN_FILE=<local token file> node scripts/validation/stylist-4-release.cjs prepare|prepare-update|migrate|migrate-feedback|deploy|verify|observe|rollback`
+
+Deployment requires exact v197 source/fingerprint, committed and pushed bundle inputs, passing essential checks for that bundle, additive migration security, unchanged critical budget/validation/rate-limit sources and intact rollback archive. The migration does not replace v197 discovery SQL. Rollback restores the exact archived v197 bundle and its auth setting; additive tables remain compatible and preserve feedback. Later deployments are protected from accidental rollback by version/fingerprint guards. `prepare-update` permits a correction only from the last recorded deployment with an exact source and fingerprint match; it retains the original v197 rollback. Concept palettes accept both cached text color families and image hue observations, preserving the existing metadata version.
+
+## Owner simulator QA
+
+Run `npm run start -- --port 8083` from `/Users/v.zahid/AIWardrobe-stylist-4` and point the Simulator development client at that Metro server. Dependencies and the ignored local environment are available in this worktree. Then check Classic / Work, Old Money / Work, Semi-Classic / Date night and Casual / Travel. Inspect all three complete looks, concept/palette/proportion differences, authentic product thumbnails, formal versus sporty construction, prices and links. Regenerate once to inspect physical-product/shoe rotation. Check an anchor, a tight explicit currency budget, both feedback buttons and the fallback label when ranking fails. App UI changes require this client build; the Edge deployment alone does not update an installed app.
+
+## Primary implementation references
+
+[NVIDIA Nemotron 3.5 JSON mode and thinking controls](https://docs.nvidia.com/nim/large-language-models/2.0.10/get-started/advanced/get-started-nemotron-3.5-lightning.html), [Google SigLIP2 model](https://huggingface.co/google/siglip2-base-patch16-224), [Supabase unified ClickHouse logs](https://supabase.com/docs/guides/observability/advanced-log-filtering).
+
+Initial rollout: v198 ACTIVE, exact pushed source verified, OPTIONS 200 and missing/invalid credentials 401. Production ranking and total authenticated request timing remain unverified pending real traffic. The palette representation correction is ACTIVE as v199, with the deployed bundle SHA matching the pushed source commit `14bdf90a704e3dfd64fc1b9683d1dd194049794f`.
+
+Feedback compatibility is applied in production. A focused live check under the existing E2E account inserted a real mobile-format request key, updated the same private rating, verified other-owner rows remained hidden, and deleted the fixture. All five checks passed; no outfit generation or inference was invoked. See `feedback-migration.json` and `feedback-live.json`.

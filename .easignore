@@ -7,6 +7,18 @@
 .env*.local
 !.env.example
 
+# Owner-only QA account, credentials, staging tokens, visual evidence, and
+# local provider diagnostics MUST NEVER enter an EAS cloud build archive.
+# EAS uses .easignore INSTEAD of .gitignore when this file is present.
+.private/
+.vercel/
+style_references_private/
+**/private_reference_vault/
+*.pem
+*.p12
+*.p8
+*.key
+
 # Dependencies (rebuilt on the build server)
 node_modules/
 

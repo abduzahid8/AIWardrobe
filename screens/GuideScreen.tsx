@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { getCachedGuideContent, loadGuideContent, type GuideContent } from '../src/services/guideContent';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CachedImage } from '../components/ui/CachedImage';
-import { Image } from '../src/components/MediaImage';
+import { Ionicons } from '@expo/vector-icons';
+// Mannequin photo is not distributable (untracked, git-ignored); the
+// fallback illustration uses a bundled vector icon so clean clones bundle.
 
 
 export default function GuideScreen() {
@@ -55,11 +57,7 @@ export default function GuideScreen() {
             <View style={styles.phoneScreen}>
               <View style={styles.mannequinContainer}>
                 {/* Placeholder for mannequin/drawing illustration */}
-                <Image
-                  source={require('../assets/images/mannequin_front.jpg')}
-                  style={styles.mannequinImage}
-                  resizeMode="contain"
-                />
+                <Ionicons name="shirt-outline" size={96} color="rgba(23,58,101,0.3)" />
                 <View style={styles.handOverlay}>
                   <ScaledText style={styles.handIcon}>✏️</ScaledText>
                 </View>

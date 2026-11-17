@@ -1,19 +1,22 @@
+import {savedQuartetReason} from './savedOutfitContract';
 import { supabase } from '../../lib/supabase';
 import { authEvents } from '../../store/authEvents';
 import { parseCalendarDate } from '../utils/calendarDate';
 import { prepareWardrobeItemMedia } from './wardrobeItemMedia';
 
 export interface SavedOutfitInput {
+  compositionProtocol?: 'optional-layer-v1';
   id: string;
-  items: Array<{ id: string; type?: string; category?: string; macroCategory?: string; image?: string; imageUrl?: string; name?: string }>;
+  items: Array<{ id: string; type?: string; category?: string; macroCategory?: string; image?: string; imageUrl?: string; name?: string ;
+  }>;
   date: string;
   occasion: string;
   caption?: string;
 }
 
 export async function saveCloudOutfit(input: SavedOutfitInput): Promise<SavedOutfitInput['items']> {
-  if (!input.items.length || !parseCalendarDate(input.date)) throw new Error('Invalid saved outfit');
-  const snapshot = { ...input, items: input.items.map(item => ({ ...item })) };
+  if (savedQuartetReason(input.items, input.compositionProtocol) || !parseCalendarDate(input.date)) throw new Error('Invalid saved outfit');
+  const snapshot = { ...input, items: input.items.map((item ) => ({ ...item })) };
   const revision = authEvents.getRevision();
   const { data, error: sessionError } = await supabase.auth.getSession();
   const owner = data.session?.user.id;
@@ -35,6 +38,9 @@ export async function saveCloudOutfit(input: SavedOutfitInput): Promise<SavedOut
   if (revision !== authEvents.getRevision()) throw new Error('Account changed during save');
   const { data: saved, error } = await supabase.from('saved_outfits').upsert({
     id: snapshot.id, user_id: owner, items, date: snapshot.date,
+      ...(snapshot.compositionProtocol
+        ? { composition_protocol: snapshot.compositionProtocol }
+        : {}),
     occasion: snapshot.occasion, caption: snapshot.caption || '', visibility: 'Everyone', is_ootd: false,
   }).select('id').single();
   if (error) throw error;
@@ -55,6 +61,7 @@ export async function removeCloudOutfit(id: string): Promise<void> {
 
 export interface CloudSavedOutfit {
   id: string;
+  composition_protocol?: 'optional-layer-v1' | null;
   date: string | null;
   occasion: string | null;
   items: unknown;
@@ -71,7 +78,7 @@ export async function listCloudOutfits(): Promise<CloudSavedOutfit[]> {
   const pageSize = 250;
   let cursor: string | undefined;
   for (;;) {
-    let query = supabase.from('saved_outfits').select('id, date, occasion, items, created_at')
+    let query = supabase.from('saved_outfits').select('id, date, occasion, items, composition_protocol, created_at')
       .eq('user_id', owner).order('id', { ascending: false });
     if (cursor) query = query.lt('id', cursor);
     const { data: rows, error } = await query.limit(pageSize);

@@ -38,7 +38,7 @@ import type {
 function makeItem(overrides: Partial<ClothingItem> & { id: string }): ClothingItem {
     return {
         userId: 'user-1',
-        imageUrl: 'https://example.com/x.jpg',
+        imageUrl: `https://example.com/${overrides.id}.jpg`,
         category: 'top',
         subCategory: 't-shirt',
         primaryColor: 'white',
@@ -59,10 +59,13 @@ function makeItem(overrides: Partial<ClothingItem> & { id: string }): ClothingIt
 /** A minimal but realistic 10-item men's wardrobe spanning all tiers. */
 function buildFixtureWardrobe(): ClothingItem[] {
     return [
+        makeItem({id:'dress-shirt-white',category:'top',subCategory:'white cotton dress shirt',primaryColor:'white',occasions:['work','formal','date']}),
+        makeItem({id:'athletic-top',category:'top',subCategory:'performance training shirt',occasions:['sport']}),
+        makeItem({id:'athletic-layer',category:'outerwear',subCategory:'lightweight performance training jacket',occasions:['sport']}),
         // Formal (tier 1)
         makeItem({
             id: 'suit-navy',
-            category: 'top',
+            category: 'outerwear',
             subCategory: 'suit blazer',
             primaryColor: 'navy',
             material: 'wool',
@@ -88,7 +91,7 @@ function buildFixtureWardrobe(): ClothingItem[] {
         // Business casual (tier 2)
         makeItem({
             id: 'blazer-grey',
-            category: 'top',
+            category: 'outerwear',
             subCategory: 'blazer',
             primaryColor: 'gray',
             material: 'wool',
@@ -151,7 +154,7 @@ function buildFixtureWardrobe(): ClothingItem[] {
         makeItem({
             id: 'joggers-black',
             category: 'bottom',
-            subCategory: 'joggers',
+            subCategory: 'performance training joggers',
             primaryColor: 'black',
             material: 'polyester',
             occasions: ['sport', 'casual'],
@@ -253,19 +256,7 @@ describe('getFormalityTier', () => {
 // ============================================================
 
 describe('generateSuggestions', () => {
-    it('returns a placeholder outfit when wardrobe is empty', () => {
-        const result = generateSuggestions({
-            items: [],
-            wearLogs: EMPTY_WEAR_LOGS,
-            occasion: 'work',
-        });
-        expect(result).toHaveLength(1);
-        expect(result[0].outfit.itemIds).toHaveLength(0);
-        expect(result[0].shoppingSuggestions.length).toBeGreaterThan(0);
-        // Work -> tier 2 preferred
-        expect(result[0].formalityTier).toBeGreaterThanOrEqual(1);
-        expect(result[0].formalityTier).toBeLessThanOrEqual(3);
-    });
+    it('returns an explicit empty result rather than an incomplete outfit for an empty wardrobe',()=>{expect(generateSuggestions({items:[],wearLogs:EMPTY_WEAR_LOGS,occasion:'work'})).toEqual([]);});
 
     it('produces outfits that each contain no duplicate categories', () => {
         const results = generateSuggestions({
@@ -332,14 +323,14 @@ describe('generateSuggestions', () => {
         }
     });
 
-    it('cold rainy weather still produces at least one outfit (no throw)', () => {
+    it('known cold rain does not permit incomplete or unprotected substitutes', () => {
         const results = generateSuggestions({
             items: buildFixtureWardrobe(),
             wearLogs: EMPTY_WEAR_LOGS,
             occasion: 'casual',
             weather: COLD_RAIN,
         });
-        expect(results.length).toBeGreaterThan(0);
+        expect(results).toEqual([]);
     });
 
     it('recently-worn items are penalised in novelty scoring', () => {

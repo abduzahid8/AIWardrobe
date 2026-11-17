@@ -1,0 +1,496 @@
+{
+  "bundleSha256": "8f4f73b7ca0e3908ed75d0bdaf5f10b54d1064c9d247e8197e71ceae478aebc7",
+  "measuredAt": "2026-11-08T13:58:38.752Z",
+  "catalog": {
+    "frozenAt": "2026-11-08T02:26:49.655Z",
+    "rows": 7020,
+    "sha256": "dc4853cdb301b55cb8828bdd9e78a778bfc2de64a5da98c93dbe27dd8cafcfa6",
+    "slots": {
+      "shoes": 115,
+      "top": 3118,
+      "bottom": 1673,
+      "outerwear": 2114
+    },
+    "photoProfiles": 22
+  },
+  "providerCalls": 0,
+  "method": "Exact v200 deterministic kernel vs candidate on the same frozen full catalog and exact old/new retrieval procedures and six inputs. Candidate adds offline evidence of those same images. No human-preference or production-latency claim.",
+  "scenarios": [
+    {
+      "style": "casual",
+      "occasion": "Travel",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 0,
+          "structure": 10,
+          "accessory": 0,
+          "style": 0,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 390,
+        "looks": 3,
+        "concepts": 1,
+        "layerTypes": [
+          "overshirt",
+          "jacket"
+        ],
+        "topTypes": [
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.3684210526315789,
+        "meanCoherence": 0.9422031250000001,
+        "photoProducts": 0,
+        "poolSize": 96,
+        "maximumUzsItem": 1899900,
+        "evaluations": 256,
+        "wallMs": 82,
+        "cpuMs": 108,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 684313,
+        "sqlExecutionMs": 202,
+        "sqlSharedHitBlocks": 24633,
+        "sqlSharedReadBlocks": 0
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 2,
+          "context": 0,
+          "structure": 9,
+          "accessory": 0,
+          "style": 3,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 386,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "cardigan",
+          "overshirt",
+          "bomber"
+        ],
+        "topTypes": [
+          "shirt",
+          "t-shirt",
+          "polo"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.7192982456140351,
+        "meanCoherence": 0.9355178571428571,
+        "photoProducts": 48,
+        "poolSize": 96,
+        "maximumUzsItem": 964388,
+        "evaluations": 256,
+        "wallMs": 91,
+        "cpuMs": 150,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 346679,
+        "sqlExecutionMs": 704,
+        "sqlSharedHitBlocks": 48274,
+        "sqlSharedReadBlocks": 0
+      }
+    },
+    {
+      "style": "semi_classic",
+      "occasion": "Work",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 12,
+          "structure": 14,
+          "accessory": 0,
+          "style": 133,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 251,
+        "looks": 3,
+        "concepts": 2,
+        "layerTypes": [
+          "blazer"
+        ],
+        "topTypes": [
+          "shirt",
+          "dress-shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.588235294117647,
+        "meanCoherence": 0.9403199404761905,
+        "photoProducts": 0,
+        "poolSize": 96,
+        "maximumUzsItem": 8283691,
+        "evaluations": 256,
+        "wallMs": 84,
+        "cpuMs": 115,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 690230,
+        "sqlExecutionMs": 209,
+        "sqlSharedHitBlocks": 24665,
+        "sqlSharedReadBlocks": 0
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 2,
+          "context": 51,
+          "structure": 9,
+          "accessory": 0,
+          "style": 56,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 333,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "blazer",
+          "cardigan"
+        ],
+        "topTypes": [
+          "dress-shirt",
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.5909090909090908,
+        "meanCoherence": 0.9252872023809524,
+        "photoProducts": 53,
+        "poolSize": 96,
+        "maximumUzsItem": 1929098,
+        "evaluations": 256,
+        "wallMs": 76,
+        "cpuMs": 107,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 353274,
+        "sqlExecutionMs": 704,
+        "sqlSharedHitBlocks": 48274,
+        "sqlSharedReadBlocks": 0
+      }
+    },
+    {
+      "style": "old_money",
+      "occasion": "Work",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 12,
+          "structure": 27,
+          "accessory": 0,
+          "style": 137,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 233,
+        "looks": 3,
+        "concepts": 2,
+        "layerTypes": [
+          "blazer"
+        ],
+        "topTypes": [
+          "dress-shirt",
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.5555555555555555,
+        "meanCoherence": 0.9438831845238095,
+        "photoProducts": 0,
+        "poolSize": 96,
+        "maximumUzsItem": 8283691,
+        "evaluations": 256,
+        "wallMs": 92,
+        "cpuMs": 120,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 691707,
+        "sqlExecutionMs": 199,
+        "sqlSharedHitBlocks": 24675,
+        "sqlSharedReadBlocks": 0
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 2,
+          "context": 50,
+          "structure": 16,
+          "accessory": 0,
+          "style": 122,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 260,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "cardigan",
+          "blazer"
+        ],
+        "topTypes": [
+          "shirt",
+          "dress-shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.6799999999999999,
+        "meanCoherence": 0.9177976190476191,
+        "photoProducts": 52,
+        "poolSize": 96,
+        "maximumUzsItem": 2411373,
+        "evaluations": 256,
+        "wallMs": 91,
+        "cpuMs": 104,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 354357,
+        "sqlExecutionMs": 795,
+        "sqlSharedHitBlocks": 48274,
+        "sqlSharedReadBlocks": 0
+      }
+    },
+    {
+      "style": "classic",
+      "occasion": "Work",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 12,
+          "structure": 26,
+          "accessory": 0,
+          "style": 105,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 267,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "blazer"
+        ],
+        "topTypes": [
+          "shirt",
+          "dress-shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.3958333333333333,
+        "meanCoherence": 0.9624196428571428,
+        "photoProducts": 0,
+        "poolSize": 96,
+        "maximumUzsItem": 53319510,
+        "evaluations": 256,
+        "wallMs": 81,
+        "cpuMs": 86,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 687927,
+        "sqlExecutionMs": 196,
+        "sqlSharedHitBlocks": 24665,
+        "sqlSharedReadBlocks": 0
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 2,
+          "context": 50,
+          "structure": 16,
+          "accessory": 0,
+          "style": 122,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 260,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "blazer",
+          "cardigan"
+        ],
+        "topTypes": [
+          "dress-shirt",
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.45833333333333337,
+        "meanCoherence": 0.9464144345238097,
+        "photoProducts": 55,
+        "poolSize": 96,
+        "maximumUzsItem": 7449363,
+        "evaluations": 256,
+        "wallMs": 84,
+        "cpuMs": 122,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 354357,
+        "sqlExecutionMs": 698,
+        "sqlSharedHitBlocks": 48274,
+        "sqlSharedReadBlocks": 0
+      }
+    },
+    {
+      "style": "semi_classic",
+      "occasion": "Date night",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 4,
+          "structure": 28,
+          "accessory": 0,
+          "style": 2,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 366,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "cardigan",
+          "blazer"
+        ],
+        "topTypes": [
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.5227272727272726,
+        "meanCoherence": 0.9493824404761906,
+        "photoProducts": 1,
+        "poolSize": 96,
+        "maximumUzsItem": 8283691,
+        "evaluations": 256,
+        "wallMs": 66,
+        "cpuMs": 96,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 692517,
+        "sqlExecutionMs": 196,
+        "sqlSharedHitBlocks": 24664,
+        "sqlSharedReadBlocks": 0
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 2,
+          "context": 4,
+          "structure": 13,
+          "accessory": 0,
+          "style": 8,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 377,
+        "looks": 3,
+        "concepts": 3,
+        "layerTypes": [
+          "blazer",
+          "overshirt",
+          "cardigan"
+        ],
+        "topTypes": [
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.4464285714285714,
+        "meanCoherence": 0.9163854166666668,
+        "photoProducts": 51,
+        "poolSize": 96,
+        "maximumUzsItem": 1929098,
+        "evaluations": 256,
+        "wallMs": 62,
+        "cpuMs": 89,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 345523,
+        "sqlExecutionMs": 724,
+        "sqlSharedHitBlocks": 48274,
+        "sqlSharedReadBlocks": 0
+      }
+    },
+    {
+      "style": "minimalist",
+      "occasion": "Everyday",
+      "before": {
+        "label": "v200",
+        "rejections": {
+          "visual": 0,
+          "context": 0,
+          "structure": 10,
+          "accessory": 0,
+          "style": 18,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 372,
+        "looks": 3,
+        "concepts": 1,
+        "layerTypes": [
+          "overshirt",
+          "cardigan"
+        ],
+        "topTypes": [
+          "shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.5625,
+        "meanCoherence": 0.9256052827380952,
+        "photoProducts": 0,
+        "poolSize": 96,
+        "maximumUzsItem": 1600000,
+        "evaluations": 256,
+        "wallMs": 48,
+        "cpuMs": 70,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 688002,
+        "sqlExecutionMs": 196,
+        "sqlSharedHitBlocks": 24642,
+        "sqlSharedReadBlocks": 0
+      },
+      "after": {
+        "label": "stylist5",
+        "rejections": {
+          "visual": 2,
+          "context": 0,
+          "structure": 13,
+          "accessory": 0,
+          "style": 14,
+          "climate": 0,
+          "intent": 0,
+          "activity": 0
+        },
+        "eligible": 371,
+        "looks": 3,
+        "concepts": 2,
+        "layerTypes": [
+          "cardigan",
+          "overshirt"
+        ],
+        "topTypes": [
+          "shirt",
+          "t-shirt"
+        ],
+        "silhouettes": 3,
+        "minimumSemanticDistance": 0.543859649122807,
+        "meanCoherence": 0.9260096726190477,
+        "photoProducts": 51,
+        "poolSize": 96,
+        "maximumUzsItem": 964388,
+        "evaluations": 256,
+        "wallMs": 44,
+        "cpuMs": 67,
+        "retrievalRows": 400,
+        "retrievalPayloadBytes": 345396,
+        "sqlExecutionMs": 720,
+        "sqlSharedHitBlocks": 48274,
+        "sqlSharedReadBlocks": 0
+      }
+    }
+  ]
+}

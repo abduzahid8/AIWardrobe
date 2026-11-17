@@ -1,0 +1,1040 @@
+[
+  {
+    "event": "request",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fg2v5-1",
+    "endpoint": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/generate-outfits",
+    "previousProducts": 12
+  },
+  {
+    "event": "response",
+    "requestId": "mw4fg2v5-1",
+    "serverVersion": "legacy-unversioned",
+    "serverRequestId": "mw4fg2v5-1"
+  },
+  {
+    "event": "displayed",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fg2v5-1",
+    "style": "classic",
+    "occasion": "work",
+    "previousDeckOverlapBySlot": {
+      "outerwear": 0,
+      "top": 0,
+      "bottom": 0,
+      "shoes": 0
+    },
+    "products": [
+      [
+        {
+          "id": "shop_allsaints-usm132sf-4938",
+          "name": "Bower Regular-Fit Check Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "reiss-h55185",
+          "name": "Tailored Fit Double Breasted Suit Blazer in Navy",
+          "slot": "outerwear"
+        },
+        {
+          "id": "md-uz-65426326",
+          "name": "Cotton blend pleated pants",
+          "slot": "bottom"
+        },
+        {
+          "id": "ecco-500164-01001",
+          "name": "Helsinki 2 Leather Derby Shoe - Black",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "shop_allsaints-usm135pf-162",
+          "name": "Dreams Long-Sleeve Polo Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "zara-uz-553306780",
+          "name": "100% Wool Suit Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "md-uz-67149011",
+          "name": "Wide-leg darted pants",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_thursday-6865670045786",
+          "name": "Lincoln | Black",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "shop_allsaints-usm134sf-10186",
+          "name": "Judd Regular-Fit Striped Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "zara-uz-565125505",
+          "name": "Check Linen/wool Suit Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "md-uz-61733853",
+          "name": "Cool wool blend darted pants",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_thursday-8086847258714",
+          "name": "Saint | Cognac",
+          "slot": "shoes"
+        }
+      ]
+    ],
+    "descriptions": [
+      {
+        "description": "Bower Regular-Fit Check Shirt, Tailored Fit Double Breasted Suit Blazer in Navy, Cotton blend pleated pants va Helsinki 2 Leather Derby Shoe - Black uyg‘unligi.",
+        "tips": "Klassik poyabzal bichimli shim siluetini to‘ldiradi. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+      },
+      {
+        "description": "Dreams Long-Sleeve Polo Shirt, 100% Wool Suit Blazer, Wide-leg darted pants va Lincoln | Black uyg‘unligi.",
+        "tips": "Klassik poyabzal bichimli shim siluetini to‘ldiradi. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+      },
+      {
+        "description": "Judd Regular-Fit Striped Shirt, Check Linen/wool Suit Blazer, Cool wool blend darted pants va Saint | Cognac uyg‘unligi.",
+        "tips": "Klassik poyabzal bichimli shim siluetini to‘ldiradi. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+      }
+    ]
+  },
+  {
+    "event": "request",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fi5c3-1",
+    "endpoint": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/generate-outfits",
+    "previousProducts": 12
+  },
+  {
+    "event": "response",
+    "requestId": "mw4fi5c3-1",
+    "serverVersion": "legacy-unversioned",
+    "serverRequestId": "mw4fi5c3-1"
+  },
+  {
+    "event": "displayed",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fi5c3-1",
+    "style": "classic",
+    "occasion": "work",
+    "previousDeckOverlapBySlot": {
+      "outerwear": 0,
+      "top": 0,
+      "bottom": 0,
+      "shoes": 0
+    },
+    "products": [
+      [
+        {
+          "id": "aurelien-15368784511306",
+          "name": "Sea Green Linen Seaside Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "armani_exchange-xm003526_af28320_ub101",
+          "name": "Regular fit blazer stretch viscose blend",
+          "slot": "outerwear"
+        },
+        {
+          "id": "md-uz-65944897",
+          "name": "Wool-blend flannel pants total look",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u65hyb00046c6009",
+          "name": "Spherica Ec16 Leather Dress Loafers - Coffee",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "shop_armani_exchange-xm002265_af24533_u0009",
+          "name": "Classic Casual Cotton Poplin Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "zara-uz-574423510",
+          "name": "100% Wool Regular Fit Suit Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "md-uz-63985009",
+          "name": "100% wool suit pants",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u66cjc00047c6009",
+          "name": "Spherica Ec1 B Leather Dress Loafers - Coffee",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "loro-piana-frm1681_f8ka",
+          "name": "Alexey Shirt Cloud Silk Cotton Stripe",
+          "slot": "top"
+        },
+        {
+          "id": "aurelien-15501547143498",
+          "name": "Ecru Technical Leisure Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-579824936",
+          "name": "Manteco® 100% Wool Pleated Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "ecco-523364-01001",
+          "name": "Metropole Milan Leather Derby Shoe - Black",
+          "slot": "shoes"
+        }
+      ]
+    ],
+    "descriptions": [
+      {
+        "description": "Sea Green Linen Seaside Shirt, Regular fit blazer stretch viscose blend, Wool-blend flannel pants total look va Spherica Ec16 Leather Dress Loafers - Coffee uyg‘unligi.",
+        "tips": "Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      },
+      {
+        "description": "Classic Casual Cotton Poplin Shirt, 100% Wool Regular Fit Suit Blazer, 100% wool suit pants va Spherica Ec1 B Leather Dress Loafers - Coffee uyg‘unligi.",
+        "tips": "Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      },
+      {
+        "description": "Alexey Shirt Cloud Silk Cotton Stripe, Ecru Technical Leisure Blazer, Manteco® 100% Wool Pleated Trousers va Metropole Milan Leather Derby Shoe - Black uyg‘unligi.",
+        "tips": "Klassik poyabzal bichimli shim siluetini to‘ldiradi. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+      }
+    ]
+  },
+  {
+    "event": "request",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fjqn5-2",
+    "endpoint": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/generate-outfits",
+    "previousProducts": 12
+  },
+  {
+    "event": "response",
+    "requestId": "mw4fjqn5-2",
+    "serverVersion": "legacy-unversioned",
+    "serverRequestId": "mw4fjqn5-2"
+  },
+  {
+    "event": "displayed",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fjqn5-2",
+    "style": "classic",
+    "occasion": "casual",
+    "previousDeckOverlapBySlot": {
+      "outerwear": 0,
+      "top": 0,
+      "bottom": 0,
+      "shoes": 0
+    },
+    "products": [
+      [
+        {
+          "id": "aurelien-15368784445770",
+          "name": "Shortsleeve Buttonless Polo Sea Green",
+          "slot": "top"
+        },
+        {
+          "id": "loro-piana-frm1839_h687",
+          "name": "Traveller Field Jacket Windbelt Stretch Storm",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-545470288",
+          "name": "Comfort Textured Chino Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "zara-uz-549311970",
+          "name": "Leather Combination Trainers",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "shop_arket-1318266001",
+          "name": "Relaxed Pinpoint Shirt - Blue Check",
+          "slot": "top"
+        },
+        {
+          "id": "aurelien-8413692133706",
+          "name": "Steel Blue Reversible Voyager Jacket",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-545461547",
+          "name": "Straight-leg Pleated Chinos",
+          "slot": "bottom"
+        },
+        {
+          "id": "zara-uz-545422196",
+          "name": "Leather Trainers",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "aurelien-15489794310474",
+          "name": "Coral Linen Seaside Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "aurelien-15200380191050",
+          "name": "Taupe Urban Knit Jacket",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-545485614",
+          "name": "Skinny Fit Chinos",
+          "slot": "bottom"
+        },
+        {
+          "id": "shop_geox-u657kb00039c6001",
+          "name": "Walk Pleasure B Lace-Up Dress Shoes - Cognac",
+          "slot": "shoes"
+        }
+      ]
+    ],
+    "descriptions": [
+      {
+        "description": "Shortsleeve Buttonless Polo Sea Green, Traveller Field Jacket Windbelt Stretch Storm, Comfort Textured Chino Trousers va Leather Combination Trainers uyg‘unligi.",
+        "tips": "Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+      },
+      {
+        "description": "Relaxed Pinpoint Shirt - Blue Check, Steel Blue Reversible Voyager Jacket, Straight-leg Pleated Chinos va Leather Trainers uyg‘unligi.",
+        "tips": "Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+      },
+      {
+        "description": "Coral Linen Seaside Shirt, Taupe Urban Knit Jacket, Skinny Fit Chinos va Walk Pleasure B Lace-Up Dress Shoes - Cognac uyg‘unligi.",
+        "tips": "Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+      }
+    ]
+  },
+  {
+    "event": "request",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fl1wy-3",
+    "endpoint": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/generate-outfits",
+    "previousProducts": 12
+  },
+  {
+    "event": "response",
+    "requestId": "mw4fl1wy-3",
+    "serverVersion": "legacy-unversioned",
+    "serverRequestId": "mw4fl1wy-3"
+  },
+  {
+    "event": "displayed",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fl1wy-3",
+    "style": "classic",
+    "occasion": "travel",
+    "previousDeckOverlapBySlot": {
+      "outerwear": 0,
+      "top": 0,
+      "bottom": 0,
+      "shoes": 0
+    },
+    "products": [
+      [
+        {
+          "id": "aurelien-15489794670922",
+          "name": "Ivory Linen Seaside Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "aurelien-8413695934794",
+          "name": "Ecru Reversible Resort Jacket",
+          "slot": "outerwear"
+        },
+        {
+          "id": "canali-pac00052034",
+          "name": "White cotton and cashmere gabardine regular-fit chinos",
+          "slot": "bottom"
+        },
+        {
+          "id": "zara-uz-550775793",
+          "name": "Retro Leather Detail Trainers",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "aurelien-15489794703690",
+          "name": "Sea Green Linen Polo Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "aurelien-10106347356490",
+          "name": "Navy Magnetic Field Jacket",
+          "slot": "outerwear"
+        },
+        {
+          "id": "c-and-a-2264380-3",
+          "name": "Chinos - regular fit",
+          "slot": "bottom"
+        },
+        {
+          "id": "zara-uz-576983279",
+          "name": "Combined Leather Trainers",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "loro-piana-frm1816_f8kl",
+          "name": "Elia Dylan Collar Shirt Lightest Cotton Herringbone",
+          "slot": "top"
+        },
+        {
+          "id": "zara-uz-562828481",
+          "name": "100% Linen Regular Fit Overshirt",
+          "slot": "outerwear"
+        },
+        {
+          "id": "canali-pac00049766",
+          "name": "Walnut comfort cotton velvet regular-fit chinos",
+          "slot": "bottom"
+        },
+        {
+          "id": "zara-uz-545426131",
+          "name": "Retro Leather Trainers",
+          "slot": "shoes"
+        }
+      ]
+    ],
+    "descriptions": [
+      {
+        "description": "Ivory Linen Seaside Shirt, Ecru Reversible Resort Jacket, White cotton and cashmere gabardine regular-fit chinos va Retro Leather Detail Trainers uyg‘unligi.",
+        "tips": "Safar davomida ustki qatlamni yechib, tashqarida yana kiyish mumkin. Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi."
+      },
+      {
+        "description": "Sea Green Linen Polo Shirt, Navy Magnetic Field Jacket, Chinos - regular fit va Combined Leather Trainers uyg‘unligi.",
+        "tips": "Safar davomida ustki qatlamni yechib, tashqarida yana kiyish mumkin. Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi."
+      },
+      {
+        "description": "Elia Dylan Collar Shirt Lightest Cotton Herringbone, 100% Linen Regular Fit Overshirt, Walnut comfort cotton velvet regular-fit chinos va Retro Leather Trainers uyg‘unligi.",
+        "tips": "Safar davomida ustki qatlamni yechib, tashqarida yana kiyish mumkin. Ob-havo noma’lum: yechiladigan ustki qatlamni sharoitga qarab moslang."
+      }
+    ]
+  },
+  {
+    "event": "request",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fmi1g-4",
+    "endpoint": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/generate-outfits",
+    "previousProducts": 12
+  },
+  {
+    "event": "response",
+    "requestId": "mw4fmi1g-4",
+    "serverVersion": "legacy-unversioned",
+    "serverRequestId": "mw4fmi1g-4"
+  },
+  {
+    "event": "displayed",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fmi1g-4",
+    "style": "classic",
+    "occasion": "formal",
+    "previousDeckOverlapBySlot": {
+      "outerwear": 0,
+      "top": 0,
+      "bottom": 0,
+      "shoes": 0
+    },
+    "products": [
+      [
+        {
+          "id": "aurelien-15489795490122",
+          "name": "Blue Turquoise Linen Seaside Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "md-uz-63985006",
+          "name": "Herringbone suit blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "hm-1252892004",
+          "name": "Slim-Fit Suit Pants",
+          "slot": "bottom"
+        },
+        {
+          "id": "ecco-525604-01482",
+          "name": "Metropole London Leather Derby Shoe - Brown",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "shop_armani_exchange-xm002109_af24533_ub101",
+          "name": "Basic Cotton Poplin Casual Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "reiss-770509",
+          "name": "Classic Fit Velvet Single-Breasted Blazer in Purple",
+          "slot": "outerwear"
+        },
+        {
+          "id": "md-uz-61977996",
+          "name": "Cool wool suit pants",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u66cjc00047c9999",
+          "name": "Spherica Ec1 B Leather Dress Loafers - Black",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "aurelien-15368784380234",
+          "name": "Ecru Silk Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "aurelien-10066008899914",
+          "name": "Navy Technical Leisure Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-547825957",
+          "name": "Wool Blend Check Suit Trousers With Pleats",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u66nze00043c9999",
+          "name": "Thorian Leather Oxfords - Black",
+          "slot": "shoes"
+        }
+      ]
+    ],
+    "descriptions": [
+      {
+        "description": "Blue Turquoise Linen Seaside Shirt, Herringbone suit blazer, Slim-Fit Suit Pants va Metropole London Leather Derby Shoe - Brown uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi."
+      },
+      {
+        "description": "Basic Cotton Poplin Casual Shirt, Classic Fit Velvet Single-Breasted Blazer in Purple, Cool wool suit pants va Spherica Ec1 B Leather Dress Loafers - Black uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi."
+      },
+      {
+        "description": "Ecru Silk Shirt, Navy Technical Leisure Blazer, Wool Blend Check Suit Trousers With Pleats va Thorian Leather Oxfords - Black uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      }
+    ]
+  },
+  {
+    "event": "request",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fnmzv-5",
+    "endpoint": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/generate-outfits",
+    "previousProducts": 12
+  },
+  {
+    "event": "response",
+    "requestId": "mw4fnmzv-5",
+    "serverVersion": "legacy-unversioned"
+  },
+  {
+    "event": "displayed-fallback",
+    "clientRevision": "033a21d41d3c",
+    "requestId": "mw4fnmzv-5",
+    "style": "casual",
+    "occasion": "formal",
+    "products": [
+      [
+        {
+          "id": "gant-3262100-435",
+          "name": "Gant X Yale Checked Poplin Shirt Crisp Blue",
+          "slot": "top"
+        },
+        {
+          "id": "zara-uz-554768966",
+          "name": "Striped Double-breasted Suit Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-554768967",
+          "name": "Striped Regular Fit Suit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u66nxc00043c9999",
+          "name": "Bexford Leather Oxfords - Black",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "gant-3263001-251",
+          "name": "Checked Poplin Shirt Mist Taupe",
+          "slot": "top"
+        },
+        {
+          "id": "giorgio_armani-gm000003_te22891_m8136",
+          "name": "Blazer regular fit with silk and chenille macro chevron",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-557829873",
+          "name": "100% Wool Pinstripe Regular Fit Suit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "ecco-525604-01001",
+          "name": "Metropole London Leather Derby Shoe - Black",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "gant-3263049-110",
+          "name": "Pinnacle Poplin Shirt White",
+          "slot": "top"
+        },
+        {
+          "id": "md-uz-61734361",
+          "name": "Cool wool suit blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-565488009",
+          "name": "100% Linen Suit Pleated Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u66nya00043c9999",
+          "name": "Thalos Leather Oxfords - Black",
+          "slot": "shoes"
+        }
+      ]
+    ]
+  },
+  {
+    "event": "request",
+    "clientRevision": "576f26199a53",
+    "requestId": "mw4fv18p-1",
+    "endpoint": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/generate-outfits",
+    "previousProducts": 12
+  },
+  {
+    "event": "response",
+    "requestId": "mw4fv18p-1",
+    "serverVersion": "legacy-unversioned"
+  },
+  {
+    "event": "displayed-fallback",
+    "clientRevision": "576f26199a53",
+    "requestId": "mw4fv18p-1",
+    "style": "casual",
+    "occasion": "formal",
+    "products": [
+      [
+        {
+          "id": "reiss-t44653",
+          "name": "Linen Regular-Fit Long-Sleeve Shirt in White",
+          "slot": "top"
+        },
+        {
+          "id": "reiss-h52252",
+          "name": "Regular-Fit Single-Breasted Wool-Blend Suit Blazer in Chocolate Brown",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-558595894",
+          "name": "Comfort Suit Regular Fit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u55hya00046c9999",
+          "name": "Spherica Ec16 Leather Dress Loafers - Black",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "hm-1356544003",
+          "name": "Slim-Fit Cotton Henley Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "md-uz-61735972",
+          "name": "100% linen suit blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-571703998",
+          "name": "Pinstripe Suit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u66nyb00043c6001",
+          "name": "Thalos Leather Oxfords - Cognac",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "reiss-w40434",
+          "name": "Merino Wool Button-Through Shirt in Soft Grey Mouline",
+          "slot": "top"
+        },
+        {
+          "id": "md-uz-61729868",
+          "name": "100% cool wool suit blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-565433277",
+          "name": "Regular Fit Pinstripe Suit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u55hvd00043c9999",
+          "name": "Recanati Leather Dress Loafers - Black",
+          "slot": "shoes"
+        }
+      ]
+    ]
+  },
+  {
+    "event": "request",
+    "clientRevision": "8aa1d08f2740",
+    "requestId": "mw4g2grc-1",
+    "endpoint": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/generate-outfits",
+    "previousProducts": 12
+  },
+  {
+    "event": "response",
+    "requestId": "mw4g2grc-1",
+    "serverVersion": "legacy-unversioned",
+    "serverRequestId": "mw4g2grc-1"
+  },
+  {
+    "event": "displayed",
+    "clientRevision": "8aa1d08f2740",
+    "requestId": "mw4g2grc-1",
+    "style": "casual",
+    "occasion": "formal",
+    "previousDeckOverlapBySlot": {
+      "outerwear": 0,
+      "top": 0,
+      "bottom": 0,
+      "shoes": 0
+    },
+    "products": [
+      [
+        {
+          "id": "arket-1255889003",
+          "name": "Relaxed Poplin Shirt - White/Blue",
+          "slot": "top"
+        },
+        {
+          "id": "gant-7706399-130",
+          "name": "Shawl Collar Dinner Jacket Cream",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-547823452",
+          "name": "Linen-wool Regular Fit Suit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "ecco-621634-50839",
+          "name": "Melbourne Leather Derby Shoe - Black",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "gant-3263019-321",
+          "name": "Striped Brushed Oxford Shirt Dark Emerald",
+          "slot": "top"
+        },
+        {
+          "id": "gant-7706390-262",
+          "name": "Pinstriped Suit Jacket Shadow Brown",
+          "slot": "outerwear"
+        },
+        {
+          "id": "aurelien-10228846723402",
+          "name": "Ivory Pleated Metropolitan Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "ecco-520304-01001",
+          "name": "S Lite Hybrid Leather Derby Shoe - Black",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "gant-3263018-321",
+          "name": "Brushed Oxford Shirt Dark Emerald",
+          "slot": "top"
+        },
+        {
+          "id": "zara-uz-554768977",
+          "name": "Houndstooth Regular Fit Suit Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-577368838",
+          "name": "Striped Suit Regular Fit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u55hvd00043c6009",
+          "name": "Recanati Leather Dress Loafers - Coffee",
+          "slot": "shoes"
+        }
+      ]
+    ],
+    "descriptions": [
+      {
+        "description": "Relaxed Poplin Shirt - White/Blue, Shawl Collar Dinner Jacket Cream, Linen-wool Regular Fit Suit Trousers va Melbourne Leather Derby Shoe - Black uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Yengil asosiy ustki kiyim ochib kiyiladigan qatlam bilan uyg‘unlashadi."
+      },
+      {
+        "description": "Striped Brushed Oxford Shirt Dark Emerald, Pinstriped Suit Jacket Shadow Brown, Ivory Pleated Metropolitan Trousers va S Lite Hybrid Leather Derby Shoe - Black uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      },
+      {
+        "description": "Brushed Oxford Shirt Dark Emerald, Houndstooth Regular Fit Suit Blazer, Striped Suit Regular Fit Trousers va Recanati Leather Dress Loafers - Coffee uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      }
+    ]
+  },
+  {
+    "event": "request",
+    "clientRevision": "888a0562f05d",
+    "requestId": "mw4gbik0-1",
+    "endpoint": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/generate-outfits",
+    "previousProducts": 12
+  },
+  {
+    "event": "response",
+    "requestId": "mw4gbik0-1",
+    "serverVersion": "legacy-unversioned",
+    "serverRequestId": "mw4gbik0-1"
+  },
+  {
+    "event": "displayed",
+    "clientRevision": "888a0562f05d",
+    "requestId": "mw4gbik0-1",
+    "style": "casual",
+    "occasion": "formal",
+    "previousDeckOverlapBySlot": {
+      "outerwear": 0,
+      "top": 0,
+      "bottom": 0,
+      "shoes": 0
+    },
+    "products": [
+      [
+        {
+          "id": "allsaints-usm150sb-10",
+          "name": "Hawthorne Slim-Fit Ramskull Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "zara-uz-557175080",
+          "name": "Wool Blend Regular Fit Suit Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-553306781",
+          "name": "100% Wool Suit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "ecco-500164-01001",
+          "name": "Helsinki 2 Leather Derby Shoe - Black",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "reiss-282217",
+          "name": "Atelier Herringbone-Stripe Long-Sleeve Shirt Regular-Fit in Bordeaux",
+          "slot": "top"
+        },
+        {
+          "id": "emporio-armani-em000437_af29509_fc030",
+          "name": "Knit effect jersey blazer with geometric pattern Signature Capsule",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-565424837",
+          "name": "Comfort Suit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u66nxc00043c6009",
+          "name": "Bexford Leather Oxfords - Coffee",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "allsaints-usm109sf-9722",
+          "name": "Ward Regular-Fit Tencel Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "emporio-armani-em007640_te22612_fb493",
+          "name": "Half-lined blazer in striped stretch virgin wool",
+          "slot": "outerwear"
+        },
+        {
+          "id": "md-uz-61978000",
+          "name": "100% cool wool striped suit pants",
+          "slot": "bottom"
+        },
+        {
+          "id": "ecco-500354-01001",
+          "name": "Helsinki 2 Leather Penny Loafer - Black",
+          "slot": "shoes"
+        }
+      ]
+    ],
+    "descriptions": [
+      {
+        "description": "Hawthorne Slim-Fit Ramskull Shirt, Wool Blend Regular Fit Suit Blazer, 100% Wool Suit Trousers va Helsinki 2 Leather Derby Shoe - Black uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      },
+      {
+        "description": "Atelier Herringbone-Stripe Long-Sleeve Shirt Regular-Fit in Bordeaux, Knit effect jersey blazer with geometric pattern Signature Capsule, Comfort Suit Trousers va Bexford Leather Oxfords - Coffee uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      },
+      {
+        "description": "Ward Regular-Fit Tencel Shirt, Half-lined blazer in striped stretch virgin wool, 100% cool wool striped suit pants va Helsinki 2 Leather Penny Loafer - Black uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      }
+    ]
+  },
+  {
+    "event": "request",
+    "clientRevision": "41ad036d3c8b",
+    "requestId": "mw4ggni7-1",
+    "endpoint": "https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/generate-outfits",
+    "previousProducts": 12
+  },
+  {
+    "event": "response",
+    "requestId": "mw4ggni7-1",
+    "serverVersion": "legacy-unversioned",
+    "serverRequestId": "mw4ggni7-1"
+  },
+  {
+    "event": "displayed",
+    "clientRevision": "41ad036d3c8b",
+    "requestId": "mw4ggni7-1",
+    "style": "casual",
+    "occasion": "formal",
+    "previousDeckOverlapBySlot": {
+      "outerwear": 0,
+      "top": 0,
+      "bottom": 0,
+      "shoes": 0
+    },
+    "products": [
+      [
+        {
+          "id": "reiss-f18205",
+          "name": "Long-Sleeve Travel Shirt in Black",
+          "slot": "top"
+        },
+        {
+          "id": "emporio-armani-em004656_te11131_ub081",
+          "name": "Double-breasted blazer in ultra-lightweight compact wool jersey",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-574423509",
+          "name": "100% Wool Regular Fit Suit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "ecco-523364-01001",
+          "name": "Metropole Milan Leather Derby Shoe - Black",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "reiss-f18169",
+          "name": "Long-Sleeve Travel Shirt in Soft Blue",
+          "slot": "top"
+        },
+        {
+          "id": "zara-uz-568748001",
+          "name": "Wool Blend Check Suit Blazer",
+          "slot": "outerwear"
+        },
+        {
+          "id": "md-uz-63207618",
+          "name": "Cotton blend tailored fit pants",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u65hyb00046c6009",
+          "name": "Spherica Ec16 Leather Dress Loafers - Coffee",
+          "slot": "shoes"
+        }
+      ],
+      [
+        {
+          "id": "selected-homme-16096901-brightwhite-1281804",
+          "name": "Stretch Shirt",
+          "slot": "top"
+        },
+        {
+          "id": "emporio-armani-em007112_te19332_ub108",
+          "name": "Half-lined blazer in stretch wool plain weave",
+          "slot": "outerwear"
+        },
+        {
+          "id": "zara-uz-565132998",
+          "name": "100% Wool Striped Suit Trousers",
+          "slot": "bottom"
+        },
+        {
+          "id": "geox-u66cjc00047c6009",
+          "name": "Spherica Ec1 B Leather Dress Loafers - Coffee",
+          "slot": "shoes"
+        }
+      ]
+    ],
+    "descriptions": [
+      {
+        "description": "Long-Sleeve Travel Shirt in Black, Double-breasted blazer in ultra-lightweight compact wool jersey, 100% Wool Regular Fit Suit Trousers va Metropole Milan Leather Derby Shoe - Black uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      },
+      {
+        "description": "Long-Sleeve Travel Shirt in Soft Blue, Wool Blend Check Suit Blazer, Cotton blend tailored fit pants va Spherica Ec16 Leather Dress Loafers - Coffee uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      },
+      {
+        "description": "Stretch Shirt, Half-lined blazer in stretch wool plain weave, 100% Wool Striped Suit Trousers va Spherica Ec1 B Leather Dress Loafers - Coffee uyg‘unligi.",
+        "tips": "Ko‘ylak va shaklli pidjak rasmiy tadbirga mos ko‘rinish yaratadi. Klassik poyabzal bichimli shim siluetini to‘ldiradi."
+      }
+    ]
+  }
+]

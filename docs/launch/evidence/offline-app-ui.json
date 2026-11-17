@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "scope": "Actual App root, separate signed-out offline environment, native billing/notifications/analytics sending/prewarm stubbed; not production configuration or authenticated-core QA",
+  "bundleSha256": "790b15e0780031f1bb639e3cae751f3d18893b3bb08bc9c0b4be4e00f672614a",
+  "checks": [
+    "Actual App root reached LanguageSelection on fresh isolated install",
+    "English selection navigated to actual SignIn",
+    "Synthetic email/password reached real sign-in handler; HTTP guard rejected request before transport",
+    "Refined guard displayed Login Failed / Network request failed",
+    "Dismissing error returned to Sign In / Change / Forgot Password controls with no indefinite spinner",
+    "Ten cold processes retained language and stayed unauthenticated; email/password UI state did not persist",
+    "Change returned from synthetic password stage to email stage"
+  ],
+  "servicesDisabled": [
+    "native billing configuration/purchase/restore",
+    "analytics sending",
+    "notification registration",
+    "tab prewarming"
+  ],
+  "notValidated": [
+    "successful server login or account creation",
+    "cached authenticated session",
+    "wardrobe/Home/Shop authenticated journeys",
+    "real purchase restore",
+    "production service configuration",
+    "other device classes"
+  ],
+  "blockedRequestCounts": {
+    "external": 64,
+    "loopback": 1
+  },
+  "actualOutboundJsRequestsAllowed": false,
+  "productionClaim": false,
+  "screenshots": [
+    "offline-app-19.45.27.png",
+    "offline-app-19.46.31.png",
+    "offline-app-19.51.59.png"
+  ]
+}

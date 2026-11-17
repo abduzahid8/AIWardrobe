@@ -1,0 +1,15 @@
+{
+  "appliedAt": "2026-11-07T18:56:34.854Z",
+  "version": "20261107230000",
+  "sha256": "28dbd1a2aab0694a48675e953cca9b94abdea33902a3f3c65194e20c93219a66",
+  "security": {
+    "rls": true,
+    "invoker": true,
+    "serviceOnly": true,
+    "footwearGuard": true,
+    "readOnlyVisual": true,
+    "feedbackPolicies": true,
+    "privateEmbeddings": true
+  },
+  "v197SqlUnchanged": true
+}

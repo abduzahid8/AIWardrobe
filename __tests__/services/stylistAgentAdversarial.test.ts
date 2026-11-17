@@ -13,6 +13,9 @@ import {
 import { normalizeStyleId } from '../../features/outfit-generator/utils/styleInference';
 
 let idCounter = 0;
+// v192 already ships a garment-based summary. Keep injection/source assertions
+// below while checking that real contract instead of the retired placeholder.
+const SHOP_SUMMARY = 'shop top with shop outerwear, shop bottom and shop shoes.';
 
 function shopItem(slot: 'top' | 'bottom' | 'shoes' | 'outerwear'): LocalClothingItem {
     idCounter += 1;
@@ -20,10 +23,10 @@ function shopItem(slot: 'top' | 'bottom' | 'shoes' | 'outerwear'): LocalClothing
         id: `shop_adv_${idCounter}`,
         userId: 'u1',
         name: `shop ${slot}`,
-        imageUrl: 'https://example.com/s.jpg',
+        imageUrl: `https://example.com/s-${idCounter}.jpg`,
         category: slot as any,
         subCategory: slot === 'top' ? 'shirt' : slot === 'bottom' ? 'trousers' : slot === 'shoes' ? 'loafers' : 'blazer',
-        primaryColor: 'black',
+        primaryColor: slot === 'top' ? 'white' : 'navy',
         colorHex: '#000000',
         pattern: 'solid',
         material: 'cotton',
@@ -53,7 +56,7 @@ function wardrobeItem(slot: 'top' | 'bottom' | 'shoes' | 'outerwear'): LocalClot
         id: `ward_adv_${idCounter}`,
         userId: 'u1',
         name: `owned ${slot}`,
-        imageUrl: 'https://example.com/w.jpg',
+        imageUrl: `https://example.com/w-${idCounter}.jpg`,
         category: slot as any,
         subCategory: slot === 'top' ? 'shirt' : slot === 'bottom' ? 'trousers' : slot === 'shoes' ? 'loafers' : 'blazer',
         primaryColor: 'navy',
@@ -104,7 +107,7 @@ describe('stylist adversarial inputs', () => {
             expect(o.description).not.toContain('DROP TABLE');
             expect(o.description).not.toContain('<script>');
             expect(o.description).not.toContain('ignore all previous');
-            expect(o.description).toMatch(/^(An|A) [A-Z]/);
+            expect(o.description).toBe(SHOP_SUMMARY);
         }
     });
 
@@ -116,14 +119,15 @@ describe('stylist adversarial inputs', () => {
         ['goth_ninja', 'A Casual look curated from the shop.'],
         ['../../etc/passwd', 'A Casual look curated from the shop.'],
         ['', 'A Casual look curated from the shop.'],
-    ])('style id %p renders safe copy', (styleId, expected) => {
+    ])('style id %p renders safe copy', (styleId, _expected) => {
         const outfits = buildLocalOutfits(shopPool(), {
             stylePreferences: styleId as string,
             occasion: 'Team Collaboration',
             limit: 1,
         });
         expect(outfits.length).toBeGreaterThan(0);
-        expect(outfits[0].description).toBe(expected);
+        expect(outfits[0].description).toBe(SHOP_SUMMARY);
+        expect(outfits[0].description).not.toContain('curated');
     });
 
     it.each([
@@ -180,7 +184,8 @@ describe('shop-only deck (Team Collaboration) never leaks wardrobe', () => {
             limit: 5,
         });
         for (const o of outfits) {
-            expect(o.description).toContain('curated from the shop');
+            expect(o.description).toBe(SHOP_SUMMARY);
+            expect(o.description).not.toContain('wardrobe');
         }
     });
 

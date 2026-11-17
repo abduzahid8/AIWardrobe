@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-11-07T14:42:37.814Z",
+  "slug": "generate-outfits",
+  "version": 195,
+  "status": "ACTIVE",
+  "verify_jwt": false,
+  "ezbr_sha256": "81994ebfb9ae3eb1f3276ea41f0c5df6a2c70dcaa0cf49cd1fcd24c4006dae19",
+  "sourceCommit": "7f331c2281cd1c81eb8a9092f902499be6a38b6a",
+  "branch": "codex/stylist-2-20261107",
+  "sourceSha256": "820bbdf336d7d48cebc0e7415618fc437618a644cabc1e97d2014ee86bb15552",
+  "deployedSourceMatchesCommittedInputs": true,
+  "authenticationUnchanged": true,
+  "rateLimitUnchanged": true,
+  "otherFunctionsUnchanged": true,
+  "rollback": {
+    "version": 194,
+    "sourceSha256": "afa771ffa85780f5c45490dc0e2b8d17943fa8bb90d989defe1fa19795e00dfe",
+    "path": "backend/supabase/rollback/generate-outfits-stylist-2-20261107"
+  },
+  "liveHealth": [
+    {
+      "method": "OPTIONS",
+      "authorization": "absent",
+      "status": 200,
+      "cors": "*"
+    },
+    {
+      "method": "POST",
+      "authorization": "absent",
+      "status": 401,
+      "cors": "*"
+    },
+    {
+      "method": "POST",
+      "authorization": "invalid",
+      "status": 401,
+      "cors": "*"
+    }
+  ],
+  "noAuthenticatedLiveGeneration": true,
+  "noUserDataOrSchemaChanges": true
+}

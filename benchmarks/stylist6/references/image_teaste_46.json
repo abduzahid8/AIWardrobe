@@ -1,0 +1,1441 @@
+{
+  "schema_version": 1,
+  "dataset_id": "image-teaste-2026-11-10",
+  "source": "user_uploaded_flat_lay_reference_archive",
+  "source_account": null,
+  "rights_status": "not independently verified for these specific photos; creator permission reported by user for separate Instagram handle",
+  "note": "Visual approximate labels; no guarantee of on-body fit/material. Media stored only in private user-supplied ZIP; SHA to be filled by local importer, never fabricated.",
+  "curation_status": "manual_research_labels_not_blind_quality_scored",
+  "images": [
+    {
+      "id": "rt_001",
+      "filename": "photo_1_2026-11-10_09-23-10.jpg",
+      "title": "Grey tailored utility",
+      "styles": [
+        "smart_casual"
+      ],
+      "palette": [
+        "grey",
+        "ivory",
+        "black"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "smart_casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "ivory mockneck",
+        "outerwear": "grey wool overshirt",
+        "bottom": "black tailored trousers",
+        "shoes": "white minimal sneakers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_002",
+      "filename": "photo_2_2026-11-10_09-23-10.jpg",
+      "title": "Brown suede tonal",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "brown",
+        "cognac",
+        "tan",
+        "beige"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "brown geometric knit",
+        "outerwear": "cognac suede jacket",
+        "bottom": "brown tailored trousers",
+        "shoes": "tan suede sneakers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_003",
+      "filename": "photo_3_2026-11-10_09-23-10.jpg",
+      "title": "Heritage fair isle",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "brown",
+        "cream",
+        "chocolate"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "smart_casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "ivory mockneck",
+        "outerwear": "brown fair-isle cardigan",
+        "bottom": "chocolate trousers",
+        "shoes": "brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_004",
+      "filename": "photo_4_2026-11-10_09-23-10.jpg",
+      "title": "Navy suede clean",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "navy",
+        "ivory",
+        "charcoal"
+      ],
+      "seasons": [
+        "autumn",
+        "spring"
+      ],
+      "occasions": [
+        "smart_casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "cream crewneck knit",
+        "outerwear": "navy suede overshirt",
+        "bottom": "charcoal trousers",
+        "shoes": "cream minimal sneakers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_005",
+      "filename": "photo_5_2026-11-10_09-23-10.jpg",
+      "title": "Camel overcoat monochrome",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "camel",
+        "dark_brown",
+        "espresso"
+      ],
+      "seasons": [
+        "winter",
+        "autumn"
+      ],
+      "occasions": [
+        "work",
+        "date_night"
+      ],
+      "garments": {
+        "top": "brown fine-knit mockneck",
+        "outerwear": "camel double-breasted overcoat",
+        "bottom": "dark brown tailored trousers",
+        "shoes": "dark brown ankle boots"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_006",
+      "filename": "photo_6_2026-11-10_09-23-10.jpg",
+      "title": "Olive quilt vest contrast",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "olive",
+        "brown",
+        "cream"
+      ],
+      "seasons": [
+        "autumn",
+        "spring"
+      ],
+      "occasions": [
+        "smart_casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "espresso turtleneck",
+        "outerwear": "olive quilted gilet",
+        "bottom": "cream tailored trousers",
+        "shoes": "dark brown leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_007",
+      "filename": "photo_7_2026-11-10_09-23-10.jpg",
+      "title": "Camel Ivy office",
+      "styles": [
+        "classic"
+      ],
+      "palette": [
+        "camel",
+        "blue",
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "occasions": [
+        "work",
+        "business_meeting"
+      ],
+      "garments": {
+        "top": "light blue dress shirt",
+        "outerwear": "camel double-breasted blazer",
+        "bottom": "cream trousers",
+        "shoes": "brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_008",
+      "filename": "photo_8_2026-11-10_09-23-10.jpg",
+      "title": "Burgundy Ivy cardigan",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "burgundy",
+        "white",
+        "charcoal",
+        "black"
+      ],
+      "seasons": [
+        "autumn",
+        "spring"
+      ],
+      "occasions": [
+        "work",
+        "smart_casual"
+      ],
+      "garments": {
+        "top": "white collared shirt",
+        "outerwear": "burgundy button cardigan",
+        "bottom": "charcoal trousers",
+        "shoes": "black leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_009",
+      "filename": "photo_9_2026-11-10_09-23-10.jpg",
+      "title": "Chocolate suede clean",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "chocolate",
+        "ivory",
+        "brown"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "date_night",
+        "smart_casual"
+      ],
+      "garments": {
+        "top": "ivory knit mockneck",
+        "outerwear": "dark brown suede jacket",
+        "bottom": "brown tailored trousers",
+        "shoes": "dark brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_010",
+      "filename": "photo_10_2026-11-10_09-23-10.jpg",
+      "title": "Grey safari and cream",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "grey",
+        "black",
+        "cream"
+      ],
+      "seasons": [
+        "autumn",
+        "spring"
+      ],
+      "occasions": [
+        "smart_casual",
+        "work"
+      ],
+      "garments": {
+        "top": "black high-neck knit",
+        "outerwear": "grey utility overshirt",
+        "bottom": "cream tailored trousers",
+        "shoes": "dark brown suede shoes"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_011",
+      "filename": "photo_11_2026-11-10_09-23-10.jpg",
+      "title": "Olive winter heritage",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "olive",
+        "cream",
+        "chocolate"
+      ],
+      "seasons": [
+        "winter",
+        "autumn"
+      ],
+      "occasions": [
+        "work",
+        "date_night"
+      ],
+      "garments": {
+        "top": "ivory roll-neck knit",
+        "outerwear": "olive green overcoat",
+        "bottom": "chocolate trousers",
+        "shoes": "brown chukka boots"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_012",
+      "filename": "photo_12_2026-11-10_09-23-10.jpg",
+      "title": "Belted plaid winter",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "plaid_brown",
+        "espresso",
+        "cream"
+      ],
+      "seasons": [
+        "winter",
+        "autumn"
+      ],
+      "occasions": [
+        "work",
+        "date_night"
+      ],
+      "garments": {
+        "top": "espresso roll-neck knit",
+        "outerwear": "brown checked belted overcoat",
+        "bottom": "cream trousers",
+        "shoes": "black leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_013",
+      "filename": "photo_13_2026-11-10_09-23-10.jpg",
+      "title": "Chocolate bomber denim",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "brown",
+        "ivory",
+        "indigo"
+      ],
+      "seasons": [
+        "autumn",
+        "spring"
+      ],
+      "occasions": [
+        "casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "ivory knit mockneck",
+        "outerwear": "chocolate suede bomber",
+        "bottom": "dark indigo jeans",
+        "shoes": "brown suede sneakers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_014",
+      "filename": "photo_14_2026-11-10_09-23-10.jpg",
+      "title": "Sand suede denim",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "sand",
+        "cream",
+        "navy"
+      ],
+      "seasons": [
+        "autumn",
+        "spring"
+      ],
+      "occasions": [
+        "smart_casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "cream turtleneck",
+        "outerwear": "beige suede blouson",
+        "bottom": "dark navy trousers",
+        "shoes": "brown suede casual shoes"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_015",
+      "filename": "photo_15_2026-11-10_09-23-10.jpg",
+      "title": "Olive vest soft neutrals",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "olive",
+        "ivory",
+        "brown",
+        "white"
+      ],
+      "seasons": [
+        "autumn",
+        "spring"
+      ],
+      "occasions": [
+        "casual",
+        "smart_casual"
+      ],
+      "garments": {
+        "top": "ivory turtleneck",
+        "outerwear": "dark olive quilted vest",
+        "bottom": "brown tailored trousers",
+        "shoes": "white minimal sneakers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_016",
+      "filename": "photo_16_2026-11-10_09-23-10.jpg",
+      "title": "Olive vest dressy",
+      "styles": [
+        "smart_casual"
+      ],
+      "palette": [
+        "olive",
+        "cream",
+        "black"
+      ],
+      "seasons": [
+        "autumn",
+        "spring"
+      ],
+      "occasions": [
+        "smart_casual",
+        "work"
+      ],
+      "garments": {
+        "top": "olive full-zip sweater",
+        "outerwear": "dark olive gilet",
+        "bottom": "cream trousers",
+        "shoes": "black leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_017",
+      "filename": "photo_17_2026-11-10_09-23-10.jpg",
+      "title": "Navy puffer smart",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "navy",
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "winter"
+      ],
+      "occasions": [
+        "travel",
+        "casual"
+      ],
+      "garments": {
+        "top": "cream turtleneck",
+        "outerwear": "navy padded puffer",
+        "bottom": "navy tailored trousers",
+        "shoes": "brown Chelsea boots"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_018",
+      "filename": "photo_18_2026-11-10_09-23-10.jpg",
+      "title": "Olive suede old-money",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "olive",
+        "cream",
+        "espresso"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "smart_casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "cream turtleneck",
+        "outerwear": "olive suede zip jacket",
+        "bottom": "brown trousers",
+        "shoes": "brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_019",
+      "filename": "photo_19_2026-11-10_09-23-10.jpg",
+      "title": "Brown tonal tailoring",
+      "styles": [
+        "classic"
+      ],
+      "palette": [
+        "brown",
+        "cream",
+        "chocolate"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "work",
+        "date_night"
+      ],
+      "garments": {
+        "top": "ivory turtleneck",
+        "outerwear": "brown wool blazer",
+        "bottom": "brown tailored trousers",
+        "shoes": "brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_020",
+      "filename": "photo_20_2026-11-10_09-23-10.jpg",
+      "title": "Charcoal jacket formal",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "charcoal",
+        "cream",
+        "black"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "smart_casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "ivory high-neck knit",
+        "outerwear": "charcoal zip blouson",
+        "bottom": "dark charcoal trousers",
+        "shoes": "black leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_021",
+      "filename": "photo_21_2026-11-10_09-23-10.jpg",
+      "title": "Grey shawl knit office",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "grey",
+        "white",
+        "charcoal",
+        "black"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "work",
+        "smart_casual"
+      ],
+      "garments": {
+        "top": "white collared shirt",
+        "outerwear": "grey shawl knit cardigan",
+        "bottom": "charcoal tailored trousers",
+        "shoes": "black leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_022",
+      "filename": "photo_22_2026-11-10_09-23-10.jpg",
+      "title": "Camel check tailoring",
+      "styles": [
+        "classic"
+      ],
+      "palette": [
+        "camel",
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "work",
+        "business_meeting"
+      ],
+      "garments": {
+        "top": "cream roll-neck knit",
+        "outerwear": "camel checked blazer",
+        "bottom": "brown tailored trousers",
+        "shoes": "black leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_023",
+      "filename": "photo_23_2026-11-10_09-23-10.jpg",
+      "title": "Camel tailoring olive knit",
+      "styles": [
+        "classic"
+      ],
+      "palette": [
+        "camel",
+        "olive",
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "work",
+        "smart_casual"
+      ],
+      "garments": {
+        "top": "olive high-neck knit",
+        "outerwear": "camel double-breasted blazer",
+        "bottom": "cream tailored trousers",
+        "shoes": "dark brown loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_024",
+      "filename": "photo_24_2026-11-10_09-23-10.jpg",
+      "title": "Olive blazer ivory knit",
+      "styles": [
+        "classic"
+      ],
+      "palette": [
+        "olive",
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "work",
+        "date_night"
+      ],
+      "garments": {
+        "top": "cream turtleneck",
+        "outerwear": "olive tailored blazer",
+        "bottom": "brown trousers",
+        "shoes": "brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_025",
+      "filename": "photo_25_2026-11-10_09-23-10.jpg",
+      "title": "Camel coat winter casual",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "camel",
+        "ivory",
+        "chocolate"
+      ],
+      "seasons": [
+        "winter",
+        "autumn"
+      ],
+      "occasions": [
+        "smart_casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "ivory turtleneck",
+        "outerwear": "camel double-breasted overcoat",
+        "bottom": "chocolate trousers",
+        "shoes": "dark brown minimal sneakers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_026",
+      "filename": "photo_26_2026-11-10_09-23-10.jpg",
+      "title": "Cream blazer evening",
+      "styles": [
+        "classic"
+      ],
+      "palette": [
+        "cream",
+        "ivory",
+        "brown"
+      ],
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "occasions": [
+        "date_night",
+        "smart_casual"
+      ],
+      "garments": {
+        "top": "ivory roll-neck knit",
+        "outerwear": "cream blazer",
+        "bottom": "brown tailored trousers",
+        "shoes": "dark brown leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_027",
+      "filename": "photo_27_2026-11-10_09-23-10.jpg",
+      "title": "Midnight suede blouson",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "navy",
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "date_night",
+        "smart_casual"
+      ],
+      "garments": {
+        "top": "cream high-neck knit",
+        "outerwear": "navy suede blouson",
+        "bottom": "brown tailored trousers",
+        "shoes": "brown suede low shoes"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_028",
+      "filename": "photo_28_2026-11-10_09-23-10.jpg",
+      "title": "Brown leather contrast",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "brown",
+        "ivory",
+        "chocolate"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "date_night",
+        "casual"
+      ],
+      "garments": {
+        "top": "ivory roll-neck knit",
+        "outerwear": "brown leather field jacket",
+        "bottom": "brown tailored trousers",
+        "shoes": "brown suede casual shoes"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_029",
+      "filename": "photo_29_2026-11-10_09-23-10.jpg",
+      "title": "Cream puffer navy",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "cream",
+        "ivory",
+        "navy"
+      ],
+      "seasons": [
+        "winter"
+      ],
+      "occasions": [
+        "casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "ivory turtleneck",
+        "outerwear": "cream puffer jacket",
+        "bottom": "navy tailored trousers",
+        "shoes": "cream minimal sneakers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_030",
+      "filename": "photo_30_2026-11-10_09-23-10.jpg",
+      "title": "Burgundy corduroy",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "burgundy",
+        "cream",
+        "black"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "date_night",
+        "smart_casual"
+      ],
+      "garments": {
+        "top": "cream roll-neck knit",
+        "outerwear": "burgundy corduroy trucker",
+        "bottom": "black tailored trousers",
+        "shoes": "black leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_031",
+      "filename": "photo_31_2026-11-10_09-23-10.jpg",
+      "title": "Navy quilted layering",
+      "styles": [
+        "smart_casual"
+      ],
+      "palette": [
+        "navy",
+        "white",
+        "brown"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "smart_casual",
+        "work"
+      ],
+      "garments": {
+        "top": "white collared shirt",
+        "outerwear": "navy quilted field jacket",
+        "bottom": "navy tailored trousers",
+        "shoes": "dark brown leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_032",
+      "filename": "photo_32_2026-11-10_09-23-10.jpg",
+      "title": "Dark coffee field jacket",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "dark_brown",
+        "cream",
+        "navy"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "smart_casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "ivory roll-neck knit",
+        "outerwear": "dark brown field jacket",
+        "bottom": "navy tailored trousers",
+        "shoes": "brown suede sneakers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_033",
+      "filename": "photo_33_2026-11-10_09-23-10.jpg",
+      "title": "Olive quilted heritage",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "olive",
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "occasions": [
+        "smart_casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "cream mockneck knit",
+        "outerwear": "olive quilted barn jacket",
+        "bottom": "dark brown trousers",
+        "shoes": "dark brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_034",
+      "filename": "photo_34_2026-11-10_09-23-10.jpg",
+      "title": "Pattern knit polo ecru",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "occasions": [
+        "smart_casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "cream brown geometric knit polo",
+        "outerwear": null,
+        "bottom": "cream tailored trousers",
+        "shoes": "dark brown suede loafers"
+      },
+      "layer_policy": "absent",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_035",
+      "filename": "photo_35_2026-11-10_09-23-10.jpg",
+      "title": "Espresso polo denim",
+      "styles": [
+        "summer_old_money"
+      ],
+      "palette": [
+        "espresso",
+        "indigo",
+        "brown"
+      ],
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "occasions": [
+        "casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "dark brown short sleeve polo",
+        "outerwear": null,
+        "bottom": "dark indigo jeans",
+        "shoes": "brown suede casual shoes"
+      },
+      "layer_policy": "absent",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_036",
+      "filename": "photo_36_2026-11-10_09-23-10.jpg",
+      "title": "Cream tee blue denim",
+      "styles": [
+        "summer_old_money"
+      ],
+      "palette": [
+        "cream",
+        "blue"
+      ],
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "occasions": [
+        "casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "cream short sleeve t-shirt",
+        "outerwear": null,
+        "bottom": "mid blue straight jeans",
+        "shoes": "cream minimal sneakers"
+      },
+      "layer_policy": "absent",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_037",
+      "filename": "photo_37_2026-11-10_09-23-10.jpg",
+      "title": "Olive blazer summer office",
+      "styles": [
+        "classic"
+      ],
+      "palette": [
+        "olive",
+        "white",
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "occasions": [
+        "work",
+        "business_meeting"
+      ],
+      "garments": {
+        "top": "white dress shirt",
+        "outerwear": "olive tailored blazer",
+        "bottom": "cream tailored trousers",
+        "shoes": "brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_038",
+      "filename": "photo_38_2026-11-10_09-23-10.jpg",
+      "title": "Sand chore smart casual",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "beige",
+        "cream",
+        "navy"
+      ],
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "occasions": [
+        "smart_casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "beige short sleeve knitted polo",
+        "outerwear": "beige chore jacket",
+        "bottom": "navy trousers",
+        "shoes": "brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_039",
+      "filename": "photo_39_2026-11-10_09-23-10.jpg",
+      "title": "Retro striped polo cream",
+      "styles": [
+        "summer_old_money"
+      ],
+      "palette": [
+        "cream",
+        "navy",
+        "brown"
+      ],
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "occasions": [
+        "smart_casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "cream navy brown striped polo",
+        "outerwear": null,
+        "bottom": "cream pleated trousers",
+        "shoes": "black suede loafers"
+      },
+      "layer_policy": "absent",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_040",
+      "filename": "photo_40_2026-11-10_09-23-10.jpg",
+      "title": "Chocolate polo cream",
+      "styles": [
+        "summer_old_money"
+      ],
+      "palette": [
+        "brown",
+        "cream"
+      ],
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "occasions": [
+        "smart_casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "chocolate short sleeve polo",
+        "outerwear": null,
+        "bottom": "cream pleated trousers",
+        "shoes": "dark brown suede loafers"
+      },
+      "layer_policy": "absent",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_041",
+      "filename": "photo_41_2026-11-10_09-23-10.jpg",
+      "title": "Sage knit polo cream",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "sage",
+        "cream",
+        "tan"
+      ],
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "occasions": [
+        "smart_casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "sage green knit polo",
+        "outerwear": null,
+        "bottom": "cream tailored trousers",
+        "shoes": "tan suede loafers"
+      },
+      "layer_policy": "absent",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_042",
+      "filename": "photo_42_2026-11-10_09-23-10.jpg",
+      "title": "Camel blazer pale blue",
+      "styles": [
+        "classic"
+      ],
+      "palette": [
+        "camel",
+        "blue",
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "occasions": [
+        "work",
+        "business_meeting"
+      ],
+      "garments": {
+        "top": "pale blue button down shirt",
+        "outerwear": "camel tailored blazer",
+        "bottom": "cream trousers",
+        "shoes": "brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_043",
+      "filename": "photo_43_2026-11-10_09-23-10.jpg",
+      "title": "Sky-blue knit polo",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "sky_blue",
+        "cream",
+        "beige"
+      ],
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "occasions": [
+        "smart_casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "sky blue open collar knit polo",
+        "outerwear": null,
+        "bottom": "cream tailored trousers",
+        "shoes": "beige suede loafers"
+      },
+      "layer_policy": "absent",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_044",
+      "filename": "photo_44_2026-11-10_09-23-10.jpg",
+      "title": "Burgundy preppy cardigan",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "burgundy",
+        "cream",
+        "black"
+      ],
+      "seasons": [
+        "autumn",
+        "spring"
+      ],
+      "occasions": [
+        "smart_casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "cream crewneck t-shirt",
+        "outerwear": "burgundy knit cardigan",
+        "bottom": "black tailored trousers",
+        "shoes": "black leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_045",
+      "filename": "photo_45_2026-11-10_09-23-10.jpg",
+      "title": "Cream crochet zip knit",
+      "styles": [
+        "old_money"
+      ],
+      "palette": [
+        "cream",
+        "navy",
+        "brown"
+      ],
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "occasions": [
+        "smart_casual",
+        "date_night"
+      ],
+      "garments": {
+        "top": "cream knitted short sleeve polo",
+        "outerwear": "cream textured zip cardigan",
+        "bottom": "navy tailored trousers",
+        "shoes": "dark brown leather loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    },
+    {
+      "id": "rt_046",
+      "filename": "photo_46_2026-11-10_09-23-10.jpg",
+      "title": "Sand jacket olive polo",
+      "styles": [
+        "smart_casual"
+      ],
+      "palette": [
+        "olive",
+        "beige",
+        "cream",
+        "brown"
+      ],
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "occasions": [
+        "smart_casual",
+        "travel"
+      ],
+      "garments": {
+        "top": "olive short sleeve polo",
+        "outerwear": "beige suede jacket",
+        "bottom": "cream tailored trousers",
+        "shoes": "dark brown suede loafers"
+      },
+      "layer_policy": "required",
+      "complete_outfit_collage": true,
+      "fit_on_body_verified": false,
+      "media_sha256": null
+    }
+  ]
+}

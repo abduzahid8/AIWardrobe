@@ -1,6 +1,6 @@
 /** @jest-environment node */
 const fs=require('fs'),path=require('path'),ts=require('typescript');const api={};
-new Function('exports',ts.transpileModule(fs.readFileSync(path.resolve(__dirname,'../../backend/supabase/functions/_shared/outfitBudgetSelection.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(api);
+Object.assign(api,require('../../backend/supabase/functions/_shared/outfitBudgetSelection'));
 const {strictestOutfitBudget}=api;const usd=amount=>({amount,currency:'USD'});const same=budget=>budget;
 test('prompt cannot raise the selected budget',()=>expect(strictestOutfitBudget(usd(250),usd(1000),same)).toEqual(usd(250)));
 test('prompt can tighten the selected budget',()=>expect(strictestOutfitBudget(usd(250),usd(100),same)).toEqual(usd(100)));

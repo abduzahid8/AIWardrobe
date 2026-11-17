@@ -1,0 +1,245 @@
+{
+  "releaseLabel": "stylist-runtime-repair-v2-catalog-identity-fix",
+  "generationVersion": "stylist-runtime-repair-v2",
+  "originalArchiveSha256": "6668a954747c71af99aaee413548f09ecd84e1a4f32d66d1d8d9d52e6154cd99",
+  "esbuildVersion": "0.28.2",
+  "inputFiles": [
+    {
+      "path": "src/domain/garmentText.ts",
+      "sha256": "f21f8ba0ae51aa4d3418d7204c1712271eb744bb289dd4ea694758c59b02bbd7",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/outfitDiversity.ts",
+      "sha256": "687e0c8cc36c94f1831171536b75d8ef40ba3276a3334d10bdbc547d85191c96",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/stylingProfiles.ts",
+      "sha256": "7fbad495a471fa1730dcf24d15ec853d8b5fafbac648a5da89905e250ef87c70",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/garmentDescriptor.ts",
+      "sha256": "b769080b6ff2a0bb187e6c469464b6f46859e5392ae41bf427fd0f8da0cda70e",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/garmentContext.ts",
+      "sha256": "09ef66a5cacaf88b16d4d48c87cb08fdb7cfde2a6170fed8910785435259d24f",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/outfitVisualSignature.ts",
+      "sha256": "4333978ad059332bb0034babbe293592bbb9919494e28f0e2fc3cd383feb6540",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/layerCompatibility.ts",
+      "sha256": "d04024131d5f047a2a0ee813b2e965dc55ad0cb7f8b8e53de37588953445b338",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/colorHarmony.ts",
+      "sha256": "0874f67f66773749a6dd90677e8b6ebfd35930131efcceb76b851e868850ca7d",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/outfitCoherence.ts",
+      "sha256": "7e7e1a8cc474b1c2e931649a8f86bf68f77a876bc5ec7df1f342fe9268434e3e",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/validatedQuartets.ts",
+      "sha256": "e6ab58e2200948b35bbad517d4f5276f69cae48a59bf686000aba8c37180dd83",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/outfitComposition.ts",
+      "sha256": "2122ecb8e0a65f5344af106fb9550f0af62ac7360c7dc621402add2d6d069e5d",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/styleInference.ts",
+      "sha256": "6968ff712f3c6f6783d056cf63e4bfa903a48de5272143782965683cd08e9a09",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/stylingContext.ts",
+      "sha256": "ae2813f02d45a668f0f675de1d003c783886d4af60e545b70b714ad74de9a05e",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/outfitChoices.ts",
+      "sha256": "b3dadac83978a8bebc938effdd3901c536a0450849f20a5912548d992d14cf8a",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitChoices.ts",
+      "sha256": "7be342c3823b711f70ed9613d1b2da79d3c4150932ebc7b0f6b15781f223341a",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/outfitGenerationRequest.ts",
+      "sha256": "48724b333e17c831140e45e26c692f995413a793710bbb843e0aefa07b1b019a",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitGenerationRequest.ts",
+      "sha256": "7153c595bf703ccbfdce846a0b42d4c5acedec006fb5a7f4d231f59e40ac7695",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/outfitBudgetText.ts",
+      "sha256": "cf0efe0f3e67ed2cd8e3794d28cd46b16b2567957113327f42bfd42c2a4935b3",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitBudgetText.ts",
+      "sha256": "dfbb29e4072f4bdb9e30fb8948e19613f54000179638f77588748f0e54e9006b",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/budgetFx.ts",
+      "sha256": "9c747666d797cadfad80cb5355dd360273f3384795af7a1f5bc05397bbff3854",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/budgetFx.ts",
+      "sha256": "5bac0d26699cd4684e22620ffc0322d8b144588ff0a2379c03de53a0254117a8",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/budgetFxCache.ts",
+      "sha256": "37cc9662853baaccb87ca068ad33fecf5209e66bbc5227f01bdac514836f0d5f",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitBudgetFeasibility.ts",
+      "sha256": "1f7fd099cfbbf584d7fa88bd4e08d4cabc0d6c70f30ec06a44e7761d77fb8d40",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/outfitBudgetSelection.ts",
+      "sha256": "ba676ebfe662c603d7e9836b8bd369e6e5a3bce067276549a811a9caed4e94f9",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitBudgetSelection.ts",
+      "sha256": "0ff65a5b06f11c03a3f2aefaee4c8a85dd52df0657ca2eed6dbc15685d373df3",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitBudgetFeedback.ts",
+      "sha256": "ffb3373f563dbb2642253ae10166c98d6e4e3ccc4da1fcc54b3e291ae2ecc548",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/modelOutfitResponse.ts",
+      "sha256": "8410cf49317dc0b75d8ce71abd94c61333ff7a661f77532ecce62cd890b44acd",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/rateLimit.ts",
+      "sha256": "3677a02bc709e963518c8f2042d9792d2a43bf6427deb4efed28ef554451daa3",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/outfitStructure.ts",
+      "sha256": "f7f8eaca4506b9d1801ccadce82f8ec738563a28a05f09ce5f4eb1a73f47df2d",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitStructure.ts",
+      "sha256": "807e89bf0aac98d758be4763d5527a2d001e6e12fff64e9eb3a9cc86f524f0d4",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/occasionRules.ts",
+      "sha256": "c343af261f025ceb6132b9e164a17d6fb121b5416402deb447060d9661a82430",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/occasionRules.ts",
+      "sha256": "e2224b5f44b5507f65e939e2993a5669fda75e38a5f9c4b3056935bc79f7ec99",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitDiversity.ts",
+      "sha256": "1339423f9b86cb0033d214d37c67e123ea200f2aa79a499b9d1eadee514110c7",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "src/domain/outfitRotation.ts",
+      "sha256": "fbda9212e7bac92615ccc3831ba90253305ebcfdd678d361e1cd7e9f43f164ea",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitRotation.ts",
+      "sha256": "1edafe0cf61e81748651a7330ab0136df5bb9640e1a7520fccf8b9bbf7d3ee1b",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/_shared/outfitComposition.ts",
+      "sha256": "aabe2de6b7dc101b5783fdbc322a068630a4d1e6cde49f9eb3563416601ae142",
+      "changedFromOriginal": false
+    },
+    {
+      "path": "backend/supabase/functions/generate-outfits/index.ts",
+      "sha256": "9903efd4b475a40de09b109295cfb0f3451f9f81c9371013c81910b1fb32f305",
+      "changedFromOriginal": true
+    }
+  ],
+  "bundleSha256": "4d91f0516f963e8bdd03e359808e37227ab0669f8204cc84a656193dd83911bb",
+  "externalImports": [
+    {
+      "path": "https://esm.sh/@supabase/supabase-js@2.45.4",
+      "kind": "import-statement",
+      "external": true
+    },
+    {
+      "path": "https://deno.land/std@0.168.0/http/server.ts",
+      "kind": "import-statement",
+      "external": true
+    },
+    {
+      "path": "https://esm.sh/@supabase/supabase-js@2",
+      "kind": "import-statement",
+      "external": true
+    }
+  ],
+  "productionDeploymentPerformed": false,
+  "archive": "aiwardrobe-stylist-v2-catalog-identity-fix-edge-source.tar.gz",
+  "archiveSha256": "a5b0120e60a17500d6138c632774a0e7e6447553829d51ce3f5599dda65e0f08",
+  "requiredBaseline": {
+    "project": "fyqpifmrsftsfqibhwhy",
+    "function": "generate-outfits",
+    "version": 181,
+    "status": "ACTIVE",
+    "verify_jwt": false,
+    "ezbr_sha256": "ff4b5f02772d999c3ec57ccb973599ec7fbe75044a9e0f7e4c30ced3ba3570df"
+  },
+  "focusedRetrievalTestsPassed": 38,
+  "offlineReplay": {
+    "snapshotObservedAt": "2026-11-05T02:16:12.183Z",
+    "snapshotRows": 7020,
+    "history": "Actual persisted displayed-product keys from failed v180 request",
+    "original": {
+      "pages": 6,
+      "freshEligibleTops": 0,
+      "returnedCandidates": 0,
+      "result": "catalog_lookup_unavailable"
+    },
+    "corrected": {
+      "pages": 4,
+      "freshEligibleTops": 19,
+      "returnedCandidates": 12,
+      "result": "success"
+    }
+  },
+  "limitations": [
+    "No hosted generation request for this corrected candidate",
+    "No full end-to-end or iOS outfit-rendering verification for this correction",
+    "Snapshot predates the failed request; it reproduces its failure mechanism, not current inventory availability"
+  ]
+}

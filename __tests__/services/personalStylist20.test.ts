@@ -225,19 +225,8 @@ describe('personal stylist — 20 acceptance tests', () => {
         expect(prompt).toContain('HARD BUDGET: $200');
     });
 
-    it('14. offers a shopping path when the wardrobe is empty', () => {
-        const [suggestion] = generateSuggestions({
-            items: [],
-            wearLogs: [],
-            occasion: 'work',
-        });
-        expect(suggestion.outfit.itemIds).toEqual([]);
-        expect(suggestion.shoppingSuggestions.map((item) => item.category)).toEqual([
-            'top',
-            'bottom',
-            'shoes',
-        ]);
-        expect(suggestion.reasoning).toMatch(/closet/i);
+    it('14. returns a shortfall instead of a zero-piece outfit for an empty wardrobe',()=>{
+        expect(generateSuggestions({items:[],wearLogs:[],occasion:'work'})).toEqual([]);
     });
 
     it('15. builds three complete, distinct looks that keep owned pieces', () => {

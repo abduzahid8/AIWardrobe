@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "scope": "Isolated native release harness, not normal client RC. No auth/backend/provider/analytics sink configured. JS fetch/XHR are denied; local images only.",
+  "simulator": "iPhone 17 Pro / iOS 26.5",
+  "buildType": "Release, simulator arm64, code signing disabled",
+  "bundleSha256": "d17f6e234231356498a0f0954f12d8f3ec19ad1a57ed827cfaecd0280125dcbc",
+  "feedbackComponentSha256": "3d3bd98c2136a4d77fd5332f4358125f63a4d2ab017349248e1a4ed258ceea47",
+  "processToLayoutReceipt": {
+    "samples": 10,
+    "p50Ms": 1366.7443335000003,
+    "rangeMs": [
+      1357.3523750000013,
+      1518.7262500000002
+    ],
+    "includesCliAndFileIo": true,
+    "fullAppRoot": false
+  },
+  "stress": {
+    "status": "passed",
+    "items": 220,
+    "localOriginalImageCopies": 30,
+    "imageLoads": 97,
+    "imageErrors": 0,
+    "buyCheckCase": "hard-budget rejection with sparse fit evidence",
+    "buyCheckSamples": 25,
+    "buyCheckP50Ms": 14.513458997011185,
+    "buyCheckRangeMs": [
+      14.303542003035545,
+      16.118334010243416
+    ],
+    "deterministicSamples": 25,
+    "deterministicP50Ms": 0.1404999941587448,
+    "frameGapSampleCount": 492,
+    "maxObservedFrameGapMs": 22.070999994874,
+    "networkAttempts": 0,
+    "appStates": [
+      "inactive",
+      "background",
+      "active"
+    ]
+  },
+  "rssMiB": {
+    "baseline": 308.75,
+    "peak": 718.765625,
+    "final": 282.421875
+  },
+  "memoryConclusion": "High peak in original-image fixture; no production/physical-device or leak conclusion. Production thumbnail route and low-memory devices still required.",
+  "productionClaim": false,
+  "fullDeviceQaStatus": "MANUAL REQUIRED"
+}

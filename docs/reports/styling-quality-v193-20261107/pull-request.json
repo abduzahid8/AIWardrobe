@@ -1,0 +1,6 @@
+{
+  "number": 2,
+  "url": "https://github.com/abduzahid8/AIWardrobe/pull/2",
+  "base": "codex/outfit-selection-quality-20261107",
+  "head": "codex/styling-quality-v193-20261107"
+}

@@ -1,0 +1,11 @@
+/** Guarded queue-only repair against the already deployed pinned stylist. */
+import fs from 'node:fs';import cp from 'node:child_process';import assert from 'node:assert/strict';import crypto from 'node:crypto';import {management,query,quote} from '../../stylist5/private-api.mjs';
+const dir=process.env.STYLIST5_PRIVATE_DIR;if(!dir)throw Error('private release directory required');
+const deployment=JSON.parse(fs.readFileSync(dir+'/deployment.json')),all=await(await management('/functions')).json(),live=all.find(f=>f.slug==='generate-outfits');assert.equal(live.version,deployment.version);assert.equal(live.status,'ACTIVE');
+const b=Buffer.from(await(await management('/functions/generate-outfits/body')).arrayBuffer()),key=Buffer.from('"sourcesContent":['),a=b.indexOf(key)+key.length;let e=a+1;for(;e<b.length;e++){if(b[e]===92){e++;continue}if(b[e]===34)break}const source=JSON.parse(b.subarray(a,e+1).toString());
+assert.equal(crypto.createHash('sha256').update(source).digest('hex'),deployment.sha,'live source drift');assert.equal(crypto.createHash('sha256').update(fs.readFileSync(dir+'/v200.ts')).digest('hex'),'6dc1c4c40e96e954685b4e27ec5803462c3308060a1835be18ac78a9884d425d');
+const old=fs.readFileSync('backend/supabase/migrations/20261108123000_stylist5_queue_qualification.sql','utf8').split('as $$')[1].split('$$;')[0];
+const state=await query("select prosrc,not prosecdef and not has_function_privilege('authenticated',oid,'EXECUTE') and not has_function_privilege('anon',oid,'EXECUTE') private from pg_proc where oid='public.catalog_visual_batch(text,uuid,jsonb)'::regprocedure");assert(state[0].private);assert.equal(state[0].prosrc,old,'queue source drift');
+const file='backend/supabase/migrations/20261108125000_stylist5_top_level_lease.sql',sql=fs.readFileSync(file,'utf8');assert.equal(sql,cp.execFileSync('git',['show','HEAD:'+file],{encoding:'utf8'}),'commit repair source first');
+await query(sql.replace("notify pgrst,'reload schema';", "insert into supabase_migrations.schema_migrations(version,name,statements) values('20261108125000','stylist5_top_level_lease',array['Move writable CTE to statement level; retain scoped queue authorization']);notify pgrst,'reload schema';"));
+console.log({queueLeaseRepairApplied:true,activeStylistVersion:live.version,sourceAndRollbackGuardsPreserved:true});

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "hm-1356544003",
+    "name": "Slim-Fit Cotton Henley Shirt",
+    "description": "H&M men's clothing · official garment-only product photo on a plain background",
+    "garment_type": "upper_body",
+    "category": "tops",
+    "image_url": "https://image.hm.com/assets/hm/62/1d/621d36f57a1313d70247db9d45a8c91489710920.jpg"
+  },
+  {
+    "id": "reiss-w40434",
+    "name": "Merino Wool Button-Through Shirt in Soft Grey Mouline",
+    "description": "Men’s apparel from Reiss. Official product photo showing the garment on a plain light background.",
+    "garment_type": "upper_body",
+    "category": "tops",
+    "image_url": "https://cdn.platform.next/common/items/default/default/itemimages/3_4Ratio/product/lge/w40434s2.jpg?im=Resize%2Cwidth%3D1000"
+  }
+]

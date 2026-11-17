@@ -1,6 +1,6 @@
 import { budgetCandidatesFromText, stripBudgetText } from '../../backend/supabase/functions/_shared/outfitBudgetText';
 export { budgetCandidatesFromText } from '../../backend/supabase/functions/_shared/outfitBudgetText';
-import { type BudgetFxContext, fitsBudgetAmount, referenceAmount } from '../../backend/supabase/functions/_shared/budgetFx';
+import { type BudgetFxContext, type BudgetFxSnapshot, fitsBudgetAmount, referenceAmount } from '../../backend/supabase/functions/_shared/budgetFx';
 /**
  * Outfit budget — parse a spend cap from user text and score shop spend.
  *
@@ -41,6 +41,68 @@ export function stripBudgetFromText(text?: string | null): string { return strip
 export function isCatalogShopId(id?: string | null): boolean {
     const s = String(id || '');
     return /^(shop_|md-|zara-|classic-m-)/i.test(s);
+}
+
+/** True when priced shop pieces span more than one currency: a combined
+ * total would be invented arithmetic, so the UI must say so explicitly. */
+export function mixedCurrencyPriced(
+    items: Array<QuoteItem | null | undefined> | null | undefined,
+    catalog?: QuoteItem[],
+): boolean {
+    const currencies = new Set<string>();
+    for (const item of items || []) {
+        if (!item || (item.isWardrobe === true && !item.isShopItem)) continue;
+        const quote = resolveShopQuote(item, catalog);
+        if (quote && quote.currency && quote.price > 0) currencies.add(quote.currency);
+        if (currencies.size > 1) return true;
+    }
+    return false;
+}
+
+/**
+ * Exact listed-price subtotals, grouped by currency. Never present their sum
+ * as a converted value: the UI can render e.g. "$100 + 350000 UZS" without
+ * pretending an FX rate or concealing some of the purchase cost.
+ * Returns [] if an individual shop item is not fully quoted; partially
+ * reported subtotals would falsely suggest complete coverage.
+ */
+export function outfitCurrencySubtotals(
+    items: Array<QuoteItem | null | undefined>,
+    catalog?: QuoteItem[],
+): Array<{currency: string; price: number}> {
+    const totals = new Map<string,number>();
+    let priced = 0;
+    for(const item of items || []) {
+        if(!item || (item.isWardrobe === true && item.isShopItem !== true)) continue;
+        const quote = resolveShopQuote(item,catalog);
+        if(!quote || !quote.currency || !(Number.isFinite(quote.price) && quote.price > 0)) return [];
+        totals.set(quote.currency,(totals.get(quote.currency) || 0) + quote.price);
+        priced++;
+    }
+    if(!priced) return [];
+    return [...totals].sort(([a],[b])=>a.localeCompare(b))
+        .map(([currency,price])=>({currency,price}));
+}
+
+/** A CBU-referenced estimate of the complete purchase basket in UZS.
+ * Every merchant quote must carry its own currency. Never drop an unquoted
+ * piece, guess exchange rates, or silently present an estimate as a store
+ * checkout price. Rates are validated for freshness by referenceAmount().
+ */
+export function outfitReferencedTotal(
+    items: Array<QuoteItem | null | undefined>,
+    catalog?: QuoteItem[],
+    rates?: BudgetFxSnapshot | null,
+): { price: number; currency: 'UZS'; asOf: string } | null {
+    if (!rates) return null;
+    const groups = outfitCurrencySubtotals(items, catalog);
+    if (!groups.length) return null;
+    try {
+        const uzs = groups.reduce((sum, group) =>
+            sum + referenceAmount(group.price, group.currency, 'UZS', rates), 0);
+        if (!Number.isFinite(uzs) || uzs <= 0) return null;
+        return { price: Math.round(uzs), currency: 'UZS', asOf: rates.asOf };
+    } catch { return null; }
 }
 
 /** First non-empty item currency, upper-cased (e.g. 'UZS'). */
@@ -147,6 +209,30 @@ export function outfitShopSpend(
 ): number {
     const currency = targetCurrency || catalogCurrencyOf(catalog) || catalogCurrencyOf(items);
     return (items || []).reduce((sum, item) => sum + resolveShopPrice(item, catalog, currency, fx), 0);
+}
+
+/**
+ * One currency-consistent purchase total for a look, or null when the look
+ * cannot be totalled honestly: an unquoted shop piece, mixed currencies, or
+ * no priced pieces at all. Owned wardrobe pieces cost zero.
+ */
+export function outfitTotalQuote(
+    items: Array<QuoteItem | null | undefined>,
+    catalog?: QuoteItem[],
+): ListedShopQuote | null {
+    const quotes: ListedShopQuote[] = [];
+    for (const item of items || []) {
+        if (!item || (item.isWardrobe === true && item.isShopItem !== true)) continue;
+        const quote = resolveShopQuote(item, catalog);
+        const price = Number(quote?.price);
+        if (!quote || !quote.currency || !(price > 0)) return null;
+        quotes.push({ price, currency: quote.currency });
+    }
+    if (!quotes.length) return null;
+    const currencies = new Set(quotes.map((quote) => quote.currency));
+    if (currencies.size !== 1) return null;
+    const currency = quotes[0].currency as string;
+    return { price: quotes.reduce((sum, quote) => sum + quote.price, 0), currency };
 }
 
 export function formatMoney(amount: number, currency = 'USD'): string {

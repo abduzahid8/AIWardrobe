@@ -21,7 +21,17 @@ describe('russian sneaker/athletic detection in the style judge', () => {
     const outfit = [blazer, shirt, trousers, ruSneakers];
     expect(passesStyleJudge(outfit, 'old_money', 'work')).toBe(false);
     const reason = styleJudgeReason(outfit, 'old_money', 'work');
-    expect(reason).toMatch(/athletic shoes are not evening wear|sneakers never pair/);
+    // Stylist 5 redesign: work is a 'smart' dress code, so the veto now comes
+    // from the classic-style shoe block instead of the formal evening block.
+    expect(reason).toMatch(/boat\/athletic shoes never pair with classic tailoring/);
+  });
+
+  it('still rejects athletic shoes on a formal occasion (dress-code gate)', () => {
+    // Sibling keeping the formal evening lane covered: the garmentContext
+    // dress-code gate rejects non-dress footwear before the occasion block.
+    expect(rejectForStyleOccasion(ruSneakers, 'minimalist', 'formal')).toBe(
+      'formal_requires_dress_footwear',
+    );
   });
 
   it('rejects russian sneakers as an item for classic styles even on casual occasions', () => {
@@ -29,10 +39,18 @@ describe('russian sneaker/athletic detection in the style judge', () => {
     expect(r).toBe('boat/athletic shoes never pair with classic tailoring');
   });
 
-  it('rejects russian sandals for formal occasions (beach/athletic family)', () => {
+  it('russian sandals pass at smart work, still rejected for classic styles and formal occasions', () => {
     const sandals = { name: 'Сандалии летние', macroCategory: 'shoes' };
-    expect(rejectForStyleOccasion(sandals, 'minimalist', 'work')).toBe(
-      'beach/athletic shoes are not evening wear',
+    // Stylist 5 redesign: work/date map to dressCode 'smart', so the formal
+    // evening block no longer vetoes sandals for a non-classic style at work.
+    expect(rejectForStyleOccasion(sandals, 'minimalist', 'work')).toBeNull();
+    // The beach/athletic-shoe protection stays: classic styles veto sandals in
+    // every occasion and formal occasions gate them at the dress-code layer.
+    expect(rejectForStyleOccasion(sandals, 'old_money', 'work')).toBe(
+      'boat/athletic shoes never pair with classic tailoring',
+    );
+    expect(rejectForStyleOccasion(sandals, 'minimalist', 'formal')).toBe(
+      'formal_requires_dress_footwear',
     );
   });
 
