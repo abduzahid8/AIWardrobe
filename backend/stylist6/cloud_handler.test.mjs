@@ -2059,3 +2059,30 @@ test('72-second authenticated catalog cloud request never publishes three garmen
   assert.ok(result.body.outfits.every(look=>
     new Set(look.items.map(item=>item.macroCategory)).size===4));
 });
+
+test('licensed cached original-photo evidence is read ONLY with privileged bounded server IO',async()=>{
+  const originalFetch=globalThis.fetch,seen=[];
+  try{
+    globalThis.fetch=async(url,options)=>{
+      const u=new URL(String(url));
+      seen.push({url:u,headers:options?.headers});
+      assert.equal(u.pathname,'/rest/v1/catalog_photo_cache_v1');
+      assert.equal(u.searchParams.get('status'),'eq.ready');
+      assert.match(u.searchParams.get('select'),/source_hash,storage_bucket/);
+      assert.equal(options.headers.Authorization,'Bearer service-test');
+      assert.equal(options.headers.apikey,'service-test');
+      return Response.json([]);
+    };
+    const io=createCloudIo({url:'https://fake-supabase.example',
+      anonKey:'anon-test',serviceKey:'service-test',supabaseJs:{}});
+    const result=await io.fetchPhotoCacheRows(
+      Array.from({length:400},(_,i)=>'licensed-sku-'+i));
+    assert.deepEqual(result,[]);
+    assert.equal(seen.length,4);
+    assert.ok(seen.every(({url})=>
+      (url.searchParams.get('product_id')||'').match(/licensed-sku-/g)?.length===100));
+    await assert.rejects(io.fetchPhotoCacheRows(
+      Array.from({length:401},(_,i)=>'sku-'+i)),
+      /stylist6_photo_cache_query_limit/);
+  }finally{globalThis.fetch=originalFetch;}
+});

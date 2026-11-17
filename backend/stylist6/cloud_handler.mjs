@@ -29,6 +29,7 @@ import { designCreativeBriefs, CREATIVE_DIRECTOR_VERSION } from './creative_dire
 import { selectFashionSlate } from './fashion_director_slate.mjs';
 import { selectPhotoEditorialDeck } from './photo_editor_final.mjs';
 import { composeCatalogSkuLooks } from './sku_composer_ai.mjs';
+import {verifiedCatalogPhotoCache,resolveCatalogCachedPhoto} from './catalog_photo_cache.mjs';
 import { feedbackTasteModel, FEEDBACK_TASTE_VERSION, FEEDBACK_TASTE_MAX_ROWS } from './feedback_taste.mjs';
 import { referenceFirstBriefs, explicitLookbookPhotoRequested } from './lookbook_briefs.mjs';
 import { buildReferenceBlueprints } from './reference_blueprint.mjs';
@@ -614,6 +615,29 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       }));
       return pages.flat();
     },
+    // Privileged, consent-verified source-photo provenance; never exposed
+    // to user JWT or public REST callers. Under owner opt-in only, read
+    // bounded matching catalog SKU IDs, and compare again to ORIGINAL URLs.
+    async fetchPhotoCacheRows(ids) {
+      if(!Array.isArray(ids)||ids.length>CATALOG_PER_SLOT*CATALOG_SLOTS.length)
+        throw Error('stylist6_photo_cache_query_limit');
+      const chunks=[];
+      for(let i=0;i<ids.length;i+=VISUAL_PROFILE_CHUNK)
+        chunks.push(ids.slice(i,i+VISUAL_PROFILE_CHUNK));
+      const pages=await Promise.all(chunks.map(async chunk=>{
+        const params=new URLSearchParams({
+          select:'product_id,source_image_url,source_hash,storage_bucket,storage_path,image_sha256,media_type,status,rights_basis,rights_reference,cache_hosting_granted,external_ai_inference_granted,rights_granted_at,rights_expires_at,last_verified_at',
+          status:'eq.ready',
+          product_id:'in.('+chunk.map(id=>'"'+String(id).replace(/"/g,'')+'"').join(',')+')',
+        });
+        const response=await fetch(url+'/rest/v1/catalog_photo_cache_v1?'+params,{
+          headers:{...authHeaders(serviceKey),Authorization:'Bearer '+serviceKey},
+        });
+        const records=await check(response,'stylist6_photo_cache_unavailable');
+        return Array.isArray(records)?records:[];
+      }));
+      return pages.flat();
+    },
     // Gate D taste source: this user's own explicit thumbs rows, newest
     // first, bounded to the pure module's row cap. One indexed query on
     // feedback_owner_recent (user_id, created_at desc) — plus deterministic
@@ -1142,10 +1166,32 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     ]);
     deadline();
     nextPhase('visual_profile_hydration');
-    const visualHydration = await io.fetchVisualProfiles(shopRows.map((row) => row.id))
-      .then((profiles) => hydrateProfiles(shopRows, profiles));
+    // The photo-first experiment is OFF without both server-owned opt-ins.
+    // Old iOS / wardrobe / prod Stylist5 make NO new DB reads or CDN calls.
+    const photoCacheOptIn=sourceMode==='catalog'&&
+      env.STYLIST6_PHOTO_FIRST_COMPOSER_ENABLED==='true'&&
+      env.STYLIST6_PHOTO_ASSETS_READY==='source-hash-verified';
+    const [visualHydration,photoCacheRecords]=await Promise.all([
+      io.fetchVisualProfiles(shopRows.map((row)=>row.id))
+        .then(profiles=>hydrateProfiles(shopRows,profiles)),
+      photoCacheOptIn&&typeof io.fetchPhotoCacheRows==='function'
+        ?io.fetchPhotoCacheRows(shopRows.map(row=>row.id)).catch(()=>[])
+        :Promise.resolve([]),
+    ]);
     deadline();
     const { items: shopItems } = adaptCatalog(shopRows);
+    // Bound every cached image to the current immutable merchant SOURCE
+    // record. Missing rights, expired evidence, source drift or a failed
+    // private read is NOT a usable photo candidate.
+    const currentShopById=new Map(shopRows.map(row=>[String(row.id),row]));
+    const verifiedPhotoRows=new Map();
+    for(const row of photoCacheRecords){
+      const source=currentShopById.get(String(row?.product_id));
+      const item=source?{id:source.id,imageUrl:source.image_url}:null;
+      if(item&&verifiedCatalogPhotoCache(item,row,{
+        supabaseOrigin:env.SUPABASE_URL,
+      }))verifiedPhotoRows.set(String(item.id),row);
+    }
     let wardrobeItems = wardrobeRows.map(projectWardrobeItem).filter(Boolean);
     if (sourceMode === 'catalog' && !payload?.request && requiredIds.length > 0) {
       const shopIdSet = new Set(shopItems.map((item) => String(item.id)));
@@ -1344,12 +1390,44 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         : (/^(1|true)$/i.test(String(env.STYLIST6_DEFAULT_VISUAL_EVAL || '').trim()) ? 'server_default' : 'default_off');
     const nvidiaKey = env.NVIDIA_API_KEY || '';
     const photoCache = new Map();
+    const verifiedPhotoTasks=new Map();
     // Exact image bytes are shared with the independent photo-critic cache.
     let photoPortfolioResolver=null;
+    let photoComposerCachedOnlyResolver=null;
     if (visualAsked && !visualDisabled && nvidiaKey.startsWith('nvapi-')) {
-      const resolveProduct = (product) => resolveProductAsset(product.imageUrl || product.image_url, photoCache,
-        fetchImpl ? (prodUrl, prodOptions) => fetchImpl(prodUrl, prodOptions) : undefined);
+      const resolveProduct=(product)=>{
+        const url=product.imageUrl||product.image_url;
+        const originalResolver=()=>resolveProductAsset(url,photoCache,
+          fetchImpl?(prodUrl,options)=>fetchImpl(prodUrl,options):undefined);
+        const record=verifiedPhotoRows.get(String(product?.id||''));
+        if(!record||record.source_image_url!==url)return originalResolver();
+        const taskKey=String(product.id)+'|'+url;
+        if(!verifiedPhotoTasks.has(taskKey)){
+          const task=resolveCatalogCachedPhoto({
+            item:product,record,supabaseOrigin:env.SUPABASE_URL,
+            fetchImpl:fetchImpl||fetch,decodeImage:prepareCloudVisualMedia,
+            originalResolver,
+          });
+          verifiedPhotoTasks.set(taskKey,task);
+        }
+        return verifiedPhotoTasks.get(taskKey);
+      };
       photoPortfolioResolver=resolveProduct;
+      // Creative composer NEVER triggers a live merchant-CDN wave:
+      // it uses ONLY source-verified licensed FIRST-PARTY assets. Missing,
+      // expired or corrupted cached assets abstain; the original text AI
+      // composer remains the bounded fallback. The INDEPENDENT quality
+      // critic above is still allowed to fetch original merchant media.
+      photoComposerCachedOnlyResolver=product=>{
+        const record=verifiedPhotoRows.get(String(product?.id||''));
+        if(!record||record.source_image_url!==(product?.imageUrl||product?.image_url))
+          return null;
+        return resolveCatalogCachedPhoto({
+          item:product,record,supabaseOrigin:env.SUPABASE_URL,
+          fetchImpl:fetchImpl||fetch,decodeImage:prepareCloudVisualMedia,
+          originalResolver:async()=>null,deadlineMs:1600,
+        });
+      };
       // Even an explicitly unreviewed third catalog card must have real,
       // decodable product photos. Reuse the request-scoped image cache and
       // avoid new paid NVIDIA calls. Never let expired request time preflight.
@@ -1447,9 +1525,18 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // Reenable PHOTO-FIRST only after a source-hash-verified, explicitly
     // authorized original-photo cache can provide all four garment roles.
     // TEXT AI-first and the proven independent final PHOTO editor remain on.
-    const photoFirstCatalogReady=
-      env.STYLIST6_PHOTO_FIRST_COMPOSER_ENABLED==='true' &&
-      env.STYLIST6_PHOTO_ASSETS_READY==='source-hash-verified';
+    // Server-owned license/cache gate AND actual >=3 bound source images
+    // PER garment role. Never start 48 live merchant CDN downloads to
+    // discover during a paying user's request that media is unavailable.
+    const verifiedPhotoCounts=new Map([
+      ['top',0],['outerwear',0],['bottom',0],['shoes',0],
+    ]);
+    for(const item of shopItems)if(verifiedPhotoRows.has(String(item.id))&&
+      verifiedPhotoCounts.has(item.macroCategory))
+      verifiedPhotoCounts.set(item.macroCategory,
+        verifiedPhotoCounts.get(item.macroCategory)+1);
+    const photoFirstCatalogReady=photoCacheOptIn &&
+      [...verifiedPhotoCounts.values()].every(n=>n>=3);
     const selectDirectorFinalists=modelSlateEnabled
       ? async({options,context})=>{
           const timeLeftMs=Math.max(0,Math.floor(remainingMs()));
@@ -1482,7 +1569,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           return composeCatalogSkuLooks({
             pool,context,directions,layerRequired,allowLayer,outfitCount,
             feedbackTaste,parallel,
-            resolvePhoto:parallel&&photoFirstCatalogReady?photoPortfolioResolver:null,
+            resolvePhoto:parallel&&photoFirstCatalogReady
+              ?photoComposerCachedOnlyResolver:null,
             authorizePhoto:parallel&&photoFirstCatalogReady?isInferenceAuthorized:null,
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,

@@ -73,6 +73,29 @@ The target is not 100% subjective approval (cannot be guaranteed); the measurabl
 - Regression test `__tests__/features/stylist6CloudPublication.test.js` now protects the default QA route against reverting to a 50-second compute path where the full composer/editor is silently disabled. New code test has not been locally executed here; CI result must be checked.
 - Next: run the existing authenticated visual worker for the bounded pending jobs when its operator access is available; verify how many finished with image-observed attributes and are used by actual outfit candidate discovery. Audit exact rejected outfit photos before changing editorial thresholds.
 
+## 2026-11-17 — licensed, original-source product photo cache foundation
+
+New server-only `catalog_photo_cache_v1` live Supabase table is RLS-protected;
+anon/authenticated have no SELECT/INSERT, service_role only. **Zero READY
+rows exist** until real SKU-specific hosting and NVIDIA inference rights
+are confirmed and a JPEG is actually inspected, uploaded and hashed. The
+admin-only offline CLI `scripts/stylist6/ingest_licensed_product_photos.mjs`
+defaults to DRY RUN, requires explicit rights evidence and verifies the
+source row both before and after download/upload. Every cached image is
+bound to exact current SKU plus original image URL, rights scope and raw
+JPEG SHA256, with a 30-day verification limit. Cloud handler has a
+server-only first-party photo resolver; corruption/revocation/deadline
+falls back to original instead of fabricating photo verification.
+
+The 72s staging creative AI may invoke VISUAL-FIRST only if both existing
+server flags are set AND at least 3 legitimately stored, current photos
+per TOP/LAYER/BOTTOM/SHOES are in the discovered catalog. It never runs
+a merchant CDN fan-out as part of visual composition. The unchanged
+independent whole-outfit PHOTO critic and final visual collection editor
+continue to own quality vetoes. **Neither licensing nor aesthetic release
+has been proven**. See `docs/STYLIST6_LICENSED_IMAGE_CACHE.md`
+and GitHub issue #17 for acceptance.
+
 ## 2026-11-17 — correct photo-first availability and licensed image-cache gap
 
 Native iOS tests of primary product-photo visual composition (`dbefcdd`,
