@@ -1983,7 +1983,19 @@ export async function recommendFashionDeck({
       // If the composer abstains, the existing model-led selector is retained.
       if(typeof selectCatalogCompositions==='function'&&
           request.sourceMode==='catalog'&&!requiredIds.length&&reviewable.length>=6){
-        const pool=sourceBoundCompositionPool(reviewable);
+        // Context/owner admissions are enforced by the SAME retrieval
+        // preparer before exposing any additional real SKU to the composer.
+        // The old prebuilt-look shortlist remains a quality seed, NOT a
+        // restriction to one dozen nearly identical office shirts.
+        const excludedBases=new Set(
+          (Array.isArray(request.excludedIds)?request.excludedIds:[])
+            .map(id=>baseProductId(String(id))));
+        const extra=Array.isArray(catalog)?catalog.slice(0,650)
+          .filter(item=>!excludedBases.has(baseProductId(String(item.id))))
+          .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
+        const pool=sourceBoundCompositionPool(reviewable,{
+          additionalItems:extra,explorationSlots:4,
+        });
         try{
           const composition=await selectCatalogCompositions({
             pool,context:{

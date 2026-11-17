@@ -36,11 +36,18 @@ function photoFacts(item){
   }));
 }
 
-/** Bound to the REAL permitted shortlist; each token holds one actual SKU.
- * Use high-quality look seeds but diversify by photographically observed
- * garment family so the model isn't shown 12 near-identical safe shirts.
+/** Bound to the REAL permitted catalog; each token holds one actual SKU.
+ * Previously only products that appeared in the ranker's 72 prebuilt outfits
+ * entered this menu, turning the AI composer into another shirt/blazer
+ * rearranger. Reserve up to FOUR exploratory products per slot drawn directly
+ * from the PREPARED (user-exclusions/climate/source-admitted) catalog. This
+ * unlocks new KNIT vs SHIRT, loafer vs derby, different layer architectures.
+ * No extra product is automatically shown: whole-look hard gates and NVIDIA
+ * must STILL accept any AI-composed new combinations.
  */
-export function sourceBoundCompositionPool(looks, {perSlot=MAX_PER_SLOT}={}){
+export function sourceBoundCompositionPool(looks, {
+  perSlot=MAX_PER_SLOT,additionalItems=[],explorationSlots=4,
+}={}){
   if(!Array.isArray(looks))return [];
   const limit=Math.max(1,Math.min(MAX_PER_SLOT,perSlot));
   const candidates=new Map(SLOTS.map(slot=>[slot,new Map()]));
@@ -55,22 +62,59 @@ export function sourceBoundCompositionPool(looks, {perSlot=MAX_PER_SLOT}={}){
       if(!prior||strength>prior.strength)source.set(key,{item,strength});
     }
   }
+  const exploration=Array.isArray(additionalItems)?additionalItems.slice(0,650):[];
+  const extraCapacity=Math.max(0,Math.min(4,explorationSlots,limit-3));
   const result=[];
   for(const slot of SLOTS){
     const pool=[...candidates.get(slot).values()].sort((a,b)=>b.strength-a.strength);
-    const used=new Set(),chosen=[];
-    const append=x=>{
-      const key=productKey(x.item);
-      if(used.has(key))return;
-      used.add(key);chosen.push(x);
-    };
-    for(const x of pool){
-      const evidence=photoFacts(x.item);
-      const diversity=[x.item.subtype||'',evidence.color||x.item.color||'',
+    const used=new Set(),chosen=[],families=new Set();
+    const family=item=>{
+      const evidence=photoFacts(item);
+      return [item.subtype||'',evidence.color||item.color||'',
         evidence.texture||'',evidence.volume||''].join('|');
-      if(chosen.some(y=>y._family===diversity))continue;
-      x._family=diversity;append(x);
-      if(chosen.length>=Math.min(limit,8))break;
+    };
+    const append=x=>{
+      const key=productKey(x.item),group=family(x.item);
+      if(used.has(key))return false;
+      used.add(key);families.add(group);chosen.push(x);
+      return true;
+    };
+    // Present the AI with multiple DIFFERENT known garment architectures,
+    // rather than the top 12 SKUs of one legacy concept.
+    const seededCap=Math.max(3,limit-extraCapacity);
+    for(const x of pool){
+      if(families.has(family(x.item)))continue;
+      append(x);
+      if(chosen.length>=seededCap)break;
+    }
+    for(const x of pool){
+      if(chosen.length>=seededCap)break;
+      append(x);
+    }
+    const extra=exploration.filter(x=>
+      slotOf(x)===slot && x.isShopItem === true &&
+      productKey(x) && !used.has(productKey(x)));
+    // The extra slot favors a NEW subtype from the entire verified catalog,
+    // never a rigid product-title veto. Photos with usable observations give
+    // fashion AI stronger grounds than a generic source category alone.
+    const scored=extra.map(item=>({
+      item,strength:.68+Math.min(0.04,Object.keys(photoFacts(item)).length*.01),
+      group:family(item),facts:Object.keys(photoFacts(item)).length,
+    })).sort((a,b)=>{
+      const aUnseen=!chosen.some(x=>x.item.subtype===a.item.subtype);
+      const bUnseen=!chosen.some(x=>x.item.subtype===b.item.subtype);
+      return Number(bUnseen)-Number(aUnseen)||b.facts-a.facts||
+        a.item.id.localeCompare(b.item.id);
+    });
+    let added=0;
+    for(const x of scored){
+      if(added>=extraCapacity)break;
+      if(families.has(x.group))continue;
+      if(append(x))added++;
+    }
+    for(const x of scored){
+      if(chosen.length>=limit)break;
+      append(x);
     }
     for(const x of pool){
       if(chosen.length>=limit)break;

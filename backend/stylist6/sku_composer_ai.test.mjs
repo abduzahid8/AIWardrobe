@@ -111,3 +111,24 @@ test('provider failure and missing inventory never become product claims',async(
   assert.equal(offline.status,'provider_unavailable');
   assert.equal(offline.looks.length,0);
 });
+
+test('SKU Director sees real category alternatives outside old prebuilt ranker outfits',()=>{
+  const additional=[
+    {...items[0][0],id:'NEW-FINE-KNIT',name:'Fine Merino Crewneck',
+      subtype:'fine-knit',color:'camel'},
+    {...items[0][1],id:'NEW-CARDIGAN',name:'Merino Button Cardigan',
+      subtype:'cardigan',color:'olive'},
+    {...items[0][2],id:'NEW-CHINO',name:'Textured Cotton Chinos',
+      subtype:'chino',color:'stone'},
+    {...items[0][3],id:'NEW-LOAFER',name:'Suede Penny Loafers',
+      subtype:'loafer',color:'burgundy'},
+  ];
+  const pool=sourceBoundCompositionPool(looks,{additionalItems:additional});
+  for(const real of additional){
+    assert.ok(pool.some(p=>p.item===real),
+      'direct catalog garment '+real.id+' must reach AI even if NO legacy look used it');
+  }
+  assert.equal(pool.filter(p=>p.slot==='top').length,7);
+  assert.ok(pool.every(p=>p.public.token===p.token));
+  assert.doesNotMatch(JSON.stringify(pool.map(p=>p.public)),/NEW-FINE-KNIT|NEW-CARDIGAN/);
+});
