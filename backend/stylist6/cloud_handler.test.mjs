@@ -11,6 +11,7 @@ import {
   fitVisualBytesCloud,
   STYLIST6_CLOUD_VERSION,
   fashionSlateDecisionBudgetMs,
+  prewarmProductPhotos,
   serverFashionSlateEnabled,
   canonicalRequestFingerprint,
 } from './cloud_handler.mjs';
@@ -1866,4 +1867,42 @@ test('workout SKU-only Fashion Director is independent from freeform creative pl
   assert.equal(serverFashionSlateEnabled(enabled,{
     visualAsked:true,visualCriticAvailable:false,
   }),false,'selector cannot pretend the actual-photo critic is configured');
+});
+
+
+test('media prewarm starts all 32 allowlisted SKU photos together, never serial six-image waves',async()=>{
+  const urls=Array.from({length:32},(_,i)=>
+    'https://static.zara.net/assets/product-'+i+'.jpg');
+  let active=0,peak=0,resolved=0;
+  const pending=[];
+  const fetchPhoto=async()=>{
+    active++;peak=Math.max(active,peak);
+    await new Promise(resolve=>pending.push(resolve));
+    active--;resolved++;
+  };
+  const operation=prewarmProductPhotos(urls,fetchPhoto,{remainingMs:()=>50000});
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(peak,32,'all 32 safe CDN requests should start without serial barriers');
+  pending.splice(0).forEach(resolve=>resolve());
+  const result=await operation;
+  assert.equal(result.attempted,32);
+  assert.equal(result.completed,32);
+  assert.equal(resolved,32);
+});
+
+test('media prewarm only reaches inference-authorized hosts, is bounded and cannot fake an approval',async()=>{
+  const urls=[
+    'https://static.zara.net/product.jpg','https://static.zara.net/product.jpg',
+    'http://127.0.0.1/secret.jpg','https://evil.example/photo.jpg',
+  ];
+  const visited=[];
+  const result=await prewarmProductPhotos(urls,async({imageUrl})=>{
+    visited.push(imageUrl);throw new Error('cdn failure');
+  },{remainingMs:()=>6000});
+  assert.equal(result.attempted,1,'duplicate/forbidden URLs never enter the prewarm wave');
+  assert.equal(result.completed,0,'failed media is never accepted as a successful image');
+  assert.deepEqual(visited,['https://static.zara.net/product.jpg']);
+  assert.deepEqual(await prewarmProductPhotos(urls,async()=>{},{
+    remainingMs:()=>1000}),{attempted:0,completed:0});
 });

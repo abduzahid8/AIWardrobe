@@ -37,6 +37,7 @@ import { normalizeStylistLanguage } from '../../src/domain/stylingContext.ts';
 import {
   createHostedVisualCritic,
   NVIDIA_VISION_MODEL,
+  MAX_VISUAL_CANDIDATES,
   VISUAL_PROVIDER_TIMEOUT_MS,
   VISUAL_TIMEOUT_MS,
 } from './visual_critic_hosted.mjs';
@@ -696,6 +697,40 @@ export async function resolveProductAsset(imageUrl, cache, fetchFn) {
   })();
   cache.set(url, task);
   return task;
+}
+
+/** Start every independent permitted source-photo fetch in one bounded
+ * wave. Eight real outfits can contain 32 distinct merchant images; awaiting
+ * six-image waves serially took 4-6 CDN timeout windows (up to 48s), leaving
+ * the actual 120B PHOTO JUDGE no time under the 50s request deadline.
+ *
+ * Media remains URL-allowlisted, bounded by resolveProductAsset's 8s timeout
+ * and max image bytes, and shared in a request-scoped in-flight Map. Timebox
+ * the optional *warmup*; unfinished tasks populate that exact same cache
+ * while the critic starts. We never interpret a warmup failure as approval.
+ */
+export async function prewarmProductPhotos(urls, resolvePhoto,
+  { remainingMs = () => 50_000, signal } = {}) {
+  if(!Array.isArray(urls)||typeof resolvePhoto!=='function')return {attempted:0,completed:0};
+  const unique=[...new Set(urls.filter(url=>typeof url==='string'&&
+    isInferenceAuthorized(url)))].slice(0,MAX_VISUAL_CANDIDATES*4);
+  if(!unique.length||signal?.aborted||remainingMs()<=5000)return {attempted:0,completed:0};
+  let completed=0;
+  // Critic fetches share these in-flight cache promises, so issuing all
+  // photorequests together (max 32), instead of six serial batches, removes
+  // CDN head-of-line blocking without a second fetch or provider call.
+  const started=unique.map(imageUrl=>Promise.resolve()
+    .then(()=>resolvePhoto({imageUrl}))
+    .then(()=>{completed++;},()=>{}));
+  let timer;
+  try{
+    const budgetMs=Math.min(6000,Math.max(1,remainingMs()-5000));
+    await Promise.race([
+      Promise.allSettled(started),
+      new Promise(resolve=>{timer=setTimeout(resolve,budgetMs);}),
+    ]);
+  } finally {if(timer)clearTimeout(timer);}
+  return {attempted:unique.length,completed};
 }
 
 /**
