@@ -122,8 +122,8 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       'not_configured','load_shed','composition_unavailable',
     ].includes(f.skuCompositionReceipt?.status)
       ?f.skuCompositionReceipt.status:'not_run',
-    skuCompositionProposed:safe(f.skuCompositionReceipt?.proposed,3),
-    skuCompositionAdmitted:safe(f.skuCompositionReceipt?.admitted,3),
+    skuCompositionProposed:safe(f.skuCompositionReceipt?.proposed,6),
+    skuCompositionAdmitted:safe(f.skuCompositionReceipt?.admitted,6),
     skuCompositionExploration:safe(f.skuCompositionReceipt?.exploratoryProducts,48),
     photoRevisionStatus:['composed','unavailable','deadline','timeout',
       'invalid_composition','incomplete','provider_unavailable',
@@ -1406,12 +1406,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // production S5 route and 50s Vercel preview do not pay for it.
     const selectCatalogCompositions=modelSlateEnabled&&budgetMs>=70000 &&
       sourceMode==='catalog' && !requiredIds.length
-      ? async({pool,context,directions,layerRequired,allowLayer})=>{
+      ? async({pool,context,directions,layerRequired,allowLayer,outfitCount=3})=>{
           const left=remainingMs();
           if(left<27000)return {status:'deadline',looks:[],providerCalls:0};
           nextPhase('ai_direct_sku_composition');
           return composeCatalogSkuLooks({
-            pool,context,directions,layerRequired,allowLayer,
+            pool,context,directions,layerRequired,allowLayer,outfitCount,
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:Math.min(3000,Math.max(500,left-24500)),
