@@ -1959,9 +1959,15 @@ export async function recommendFashionDeck({
           // Whole-outfit quality is conjunctive: correct colors cannot excuse
           // an unsuitable dress code or occasion. These are per-axis NVIDIA
           // verdict scores, never inferred user attributes or SKU heuristics.
-          minStyleFit: modelChosen?0.80:0.72,
-          minOccasionFit: modelChosen?0.82:0.75,
-          minFormalityFit: modelChosen?0.80:0.70,
+          // A SECOND arbitrary stricter score floor on AI-selected looks
+          // defeated the Fashion Director: NVIDIA could give an elegant
+          // outfit 0.78 style, 0.75 occasion and 0.76 formality (all with a
+          // positive whole-look verdict), yet the model-led path alone
+          // vetoed it over a 0.02 margin. Keep one calibrated quality gate
+          // for every mode, plus the photographic judge's explicit reject.
+          minStyleFit: 0.72,
+          minOccasionFit: 0.75,
+          minFormalityFit: 0.70,
           avoidColors: context.preferences?.avoidColors || [],
           // Among already model-approved sets, a true signature/refresh/
           // discovery triple may outrank a near-tie with an "alternative"
