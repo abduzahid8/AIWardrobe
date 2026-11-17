@@ -124,3 +124,23 @@ existing photo authorization and full-outfit judge.
 5. **World-class product requirement:** >=70% preference for Stylist6
    versus Stylist5 in 30+ held-out blind cases, three real human reviewers.
    Passing tests or seeing three cards is not fashion acceptance.
+
+## Post-deployment native regression, 2026-11-17
+
+On Render `7fb8df2` LIVE with the licensed cache table empty and flags
+disabled, iOS QA correctly showed `skuCompositionPhotoFirst:not_run`,
+the AI-first composer admitted 6/6 original SKU combinations and
+the photo critic still independently vetoed rejected whole looks.
+The first run was CLASSIC / ANY after a mistaken second tap toggled Work
+OFF: 1/9 photo approvals, 1 display, 30.3s. Verified the pre-generation
+screenshot and corrected the scenario. On the subsequent verified
+CLASSIC / NEW CLOTHING / WORK screenshot, the native simulator returned
+`stylist6_visual_quality_unmet`: no accepted complete fashion look.
+No weak third look was fabricated. The original quality blocker is
+unchanged: an AI composed structure is NOT necessarily a fashionable outfit.
+The photo-first catalog still lacks legitimate verified media coverage.
+
+An isolated staging-only alternative Creative Director model trial
+compares 30B lightning with 120B VL under the identical source-SKU schema.
+The A/B only counts native PHOTO-approved outfits and visual quality
+(and eventually >=70% blind human preference), not raw model completions.

@@ -12,9 +12,14 @@ import {createHash} from 'node:crypto';
 import {buildVisualSkuBoard} from './visual_sku_board.mjs';
 import {baseProductId} from './catalog_adapter.mjs';
 import {currentVisual,confidentVisual} from '../../src/domain/visualFashion.ts';
-export const AI_SKU_COMPOSER_VERSION='s6-catalog-direct-sku-composer-v2-six-independent-candidates';
+export const AI_SKU_COMPOSER_VERSION='s6-catalog-direct-sku-composer-v3-120b-staging-audition';
 const ENDPOINT='https://integrate.api.nvidia.com/v1/chat/completions';
-const MODEL='nvidia/nemotron-3.5-lightning-30b-a3b';
+// STAGING-only quality audition: in a real paid provider probe the 120B
+// fashion-capable VLM also generated six exact source-SKU combos faster
+// than the old 30B text model. This is not aesthetic acceptance: the
+// independent PHOTO critic still has an absolute veto. Production S5
+// and 50-second preview never invoke this new catalog composer.
+const MODEL='nvidia/nemotron-3.5-super-vl-120b-a12b';
 const PHOTO_COMPOSER_MODEL='nvidia/nemotron-3.5-super-vl-120b-a12b';
 const SLOTS=['top','outerwear','bottom','shoes'];
 const MAX_PER_SLOT=12;

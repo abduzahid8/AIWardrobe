@@ -561,7 +561,7 @@ test('fashion AI actually LOOKS at authenticated merchant product photos before 
   assert.equal(new Set(answer.looks.flat().map(item=>item.id)).size,12);
 });
 
-test('vision provider outage uses original authenticated text composition, never fabricated photo approval',async()=>{
+test('vision image-request rejection uses authenticated text composition, never fabricated photo approval',async()=>{
   const sharp=(await import('sharp')).default;
   const photo=await sharp({create:{width:100,height:100,channels:3,
     background:'#c9c7bb'}}).jpeg().toBuffer();
@@ -576,10 +576,12 @@ test('vision provider outage uses original authenticated text composition, never
     authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:photo}),
     fetchImpl:async(_url,init)=>{
       calls++;
-      const model=JSON.parse(init.body).model;
-      if(model==='nvidia/nemotron-3.5-super-vl-120b-a12b')
-        return Response.json({error:'outage'},{status:503});
-      assert.equal(model,'nvidia/nemotron-3.5-lightning-30b-a3b');
+      const request=JSON.parse(init.body);
+      // The same hosted 120B VLM also accepts text-only source-SKU JSON:
+      // reject just the image-request formatting, not the provider itself.
+      if(request.messages?.[1]?.content?.[1]?.type==='image_url')
+        return Response.json({error:'image-format-rejected'},{status:503});
+      assert.equal(request.model,'nvidia/nemotron-3.5-super-vl-120b-a12b');
       return result(full);
     },
   });

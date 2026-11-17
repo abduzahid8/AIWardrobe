@@ -195,3 +195,26 @@ fulfill the owner's four-product contract.
 
 ## Each work session's completion report must include
 GitHub SHA; staging Supabase function version + pinned READY compute SHA; code/quality changes; real scenario IDs & images; what objectively improved; what deteriorated; how many looks were provider-judged vs fallback; product stock/rights truth; QA gate counts; production status; exact NEXT highest-leverage root cause.
+
+## 2026-11-17 — 120B fashion designer staging audition (NOT acceptance)
+
+Correct native iPhone scenario NEW CLOTHING / CLASSIC / WORK on the
+published `7fb8df2` 30B direct SKU fashion model returned ZERO
+independently PHOTO-approved looks, with explicit
+`stylist6_visual_quality_unmet`. Previous 1/9 approval was a
+**different** Classic/ANY scenario: QA accidentally toggled off the
+already-selected Work occasion, verified from its pre-generation screen.
+Do not treat that first result as Work.
+
+Actual paid NVIDIA source-menu provider probe, matched synthetic
+catalog/Work brief, independently called the 30B text composer and
+the 120B VL model through the same original strict JSON-schema
+source-token validator: BOTH generated six complete source-unique
+four-garment proposals (HTTP 200); 120B took ~1.98s vs 30B ~2.61s.
+This is latency/format evidence ONLY, not a human aesthetic score.
+On isolated >=70s Render STAGING ONLY, audition the more capable
+`nvidia/nemotron-3.5-super-vl-120b-a12b` for initial creative SKU
+selection, keeping the independent original-photo critic, verified
+SKU/offer, price, fixed 4-article and weather hard gates unchanged.
+No model selector or CI test can replace the required REAL native
+and blind human 70% fashion-preference evaluation.
