@@ -826,3 +826,30 @@ test('traditional Formal photo critic cannot excuse a visible casual short-sleev
   assert.match(prompt,/below 0\.70/);
   assert.ok(!prompt.includes('always reject this brand'));
 });
+
+
+test('second-wave photo reviewer respects server-owned rescue deadline during actual NVIDIA fetch',async()=>{
+  const controller=new AbortController();
+  let started;
+  const dispatched=new Promise(resolve=>{started=resolve});
+  let sentSignal;
+  const critic=createHostedVisualCritic({
+    provider:'nvidia',apiKey,referenceMediaConfigured:false,
+    resolveReference:()=>{throw Error('reference disabled')},
+    resolveProduct:()=>asset(151),
+    fetchImpl:async (_url,init)=>{
+      sentSignal=init.signal;
+      started();
+      // Simulate a hosted provider that never returns a response.
+      // The per-wave cancellation must settle without waiting 38 seconds.
+      return new Promise(()=>{});
+    },
+  });
+  const review=critic([{...candidate,id:'rescue-wave-visual-abort-1'}],
+    {style:'classic',occasion:'Casual'},{signal:controller.signal});
+  await dispatched;
+  controller.abort();
+  const output=await review;
+  assert.equal(sentSignal.aborted,true);
+  assert.deepEqual(output,[],'an aborted rescue cannot fabricate photographic approval');
+});
