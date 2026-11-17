@@ -743,13 +743,13 @@ const AIOutfitGenerator = () => {
   // TestFlight builds use the authenticated Stylist 6 cloud endpoint while
   // retaining the same non-developer UI and no loopback bridge.
   const [devEngine, setDevEngine] = useState<DevEngine>(STYLIST6_CLOUD_ENABLED ? 'stylist6cloud' : 'stylist5');
-  // Primary experience: deliver three feasibility-gated, fashion-ranked
-  // outfits without depending on the variable-latency NVIDIA prototype API.
-  // The live provider can take >40s and abstain on all four calls: when this
-  // option defaults ON, customers can receive only one look for a paid tap.
-  // Keep real visual judging as an explicit QA opt-in, and mark its results
-  // honestly; never call an unreviewed deck "NVIDIA_APPLIED".
-  const [nvidiaVisual, setNvidiaVisual] = useState(false);
+  // The isolated Stylist 6 beta is a REAL photo-judged personal stylist,
+  // not a deterministic 3-card filler. Enable independent full-outfit vision
+  // by default ONLY when the authenticated Stylist 6 cloud beta is active.
+  // Production Stylist 5 is unchanged; the QA switch can still disable it.
+  // A partial model-approved deck is more truthful than three unreviewed
+  // outfits passed off as an excellent fashion recommendation.
+  const [nvidiaVisual, setNvidiaVisual] = useState(STYLIST6_CLOUD_ENABLED);
   // Actual engine that produced the visible deck (or null before/after).
   const [lastEngineVersion, setLastEngineVersion] = useState<string | null>(null);
   const [lastEngineDetail, setLastEngineDetail] = useState<string | null>(null);
