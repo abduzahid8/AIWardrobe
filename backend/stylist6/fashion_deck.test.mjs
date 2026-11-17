@@ -2167,6 +2167,11 @@ test('image-model rejection launches bounded SECOND AI SKU composition and real 
       revisions++;
       assert.ok(critiqueFeedback.reasons.length>0);
       assert.ok(critiqueFeedback.reasons.includes('model_veto'));
+      assert.ok(critiqueFeedback.rejectedOutfits.length>0,
+        'second director must receive what the photo critic actually saw');
+      assert.equal(critiqueFeedback.rejectedOutfits[0].observations.shoes,
+        'Photographed pointed shoe clashes with chunky knitted top');
+      assert.equal(critiqueFeedback.rejectedOutfits[0].relationships[0].kind,'outfit');
       assert.ok(pool.length>=9,'new fashion alternatives remain from REAL source inventory');
       const outfits=Array.from({length:3},(_,i)=>['top','bottom','shoes']
         .map(slot=>pool.filter(x=>x.slot===slot)[i]?.item));
@@ -2179,7 +2184,13 @@ test('image-model rejection launches bounded SECOND AI SKU composition and real 
     visualCritic:async batch=>{
       critiques++;
       if(critiques===1)return batch.map((look,i)=>
-        admittedVisualVerdict(look,{reject:i>=1}));
+        admittedVisualVerdict(look,{reject:i>=1,
+          slotObservations:{top:'Chunky loose knit on actual photo',
+            bottom:'Tailored slim wool trousers from actual photo',
+            shoes:'Photographed pointed shoe clashes with chunky knitted top'},
+          relationships:[{kind:'outfit',slots:['top','shoes'],
+            observation:'Chunky knitted texture overwhelms pointed shoe silhouette'}],
+        }));
       return batch.map((look,i)=>admittedVisualVerdict(look,{
         slotColors:{top:['white','navy','cream'][i]||'white',
           bottom:['navy','beige','brown'][i]||'navy',
