@@ -3,7 +3,7 @@ import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveO
 import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6CloudCompletion, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6CloudCompletion, stylist6CuratedPartial, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, type DevEngine} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -2171,7 +2171,10 @@ const AIOutfitGenerator = () => {
           const incompleteVisualReview = s6CloudActive && data?.visualReceipt?.requested === true &&
             checkedVisualCount < shownOutfits.length;
           setInventoryNote(s6VerifiedPartial
-            ? t('outfitMaker.visualApprovedPartial', { count: shownOutfits.length })
+            ? t(stylist6CuratedPartial(data,shownOutfits.length)
+                ? 'outfitMaker.aiCuratedPartial'
+                : 'outfitMaker.visualApprovedPartial',
+              { count: shownOutfits.length })
             : incompleteVisualReview
               ? checkedVisualCount > 0
                 ? t('outfitMaker.visualReviewMixed', { count: checkedVisualCount, total: shownOutfits.length })

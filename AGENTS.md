@@ -8,8 +8,8 @@ Ship an **excellent, scalable personalized AI fashion stylist** that generates u
 ## Mandatory decision order
 - Catalog and wardrobe provenance, weather/occasion, pinned anchors, verified currency/budget, auth/quota, merchant availability claims: **hard checks**.
 - Understand actual fashion from product PHOTOS; confidence/unknowns explicitly tracked.
-- A context-aware **Creative Director** designs 3 differentiated style blueprints before selecting available SKUs.
-- Compose a substantial candidate pool; validate whole-outfit visual quality and personal taste; then choose best 1–3 with authentic photos and links.
+- A context-aware **Creative Director** designs 3 differentiated styling directions; the AI must then choose exact authentic SKU products and actually COMPOSE new entire outfits, rather than only rank preassembled combinations. The server independently rechecks the NEW composition against immutable shopping, budget and personal hard gates.
+- Judge actual full-outfit product PHOTOS independently; a separate AI editor selects the final best 1–3 from ALREADY verified feasible whole portfolios. Never pad a weak third. See the binding 2026-11-17 evidence in docs/STYLIST6_NORTH_STAR.md.
 - A model's `approved` flag is only one piece of evidence. An independently assessed human fashion-quality improvement is required before declaring success.
 
 ## Avoid

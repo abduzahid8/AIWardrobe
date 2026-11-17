@@ -976,7 +976,8 @@
       }
     },
     "distinctInventoryLimited": "Bu so‘rov uchun topilgan eng yaxshi, bir-biridan farqli to‘liq obrazlar ko‘rsatilgan.",
-    "visualApprovedPartial": "Vizual tekshiruvdan o‘tgan obrazlar soni: {{count}}. Uchta qilish uchun tekshirilmagan variantlar qo‘shilmadi.",
+    "visualApprovedPartial": "Suratlar bilan tasdiqlangan {{count}} ta obraz ko‘rsatildi. Tekshirilmagan variant uchtaga yetkazish uchun qo‘shilmadi.",
+    "aiCuratedPartial": "Suratlar tahlilidan so‘ng AI stilist {{count}} ta eng yaxshi obrazni tanladi. Zaif uchinchi variant shunchaki son uchun qo‘shilmadi.",
     "visualReviewMixed": "NVIDIA {{total}} ta obrazdan {{count}} tasini vizual tasdiqladi. Qolgan tavsiyalar katalog asosida tanlangan, ammo vizual tasdiqlanmagan.",
     "visualReviewUnavailable": "AI vizual tekshiruvi mavjud emas. Bu katalogga asoslangan takliflar, suratlar bilan tasdiqlanmagan.",
     "visualQualityUnmet": "Tanlangan obrazlar vizual sifat tekshiruvidan o‘tmadi. Boshqa uslub yoki vaziyatni sinab ko‘ring. Tekshirilmagan variant qo‘shilmadi.",

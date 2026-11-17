@@ -622,3 +622,27 @@ describe('Stylist 6 bounded catalog rotation without global SKU starvation',()=>
     })).toEqual(['good']);
   });
 });
+
+
+describe('photo-editor curated partial deck honesty',()=>{
+  it('recognizes a deliberate AI-edited two-look deck without claiming only two were visually approved',()=>{
+    const {stylist6CuratedPartial}=loadDevModule();
+    const response={
+      success:true,status:'partial',generationVersion:'stylist-6-cloud-staging-1',
+      visualStatus:'NVIDIA_APPLIED',
+      outfits:Array.from({length:2},(_,i)=>({
+        id:'outfit_'+(i+1),fashionDiagnostics:{visualVerdict:'JUDGED'},
+      })),
+      visualReceipt:{visualApproval:'verified_partial',displayedJudged:2,displayedLooks:2},
+      diagnostics:{visualReviewCoverage:{approved:4},
+        modelFashionSelection:{photoEditorial:{status:'applied',chosen:2,
+          eligibleTriples:2}}},
+    };
+    expect(stylist6CuratedPartial(response,2)).toBe(true);
+    expect(stylist6CuratedPartial(response,1)).toBe(false);
+    expect(stylist6CuratedPartial({...response,
+      diagnostics:{modelFashionSelection:{photoEditorial:{status:'timeout',chosen:0}}}},2)).toBe(false);
+    expect(stylist6CuratedPartial({...response,
+      visualReceipt:{...response.visualReceipt,displayedJudged:1}},2)).toBe(false);
+  });
+});

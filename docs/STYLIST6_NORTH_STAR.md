@@ -1,5 +1,5 @@
 # AIWardrobe — STYLIST NORTH STAR (binding project specification)
-Version: 2026-11-16 · status: ACTIVE · owner priority: excellent scalable personal AI stylist.
+Version: 2026-11-17 · status: ACTIVE · owner priority: excellent scalable personal AI stylist.
 This is the single source of truth for Stylist 6 decisions. Read with root `AGENTS.md` before editing the stylist.
 
 ## Non-negotiable product outcome
@@ -45,6 +45,15 @@ The target is not 100% subjective approval (cannot be guaranteed); the measurabl
 - Seller size-specific stock, Uzbekistan delivery/landed cost, merchant image rights and real checkout are unverified.
 - Archived independent NVIDIA-family blind S6 vs S5 result 5W/5L with n=10; zero independent human panel wins evidenced.
 - 2026-11-16 staging v55 successfully made 3 authorized looks and checked UZS budget using CBU rates, but later fashion/code changes are NOT automatically in staging. Verify exact deployed SHA before attributing results.
+
+## 2026-11-17 — mandatory REAL-SKU AI decision architecture
+
+- Root cause: choosing preassembled score-ranked looks failed real Classic / Work photographic quality (1 final look from 8 candidates). The solution is not more product-title regexes.
+- The new fashion AI must compose THREE distinct whole ensembles by choosing ACTUAL source-verified SKU tokens for top/layer/bottom/shoes, not merely rank previously assembled outfits. Existing source-provenance, owner exclusions, budget/FX, physical/weather and locked-anchor checks are mandatory before a new composition is eligible for independent full-photo judgement.
+- An independent NVIDIA whole-outfit photograph judge approves/rejects each composition. A SECOND AI fashion editor selects only from entire already-verified feasible portfolio choices (1, 2 or 3). It may deliberately choose TWO even when individually approved triples exist; the UI must explain this honestly.
+- Authenticated native iOS Classic / Work on deployed staging 33fb1b1: 3 model-composed source-valid new outfits, 4 independent photo approvals out of 8 requested, final 3 selected, ~39.9 seconds. Classic / Formal: 3 new source-valid compositions, 4 photo approvals, final AI chose 2. This is engineering progress, NOT 70% independent human blind S6 superiority.
+- Active shoe visual profiles rose to 671/1,649 (the historic 114/1,649 in 2026-11-16 blockers is not current). Merchant stock, rights, checkout and Uzbekistan delivered prices are unverified.
+- Complete grounded evidence and failures: docs/reports/stylist6-direct-sku-composition-20261117/README.md.
 
 ## Each work session's completion report must include
 GitHub SHA; staging Supabase function version + pinned READY compute SHA; code/quality changes; real scenario IDs & images; what objectively improved; what deteriorated; how many looks were provider-judged vs fallback; product stock/rights truth; QA gate counts; production status; exact NEXT highest-leverage root cause.

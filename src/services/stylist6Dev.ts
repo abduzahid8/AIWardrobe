@@ -444,6 +444,20 @@ export async function invokeStylist6Cloud(
  * authoritative backend cannot charge the user and then ask the client to
  * invent a third outfit. A normal full deck retains the existing contract.
  */
+/** Distinguish a legitimate FASHION EDITOR rejection of a merely repetitive
+ * third look from a lack of individually photo-approved candidates. Both are
+ * safe partial decks, but they deserve different, truthful explanations.
+ */
+export function stylist6CuratedPartial(response: unknown, shownCount: number): boolean {
+  if (stylist6CloudCompletion(response) !== 'verified_partial' ||
+    !Number.isInteger(shownCount) || shownCount < 1 || shownCount > 2) return false;
+  const r = response as Record<string, any>;
+  const final = r.diagnostics?.modelFashionSelection?.photoEditorial;
+  return final?.status === 'applied' && final?.chosen === shownCount &&
+    Array.isArray(r.outfits) && r.outfits.length === shownCount &&
+    r.visualReceipt?.displayedJudged === shownCount;
+}
+
 export function stylist6CloudCompletion(response: unknown): 'complete' | 'verified_partial' | null {
   if (!response || typeof response !== 'object') return null;
   const body = response as Record<string, any>;

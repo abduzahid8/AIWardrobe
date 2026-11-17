@@ -961,7 +961,8 @@
       }
     },
     "distinctInventoryLimited": "These are the strongest distinct, complete options found for this request.",
-    "visualApprovedPartial": "Only {{count}} outfit(s) passed visual quality review. Unverified looks were not added to reach three.",
+    "visualApprovedPartial": "Showing {{count}} photo-verified outfit(s). An unverified look wasn't added just to reach three.",
+    "aiCuratedPartial": "Your AI stylist selected {{count}} photo-verified outfits for this occasion. No weaker third look was added just to fill a card.",
     "visualReviewMixed": "Only {{count}} of {{total}} outfits were approved by NVIDIA visual review. The remaining suggestion is catalog-ranked but not visually approved.",
     "visualReviewUnavailable": "Visual AI review was unavailable. These are catalog-based suggestions, not visually approved outfits.",
     "visualQualityUnmet": "The available outfits did not pass visual quality review. Try a different style or occasion; no unverified replacement was added.",
