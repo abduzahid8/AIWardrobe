@@ -87,8 +87,14 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '', reque
       /^(dress-shirt)$/.test(String(slot(look,'top')?.subtype||'').toLowerCase());
     const tailoredLayer=/\b(blazer|suit jacket|tailored jacket|overcoat|topcoat|dress coat)\b/.test(layer) ||
       /^(blazer|coat|overcoat)$/.test(String(slot(look,'outerwear')?.subtype||'').toLowerCase());
-    const tailoredBottom=/\b(wool (?:pants|trousers)|tailored|suit (?:pants|trousers)|dress trousers|pleated trousers)\b/.test(bottom) ||
-      /^(tailored-trouser|dress-trouser|suit-trouser|wool-trouser)$/.test(String(slot(look,'bottom')?.subtype||'').toLowerCase());
+    // "Tailored-Fit Chinos" is a FIT marketing claim, not a wool/dress
+    // trouser. Only actual source-confirmed dress/trouser construction can
+    // anchor an evening outfit; ordinary chinos still pair beautifully WITH
+    // a structured blazer or dress shirt.
+    const lowerSubtype=String(slot(look,'bottom')?.subtype||'').toLowerCase();
+    const tailoredBottom=/^(tailored-trouser|dress-trouser|suit-trouser|wool-trouser)$/.test(lowerSubtype) ||
+      (!/^(chino|jeans|jogger|cargo|shorts)$/.test(lowerSubtype) &&
+        /\b(wool (?:pants|trousers)|tailored (?:pants|trousers)|suit (?:pants|trousers)|dress trousers|pleated trousers)\b/.test(bottom));
     const zipLayer=/\b(?:zip|zipper|zip-front|half zip|quarter zip)\b/.test(layer);
     const casualLower=/\b(chinos?|jeans|joggers?|cargo pants)\b/.test(bottom) ||
       /^(chino|jeans|jogger|cargo)$/.test(String(slot(look,'bottom')?.subtype||'').toLowerCase());
@@ -102,6 +108,16 @@ export function editorialRegisterVeto(look, { style, occasion, brief = '', reque
       /^(overshirt|hoodie|sweatshirt)$/.test(String(slot(look,'outerwear')?.subtype||'').toLowerCase());
     const informalBottom=/\b(corduroys?|chinos?|jeans|joggers?|cargo pants)\b/.test(bottom) ||
       /^(chino|jeans|jogger|cargo)$/.test(String(slot(look,'bottom')?.subtype||'').toLowerCase());
+    // Refined evening smart-casual does not equate to "basic T-shirt +
+    // cardigan" merely because trousers are marketed "tailored fit".
+    // A genuine blazer/coat can elevate a premium tee, and an explicit
+    // T-shirt request is allowed. Otherwise refuse this predictable bland
+    // outfit BEFORE paying NVIDIA to rubber-stamp its colors.
+    const unrequestedBasicTee=/\b(?:t shirt|tee shirt|tee)\b/.test(top) ||
+      /^(t-shirt)$/.test(String(slot(look,'top')?.subtype||'').toLowerCase());
+    if(unrequestedBasicTee && !tailoredLayer &&
+      !/\b(?:t[ -]?shirt|tee)\b/i.test(`${brief} ${request}`))
+      return 'polished_date_casual_tee_requires_tailored_layer';
     if(!tailoredTop && !tailoredLayer && !tailoredBottom &&
       (zipLayer || informalTop || informalLayer || informalBottom || casualLower))
       return 'polished_date_needs_tailored_anchor';

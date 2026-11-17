@@ -188,5 +188,26 @@ test('source-evident Oxford cloth button-down counts as the dress shirt anchor o
   assert.equal(editorialRegisterVeto(oxford,date),null);
   const tee=look('ONSMAX T-shirt','100% Cotton Overshirt with Pocket Detail',
     'Tapered Slim-Fit Jeans in Stay Black','Leather Chelsea boots');
-  assert.equal(editorialRegisterVeto(tee,date),'polished_date_needs_tailored_anchor');
+  assert.equal(editorialRegisterVeto(tee,date),'polished_date_casual_tee_requires_tailored_layer');
+});
+
+
+test('real 17 Nov photo QA: basic T-shirt with cardigan and tailored-FIT chinos is not polished evening tailoring',()=>{
+  const context={sourceMode:'catalog',style:'semi_classic',occasion:'Date night',
+    brief:'Refined semi-classic dinner date, modern smart casual elegance'};
+  const actual=look('BASIC IRREGULAR FINISH T-SHIRT','100% wool fine-knit cardigan',
+    'Cotton-Stretch Tailored-Fit Chinos in Black','Freguiatt');
+  assert.equal(editorialRegisterVeto(actual,context),'polished_date_casual_tee_requires_tailored_layer');
+  assert.equal(editorialRegisterVeto(actual,{...context,sourceMode:'wardrobe'}),null);
+  assert.equal(editorialRegisterVeto(actual,{...context,occasion:'Weekend'}),null);
+  assert.equal(editorialRegisterVeto(actual,{...context,brief:'Relaxed casual dinner in my T-shirt'}),null);
+  assert.equal(editorialRegisterVeto(look('White premium T-shirt','Chestnut Wool Blazer',
+    'Beige cotton chinos','Dark Brown Leather Loafers'),context),null,
+    'a blazer and quiet T-shirt can be an intentionally elevated modern date look');
+  assert.equal(editorialRegisterVeto(look('Cream Fine-Knit Polo','Chocolate Cardigan',
+    'Beige Wool Tailored Trousers','Dark Brown Chelsea Boots'),context),null,
+    'genuine wool tailoring makes a fine knit/cardi outfit dress appropriate');
+  assert.equal(editorialRegisterVeto(look('White Oxford Shirt','Chocolate Cardigan',
+    'Beige Cotton Chinos','Leather Penny Loafers'),context),null,
+    'a collared Oxford base anchors the refined outfit');
 });

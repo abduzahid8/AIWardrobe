@@ -22,7 +22,7 @@ test('an actual refined smart-casual dinner keeps the elevated dress code across
     {id:'unpolished-shoes',macroCategory:'shoes',subtype:'chelsea',name:'Barker hybrid-soled Chelsea boots'},
   ]};
   assert.equal(editorialRegisterVeto(observed,{...realRequest}),
-    'polished_date_needs_tailored_anchor','real bad outfit must not get an unearned fashion pass');
+    'polished_date_casual_tee_requires_tailored_layer','real bad outfit must not get an unearned fashion pass');
 });
 
 test('a genuinely relaxed date retains personal freedom, but smart-casual dress codes are still refined',()=>{
