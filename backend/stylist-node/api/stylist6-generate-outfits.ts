@@ -64,9 +64,16 @@ function envOf(name: string): string {
   return process.env[name] || '';
 }
 
-/** Server-only Creative Director configuration, never controlled by client data. */
+/** Server-only AI fashion configuration, never controlled by client data.
+ * Both gates must reach cloud_handler; otherwise the whole-look Fashion
+ * Director remains NOT_ENABLED even when the hosting environment has '1'.
+ * Keep this narrow allowlist: never pass all process.env to an LLM.
+ */
 export function stylist6CreativeServerConfig() {
-  return { STYLIST6_CREATIVE_DIRECTOR_ENABLED: envOf('STYLIST6_CREATIVE_DIRECTOR_ENABLED') };
+  return {
+    STYLIST6_CREATIVE_DIRECTOR_ENABLED: envOf('STYLIST6_CREATIVE_DIRECTOR_ENABLED'),
+    STYLIST6_AI_SLATE_ENABLED: envOf('STYLIST6_AI_SLATE_ENABLED'),
+  };
 }
 
 export async function POST(request: Request): Promise<Response> {

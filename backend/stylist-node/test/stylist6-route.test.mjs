@@ -45,15 +45,26 @@ test('stylist6 route rejects unsigned callers and wrong methods', async () => {
 });
 
 
-test('server-owned Creative Director flag is forwarded to the cloud handler environment, not client-controlled', () => {
-  const original = process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED;
+test('both server-owned AI director switches reach the cloud handler without client control', () => {
+  const names=['STYLIST6_CREATIVE_DIRECTOR_ENABLED','STYLIST6_AI_SLATE_ENABLED'];
+  const originals=Object.fromEntries(names.map(name=>[name,process.env[name]]));
   try {
-    process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED = '1';
-    assert.deepEqual(stylist6CreativeServerConfig(), { STYLIST6_CREATIVE_DIRECTOR_ENABLED: '1' });
-    process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED = '';
-    assert.deepEqual(stylist6CreativeServerConfig(), { STYLIST6_CREATIVE_DIRECTOR_ENABLED: '' });
+    process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED='1';
+    process.env.STYLIST6_AI_SLATE_ENABLED='1';
+    assert.deepEqual(stylist6CreativeServerConfig(), {
+      STYLIST6_CREATIVE_DIRECTOR_ENABLED:'1',STYLIST6_AI_SLATE_ENABLED:'1',
+    },'enabled AI fashion slate cannot silently disappear from the route');
+    process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED='';
+    process.env.STYLIST6_AI_SLATE_ENABLED='';
+    assert.deepEqual(stylist6CreativeServerConfig(), {
+      STYLIST6_CREATIVE_DIRECTOR_ENABLED:'',STYLIST6_AI_SLATE_ENABLED:'',
+    },'server kill-switch must remain effective when environment is disabled');
+    assert.equal(Object.keys(stylist6CreativeServerConfig()).length,2,
+      'never forward arbitrary secret-containing process.env to the model');
   } finally {
-    if (original === undefined) delete process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED;
-    else process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED = original;
+    for(const name of names){
+      if(originals[name]===undefined)delete process.env[name];
+      else process.env[name]=originals[name];
+    }
   }
 });
