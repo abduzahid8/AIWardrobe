@@ -2058,7 +2058,7 @@ export async function recommendFashionDeck({
     const skuCompositionReceipt={
       status:'not_run',proposed:0,admitted:0,previewProducts:0,
       exploratoryProducts:0,parallel:!!parallelComposition,
-      aiFirst:!!parallelComposition,
+      visualMenuStatus:'not_run',aiFirst:!!parallelComposition,
       retrievalSkipped:aiFirstFastTrack,
     };
     if(modelLed){
@@ -2113,6 +2113,9 @@ export async function recommendFashionDeck({
               },layerRequired:forceLayer,allowLayer:!noLayer,
             });
           skuCompositionReceipt.status=String(composition?.status||'unavailable').slice(0,40);
+          skuCompositionReceipt.visualMenuStatus=
+            typeof composition?.visualMenuStatus==='string'
+              ?composition.visualMenuStatus.slice(0,40):'not_run';
           skuCompositionReceipt.proposed=Array.isArray(composition?.looks)
             ?composition.looks.length:0;
           modelFashionSelection={

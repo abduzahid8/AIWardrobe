@@ -128,6 +128,13 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     skuCompositionParallel:f.skuCompositionReceipt?.parallel===true,
     skuCompositionAiFirst:f.skuCompositionReceipt?.aiFirst===true,
     skuCompositionRetrievalSkipped:f.skuCompositionReceipt?.retrievalSkipped===true,
+    skuCompositionPhotoFirst:[
+      'applied','not_run','ready','invalid_input','insufficient_inventory',
+      'insufficient_photo_inventory','deadline','oversized','media_unavailable',
+      'invalid_visual_composition','incomplete_visual_composition',
+      'visual_provider_unavailable','visual_provider_timeout',
+    ].includes(f.skuCompositionReceipt?.visualMenuStatus)
+      ?f.skuCompositionReceipt.visualMenuStatus:'not_run',
     // This source-of-truth guard lives on the FINAL cloud deck diagnostics,
     // not nested inside the earlier modelFashionSelection receipt.
     catalogFourItemContract:d.catalogFourItemContract===true,
@@ -1466,6 +1473,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           return composeCatalogSkuLooks({
             pool,context,directions,layerRequired,allowLayer,outfitCount,
             feedbackTaste,parallel,
+            resolvePhoto:parallel?photoPortfolioResolver:null,
+            authorizePhoto:parallel?isInferenceAuthorized:null,
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:parallel

@@ -294,3 +294,52 @@ Bounded, personally authorized synthetic-photo integration evidence:
 The original independent NVIDIA visual critic is unchanged. No model
 credentials, user data, product URLs or uploaded private photos are added
 to reports.
+
+## 2026-11-17 — PHOTO-FIRST creative composer, source-real merchandise
+
+The first AI-FIRST LIVE native iOS test after 6f5a0c4 returned actual
+`skuCompositionStatus:composed`, `skuCompositionAdmitted:6`,
+`skuCompositionRetrievalSkipped:true`, 34,873ms, but only **2/9** full
+outfits were photo-approved (2 displayed). This definitively separates
+technical success from weak aesthetic choice by a TEXT-ONLY composer.
+
+The second 6f5a0c4 successor b9b7863 went LIVE and performed
+`photoEditorialVisualJury:applied` and
+`photoEditorialVisualMedia:ready` on REAL merchant photographs:
+Classic / Date night, 40,744ms, 6 AI-created, 5 source-admitted,
+3/7 independent photo approvals, the VLM editor actually chose 2 compatible
+four-product outfits. Viewed both on the booted native simulator:
+- Dark merino shirt, brown chunky cardigan, navy trousers, burgundy loafers.
+- Navy merino collared top, charcoal cardigan, beige trousers, brown Chelsea
+  boots. Good physical four-SKU products, but architecture is similar:
+  both knit+cardigan+trousers+leather shoes. Neither establishes an elite
+  styling win.
+
+**Next architecture (separate staging experiment)**: give the *CREATIVE*
+AI an original merchant-product PHOTO BOARD before designing the complete
+outfits, not just their names. Source-bound menu of up to 48 product tokens
+(six or more per slot), four exact photograph columns and anonymous P-labels.
+Every image must pass external inference source authorization. Missing/
+unlicensed/invalid photo is excluded from allowed visual choices; if too few
+source visuals exist, retain the existing independently verified TEXT
+composition. The first actual vision VLM creates up to six distinct
+source-token-unique complete 4-item outfits from a single JPEG collage.
+Then the original physical+merchant+budget+occasion gates, independent
+full-look photo critic and separate collection-level editor are applied.
+Nothing constructed on the photographic board is automatically displayed.
+
+Safety/performance:
+- Request-bounded 48-image original-CDN fetch + 4.2s photo board and
+  at most 6.7s hosted 120B VLM; original entire staging owner request
+  remains 72s, independent critic paid quota unchanged, full text fallback.
+- Reuse original photo fetch/cache from the cloud handler across designer
+  and critic; no disk/user-photo persistence. Opaque tokens only.
+- Native photo-board unit tests validate source permissions, missing image
+  fail-closed, deadline, 32-source JPEG layout and no private identities.
+- A REAL NVIDIA 120B vision API call with 24 completely synthetic product
+  images returned 6 source-valid four-piece looks in **2,510 ms** using one
+  provider call, with `visualMenuStatus:applied`. This proves the vision
+  composition integration, NOT style performance on real catalog items.
+- Stage log must show `skuCompositionPhotoFirst:applied` BEFORE anyone
+  claims a photo-first personal stylist is already working on merchant
+  photos. Always check actual native iOS silhouettes and product images.

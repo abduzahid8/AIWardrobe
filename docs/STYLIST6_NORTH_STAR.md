@@ -73,6 +73,30 @@ The target is not 100% subjective approval (cannot be guaranteed); the measurabl
 - Regression test `__tests__/features/stylist6CloudPublication.test.js` now protects the default QA route against reverting to a 50-second compute path where the full composer/editor is silently disabled. New code test has not been locally executed here; CI result must be checked.
 - Next: run the existing authenticated visual worker for the bounded pending jobs when its operator access is available; verify how many finished with image-observed attributes and are used by actual outfit candidate discovery. Audit exact rejected outfit photos before changing editorial thresholds.
 
+## 2026-11-17 — primary creative decision must see REAL source PRODUCT PHOTOS
+
+Real iPhone QA on b9b7863 proved the AI-first catalog composer and
+independent full-photo critic work, and the collection-level visual editor
+finally applied on actual merchant garments (6 composed/5 admitted,
+3/7 photo-approved, two compatible displayed looks). However the
+compositor had still seen TEXT labels only and picked very similar
+merino+cardigan architectures.
+
+Staging-only candidate solution: supply the creative SKU model one JPEG
+contact board of the actual authorized original product photographs
+before picking any complete outfits (up to 48 anonymous P-tokens,
+four roles). If source media/VLM unavailable or fails validation, fall
+back to prior source-valid TEXT composer. Once VLM proposes 4-product
+looks, the existing immutable budget/merchant/physical/source gates
+and independent NVIDIA PHOTO judge must accept each whole ensemble;
+final visual editor chooses only preverified complete collections.
+No fictitious garment, no invented on-body fit or purchase offer,
+no relaxed quality thresholds. Synthetic NVIDIA visual composer
+integration succeeded with six source-valid looks in 2.5s. This is
+**NOT** proof of improved real-client fashion quality until live
+`skuCompositionPhotoFirst:applied` + actual native screenshots are
+collected and the blind human acceptance gate passes.
+
 ## 2026-11-17 — visual photo jury must be CURRENT and actually image-capable
 
 A real NVIDIA API probe found the old final visual jury endpoint

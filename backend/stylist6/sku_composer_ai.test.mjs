@@ -523,3 +523,69 @@ test('parallel six-look creative decision survives the OLD 3-second fashion mode
   assert.equal(composed.looks.length,3);
   assert.ok(composed.looks.flat().every(item=>item.isShopItem));
 });
+
+test('fashion AI actually LOOKS at authenticated merchant product photos before composing six distinct source SKUs',async()=>{
+  const sharp=(await import('sharp')).default;
+  const photo=await sharp({create:{width:120,height:145,channels:3,
+    background:'#776e63'}}).jpeg().toBuffer();
+  const pool=sourceBoundCompositionPool(looks);
+  const slotPicks=Object.fromEntries(slots.map(slot=>[
+    slot,Array.from({length:6},(_,i)=>pool.find(x=>x.slot===slot&&
+      x.item===items[i][slots.indexOf(slot)]).token),
+  ]));
+  let calls=0;
+  const answer=await composeCatalogSkuLooks({
+    pool,apiKey:'nvapi-test-secret',parallel:true,outfitCount:6,
+    layerRequired:true,timeoutMs:12000,
+    context:{style:'classic',occasion:'Date night'},
+    authorizePhoto:url=>url.startsWith('https://images.zara.net/'),
+    resolvePhoto:async()=>({bytes:photo}),
+    fetchImpl:async(_url,init)=>{
+      calls++;
+      const request=JSON.parse(init.body);
+      assert.equal(request.model,'nvidia/nemotron-3.5-super-vl-120b-a12b');
+      assert.equal(request.response_format.type,'json_object');
+      assert.equal(request.messages[1].content[1].type,'image_url');
+      assert.match(request.messages[1].content[1].image_url.url,
+        /^data:image\/jpeg;base64,/);
+      const visiblePrompt=request.messages[1].content[0].text;
+      assert.match(visiblePrompt,/professional FASHION CREATIVE DIRECTOR/);
+      assert.doesNotMatch(visiblePrompt,/PRIVATE_SKU|images\.zara|www\.zara/);
+      return result({slotPicks});
+    },
+  });
+  assert.equal(calls,1,'successful photo-first AI avoids the text composer');
+  assert.equal(answer.visualMenuStatus,'applied');
+  assert.equal(answer.status,'composed');
+  assert.equal(answer.looks.length,6);
+  assert.equal(new Set(answer.looks.flat().map(item=>item.id)).size,24);
+});
+
+test('vision provider outage uses original authenticated text composition, never fabricated photo approval',async()=>{
+  const sharp=(await import('sharp')).default;
+  const photo=await sharp({create:{width:100,height:100,channels:3,
+    background:'#c9c7bb'}}).jpeg().toBuffer();
+  const pool=sourceBoundCompositionPool(looks);
+  const full={slotPicks:Object.fromEntries(slots.map(slot=>[slot,
+    Array.from({length:6},(_,i)=>pool.find(x=>x.slot===slot&&
+      x.item===items[i][slots.indexOf(slot)]).token)]))};
+  let calls=0;
+  const answer=await composeCatalogSkuLooks({
+    pool,apiKey:'nvapi-test-secret',parallel:true,outfitCount:6,
+    layerRequired:true,timeoutMs:12500,
+    authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:photo}),
+    fetchImpl:async(_url,init)=>{
+      calls++;
+      const model=JSON.parse(init.body).model;
+      if(model==='nvidia/nemotron-3.5-super-vl-120b-a12b')
+        return Response.json({error:'outage'},{status:503});
+      assert.equal(model,'nvidia/nemotron-3.5-lightning-30b-a3b');
+      return result(full);
+    },
+  });
+  assert.equal(calls,2);
+  assert.equal(answer.visualMenuStatus,'visual_provider_unavailable');
+  assert.equal(answer.providerCalls,2);
+  assert.equal(answer.looks.length,6);
+  assert.equal(answer.status,'composed');
+});
