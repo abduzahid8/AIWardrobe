@@ -17,6 +17,11 @@ const looks=items.map((x,i)=>({id:'look'+i,fashion:{score:.95-.015*i},
 const validAnswer=pool=>({outfits:Array.from({length:3},(_,i)=>Object.fromEntries(
   slots.map(slot=>[slot,pool.find(x=>x.slot===slot&&x.item===items[i][slots.indexOf(slot)]).token])
 ))});
+const slotAnswer=pool=>{
+  const {outfits}=validAnswer(pool);
+  return {slotPicks:Object.fromEntries(slots.map(slot=>
+    [slot,outfits.map(look=>look[slot])]))};
+};
 const result=answer=>Response.json({choices:[{
   finish_reason:'stop',message:{content:JSON.stringify(answer)},
 }]});
@@ -59,10 +64,14 @@ test('model independently composes three new real SKU combinations, no product i
       called++;
       const body=JSON.parse(init.body);
       assert.equal(body.response_format.type,'json_schema');
-      assert.equal(body.response_format.json_schema.schema.properties.outfits.maxItems,3);
+      const slotPicks=body.response_format.json_schema.schema.properties.slotPicks;
+      assert.equal(slotPicks.properties.top.maxItems,3);
+      assert.equal(slotPicks.properties.top.uniqueItems,true);
+      assert.equal(slotPicks.properties.bottom.uniqueItems,true);
+      assert.equal(slotPicks.properties.shoes.uniqueItems,true);
       assert.doesNotMatch(init.body,/PRIVATE_SKU|images\.zara|www\.zara/);
       assert.match(body.messages[0].content,/CREATE THREE distinct beautiful complete outfits/);
-      return result(validAnswer(pool));
+      return result(slotAnswer(pool));
     },
   });
   assert.equal(called,1);
@@ -131,4 +140,21 @@ test('SKU Director sees real category alternatives outside old prebuilt ranker o
   assert.equal(pool.filter(p=>p.slot==='top').length,7);
   assert.ok(pool.every(p=>p.public.token===p.token));
   assert.doesNotMatch(JSON.stringify(pool.map(p=>p.public)),/NEW-FINE-KNIT|NEW-CARDIGAN/);
+});
+
+
+test('slot-column output assembles three user-facing real looks without repeating major items',()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const response=slotAnswer(pool);
+  const actual=validateSkuCompositions(response,pool,{layerRequired:true});
+  assert.equal(actual.length,3);
+  assert.equal(new Set(actual.flat().map(i=>i.id)).size,12);
+  assert.deepEqual(validateSkuCompositions({
+    slotPicks:{...response.slotPicks,
+      top:[response.slotPicks.top[0],response.slotPicks.top[0],response.slotPicks.top[2]]},
+  },pool,{layerRequired:true}),[],'duplicate garment in a role never becomes a bought outfit');
+  assert.deepEqual(validateSkuCompositions({
+    slotPicks:{...response.slotPicks,
+      outerwear:['none',...response.slotPicks.outerwear.slice(1)]},
+  },pool,{layerRequired:true}),[],'required layer cannot be bypassed');
 });
