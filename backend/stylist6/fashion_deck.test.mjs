@@ -1723,3 +1723,26 @@ test('AI-led catalog defers stylistic product vetoes but preserves user hard exc
       {deferStylistic:true}),'excluded_color');
   });
 });
+
+
+test('model-led taste deferral never leaks banned product into legacy timeout recovery',async()=>{
+  const improbable=garment('terry-resort-top',
+    'Yellow Terry Towelling Resort Shirt','top','shirt');
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:1200000,currency:'UZS'},requiredIds:[]};
+  let called=0;
+  const result=await recommendFashionDeck({
+    ...base,catalog:[...products,improbable],request,referenceBriefs:[],
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    selectDirectorFinalists:async()=>{
+      called++;return {status:'timeout',tokens:[],providerCalls:1};
+    },
+    visualCritic:async batch=>batch.map(c=>admittedVisualVerdict(c)),
+  });
+  assert.equal(called,1);
+  assert.equal(result.diagnostics.modelFashionSelection.status,'timeout');
+  assert.ok(result.outfits.every(look=>
+    look.items.every(item=>item.id!==improbable.id)),
+    'timeout must restore full old product-level stylistic admission, not only the late cross-slot veto');
+});

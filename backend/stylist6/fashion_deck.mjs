@@ -1664,10 +1664,26 @@ export async function recommendFashionDeck({
         }
       }
       if(!modelChosen){
-        // The model timeout is NOT permission to show casually mismatched
-        // combinations. Reapply proven legacy editorial admission.
+        // A timed-out AI may have admitted garments that older title-only
+        // filters excluded. Reconstruct a complete legacy fashion scorer over
+        // the real pre-approved shortlist before choosing any fallback. Never
+        // use an AI-deferred outfit as a merely "deterministic" approval.
         candidates.length=0;
-        selectable=selectable.filter(x=>!editorialRegisterVeto(x,context));
+        const recoveryScorer=makeFashionScorer(context,reference,
+          Array.isArray(request.recentSignatures)?request.recentSignatures.slice(-32):[],{
+            priceProfile,budgeted:!!request.budget,
+            layerOptional:context.optionalLayer===true&&!forceLayer,
+            requiredIds,feedbackTaste,
+            photoDirectorEnabled:false,
+          });
+        selectable=selectable.flatMap(look=>{
+          const prepared=look.items.map(item=>recoveryScorer.prepare(item));
+          if(prepared.some(x=>!x))return [];
+          const quality=recoveryScorer.rankLook(prepared,look.brief);
+          if(!quality)return [];
+          return [{...look,items:prepared,fashion:quality,seedScore:quality.score}];
+        }).filter(look=>!editorialRegisterVeto(look,context));
+        rerankFashionCandidates(selectable,deckContext);
         selected=chooseDeck(selectable,deckContext);
         if(modelFashionSelection.status==='selected')
           modelFashionSelection.status='insufficient_admitted_selection';
