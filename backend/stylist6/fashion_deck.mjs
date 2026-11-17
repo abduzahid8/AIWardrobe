@@ -1552,6 +1552,66 @@ export function chooseFormalPhotoRescueCandidates(
   return chosen;
 }
 
+/** Enumerate EXACTLY feasible complete decks from the independent NVIDIA
+ * verdicts before asking the final AI to make an artistic portfolio decision.
+ * The AI sees only opaque L- and F-tokens. Every 3/2/1-look menu entry has
+ * already passed actual-photo quality, permitted SKU uniqueness, wardrobe
+ * anchors, visual novelty and (when applicable) photographed formal-palette
+ * proof. Do not ask the model for impossible combinations then reject it.
+ */
+export function verifiedPhotoEditorialPortfolios(
+  approvedLooks,critiques,reviewOptions,{triples=24,pairs=12,singles=4}={},
+){
+  if(!Array.isArray(approvedLooks)||!Array.isArray(critiques)||
+     approvedLooks.length>MAX_VISUAL_CANDIDATES)return [];
+  const quality=new Map(critiques.map(r=>[r.candidateId,
+    (Number(r.visualCohesion)||0)+(Number(r.styleFit)||0)+
+    (Number(r.occasionFit)||0)+(Number(r.formalityFit)||0)]));
+  // At most C(8,3)+C(8,2)+C(8,1)=92 exact short-list replays.
+  // These are local pure portfolio checks, NOT extra NVIDIA inferences.
+  const groups={3:[],2:[],1:[]};
+  for(let i=0;i<approvedLooks.length;i++){
+    groups[1].push([i]);
+    for(let j=i+1;j<approvedLooks.length;j++){
+      groups[2].push([i,j]);
+      for(let k=j+1;k<approvedLooks.length;k++)groups[3].push([i,j,k]);
+    }
+  }
+  const candidates=[];
+  for(const size of [3,2,1])for(const inds of groups[size]){
+    const shortlist=inds.map(n=>approvedLooks[n]);
+    const verified=selectVisualDeck({
+      generationVersion:'s6-photo-editor-proof',shortlist,
+      diagnostics:{},
+    },critiques,{...reviewOptions,target:shortlist.length,
+      onCritiques:undefined});
+    if(verified.outfits.length!==shortlist.length||
+      !shortlist.every(x=>verified.outfits.some(y=>y.id===x.id)))continue;
+    candidates.push({
+      size,
+      indices:verified.outfits.map(x=>approvedLooks.findIndex(y=>y.id===x.id)),
+      strength:shortlist.reduce((sum,x)=>sum+(quality.get(x.id)||0),0)/
+        shortlist.length,
+    });
+  }
+  const menu=[];
+  for(const size of [3,2,1]){
+    const cap=size===3?triples:size===2?pairs:singles;
+    const choice=candidates.filter(c=>c.size===size)
+      .sort((a,b)=>b.strength-a.strength||
+        a.indices.join(',').localeCompare(b.indices.join(',')))
+      .slice(0,cap);
+    for(const c of choice){
+      menu.push({
+        portfolioToken:'F'+String(menu.length).padStart(2,'0'),
+        orderedLooks:c.indices.map(n=>'L'+String(n).padStart(2,'0')),
+        size:c.size,
+      });
+    }
+  }
+  return menu;
+}
+
 /** How many independent triples survive the worst *single* photo veto?
  * Zero means the eight-candidate slate still has a fragile one-SKU bottleneck.
  * Uses the EXACT final independent-product deck feasibility semantics.
@@ -2269,10 +2329,17 @@ export async function recommendFashionDeck({
         const approvedLooks=candidates.filter(c=>approvedIds.has(c.id))
           .slice(0,MAX_VISUAL_CANDIDATES);
         if(approvedLooks.length>=3){
+          // The menu is a real, finite, ALREADY VERIFIED set of cohesive
+          // portfolios. This is an existence proof, not a new taste veto:
+          // the AI now exercises its own fashion judgment among feasible
+          // 3/2/1-look collections without producing an impossible trio.
+          const verifiedPortfolios=verifiedPhotoEditorialPortfolios(
+            approvedLooks,allCritiques,reviewOptions);
           let decision;
           try{
             decision=await selectPhotoApprovedPortfolio({
               looks:approvedLooks,critiques:allCritiques,
+              portfolios:verifiedPortfolios,
               context:{style:context.style,occasion:context.occasion,
                 brief:context.request,preferences:context.preferences},
             });

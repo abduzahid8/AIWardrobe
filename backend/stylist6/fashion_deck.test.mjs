@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -2021,4 +2021,63 @@ test('untrusted whole-deck photo editor cannot override original accepted verdic
   assert.deepEqual(spoofed.outfits.map(x=>x.id),normal.outfits.map(x=>x.id),
     'injected/duplicate final tokens cannot alter a single original approved outfit');
   assert.equal(spoofed.diagnostics.modelFashionSelection.photoEditorial.status,'invalid_selection');
+});
+
+
+test('AI receives only independently NVIDIA-verified compatible WHOLE-DECK portfolio choices',async()=>{
+  const request={sourceMode:'catalog',style:'classic',occasion:'Formal',
+    weather:{temp:20},optionalLayer:true,preferences:{},
+    budget:{amount:2500000,currency:'UZS'},requiredIds:[]};
+  let menuSeen=null;
+  const result=await recommendFashionDeck({...base,request,referenceBriefs:refs,
+    selectDirectorFinalists:async({options})=>({
+      status:'selected',tokens:options.slice(0,6).map(x=>x.token),providerCalls:1,
+    }),
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>batch.map((look,i)=>admittedVisualVerdict(look,{
+      referenceless:true,
+      slotColors:{top:i%2?'blue':'white',
+        outerwear:['navy','grey','brown','olive','black','grey','brown','navy'][i],
+        bottom:['navy','grey','brown','olive','grey','beige','brown','navy'][i],
+        shoes:'black'},
+    })),
+    selectPhotoApprovedPortfolio:async({looks,critiques,portfolios})=>{
+      assert.ok(looks.length>=3);
+      assert.ok(critiques.length>=looks.length);
+      menuSeen=portfolios;
+      assert.ok(portfolios.length>=1);
+      assert.ok(portfolios.length<=40,'bounded text model input with <=8 reviewed looks');
+      assert.ok(portfolios.every(p=>p.orderedLooks.length===p.size));
+      const firstTriple=portfolios.find(p=>p.size===3);
+      if(firstTriple)return {status:'selected',tokens:firstTriple.orderedLooks};
+      const firstPair=portfolios.find(p=>p.size===2);
+      return {status:'selected',tokens:(firstPair||portfolios[0]).orderedLooks};
+    },
+  });
+  assert.ok(menuSeen?.length);
+  assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.status,'applied',
+    'the model can select an actual verified ensemble without an invalid_combination');
+  assert.ok(result.outfits.every(o=>Array.isArray(o.visualEvidence)));
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+  assert.equal(result.outfits.length,menuSeen[0].size,
+    'editor picks the photographically verified complete portfolio as a whole');
+});
+
+test('whole-deck menu omits repeated merchandise even if independent individual photos are approved',()=>{
+  const mk=(id,shared)=>({id,briefId:id,brief:{id,name:id},fashion:{score:.90},
+    items:['top','outerwear','bottom','shoes'].map((slot,i)=>garment(
+      shared&&slot==='outerwear'?'shared-blazer':id+'-'+slot,
+      'Photographed Formal '+slot,slot,['dress-shirt','blazer','tailored-trouser','oxford'][i]))});
+  const looks=[mk('a',true),mk('b',true),mk('c',false)];
+  const critiques=looks.map(look=>admittedVisualVerdict({
+    id:look.id,
+    products:look.items.map(item=>({slot:item.macroCategory,name:item.name})),
+  },{referenceless:true,slotColors:{top:'white',outerwear:'navy',bottom:'navy',shoes:'black'}}));
+  const menus=verifiedPhotoEditorialPortfolios(looks,critiques,{
+    requireNoProductReuse:true,minNovelty:0,
+    minStyleFit:.72,minOccasionFit:.75,minFormalityFit:.70,
+    requireDistinctArchitectures:false,
+  });
+  assert.ok(menus.every(p=>!(p.orderedLooks.includes('L00')&&p.orderedLooks.includes('L01'))),
+    'two looks with the same physical blazer cannot appear in ANY AI-selectable menu');
 });

@@ -1380,12 +1380,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     deadline();
     nextPhase('catalog_fashion_and_selection');
     const selectPhotoApprovedPortfolio=modelSlateEnabled&&budgetMs>=70000
-      ? async({looks,critiques,context})=>{
+      ? async({looks,critiques,portfolios,context})=>{
           const left=remainingMs();
           if(left<6500)return {status:'deadline',tokens:[],providerCalls:0};
           nextPhase('final_photo_portfolio_editor');
           return selectPhotoEditorialDeck({
-            looks,critiques,context,apiKey:nvidiaKey,
+            looks,critiques,portfolios,context,apiKey:nvidiaKey,
             ...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:Math.min(3200,Math.max(500,left-2800)),
