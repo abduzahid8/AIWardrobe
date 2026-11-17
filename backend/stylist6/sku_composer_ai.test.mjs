@@ -318,7 +318,7 @@ test('untrusted photo observations never inject URL, email or arbitrary object p
       scores:{styleFit:2,visualCohesion:-1,occasionFit:0.75},
     }]});
   const output=JSON.stringify(evidence);
-  assert.doesNotMatch(output,/secret\\.example|test@example\\.com|private-receipt/);
+  assert.doesNotMatch(output,/secret\.example|test@example\.com|private-receipt/);
   assert.equal(evidence.rejectedPhotoEvidence[0].photoQualityAxes.occasionFit,0.75);
   assert.equal(evidence.rejectedPhotoEvidence[0].photoQualityAxes.styleFit,undefined);
 });
