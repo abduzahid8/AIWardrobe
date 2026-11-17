@@ -1984,7 +1984,10 @@ export async function recommendFashionDeck({
       });
       modelFashionSelection={status:'insufficient_candidates',candidatesSeen:preview.length,chosen:0};
       // PRIMARY AI composition path: the model is given 12 different real
-      // merchandise pieces per role, and CREATES new looks across them.
+      // merchandise pieces per role, and CREATES six independent candidate
+      // ensembles for the same eight-photo critic budget. This gives AI
+      // fashion decisions priority over ranker-built filler; the separate
+      // photo editor still displays no more than three proven looks.
       // Previously it merely selected ranker-prebuilt L cards and rejected
       // 7/8 in real Classic/Work because the combinations were already bad.
       // Every new combination is rerun through the REAL source/budget/weather
@@ -2012,7 +2015,7 @@ export async function recommendFashionDeck({
           !reviewable.some(look=>look.items.some(item=>item.id===p.item.id))).length;
         try{
           const composition=await selectCatalogCompositions({
-            pool,directions:aiPlans,context:{
+            pool,directions:aiPlans,outfitCount:6,context:{
               style:context.style,occasion:context.occasion,brief:context.request,
               weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
               preferences:context.preferences,
