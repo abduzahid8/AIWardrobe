@@ -59,3 +59,28 @@ human-caliber fashion. Next real mobile QA must establish a genuinely
 new elegant ensemble or measurable improvement; do not infer success
 from merely loading the 46-reference library. Human blinded 70%
 S6 vs S5 / >=30 held-out scenarios / 3 judges remains NOT DONE.
+
+## Real iPhone Classic/Work failure — 2026-11-18 07:33 Asia/Tashkent
+
+Pinned `7e08c05`, actual authenticated iPhone Classic/New clothing/
+Work generation returned `stylist6_visual_quality_unmet` with an
+honest red error, **zero user-visible outfits**, and no unapproved
+fallback. Supabase function `aiw-stylist6-node-staging` returned HTTP
+502 at 2026-11-18 02:33:46Z. The Render process cold-started at
+02:33:15–02:33:17Z. This confirms that textual owner lookbook ideas
+do NOT solve creative quality by themselves.
+
+Root QA visibility defect: staging logged the sanitized
+`stylist6_safe_visual_quality` ONLY on successful results, never on
+the 502 branch where all proposals were rejected. A new server-only
+failure trace mirrors the existing allow-listed bounded counts/reason
+enums/phase durations plus `failedReason`, to expose whether full
+outfits failed by occasion, coherence or quality. It never logs
+account information, product IDs, prices, model prompts, photos,
+garment names or merchant URLs. Failure still refunds its original
+quota and never stores/display an unverified deck. The exact photo
+veto floors and budget are unchanged.
+
+This visibility fix alone is NOT fashion-quality acceptance; review
+the next actual iPhone rejection mix and fix the model-led creative
+decision, not the veto threshold.

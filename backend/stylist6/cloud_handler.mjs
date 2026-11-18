@@ -1700,6 +1700,25 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       const failureCode = anchorUnavailable ? 'anchor_outfit_unavailable'
         : qualityFailed ? 'stylist6_visual_quality_unmet' : 'stylist6_no_feasible_looks';
       const failureStatus = anchorUnavailable ? 422 : 502;
+      // In an ACTUAL authenticated iPhone Work generation, all 120B
+      // photographic quality decisions failed; previous logging occurred
+      // only AFTER the success branch, making the rejection mix invisible.
+      // Keep only the same bounded, non-identity enum/counter trace as
+      // successful S6 requests. Never log garment IDs, prices, user/account
+      // IDs, model prompts, JPEG bytes or merchant URLs.
+      if(modelSlateEnabled&&visualAsked) {
+        console.info('stylist6_safe_visual_quality', {
+          ...stylist6SafeQualityTrace(deck.diagnostics,0,Date.now()-started),
+          failedReason:['stylist6_visual_quality_unmet','stylist6_no_feasible_looks',
+            'anchor_outfit_unavailable'].includes(failureCode)
+            ?failureCode:'other',
+          creativePlanCount:Math.min(3,creativePlan.briefs.length),
+          creativePlanStatus:['planned','planned_partial','cached','invalid_plan',
+            'disabled_or_deadline','timeout','provider_unavailable','not_configured']
+            .includes(creativePlan.status)?creativePlan.status:'other',
+          phases:{...phaseAt,[activePhase]:Date.now()-phaseStart},
+        });
+      }
       await finish(failureStatus, failureCode);
       return fail(failureCode, failureStatus, {
         stage: 'stylist6_ranking',
