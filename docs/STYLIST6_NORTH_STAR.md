@@ -448,3 +448,76 @@ clones remain, use additional genuinely independent outfit-conception and
 human visual QA, not a lowered reject floor. Before any production switch,
 prove >=70% wins across >=30 held-out blind paired human reviews with three
 judges. Stylist 5 production remains unchanged.
+
+## 2026-11-18 — source-authentic TWO-STUDIO real fashion acceptance checkpoint
+
+**Verified result: TWO beautiful-enough photo-approved looks; NO acceptable
+three-look collection. PRODUCTION S5 NOT CHANGED.** CI/pass status is not a
+substitute for real independent visual and human acceptance.
+
+- Staging on exact source SHA dd02fd52700f738aa7ef9e0f9d076df77d4131e0
+  ran a new two-studio creative audition BEFORE independent photo criticism.
+  Nemotron initially builds six exact-source-SKU proposals. Kimi K3.1 Pro sees
+  unused, admitted real merchandise and anonymous prior constructions, then
+  creates three independently conceived alternatives from disjoint SKU tokens.
+  If any Kimi proposals invent tokens or its API is unavailable, retain the
+  initial Nemotron source-verified slate. Both studios' actual proposals must
+  still pass identical four-real-item, price, merchant, context, SKU integrity
+  and original whole-outfit PHOTO gates. Their existence never guarantees
+  that the resulting outfits are tasteful or commercially useful.
+- Both GitHub CI checks passed on dd02fd5; 229/229 focused local tests passed.
+  The Render isolated staging service was verified LIVE on the exact SHA.
+- Real authenticated iOS 26.5 simulator test on dd02fd5 used NEW CLOTHING /
+  CLASSIC / DATE NIGHT, zero free-form owner brief and no locked SKU.
+  The blue sweatshirt and QA title shown above the setup screen came from
+  a developer-only qaJpegSourceProbe native JPEG widget, NOT the baseItem
+  anchor. This distinction was confirmed from the Maestro accessibility
+  hierarchy. Do not infer user outfit anchor from that diagnostic banner.
+- LIVE Render safe QA logs at 2026-11-18T05:44:55Z confirmed:
+  elapsedMs=58046; skuCompositionStudio=nemotron_plus_kimi_initial;
+  skuCompositionProposed=6; skuCompositionAdmitted=5;
+  catalogFourItemContract=true; catalogFourItemDropped=0;
+  attempted=10 original-photo whole-look judgments; approved=4;
+  displayed=2; photoRevisionArtist=cross_lab_kimi;
+  photoRevisionAttempted=2; photoRevisionApproved=1;
+  photoEditorialVisualJury=applied;
+  photoEditorialIndependentJury=agreed;
+  photoEditorialVisualMedia=ready;
+  photoEditorialEligibleTriples=0; photoEditorialEligiblePairs=2;
+  photoEditorialCreativeRevision=applied;
+  photoEditorialCreativeInventory=unseen_source_skus;
+  photoEditorialCreativeRevisionAttempted=3;
+  photoEditorialCreativeRevisionApproved=1;
+  photoEditorialCreativeArtist=nemotron_fallback.
+- Key finding: the actual initial independent SECOND artist DID RUN; the
+  second original-photo judge also DID RUN; the two independent portfolio
+  editors agreed TWO were all that deserved publication. A third visually
+  acceptable, source-unique, aesthetically differentiated collection option
+  did not exist. Never quietly pad with an unreviewed third look.
+- The current visual-profiling backfill covers 1643/1649 active shoe SKUs.
+  However the owner-LICENSED first-party initial photo-board cache,
+  catalog_photo_cache_v1, still contains ZERO source-verified entries. The
+  first AI artist sees derived visual intelligence, not actual authorized
+  photographs. Later original-photo judges can evaluate, but cannot
+  retroactively give the initial designer true photographic eyesight.
+
+**NEXT EXECUTION — do not get stuck on small keyword rules:**
+
+1. Inspect the ACTUAL source-admitted garment construction breadth available
+   to the initial two studios. Full current catalog contains distinct jackets,
+   tailoring, coats, bombers and overshirts; investigate why first auditions
+   repeatedly yield similar knit/cardigan architectures and improve the
+   model-led source menu / creative choice, not a product-name ban.
+2. Commission fresh source-verified creative directions early enough that the
+   original whole-look photo critic can assess three compelling DISTINCT
+   fully shoppable four-SKU compositions within the server deadline. Validate
+   on repeated real native screenshots and independent editor receipts.
+3. Obtain genuine merchant/owner media hosting and external AI inference
+   rights, then populate source-hash-bound licensed first-party photos and
+   enable true PHOTO-FIRST composition. Never bypass the rights gate with
+   public hotlinked merchant images or assert that a technical host allowlist
+   equals legal inference permission.
+4. Production promotion remains forbidden until repeated cross-occasion
+   native styling quality, zero merchant/privacy/source errors and a held-out
+   three-reviewer human blind comparison in at least 30 paired cases shows
+   Stylist 6 >=70% wins over Stylist 5.
