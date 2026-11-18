@@ -643,9 +643,6 @@ export async function composeCatalogSkuLooks({
   layerRequired=false,allowLayer=true,resolvePhoto,authorizePhoto,
   crossLabRevision=false,initialStudioDuel=false,
   fastPhotoRevision=false,
-  // 72s isolated staging artistic experiment: TWO independently designed
-  // REAL source-SKU interpretations of each original fashion direction.
-  dualPlanInterpretations=false,
 }={}){
   const visible=Array.isArray(pool)?pool.slice(0,48).map(x=>x.public):[];
   const bySlot=new Map(SLOTS.map(slot=>[slot,visible.filter(v=>v.slot===slot)]));
@@ -687,8 +684,6 @@ export async function composeCatalogSkuLooks({
     // Every newly proposed product still faces the exact source, budget,
     // climate and independent whole-outfit PHOTO verification.
     const groundedPlans=revision?[]:groundedSkuDirections(directions,pool);
-    const dualArtwork=dualPlanInterpretations===true&&parallel===true&&
-      target===6&&groundedPlans.length===3&&!revision;
     const conceptCommissions=revision?[]:
       sourceGroundedCreativeCommissions(directions,pool);
     const textualFashionMemory=editorialTextMoodboards({
@@ -750,23 +745,9 @@ export async function composeCatalogSkuLooks({
       'choose OTHER permitted source tokens whenever the whole look is better.',
       ...(target===6?[
         'Looks 1, 2, 3 each embody Creative Director plans 1, 2, 3 when feasible.',
-        ...(dualArtwork?[
-          'Commission the three ORIGINAL creative directions as THREE distinct',
-          'fashion studios. Each studio designs TWO different complete real-SKU',
-          'interpretations of its ONE concept. Look 4 revisits artistic plan 1,',
-          'Look 5 revisits plan 2, and Look 6 revisits plan 3.',
-          'The second interpretation must be a genuinely NEW editorial idea',
-          'with different garment proportions, expressive material interplay',
-          'and footwear character, never a mere replacement color or same',
-          'outer layer with another product ID. Treat original concept art',
-          'as meaningful INSPIRATION, not an inflexible item or palette rule.',
-          'Evaluate all SIX finished outfits as a visually coherent collection:',
-          'the photo critic will still independently reject weak outfits.',
-        ]:[
-          'Looks 4, 5, 6 are YOUR three independent alternative fashion ideas:',
-          'different convincing outfit-level silhouettes, garment textures,',
-          'proportions and footwear relationships, not recolors of the first three.',
-        ]),
+        'Looks 4, 5, 6 are YOUR three independent alternative fashion ideas:',
+        'different convincing outfit-level silhouettes, garment textures,',
+        'proportions and footwear relationships, not recolors of the first three.',
         'These SIX are a candidate AUDITION, not six required recommendations:',
         'an independent photo critic may reject any and the final editor',
         'will choose ONLY the best convincing one, two or three looks.',
@@ -1230,8 +1211,7 @@ export async function composeCatalogSkuLooks({
             }
           }
           return {status:'composed',looks:composed,providerCalls,
-            visualMenuStatus,providerFamily:artist,
-            dualPlanInterpretations:dualArtwork};
+            visualMenuStatus,providerFamily:artist};
         }
         failure='invalid_composition';
       }catch{failure='invalid_composition';}
@@ -1250,7 +1230,6 @@ export async function composeCatalogSkuLooks({
 export async function sourceVerifyComposedOutfits({
   looks,request,requiredIds=[],hardGate,priceToBudgetCurrency,
   scorer,sourceMode='catalog',creativePlans=null,
-  dualPlanInterpretations=false,
 }={}){
   if(!Array.isArray(looks)||typeof hardGate!=='function'||
     typeof scorer?.rankLook!=='function'||sourceMode!=='catalog')return [];
@@ -1287,23 +1266,18 @@ export async function sourceVerifyComposedOutfits({
     // ranking input, never a source, budget, garment or PHOTO acceptance.
     const originalIndex=Number.isInteger(items[ORIGINAL_CREATIVE_INDEX])
       ?items[ORIGINAL_CREATIVE_INDEX]:i;
-    const commissionedPlanIndex=dualPlanInterpretations===true&&
-      originalIndex>=3&&originalIndex<6&&
-      Array.isArray(creativePlans)&&creativePlans.length===3
-      ?originalIndex-3:originalIndex;
-    const canAttribute=commissionedPlanIndex>=0&&
-      commissionedPlanIndex<3&&
+    const canAttribute=originalIndex>=0&&originalIndex<3&&
       items[INDEPENDENT_CREATIVE_SOURCE]!==true;
     const proposed=canAttribute&&Array.isArray(creativePlans)
-      ?creativePlans[commissionedPlanIndex]:null;
+      ?creativePlans[originalIndex]:null;
     const sourceArt=proposed?.generatedBy==='s6-creative-director-v1'&&
-      proposed.id==='ai-director-'+(commissionedPlanIndex+1)&&
+      proposed.id==='ai-director-'+(originalIndex+1)&&
       typeof proposed.artDirection==='string'&&
       proposed.artDirection.length>=85&&
       Array.isArray(proposed.palette)&&
       proposed.roles&&SLOTS.every(slot=>Array.isArray(proposed.roles[slot]))
       ?proposed:null;
-    const concept=sourceArt?'ai_director_'+(commissionedPlanIndex+1)
+    const concept=sourceArt?'ai_director_'+(originalIndex+1)
       :'ai_composed_'+(i+1);
     const actualRoles=Object.fromEntries(SLOTS.map(slot=>[slot,
       items.filter(x=>slotOf(x)===slot).map(x=>x.subtype)]));
