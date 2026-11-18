@@ -484,14 +484,25 @@ export function groundedSkuDirections(directions,pool){
   if(!Array.isArray(directions)||!Array.isArray(pool))return [];
   const available=Object.fromEntries(SLOTS.map(slot=>[slot,
     new Set(pool.filter(x=>x.slot===slot).map(x=>x.item?.subtype))]));
+  const seenLookNumbers=new Set();
   return directions.slice(0,3).flatMap((d,i)=>{
     if(d?.generatedBy!=='s6-creative-director-v1'||!d.roles)return [];
+    // Partial first-director JSON retains ORIGINAL positions: plans 1 and 3
+    // must never be silently relabeled as plans 1 and 2 after a skipped
+    // invalid design. Legacy in-memory test directions without IDs still
+    // use their array position, but trusted server-generated IDs win.
+    const identity=typeof d.id==='string'
+      ?/^ai-director-([123])$/.exec(d.id):null;
+    if(d.id&&!identity)return [];
+    const lookNumber=identity?Number(identity[1]):i+1;
+    if(seenLookNumbers.has(lookNumber))return [];
     const roles=Object.fromEntries(SLOTS.map(slot=>[slot,
       (Array.isArray(d.roles[slot])?d.roles[slot]:[]).slice(0,3)
         .filter(x=>typeof x==='string'&&available[slot].has(x))]));
     if(['top','bottom','shoes'].some(slot=>roles[slot].length===0))return [];
+    seenLookNumbers.add(lookNumber);
     return [{
-      lookNumber:i+1,
+      lookNumber,
       designConcept:safe(d.name,65),
       artDirection:safe(d.artDirection,235),
       desiredSilhouette:safe(d.silhouette,50),
