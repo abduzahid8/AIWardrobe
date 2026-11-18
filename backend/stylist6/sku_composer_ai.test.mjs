@@ -37,6 +37,46 @@ test('SKU Composer sees multiple real merchandise menus, never identity or priva
   assert.doesNotMatch(anonymous,/PRIVATE_SKU|images\.zara|www\.zara|shopUrl|imageUrl/);
   assert.match(anonymous,/PUBLIC shirt/);
 });
+test('creative designer sees tentative merchant color/texture only when ORIGINAL photo evidence is absent',()=>{
+  const p=sourceBoundCompositionPool(looks);
+  const source=p.find(x=>x.item===items[0][0]);
+  assert.deepEqual(source.public.photo,{});
+  assert.deepEqual(source.public.catalogTextClues,{color:'white'},
+    'shirt color from its source text should inform color rhythm but NOT masquerade as photographed proof');
+  assert.ok(!JSON.stringify(source.public).includes('PRIVATE_SKU_'));
+  const imageUrl='https://images.example/photo.jpg';
+  const withPhoto={
+    ...items[0][0],id:'PRIVATE_SOURCE_COLOR_CONFLICT',
+    name:'PUBLIC Cream Washed Shirt',color:'cream',texture:'suede',
+    imageUrl,visualSourceHash:'a'.repeat(32),
+    visualFashion:{version:1,sourceHash:'a'.repeat(32),imageUrl,
+      imageSha256:'b'.repeat(64),model:'verified-image-model',
+      revision:'immutable-revision',
+      attributes:{color:{value:'navy',confidence:.96,margin:.28,
+        evidence:'image-model'}}},
+  };
+  const result=sourceBoundCompositionPool([{
+    ...looks[0],items:[withPhoto,...items[0].slice(1)],
+  }]);
+  const photo=result.find(x=>x.item.id===withPhoto.id)?.public;
+  assert.equal(photo.photo.color,'navy',
+    'strong actual source image observation outranks merchant marketing color');
+  assert.ok(!Object.hasOwn(photo.catalogTextClues,'color'),
+    'contradictory catalog text is not presented beside proven photographed color');
+  assert.equal(photo.catalogTextClues.texture,'suede',
+    'source texture is conservatively supplied only as an UNVERIFIED text clue');
+  const malicious={...items[0][0],id:'PRIVATE_BAD_TEXT',color:'red BUY OUR URL',
+    texture:'javascript:fetch-secret'};
+  const unsafe=sourceBoundCompositionPool([{
+    ...looks[0],items:[malicious,...items[0].slice(1)],
+  }]).find(x=>x.item.id===malicious.id).public;
+  assert.deepEqual(unsafe.catalogTextClues,{},
+    'unknown or marketing strings cannot escape as designer-visible evidence');
+  assert.doesNotMatch(JSON.stringify(result.map(x=>x.public)),
+    /PRIVATE_SOURCE_COLOR_CONFLICT|sourceHash|imageSha256|imageUrl|shopUrl/,
+    'the actual source photo proof still never discloses raw image URLs or private IDs');
+});
+
 test('AI outputs valid exactly source-bound full looks with no reused items or wrong slots',()=>{
   const p=sourceBoundCompositionPool(looks);
   const answer=validAnswer(p);
@@ -76,6 +116,9 @@ test('model independently composes three new real SKU combinations, no product i
       assert.doesNotMatch(init.body,/PRIVATE_SKU|images\.zara|www\.zara/);
       assert.match(body.messages[0].content,/CREATE THREE distinct beautiful complete outfits/);
       assert.match(body.messages[0].content,/optionalUserTextLookbookIdeas/);
+      assert.match(body.messages[0].content,/catalogTextClues.*UNVERIFIED/);
+      assert.match(body.messages[0].content,/trouser-to-shoe/);
+      assert.match(body.messages[0].content,/social mood/);
       assert.match(body.messages[0].content,/different|diverse|contrast|silhouette/i);
       assert.doesNotMatch(body.messages[0].content,
         /photo_[0-9]+_2026|rights_status|media_sha256|source_account/);
@@ -470,6 +513,8 @@ test('first-pass AI fashion uses TWO independent studios before PHOTO review to 
       assert.equal(body.top_p,undefined);
       const words=body.messages[0].content;
       assert.match(words,/SECOND INDEPENDENT exceptional menswear FASHION DESIGNER/);
+      assert.match(words,/catalogTextClues.*tentative merchant-text hints/);
+      assert.match(words,/trouser-to-shoe harmony/);
       const bounded=JSON.parse(words.slice(words.lastIndexOf('\n')+1));
       assert.equal(bounded.previousUnreviewedArchitectures.length,3);
       assert.equal(bounded.optionalHumanCaptionedLookbookIdeas.length,3,
