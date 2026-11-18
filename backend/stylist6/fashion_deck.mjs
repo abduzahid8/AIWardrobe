@@ -2811,9 +2811,14 @@ export async function recommendFashionDeck({
                 !initialComposerProducts.has(baseProductId(String(item.id)))&&
                 !alreadyApprovedProductKeys.has(baseProductId(String(item.id))))
               .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
+            // PHOTO-informed second creative decision: do not seed the
+            // unseen SKU palette with the original Director concepts that
+            // just produced the repetitive first audition. Present diverse,
+            // already source-prepared garment architectures; new fashion
+            // choices and whole-look photo verdicts remain model-led.
             const unseenPool=sourceBoundCompositionPool([],{
               additionalItems:unseenPrepared,inventoryFirst:true,
-              explorationSlots:4,directions:aiPlans,feedbackTaste,
+              explorationSlots:4,directions:[],feedbackTaste,
             });
             // Never replace a viable original correction menu with a sparse
             // sample. This uses no new provider/SQL requests and does not

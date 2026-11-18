@@ -324,6 +324,52 @@ test('Creative Director planning actually influences real SKU menu and the THREE
   assert.equal(new Set(accepted.looks.flat().map(x=>x.id)).size,12);
 });
 
+test('PHOTO-informed second fashion decision abandons exhausted first-draft plans, preserves real-SKU grounding',async()=>{
+  const source=sourceBoundCompositionPool(looks);
+  const oldPlans=Array.from({length:3},(_,i)=>({
+    id:'ai-director-'+(i+1),
+    generatedBy:'s6-creative-director-v1',
+    name:'FIRST_DRAFT_ARCHITECTURE_'+(i+1),
+    artDirection:'Coordinate a refined constructed ensemble with coherent fabric drape',
+    silhouette:'balanced',palette:['navy','grey'],
+    roles:{top:['dress-shirt'],outerwear:['blazer'],
+      bottom:['tailored-trouser'],shoes:['oxford']},
+    layerPolicy:'optional',
+  }));
+  const collected=[];
+  const invoke=critiqueFeedback=>composeCatalogSkuLooks({
+    pool:source,directions:oldPlans,critiqueFeedback,
+    layerRequired:true,apiKey:'nvapi-test-secret',
+    context:{style:'classic',occasion:'Work'},
+    fetchImpl:async(_url,options)=>{
+      collected.push(JSON.parse(options.body).messages[0].content);
+      return result(slotAnswer(source));
+    },
+  });
+  const first=await invoke(null);
+  const second=await invoke({
+    reasons:['style_mismatch'],
+    approvedArchitectures:[{top:'dress-shirt',outerwear:'blazer',
+      bottom:'tailored-trouser',shoes:'oxford'}],
+    rejectedOutfits:[{reason:'style_mismatch',
+      roles:{top:'dress-shirt',outerwear:'blazer',
+        bottom:'tailored-trouser',shoes:'oxford'},
+      observations:{outerwear:'Photographed layers have the same bulky proportions'}}],
+  });
+  assert.equal(first.status,'composed');
+  assert.equal(second.status,'composed',
+    'new photo feedback must still select source-authentic valid four-SKU looks');
+  assert.equal(second.looks.length,3);
+  assert.equal(new Set(second.looks.flat().map(item=>item.id)).size,12);
+  assert.match(collected[0],/FIRST_DRAFT_ARCHITECTURE_1/);
+  assert.doesNotMatch(collected[1],/FIRST_DRAFT_ARCHITECTURE_/,
+    'do not send a stale creative blueprint alongside contradictory actual photo feedback');
+  const revision=JSON.parse(collected[1].slice(collected[1].indexOf('{"user":')));
+  assert.deepEqual(revision.inventoryGroundedDesignDirections,[]);
+  assert.ok(revision.independentPhotoCriticRevision);
+  assert.ok(revision.independentPhotoCriticRevision.rejectedPhotoEvidence.length>0);
+});
+
 test('malformed and unavailable AI fashion directions never invent missing merchandise',()=>{
   const missing={id:'ai-director-1',generatedBy:'s6-creative-director-v1',
     name:'Impossible',palette:['red'],roles:{
