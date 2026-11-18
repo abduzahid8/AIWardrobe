@@ -183,6 +183,26 @@ export function sourceBoundCompositionPool(looks, {
     // Fill remaining options with diverse, strong real products; the model
     // decides if a planned direction should be revised for visual harmony.
     const seededCap=Math.max(3,limit-extraCapacity);
+    // Root cause of repetitive LIVE AI-first outfits: a photo-rich but
+    // single-subtype merchant cohort (e.g. many different loafers or cardigans)
+    // can occupy almost the entire 12-token menu. A 120B designer cannot
+    // creatively choose a second silhouette if its source-bound menu never
+    // exposes one. In the isolated inventory-first path, reserve one REAL,
+    // already prepared garment from every known subtype that actually exists
+    // in this discovery window before taking near-duplicate colors of one
+    // subtype. This is merchandise EXPOSURE, not an outfit fashion verdict;
+    // source/price/occasion gates and the independent photographic critic
+    // still approve every complete look separately. Unknown types do not
+    // manufacture false variety.
+    if(inventoryFirst){
+      const represented=new Set(chosen.map(x=>String(x.item.subtype||'').toLowerCase()));
+      for(const x of pool){
+        if(chosen.length>=seededCap)break;
+        const kind=String(x.item.subtype||'').trim().toLowerCase();
+        if(!kind||kind==='unknown'||kind==='other'||represented.has(kind))continue;
+        if(append(x))represented.add(kind);
+      }
+    }
     for(const x of pool){
       if(families.has(family(x.item)))continue;
       append(x);
