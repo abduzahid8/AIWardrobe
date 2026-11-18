@@ -74,6 +74,9 @@ export function stylist6CreativeServerConfig() {
   return {
     STYLIST6_CREATIVE_DIRECTOR_ENABLED: envOf('STYLIST6_CREATIVE_DIRECTOR_ENABLED'),
     STYLIST6_AI_SLATE_ENABLED: envOf('STYLIST6_AI_SLATE_ENABLED'),
+    // Server-controlled only: makes real catalog cohort stable for a
+    // controlled SAME-SKU artistic A/B, not a customer-controlled fetch flag.
+    STYLIST6_STABLE_COHORT_ENABLED: envOf('STYLIST6_STABLE_COHORT_ENABLED'),
   };
 }
 

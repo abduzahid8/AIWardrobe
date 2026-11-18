@@ -46,20 +46,25 @@ test('stylist6 route rejects unsigned callers and wrong methods', async () => {
 
 
 test('both server-owned AI director switches reach the cloud handler without client control', () => {
-  const names=['STYLIST6_CREATIVE_DIRECTOR_ENABLED','STYLIST6_AI_SLATE_ENABLED'];
+  const names=['STYLIST6_CREATIVE_DIRECTOR_ENABLED','STYLIST6_AI_SLATE_ENABLED',
+    'STYLIST6_STABLE_COHORT_ENABLED'];
   const originals=Object.fromEntries(names.map(name=>[name,process.env[name]]));
   try {
     process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED='1';
     process.env.STYLIST6_AI_SLATE_ENABLED='1';
+    process.env.STYLIST6_STABLE_COHORT_ENABLED='true';
     assert.deepEqual(stylist6CreativeServerConfig(), {
       STYLIST6_CREATIVE_DIRECTOR_ENABLED:'1',STYLIST6_AI_SLATE_ENABLED:'1',
+      STYLIST6_STABLE_COHORT_ENABLED:'true',
     },'enabled AI fashion slate cannot silently disappear from the route');
     process.env.STYLIST6_CREATIVE_DIRECTOR_ENABLED='';
     process.env.STYLIST6_AI_SLATE_ENABLED='';
+    process.env.STYLIST6_STABLE_COHORT_ENABLED='';
     assert.deepEqual(stylist6CreativeServerConfig(), {
       STYLIST6_CREATIVE_DIRECTOR_ENABLED:'',STYLIST6_AI_SLATE_ENABLED:'',
+      STYLIST6_STABLE_COHORT_ENABLED:'',
     },'server kill-switch must remain effective when environment is disabled');
-    assert.equal(Object.keys(stylist6CreativeServerConfig()).length,2,
+    assert.equal(Object.keys(stylist6CreativeServerConfig()).length,3,
       'never forward arbitrary secret-containing process.env to the model');
   } finally {
     for(const name of names){
