@@ -80,6 +80,35 @@ test('creative designer sees tentative merchant color/texture only when ORIGINAL
     'the actual source photo proof still never discloses raw image URLs or private IDs');
 });
 
+test('source-grounded AI outfit designer receives actual image-observed construction and trouser proportions',()=>{
+  const observation=value=>({value,confidence:.95,margin:.17,evidence:'image-model'});
+  const visual=(original,features)=>({...original,
+    visualSourceHash:'a'.repeat(32),
+    visualFashion:{version:1,sourceHash:'a'.repeat(32),
+      imageUrl:original.imageUrl,imageSha256:'b'.repeat(64),
+      model:'verified-photo-extractor',revision:'v1',
+      attributes:Object.fromEntries(Object.entries(features)
+        .map(([k,v])=>[k,observation(v)]))},
+  });
+  const real=[
+    items[0][0],
+    visual(items[0][1],{closure:'openable',accentHue:'brown'}),
+    visual(items[0][2],{hemShape:'tapered',volume:'regular'}),
+    visual(items[0][3],{footwearPurpose:'dress',soleProfile:'dress'}),
+  ];
+  const pool=sourceBoundCompositionPool([{
+    ...looks[0],items:real,
+  }]);
+  const byRole=Object.fromEntries(pool.map(x=>[x.slot,x.public]));
+  assert.equal(byRole.outerwear.photo.closure,'openable');
+  assert.equal(byRole.outerwear.photo.accentHue,'brown');
+  assert.equal(byRole.bottom.photo.hemShape,'tapered');
+  assert.equal(byRole.shoes.photo.footwearPurpose,'dress');
+  assert.doesNotMatch(JSON.stringify(pool.map(x=>x.public)),
+    /PRIVATE_SKU|images\\.zara|sourceHash|imageSha256|shopUrl|imageUrl/,
+    'only bounded observations, not merchant URLs or private SKUs, reach the AI');
+});
+
 test('AI outputs valid exactly source-bound full looks with no reused items or wrong slots',()=>{
   const p=sourceBoundCompositionPool(looks);
   const answer=validAnswer(p);
