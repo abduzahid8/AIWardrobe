@@ -381,53 +381,6 @@ export function groundedSkuDirections(directions,pool){
   });
 }
 
-/**
- * Couple the autonomous artistic concept to REAL source choices BEFORE the
- * first AI decides the four garments. Previously this join existed only as
- * abstract subtype text; the AI saw a 48-item undifferentiated menu and
- * produced many variants of one blazer/trouser formula. Each commission is
- * a creative story, with up to five ACTUALLY AVAILABLE opaque SKU tokens
- * for each garment role. These are inspiration/options, NOT hard item bans:
- * the artist can use any other permitted P-token when the finished aesthetic
- * is better. No physical SKU identity, URL, price or photo is exposed here.
- */
-export function sourceGroundedCreativeCommissions(directions,pool){
-  const grounded=groundedSkuDirections(directions,pool);
-  if(!grounded.length)return [];
-  return grounded.map(plan=>{
-    const palette=new Set(plan.desiredColors.map(x=>x.toLowerCase()));
-    const sourceSkuOptionsByRole=Object.fromEntries(SLOTS.map(slot=>{
-      const preferred=new Set(plan.preferredAvailableSubtypes[slot]);
-      const candidates=pool.filter(entry=>entry.slot===slot&&
-        preferred.has(entry.item?.subtype));
-      const picturedColor=item=>photoFacts(item).color||null;
-      const evidenceScore=entry=>{
-        const observed=picturedColor(entry.item);
-        // Guide attention to exact photographed colors; never assert a
-        // source name or color field is direct photo evidence.
-        return (observed&&palette.has(observed.toLowerCase())?4:0)+
-          (observed?2:0)+
-          (palette.has(String(entry.public?.catalogTextClues?.color||'').toLowerCase())?1:0);
-      };
-      const options=[...candidates].sort((a,b)=>
-        evidenceScore(b)-evidenceScore(a)||b.strength-a.strength||
-        a.token.localeCompare(b.token)).slice(0,5).map(entry=>entry.token);
-      return [slot,options];
-    }));
-    return {
-      lookNumber:plan.lookNumber,
-      designConcept:plan.designConcept,
-      artDirection:plan.artDirection,
-      desiredSilhouette:plan.desiredSilhouette,
-      desiredColors:plan.desiredColors,
-      sourceSkuOptionsByRole,
-      // The ARTIST makes the final complete-look choice. A concept can be
-      // aesthetically excellent using another permitted source token.
-      creativeFreedom:'candidate_options_not_exclusions',
-    };
-  });
-}
-
 /** The PHOTO critic, not a catalog title parser, tells the next model WHY
  * the first ensemble wave underperformed. Never expose private IDs, user
  * text, URLs or unconstrained natural-language model output in a retry.
@@ -589,8 +542,6 @@ export async function composeCatalogSkuLooks({
     // Every newly proposed product still faces the exact source, budget,
     // climate and independent whole-outfit PHOTO verification.
     const groundedPlans=revision?[]:groundedSkuDirections(directions,pool);
-    const conceptCommissions=revision?[]:
-      sourceGroundedCreativeCommissions(directions,pool);
     const textualFashionMemory=editorialTextMoodboards({
       style:context?.style,occasion:context?.occasion,
       preferences:context?.preferences,
@@ -636,13 +587,6 @@ export async function composeCatalogSkuLooks({
       'You may creatively revise any unsuitable specific choice; real PHOTO',
       'critics will reject visually incoherent finished combinations.',
       'Each concept proposes a DIFFERENT silhouette, materials and color harmony.',
-      'creativeLookCommissions joins the THREE art concepts to specific',
-      'REAL eligible P-token OPTIONS in each garment slot. Unlike generic',
-      'subtype names, these are available exact individual fashion items.',
-      'For Looks 1-3, examine each matching commission as a WHOLE styling',
-      'story and realize its intended color/fabric/proportion relationships.',
-      'Commission candidates are NOT rules, restrictions, or visual approvals:',
-      'choose OTHER permitted source tokens whenever the whole look is better.',
       ...(target===6?[
         'Looks 1, 2, 3 each embody Creative Director plans 1, 2, 3 when feasible.',
         'Looks 4, 5, 6 are YOUR three independent alternative fashion ideas:',
@@ -717,7 +661,6 @@ export async function composeCatalogSkuLooks({
         realMerchantItemMenus:options,
         optionalUserTextLookbookIdeas:textualFashionMemory,
         inventoryGroundedDesignDirections:groundedPlans,
-        creativeLookCommissions:conceptCommissions,
         explicitFeedbackAesthetics:anonymousExplicitTasteHistory(feedbackTaste),
         ...(revision?{independentPhotoCriticRevision:revision}:{}),
       }),
@@ -993,11 +936,6 @@ export async function composeCatalogSkuLooks({
                   'A cardigan recolor, new shoe shade, or similar chino set does',
                   'NOT create a genuinely different fashion direction.',
                   'Make your OWN editorial choices based on available product facts.',
-                  'The alternateCreativeCommissions are real, still-unused',
-                  'garment options for original artistic ideas. They are',
-                  'editorial proposals rather than subtype restrictions:',
-                  'reinterpret or depart from them if a better fully coherent',
-                  'four-item look fits the user and actual available photos.',
                   'Each SKU has confident original photo observations when available.',
                   'catalogTextClues are only tentative merchant-text hints; NEVER',
                   'pretend these are visual inspection or proven fiber/cut facts.',
@@ -1035,8 +973,6 @@ export async function composeCatalogSkuLooks({
                         ?context.preferences.avoidColors.slice(0,7)
                           .map(x=>safe(x,25)):[]},
                     previousUnreviewedArchitectures:complementaryArchitectures,
-                    alternateCreativeCommissions:
-                      sourceGroundedCreativeCommissions(directions,alternatePool),
                     optionalHumanCaptionedLookbookIdeas:textualFashionMemory,
                     unusedSourceBoundMerchandise:available,
                   }),

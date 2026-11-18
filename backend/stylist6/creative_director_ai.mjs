@@ -167,12 +167,6 @@ export function directorInventory(catalog, request = {}, {feedbackTaste=null}={}
     weatherCelsius: Number.isFinite(temp) && temp >= -65 && temp <= 65 ? temp : null,
     sourceMode: ['catalog', 'wardrobe', 'mixed'].includes(request?.sourceMode)
       ? request.sourceMode : 'catalog',
-    // A staging catalog customer must receive four REAL products. Make the
-    // FIRST artist compose a beautiful four-piece story, rather than plan
-    // three garments and force the SKU artist to bolt on a random jacket.
-    // This is an OUTPUT SHAPE requirement, never a subtype/color rule.
-    catalogFourItemIntent:request?.sourceMode==='catalog'&&
-      request?.optionalLayer===false,
     preferences: {
       favoriteColors: knownAvoidColors(preferences.favoriteColors),
       avoidColors: knownAvoidColors(preferences.avoidColors),
@@ -203,8 +197,7 @@ export function directorResponseSchema(inventory) {
     const choices = (Array.isArray(inventory?.available?.[slot]) ? inventory.available[slot] : [])
       .map(row => row.subtype).filter(allowedSubtype);
     const coldRequiresLayer = slot === 'outerwear' &&
-      (inventory?.catalogFourItemIntent===true||
-       (Number.isFinite(inventory?.weatherCelsius)&&inventory.weatherCelsius<12));
+      Number.isFinite(inventory?.weatherCelsius) && inventory.weatherCelsius < 12;
     return { type: 'array', minItems: slot === 'outerwear' && !coldRequiresLayer ? 0 : 1,
       maxItems: choices.length ? Math.min(3, choices.length) : 0,
       items: choices.length
@@ -247,7 +240,7 @@ export function directorResponseSchema(inventory) {
   };
 }
 
-function normalizePlan(row, available, index, temperature, fourItemIntent=false) {
+function normalizePlan(row, available, index, temperature) {
   if (!row || typeof row !== 'object' || Array.isArray(row) ||
       !SHAPES.has(row.silhouette) || typeof row.title !== 'string') return null;
   const name = safeText(row.title, 70);
@@ -269,8 +262,7 @@ function normalizePlan(row, available, index, temperature, fourItemIntent=false)
   }
   // Three warm-weather look plans may legitimately omit a layer. Cool
   // weather must never be turned into bare shirt/trousers on AI advice.
-  if ((fourItemIntent||(temperature !== null&&temperature<12))&&
-      !roles.outerwear.length)return null;
+  if (temperature !== null && temperature < 12 && !roles.outerwear.length) return null;
   return {
     id: 'ai-director-' + (index + 1),
     name,
@@ -278,7 +270,7 @@ function normalizePlan(row, available, index, temperature, fourItemIntent=false)
     roles,
     silhouette: row.silhouette,
     palette,
-    layerPolicy: fourItemIntent?'required':roles.outerwear.length?'optional':'absent',
+    layerPolicy: roles.outerwear.length ? 'optional' : 'absent',
     generatedBy: CREATIVE_DIRECTOR_VERSION,
   };
 }
@@ -289,8 +281,7 @@ export function validateDirectorDirections(data, inventory) {
   if (!inventory || !inventory.available) return [];
   const blockedColors = new Set(inventory?.preferences?.avoidColors || []);
   const normalized = data.directions.map((row, i) => {
-    const plan = normalizePlan(row, inventory.available, i,
-      inventory.weatherCelsius,inventory.catalogFourItemIntent===true);
+    const plan = normalizePlan(row, inventory.available, i, inventory.weatherCelsius);
     return plan && !plan.palette.some(color => blockedColors.has(color)) ? plan : null;
   });
   // Salvage only independently valid and distinct directions. One malformed
@@ -416,18 +407,8 @@ export async function designCreativeBriefs({
       'liked and disliked whole-outfit construction evidence. Use it to',
       'make personalized creative decisions, not hard one-item bans.',
       'No photo hosting or model inference rights are implied by the atlas.',
-      ...(inventory.catalogFourItemIntent?[
-        'The wearer expects FOUR shoppable genuine products per complete look:',
-        'base TOP, meaningful chosen LAYER, BOTTOM and SHOES. Include a',
-        'coherent layer in EVERY initial artistic concept, regardless of',
-        'warm weather; express its role in proportion, cut and material',
-        'rhythm rather than adding a random jacket as a fourth item.',
-        'Choose layer subtypes from REAL inventory, not a hard formula.',
-      ]:[
-        'Use up to 3 subtypes for each role, or zero outerwear subtypes only',
-        'when appropriate for warm weather.',
-      ]),
-      'Include top, bottom and shoes in every plan.',
+      'Use up to 3 subtypes for each role, or zero outerwear subtypes only when',
+      'appropriate for warm weather. Include top, bottom and shoes in every plan.',
       'Make three genuinely different silhouette/material/formality concepts.',
       'You must make your OWN autonomous whole-outfit artistic decisions.',
       'For EACH concept write artDirection, a concrete 90–230 character',
