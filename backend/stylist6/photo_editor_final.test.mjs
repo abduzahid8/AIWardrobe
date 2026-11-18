@@ -316,6 +316,73 @@ test('independent Kimi photographic fashion jury can VETO repetitive three-look 
   assert.equal(selection.providerCalls,2);
 });
 
+test('Kimi second-lab original-photo verdict survives PRIMARY portfolio VLM outage, never using text-only guesses',async()=>{
+  const jpeg=await sharp({create:{width:135,height:145,channels:3,
+    background:'#78838b'}}).jpeg().toBuffer();
+  const models=[];
+  const gap='A more structured suede layer and contrasting trouser drape add an original romantic silhouette';
+  const chosen=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-test-original-source',timeoutMs:9400,
+    independentVisionJury:true,
+    authorizePhoto:()=>true,
+    resolvePhoto:async()=>({bytes:jpeg}),
+    fetchImpl:async(_url,req)=>{
+      const body=JSON.parse(req.body);
+      models.push(body.model);
+      assert.ok(body.messages.at(-1).content.at(-1).image_url.url
+        .startsWith('data:image/jpeg;base64,'));
+      return body.model===PHOTO_PORTFOLIO_VISION_MODEL
+        ?Response.json({error:'primary_VLM_unavailable'},{status:503})
+        :Response.json({choices:[{finish_reason:'stop',message:{
+          content:JSON.stringify({portfolio:'F01',
+            missingFashionDirection:gap}),
+        }}]});
+    },
+  });
+  assert.deepEqual(new Set(models),new Set([
+    PHOTO_PORTFOLIO_VISION_MODEL,'moonshotai/kimi-k3.1-pro']));
+  assert.equal(chosen.status,'selected');
+  assert.deepEqual(chosen.tokens,['L02','L00'],
+    'a second lab can choose ONLY an already-photo-approved feasible F-token');
+  assert.equal(chosen.portfolioToken,'F01');
+  assert.equal(chosen.visualJury,'applied',
+    'Kimi actually saw the same source JPEGs, not a text-only portfolio guess');
+  assert.equal(chosen.independentJury,'standalone',
+    'report honestly that Kimi alone supplied the collection-level visual choice');
+  assert.equal(chosen.visualMediaStatus,'ready');
+  assert.equal(chosen.providerCalls,2,
+    'never need the third text-only provider call after verified independent photo choice');
+  assert.equal(chosen.creativeGap,gap);
+});
+
+test('cross-lab photo fallback cannot select a fabricated F-token after primary vision failure',async()=>{
+  const jpeg=await sharp({create:{width:115,height:130,channels:3,
+    background:'#b9a48c'}}).jpeg().toBuffer();
+  const tried=[];
+  const answer=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    apiKey:'nvapi-test-no-hallucinations',timeoutMs:9300,
+    independentVisionJury:true,
+    authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:jpeg}),
+    fetchImpl:async(_url,req)=>{
+      const body=JSON.parse(req.body);tried.push(body.model);
+      return body.model==='moonshotai/kimi-k3.1-pro'
+        ?result('F99') // invalid fabricated portfolio, MUST NEVER pass
+        :body.model===PHOTO_PORTFOLIO_VISION_MODEL
+          ?Response.json({error:'VLM temporarily unavailable'},{status:502})
+          :result('F00'); // existing verified text-editor fallback
+    },
+  });
+  assert.equal(answer.status,'selected');
+  assert.equal(answer.visualJury,'unavailable',
+    'invalid Kimi photographic hallucination never claims applied visual jury');
+  assert.deepEqual(answer.tokens,['L00','L01','L02']);
+  assert.equal(answer.providerCalls,3);
+  assert.equal(tried.filter(x=>x==='moonshotai/kimi-k3.1-pro').length,1);
+});
+
 test('independent studio jury may NEVER add a nonprimary look, silently override NVIDIA, or weaken unavailable-model fallback',async()=>{
   const jpeg=await sharp({create:{width:110,height:135,channels:3,
     background:'#7c8580'}}).jpeg().toBuffer();

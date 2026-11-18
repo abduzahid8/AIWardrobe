@@ -2722,7 +2722,7 @@ export async function recommendFashionDeck({
               'invalid_selection','timeout','provider_unavailable','unavailable']
               .includes(decision?.visualJury)?decision.visualJury:'not_run',
             independentJury:['not_run','agreed','narrowed',
-              'disagreed','unavailable'].includes(decision?.independentJury)
+              'disagreed','unavailable','standalone'].includes(decision?.independentJury)
               ?decision.independentJury:'not_run',
             visualMediaStatus:['ready','not_run','invalid_input',
               'unauthorized_or_missing','deadline','source_missing',
@@ -3004,7 +3004,7 @@ export async function recommendFashionDeck({
                             // lab jury (not the earlier F-token vote) must
                             // determine the emitted monitoring receipt.
                             if(['not_run','agreed','narrowed','disagreed',
-                                'unavailable'].includes(revisedDecision.independentJury))
+                                'unavailable','standalone'].includes(revisedDecision.independentJury))
                               editorial.independentJury=
                                 revisedDecision.independentJury;
                             editorial.status='applied';

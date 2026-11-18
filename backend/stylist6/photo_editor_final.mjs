@@ -210,6 +210,36 @@ export async function selectPhotoEditorialDeck({
         const visionController=new AbortController();
         const visionTimer=setTimeout(()=>visionController.abort(),visionRemaining);
         const visionSignal=AbortSignal.any([combined,visionController.signal]);
+        let independentPromise=null;
+        // LIVE native date QA: an already-started, separately-trained
+        // original-photo Kimi editor can complete long BEFORE the 120B
+        // primary vision call times out. Do not discard that independently
+        // verified photographed F-token and then request a TEXT-only edit.
+        // This fallback is allowed ONLY for a source-verified menu of
+        // already independently photo-approved complete four-SKU looks.
+        const completedIndependentPhotoVote=async()=>{
+          if(!independentPromise||combined.aborted||visualMediaStatus!=='ready')
+            return null;
+          // Provider abort must not hold a paid mobile request indefinitely.
+          // Usually Kimi is already done when the primary photo VLM times out.
+          let waitTimer;
+          let alternate=null;
+          try{
+            alternate=await Promise.race([
+              independentPromise,
+              new Promise(resolve=>{waitTimer=setTimeout(()=>resolve(null),350);}),
+            ]);
+          }catch{/* abandon an unavailable optional jury */}
+          finally{clearTimeout(waitTimer);}
+          if(!alternate||combined.aborted)return null;
+          return {status:'selected',tokens:alternate.looks,
+            portfolioToken:alternate.token,
+            creativeGap:alternate.looks.length<3
+              ?safePhotoEditorialCreativeGap(
+                alternate.answer?.missingFashionDirection):null,
+            providerCalls,visualJury:'applied',visualMediaStatus:'ready',
+            independentJury:'standalone'};
+        };
         try{
           visualJury='unavailable';
           const visionPrompt=[
@@ -247,14 +277,14 @@ export async function selectPhotoEditorialDeck({
           ].join('\n');
           // Kimi's independent original-photo jury runs CONCURRENTLY with
           // Nemotron on the same authorized 4-column product contact sheet.
-          // The prompt does NOT reveal the primary model's vote. A verified
-          // countervote may SHRINK the primary selection only if its whole
-          // F-token is a strict subset. It cannot add, swap or fabricate a
-          // look. Kimi is never required for the existing robust Nemotron
-          // visual result: provider timeout/unavailability leaves it intact.
+          // The prompt does NOT reveal the primary model's vote. While
+          // Nemotron succeeds, Kimi may only VETO via an exact verified
+          // strict-subset F-token; it cannot add or swap any approved look.
+          // If Nemotron FAILS, Kimi's separately valid actual-photo vote
+          // can instead choose its OWN already approved, feasible F-token.
+          // No model invents any merchandise or bypasses the per-look VLM.
           const sheetDataUrl='data:image/jpeg;base64,'+
             sheet.bytes.toString('base64');
-          let independentPromise=null;
           if(independentVisionJury===true&&
               menu.some(p=>p.looks.length===3)&&!visionSignal.aborted){
             independentJury='unavailable';
@@ -367,7 +397,14 @@ export async function selectPhotoEditorialDeck({
               }
             }
           }
+          // Primary could have returned HTTP error, incomplete JSON or an
+          // invalid portfolio while Kimi already completed its DIFFERENT
+          // photo-grounded judgment on the SAME original JPEG board.
+          const secondPhotoChoice=await completedIndependentPhotoVote();
+          if(secondPhotoChoice)return secondPhotoChoice;
         }catch{
+          const secondPhotoChoice=await completedIndependentPhotoVote();
+          if(secondPhotoChoice)return secondPhotoChoice;
           visualJury=visionSignal.aborted?'timeout':'provider_unavailable';
         }finally{clearTimeout(visionTimer);visionController.abort();}
       }else visualJury='image_unavailable';

@@ -157,7 +157,7 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       .includes(f.photoEditorial?.visualJury)
       ?f.photoEditorial.visualJury:'not_run',
     photoEditorialIndependentJury:['not_run','agreed','narrowed',
-      'disagreed','unavailable']
+      'disagreed','unavailable','standalone']
       .includes(f.photoEditorial?.independentJury)
       ?f.photoEditorial.independentJury:'not_run',
     photoEditorialVisualMedia:['ready','not_run','invalid_input',
