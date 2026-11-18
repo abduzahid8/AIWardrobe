@@ -195,6 +195,76 @@ test('source-INVALID first artistic plan receives one REAL independent 30B Creat
     row.roles.outerwear.length>0));
 });
 
+test('PARTIAL but valid first artistic vision is preserved while independent artist fills genuinely missing THIRD scene',async()=>{
+  const firstPartial={directions:[proposal.directions[0],proposal.directions[1],
+    {...proposal.directions[1]}]};
+  const calls=[];
+  const enriched=await designCreativeBriefsWithFallback({catalog,
+    request:{...request,occasion:'Date night',
+      brief:'Real date partial source-verified artistic vision 18nov supplemental test'},
+    highTaste:true,allowIndependentFallback:true,
+    backupTimeoutMs:2850,apiKey:'nvapi-art-director-partial-completion-test',
+    fetchImpl:async(_url,init)=>{
+      const req=JSON.parse(init.body);
+      calls.push(req.model);
+      assert.match(req.messages[0].content,/social DATE evening/);
+      const data=JSON.parse(req.messages[0].content.split('\n').at(-1));
+      assert.ok(data.currentInventory.available.top.length>0);
+      if(calls.length===1){
+        assert.equal(req.model,'nvidia/nemotron-3.5-super-vl-120b-a12b');
+        assert.equal(data.alreadySourceValidatedDirections,undefined);
+        return fakeResponse(firstPartial);
+      }
+      assert.equal(req.model,'nvidia/nemotron-3.5-lightning-30b-a3b');
+      assert.equal(data.alreadySourceValidatedDirections.length,2,
+        'the second fashion artist sees the ACTUAL original two concepts, not free-form owner text');
+      assert.deepEqual(data.alreadySourceValidatedDirections.map(x=>x.name),
+        ['Tailored Navy Signature','Modern Textural Refresh']);
+      assert.match(req.messages[0].content,/missing[\s\S]*third/i);
+      assert.doesNotMatch(req.messages[0].content,
+        /SECRET-SKU-SHIRT|PRIVATE_REAL_SHIRT|https:\/\//);
+      return fakeResponse(proposal);
+    },
+  });
+  assert.deepEqual(calls,[
+    'nvidia/nemotron-3.5-super-vl-120b-a12b',
+    'nvidia/nemotron-3.5-lightning-30b-a3b']);
+  assert.equal(enriched.providerCalls,2);
+  assert.equal(enriched.status,'planned', JSON.stringify({status:enriched.status,briefs:enriched.briefs,backup:enriched.invalidPlanBackupStatus}));
+  assert.equal(enriched.invalidPlanBackupStatus,
+    'supplemented_independent_source_grounded');
+  assert.deepEqual(enriched.briefs.map(x=>x.name),[
+    'Tailored Navy Signature','Modern Textural Refresh',
+    'Structured Evening Discovery']);
+  assert.deepEqual(enriched.briefs.map(x=>x.id),
+    ['ai-director-1','ai-director-2','ai-director-3']);
+  assert.ok(enriched.briefs.every(x=>x.roles.outerwear.length>=1),
+    'all creative slots still require real-source-compatible FOUR garment roles');
+});
+
+test('provider cannot finish an incomplete original concept: preserve real source-validated artistic choices without invented third',async()=>{
+  const firstPartial={directions:[proposal.directions[0],proposal.directions[1],
+    {...proposal.directions[1]}]};
+  let calls=0;
+  const reply=await designCreativeBriefsWithFallback({catalog,
+    request:{...request,occasion:'Work',
+      brief:'Partial creative art must never be lost if independent artist unavailable'},
+    highTaste:true,allowIndependentFallback:true,
+    apiKey:'nvapi-partial-do-not-make-up-third',
+    fetchImpl:async()=>{
+      calls++;
+      if(calls===1)return fakeResponse(firstPartial);
+      throw Error('fallback provider closed');
+    },
+  });
+  assert.equal(calls,2);
+  assert.equal(reply.status,'planned_partial');
+  assert.equal(reply.briefs.length,2);
+  assert.deepEqual(reply.briefs.map(x=>x.name),
+    ['Tailored Navy Signature','Modern Textural Refresh']);
+  assert.equal(reply.invalidPlanBackupStatus,'provider_unavailable');
+});
+
 test('actual 120B director TIMEOUT commissions one independent source-grounded 30B art plan while global deadline is healthy',async()=>{
   const plans=[];
   const options={catalog,request:{...request,occasion:'Date night',

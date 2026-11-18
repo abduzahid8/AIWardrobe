@@ -1879,7 +1879,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             'anchor_outfit_unavailable'].includes(failureCode)
             ?failureCode:'other',
           creativePlanCount:Math.min(3,creativePlan.briefs.length),
-        creativePlanBackup:['used_independent_source_grounded','invalid_plan',
+        creativePlanBackup:['used_independent_source_grounded',
+          'supplemented_independent_source_grounded','not_improved','invalid_plan',
           'provider_unavailable','timeout','load_shed','not_configured']
           .includes(creativePlan.invalidPlanBackupStatus)
           ?creativePlan.invalidPlanBackupStatus:'not_needed',
@@ -1973,7 +1974,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       console.info('stylist6_safe_visual_quality', {
         ...safeTrace,
         creativePlanCount:Math.min(3,creativePlan.briefs.length),
-        creativePlanBackup:['used_independent_source_grounded','invalid_plan',
+        creativePlanBackup:['used_independent_source_grounded',
+          'supplemented_independent_source_grounded','not_improved','invalid_plan',
           'provider_unavailable','timeout','load_shed','not_configured']
           .includes(creativePlan.invalidPlanBackupStatus)
           ?creativePlan.invalidPlanBackupStatus:'not_needed',
