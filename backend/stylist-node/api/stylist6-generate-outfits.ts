@@ -77,6 +77,9 @@ export function stylist6CreativeServerConfig() {
     // Server-controlled only: makes real catalog cohort stable for a
     // controlled SAME-SKU artistic A/B, not a customer-controlled fetch flag.
     STYLIST6_STABLE_COHORT_ENABLED: envOf('STYLIST6_STABLE_COHORT_ENABLED'),
+    // Staging-only experiment: source-grounded fast model corrects ACTUAL
+    // independent original-photo critic rejection while time is available.
+    STYLIST6_FAST_PHOTO_REVISION_ENABLED: envOf('STYLIST6_FAST_PHOTO_REVISION_ENABLED'),
   };
 }
 

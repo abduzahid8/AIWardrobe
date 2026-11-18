@@ -22,6 +22,10 @@ const ENDPOINT='https://integrate.api.nvidia.com/v1/chat/completions';
 // independent PHOTO critic still has an absolute veto. Production S5
 // and 50-second preview never invoke this new catalog composer.
 const MODEL='nvidia/nemotron-3.5-super-vl-120b-a12b';
+// Source-grounded PHOTO-critic correction in a short, remaining request
+// window: 30B has a separate verified JSON-schema provider interface and
+// was live-tested as the creative planner. Full 120B/Kimi stay available.
+export const FAST_PHOTO_REVISION_MODEL='nvidia/nemotron-3.5-lightning-30b-a3b';
 const PHOTO_COMPOSER_MODEL='nvidia/nemotron-3.5-super-vl-120b-a12b';
 // Separate fashion STUDIO for photo-informed creative rescues. Verified
 // provider supports JSON_OBJECT but rejects the primary model's schema/top_p
@@ -630,6 +634,7 @@ export async function composeCatalogSkuLooks({
   apiKey,fetchImpl=fetch,signal,timeoutMs=2600,parallel=false,
   layerRequired=false,allowLayer=true,resolvePhoto,authorizePhoto,
   crossLabRevision=false,initialStudioDuel=false,
+  fastPhotoRevision=false,
 }={}){
   const visible=Array.isArray(pool)?pool.slice(0,48).map(x=>x.public):[];
   const bySlot=new Map(SLOTS.map(slot=>[slot,visible.filter(v=>v.slot===slot)]));
@@ -652,7 +657,8 @@ export async function composeCatalogSkuLooks({
   // Other callers retain their original <=4s provider deadline, and the
   // server-owned total + photo critic deadlines remain unchanged.
   const timer=setTimeout(()=>abort.abort(),
-    Math.min(parallel?16500:crossLabRevision?5600:4000,
+    Math.min(parallel?16500:crossLabRevision&&fastPhotoRevision?9000
+      :crossLabRevision?5600:4000,
       Math.max(500,timeoutMs)));
   const combined=signal?AbortSignal.any([signal,abort.signal]):abort.signal;
   inflight++;
@@ -950,7 +956,16 @@ export async function composeCatalogSkuLooks({
     // approval, not a shortcut, a stale style rule or a weaker third look.
     const initialIndependentBackup=initialStudioDuel===true&&
       parallel===true&&!rescue&&target===6;
-    const studios=crossLab?[CROSS_LAB_REVISION_MODEL,MODEL]:
+    // In real original-photo iOS failures the 4.9s Kimi-primary correction
+    // TIMEOUT repeatedly produced NO outfit revision. Use the proved fast
+    // independent Nemotron 30B source artist FIRST in an isolated staging
+    // canary; the different-lab Kimi remains a bounded fallback. Both see
+    // the exact original-photo critic's anonymous observations and may only
+    // choose existing P-tokens. No change to final visual veto.
+    const quickRevision=crossLab&&fastPhotoRevision===true;
+    const studios=crossLab?(quickRevision
+      ?[FAST_PHOTO_REVISION_MODEL,CROSS_LAB_REVISION_MODEL]
+      :[CROSS_LAB_REVISION_MODEL,MODEL]):
       initialIndependentBackup?[MODEL,CROSS_LAB_REVISION_MODEL]:[MODEL];
     let failure='provider_unavailable';
     for(const studio of studios){
@@ -1019,7 +1034,9 @@ export async function composeCatalogSkuLooks({
           let composed=choices;
           let artist=isKimi
             ?rescue?'cross_lab_kimi':'cross_lab_kimi_initial_fallback'
-            :crossLab?'nemotron_fallback':'nemotron';
+            :quickRevision&&studio===FAST_PHOTO_REVISION_MODEL
+              ?'nemotron_fast_photo_revision'
+              :crossLab?'nemotron_fallback':'nemotron';
           if(initialStudioDuel===true&&parallel&&!rescue&&!isKimi&&
               target===6&&choices.length>=3&&!combined.aborted){
             // The visual critic ALREADY budgets eight original-photo

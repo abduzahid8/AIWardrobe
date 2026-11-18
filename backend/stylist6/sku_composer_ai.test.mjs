@@ -7,7 +7,7 @@ import {sourceBoundCompositionPool,groundedSkuDirections,
   groundedPhotoRevisionFeedback,anonymousExplicitTasteHistory,
   validateSkuCompositions,composeCatalogSkuLooks,
   sourceVerifyComposedOutfits,AI_SKU_COMPOSER_VERSION,
-  CROSS_LAB_REVISION_MODEL} from './sku_composer_ai.mjs';
+  CROSS_LAB_REVISION_MODEL,FAST_PHOTO_REVISION_MODEL} from './sku_composer_ai.mjs';
 const slots=['top','outerwear','bottom','shoes'];
 const items=Array.from({length:6},(_,i)=>slots.map((slot,j)=>({
   id:'PRIVATE_SKU_'+i+'_'+j,macroCategory:slot,isShopItem:true,
@@ -437,6 +437,70 @@ test('PHOTO-informed second fashion decision abandons exhausted first-draft plan
   assert.deepEqual(revision.inventoryGroundedDesignDirections,[]);
   assert.ok(revision.independentPhotoCriticRevision);
   assert.ok(revision.independentPhotoCriticRevision.rejectedPhotoEvidence.length>0);
+});
+
+test('photo-critic feedback gets fast autonomous source-SKU corrections before the remaining ORIGINAL photo veto',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  let sent=null;
+  const resultCase=await composeCatalogSkuLooks({pool,
+    context:{style:'classic',occasion:'Date night'},
+    layerRequired:true,crossLabRevision:true,fastPhotoRevision:true,
+    timeoutMs:7600,
+    apiKey:'nvapi-test-true-fast-photo-feedback-correction',
+    critiqueFeedback:{reasons:['style_mismatch'],
+      approvedArchitectures:[{top:'dress-shirt',outerwear:'blazer',
+        bottom:'tailored-trouser',shoes:'oxford'}],
+      rejectedOutfits:[{reason:'style_mismatch',
+        roles:{top:'dress-shirt',outerwear:'blazer',
+          bottom:'tailored-trouser',shoes:'oxford'},
+        observations:{outerwear:'Original photo jury found incorrect fabric rhythm'},
+        relationships:[{kind:'outfit',slots:['top','outerwear'],
+          observation:'Original photos showed conflicting proportions'}]}]},
+    fetchImpl:async(_url,init)=>{
+      const payload=JSON.parse(init.body);
+      assert.equal(payload.model,FAST_PHOTO_REVISION_MODEL,
+        'short photo feedback must reach a usable fast separate AI plan first');
+      assert.equal(payload.response_format.type,'json_schema');
+      assert.equal(payload.response_format.json_schema.strict,true);
+      assert.match(payload.messages[0].content,/Original photos showed conflicting proportions/);
+      assert.match(payload.messages[0].content,/social DATE evening/);
+      assert.doesNotMatch(init.body,/PRIVATE_SKU_|images\.zara|shopUrl|imageUrl|sourceHash/);
+      sent=payload;
+      return result(slotAnswer(pool));
+    },
+  });
+  assert.ok(sent);
+  assert.equal(resultCase.status,'composed');
+  assert.equal(resultCase.providerFamily,'nemotron_fast_photo_revision');
+  assert.equal(resultCase.providerCalls,1);
+  assert.equal(resultCase.looks.length,3);
+  assert.equal(new Set(resultCase.looks.flat().map(x=>x.id)).size,12);
+  const scored=await sourceVerifyComposedOutfits({looks:resultCase.looks,
+    request:{sourceMode:'catalog'},sourceMode:'catalog',
+    hardGate:async()=>({ok:true}),scorer:{rankLook:()=>({score:.89})}});
+  assert.equal(scored.length,3,'existing physical-source hard gates still admit only real merchandise');
+});
+
+test('fast photo-feedback model invalid output can never fabricate third look; different-lab fallback retains original approval gates',async()=>{
+  const pool=sourceBoundCompositionPool(looks),calls=[];
+  const recovered=await composeCatalogSkuLooks({pool,
+    context:{style:'classic',occasion:'Work'},
+    layerRequired:true,crossLabRevision:true,fastPhotoRevision:true,
+    critiqueFeedback:{reasons:['style_mismatch']},
+    timeoutMs:7400,apiKey:'nvapi-test-photo-critique-safe-model-fallback',
+    fetchImpl:async(_url,init)=>{
+      const payload=JSON.parse(init.body);calls.push(payload.model);
+      return result(calls.length===1?{slotPicks:{top:['P999','P998','P997'],
+        outerwear:['P001','P002','P003'],
+        bottom:['P004','P005','P006'],shoes:['P007','P008','P009']}}:
+        slotAnswer(pool));
+    },
+  });
+  assert.deepEqual(calls,[FAST_PHOTO_REVISION_MODEL,CROSS_LAB_REVISION_MODEL]);
+  assert.equal(recovered.status,'composed');
+  assert.equal(recovered.providerFamily,'cross_lab_kimi');
+  assert.equal(recovered.providerCalls,2);
+  assert.ok(recovered.looks.flat().every(x=>x.id.startsWith('PRIVATE_SKU_')));
 });
 
 test('photo-rejected creative rescue commissions independently-trained Kimi for SOURCE-verified fashion choices',async()=>{
