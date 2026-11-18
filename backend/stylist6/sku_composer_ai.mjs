@@ -1217,7 +1217,7 @@ export async function composeCatalogSkuLooks({
  */
 export async function sourceVerifyComposedOutfits({
   looks,request,requiredIds=[],hardGate,priceToBudgetCurrency,
-  scorer,sourceMode='catalog',
+  scorer,sourceMode='catalog',creativePlans=null,
 }={}){
   if(!Array.isArray(looks)||typeof hardGate!=='function'||
     typeof scorer?.rankLook!=='function'||sourceMode!=='catalog')return [];
@@ -1241,10 +1241,35 @@ export async function sourceVerifyComposedOutfits({
     let hard;
     try{hard=await hardGate(items,request)}catch{hard=null}
     if(hard?.ok!==true)continue;
-    const concept='ai_composed_'+(i+1);
-    const brief={id:concept,name:'AI-styled complete look '+(i+1),
-      roles:Object.fromEntries(SLOTS.map(slot=>[slot,
-        items.filter(x=>slotOf(x)===slot).map(x=>x.subtype)])),
+    // The initial AI author was commissioned to realize the first three
+    // independently planned whole-look artistic directions, but the prior
+    // implementation erased ALL of that provenance here and scored every
+    // new SKU combination against its own made-up "AI-styled complete look"
+    // brief. Thus the existing concept-fidelity evaluator had nothing to
+    // compare, the genuinely different directions were not attributable,
+    // and the first PHOTO audition treated them all as one generic family.
+    // Keep original first-art identity ONLY for one of the first three
+    // actual source-grounded commissions, never for Kimi replacement ideas
+    // or original-photo corrections. This is a SOFT creative alignment
+    // ranking input, never a source, budget, garment or PHOTO acceptance.
+    const proposed=Array.isArray(creativePlans)&&i<3?creativePlans[i]:null;
+    const sourceArt=proposed?.generatedBy==='s6-creative-director-v1'&&
+      proposed.id==='ai-director-'+(i+1)&&
+      typeof proposed.artDirection==='string'&&
+      proposed.artDirection.length>=85&&
+      Array.isArray(proposed.palette)&&
+      proposed.roles&&SLOTS.every(slot=>Array.isArray(proposed.roles[slot]))
+      ?proposed:null;
+    const concept=sourceArt?'ai_director_'+(i+1):'ai_composed_'+(i+1);
+    const actualRoles=Object.fromEntries(SLOTS.map(slot=>[slot,
+      items.filter(x=>slotOf(x)===slot).map(x=>x.subtype)]));
+    const brief=sourceArt?{
+      id:concept,name:sourceArt.name,roles:sourceArt.roles,
+      palette:sourceArt.palette,silhouette:sourceArt.silhouette,
+      artDirection:sourceArt.artDirection,
+      layerPolicy:sourceArt.layerPolicy,
+    }:{id:concept,name:'AI-styled complete look '+(i+1),
+      roles:actualRoles,
       palette:[...new Set(items.map(x=>x.color).filter(Boolean))].slice(0,8),
       silhouette:'photographic product-grounded complete ensemble',
       layerPolicy:items.some(x=>slotOf(x)==='outerwear')?'required':'absent'};

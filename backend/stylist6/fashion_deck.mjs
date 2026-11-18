@@ -2004,7 +2004,7 @@ export async function recommendFashionDeck({
         const admitted=await sourceVerifyComposedOutfits({
           looks:initial.looks,request:{...request,requiredIds},requiredIds,
           hardGate,priceToBudgetCurrency,scorer:fashionScorer,
-          sourceMode:request.sourceMode,
+          sourceMode:request.sourceMode,creativePlans:aiPlans,
         });
         // Source/budget/physical admission, original item identities and
         // transmission permission are all mandatory. This is NOT photo
@@ -2175,7 +2175,7 @@ export async function recommendFashionDeck({
               looks:composition.looks,
               request:{...request,requiredIds},requiredIds,
               hardGate,priceToBudgetCurrency,scorer:fashionScorer,
-              sourceMode:request.sourceMode,
+              sourceMode:request.sourceMode,creativePlans:aiPlans,
             });
             for(const look of admitted){
               if(explicitColorPreferences&&

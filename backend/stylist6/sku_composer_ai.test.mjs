@@ -234,6 +234,62 @@ test('the wearer\'s explicit style feedback informs AI decisions without leaking
   assert.equal(resultFromProvider.looks.length,3);
 });
 
+test('first THREE source-verified fashion compositions retain their actual whole-look creative intent at photo-ranker admission',async()=>{
+  const plans=Array.from({length:3},(_,i)=>({
+    id:'ai-director-'+(i+1),generatedBy:'s6-creative-director-v1',
+    name:['Warm textural evening','Architectural casual poetry','Unstructured creative elegance'][i],
+    artDirection:[
+      'Build a beautiful tactile dialogue between soft cotton shirting, a warm draped layer, long tailored trousers and expressive understated leather shoes for a social evening.',
+      'Set a sculptural upper silhouette against relaxed clean lower proportions; vary the surface texture through the layered outfit and select understated footwear with personality.',
+      'Compose a naturally relaxed refined outfit through light and dense fabric contrast, clear garment proportions, and a deliberate choice of footwear for a distinct city mood.',
+    ][i],
+    roles:{top:['polo'],outerwear:['cardigan'],
+      bottom:['chino'],shoes:['loafer']},
+    palette:['cream','olive','brown'],silhouette:'relaxed',
+    layerPolicy:'required',
+  }));
+  const seen=[];
+  const proposed=await sourceVerifyComposedOutfits({
+    looks:items,creativePlans:plans,request:{sourceMode:'catalog'},
+    hardGate:async()=>({ok:true}),scorer:{rankLook:(_items,brief)=>{
+      seen.push(brief);
+      return {score:.83};
+    }},
+  });
+  assert.equal(proposed.length,6);
+  assert.deepEqual(proposed.slice(0,3).map(x=>x.briefId),
+    ['ai_director_1','ai_director_2','ai_director_3']);
+  assert.deepEqual(proposed.slice(0,3).map(x=>x.brief.name),
+    plans.map(x=>x.name));
+  assert.deepEqual(proposed.slice(0,3).map(x=>x.brief.artDirection),
+    plans.map(x=>x.artDirection));
+  assert.deepEqual(seen.slice(0,3).map(x=>x.roles.top),
+    [['polo'],['polo'],['polo']],
+    'the soft concept-fidelity ranker must see the actual artistic brief, not the picked SKU recast as its own concept');
+  assert.deepEqual(proposed.slice(3).map(x=>x.briefId),
+    ['ai_composed_4','ai_composed_5','ai_composed_6'],
+    'original independent artistic alternatives may NEVER be falsely credited to one of the three director plans');
+  assert.equal(proposed.every(x=>x.items.length===4&&
+    x.items.every(it=>it.isShopItem===true)),true);
+  assert.equal(new Set(proposed.flatMap(x=>x.items.map(y=>y.id))).size,24);
+  assert.ok(proposed.every(x=>x.fashion.score===.83),
+    'no weak garment or original-photo approval floor is bypassed');
+  const fake=[{...plans[0],artDirection:'pretty clothes'},
+    {...plans[1],generatedBy:'client-wants-a-photo-pass'},
+    plans[2]];
+  const invalid=await sourceVerifyComposedOutfits({looks:items,
+    creativePlans:fake,request:{sourceMode:'catalog'},
+    hardGate:async()=>({ok:true}),scorer:{rankLook:()=>({score:.80})}});
+  assert.equal(invalid[0].briefId,'ai_composed_1');
+  assert.equal(invalid[1].briefId,'ai_composed_2');
+  assert.equal(invalid[2].briefId,'ai_director_3');
+  assert.equal((await sourceVerifyComposedOutfits({looks:items,
+    creativePlans:plans,request:{budget:{amount:3,currency:'USD'}},
+    priceToBudgetCurrency:x=>x.price,
+    hardGate:async()=>({ok:true}),scorer:{rankLook:()=>({score:.99})}})).length,0,
+  'the presence of an elegant original plan CANNOT overrule physical retail cost admission');
+});
+
 test('composed choices rerun combination-level hard gate, budget and scorer; never invent approval',async()=>{
   const pool=sourceBoundCompositionPool(looks);
   const raw=validateSkuCompositions(validAnswer(pool),pool,{layerRequired:true});
