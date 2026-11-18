@@ -2928,6 +2928,37 @@ export async function recommendFashionDeck({
                       'formalityFit','confidence'].map(axis=>[axis,photo[axis]])),
                 }];
               });
+              // The final PHOTO collection editor also starts a SECOND
+              // real-SKU creative repair. Live Work/Date iOS had 0/3
+              // approvals in this round: it previously saw approved looks
+              // and generic rejection codes, but NOT the photographic
+              // relationships that made other actual four-item candidates
+              // fail. Give this autonomous creator the same bounded,
+              // anonymized independent-photo evidence as the first repair.
+              // These observations are descriptive DATA, not a SKU veto or
+              // aesthetic rule; groundedPhotoRevisionFeedback sanitizes
+              // every field before any provider sees it.
+              const rejectedReasonById=new Map(
+                (reviewed.diagnostics.visualQualityDecisions||[])
+                  .filter(row=>row.reason&&row.reason!=='approved')
+                  .map(row=>[row.candidateId,row.reason]));
+              const rejectedPhotoEvidence=candidates.flatMap(look=>{
+                const reason=rejectedReasonById.get(look.id);
+                const photo=allCritiques.find(x=>x.candidateId===look.id);
+                if(!reason||!photo)return [];
+                return [{
+                  reason,
+                  roles:Object.fromEntries(slots.map(slot=>[slot,
+                    String(look.items?.find(it=>it.macroCategory===slot)?.subtype||'')
+                      .slice(0,32)])),
+                  observations:photo.slotObservations,
+                  colors:photo.slotColors,
+                  relationships:photo.relationships,
+                  scores:Object.fromEntries(
+                    ['visualCohesion','styleFit','occasionFit',
+                      'formalityFit','confidence'].map(axis=>[axis,photo[axis]])),
+                }];
+              }).slice(0,4);
               editorial.feedbackSource=explicitEditorialGap
                 ?'visual_editor_gap':'approved_photo_evidence';
               let retry=null;
@@ -2938,7 +2969,8 @@ export async function recommendFashionDeck({
                     editorPhotoGap:explicitEditorialGap
                       ?decision.creativeGap:undefined,
                     approvedArchitectures:selectedArchitectures,
-                    approvedPhotoEvidence},
+                    approvedPhotoEvidence,
+                    rejectedOutfits:rejectedPhotoEvidence},
                   directions:aiPlans,feedbackTaste,
                   context:{style:context.style,occasion:context.occasion,
                     brief:context.request,preferences:context.preferences,
