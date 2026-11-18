@@ -143,3 +143,55 @@ are NOT evidence of improved real photo acceptance.
 
 Human blind >=70% preference over S5 on >=30 held-out
 situations with 3 independent reviewers remains NOT DONE.
+
+## Independent cross-model VISUAL fashion curator, 2026-11-18
+
+Actual pinned \`a1dfc12\`, native iPhone Classic / Date night at
+02:46:36Z: **7/8 PHOTO approvals, three complete real four-SKU looks
+shown in the actual iOS client, 39.65s including recovery storage**.
+All three use near-identical cardigan + chinos architecture, with
+variations in shirts, colors and shoes. Nemotron 120B as creative
+director, exact-source SKU designer, independent single-outfit
+photo critic, and final PHOTO collection curator shares the SAME
+NVIDIA/Nemotron model family. This appears to reinforce the same
+aesthetic bias across the entire review chain. Three verified photos
+are not three convincing independent styles.
+
+An authenticated source-bound NVIDIA model-directory check exposed
+\`moonshotai/kimi-k3.1-pro\`; its DIFFERENT-LAB multimodal endpoint
+replied to an actual generated JPEG probe with valid JSON in ~1.3s.
+The alternative Qwen 3.5 endpoint returned 410 and Mistral/Gemma
+timeout at 14s; therefore Kimi is the independently-tested
+alternative without inventing a new API key, vendor or capability.
+
+On ISOLATED 72s Stylist6 staging ONLY, when >=3 independently
+photo-approved, source-verified looks form at least one feasible
+triple, send the SAME original, already-authorized, actual product
+photo contact sheet to Nemotron 120B fashion editor and an anonymous
+Kimi vision curator CONCURRENTLY (not serial 2x latency). Each sees
+the real photographic garments but NOT the other model's decision.
+Both may choose only from the SAME small server-verified entire
+portfolio F-token menu. Kimi may VETO a Nemotron-selected triple
+or pair by choosing an exact STRICT SUBSET only, when that subset
+already passed the original all-SKU, photo, diversity, merchant,
+budget and source feasibility. It may NEVER introduce an outfit,
+replace a token, mix products, override a photo veto or pad a deck.
+A disagreement not forming a subset is safely noted but does NOT
+change the original Nemotron decision. Kimi unavailable/timeout/410
+leaves the original independent PHOTO-approved deck untouched.
+One source JPEG collage, no second unlicensed merchant download
+wave. The original source replay and full quality floor remain
+authoritative.
+
+New diagnostic \`photoEditorialIndependentJury\` is one safe enum:
+\`not_run | agreed | narrowed | disagreed | unavailable\`; the
+FINAL re-edit receipt overrides the initial edit receipt when a new
+photo-approved SKU wave succeeds. No private model prompts, names,
+photos, catalog prices, sources or raw URL text in Render logs.
+
+This does NOT establish aesthetic superiority: an experimental
+Kimi swatch probe using textual descriptions of three cardigan
+ensembles also voted all three as \"different\", so real source-JPEG
+and held-out blind fashion judgments are crucial. A cross-model jury
+is meaningful only if it actually rejects repetitiveness, not just
+repeats the first model's permissive decisions.

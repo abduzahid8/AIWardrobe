@@ -273,3 +273,92 @@ test('TWO independently photo-approved outfits receive real contact-sheet VLM cr
   assert.equal(two.creativeGap,gap);
   assert.equal(two.portfolioToken,'F00');
 });
+
+test('independent Kimi photographic fashion jury can VETO repetitive three-look collection but NEVER invent items',async()=>{
+  const jpeg=await sharp({create:{width:115,height:155,channels:3,
+    background:'#9b8777'}}).jpeg().toBuffer();
+  let nvidia=0,kimi=0,photos=0;
+  const selection=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    context:{style:'classic',occasion:'Date night',
+      preferences:{favoriteColors:['cream','navy']}},
+    apiKey:'nvapi-test-independent-vision',
+    timeoutMs:9400,independentVisionJury:true,
+    authorizePhoto:()=>true,
+    resolvePhoto:async()=>{photos++;return {bytes:jpeg};},
+    fetchImpl:async(_,opts)=>{
+      const body=JSON.parse(opts.body);
+      assert.ok(body.messages.at(-1).content.at(-1).image_url.url
+        .startsWith('data:image/jpeg;base64,'));
+      assert.doesNotMatch(opts.body,/SECRET|PRIVATE|private\.example|https:\/\/private/);
+      if(body.model===PHOTO_PORTFOLIO_VISION_MODEL){
+        nvidia++;return result('F00'); // 3 complete looks
+      }
+      assert.equal(body.model,'moonshotai/kimi-k3.1-pro');
+      assert.equal(body.chat_template_kwargs.enable_thinking,false);
+      assert.match(body.messages[0].content[0].text,
+        /SECOND, INDEPENDENT expert VISUAL FASHION EDITOR/);
+      kimi++;
+      return result('F01'); // TWO, exact verified SUBSET of Nemotron's 3
+    },
+  });
+  assert.equal(nvidia,1);
+  assert.equal(kimi,1,'two different model families see SAME licensed real JPEG board');
+  assert.equal(photos,20,'real authorized product photos built once only');
+  assert.equal(selection.status,'selected');
+  assert.equal(selection.visualJury,'applied');
+  assert.equal(selection.visualMediaStatus,'ready');
+  assert.equal(selection.independentJury,'narrowed');
+  assert.deepEqual(selection.tokens,['L02','L00']);
+  assert.equal(selection.portfolioToken,'F01');
+  assert.equal(selection.providerCalls,2);
+});
+
+test('independent studio jury may NEVER add a nonprimary look, silently override NVIDIA, or weaken unavailable-model fallback',async()=>{
+  const jpeg=await sharp({create:{width:110,height:135,channels:3,
+    background:'#7c8580'}}).jpeg().toBuffer();
+  const common={
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-test-independent-vision',timeoutMs:9400,
+    independentVisionJury:true,
+    authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:jpeg}),
+  };
+  const divergent=await selectPhotoEditorialDeck({
+    ...common,fetchImpl:async(_,req)=>{
+      const model=JSON.parse(req.body).model;
+      return result(model==='moonshotai/kimi-k3.1-pro'
+        ?'F02' // L04 was not in primary F00: cannot add it
+        :'F00');
+    },
+  });
+  assert.equal(divergent.independentJury,'disagreed');
+  assert.deepEqual(divergent.tokens,['L00','L01','L02']);
+  assert.equal(divergent.providerCalls,2);
+  const unavailable=await selectPhotoEditorialDeck({
+    ...common,fetchImpl:async(_,req)=>{
+      const model=JSON.parse(req.body).model;
+      return model==='moonshotai/kimi-k3.1-pro'
+        ?Response.json({error:'not_available'},{status:410})
+        :result('F00');
+    },
+  });
+  assert.equal(unavailable.independentJury,'unavailable');
+  assert.deepEqual(unavailable.tokens,['L00','L01','L02']);
+  assert.equal(unavailable.visualJury,'applied');
+  assert.equal(unavailable.providerCalls,2);
+  let calls=0;
+  const onlyTwo=await selectPhotoEditorialDeck({
+    ...common,looks:looks.slice(0,2),
+    portfolios:[{portfolioToken:'F00',orderedLooks:['L00','L01']}],
+    fetchImpl:async(_,req)=>{
+      calls++;
+      assert.equal(JSON.parse(req.body).model,PHOTO_PORTFOLIO_VISION_MODEL,
+        'not a paid independent vote unless the approved set can form a triple');
+      return result('F00');
+    },
+  });
+  assert.equal(calls,1);
+  assert.equal(onlyTwo.independentJury,'not_run');
+  assert.equal(onlyTwo.providerCalls,1);
+});

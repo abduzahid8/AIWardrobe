@@ -196,6 +196,30 @@ fulfill the owner's four-product contract.
 ## Each work session's completion report must include
 GitHub SHA; staging Supabase function version + pinned READY compute SHA; code/quality changes; real scenario IDs & images; what objectively improved; what deteriorated; how many looks were provider-judged vs fallback; product stock/rights truth; QA gate counts; production status; exact NEXT highest-leverage root cause.
 
+## 2026-11-18 — independent Kimi vision studio jury over ACTUAL photographs
+
+Real staged iPhone Classic/Date night \`a1dfc12\` delivered three
+original-photo approved 4-SKU complete looks (7/8 decisions and
+~39.6s), yet all THREE resembled knit cardigan + chinos.
+The SAME Nemotron family had produced, photo-judged and curated
+its own fashion. The creative goal of three distinct beautiful
+ensembles is still NOT proven.
+
+Isolated S6 staging now makes one concurrent PHOTO comparison with
+\`moonshotai/kimi-k3.1-pro\` (actually probed against the connected
+NVIDIA image API, unlike alternatives that returned 410/timeouts).
+Each lab independently sees the SAME authorized real source-product
+JPG contact sheet and an anonymized menu of existing verified complete
+outfit portfolios. The independent model can veto a bloated set ONLY
+by selecting a strictly contained, already server-verified F-token
+portfolio. It cannot add, replace, invent or approve a missing SKU.
+Absence, slow response, model disagreement or invalid selection never
+weakens the original NVIDIA independent-photo quality gate. The new
+staging-safe enum \`photoEditorialIndependentJury\` measures whether
+the new editorial opinion actually differs from the Nemotron editor.
+This is not a forced diversity ban or proof of better taste.
+See \`docs/reports/stylist6-user-reference-text-fashion-memory-20261118.md\`.
+
 ## 2026-11-18 — real whole-look artistic intent, not merely category lists
 
 Pinned \`080e0fc\` authenticated iOS Classic/Work: FIVE source-feasible
