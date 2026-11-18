@@ -61,18 +61,23 @@ export function anonymousPhotoEditorialOptions(looks,critiques,{creativePlans=[]
   // user text or card copy. Only the trusted, versioned three-plan server
   // output may describe an original commission; extra AI compositions keep
   // their own identity and cannot claim source-validated concept ancestry.
-  const originalPlans=new Map((Array.isArray(creativePlans)?creativePlans:[])
-    .slice(0,3).flatMap((plan,i)=>{
-      if(plan?.generatedBy!=='s6-creative-director-v1'||
-          plan.id!=='ai-director-'+(i+1)||
-          typeof plan.artDirection!=='string'||
-          plan.artDirection.length<85)return [];
-      const title=safe(plan.name,65).trim();
-      const artisticIntent=safe(plan.artDirection,190).trim();
-      if(title.length<4||artisticIntent.length<70)return [];
-      return [[i+1,{planNumber:i+1,artisticTitle:title,
-        completeLookArtIntent:artisticIntent}]];
-    }));
+  const originalPlans=new Map();
+  for(const plan of (Array.isArray(creativePlans)?creativePlans:[]).slice(0,3)){
+    // A partial primary planner can keep IDs 1 and 3, with #2 missing.
+    // Never shift #3 onto #2 or erase its artistic intention merely
+    // because the rejected design shortened the source array.
+    const identity=/^ai-director-([123])$/.exec(String(plan?.id||''));
+    if(plan?.generatedBy!=='s6-creative-director-v1'||!identity||
+        typeof plan.artDirection!=='string'||plan.artDirection.length<85)
+      continue;
+    const planNumber=Number(identity[1]);
+    if(originalPlans.has(planNumber))continue;
+    const title=safe(plan.name,65).trim();
+    const artisticIntent=safe(plan.artDirection,190).trim();
+    if(title.length<4||artisticIntent.length<70)continue;
+    originalPlans.set(planNumber,{planNumber,artisticTitle:title,
+      completeLookArtIntent:artisticIntent});
+  }
   const byId=new Map(critiques
     .filter(v=>v&&typeof v.candidateId==='string')
     .map(v=>[v.candidateId,v]));
