@@ -1,0 +1,39 @@
+# Stylist 6 — 18 November 2026: photograph-grounded creative options and late portfolio rescue
+
+**Truthful state: production NO-GO.** The customer asks for three *beautiful, distinct, personal, purchasable* complete four-product outfits. Model approvals and three mobile cards alone do NOT establish this. This document records genuine authenticated iOS canaries on staging, including failed ones; no staged change was promoted to production Stylist 5.
+
+## A. What was changed — without more outfit pairing bans
+
+1. Code commit **`7e0d0c113d4a440a43367783181097481a3ccb65`**: the 120B Creative Director's three artistic plans now receive more than a single arbitrary exact SKU per garment role when actual source-hash-current, high-confidence photograph observations can prove an alternative **color/volume/texture/cut** in the same legitimately available garment architecture. A second pass chooses a different real source garment candidate per concept and role, if it truly exists. No invented colors, new merchandise, merchant-photo rights, hard color/subtype pair rules, lower photo veto, extra card quota or expanded 12-token-per-role limit. The autonomous model can always choose an alternative eligible real product; the catalog/photo critic still decides final admission.
+2. Code commit **`34a857469d2109352f1eb7839dbb0857f873f170`**: after the independent real-photo jury returns only two excellent looks, the **72s staging-only** third-direction artist can use the last ~17.5–22.5s rather than being mechanically disabled at the previous 22.5s gate. It can explore genuine **UNSEEN** prepared source SKUs, submit up to three further four-product outfits for new actual-photo quality review, and must pass the second complete-portfolio editor. The late correction photo evaluation budget is now 14 (initial 8 + up to 3 first photo revisions + up to 3 late corrections); payment/authorization, request deadline and all proof barriers are unchanged. A failed or late model retains the exact previously approved two-look portfolio; **no forced third card**.
+
+New full verification on current tree: **548/548 Stylist 6 tests**, **42/42 portable server tests**, bundle build PASS. Included deterministic tests confirming source-current photographed alternatives are real, safely anonymized, and that new fashion proposals never bypass photo approval or exhaustion limits.
+
+## B. Real authenticated iOS tests — the actual user-visible fashion
+
+Booted native iOS 26.5 simulator `com.aiwardrobe`, same signed Supabase gateway, same isolated Render service `srv-dbtd336i0phs73fd0sbg`. Source sampling remains `stableSourceCohort:true` for each wearer/style/occasion/context; a seed is **not** a physically immutable merchant catalogue or deterministic model output. Screenshots kept in private Mac QA; do not add merchant photo assets to GitHub.
+
+| Version / actual occasion | First real AI proposals | Photo approvals / attempts | Real complete displayed outfits | Time, server | Full-photo editorial result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `7e0d0c1` / Classic, New, **Date night** | 6, 5 source-admitted | **4 / 5** | **3** | **46.0s** | primary visual applied, independent different-lab arbitration chose second F-token triple |
+| `7e0d0c1` / Classic, New, **Work** | 8 from Nemotron+independent Kimi | **4 / 11** | **2** | **53.3s** | primary applied, independent disagreed; two actually selected |
+| `34a8574` / Classic, New, **Work**, first run | 3 source-admitted Nemotron-only proposals | **0 / 3** (all `style_mismatch`) | **0** (honest `stylist6_visual_quality_unmet`) | **30.8s** | no already-approved outfits; editorial not run |
+| `34a8574` / Classic, New, **Work**, repeat | 3 source-admitted Nemotron-only proposals | **1 / 3** (other `below_quality_floor` and `model_veto`) | **1** | **24.1s** | fewer than two approved; editorial not run |
+
+All displayed looks remain exact four authentic source-bound catalog products; server receipts `catalogFourItemContract:true`, `catalogFourItemDropped:0`. On both `34a8574` Work runs, the *new late creative budget path was NOT exercised*, because the model had fewer than two individually photo-approved looks. Do NOT claim that this budget change made the editor better on live products; it is engineering-proven only and safely bounded. The repeated 0/1-look Work results are worse than the previously observed 2-look Work result under the same sample seed. Since models are stochastic and the sample is small, this is not sufficient to attribute the degradation to either commit, but it is sufficient to retain the **NO-GO** release verdict.
+
+### Human visual read of the actual native cards
+
+- Date 01: brown / olive fine-knit with darker brown jacket, cognac-brown trousers and brown boots; Date 02: light-blue shirt, dark blazer, dark trousers; Date 03: black knit, dark structured layer, dark trousers and black loafers. 01/02 have genuine different color rhythm and construction, but the third is still generic monochromatic dark tailoring, not obviously a third excellent concept. The independent model adjudication is not a human blind-fashion preference win.
+- Date 03 shoe was zoomed and resolved using exact current merchant catalogue record: **Beckett Simonon Weston Loafers - Suede - Men's — Black**, source slot `shoes`, subtype `loafer`, actual men's source URL. Do NOT make a mistaken women's-shoe class ban from a low-resolution thumbnail. No cross-gender product contamination was proven here.
+- Work: two real cards included a pale/blue shirt with dark tailored jacket and a separate dark coat + trouser direction. They can be worn, but do not establish the owner's three-strong-style standard.
+
+## C. The big unresolved creator bottleneck
+
+The initial double-studio mode presently calls Nemotron first and schedules independent Kimi **only after** its source-SKU response, if enough of the original 16s creative window remains. The actual `skuCompositionStudio:'nemotron'`, `skuCompositionProposed:3`, `skuCompositionParallel:true` repeated Work receipt proves that **only one creative laboratory reached photo audition**, not that a different-lab second artist produced candidates. Three bad sets can therefore end generation before the whole-collection fashion editor is even eligible. Fixing the late photo editor alone does NOT fix this.
+
+**Next main architectural decision:** run first-pass Nemotron and different-lab Kimi **concurrently** on bounded, real source-verified garment evidence, with source identity verified independently for each and a conflict-aware SKU-disjoint portfolio assembled before the first photo critic. Avoid expanding weak candidates or relaxing the original photo acceptance floor. The artists should both have a valid opportunity to contribute inside the 72s budget, even when the first model stalls. Only then run more same-SKU fixed-context real mobile and >=30 scenario blind human fashion taste comparisons; retain 3 independent human reviewers and >=70% Stylist 6 preference vs Stylist 5 release gate.
+
+**Original-photo creative rights blocker persists:** zero READY commercially rights-cleared four-role photo-cache records. The initial AI sees verified original-photo features, not original JPEG pixels; the independent original-photo critic and final jury inspect product media only through their existing allowed source gate. Do not bypass licensing/authentication to claim visual-first creative generation. This is an explicit next dependency, not permission to scrape or rehost protected merchant images.
+
+No production merge, no production fallback switch, no changes to Stylist 5 auth or quota.
