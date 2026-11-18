@@ -843,6 +843,77 @@ test('brand-balanced shoes expose new makers instead of Geox / two-vendor monopo
   assert.equal(balancedShoeCatalogWindow([],100).length,0);
 });
 
+test('bounded source window exposes actual garment architecture breadth, not same-brand shirts',async()=>{
+  const {balancedGarmentCatalogWindow}=await import('./cloud_handler.mjs');
+  const rows=[
+    ...Array.from({length:135},(_,i)=>({
+      id:'real-shirt-'+i,brand:'One Label',fashion_subtype:'shirt',
+    })),
+    ...Array.from({length:35},(_,i)=>({
+      id:'real-polo-'+i,brand:'Second Label',fashion_subtype:'polo',
+    })),
+    ...Array.from({length:30},(_,i)=>({
+      id:'real-fine-knit-'+i,brand:'Third Label',fashion_subtype:'fine-knit',
+    })),
+    ...Array.from({length:20},(_,i)=>({
+      id:'real-unknown-'+i,brand:'Fourth Label',fashion_subtype:'unknown',
+    })),
+  ];
+  const selected=balancedGarmentCatalogWindow(rows,100);
+  assert.equal(selected.length,100,'unchanged 100-row visual/offer hydration cap');
+  assert.equal(new Set(selected.map(x=>x.id)).size,100);
+  assert.ok(selected.filter(x=>x.fashion_subtype==='polo').length>=20,
+    'second page must expose different neckline/subtype');
+  assert.ok(selected.filter(x=>x.fashion_subtype==='fine-knit').length>=20,
+    'real differing fabrics and construction remain available');
+  assert.ok(selected.filter(x=>x.fashion_subtype==='shirt').length>=20,
+    'retain relevant everyday source staples');
+  assert.ok(selected.every(x=>rows.includes(x)),'never invent or alter merchandise');
+  assert.deepEqual(balancedGarmentCatalogWindow([...rows,rows[0]],100),selected,
+    'aliases of the same source SKU cannot displace a different one');
+  assert.deepEqual(balancedGarmentCatalogWindow([],100),[]);
+});
+
+test('two source-discovery pages expose authentic coats, polos and tailored trousers within 400 hydration cap',async()=>{
+  const {createCloudIo}=await import('./cloud_handler.mjs');
+  const old=globalThis.fetch;
+  const calls=[];
+  globalThis.fetch=async(_url,opts={})=>{
+    const url=new URL(String(_url));
+    if(url.pathname.includes('catalog_discovery_candidates')){
+      const args=JSON.parse(opts.body);
+      calls.push(args);
+      const label=(slot,page)=>{
+        if(slot==='top')return page===0?'shirt':'polo';
+        if(slot==='outerwear')return page===0?'cardigan':'coat';
+        if(slot==='bottom')return page===0?'chino':'tailored-trouser';
+        return 'loafer';
+      };
+      const subtype=label(args.p_slot,args.p_offset/100);
+      return Response.json(Array.from({length:100},(_,n)=>({
+        ...shopRow(args.p_slot+'-'+subtype+'-'+args.p_offset+'-'+n,args.p_slot),
+        last_seen_at:null,fashion_subtype:subtype,
+      })));
+    }
+    throw Error('unexpected network read '+url.pathname);
+  };
+  try{
+    const io=createCloudIo({url:'https://example.supabase.co',
+      anonKey:'public',serviceKey:'server',supabaseJs:{}});
+    const rows=await io.fetchShopRows('a'.repeat(16),{
+      dressCode:'smart',preferredSubtypes:['shirt','polo','cardigan','coat',
+        'chino','tailored-trouser','loafer']});
+    assert.equal(rows.length,400,'no extra catalog/photo media hydration cost');
+    assert.equal(calls.length,9,'only three extra concurrent read-only RPCs');
+    for(const slot of ['top','outerwear','bottom','shoes'])
+      assert.equal(rows.filter(r=>r.id.startsWith(slot+'-')).length,100);
+    for(const subtype of ['polo','coat','tailored-trouser'])
+      assert.ok(rows.some(row=>row.fashion_subtype===subtype),
+        'second-page garment architecture must reach the fashion model');
+    assert.ok(calls.every(x=>x.p_context?.dressCode==='smart'));
+  }finally{globalThis.fetch=old;}
+});
+
 test('catalog discovery RPC accepts only validated hex seed and stays within 100 per slot', async (t) => {
   const { createCloudIo } = await import('./cloud_handler.mjs');
   const seen = [];
@@ -853,9 +924,12 @@ test('catalog discovery RPC accepts only validated hex seed and stays within 100
   const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'server', supabaseJs: {} });
   const hex = 'a1b2c3d4e5f60708';
   assert.deepEqual(await io.fetchShopRows(hex), []);
-  assert.equal(seen.length, 6);
+  assert.equal(seen.length, 9);
   assert.ok(seen.every(row => row.p_seed.endsWith(':' + hex) && row.p_limit === 100));
   assert.deepEqual(seen.filter(row=>row.p_slot==='shoes').map(row=>row.p_offset),[0,100,200]);
+  for(const slot of ['top','bottom','outerwear'])
+    assert.deepEqual(seen.filter(row=>row.p_slot===slot).map(row=>row.p_offset),
+      [0,100],'style AI must see genuine second-page construction variety');
   seen.length = 0;
   await io.fetchShopRows('x'.repeat(256));
   assert.ok(seen.every(row => /^s6cloud:(top|bottom|shoes|outerwear)$/.test(row.p_seed)));
@@ -886,7 +960,7 @@ test('cloud discovery attaches bounded live import observations to matching SKU 
   const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon',
     serviceKey: 'server', supabaseJs: {} });
   const rows = await io.fetchShopRows();
-  assert.equal(calls.discovery, 6);
+  assert.equal(calls.discovery, 9);
   assert.equal(calls.observations, 1);
   assert.equal(rows.length, SHOP.length);
   assert.ok(rows.every(row => row.last_seen_at === observed));
@@ -1552,7 +1626,7 @@ test('budgeted unanchored cloud discovery forwards budget, currency, and FX rate
   const io = createCloudIo({ url: 'https://example.supabase.co', anonKey: 'anon', serviceKey: 'server', supabaseJs: {} });
   const rates = { UZS: 1, USD: 12800, EUR: 13800, GBP: 16200 };
   await io.fetchShopRows(null, { budget: 2500000, currency: 'UZS', rates });
-  assert.equal(seen.length, 6);
+  assert.equal(seen.length, 9);
   assert.ok(seen.every((row) => row.p_context?.budget === 2500000 && row.p_context?.currency === 'UZS' && row.p_context?.rates?.USD === 12800));
 
   const now = Date.now();
@@ -1721,7 +1795,7 @@ test('real workout catalog discovery prioritizes training gear and preserves the
   try{
     const io=createCloudIo({url:'https://example.supabase.co',anonKey:'public',serviceKey:'server',supabaseJs:{}});
     const athletic=await io.fetchShopRows('a'.repeat(16),null,'workout');
-    assert.equal(searched.length,11,'six bounded catalog pages plus five targeted search terms');
+    assert.equal(searched.length,14,'nine bounded catalog pages plus five targeted search terms');
     assert.deepEqual(searched.filter(x=>x.p_search).map(x=>`${x.p_slot}:${x.p_search}`),[
       'top:training','bottom:jogger','shoes:running','shoes:training','outerwear:training',
     ]);
@@ -1737,7 +1811,7 @@ test('real workout catalog discovery prioritizes training gear and preserves the
     assert.equal(athletic.filter(x=>x.id.startsWith('outerwear-')).length,100);
     searched.length=0;
     const winter=await io.fetchShopRows('a'.repeat(16),null,'cold');
-    assert.equal(searched.length,9,'six standard pages plus three snow-friendly queries');
+    assert.equal(searched.length,12,'nine standard pages plus three winter-targeted searches');
     assert.deepEqual(searched.filter(x=>x.p_search).map(x=>`${x.p_slot}:${x.p_search}`),[
       'outerwear:puffer','outerwear:coat','shoes:boot',
     ]);
@@ -1746,7 +1820,7 @@ test('real workout catalog discovery prioritizes training gear and preserves the
     assert.ok(winter.some(x=>x.id==='shoes-boot-0'));
     searched.length=0;
     const everyday=await io.fetchShopRows('a'.repeat(16),null,null);
-    assert.equal(searched.length,6);
+    assert.equal(searched.length,9);
     assert.ok(searched.every(x=>x.p_search==='' && !x.p_context));
     assert.equal(everyday.length,400);
   }finally{globalThis.fetch=originalFetch;}

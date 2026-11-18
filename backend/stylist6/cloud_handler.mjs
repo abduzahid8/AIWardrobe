@@ -82,6 +82,13 @@ const CATALOG_PER_SLOT = 100;
 // Shop discovery returns 100 per RPC. Only the shoe lane takes two extra
 // pages; hydration and inference remain capped at 100 verified shoes.
 const SHOE_DISCOVERY_PAGES = 3;
+// Discover more REAL garments than the 100/slot visual/price hydration limit,
+// then choose a style-rich source window. One RPC page per non-shoe lane
+// previously made the first 100 shirts and pullovers crowd coats, overshirts
+// and different trouser constructions out of the AI's 12-token per-role menu.
+// All extra RPCs are read-only and run concurrently; ONLY the same 400
+// trusted source rows are hydrated or sent to the stylist.
+const GARMENT_DISCOVERY_PAGES = 2;
 const WARDROBE_PAGE = 500;
 const VISUAL_PROFILE_CHUNK = 100;
 const PRODUCT_FETCH_TIMEOUT_MS = 8000;
@@ -304,6 +311,74 @@ export function balancedShoeCatalogWindow(rows, limit=CATALOG_PER_SLOT) {
     if(!progress)break;
   }
   return balanced;
+}
+
+/** Whole-outfit AI needs a catalog of real construction alternatives,
+ * not 100 variants of the first manufacturer/subtype returned by an RPC.
+ * Keep the SERVER-ranked source order for relevance, but reserve most of
+ * this fixed-size window for distinct known garment constructions.
+ * Manufacturer round-robin inside each subtype prevents one merchant from
+ * monopolizing a silhouette; NO product is fabricated, promoted for beauty
+ * or exempted from hard gates / independent PHOTO criticism.
+ */
+export function balancedGarmentCatalogWindow(rows, limit=CATALOG_PER_SLOT) {
+  if(!Array.isArray(rows)||!Number.isInteger(limit)||
+      limit<1||limit>CATALOG_PER_SLOT)return [];
+  const unique=[],usedIds=new Set();
+  const subtype=row=>{
+    const value=row?.fashion_subtype||
+      row?.fashion_intelligence?.descriptor?.subtype||'unknown';
+    const key=String(value).trim().toLowerCase();
+    return /^[a-z0-9_-]{2,35}$/.test(key)?key:'unknown';
+  };
+  for(const row of rows){
+    const id=String(row?.id||'');
+    if(!id||usedIds.has(id))continue;
+    usedIds.add(id);
+    unique.push(row);
+  }
+  const bySubtype=new Map();
+  for(const row of unique){
+    const key=subtype(row);
+    if(!bySubtype.has(key))bySubtype.set(key,[]);
+    bySubtype.get(key).push(row);
+  }
+  // The discovery RPC has already applied dress-code, occasion, price,
+  // merchant validity and preferred subtype relevance. Preserve the
+  // index's first-seen subtype priority; UNKNOWN metadata gets no invented
+  // construction and is used as a last-resort source fallback.
+  const groupOrder=[...bySubtype.keys()].filter(k=>k!=='unknown');
+  // Unknown is not a *design direction*. Use it as honest source fallback
+  // only if no classified construction exists or the remaining capacity
+  // needs filling; never invent a class from merchant product titles.
+  if(!groupOrder.length&&bySubtype.has('unknown'))groupOrder.push('unknown');
+  const groups=groupOrder.map(k=>balancedShoeCatalogWindow(
+    bySubtype.get(k),Math.min(limit,bySubtype.get(k).length)));
+  const chosen=[],chosenIds=new Set();
+  const add=row=>{
+    if(!row||chosenIds.has(String(row.id)))return false;
+    chosenIds.add(String(row.id));chosen.push(row);return true;
+  };
+  // A majority of the source menu exposes different REAL subtypes rather
+  // than colorways. Broad catalog quality is still the AI/photo editors'
+  // responsibility, not a hard-coded apparel-matching decision.
+  const diversityBudget=Math.min(limit,Math.ceil(limit*.64));
+  while(chosen.length<diversityBudget){
+    let grew=false;
+    for(const group of groups){
+      if(chosen.length>=diversityBudget)break;
+      const next=group.shift();
+      if(next&&add(next))grew=true;
+    }
+    if(!grew)break;
+  }
+  // Remaining capacity follows the original server-ranked merchandise
+  // relevance order. No required minimum for any particular garment type.
+  for(const row of unique){
+    if(chosen.length>=limit)break;
+    add(row);
+  }
+  return chosen;
 }
 
 const fail = (code, status, extra = {}) => ({
@@ -559,10 +634,11 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       ] : [];
       const queries = [
         ...workouts, ...coldWeather,
-        ...CATALOG_SLOTS.map(slot => ({ slot, search: '', limit: CATALOG_PER_SLOT, offset:0 })),
-        ...Array.from({length:SHOE_DISCOVERY_PAGES-1},(_,i)=>({
-          slot:'shoes',search:'',limit:CATALOG_PER_SLOT,offset:(i+1)*CATALOG_PER_SLOT,
-        })),
+        ...CATALOG_SLOTS.flatMap(slot=>Array.from({
+          length:slot==='shoes'?SHOE_DISCOVERY_PAGES:GARMENT_DISCOVERY_PAGES,
+        },(_,page)=>({
+          slot,search:'',limit:CATALOG_PER_SLOT,offset:page*CATALOG_PER_SLOT,
+        }))),
       ];
       const slotBatches = await Promise.all(queries.map(async (query) => {
         const rpcBody = {
@@ -582,17 +658,20 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         });
         return { slot: query.slot, search:query.search, data: await check(response, 'stylist6_catalog_unavailable') };
       }));
-      // Search-specific workout / winter shoes are kept first; generic shoes
-      // are selected from 300 real source rows with brand balance. Other
-      // garment lanes keep their original deterministic order and 100 cap.
-      const focusedShoes=slotBatches.filter(b=>b.slot==='shoes' && b.search)
-        .flatMap(b=>Array.isArray(b.data)?b.data:[]);
-      const genericShoes=slotBatches.filter(b=>b.slot==='shoes' && !b.search)
-        .flatMap(b=>Array.isArray(b.data)?b.data:[]);
-      const admittedBatches=[...slotBatches.filter(b=>b.slot!=='shoes'),{
-        slot:'shoes',data:[...focusedShoes,
-          ...balancedShoeCatalogWindow(genericShoes,CATALOG_PER_SLOT)],
-      }];
+      // Keep context-specific verified workout / freezing-source results
+      // FIRST, then choose a broader CONSTRUCTION-BALANCED catalog window
+      // from page 0 and page 1 (shoes retain their proven brand-balanced
+      // three-page discovery). Identical 100/slot => 400 hydrated/returned
+      // products; no extra photo-media fanout, catalog bypass or schema.
+      const admittedBatches=CATALOG_SLOTS.map(slot=>{
+        const focused=slotBatches.filter(b=>b.slot===slot&&b.search)
+          .flatMap(b=>Array.isArray(b.data)?b.data:[]);
+        const generic=slotBatches.filter(b=>b.slot===slot&&!b.search)
+          .flatMap(b=>Array.isArray(b.data)?b.data:[]);
+        return {slot,data:[...focused,...(slot==='shoes'
+          ?balancedShoeCatalogWindow(generic,CATALOG_PER_SLOT)
+          :balancedGarmentCatalogWindow(generic,CATALOG_PER_SLOT))]};
+      });
       const bySlot = Object.fromEntries(CATALOG_SLOTS.map(slot => [slot, 0]));
       for (const { slot, data } of admittedBatches) {
         for (const row of Array.isArray(data) ? data : []) {
