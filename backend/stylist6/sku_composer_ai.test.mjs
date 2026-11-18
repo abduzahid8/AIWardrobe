@@ -671,6 +671,73 @@ test('the first full-SKU artist explicitly designs for social DATE beauty rather
   assert.ok(produced.looks.every(x=>x.length===4));
 });
 
+test('Kimi-FIRST alternative fashion artist can lead full-source six-look composition with unchanged source and photo gates',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const calls=[];
+  const six=Object.fromEntries(slots.map(slot=>[
+    slot,pool.filter(x=>x.slot===slot).slice(0,6).map(x=>x.token)]));
+  const resultCase=await composeCatalogSkuLooks({pool,
+    context:{style:'classic',occasion:'Date night'},
+    layerRequired:true,outfitCount:6,parallel:true,initialStudioDuel:true,
+    preferKimiFirst:true,timeoutMs:15000,
+    apiKey:'nvapi-test-source-kimi-first-creative-experiment',
+    fetchImpl:async(_url,init)=>{
+      const body=JSON.parse(init.body);
+      calls.push(body.model);
+      assert.equal(body.model,CROSS_LAB_REVISION_MODEL,
+        'successful independent artist needs no after-the-fact second invocation');
+      assert.equal(body.response_format.type,'json_object');
+      assert.equal(body.top_p,undefined);
+      const prompt=body.messages[0].content;
+      assert.match(prompt,/social DATE evening/);
+      assert.match(prompt,/realMerchantItemMenus/);
+      assert.doesNotMatch(prompt,/PRIVATE_SKU|shopUrl|imageUrl|https:\/\//);
+      return result({slotPicks:six});
+    },
+  });
+  assert.deepEqual(calls,[CROSS_LAB_REVISION_MODEL]);
+  assert.equal(resultCase.status,'composed');
+  assert.equal(resultCase.providerFamily,'cross_lab_kimi_primary');
+  assert.equal(resultCase.providerCalls,1);
+  assert.equal(resultCase.looks.length,6);
+  assert.equal(new Set(resultCase.looks.flat().map(x=>x.id)).size,24);
+  const admitted=await sourceVerifyComposedOutfits({looks:resultCase.looks,
+    request:{sourceMode:'catalog'},sourceMode:'catalog',requiredIds:[],
+    hardGate:async()=>({ok:true}),scorer:{rankLook:()=>({score:.92})}});
+  assert.equal(admitted.length,6);
+  assert.ok(admitted.every(x=>x.items.length===4));
+});
+
+test('Kimi-FIRST malformed complete-look slate falls back ONCE to full-inventory Nemotron with no SKU or quality bypass',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const calls=[];
+  const six=Object.fromEntries(slots.map(slot=>[
+    slot,pool.filter(x=>x.slot===slot).slice(0,6).map(x=>x.token)]));
+  const sample=await composeCatalogSkuLooks({pool,
+    context:{style:'classic',occasion:'Work'},
+    layerRequired:true,outfitCount:6,parallel:true,initialStudioDuel:true,
+    preferKimiFirst:true,timeoutMs:15000,
+    apiKey:'nvapi-test-kimi-invalid-work-recovery',
+    fetchImpl:async(_url,init)=>{
+      const body=JSON.parse(init.body);
+      calls.push(body.model);
+      if(body.model===CROSS_LAB_REVISION_MODEL)
+        return result({slotPicks:Object.fromEntries(slots.map(slot=>
+          [slot,Array(6).fill('P999')]))});
+      assert.equal(body.model,'nvidia/nemotron-3.5-super-vl-120b-a12b');
+      assert.equal(body.response_format.type,'json_schema');
+      return result({slotPicks:six});
+    },
+  });
+  assert.deepEqual(calls,[CROSS_LAB_REVISION_MODEL,
+    'nvidia/nemotron-3.5-super-vl-120b-a12b']);
+  assert.equal(sample.status,'composed');
+  assert.equal(sample.providerFamily,'nemotron_after_kimi');
+  assert.equal(sample.providerCalls,2);
+  assert.equal(sample.looks.length,6);
+  assert.equal(new Set(sample.looks.flat().map(x=>x.id)).size,24);
+});
+
 test('independent creator keeps photo-grounded context and salvages only valid four-SKU designs',async()=>{
   const extras=Array.from({length:6},(_,i)=>slots.map((slot,j)=>({
     ...items[i][j],id:'DIVERSE_SOURCE_SKU_'+i+'_'+j,

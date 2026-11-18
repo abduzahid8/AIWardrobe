@@ -2139,7 +2139,8 @@ export async function recommendFashionDeck({
             ['nemotron','cross_lab_kimi','nemotron_fallback',
               'nemotron_plus_kimi_initial','cross_lab_kimi_initial_fallback',
               'nemotron_plus_kimi_parallel','nemotron_parallel',
-              'cross_lab_kimi_parallel']
+              'cross_lab_kimi_parallel','cross_lab_kimi_primary',
+              'nemotron_after_kimi']
               .includes(composition?.providerFamily)
               ?composition.providerFamily:'not_run';
           skuCompositionReceipt.visualMenuStatus=
