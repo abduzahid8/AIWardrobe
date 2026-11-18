@@ -77,3 +77,32 @@ test('exact two source-approved looks create a REAL non-fabricated 2-row photo c
   assert.equal(meta.height,34+160*2,'exactly two image rows, no invented third');
   assert.ok(sheet.bytes.length<540000);
 });
+
+test('large EIGHT-look real-photograph portfolio builds within the same bounded mobile edit window without 12 separate SVG canvases',async()=>{
+  const realLookSlots=['top','outerwear','bottom','shoes'];
+  const allEight=Array.from({length:8},(_,i)=>({
+    id:'PRIVATE_REAL_ORIGINAL_'+i,
+    items:realLookSlots.map((slot,j)=>({
+      id:'SECRET_PRODUCT_'+i+'_'+j,macroCategory:slot,
+      imageUrl:'https://catalog-photos.example/true-product-'+i+'-'+j+'.jpg',
+    })),
+  }));
+  const largeJpeg=await sharp({create:{width:640,height:840,
+    channels:3,background:'#9eaabc'}}).jpeg({quality:88}).toBuffer();
+  let sourceReads=0;
+  const started=Date.now();
+  const sheet=await buildPhotoEditorialContactSheet(allEight,{
+    resolvePhoto:async()=>{sourceReads++;return {bytes:largeJpeg};},
+    authorizePhoto:url=>url.startsWith('https://catalog-photos.example/'),
+    deadlineMs:3800,
+  });
+  assert.ok(sheet,'CPU montage must finish inside the REAL stage PHOTO jury deadline');
+  assert.equal(sourceReads,32,'every one of 32 real original source images must contribute');
+  assert.equal(sheet.lookTokens.length,8);
+  const info=await sharp(sheet.bytes).metadata();
+  assert.equal(info.height,34+8*160);
+  assert.equal(info.width,44+160*4);
+  assert.ok(sheet.bytes.length<540000);
+  assert.ok(Date.now()-started<3800,
+    '8-look JPEG montage must complete before source-authorized editorial jury times out');
+});

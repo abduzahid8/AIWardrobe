@@ -196,6 +196,22 @@ fulfill the owner's four-product contract.
 ## Each work session's completion report must include
 GitHub SHA; staging Supabase function version + pinned READY compute SHA; code/quality changes; real scenario IDs & images; what objectively improved; what deteriorated; how many looks were provider-judged vs fallback; product stock/rights truth; QA gate counts; production status; exact NEXT highest-leverage root cause.
 
+## 2026-11-18 — fix actual source-photo montage on Render before claiming two juries
+
+First pinned \`aadab9a\` iPhone Date night generated three verified
+source-SKU four-item outfits and five individual photo approvals,
+BUT the final photographic contact sheet missed a 3.8s deadline:
+\`photoEditorialVisualMedia=deadline\`,
+\`photoEditorialIndependentJury=not_run\`; no 2nd model ran.
+A local optimization now resizes original-photo bytes into raw
+RGB and uses ONE public SVG token-label layer (instead of 4+N
+full-canvas SVG layers and per-cell JPEG re-encodes).
+All original media rights, missing-photo, no-unreviewed-filler
+and total-time bounds remain unchanged. A real iPhone request
+must still prove the new original-photo jury is running.
+Evidence:
+\`docs/reports/stylist6-user-reference-text-fashion-memory-20261118.md\`.
+
 ## 2026-11-18 — independent Kimi vision studio jury over ACTUAL photographs
 
 Real staged iPhone Classic/Date night \`a1dfc12\` delivered three

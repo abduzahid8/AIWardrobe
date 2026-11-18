@@ -25,12 +25,12 @@ const MAX_BYTES=540_000;
 // timing out under live Render. Default libvips JPEG is much faster.
 const jpegOptions={quality:68};
 
-const svgText=(text,x,y,{size=15,bold=false,height}={})=>Buffer.from(
-  `<svg width="${WIDTH}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-    <text x="${x}" y="${y}" font-family="Arial,Helvetica,sans-serif"
-      font-size="${size}" font-weight="${bold?'700':'500'}" fill="#263141">${text}</text>
-  </svg>`
-);
+// The Render staging CPU previously composited 4+N FULL-CANVAS SVGs,
+// one for EACH opaque label, and JPEG-encoded each thumbnail separately.
+// Compose the SAME licensed JPG photos as resized raw RGB and ONE text layer.
+const sheetLabel=(txt,x,y,{size=15,bold=false}={})=>
+  '<text x="'+x+'" y="'+y+'" font-size="'+size+
+  '" font-weight="'+(bold?'700':'500')+'">'+txt+'</text>';
 
 /** No photography is fabricated. A failed fetch, stale media or missing
  * authorization returns null; the existing photo-evidence text editor takes
@@ -70,35 +70,43 @@ export async function buildPhotoEditorialContactSheet(looks,{
   });
   try{
     const height=HEADER+sources.length*CELL_H;
-    const overlays=[];
-    const labels=[
-      svgText('TOP',LABEL_W+10,23,{size:14,bold:true,height}),
-      svgText('LAYER',LABEL_W+CELL_W+10,23,{size:14,bold:true,height}),
-      svgText('BOTTOM',LABEL_W+CELL_W*2+10,23,{size:14,bold:true,height}),
-      svgText('SHOES',LABEL_W+CELL_W*3+10,23,{size:14,bold:true,height}),
-    ].map(input=>({input,left:0,top:0}));
-    overlays.push(...labels);
+    const overlays=[],labels=[
+      sheetLabel('TOP',LABEL_W+10,23,{size:14,bold:true}),
+      sheetLabel('LAYER',LABEL_W+CELL_W+10,23,{size:14,bold:true}),
+      sheetLabel('BOTTOM',LABEL_W+CELL_W*2+10,23,{size:14,bold:true}),
+      sheetLabel('SHOES',LABEL_W+CELL_W*3+10,23,{size:14,bold:true}),
+    ];
     const cells=await Promise.race([Promise.all(sources.flatMap((row,i)=>row.cells.map(async(item,j)=>{
       if(!item)return null;
       const asset=await resolvePhoto(item);
       if(!asset||!Buffer.isBuffer(asset.bytes)||asset.bytes.length<128||
         asset.bytes.length>512*1024)throw Error('missing_or_oversized_photo');
+      // One genuine image decode + resize; raw compositing avoids 32
+      // extra JPEG encode/decode cycles. No image source ever changes.
       const image=await sharp(asset.bytes,{limitInputPixels:4_200_000})
         .resize(CELL_W-10,CELL_H-27,{fit:'contain',background:'#f8fafc'})
-        .jpeg({quality:63}).toBuffer();
-      return {input:image,left:LABEL_W+j*CELL_W+5,top:HEADER+i*CELL_H+18};
+        .removeAlpha().raw().toBuffer({resolveWithObject:true});
+      return {input:image.data,raw:{
+        width:image.info.width,height:image.info.height,
+        channels:image.info.channels},
+        left:LABEL_W+j*CELL_W+5,top:HEADER+i*CELL_H+18};
     }))),abortPromise]);
     for(const cell of cells)if(cell)overlays.push(cell);
     if(combined.aborted){note('deadline');return null;}
     for(let i=0;i<sources.length;i++){
-      overlays.push({input:svgText(sources[i].token,4,HEADER+i*CELL_H+33,
-        {size:15,bold:true,height}),left:0,top:0});
-      const missingLayer=sources[i].cells[1]===null;
-      if(missingLayer)overlays.push({input:svgText('none',
-        LABEL_W+CELL_W+12,HEADER+i*CELL_H+90,{size:13,height}),left:0,top:0});
+      // L-token generated server-side, never user/merchant arbitrary SVG.
+      labels.push(sheetLabel(sources[i].token,4,HEADER+i*CELL_H+33,
+        {size:15,bold:true}));
+      if(sources[i].cells[1]===null)labels.push(sheetLabel('none',
+        LABEL_W+CELL_W+12,HEADER+i*CELL_H+90,{size:13}));
     }
-    const png=sharp({create:{width:WIDTH,height,channels:3,background:'#f0f3f7'}})
-      .composite(overlays).jpeg(jpegOptions);
+    const svg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="'+
+      WIDTH+'" height="'+height+'"><g fill="#263141" '+
+      'font-family="Arial,Helvetica,sans-serif">'+labels.join('')+
+      '</g></svg>');
+    overlays.push({input:svg,left:0,top:0});
+    const png=sharp({create:{width:WIDTH,height,channels:3,
+      background:'#f0f3f7'}}).composite(overlays).jpeg(jpegOptions);
     const result=await Promise.race([png.toBuffer(),abortPromise]);
     if(combined.aborted){note('deadline');return null;}
     if(result.length>MAX_BYTES){note('oversized');return null;}

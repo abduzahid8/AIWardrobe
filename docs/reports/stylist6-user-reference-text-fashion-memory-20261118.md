@@ -195,3 +195,37 @@ ensembles also voted all three as \"different\", so real source-JPEG
 and held-out blind fashion judgments are crucial. A cross-model jury
 is meaningful only if it actually rejects repetitiveness, not just
 repeats the first model's permissive decisions.
+
+## First cross-lab native run: PHOTO montage missed its deadline
+
+Pinned \`aadab9a\`, real iPhone / Render staging Classic / Date night
+at 2026-11-18 02:58:17 UTC: 6 genuine source-validated four-item
+proposals, 5/6 original-photo quality approvals, 3 complete source
+looks displayed, stored with \`recoverable:true\` in 34.5s.
+However \`photoEditorialVisualMedia:deadline\`,
+\`photoEditorialVisualJury:image_unavailable\` and
+\`photoEditorialIndependentJury:not_run\`. The actual photographic
+collection board did NOT finish its 3.8-second window; no
+different-model counterjuror saw original photos. The 30B text
+fallback selected the three-look portfolio. Thus this run proves
+delivery and no source-photo laundering, NOT the new Kimi jury.
+
+The old collage implementation separately JPEG-encoded every
+photographic cell, decoded each result again, and composited
+four + N different full-size transparent SVG text layers for the
+same public slot/title/token text. On a constrained shared Render
+CPU this is expensive even with warmed original JPEGs.
+\`photo_editor_contact_sheet.mjs\` now decodes/resizes each original
+licensed SKU photograph **once** to raw RGB, composites the 4-slot
+grid once and renders ALL fixed labels in ONE SVG. The exact
+original-source URL authorization check, strict missing-photo veto,
+image-size bound, 2–8 look range and fixed 3.8-second deadline are
+preserved. 32 individual real synthetic-input JPEGs for an
+8-look four-item board completed in a local instrumented test in
+well under 1 second, but live Render/CDN timing is NOT guaranteed.
+
+Next e2e native result must report
+\`photoEditorialVisualMedia:ready\` and independent jury
+\`agreed|narrowed|disagreed|unavailable\` (not \`not_run\`)
+for a feasible photographed triple before we claim any real Kimi
+visual evaluation. We still cannot claim excellent diverse style.
