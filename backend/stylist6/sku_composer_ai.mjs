@@ -38,7 +38,8 @@ const safe=(x,n=65)=>typeof x==='string'
   ?x.replace(/https?:\/\/[^\s]+|\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi,'[redacted]')
     .replace(/[\u0000-\u001f<>{}]/g,' ').trim().slice(0,n):'';
 const photoFields=['color','subtype','formality','texture','pattern','volume',
-  'length','bulk','soleProfile','footwearPurpose','collar'];
+  'length','bulk','hemShape','closure','accentHue',
+  'soleProfile','footwearPurpose','collar'];
 const slotOf=x=>x?.macroCategory;
 const productKey=x=>baseProductId(String(x?.id||''));
 const label=(x,i)=>'P'+String(i).padStart(3,'0');
