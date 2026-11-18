@@ -408,6 +408,39 @@ test('independent original-photo Kimi may finish AFTER primary VLM-specific dead
     'moonshotai/kimi-k3.1-pro',PHOTO_PORTFOLIO_VISION_MODEL]));
 });
 
+test('TWO photo-approved looks still receive an independent original-photo Kimi decision when primary vision fails',async()=>{
+  const jpeg=await sharp({create:{width:112,height:124,channels:3,
+    background:'#938e80'}}).jpeg().toBuffer();
+  const models=[];
+  const verifiedPair=[{portfolioToken:'F00',orderedLooks:['L00','L01']}];
+  const photo=await selectPhotoEditorialDeck({
+    looks:looks.slice(0,2),critiques:reviews,portfolios:verifiedPair,
+    context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-real-photo-two-look-independent',timeoutMs:9400,
+    independentVisionJury:true,
+    authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:jpeg}),
+    fetchImpl:async(_url,req)=>{
+      const payload=JSON.parse(req.body);
+      models.push(payload.model);
+      assert.ok(payload.messages.at(-1).content.at(-1).image_url.url
+        .startsWith('data:image/jpeg;base64,'),
+      'both independent judges must ACTUALLY receive the authorized original photo board');
+      return payload.model===PHOTO_PORTFOLIO_VISION_MODEL
+        ?Response.json({error:'visual_primary_outage'},{status:503})
+        :result('F00');
+    },
+  });
+  assert.deepEqual(new Set(models),new Set([
+    PHOTO_PORTFOLIO_VISION_MODEL,'moonshotai/kimi-k3.1-pro']));
+  assert.equal(photo.status,'selected');
+  assert.deepEqual(photo.tokens,['L00','L01']);
+  assert.equal(photo.visualJury,'applied');
+  assert.equal(photo.visualMediaStatus,'ready');
+  assert.equal(photo.independentJury,'standalone');
+  assert.equal(photo.providerCalls,2,
+    'independent real-photo approval avoids a third paid text-only editor');
+});
+
 test('cross-lab photo fallback cannot select a fabricated F-token after primary vision failure',async()=>{
   const jpeg=await sharp({create:{width:115,height:130,channels:3,
     background:'#b9a48c'}}).jpeg().toBuffer();
@@ -554,18 +587,22 @@ test('independent studio jury may NEVER add a nonprimary look, silently override
   assert.deepEqual(unavailable.tokens,['L00','L01','L02']);
   assert.equal(unavailable.visualJury,'applied');
   assert.equal(unavailable.providerCalls,2);
-  let calls=0;
+  const photoModels=[];
   const onlyTwo=await selectPhotoEditorialDeck({
     ...common,looks:looks.slice(0,2),
     portfolios:[{portfolioToken:'F00',orderedLooks:['L00','L01']}],
     fetchImpl:async(_,req)=>{
-      calls++;
-      assert.equal(JSON.parse(req.body).model,PHOTO_PORTFOLIO_VISION_MODEL,
-        'not a paid independent vote unless the approved set can form a triple');
+      const model=JSON.parse(req.body).model;
+      photoModels.push(model);
+      assert.ok([PHOTO_PORTFOLIO_VISION_MODEL,
+        'moonshotai/kimi-k3.1-pro'].includes(model));
       return result('F00');
     },
   });
-  assert.equal(calls,1);
-  assert.equal(onlyTwo.independentJury,'not_run');
-  assert.equal(onlyTwo.providerCalls,1);
+  assert.deepEqual(new Set(photoModels),new Set([
+    PHOTO_PORTFOLIO_VISION_MODEL,'moonshotai/kimi-k3.1-pro']),
+    'real photographs merit independent cross-lab editing even for TWO approved looks');
+  assert.equal(onlyTwo.independentJury,'agreed');
+  assert.equal(onlyTwo.providerCalls,2);
+  assert.equal(onlyTwo.visualMediaStatus,'ready');
 });

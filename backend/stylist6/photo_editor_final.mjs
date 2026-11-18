@@ -286,8 +286,15 @@ export async function selectPhotoEditorialDeck({
           // No model invents any merchandise or bypasses the per-look VLM.
           const sheetDataUrl='data:image/jpeg;base64,'+
             sheet.bytes.toString('base64');
+          // Two approved photographed looks also deserve a DIFFERENT-LAB
+          // visual edit. Earlier this required a three-look portfolio: when
+          // only two passed the PHOTO critic, the sole 120B vision editor
+          // could time out and force a TEXT-ONLY decision despite ready
+          // images. Kimi's independent authorized-photo F-token opinion
+          // cannot add an item, approve a rejected look, or exceed the
+          // original isolated 72s staging deadline.
           if(independentVisionJury===true&&
-              menu.some(p=>p.looks.length===3)&&!visionSignal.aborted){
+              menu.some(p=>p.looks.length>=2)&&!visionSignal.aborted){
             independentJury='unavailable';
             providerCalls++;
             const independentPrompt=[
