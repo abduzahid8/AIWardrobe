@@ -506,3 +506,32 @@ export async function designCreativeBriefs({
     activeProviderCalls--;
   }
 }
+
+/**
+ * A REAL initial 120B plan can return three creative concepts whose source
+ * roles are ALL invalid, leaving zero artistic brief for the SKU author.
+ * The fallback is not a scripted garment rule or fabricated product set:
+ * ONE independently generated 30B plan sees the SAME verified inventory,
+ * same actual wearer's context, original photo feature evidence and exact
+ * role enum. The normal source, fashion and original-photo gates still apply.
+ * Only isolated staging may request this second inference, and a working
+ * original art plan is NEVER overwritten.
+ */
+export async function designCreativeBriefsWithFallback(options={}){
+  const first=await designCreativeBriefs(options);
+  if(options.highTaste!==true||options.allowIndependentFallback!==true||
+      first.status!=='invalid_plan'||first.briefs.length>0||
+      options.signal?.aborted)return first;
+  const backup=await designCreativeBriefs({...options,highTaste:false,
+    allowIndependentFallback:false,
+    timeoutMs:Math.max(650,Math.min(3600,
+      Number.isFinite(options.backupTimeoutMs)?options.backupTimeoutMs:2500))});
+  if(backup.briefs.length===0)return {...first,
+    providerCalls:first.providerCalls+backup.providerCalls,
+    invalidPlanBackupStatus:backup.status};
+  return {...backup,
+    providerCalls:first.providerCalls+backup.providerCalls,
+    invalidPlanBackupStatus:'used_independent_source_grounded',
+    visualAtlasExamples:Math.max(first.visualAtlasExamples||0,
+      backup.visualAtlasExamples||0)};
+}

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CREATIVE_DIRECTOR_VERSION, directorInventory, directorVisualAtlas, directorResponseSchema,
-  validateDirectorDirections, designCreativeBriefs,
+  validateDirectorDirections, designCreativeBriefs,designCreativeBriefsWithFallback,
 } from './creative_director_ai.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
 
@@ -164,6 +164,56 @@ test('DATE artistic director receives the same human-social mission as exact-SKU
   });
   assert.equal(called,1);
   assert.equal(output.status,'planned');
+});
+
+test('source-INVALID first artistic plan receives one REAL independent 30B Creative Director pass on the SAME user inventory',async()=>{
+  const date={...request,sourceMode:'catalog',optionalLayer:false,
+    occasion:'Date night',weather:{temp:22},
+    brief:'Date scene separate from work - second source grounded art rescue'};
+  const models=[];
+  const fallback=await designCreativeBriefsWithFallback({catalog,
+    request:date,apiKey:'nvapi-test-independent-source-grounded-plan-fallback',
+    highTaste:true,allowIndependentFallback:true,backupTimeoutMs:2600,
+    fetchImpl:async(_url,init)=>{
+      const row=JSON.parse(init.body);
+      models.push(row.model);
+      assert.match(row.messages[0].content,/social DATE evening/);
+      assert.match(row.messages[0].content,/currentInventory/);
+      const d=JSON.parse(row.messages[0].content.split('\n').at(-1));
+      assert.ok(d.currentInventory.available.top.length>0);
+      assert.doesNotMatch(row.messages[0].content,/SECRET-SKU-SHIRT|Private user-owned shirt/);
+      return fakeResponse(models.length===1?{directions:[]}:proposal);
+    },
+  });
+  assert.deepEqual(models,['nvidia/nemotron-3.5-super-vl-120b-a12b',
+    'nvidia/nemotron-3.5-lightning-30b-a3b']);
+  assert.equal(fallback.status,'planned');
+  assert.equal(fallback.invalidPlanBackupStatus,'used_independent_source_grounded');
+  assert.equal(fallback.providerCalls,2);
+  assert.equal(fallback.briefs.length,3);
+  assert.ok(fallback.briefs.every(row=>row.generatedBy===CREATIVE_DIRECTOR_VERSION&&
+    row.roles.outerwear.length>0));
+});
+
+test('independent plan rescue never discards good initial director art or overrides staging kill switch',async()=>{
+  const config={catalog,apiKey:'nvapi-test-no-superfluous-director',
+    highTaste:true,allowIndependentFallback:true};
+  let calls=0;
+  const accepted=await designCreativeBriefsWithFallback({...config,
+    request:{...request,brief:'One separate valid first art commission'},
+    fetchImpl:async()=>{calls++;return fakeResponse(proposal);}});
+  assert.equal(calls,1);
+  assert.equal(accepted.status,'planned');
+  assert.equal(accepted.briefs.length,3);
+  assert.equal(accepted.providerCalls,1);
+  calls=0;
+  const disabled=await designCreativeBriefsWithFallback({...config,
+    allowIndependentFallback:false,
+    request:{...request,brief:'Separate one invalid commission with fallback disabled'},
+    fetchImpl:async()=>{calls++;return fakeResponse({directions:[]});}});
+  assert.equal(disabled.status,'invalid_plan');
+  assert.equal(disabled.briefs.length,0);
+  assert.equal(calls,1);
 });
 
 test('four-SKU catalog generation is a coherent FOUR-product Creative Director contract, not an optional random layer',async()=>{

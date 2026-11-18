@@ -25,7 +25,7 @@ import { createHash } from 'node:crypto';
 import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { hydrateCatalogObservations } from './catalog_observation.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
-import { designCreativeBriefs, CREATIVE_DIRECTOR_VERSION } from './creative_director_ai.mjs';
+import { designCreativeBriefsWithFallback, CREATIVE_DIRECTOR_VERSION } from './creative_director_ai.mjs';
 import { selectFashionSlate } from './fashion_director_slate.mjs';
 import { selectPhotoEditorialDeck } from './photo_editor_final.mjs';
 import { composeCatalogSkuLooks } from './sku_composer_ai.mjs';
@@ -1532,8 +1532,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       !isWorkoutOccasion(occasion) && remainingMs() >= 12000;
     nextPhase('creative_architecture');
     const creativePlan = creativeDirectorEnabled
-      ? await designCreativeBriefs({
+      ? await designCreativeBriefsWithFallback({
           catalog: feasible, request: input,feedbackTaste,
+          allowIndependentFallback:budgetMs>=70000&&remainingMs()>=33000,
+          backupTimeoutMs:3000,
           apiKey: env.NVIDIA_API_KEY || '',
           ...(fetchImpl ? { fetchImpl } : {}),
           signal: deadlineController.signal,
@@ -1872,6 +1874,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             'anchor_outfit_unavailable'].includes(failureCode)
             ?failureCode:'other',
           creativePlanCount:Math.min(3,creativePlan.briefs.length),
+        creativePlanBackup:['used_independent_source_grounded','invalid_plan',
+          'provider_unavailable','timeout','load_shed','not_configured']
+          .includes(creativePlan.invalidPlanBackupStatus)
+          ?creativePlan.invalidPlanBackupStatus:'not_needed',
           stableSourceCohort,
           creativePlanVisualExamples:Math.max(0,Math.min(64,
             Number(creativePlan.visualAtlasExamples)||0)),
@@ -1962,6 +1968,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       console.info('stylist6_safe_visual_quality', {
         ...safeTrace,
         creativePlanCount:Math.min(3,creativePlan.briefs.length),
+        creativePlanBackup:['used_independent_source_grounded','invalid_plan',
+          'provider_unavailable','timeout','load_shed','not_configured']
+          .includes(creativePlan.invalidPlanBackupStatus)
+          ?creativePlan.invalidPlanBackupStatus:'not_needed',
         stableSourceCohort,
         creativePlanVisualExamples:Math.max(0,Math.min(64,
           Number(creativePlan.visualAtlasExamples)||0)),
