@@ -269,7 +269,7 @@ export function validateSkuCompositions(answer,pool,{
   // photo critic. A malformed/reused look must never invalidate the five
   // *different* source-valid looks from the same model answer. The original
   // three-look API remains all-or-nothing for backwards compatibility.
-  const target=Number.isInteger(count)?Math.max(3,Math.min(6,count)):3;
+  const target=Number.isInteger(count)?Math.max(3,Math.min(8,count)):3;
   const rolePicks=answer?.slotPicks;
   const choices=Array.isArray(answer?.outfits)?answer.outfits:
     rolePicks&&typeof rolePicks==='object'&&!Array.isArray(rolePicks)&&
@@ -838,8 +838,23 @@ export async function composeCatalogSkuLooks({
             :crossLab?'nemotron_fallback':'nemotron';
           if(initialStudioDuel===true&&parallel&&!rescue&&!isKimi&&
               target===6&&choices.length>=3&&!combined.aborted){
-            const firstThree=choices.slice(0,3);
-            const alreadyUsed=new Set(firstThree.flatMap(look=>
+            // The visual critic ALREADY budgets eight original-photo
+            // candidates. Earlier 3+3 audition used only six of those
+            // valuable fashion-review slots, then tried to invent a third
+            // direction late in a slow corrective wave. If the real
+            // permitted menu supports it, ask EACH independent designer
+            // for FOUR source-distinct complete outfits BEFORE the photo
+            // audition, so both have equal creative influence. For sparse
+            // real catalogs, keep the proven three-plus-three behavior.
+            const fourReady=choices.length>=4&&SLOTS.every(slot=>{
+              const used=new Set(choices.slice(0,4).flatMap(look=>
+                look.filter(item=>slotOf(item)===slot).map(productKey)));
+              return pool.filter(p=>p.slot===slot&&
+                !used.has(productKey(p.item))).length>=4;
+            });
+            const independentCount=fourReady?4:3;
+            const foundation=choices.slice(0,independentCount);
+            const alreadyUsed=new Set(foundation.flatMap(look=>
               look.map(item=>productKey(item))));
             const alternatePool=pool.filter(p=>
               !alreadyUsed.has(productKey(p.item)));
@@ -847,7 +862,7 @@ export async function composeCatalogSkuLooks({
               slot,alternatePool.filter(p=>p.slot===slot).map(p=>p.public)]));
             const canOffer= ['top','bottom','shoes',
               ...(layerRequired?['outerwear']:[])]
-              .every(slot=>available[slot].length>=3);
+              .every(slot=>available[slot].length>=independentCount);
             const remaining=Math.min(4300,
               Math.max(0,timeoutMs-(Date.now()-started)-1100));
             if(canOffer&&remaining>=2300){
@@ -855,14 +870,14 @@ export async function composeCatalogSkuLooks({
               const secondAbort=new AbortController();
               const secondTimer=setTimeout(()=>secondAbort.abort(),remaining);
               try{
-                const complementaryArchitectures=firstThree.map(look=>
+                const complementaryArchitectures=foundation.map(look=>
                   Object.fromEntries(SLOTS.map(slot=>[slot,
                     safe(look.find(item=>slotOf(item)===slot)?.subtype,36)])));
                 const secondPrompt=[
                   'You are a SECOND INDEPENDENT exceptional menswear FASHION DESIGNER.',
-                  'Another creator already proposed three source-authentic outfits.',
+                  'Another creator already proposed '+independentCount+' source-authentic outfits.',
                   'Those initial outfits have NOT passed photographic evaluation.',
-                  'Create THREE FRESH, STYLISTICALLY DIFFERENT complete outfits',
+                  'Create '+independentCount+' FRESH, STYLISTICALLY DIFFERENT complete outfits',
                   'for the SAME user and occasion, from only the following',
                   'UNUSED source-verified real merchandise tokens.',
                   'Design new garment constructions, layer architecture, textile',
@@ -875,9 +890,12 @@ export async function composeCatalogSkuLooks({
                   'Each outfit must have a real TOP, LAYER, BOTTOM and SHOES',
                   'from the supplied list. A user-requested required layer',
                   'must never be the string none. Choose one UNIQUE exact token',
-                  'per slot/outfit, never reuse tokens across the three outfits.',
+                  'per slot/outfit, never reuse tokens across all new outfits.',
                   'Return ONLY JSON object with slotPicks exactly:',
-                  '{top:[3 tokens],outerwear:[3 tokens],bottom:[3 tokens],shoes:[3 tokens]}.',
+                  '{top:['+independentCount+' tokens],outerwear:['+
+                    independentCount+' tokens],bottom:['+
+                    independentCount+' tokens],shoes:['+
+                    independentCount+' tokens]}.',
                   JSON.stringify({
                     user:{style:safe(context?.style,55),
                       occasion:safe(context?.occasion,70),
@@ -916,10 +934,11 @@ export async function composeCatalogSkuLooks({
                           typeof v?.message?.content==='string'){
                         const extra=validateSkuCompositions(
                           JSON.parse(v.message.content),alternatePool,{
-                            layerRequired,allowLayer,count:3,allowPartial:false,
+                            layerRequired,allowLayer,count:independentCount,
+                            allowPartial:false,
                           });
-                        if(extra.length===3){
-                          composed=[...firstThree,...extra];
+                        if(extra.length===independentCount){
+                          composed=[...foundation,...extra];
                           artist='nemotron_plus_kimi_initial';
                         }
                       }
@@ -954,7 +973,10 @@ export async function sourceVerifyComposedOutfits({
   if(!Array.isArray(looks)||typeof hardGate!=='function'||
     typeof scorer?.rankLook!=='function'||sourceMode!=='catalog')return [];
   const produced=[],shared=new Set();
-  for(let i=0;i<Math.min(6,looks.length);i++){
+  // The complete independent initial audition is bounded by the SAME
+  // eight-photo review cap. Admit no more than eight authenticated, disjoint,
+  // fully four-source-SKU compositions; do not add an unjudged ninth look.
+  for(let i=0;i<Math.min(8,looks.length);i++){
     const items=looks[i];
     if(!Array.isArray(items)||items.length<3||items.length>4||
       !['top','bottom','shoes'].every(slot=>items.some(x=>slotOf(x)===slot))||

@@ -130,7 +130,7 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       'not_configured','load_shed','composition_unavailable',
     ].includes(f.skuCompositionReceipt?.status)
       ?f.skuCompositionReceipt.status:'not_run',
-    skuCompositionProposed:safe(f.skuCompositionReceipt?.proposed,6),
+    skuCompositionProposed:safe(f.skuCompositionReceipt?.proposed,8),
     skuCompositionAdmitted:safe(f.skuCompositionReceipt?.admitted,6),
     skuCompositionExploration:safe(f.skuCompositionReceipt?.exploratoryProducts,48),
     skuCompositionParallel:f.skuCompositionReceipt?.parallel===true,

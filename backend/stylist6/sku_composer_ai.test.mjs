@@ -497,6 +497,70 @@ test('first-pass AI fashion uses TWO independent studios before PHOTO review to 
     'provider prompts may reveal only anonymous tokens and safe garment/photo facts');
 });
 
+test('full 12-per-role merchandise breadth commissions FOUR different looks from EACH independent initial studio and photo-admits all EIGHT',async()=>{
+  // Live catalog discovery may provide 12 true garments per role. A
+  // previous implementation wasted two of the eight authenticated NVIDIA
+  // photo-audition slots on late correction, after the first 3+3 composers
+  // had already chosen too-similar knit/cardigan directions.
+  const extras=Array.from({length:6},(_,i)=>slots.map((slot,j)=>({
+    ...items[i][j],id:'SECOND_SOURCE_SKU_'+i+'_'+j,
+    name:'PUBLIC independent fabric variant '+slot+' '+i,
+    subtype:['polo','coat','chino','chelsea'][j],
+    color:['black','cream','green','grey','navy','burgundy'][i],
+  }))).flat();
+  const pool=sourceBoundCompositionPool(looks,{
+    additionalItems:extras,inventoryFirst:true,explorationSlots:4,
+  });
+  assert.ok(slots.every(slot=>pool.filter(p=>p.slot===slot).length>=8),
+    'never promise four independent cross-studio looks without eight true real source products per role');
+  const models=[];
+  const initial=Object.fromEntries(slots.map(slot=>[slot,
+    pool.filter(x=>x.slot===slot).slice(0,6).map(x=>x.token)]));
+  const composed=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-test-two-independent-four-designers',
+    layerRequired:true,parallel:true,outfitCount:6,
+    initialStudioDuel:true,timeoutMs:15000,
+    fetchImpl:async(_url,req)=>{
+      const body=JSON.parse(req.body);
+      models.push(body.model);
+      if(body.model==='nvidia/nemotron-3.5-super-vl-120b-a12b')
+        return result({slotPicks:initial});
+      assert.equal(body.model,CROSS_LAB_REVISION_MODEL);
+      assert.equal(body.response_format.type,'json_object');
+      const prompt=body.messages[0].content;
+      assert.match(prompt,/Create 4 FRESH, STYLISTICALLY DIFFERENT complete outfits/);
+      const args=JSON.parse(prompt.slice(prompt.lastIndexOf('\n')+1));
+      assert.equal(args.previousUnreviewedArchitectures.length,4);
+      const unused=args.unusedSourceBoundMerchandise;
+      for(const slot of slots){
+        assert.ok(unused[slot].length>=4);
+        for(const token of initial[slot].slice(0,4))
+          assert.ok(!unused[slot].some(v=>v.token===token),
+            "independent designer does not see or reuse first artist's four actual source SKUs");
+      }
+      return result({slotPicks:Object.fromEntries(slots.map(slot=>[
+        slot,unused[slot].slice(0,4).map(v=>v.token)]))});
+    },
+  });
+  assert.deepEqual(models,['nvidia/nemotron-3.5-super-vl-120b-a12b',
+    CROSS_LAB_REVISION_MODEL]);
+  assert.equal(composed.status,'composed');
+  assert.equal(composed.providerFamily,'nemotron_plus_kimi_initial');
+  assert.equal(composed.providerCalls,2);
+  assert.equal(composed.looks.length,8);
+  assert.ok(composed.looks.every(look=>look.length===4));
+  assert.equal(new Set(composed.looks.flat().map(item=>item.id)).size,32);
+  const verified=await sourceVerifyComposedOutfits({
+    looks:composed.looks,request:{sourceMode:'catalog'},
+    sourceMode:'catalog',requiredIds:[],
+    hardGate:async()=>({ok:true}),
+    scorer:{rankLook:()=>({score:.89})},
+  });
+  assert.equal(verified.length,8,'the actual paid photo review path receives all eight genuine four-SKU outfits');
+  assert.ok(verified.every(look=>look.items.length===4));
+});
+
 test('failing second creative studio NEVER destroys six already-source-verified initial outfits',async()=>{
   const pool=sourceBoundCompositionPool(looks);
   const original=Object.fromEntries(slots.map(slot=>
