@@ -600,6 +600,15 @@ export async function designCreativeBriefs({
  * Only isolated staging may request this second inference, and a working
  * original art plan is NEVER overwritten.
  */
+// Exact bound for a concurrent independent plan on the 72s staging path.
+// The 30B model may need more than 6.5s to inspect the original-photo
+// attribute atlas. This is NOT an additional serial paid call or a change
+// to the request-wide deadline; ordinary 50s/production paths are unchanged.
+export const PARALLEL_CREATIVE_BACKUP_MAX_MS=9000;
+export function boundedParallelCreativeBackupMs(wanted){
+  return Math.max(1000,Math.min(PARALLEL_CREATIVE_BACKUP_MAX_MS,
+    Number.isFinite(wanted)?wanted:5500));
+}
 export async function designCreativeBriefsWithFallback(options={}){
   // REAL isolated 72s iOS Date and Work frequently lost ALL 120B artistic
   // directions and THEN spent only ~3s on a doomed sequential 30B fallback.
@@ -618,9 +627,7 @@ export async function designCreativeBriefsWithFallback(options={}){
     signal:options.signal
       ?AbortSignal.any([options.signal,abortSecondary.signal])
       :abortSecondary.signal,
-    timeoutMs:Math.max(1000,Math.min(9000,
-      Number.isFinite(options.backupTimeoutMs)
-        ?options.backupTimeoutMs:5500)),
+    timeoutMs:boundedParallelCreativeBackupMs(options.backupTimeoutMs),
   }):null;
   const first=await designCreativeBriefs(options);
   if(options.highTaste!==true||options.allowIndependentFallback!==true||
