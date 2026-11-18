@@ -133,11 +133,6 @@ function explicitItemAffinity(item,model){
 export function sourceBoundCompositionPool(looks, {
   perSlot=MAX_PER_SLOT,additionalItems=[],explorationSlots=4,directions=[],
   feedbackTaste=null,inventoryFirst=false,
-  // A/B on isolated staging: diversify the designer's REAL product menu
-  // using source-current CONFIDENT image observations already in Supabase.
-  // This does NOT call a new model, authorize a photo, choose an outfit,
-  // change any source or hard fashion gate, or invent a style/color rule.
-  visualEvidenceFirst=false,
   // ONLY trusted cloud handler passes exact source-hash+rights-current SKU
   // IDs. The customer cannot nominate a copyrighted picture as authorized.
   photoFirstPriorityIds=null,
@@ -296,47 +291,6 @@ export function sourceBoundCompositionPool(looks, {
           pictured++;
           knownSubtypes.add(x.item.subtype);
         }
-      }
-    }
-    // The catalog has thousands of already-extracted image profiles yet
-    // the FIRST designer often sees 48 source items mostly with just merchant
-    // text, causing bland, undifferentiated fashion decisions. Reserve up to
-    // FIVE of each slot's real, source-current and CONFIDENTLY PHOTO-OBSERVED
-    // choices, chosen for maximum novelty across ACTUAL visible color,
-    // construction, silhouette, proportions and footwear observations.
-    // The source menu is only an evidence-rich CHOICE SET: the model still
-    // freely composes the look, and real original-photo jury retains its veto.
-    // With absent/stale photos, this code changes absolutely nothing.
-    if(inventoryFirst&&visualEvidenceFirst===true&&limit>=9){
-      const target=Math.min(5,seededCap);
-      let evidenced=chosen.filter(x=>Object.keys(photoFacts(x.item)).length>0).length;
-      const seenFacets=new Set(chosen.flatMap(x=>
-        Object.entries(photoFacts(x.item)).map(([field,value])=>field+':'+value)));
-      const represented=new Set(chosen.map(x=>String(x.item.subtype||'')));
-      while(evidenced<target&&chosen.length<seededCap){
-        let best=null,bestScore=-Infinity;
-        for(const candidate of pool){
-          const key=productKey(candidate.item);
-          if(used.has(key))continue;
-          const facts=Object.entries(photoFacts(candidate.item));
-          if(!facts.length)continue;
-          const novel=facts.filter(([field,value])=>
-            !seenFacets.has(field+':'+value)).length;
-          const kind=String(candidate.item.subtype||'');
-          const score=novel*3+facts.length+
-            (!represented.has(kind)?2:0);
-          if(score>bestScore||(score===bestScore&&best&&
-              (candidate.strength>best.strength||
-               candidate.strength===best.strength&&
-               String(candidate.item.id)<String(best.item.id)))){
-            best=candidate;bestScore=score;
-          }
-        }
-        if(!best||!append(best))break;
-        evidenced++;
-        represented.add(String(best.item.subtype||''));
-        for(const [field,value] of Object.entries(photoFacts(best.item)))
-          seenFacets.add(field+':'+value);
       }
     }
     // Fill remaining options with diverse, strong real products; the model

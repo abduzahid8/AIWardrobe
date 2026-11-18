@@ -1003,64 +1003,6 @@ test('inventory-first source menu lets AI design before any ranker has built an 
     {count:6,layerRequired:true}).length,6);
 });
 
-test('VISUAL-FIRST AI menu exposes already-observed silhouette and textile differences without guessing or forcing outfits',()=>{
-  const variant=slot=>Array.from({length:18},(_,i)=>{
-    const imageUrl=`https://source-evidence.example/${slot}/${i}.jpg`;
-    const attributes=Object.fromEntries([
-      ['color','navy'],['texture','smooth'],['volume','regular'],
-      ['length',i===13?'cropped':i===14?'long':'regular'],
-      ['pattern',i===12?'stripe':i===13?'check':i===14?'print':'solid'],
-      ['collar',i===12?'high':i===14?'open':'shirt'],
-    ].map(([field,value])=>[field,{value,confidence:.94,margin:.35,evidence:'image-model'}]));
-    return {id:`TEST_SOURCE_${slot}_${i}`,macroCategory:slot,isShopItem:true,
-      subtype:{top:'dress-shirt',outerwear:'blazer',bottom:'tailored-trouser',
-        shoes:'loafer'}[slot],name:`Catalog photo ${slot} #${i}`,
-      imageUrl,shopUrl:`https://store.example/${slot}/${i}`,
-      price:100,currency:'USD',color:'navy',
-      visualSourceHash:'a'.repeat(32),
-      visualFashion:{version:1,sourceHash:'a'.repeat(32),imageUrl,
-        imageSha256:'b'.repeat(64),model:'licensed-original-observer',
-        revision:'source-current',attributes},
-    };
-  });
-  const catalog=slots.flatMap(variant);
-  const base=sourceBoundCompositionPool([],{additionalItems:catalog,
-    inventoryFirst:true,explorationSlots:4});
-  const evidence=sourceBoundCompositionPool([],{additionalItems:catalog,
-    inventoryFirst:true,explorationSlots:4,visualEvidenceFirst:true});
-  assert.equal(base.length,48);
-  assert.equal(evidence.length,48);
-  const diversity=rows=>Object.fromEntries(slots.map(slot=>[slot,
-    new Set(rows.filter(x=>x.slot===slot).flatMap(x=>
-      ['pattern','length','collar'].map(field=>
-        field+':'+(x.public.photo[field]||'unknown')))).size]));
-  const before=diversity(base),after=diversity(evidence);
-  for(const slot of slots){
-    assert.ok(after[slot]>=before[slot]+2,
-      'image-OBSERVED real garment details make first artist source menu richer');
-    assert.equal(evidence.filter(x=>x.slot===slot).length,12);
-  }
-  assert.equal(new Set(evidence.map(x=>x.item.id)).size,48);
-  assert.doesNotMatch(JSON.stringify(evidence.map(x=>x.public)),
-    /TEST_SOURCE_|source-evidence.example|store.example|imageUrl|visualSourceHash|imageSha256/);
-  // Source drift means the visual profile is NOT evidence. A corrupted/stale
-  // visual metadata row cannot be laundered as a verified image observation.
-  const stale=catalog.map(x=>({...x,imageUrl:x.imageUrl+'?newSource'}));
-  const oldStale=sourceBoundCompositionPool([],{additionalItems:stale,
-    inventoryFirst:true});
-  const newStale=sourceBoundCompositionPool([],{additionalItems:stale,
-    inventoryFirst:true,visualEvidenceFirst:true});
-  assert.deepEqual(newStale,oldStale,
-    'missing source-current image observations leave original source selection unchanged');
-  const explicitLicensed=new Set(slots.flatMap(slot=>[15,16,17].map(i=>
-    `TEST_SOURCE_${slot}_${i}`)));
-  const combined=sourceBoundCompositionPool([],{additionalItems:catalog,
-    inventoryFirst:true,photoFirstPriorityIds:explicitLicensed,visualEvidenceFirst:true});
-  for(const slot of slots)assert.ok(combined.filter(x=>
-    x.slot===slot&&explicitLicensed.has(x.item.id)).length>=3,
-  'source-hash RIGHTS-cleared original-photo choices still receive precedence');
-});
-
 test('rights-cleared, source-current photos actually reach all FOUR image-first columns inside a bounded 48-item artist menu',async()=>{
   // All JPEGs in this test are GENERATED NON-MERCHANT FIXTURES. Real server
   // readiness comes ONLY from separately validated per-source grant records.
