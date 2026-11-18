@@ -146,6 +146,46 @@ test('PHOTO-GROUNDED Creative Director and explicit personal taste reach initial
   assert.equal(output.briefs.length,3);
 });
 
+test('four-SKU catalog generation is a coherent FOUR-product Creative Director contract, not an optional random layer',async()=>{
+  const four={...request,sourceMode:'catalog',optionalLayer:false,
+    weather:{temp:22},brief:'Private exact four-piece style scenario'};
+  const inventory=directorInventory(catalog,four);
+  assert.equal(inventory.catalogFourItemIntent,true);
+  const schema=directorResponseSchema(inventory);
+  assert.equal(schema.properties.directions.items.properties.roles.properties.outerwear.minItems,1,
+    'warm weather may NOT cause a 3-item art direction when end-user requires four');
+  const executable=validateDirectorDirections(proposal,inventory);
+  assert.equal(executable.length,3);
+  assert.ok(executable.every(plan=>plan.roles.outerwear.length>=1&&
+    plan.layerPolicy==='required'),
+  'source composition must receive a thought-through genuine layer from the FIRST stylist');
+  const incomplete=structuredClone(proposal);
+  incomplete.directions[0].roles.outerwear=[];
+  assert.equal(validateDirectorDirections(incomplete,inventory).length,2,
+    'an invalid THREE-product artistic concept is not silently padded with a coat');
+  let sent=false;
+  const output=await designCreativeBriefs({
+    catalog,request:four,apiKey:'nvapi-test-four-piece-artistic-contract',
+    fetchImpl:async(_url,request)=>{
+      const payload=JSON.parse(request.body);
+      assert.equal(payload.response_format.json_schema.schema
+        .properties.directions.items.properties.roles.properties.outerwear.minItems,1);
+      assert.match(payload.messages[0].content,/meaningful chosen LAYER/);
+      assert.match(payload.messages[0].content,/rather than adding a random jacket/);
+      sent=true;
+      return fakeResponse(proposal);
+    },
+  });
+  assert.equal(sent,true);
+  assert.equal(output.status,'planned');
+  assert.ok(output.briefs.every(x=>x.layerPolicy==='required'));
+  const old=directorInventory(catalog,{...four,sourceMode:'mixed',optionalLayer:true});
+  assert.equal(old.catalogFourItemIntent,false,
+    'the actual unchanged wardrobe and mixed-mode optional-layer paths stay optional');
+  assert.equal(directorResponseSchema(old).properties.directions.items
+    .properties.roles.properties.outerwear.minItems,0);
+});
+
 test('a verified set of three directions is grounded to catalog subtypes and uniquely structured', () => {
   const inventory = directorInventory(catalog, request);
   const briefs = validateDirectorDirections(proposal, inventory);

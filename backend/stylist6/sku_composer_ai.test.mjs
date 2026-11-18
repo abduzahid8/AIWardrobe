@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {sourceBoundCompositionPool,groundedSkuDirections,
+  sourceGroundedCreativeCommissions,
   groundedPhotoRevisionFeedback,anonymousExplicitTasteHistory,
   validateSkuCompositions,composeCatalogSkuLooks,
   sourceVerifyComposedOutfits,AI_SKU_COMPOSER_VERSION,
@@ -345,6 +346,26 @@ test('Creative Director planning actually influences real SKU menu and the THREE
       'the plan must be executable with the REAL catalog item '+candidate.id);
   }
   const safeDirections=groundedSkuDirections(directions,pool);
+  const commissions=sourceGroundedCreativeCommissions(directions,pool);
+  assert.equal(commissions.length,3,
+    'three distinct creative stories must each have a real permitted SKU menu');
+  assert.deepEqual(commissions.map(x=>x.lookNumber),[1,2,3]);
+  for(const c of commissions){
+    assert.equal(c.creativeFreedom,'candidate_options_not_exclusions');
+    for(const slot of slots){
+      if(slot!=='outerwear'||c.lookNumber!==1)
+        assert.ok(c.sourceSkuOptionsByRole[slot].length>0);
+      // An intentionally layer-free NON-shoppable initial plan is not
+      // secretly manufactured into a claimed source jacket option.
+      if(slot==='outerwear'&&c.lookNumber===1)
+        assert.deepEqual(c.sourceSkuOptionsByRole.outerwear,[]);
+      assert.ok(c.sourceSkuOptionsByRole[slot].every(token=>
+        pool.some(x=>x.token===token&&x.slot===slot)),
+      'a concept proposal must name only existing real source garment tokens');
+    }
+  }
+  assert.doesNotMatch(JSON.stringify(commissions),
+    /EXTRA-MERINO|EXTRA-OVERSHIRT|PRIVATE_SKU|https:\/\/|images\.zara/);
   assert.equal(safeDirections.length,3);
   assert.equal(safeDirections[0].lookNumber,1);
   assert.ok(safeDirections[0].preferredAvailableSubtypes.top.includes('fine-knit'));
@@ -359,6 +380,8 @@ test('Creative Director planning actually influences real SKU menu and the THREE
       assert.match(message,/Soft precision tailoring/);
       assert.match(message,/Textural city casual/);
       assert.match(message,/inventoryGroundedDesignDirections/);
+      const payload=JSON.parse(message.slice(message.lastIndexOf('\n')+1));
+      assert.deepEqual(payload.creativeLookCommissions,commissions);
       assert.doesNotMatch(message,/EXTRA-MERINO|EXTRA-OVERSHIRT|https:\/\//);
       return result(slotAnswer(pool));
     },
@@ -586,6 +609,17 @@ test('full 12-per-role merchandise breadth commissions FOUR different looks from
       const args=JSON.parse(prompt.slice(prompt.lastIndexOf('\n')+1));
       assert.equal(args.previousUnreviewedArchitectures.length,4);
       const unused=args.unusedSourceBoundMerchandise;
+      assert.ok(Array.isArray(args.alternateCreativeCommissions));
+      assert.doesNotMatch(JSON.stringify(args.alternateCreativeCommissions),
+        /PRIVATE_SKU_|https:\/\/|DIVERSE_SOURCE_SKU/);
+      for(const commission of args.alternateCreativeCommissions){
+        for(const slot of slots){
+          const choices=commission.sourceSkuOptionsByRole[slot];
+          assert.ok(choices.every(token=>
+            unused[slot].some(item=>item.token===token)),
+          'independent studio can only reference the actual UNUSED source goods');
+        }
+      }
       for(const slot of slots){
         assert.ok(unused[slot].length>=4);
         for(const token of initial[slot].slice(0,4))
