@@ -77,9 +77,6 @@ export function stylist6CreativeServerConfig() {
     // Server-controlled only: makes real catalog cohort stable for a
     // controlled SAME-SKU artistic A/B, not a customer-controlled fetch flag.
     STYLIST6_STABLE_COHORT_ENABLED: envOf('STYLIST6_STABLE_COHORT_ENABLED'),
-    // Only the isolated 72s staging service changes the lead AI creator.
-    // A client body/header cannot choose or bypass the source-photo jury.
-    STYLIST6_KIMI_FIRST_ENABLED: envOf('STYLIST6_KIMI_FIRST_ENABLED'),
   };
 }
 

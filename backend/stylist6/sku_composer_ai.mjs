@@ -597,9 +597,6 @@ export async function composeCatalogSkuLooks({
   apiKey,fetchImpl=fetch,signal,timeoutMs=2600,parallel=false,
   layerRequired=false,allowLayer=true,resolvePhoto,authorizePhoto,
   crossLabRevision=false,initialStudioDuel=false,
-  // A/B only: change which real creative mind LEADS, not which real SKU,
-  // privacy or original-photograph gates accept the finished outfit.
-  preferKimiFirst=false,
 }={}){
   const visible=Array.isArray(pool)?pool.slice(0,48).map(x=>x.public):[];
   const bySlot=new Map(SLOTS.map(slot=>[slot,visible.filter(v=>v.slot===slot)]));
@@ -920,14 +917,8 @@ export async function composeCatalogSkuLooks({
     // approval, not a shortcut, a stale style rule or a weaker third look.
     const initialIndependentBackup=initialStudioDuel===true&&
       parallel===true&&!rescue&&target===6;
-    const runKimiFirst=initialIndependentBackup&&preferKimiFirst===true;
-    // The original head-to-head strategy repeatedly timed Kimi out in a
-    // tiny secondary 2–4s slot. Give the genuinely independent fashion
-    // creator its own first ~11s on the SAME full source menu (NO catalog
-    // split). Nemotron remains a real, exact-SKU fallback if Kimi fails.
     const studios=crossLab?[CROSS_LAB_REVISION_MODEL,MODEL]:
-      initialIndependentBackup?(runKimiFirst?
-        [CROSS_LAB_REVISION_MODEL,MODEL]:[MODEL,CROSS_LAB_REVISION_MODEL]):[MODEL];
+      initialIndependentBackup?[MODEL,CROSS_LAB_REVISION_MODEL]:[MODEL];
     let failure='provider_unavailable';
     for(const studio of studios){
       if(combined.aborted)break;
@@ -938,10 +929,8 @@ export async function composeCatalogSkuLooks({
       // doomed first try. The parent 72s limit, privacy and media quotas
       // stay untouched. Slow first responses may still be used if valid
       // before this scoped deadline.
-      const firstStudio=initialIndependentBackup&&studio===studios[0];
-      const firstStudioMs=runKimiFirst
-        ?Math.min(11300,Math.max(1500,timeoutMs-4700))
-        :Math.min(10500,Math.max(1500,timeoutMs-5600));
+      const firstStudio=initialIndependentBackup&&!isKimi;
+      const firstStudioMs=Math.min(10500,Math.max(1500,timeoutMs-5600));
       const providerSignal=firstStudio
         ?AbortSignal.any([combined,AbortSignal.timeout(firstStudioMs)]):combined;
       let res;
@@ -996,14 +985,9 @@ export async function composeCatalogSkuLooks({
           // studio's six original source-authentic looks are the fallback.
           let composed=choices;
           let artist=isKimi
-            ?rescue?'cross_lab_kimi':runKimiFirst?'cross_lab_kimi_primary'
-              :'cross_lab_kimi_initial_fallback'
-            :crossLab?'nemotron_fallback':runKimiFirst?'nemotron_after_kimi'
-              :'nemotron';
-          // In the Kimi-first A/B, a responding primary Kimi is already an
-          // independent DIFFERENT-LAB creative decision. Do not ask it again
-          // after a fallback Nemotron result; that would waste photo time.
-          if(!runKimiFirst&&initialStudioDuel===true&&parallel&&!rescue&&!isKimi&&
+            ?rescue?'cross_lab_kimi':'cross_lab_kimi_initial_fallback'
+            :crossLab?'nemotron_fallback':'nemotron';
+          if(initialStudioDuel===true&&parallel&&!rescue&&!isKimi&&
               target===6&&choices.length>=3&&!combined.aborted){
             // The visual critic ALREADY budgets eight original-photo
             // candidates. Earlier 3+3 audition used only six of those
