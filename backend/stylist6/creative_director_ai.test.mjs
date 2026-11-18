@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CREATIVE_DIRECTOR_VERSION, directorInventory, directorResponseSchema,
+  CREATIVE_DIRECTOR_VERSION, directorInventory, directorVisualAtlas, directorResponseSchema,
   validateDirectorDirections, designCreativeBriefs,
 } from './creative_director_ai.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
@@ -54,6 +54,96 @@ test('director transmits only anonymized inventory plus explicit bounded style e
   assert.ok(!JSON.stringify(inventory).includes('Private user-owned shirt'));
   assert.ok(!JSON.stringify(inventory).includes('PRIVATE BRAND'));
   assert.equal(inventory.weatherCelsius, 9);
+});
+
+test('Creative Director observes REAL source-current visual clothes, never merchant-photo guesses or identities',()=>{
+  const photoItem=(source,slot,subtype,color,{stale=false,uncertain=false}={})=>{
+    const original='https://original-merchant.invalid/PRIVATE-SOURCE-PHOTO.jpg';
+    const hash='a'.repeat(32);
+    const observation=(value,confidence=.96)=>({value,confidence,margin:.23,evidence:'image-model'});
+    return {id:'SECRET_PHYSICAL_ID_'+source,macroCategory:slot,subtype,
+      imageUrl:original,visualSourceHash:hash,price:1299,shopUrl:'https://PRIVATE_SOURCE_URL',
+      name:'PRIVATE SKIN COLOR OFFICE FASHION',
+      visualFashion:{version:1,sourceHash:stale?'b'.repeat(32):hash,
+        imageUrl:original,imageSha256:'c'.repeat(64),
+        model:'source-photo-extractor',revision:'v1',attributes:{
+          color:observation(color,uncertain?.52:.96),
+          texture:observation('tweed'),volume:observation('regular'),
+          pattern:observation('solid'),
+        }},
+    };
+  };
+  const evidence=[
+    ...catalog,photoItem(1,'outerwear','blazer','navy'),
+    photoItem(2,'outerwear','blazer','olive'),
+    photoItem(3,'outerwear','blazer','grey',{stale:true}),
+    photoItem(4,'outerwear','coat','camel',{uncertain:true}),
+  ];
+  const taste={active:true,featureEvidence:[
+    {weight:.92,features:[['fine-knit','regular','camel','knit','solid'],
+      ['coat','long','olive','tweed','solid'],
+      ['chino','straight','stone','cotton','solid'],
+      ['chelsea','sleek','brown','suede','solid']]},
+    {weight:-.87,features:[['dress-shirt','slim','white','cotton','solid'],
+      ['blazer','regular','navy','wool','solid'],
+      ['tailored-trouser','straight','black','wool','solid'],
+      ['oxford','sleek','black','leather','solid']]},
+  ]};
+  const info=directorInventory(evidence,request,{feedbackTaste:taste});
+  const atlas=directorVisualAtlas(evidence,info.available);
+  assert.deepEqual(info.verifiedGarmentVisualAtlas,atlas);
+  const blazers=atlas.outerwear.find(x=>x.subtype==='blazer');
+  assert.equal(blazers.observedGarments,2,
+    'stale profile must NEVER become reliable visual designer evidence');
+  assert.deepEqual(blazers.garmentExamples.map(x=>x.color),['navy','olive']);
+  const coats=atlas.outerwear.find(x=>x.subtype==='coat');
+  assert.equal(coats.observedGarments,1);
+  assert.ok(!Object.hasOwn(coats.garmentExamples[0],'color'),
+    'weak confidence colors must stay UNKNOWN, even when text advertises them');
+  assert.equal(coats.garmentExamples[0].texture,'tweed');
+  assert.equal(info.explicitLookTaste.liked[0].top.subtype,'fine-knit');
+  assert.equal(info.explicitLookTaste.disliked[0].outerwear.subtype,'blazer');
+  const payload=JSON.stringify(info);
+  assert.doesNotMatch(payload,/SECRET_PHYSICAL|PRIVATE[_ -]SOURCE|PRIVATE SKIN|sourceHash|imageSha256|imageUrl|shopUrl|source-photo-extractor|original-merchant/i);
+  assert.ok(payload.length<15000,
+    'a small, bounded fashion evidence atlas can scale without huge payloads');
+});
+
+test('PHOTO-GROUNDED Creative Director and explicit personal taste reach initial AI choice, not only late SKU ranking',async()=>{
+  const source={...catalog[0],id:'PRIVATE_REAL_SHIRT_IDENTIFIER',
+    imageUrl:'https://private-merchant.invalid/photo.jpg',
+    visualSourceHash:'f'.repeat(32),visualFashion:{
+      version:1,sourceHash:'f'.repeat(32),
+      imageUrl:'https://private-merchant.invalid/photo.jpg',
+      imageSha256:'e'.repeat(64),model:'original-image-observer',revision:'v1',
+      attributes:{color:{value:'white',confidence:.95,margin:.19,evidence:'image-model'},
+        volume:{value:'regular',confidence:.94,margin:.21,evidence:'image-model'}},
+    }};
+  const history={active:true,featureEvidence:[{weight:.9,
+    features:[['fine-knit','regular','cream','knit','solid'],
+      ['cardigan','regular','brown','ribbed','solid'],
+      ['chino','straight','stone','cotton','solid'],
+      ['loafer','sleek','brown','suede','solid']]}]};
+  const scenario={...request,brief:'PHOTO ATLAS SOURCE WORK TEST v2'};
+  let inspected=false;
+  const output=await designCreativeBriefs({
+    catalog:[source,...catalog.slice(1)],request:scenario,feedbackTaste:history,
+    apiKey:'nvapi-test-photo-atlas-to-creative-director',
+    highTaste:true,fetchImpl:async(_url,req)=>{
+      const body=JSON.parse(req.body);
+      assert.equal(body.model,'nvidia/nemotron-3.5-super-vl-120b-a12b');
+      assert.match(body.messages[0].content,/INDIVIDUAL real garments/);
+      const data=JSON.parse(body.messages[0].content.split('\n').at(-1));
+      assert.equal(data.currentInventory.verifiedGarmentVisualAtlas.top[0].garmentExamples[0].color,'white');
+      assert.equal(data.currentInventory.explicitLookTaste.liked[0].outerwear.subtype,'cardigan');
+      assert.doesNotMatch(JSON.stringify(data),/PRIVATE_REAL_SHIRT_IDENTIFIER|private-merchant|original-image-observer|imageSha256/);
+      inspected=true;
+      return fakeResponse(proposal);
+    },
+  });
+  assert.equal(inspected,true);
+  assert.equal(output.status,'planned');
+  assert.equal(output.briefs.length,3);
 });
 
 test('a verified set of three directions is grounded to catalog subtypes and uniquely structured', () => {

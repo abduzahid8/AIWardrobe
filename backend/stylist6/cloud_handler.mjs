@@ -1494,7 +1494,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     nextPhase('creative_architecture');
     const creativePlan = creativeDirectorEnabled
       ? await designCreativeBriefs({
-          catalog: feasible, request: input,
+          catalog: feasible, request: input,feedbackTaste,
           apiKey: env.NVIDIA_API_KEY || '',
           ...(fetchImpl ? { fetchImpl } : {}),
           signal: deadlineController.signal,
@@ -1826,6 +1826,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             'anchor_outfit_unavailable'].includes(failureCode)
             ?failureCode:'other',
           creativePlanCount:Math.min(3,creativePlan.briefs.length),
+          creativePlanVisualExamples:Math.max(0,Math.min(64,
+            Number(creativePlan.visualAtlasExamples)||0)),
           creativePlanStatus:['planned','planned_partial','cached','invalid_plan',
             'disabled_or_deadline','timeout','provider_unavailable','not_configured']
             .includes(creativePlan.status)?creativePlan.status:'other',
@@ -1913,6 +1915,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       console.info('stylist6_safe_visual_quality', {
         ...safeTrace,
         creativePlanCount:Math.min(3,creativePlan.briefs.length),
+        creativePlanVisualExamples:Math.max(0,Math.min(64,
+          Number(creativePlan.visualAtlasExamples)||0)),
         creativePlanStatus:['planned','planned_partial','cached','invalid_plan',
           'disabled_or_deadline','timeout','provider_unavailable','not_configured']
           .includes(creativePlan.status)?creativePlan.status:'other',

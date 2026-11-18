@@ -2,8 +2,9 @@
  * Stylist 6 — inventory-grounded AI Creative Director.
  *
  * This is a planning step, NOT a product selector or a quality verdict.
- * It sees only aggregate garment subtypes and a bounded, explicit style
- * request. It NEVER sees private garment photos, user IDs, tokens, prices,
+ * It sees source-current verified photo-FEATURE examples, source subtype
+ * availability and bounded explicit human taste (never raw images).
+ * It NEVER sees private garment photos, user IDs, tokens, prices,
  * shop links or wardrobe item names, and can NEVER invent a purchasable SKU.
  *
  * The existing deterministic retrieval/hard gates and independent hosted
@@ -12,6 +13,8 @@
  */
 import { createHash } from 'node:crypto';
 import {editorialTextMoodboards} from './editorial_text_moodboards.mjs';
+import {currentVisual,confidentVisual} from '../../src/domain/visualFashion.ts';
+import {anonymousExplicitTasteHistory} from './sku_composer_ai.mjs';
 
 export const CREATIVE_DIRECTOR_VERSION = 's6-creative-director-v1';
 // The existing 30B planner remains available for 50s previews. On the
@@ -83,10 +86,63 @@ const knownAvoidPatterns = value => [...new Set(safeList(value)
   }).filter(Boolean))];
 
 /**
+ * A compact ORIGINAL-VISUAL evidence atlas for the *creative decision*,
+ * before SKU composition. Each example is one real garment's linked,
+ * source-hash-current image observations (never an artificial average outfit).
+ * Merchant titles, guessed textile data, raw photo bytes and product identity
+ * are excluded. Low-confidence or stale photo profiles contribute NOTHING.
+ *
+ * This supplies visual *possibilities*, NOT hard aesthetic pairing rules:
+ * the Creative Director can invent its own coherent material/silhouette ideas,
+ * and source/stock/weather/budget + whole-outfit photo critic still decide
+ * which four authentic products are actually admitted and displayed.
+ */
+const DIRECTOR_VISUAL_FIELDS = ['color','texture','volume','length',
+  'formality','pattern','soleProfile','collar'];
+export function directorVisualAtlas(catalog,available) {
+  const groups=Object.fromEntries(SLOTS.map(slot=>[slot,new Map()]));
+  const known=Object.fromEntries(SLOTS.map(slot=>[slot,new Set(
+    (available?.[slot]||[]).slice(0,24).map(x=>x.subtype))]));
+  for (const item of Array.isArray(catalog)?catalog:[]) {
+    const slot=item?.macroCategory,subtype=item?.subtype;
+    if (!Object.hasOwn(groups,slot)||!known[slot].has(subtype))continue;
+    const visual=currentVisual(item);
+    if(!visual)continue;
+    const observedSlot=visual.attributes.slot;
+    if(confidentVisual(observedSlot)&&observedSlot.value!==slot)continue;
+    const example=Object.fromEntries(DIRECTOR_VISUAL_FIELDS.flatMap(key=>{
+      const obs=visual.attributes[key];
+      if(!confidentVisual(obs)||typeof obs.value!=='string'||
+          !/^[a-z][a-z0-9_-]{1,31}$/i.test(obs.value))return [];
+      return [[key,obs.value.toLowerCase()]];
+    }));
+    if(!Object.keys(example).length)continue;
+    const all=groups[slot];
+    if(!all.has(subtype))all.set(subtype,{observedGarments:0,garmentExamples:[],seen:new Set()});
+    const row=all.get(subtype);
+    row.observedGarments++;
+    const signature=JSON.stringify(example);
+    if(!row.seen.has(signature)&&row.garmentExamples.length<2){
+      row.seen.add(signature);row.garmentExamples.push(example);
+    }
+  }
+  // Prefer the most visually documented real constructions, not a fixed
+  // fashion taxonomy or an invented 'better' subtype. Maximum eight subtype
+  // families per slot and two true one-garment examples per family.
+  return Object.fromEntries(SLOTS.map(slot=>[slot,
+    [...groups[slot].entries()]
+      .sort((a,b)=>b[1].observedGarments-a[1].observedGarments||
+        a[0].localeCompare(b[0])).slice(0,8)
+      .map(([subtype,row])=>({subtype,observedGarments:row.observedGarments,
+        garmentExamples:row.garmentExamples})),
+  ]));
+}
+
+/**
  * Anonymized inventory capacity, never raw merchant names, SKU IDs or photos.
  * Only actual admitted catalog/wardrobe rows can supply a candidate subtype.
  */
-export function directorInventory(catalog, request = {}) {
+export function directorInventory(catalog, request = {}, {feedbackTaste=null}={}) {
   const bySlot = Object.fromEntries(SLOTS.map(slot => [slot, new Map()]));
   for (const item of Array.isArray(catalog) ? catalog : []) {
     const slot = item?.macroCategory;
@@ -122,6 +178,12 @@ export function directorInventory(catalog, request = {}) {
         ? preferences.fitPreference : '',
     },
     available,
+    // Actual source-current garment pixels, expressed ONLY as verified
+    // anonymous visual facets. This is not permission to rehost photos.
+    verifiedGarmentVisualAtlas:directorVisualAtlas(catalog,available),
+    // Only the authenticated wearer's explicit look-level feedback evidence.
+    // No SKU, user ID, URL, timestamps or inferred sensitive preferences.
+    explicitLookTaste:anonymousExplicitTasteHistory(feedbackTaste),
   };
 }
 
@@ -274,10 +336,17 @@ async function boundedProviderText(response) {
  */
 export async function designCreativeBriefs({
   catalog, request, apiKey, fetchImpl = fetch, signal, timeoutMs = 7500,
-  highTaste = false,
+  highTaste = false,feedbackTaste=null,
 } = {}) {
   const model=highTaste===true?ART_DIRECTOR_MODEL:MODEL;
-  const inventory = directorInventory(catalog, request);
+  const inventory = directorInventory(catalog, request,{feedbackTaste});
+  // Count only actually observed anonymous garment examples. Expose this
+  // single aggregate for REAL staging QA: 0 proves visual-first planning
+  // silently had no meaningful source photo evidence, even if AI returned 3.
+  const visualAtlasExamples=Object.values(inventory.verifiedGarmentVisualAtlas)
+    .reduce((total,rows)=>total+rows.reduce((n,row)=>
+      n+row.garmentExamples.length,0),0);
+  const evidenceReceipt={visualAtlasExamples:Math.min(64,visualAtlasExamples)};
   // The owner supplied 46 manually annotated flat-lay outfit examples.
   // Their image rights are NOT independently verified. Retrieve ONLY
   // non-identity TEXT clothing relationships here, never their photos.
@@ -288,17 +357,17 @@ export async function designCreativeBriefs({
     preferences:request?.preferences,
   });
   if (!inventory.available.top.length || !inventory.available.bottom.length ||
-      !inventory.available.shoes.length) return { status: 'insufficient_inventory', briefs: [], providerCalls: 0 };
+      !inventory.available.shoes.length) return { status: 'insufficient_inventory', briefs: [], providerCalls: 0,...evidenceReceipt };
   if (directorResponseSchema(inventory).properties.directions.items.properties.palette.items.enum.length < 2)
-    return { status: 'insufficient_palette', briefs: [], providerCalls: 0 };
+    return { status: 'insufficient_palette', briefs: [], providerCalls: 0,...evidenceReceipt };
   if (typeof apiKey !== 'string' || !apiKey.startsWith('nvapi-')) {
-    return { status: 'not_configured', briefs: [], providerCalls: 0 };
+    return { status: 'not_configured', briefs: [], providerCalls: 0,...evidenceReceipt };
   }
   const key = createHash('sha256').update(model+'|'+JSON.stringify(inventory)).digest('hex');
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at <= TTL_MS) {
     cache.delete(key); cache.set(key, hit);
-    return { status: 'cached', briefs: hit.briefs, providerCalls: 0 };
+    return { status: 'cached', briefs: hit.briefs, providerCalls: 0,...evidenceReceipt };
   }
   // Coalesce identical in-flight profile requests. On sudden traffic spikes
   // shed new planner calls rather than spending unbounded AI tokens; house
@@ -307,10 +376,10 @@ export async function designCreativeBriefs({
   if (running) {
     const outcome = await running;
     return { ...outcome, status: outcome.briefs.length === 3 ? 'shared' :
-      outcome.briefs.length > 0 ? 'shared_partial' : outcome.status, providerCalls: 0 };
+      outcome.briefs.length > 0 ? 'shared_partial' : outcome.status, providerCalls: 0,...evidenceReceipt };
   }
   if (activeProviderCalls >= MAX_CONCURRENT_PROVIDER_CALLS)
-    return { status: 'load_shed', briefs: [], providerCalls: 0 };
+    return { status: 'load_shed', briefs: [], providerCalls: 0,...evidenceReceipt };
   activeProviderCalls++;
   const task = (async () => {
   // No unbounded model work can hold up a paid generation request.
@@ -325,6 +394,19 @@ export async function designCreativeBriefs({
       'different, tasteful, wearable complete-outfit DIRECTIONS for the supplied',
       'explicit user style and occasion. These are concepts, NOT products.',
       'Use ONLY garment SUBTYPE tokens actually listed by slot in the inventory.',
+      'The verifiedGarmentVisualAtlas gives ACTUAL source-current photo',
+      'observations of INDIVIDUAL real garments, not inferred outfits:',
+      'use available photographed colors, shape, volume and textures to',
+      'imagine three visually compelling, distinct four-piece ensembles.',
+      'Photo observation UNKNOWN means unknown, never infer from text.',
+      'Each garmentExample describes ONE available product; never mix',
+      'facets from separate examples and pretend one such SKU exists.',
+      'Do not make a generic blazer uniform if actual contrasting garment',
+      'constructions can support a stronger occasion-appropriate vision.',
+      'explicitLookTaste contains only the wearers explicit previous',
+      'liked and disliked whole-outfit construction evidence. Use it to',
+      'make personalized creative decisions, not hard one-item bans.',
+      'No photo hosting or model inference rights are implied by the atlas.',
       'Use up to 3 subtypes for each role, or zero outerwear subtypes only when',
       'appropriate for warm weather. Include top, bottom and shoes in every plan.',
       'Make three genuinely different silhouette/material/formality concepts.',
@@ -379,13 +461,13 @@ export async function designCreativeBriefs({
       throw new Error('provider_incomplete');
     const proposed = JSON.parse(choice.message.content);
     const briefs = validateDirectorDirections(proposed, inventory);
-    if (!briefs.length) return { status: 'invalid_plan', briefs: [], providerCalls: 1 };
+    if (!briefs.length) return { status: 'invalid_plan', briefs: [], providerCalls: 1,...evidenceReceipt };
     cache.set(key, { briefs, at: Date.now() });
     while (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value);
-    return { status: briefs.length === 3 ? 'planned' : 'planned_partial', briefs, providerCalls: 1 };
+    return { status: briefs.length === 3 ? 'planned' : 'planned_partial', briefs, providerCalls: 1,...evidenceReceipt };
   } catch (error) {
     const reason = combinedSignal.aborted ? 'timeout' : 'provider_unavailable';
-    return { status: reason, briefs: [], providerCalls: Number(called) };
+    return { status: reason, briefs: [], providerCalls: Number(called),...evidenceReceipt };
   } finally {
     clearTimeout(timer);
   }
