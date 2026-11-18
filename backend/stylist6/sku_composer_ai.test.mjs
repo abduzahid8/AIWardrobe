@@ -472,6 +472,14 @@ test('first-pass AI fashion uses TWO independent studios before PHOTO review to 
       assert.match(words,/SECOND INDEPENDENT exceptional menswear FASHION DESIGNER/);
       const bounded=JSON.parse(words.slice(words.lastIndexOf('\n')+1));
       assert.equal(bounded.previousUnreviewedArchitectures.length,3);
+      assert.equal(bounded.optionalHumanCaptionedLookbookIdeas.length,3,
+        'independent Kimi designer sees diverse real human-captioned whole-look inspiration, not only discarded architectures');
+      assert.ok(bounded.optionalHumanCaptionedLookbookIdeas.some(x=>
+        /(?:t-shirt|tee|polo)/i.test(x.roleDescriptions.top)),
+        'second studio gets an alternative real date-night neckline, rather than inheriting three knit ideas');
+      assert.doesNotMatch(JSON.stringify(bounded.optionalHumanCaptionedLookbookIdeas),
+        /https?:\/\/|media_sha256|PRIVATE_SKU|shopUrl|rights_basis|image_url/,
+        'human-captioned references convey concepts only, no raw photos, SKU identifiers or licensing bypass');
       const secondary=bounded.unusedSourceBoundMerchandise;
       for(const slot of slots){
         assert.equal(secondary[slot].length,3);

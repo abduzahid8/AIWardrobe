@@ -17,6 +17,23 @@ const clean=(x,max=92)=>typeof x==='string'
     .replace(/[\u0000-\u001f<>{}]/g,' ').replace(/\s+/g,' ').trim().slice(0,max):'';
 const standardized=x=>clean(x,60).toLowerCase().replace(/[\s-]+/g,'_');
 const suffix=x=>clean(x,75).toLowerCase().split(/[\s-]+/).at(-1)||'';
+// Source archive captions describe outfit IDEAS, not real merchant SKUs.
+// A planner was receiving 3 turtleneck/knit examples for Classic/Date and
+// Classic/Work despite REAL user-captioned shirt, tee, polo and woven looks
+// in the same 46-reference archive. Normalize synonymous top silhouettes
+// ONLY for selecting diverse human-text ideas. This is NOT an outfit
+// compatibility rule, catalogue ban or inference about a product photo.
+const referenceTopConstruction=value=>{
+  const label=clean(value,90).toLowerCase();
+  if(/(?:turtleneck|mockneck|roll[\s-]?neck|high[\s-]?neck)/.test(label))
+    return 'high_neck_knit';
+  if(/(?:dress[\s-]?shirt|collared[\s-]?shirt|button[\s-]?down|button[\s-]?up)/.test(label))
+    return 'collared_shirt';
+  if(/(?:polo)/.test(label))return 'polo';
+  if(/(?:t[\s-]?shirt|\btee\b)/.test(label))return 'tee';
+  if(/(?:sweater|knit|crewneck)/.test(label))return 'other_knit';
+  return suffix(label);
+};
 const words=x=>new Set(clean(x,75).toLowerCase().split(/[^a-z]+/g)
   .filter(token=>token.length>=4));
 const overlap=(a,b)=>{
@@ -64,6 +81,7 @@ export function editorialTextMoodboards({
     if(!styleScore)return [];
     return [{styleScore,palette,garments,
       roleSignature:suffix(garments.outerwear),
+      topConstruction:referenceTopConstruction(garments.top),
       styleContext:styles.includes(s)?'matched':'adjacent'}];
   });
   if(!candidates.length)return [];
@@ -72,10 +90,16 @@ export function editorialTextMoodboards({
     remaining.sort((a,b)=>{
       const quality=x=>{
         const sameLayer=selected.some(y=>y.roleSignature===x.roleSignature);
+        const sameTop=selected.some(y=>y.topConstruction===x.topConstruction);
         const similarities=selected.map(y=>
           SLOTS.reduce((sum,slot)=>sum+overlap(y.garments[slot],x.garments[slot]),0)/4);
         const closest=similarities.length?Math.max(...similarities):0;
-        return x.styleScore-(sameLayer?16:0)-closest*12;
+        // Favor a balanced collection of different HUMAN-REFERENCED
+        // garment architectures, not three superficially different colors
+        // of the same high-neck knit. Outer-layer construction remains a
+        // major component of silhouette distinction. Actual wearable SKU
+        // choice belongs entirely to the two creative models and photo jury.
+        return x.styleScore-(sameLayer?18:0)-(sameTop?14:0)-closest*12;
       };
       return quality(b)-quality(a)||
         a.roleSignature.localeCompare(b.roleSignature)||
