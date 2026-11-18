@@ -169,9 +169,11 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       .includes(f.photoEditorial?.visualJury)
       ?f.photoEditorial.visualJury:'not_run',
     photoEditorialIndependentJury:['not_run','agreed','narrowed',
-      'disagreed','unavailable','standalone']
+      'disagreed','unavailable','standalone',
+      'arbitrated_second','arbitrated_primary']
       .includes(f.photoEditorial?.independentJury)
       ?f.photoEditorial.independentJury:'not_run',
+    photoEditorialIndependentVoteSize:safe(f.photoEditorial?.independentVoteSize,3),
     photoEditorialVisualMedia:['ready','not_run','invalid_input',
       'unauthorized_or_missing','deadline','source_missing',
       'photo_processing','oversized']
@@ -1749,6 +1751,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             // Different-lab independent VISUAL fashion curator. Bounded
             // parallel trial on isolated >=72s staging only; never S5.
             independentVisionJury:budgetMs>=70000,
+            // Only TWO conflicting, already source- and PHOTO-verified
+            // collection votes trigger a bounded third creative arbiter.
+            // No prod S5, no new garment/photo inference, no third-card fill.
+            crossLabTieBreak:budgetMs>=70000,
             ...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:Math.min(9600,Math.max(500,left-3300)),

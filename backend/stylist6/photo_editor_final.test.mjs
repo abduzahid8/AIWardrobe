@@ -434,6 +434,93 @@ test('cross-lab photo fallback cannot select a fabricated F-token after primary 
   assert.equal(tried.filter(x=>x==='moonshotai/kimi-k3.1-pro').length,1);
 });
 
+test('conflicting ORIGINAL-PHOTO editor votes trigger independent third fashion judgment ONLY between already verified photo portfolios',async()=>{
+  const jpeg=await sharp({create:{width:100,height:130,channels:3,
+    background:'#788790'}}).jpeg().toBuffer();
+  const calls=[];
+  let thirdPayload=null;
+  const selected=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-cross-lab-photo-disagreement',
+    timeoutMs:9600,independentVisionJury:true,crossLabTieBreak:true,
+    authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:jpeg}),
+    fetchImpl:async(_url,req)=>{
+      const b=JSON.parse(req.body);
+      calls.push(b);
+      if(b.model==='moonshotai/kimi-k3.1-pro')return result('F00');
+      if(b.model===PHOTO_PORTFOLIO_VISION_MODEL)return result('F01');
+      thirdPayload=b;
+      return result('F00');
+    },
+  });
+  assert.deepEqual(new Set(calls.map(x=>x.model)),new Set([
+    'moonshotai/kimi-k3.1-pro',PHOTO_PORTFOLIO_VISION_MODEL,
+    'nvidia/nemotron-3.5-lightning-30b-a3b']));
+  assert.equal(selected.providerCalls,3);
+  assert.equal(thirdPayload.model,'nvidia/nemotron-3.5-lightning-30b-a3b');
+  assert.equal(thirdPayload.response_format.type,'json_schema');
+  assert.deepEqual(thirdPayload.response_format.json_schema.schema.properties.portfolio.enum,
+    ['F01','F00'],'referee cannot select any third unspecified portfolio');
+  assert.match(thirdPayload.messages[0].content,/INDEPENDENT FINAL FASHION ARBITER/);
+  assert.match(thirdPayload.messages[0].content,/original-photo/i);
+  assert.match(thirdPayload.messages[0].content,/NEVER suppress a\s+third excellent/i);
+  assert.doesNotMatch(thirdPayload.messages[0].content,
+    /SECRET-CLIENT|PRIVATE-|private\.example|https:\/\//i);
+  assert.equal(selected.independentJury,'arbitrated_second');
+  assert.equal(selected.independentVoteSize,3);
+  assert.equal(selected.visualJury,'applied');
+  assert.equal(selected.status,'selected');
+  assert.equal(selected.portfolioToken,'F00');
+  assert.deepEqual(selected.tokens,['L00','L01','L02'],
+    'an actually photo-verified feasible triple is allowed when third arbiter decides it adds fashion value');
+});
+
+test('third fashion arbiter may prefer stronger TWO-look primary choice, never forces three cards',async()=>{
+  const jpeg=await sharp({create:{width:105,height:115,channels:3,
+    background:'#9b958d'}}).jpeg().toBuffer();
+  const verdict=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    apiKey:'nvapi-verify-beauty-not-count',timeoutMs:9300,
+    independentVisionJury:true,crossLabTieBreak:true,
+    authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:jpeg}),
+    fetchImpl:async(_url,req)=>{
+      const model=JSON.parse(req.body).model;
+      return result(model==='moonshotai/kimi-k3.1-pro'?'F00':'F01');
+    },
+  });
+  assert.equal(verdict.providerCalls,3);
+  assert.equal(verdict.independentJury,'arbitrated_primary');
+  assert.equal(verdict.independentVoteSize,3);
+  assert.equal(verdict.portfolioToken,'F01');
+  assert.deepEqual(verdict.tokens,['L02','L00']);
+});
+
+test('unavailable or invented third vote never changes original source-and-photo-verified portfolio',async()=>{
+  const jpeg=await sharp({create:{width:99,height:111,channels:3,
+    background:'#847e78'}}).jpeg().toBuffer();
+  for(const mode of ['unavailable','fabricated']){
+    const decision=await selectPhotoEditorialDeck({
+      looks,critiques:reviews,portfolios:verifiedMenu,
+      apiKey:'nvapi-no-unverified-inclusion',timeoutMs:9500,
+      independentVisionJury:true,crossLabTieBreak:true,
+      authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:jpeg}),
+      fetchImpl:async(_url,req)=>{
+        const model=JSON.parse(req.body).model;
+        if(model==='moonshotai/kimi-k3.1-pro')return result('F00');
+        if(model===PHOTO_PORTFOLIO_VISION_MODEL)return result('F01');
+        return mode==='unavailable'?Response.json({error:'temporary'},{status:503})
+          :result('F99');
+      },
+    });
+    assert.equal(decision.providerCalls,3);
+    assert.equal(decision.independentJury,'disagreed');
+    assert.equal(decision.independentVoteSize,3);
+    assert.deepEqual(decision.tokens,['L02','L00']);
+    assert.equal(decision.portfolioToken,'F01');
+  }
+});
+
 test('independent studio jury may NEVER add a nonprimary look, silently override NVIDIA, or weaken unavailable-model fallback',async()=>{
   const jpeg=await sharp({create:{width:110,height:135,channels:3,
     background:'#7c8580'}}).jpeg().toBuffer();

@@ -2727,8 +2727,11 @@ export async function recommendFashionDeck({
               'invalid_selection','timeout','provider_unavailable','unavailable']
               .includes(decision?.visualJury)?decision.visualJury:'not_run',
             independentJury:['not_run','agreed','narrowed',
-              'disagreed','unavailable','standalone'].includes(decision?.independentJury)
+              'disagreed','unavailable','standalone',
+              'arbitrated_second','arbitrated_primary'].includes(decision?.independentJury)
               ?decision.independentJury:'not_run',
+            independentVoteSize:Number.isInteger(decision?.independentVoteSize)
+              ?Math.max(1,Math.min(3,decision.independentVoteSize)):null,
             visualMediaStatus:['ready','not_run','invalid_input',
               'unauthorized_or_missing','deadline','source_missing',
               'photo_processing','oversized']
@@ -3009,9 +3012,16 @@ export async function recommendFashionDeck({
                             // lab jury (not the earlier F-token vote) must
                             // determine the emitted monitoring receipt.
                             if(['not_run','agreed','narrowed','disagreed',
-                                'unavailable','standalone'].includes(revisedDecision.independentJury))
+                                'unavailable','standalone',
+                                'arbitrated_second','arbitrated_primary']
+                                .includes(revisedDecision.independentJury)){
                               editorial.independentJury=
                                 revisedDecision.independentJury;
+                              editorial.independentVoteSize=
+                                Number.isInteger(revisedDecision.independentVoteSize)
+                                ?Math.max(1,Math.min(3,revisedDecision.independentVoteSize))
+                                :null;
+                            }
                             editorial.status='applied';
                           }
                         }
