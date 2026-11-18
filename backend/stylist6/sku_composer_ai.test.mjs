@@ -614,6 +614,65 @@ test('full 12-per-role merchandise breadth commissions FOUR different looks from
   assert.ok(verified.every(look=>look.items.length===4));
 });
 
+test('independent creator keeps photo-grounded context and salvages only valid four-SKU designs',async()=>{
+  const extras=Array.from({length:6},(_,i)=>slots.map((slot,j)=>({
+    ...items[i][j],id:'DIVERSE_SOURCE_SKU_'+i+'_'+j,
+    name:'PUBLIC stylist alternative '+slot+' '+i,
+    subtype:['fine-knit','overshirt','chino','chelsea'][j],
+    color:['olive','cream','navy','grey','beige','brown'][i],
+  }))).flat();
+  const pool=sourceBoundCompositionPool(looks,{
+    additionalItems:extras,inventoryFirst:true,explorationSlots:4,
+  });
+  const six=Object.fromEntries(slots.map(slot=>[
+    slot,pool.filter(p=>p.slot===slot).slice(0,6).map(p=>p.token),
+  ]));
+  let secondSeen=false;
+  const composed=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-test-valid-photo-slate-salvage',
+    layerRequired:true,parallel:true,outfitCount:6,
+    initialStudioDuel:true,timeoutMs:15000,
+    fetchImpl:async(_url,opts)=>{
+      const payload=JSON.parse(opts.body);
+      if(payload.model!===CROSS_LAB_REVISION_MODEL)
+        return result({slotPicks:six});
+      secondSeen=true;
+      const prompt=payload.messages[0].content;
+      const bounded=JSON.parse(prompt.slice(prompt.lastIndexOf('\n')+1));
+      const architecture=bounded.previousUnreviewedArchitectures[0];
+      assert.equal(typeof architecture.top.subtype,'string');
+      assert.equal(typeof architecture.top.photo,'object');
+      assert.equal(typeof architecture.top.catalogTextClues,'object');
+      assert.doesNotMatch(JSON.stringify(bounded),
+        /PRIVATE_SKU|DIVERSE_SOURCE_SKU|images\.zara|shopUrl|imageUrl|https?:\/\//);
+      const alternate=bounded.unusedSourceBoundMerchandise;
+      const picks=Object.fromEntries(slots.map(slot=>[
+        slot,alternate[slot].slice(0,4).map(x=>x.token),
+      ]));
+      picks.shoes[3]='P999'; // ONE invalid fourth outfit cannot erase 3 valid ones.
+      return result({slotPicks:picks});
+    },
+  });
+  assert.equal(secondSeen,true);
+  assert.equal(composed.status,'composed');
+  assert.equal(composed.providerFamily,'nemotron_plus_kimi_initial');
+  assert.equal(composed.providerCalls,2);
+  assert.ok(composed.looks.length>=7&&composed.looks.length<=8,
+    'three valid new candidates and compatible old looks may fill the eight-photo audition');
+  assert.ok(composed.looks.every(look=>look.length===4));
+  const all=composed.looks.flat().map(item=>item.id);
+  assert.equal(new Set(all).size,all.length,
+    'all admitted photo-review candidates must be distinct physical products');
+  const gated=await sourceVerifyComposedOutfits({
+    looks:composed.looks,request:{sourceMode:'catalog'},
+    sourceMode:'catalog',hardGate:async()=>({ok:true}),
+    scorer:{rankLook:()=>({score:.91})},
+  });
+  assert.equal(gated.length,composed.looks.length,
+    'partial creatives are not visually approved: they still pass exact original admission');
+});
+
 test('failing second creative studio NEVER destroys six already-source-verified initial outfits',async()=>{
   const pool=sourceBoundCompositionPool(looks);
   const original=Object.fromEntries(slots.map(slot=>
