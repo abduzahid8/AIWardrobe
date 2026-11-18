@@ -521,3 +521,14 @@ substitute for real independent visual and human acceptance.
    native styling quality, zero merchant/privacy/source errors and a held-out
    three-reviewer human blind comparison in at least 30 paired cases shows
    Stylist 6 >=70% wins over Stylist 5.
+
+## 2026-11-18 — real-source inspiration diversity and iOS reality check (bd65cd8)
+
+- Live staging SHA `bd65cd8094f6eece571ef03d1c7be5291254550c`; integrated and visual-first CI both successful; 251/251 focused local tests passed.
+- Root-cause change: the 46 human-captioned owner fashion references were previously sampled as near-identical high-neck knit directions for Classic Work and Date. Retrieval now exposes genuinely different human-written top **and** layer concepts; independent Kimi also receives bounded human-captioned inspiration. There is **NO relaxed quality floor, forced 3-card fill, extra invented SKU or new photo rehosting**.
+- Authenticated real iOS Classic / Date night: 8 AI proposals, 9 actual whole-look photo decisions, 4 approvals, **3 genuine four-source-product displayed looks** in 46.9s. Third photo editor arbiter chose the photo-feasible triple.
+- Authenticated real iOS Classic / Work: 8 proposals, 11 real-photo decisions, only 2 approvals, **2 genuine four-product displayed looks** in 37.1s; second corrective Kimi wave 0/3 photo approvals. This **fails** the universal three-great-looks requirement.
+- Manual original-SKU image inspection of Date night also found too-office tailoring and two similar blazer/trouser directions. A three-card result is NOT a great-stylist approval.
+- Zero records in the licensed original-product photo cache; raw-photo creative composition remains OFF. Existing v1 photo profiles are useful but frequently lack confident fabric/color observations. No stock/delivery/size claims.
+- **DO NOT promote S6 to production**: 30+ held-out 3-human-reviewer blind test requiring >=70% S6 preference has not been conducted; the fashion quality bar is demonstrably unmet.
+- Concrete receipts, limitations, repro details and next creative-work focus: `docs/reports/stylist6-real-iphone-owner-reference-20261118.md`.
