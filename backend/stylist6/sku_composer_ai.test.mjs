@@ -520,6 +520,41 @@ test('Creative Director planning actually influences real SKU menu and the THREE
   assert.equal(new Set(accepted.looks.flat().map(x=>x.id)).size,12);
 });
 
+test('a skipped second Creative Director commission keeps the third artwork at original slot 3, never retitles it slot 2',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const directions=[1,3].map(n=>({
+    id:'ai-director-'+n,generatedBy:'s6-creative-director-v1',
+    name:n===1?'Independent tailored signature':'Independent soft tactile discovery',
+    artDirection:'Compose a completely coherent material and proportion dialogue among photographed source garments, matching the personal context, characterful footwear and true construction.',
+    silhouette:n===1?'tailored':'relaxed',palette:['navy','brown'],
+    roles:{top:['dress-shirt'],outerwear:['blazer'],
+      bottom:['tailored-trouser'],shoes:['oxford']},
+    layerPolicy:'required',
+  }));
+  assert.deepEqual(groundedSkuDirections(directions,pool).map(x=>x.lookNumber),[1,3]);
+  assert.deepEqual(sourceGroundedCreativeCommissions(directions,pool)
+    .map(x=>x.lookNumber),[1,3]);
+  const r=await composeCatalogSkuLooks({
+    pool,directions,apiKey:'nvapi-test-real-partial-art',
+    context:{style:'classic',occasion:'Work'},layerRequired:true,
+    fetchImpl:async(_url,init)=>{
+      const prompt=JSON.parse(init.body).messages[0].content;
+      const payload=JSON.parse(prompt.slice(prompt.lastIndexOf('\n')+1));
+      assert.deepEqual(payload.inventoryGroundedDesignDirections
+        .map(x=>x.lookNumber),[1,3]);
+      assert.deepEqual(payload.creativeLookCommissions.map(x=>x.lookNumber),[1,3]);
+      assert.deepEqual(payload.uncommissionedLookNumbers,[2],
+        'the actual SKU model must create the missing SECOND design rather than copying/relabeling the third');
+      assert.match(prompt,/acting Creative Director/);
+      assert.doesNotMatch(prompt,/PRIVATE_SKU|images\.zara|www\.zara/);
+      return result(slotAnswer(pool));
+    },
+  });
+  assert.equal(r.status,'composed');
+  assert.equal(r.looks.length,3);
+  assert.equal(new Set(r.looks.flat().map(x=>x.id)).size,12);
+});
+
 test('PHOTO-informed second fashion decision abandons exhausted first-draft plans, preserves real-SKU grounding',async()=>{
   const source=sourceBoundCompositionPool(looks);
   const oldPlans=Array.from({length:3},(_,i)=>({
