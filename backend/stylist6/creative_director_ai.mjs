@@ -100,6 +100,15 @@ const knownAvoidPatterns = value => [...new Set(safeList(value)
  */
 const DIRECTOR_VISUAL_FIELDS = ['color','texture','volume','length',
   'formality','pattern','soleProfile','collar'];
+// Actual-photo facets, not merchant labels, define how much visually new
+// evidence the designer sees. The two examples per subtype are a bounded,
+// diversity-maximizing selection rather than whichever two products arrived
+// first in a potentially repetitive catalog discovery window.
+const visualFacetKeys=example=>Object.entries(example).map(
+  ([field,value])=>field+':'+value);
+const pairCoverage=(a,b)=>new Set([
+  ...visualFacetKeys(a),...visualFacetKeys(b),
+]).size;
 export function directorVisualAtlas(catalog,available) {
   const groups=Object.fromEntries(SLOTS.map(slot=>[slot,new Map()]));
   const known=Object.fromEntries(SLOTS.map(slot=>[slot,new Set(
@@ -119,24 +128,54 @@ export function directorVisualAtlas(catalog,available) {
     }));
     if(!Object.keys(example).length)continue;
     const all=groups[slot];
-    if(!all.has(subtype))all.set(subtype,{observedGarments:0,garmentExamples:[],seen:new Set()});
+    if(!all.has(subtype))all.set(subtype,{observedGarments:0,garmentExamples:[]});
     const row=all.get(subtype);
     row.observedGarments++;
-    const signature=JSON.stringify(example);
-    if(!row.seen.has(signature)&&row.garmentExamples.length<2){
-      row.seen.add(signature);row.garmentExamples.push(example);
+    if(row.garmentExamples.some(x=>JSON.stringify(x)===JSON.stringify(example)))
+      continue;
+    if(row.garmentExamples.length<2) {
+      row.garmentExamples.push(example);
+      continue;
     }
+    // An informative later photographed garment may be a radically different
+    // silhouette/material from the first near-duplicate examples. Keep the
+    // maximum observed facet coverage while never claiming a pair is an
+    // authentic outfit or fabric combination.
+    const [first,second]=row.garmentExamples;
+    const existing=pairCoverage(first,second);
+    const firstNew=pairCoverage(first,example);
+    const secondNew=pairCoverage(second,example);
+    if(firstNew>existing&&firstNew>=secondNew)
+      row.garmentExamples=[first,example];
+    else if(secondNew>existing)
+      row.garmentExamples=[second,example];
   }
-  // Prefer the most visually documented real constructions, not a fixed
-  // fashion taxonomy or an invented 'better' subtype. Maximum eight subtype
-  // families per slot and two true one-garment examples per family.
-  return Object.fromEntries(SLOTS.map(slot=>[slot,
-    [...groups[slot].entries()]
-      .sort((a,b)=>b[1].observedGarments-a[1].observedGarments||
-        a[0].localeCompare(b[0])).slice(0,8)
-      .map(([subtype,row])=>({subtype,observedGarments:row.observedGarments,
-        garmentExamples:row.garmentExamples})),
-  ]));
+  // Frequent blazer/cardigan merchandise must not crowd genuinely different
+  // source-observed garment constructions out of the 8-family evidence atlas.
+  // Seed from the best-observed family, then greedily expose NEW photographic
+  // color/shape/texture facts. This only gives the AI information: no subtype,
+  // product, outfit or aesthetic is banned, required, scored or approved.
+  return Object.fromEntries(SLOTS.map(slot=>{
+    const remaining=[...groups[slot].entries()];
+    const selected=[],covered=new Set();
+    while(remaining.length&&selected.length<8){
+      remaining.sort((a,b)=>{
+        const novelty=entry=>entry[1].garmentExamples.flatMap(visualFacetKeys)
+          .filter((facet,i,all)=>!covered.has(facet)&&all.indexOf(facet)===i).length;
+        // The first example is the best-documented source family; additional
+        // examples maximize visual discovery rather than SKU popularity.
+        return (selected.length?novelty(b)-novelty(a):0)||
+          b[1].observedGarments-a[1].observedGarments||
+          a[0].localeCompare(b[0]);
+      });
+      const [subtype,row]=remaining.shift();
+      selected.push({subtype,observedGarments:row.observedGarments,
+        garmentExamples:row.garmentExamples});
+      for(const example of row.garmentExamples)
+        for(const facet of visualFacetKeys(example))covered.add(facet);
+    }
+    return [slot,selected];
+  }));
 }
 
 /**
