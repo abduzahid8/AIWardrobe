@@ -18,27 +18,30 @@ export function usableProductImageUri(raw: unknown): string {
   return typeof raw === 'string' && USABLE_URI_RE.test(raw.trim()) ? raw.trim() : '';
 }
 
-/** A real iPhone Classic/Work catalog tile showed an empty AllSaints
- * image after PHOTO-approved generation. The original merchant's f_auto
- * endpoint returned AVIF when the client advertised AVIF, but returned a
- * valid JPEG for Accept:image/jpeg. Expo Image supports per-source headers.
+/** Real iOS Stylist6 QA found two different product-photo transport bugs:
+ * AllSaints /f_auto returned AVIF and Shopify's .jpg product URL returned
+ * WEBP under a mobile image/* Accept header. Both returned genuine source
+ * JPEG bytes for Accept:image/jpeg; the unnegotiated responses left blank
+ * outfit tiles even after the photo critic approved the actual garments.
  *
- * Keep the EXACT merchant photo URL (and its identity/source hash) intact.
- * Only image-CDN paths explicitly using automatic FORMAT negotiation receive
- * this JPEG preference. Other HTTPS photos, private wardrobe media, explicit
- * .png/.webp assets and local sources remain unchanged. The distinct cache
- * key prevents an older AVIF response cached under the same URL from being
- * mistaken for the JPEG payload on native clients.
+ * On publicly reachable HTTPS JPEG merchandise URLs, ask for JPEG (which
+ * matches their declared image type). Also cover explicit /f_auto paths.
+ * Preserve the exact original merchant URL, source hash, SKU, offer and
+ * rights; do not download/store/copy third-party media ourselves. Never
+ * alter private wardrobe, relative/local, PNG, HEIC or WebP sources.
+ * Versioned cache key separates native JPEG from previous AVIF/WebP cache.
  */
 export function productImageLoadSource(uri: string): {
   uri: string; headers?: Record<string, string>; cacheKey?: string;
 } {
-  if (/^https:\/\/[^/?#]+\/[^?#]*\/f_auto(?:,|\/)/i.test(uri) &&
-      !wardrobeMediaReference(uri)) {
+  const formatNegotiatedHttpsImage =
+    /^https:\/\/[^/?#]+\/[^?#]*\/f_auto(?:,|\/)/i.test(uri) ||
+    /^https:\/\/[^/?#]+\/[^?#]*\.jpe?g(?:[?#]|$)/i.test(uri);
+  if (formatNegotiatedHttpsImage && !wardrobeMediaReference(uri)) {
     return {
       uri,
       headers: { Accept: 'image/jpeg' },
-      cacheKey: 'aiw-native-jpeg-v1:' + uri,
+      cacheKey: 'aiw-native-jpeg-v2:' + uri,
     };
   }
   return { uri };
