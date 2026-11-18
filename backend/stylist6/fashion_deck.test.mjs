@@ -2286,65 +2286,6 @@ test('ZERO of eight actual-photo approvals triggers a NEW unseen-source creative
     'no unapproved 3rd card, no weakened quality floor or synthetic merchandise');
 });
 
-test('PARTIAL first photographic approval gets untouched source garments for different whole-look correction, not only exhausted original menu',async()=>{
-  const slots=['top','outerwear','bottom','shoes'];
-  const family=[['shirt','polo','fine-knit','dress-shirt','t-shirt','sweater'],
-    ['blazer','coat','cardigan','overshirt','jacket','bomber'],
-    ['chino','trouser','jeans','tailored-trouser','cargo','knit-trouser'],
-    ['loafer','derby','chelsea','oxford','minimal-sneaker','driver']];
-  const catalog=slots.flatMap((slot,j)=>Array.from({length:32},(_,i)=>
-    garment(`partial-repair-${slot}-${i}`,
-      ['cream','navy','stone','brown','olive','charcoal'][i%6]+' source article '+slot,
-      slot,family[j][i%6])));
-  const request={sourceMode:'catalog',style:'classic',occasion:'Date night',
-    weather:{temp:21},optionalLayer:false,preferences:{},requiredIds:[],
-    budget:{amount:3000000,currency:'UZS'}};
-  let photoRounds=0,artistCalls=0;
-  let initialMenu=new Set();
-  const r=await recommendFashionDeck({...base,request,catalog,referenceBriefs:refs,
-    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
-    selectCatalogCompositions:async({pool,parallel})=>{
-      assert.equal(parallel,true);
-      initialMenu=new Set(pool.map(x=>x.item.id));
-      return {status:'composed',looks:Array.from({length:6},(_,i)=>
-        slots.map(slot=>pool.filter(x=>x.slot===slot)[i].item)),
-        providerCalls:1,providerFamily:'nemotron'};
-    },
-    selectCatalogRescueCompositions:async({pool,critiqueFeedback})=>{
-      artistCalls++;
-      assert.equal(critiqueFeedback.approvedArchitectures.length,1);
-      assert.ok(critiqueFeedback.rejectedOutfits.length>0);
-      assert.ok(pool.every(x=>!initialMenu.has(x.item.id)),
-        'on partial visual failure the SECOND artist must receive genuinely untouched source SKUs');
-      assert.ok(slots.every(slot=>pool.filter(x=>x.slot===slot).length>=3));
-      return {status:'composed',looks:Array.from({length:3},(_,i)=>
-        slots.map(slot=>pool.filter(x=>x.slot===slot)[i].item)),
-        providerCalls:1,providerFamily:'nemotron_fast_photo_revision'};
-    },
-    photoRescueRemainingMs:()=>34000,
-    visualDeckReview:true,canJudgeOutfit:async()=>true,
-    visualCritic:async batch=>{
-      photoRounds++;
-      return batch.map((look,i)=>admittedVisualVerdict(look,{
-        reject:photoRounds===1&&i>0,
-        slotObservations:{outerwear:'Observed layered shape disagrees with top'},
-        relationships:[{kind:'outfit',slots:['top','outerwear'],
-          observation:'Original photographs show conflicting silhouette'}],
-      }));
-    },
-  });
-  assert.equal(artistCalls,1);
-  assert.equal(photoRounds,2,'new source choices require their own genuine PHOTO review');
-  assert.equal(r.diagnostics.modelFashionSelection.photoRevisionInventory,'unseen_source_skus');
-  assert.equal(r.diagnostics.modelFashionSelection.photoRevisionStatus,'composed');
-  assert.ok(r.diagnostics.modelFashionSelection.photoRevisionAttempted>=1);
-  assert.ok(r.outfits.length>=1&&r.outfits.length<=3);
-  assert.ok(r.outfits.every(x=>x.items.length===4&&
-    x.items.every(it=>it.isShopItem&&!!it.shopUrl)));
-  assert.equal(r.diagnostics.visualReviewCoverage.unreviewedFillAdded,0,
-    'no third-look padding, no unchecked source admission and no photo gate bypass');
-});
-
 test('visual feedback second AI wave never runs inside inadequate remaining staging deadline',async()=>{
   const request={sourceMode:'catalog',style:'classic',occasion:'Casual',
     weather:{temp:22},optionalLayer:true,preferences:{},
