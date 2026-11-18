@@ -253,6 +253,14 @@ function normalizePlan(row, available, index, temperature, fourItemIntent=false)
       !SHAPES.has(row.silhouette) || typeof row.title !== 'string') return null;
   const name = safeText(row.title, 70);
   if (name.length < 4 || /[<>]/.test(name)) return null;
+  // The OWNER asks for a fashion ARTIST, not an enum generator. The strict
+  // provider schema already requires artDirection, but a present EMPTY string
+  // still passes schema validation and had been counted as a complete design.
+  // Enforce the artistic explanation already required by the composer prompt
+  // (90–230 chars), after removing untrusted HTML, URLs and email identity.
+  // This is a CONTENT contract, NOT a color, silhouette or garment ban.
+  const artDirection=safeArtDirection(row.artDirection);
+  if(artDirection.length<85)return null;
   if (!Array.isArray(row.palette) || row.palette.length < 2 || row.palette.length > 5) return null;
   const palette = [...new Set(row.palette.map(canonicalPaletteColor))];
   if (palette.length < 2 || palette.some(x => !x)) return null;
@@ -275,7 +283,7 @@ function normalizePlan(row, available, index, temperature, fourItemIntent=false)
   return {
     id: 'ai-director-' + (index + 1),
     name,
-    artDirection: safeArtDirection(row.artDirection),
+    artDirection,
     roles,
     silhouette: row.silhouette,
     palette,

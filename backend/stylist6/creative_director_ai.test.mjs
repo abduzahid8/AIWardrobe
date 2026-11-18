@@ -31,18 +31,39 @@ const request = {
 const proposal = {
   directions: [
     { title: 'Tailored Navy Signature', silhouette: 'tailored',
+      artDirection: 'Create an elongated clean shoulder line through tailored navy cloth, airy shirt contrast, quietly textured wool trousers and precise leather footwear for a composed professional presence.',
       palette: ['navy', 'white', 'grey'],
       roles: { top: ['dress-shirt'], outerwear: ['blazer'], bottom: ['tailored-trouser'], shoes: ['oxford'] } },
     { title: 'Modern Textural Refresh', silhouette: 'balanced',
+      artDirection: 'Use soft tactile knit beneath a relaxed natural shoulder, with tapered cotton drape and warm suede shoes to express quiet, approachable personality rather than a business uniform.',
       palette: ['brown', 'cream', 'navy'],
       roles: { top: ['fine-knit'], outerwear: ['cardigan'], bottom: ['chino'], shoes: ['loafer'] } },
     { title: 'Structured Evening Discovery', silhouette: 'tailored',
+      artDirection: 'Build elegant evening drama from a softly defined polo neckline, a longer flowing outer layer, contrasting tapered trouser proportions and sculptural understated Chelsea boots.',
       palette: ['charcoal', 'blue', 'black'],
       roles: { top: ['polo'], outerwear: ['coat'], bottom: ['trouser'], shoes: ['chelsea'] } },
   ],
 };
 const fakeResponse = value => Response.json({
   choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(value) } }],
+});
+
+test('an AI concept without an ACTUAL styling intention is never counted as one of three artistic directions',()=>{
+  const inventory=directorInventory(catalog,{...request,sourceMode:'catalog',optionalLayer:false});
+  const blank=structuredClone(proposal);
+  blank.directions[0].artDirection='';
+  blank.directions[1].artDirection='Polished classic office look';
+  const accepted=validateDirectorDirections(blank,inventory);
+  assert.equal(accepted.length,1);
+  assert.equal(accepted[0].name,'Structured Evening Discovery');
+  assert.equal(accepted[0].id,'ai-director-3');
+  assert.ok(accepted[0].artDirection.length>=85);
+  assert.equal(validateDirectorDirections({directions:blank.directions.map(x=>
+    ({...x,artDirection:''}))},inventory).length,0);
+  const scrubbed=structuredClone(proposal);
+  scrubbed.directions[0].artDirection='https://private.example/'.repeat(14);
+  assert.equal(validateDirectorDirections(scrubbed,inventory).length,2,
+    'a long URL or raw provider identity is not a fashion explanation');
 });
 
 test('director transmits only anonymized inventory plus explicit bounded style evidence', () => {
@@ -620,7 +641,7 @@ test('120B creative director makes grounded ARTISTIC decisions, not just same-ca
     .properties.directions.items.required.includes('artDirection'));
   const injected=structuredClone(plans);
   injected.directions[0].artDirection=
-    'Elegant relaxed tailoring with contrast http://private.example/account owner@example.net';
+    'Elegant relaxed tailoring with calm proportion, gentle shoulders, distinct woven texture and an intentionally refined shoe register, plus http://private.example/account owner@example.net while walking';
   const clean=validateDirectorDirections(injected,directorInventory(catalog,request));
   assert.doesNotMatch(clean[0].artDirection,/http|example|owner@|</i,
     'never forward address/email/markup along the AI chain');
