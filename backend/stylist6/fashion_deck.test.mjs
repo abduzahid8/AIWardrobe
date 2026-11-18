@@ -2215,6 +2215,77 @@ test('image-model rejection launches bounded SECOND AI SKU composition and real 
   assert.ok(revisionIDs.length>=9);
 });
 
+test('ZERO of eight actual-photo approvals triggers a NEW unseen-source creative fashion studio, not silent empty-deck abandonment',async()=>{
+  const slots=['top','outerwear','bottom','shoes'];
+  const family=[
+    ['dress-shirt','fine-knit','polo','shirt','merino-crew','turtleneck'],
+    ['blazer','coat','cardigan','overshirt','wool-jacket','suede-jacket'],
+    ['tailored-trouser','chino','pleated-trouser','wide-trouser','wool-trouser','relaxed-chino'],
+    ['oxford','derby','loafer','chelsea-boot','monk','suede-loafer'],
+  ];
+  const catalog=slots.flatMap((slot,j)=>Array.from({length:29},(_,i)=>
+    garment('new-after-zero-'+slot+'-'+i,
+      ['Cream','Navy','Brown','Olive','Grey','Stone'][i%6]+ ' real photo source '+slot+' '+i,
+      slot,family[j][i%6])));
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:18},optionalLayer:false,preferences:{},requiredIds:[],
+    budget:{amount:3000000,currency:'UZS'}};
+  let photoRounds=0,artistCalls=0,firstPoolIds=new Set();
+  const actualApproved=new Set();
+  const result=await recommendFashionDeck({...base,request,catalog,referenceBriefs:refs,
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
+    selectCatalogCompositions:async({pool,parallel})=>{
+      assert.equal(parallel,true,'the 8-look audition begins before slow ranker retrieval');
+      firstPoolIds=new Set(pool.map(x=>x.item.id));
+      assert.ok(slots.every(slot=>pool.filter(x=>x.slot===slot).length>=8));
+      return {status:'composed',looks:Array.from({length:8},(_,i)=>
+        slots.map(slot=>pool.filter(x=>x.slot===slot)[i].item)),
+        providerCalls:2,providerFamily:'nemotron_plus_kimi_parallel'};
+    },
+    selectCatalogRescueCompositions:async({pool,critiqueFeedback})=>{
+      artistCalls++;
+      assert.equal(critiqueFeedback.approvedArchitectures.length,0,
+        'a wholly rejected portfolio contains no falsely approved design');
+      assert.ok(critiqueFeedback.reasons.includes('model_veto'),
+        'the real independent photographic negative verdict is preserved');
+      assert.ok(critiqueFeedback.rejectedOutfits.length>=1);
+      assert.equal(critiqueFeedback.rejectedOutfits[0].observations.top,
+        'Photo-proven unbalanced layer and top garment proportion');
+      assert.ok(slots.every(slot=>pool.filter(x=>x.slot===slot).length>=3));
+      assert.ok(pool.every(x=>!firstPoolIds.has(x.item.id)),
+        'new independent artist must see ORIGINAL source garments never considered initially');
+      return {status:'composed',looks:Array.from({length:3},(_,i)=>
+        slots.map(slot=>pool.filter(x=>x.slot===slot)[i].item)),
+        providerCalls:1,providerFamily:'cross_lab_kimi'};
+    },
+    photoRescueRemainingMs:()=>34000,
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      photoRounds++;
+      const data=batch.map(x=>admittedVisualVerdict(x,{
+        reject:photoRounds===1,
+        slotObservations:{top:'Photo-proven unbalanced layer and top garment proportion'},
+        relationships:[{kind:'outfit',slots:['top','outerwear'],
+          observation:'Photographed garment volumes overwhelm each other'}],
+      }));
+      if(photoRounds===2)for(const row of data)actualApproved.add(row.candidateId);
+      return data;
+    },
+  });
+  assert.equal(photoRounds,2,
+    'when every original JPEG fails, a new independent photo review MUST run');
+  assert.equal(artistCalls,1,'zero independently approved looks is a creative failure, not a silent terminal case');
+  assert.equal(result.diagnostics.modelFashionSelection.photoRevisionInventory,'unseen_source_skus');
+  assert.equal(result.diagnostics.modelFashionSelection.photoRevisionStatus,'composed');
+  assert.ok(result.diagnostics.modelFashionSelection.photoRevisionAttempted>=1);
+  assert.ok(result.outfits.length>=1&&result.outfits.length<=3);
+  assert.ok(result.outfits.every(x=>actualApproved.has(x.id)));
+  assert.ok(result.outfits.every(x=>x.items.length===4&&
+    x.items.every(it=>it.isShopItem&&!!it.shopUrl)));
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0,
+    'no unapproved 3rd card, no weakened quality floor or synthetic merchandise');
+});
+
 test('visual feedback second AI wave never runs inside inadequate remaining staging deadline',async()=>{
   const request={sourceMode:'catalog',style:'classic',occasion:'Casual',
     weather:{temp:22},optionalLayer:true,preferences:{},

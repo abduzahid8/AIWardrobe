@@ -2137,7 +2137,9 @@ export async function recommendFashionDeck({
           skuCompositionReceipt.status=String(composition?.status||'unavailable').slice(0,40);
           skuCompositionReceipt.studio=
             ['nemotron','cross_lab_kimi','nemotron_fallback',
-              'nemotron_plus_kimi_initial','cross_lab_kimi_initial_fallback']
+              'nemotron_plus_kimi_initial','cross_lab_kimi_initial_fallback',
+              'nemotron_plus_kimi_parallel','nemotron_parallel',
+              'cross_lab_kimi_parallel']
               .includes(composition?.providerFamily)
               ?composition.providerFamily:'not_run';
           skuCompositionReceipt.visualMenuStatus=
@@ -2449,8 +2451,7 @@ export async function recommendFashionDeck({
           Array.isArray(composerPool)&&composerPool.length>=12&&
           typeof photoRescueRemainingMs==='function'&&
           reviewed.outfits.length<3&&
-          reviewed.diagnostics.visualValid>=4&&
-          reviewed.diagnostics.visualApproved>=1&&
+          reviewed.diagnostics.visualValid>=3&&
           photoRescueRemainingMs()>=19000){
         const firstApprovedIds=new Set(
           (reviewed.diagnostics.visualQualityDecisions||[])
@@ -2463,6 +2464,38 @@ export async function recommendFashionDeck({
         // the verified original partial deck remains intact.
         const freshPool=composerPool.filter(p=>
           !firstProductKeys.has(baseProductId(String(p.item?.id))));
+        // A real Work mobile failure: all 8 initial outfits were SOURCE
+        // genuine, but all 8 ORIGINAL PHOTOGRAPHS were rejected. The old
+        // correction required >=1 accepted look and therefore never even
+        // asked a SECOND AI what new outfit to make. For this specific
+        // complete fashion failure, the second studio must SEE ACTUAL new
+        // inventory that the first author never saw, together with concrete
+        // original photo-veto observations. No new database access and no
+        // new aesthetic prohibitions: every source product will again pass
+        // strict admission and actual independent PHOTO quality evaluation.
+        const failedWholeCollection=reviewed.diagnostics.visualApproved===0;
+        const initialSkuKeys=new Set(composerPool.map(p=>
+          baseProductId(String(p.item?.id))));
+        const excludedKeys=new Set(
+          (Array.isArray(request.excludedIds)?request.excludedIds:[])
+            .map(id=>baseProductId(String(id))));
+        const unexplored=failedWholeCollection&&Array.isArray(catalog)
+          ?catalog.filter(item=>item?.isShopItem===true&&
+              !initialSkuKeys.has(baseProductId(String(item.id)))&&
+              !excludedKeys.has(baseProductId(String(item.id))))
+            .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
+        const unfamiliarPool=unexplored.length
+          ?sourceBoundCompositionPool([],{additionalItems:unexplored,
+              inventoryFirst:true,explorationSlots:4,directions:[],feedbackTaste})
+          :[];
+        const totallyNew=slots.every(slot=>unfamiliarPool.filter(p=>
+          p.slot===slot).length>=3);
+        const creativeRetryPool=failedWholeCollection&&totallyNew
+          ?unfamiliarPool:freshPool;
+        modelFashionSelection.photoRevisionInventory=
+          failedWholeCollection
+            ?totallyNew?'unseen_source_skus':'source_fallback'
+            :'remaining_source_skus';
         // Transfer concrete photographic evidence from the exact FAILED
         // outfit to the autonomous composer. Generic reason codes alone do
         // not tell a stylist whether the shoe shape, proportion or fabric
@@ -2499,7 +2532,7 @@ export async function recommendFashionDeck({
         let retry={status:'unavailable',looks:[]};
         try{
           retry=await selectCatalogRescueCompositions({
-            pool:freshPool,critiqueFeedback:feedback,directions:aiPlans,feedbackTaste,
+            pool:creativeRetryPool,critiqueFeedback:feedback,directions:aiPlans,feedbackTaste,
             context:{style:context.style,occasion:context.occasion,
               brief:context.request,preferences:context.preferences,
               weatherCelsius:Number.isFinite(context.weather?.temp)

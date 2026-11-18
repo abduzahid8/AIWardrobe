@@ -185,6 +185,9 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     // not nested inside the earlier modelFashionSelection receipt.
     catalogFourItemContract:d.catalogFourItemContract===true,
     catalogFourItemDropped:safe(d.catalogFourItemDropped,12),
+    photoRevisionInventory:['unseen_source_skus','source_fallback',
+      'remaining_source_skus'].includes(f.photoRevisionInventory)
+      ?f.photoRevisionInventory:'not_run',
     photoRevisionStatus:['composed','unavailable','deadline','timeout',
       'invalid_composition','incomplete','provider_unavailable',
       'provider_schema_rejected','insufficient_inventory','load_shed']
