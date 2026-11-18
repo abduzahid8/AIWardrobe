@@ -1,0 +1,39 @@
+# Stylist 6 · real original-photo criticism → second AI designer · 18 November 2026
+
+**Fashion acceptance: NO-GO.** Owner's unchanged requirement: 3 genuinely beautiful, source-authentic, four-real-merchant-item outfits with distinct outfit architectures and personal taste — not 3 filled tabs, not a lowered photo threshold, not a list of clothing-type rules. Stylist 5 production untouched. Work performed against isolated 72s Render staging service `srv-dbtd336i0phs73fd0sbg`, native iOS 26.5 `com.aiwardrobe`, stable discovery seed for the same style/occasion, not a frozen merchant inventory snapshot.
+
+## What real source data and previous failures proved
+
+Connected Supabase `fyqpifmrsftsfqibhwhy`: `shop_catalog` **8554 active product offers**; `catalog_visual_fashion` **7556** current image-URL-matching profile rows; `catalog_image_embeddings` **7525** 768-dimensional stored image vectors; `catalog_photo_cache_v1` **0**, hence no **documented rights-cleared original merchant JPEGs for FIRST external photo composition** in that cache. `stylist_look_feedback` **0** human/owner feedback rows. Existence of prior visual observations does not confer rights to external inference/rehosting; there is no observed validated human preference dataset. The existing later independent photo critic is a distinct image access path; no rights were invented or inferred from image accessibility.
+
+`9ca61c0` tried offering a 48-P-token source menu with diverse source-hash-current observed color/cut/texture/photo facts BEFORE first design. The test did correctly expose confident photo facts and leave stale profile data out. Real signed Classic/New/Date iOS: **48/48 menus had verified observations**, 5 source proposals / 4 genuine PHOTO judgments, **1 PHOTO-approved and 1 displayed**. This was NOT a quality improvement over prior sequential date canaries with 2 displayed. **Reverted** in `ae518aab` and staging `STYLIST6_VISUAL_EVIDENCE_MENU_ENABLED=false`. More text observations by themselves do not create taste.
+
+## Actual photo-informed AI correction experiment (not a style-subtype rule)
+
+`604436e` (also restored identically in `cb8dd31d` after intervening revert/reapply) tested an autonomously styled **SECOND creative pass** after real independent JPEG critic rejection. The previous Kimi-only 4.9s corrective pass repeatedly timed out; a source-verified 30B visual-fashion model now leads the corrective pass on **the same legitimate available P-token products**, while independently trained Kimi may respond as fallback. The model receives anonymous `rejectedOutfits` with slot-level JPEG observations, aesthetic relationships and exact occasion; no raw merchant image, URL, account ID, source fingerprint, unvalidated SKU, new dress-code ban or score override. Every four-SKU newly composed look must pass unchanged source, budget, shop and fresh full-original-photo validation. It is a safe configurable staging experiment, **not automatically better taste**.
+
+| Native signed live request | Primary source-authentic designs | Genuine photo checks / approved | New AI corrective attempt | User-visible looks | Observation |
+| --- | ---: | ---: | --- | ---: | --- |
+| `604436e` Classic/New/Date night | 6 / 5 source admitted | **8 / 1** | 30B `composed`, **3 new photos judged; 0 passed** | **1** | Validated rescue flow but 3 aesthetically unsuccessful replacements, 54.3s |
+| `604436e` Classic/New/Work | 5 / 5 source admitted | **8 / 3** | 30B `composed`, **3 new photos judged; 2 passed** | **2** | 3 individually approved looks but **0 feasible diverse 3-look editorial portfolios**, full photo editor applied, 53.9s |
+
+Work confirms second photo-informed creative engineering improvement: it finished in 1.3s and produced TWO truly original-photo-approved looks, unlike repeated Kimi timeouts. But the core personal stylist quality objective remains NOT MET: 3 individually approved looks are not three source/architecture-independent fashion directions; zero feasible whole triples after exact portfolio replay. Independent whole-editor made a second attempt on entirely unseen merchandise and photo-judged 3 more ideas, 0 approved.
+
+## Additional source-cohort experiment rejected
+
+`b7da322` extended the second writer's 48 SKU options to previously unexposed **original genuine merchant source SKUs**, not just leftover 28 of the first artist's menu, even when one or two first-wave looks were photographically good. No fabricated catalog or hard outfit-color/style ban; deterministic source+photo integration test verified one initial approval, real previously unseen merchandise, second photo jury, no fake third. But live owner-visible gains **were not demonstrated**:
+
+- **Work:** 6 original real source outfits, 3/6 photo-approved, one genuine feasible triple, but the multimodal final editor selected **2** outfits; new final-portfolio correction showed 1/3 new photo-approved but still did not produce a better full trio. 69.0s compute, `creativePlanStatus:timeout` (no initial art concepts).
+- **Date night:** 6 proposed, 5 admitted, 1/5 original-photo-approved, and second creative attempt `timeout` even with previously unseen source menu. `creativePlanBackup:used_independent_source_grounded` did recover all 3 preliminary artistic concepts; the actual iOS output was still one conservative blue-shirt/dark-layer/navy-trouser/brown-shoe outfit, not 3 exciting date directions. 37.2s compute.
+
+**Action:** reverted `b7da322` with `0a22bc58` and restored the staged runtime gates to `STYLIST6_FAST_PHOTO_REVISION_ENABLED=false` and `STYLIST6_VISUAL_EVIDENCE_MENU_ENABLED=false`. Fast model code is available for controlled A/B experiments but inactive in the user-facing staging path; no claimed stylist improvement from a quality-negative canary. Original source/visual grading remain unchanged. GitHub remains unmerged PR #15; S5 production unchanged.
+
+## Exact current release checkpoint
+
+- **LIVE Render deploy** `dep-dbuorisipgvc739j0ae0` at tree `0a22bc58ecdcf2da3a9ec302ea2aa070db37c40e`; version tree equals `604436e` with fast correction **disabled**, which preserves the pre-experiment composer/photo-judgment behavior. The original source-licensed photo-first pipeline remains inactive because `catalog_photo_cache_v1` has zero documented rights grants.
+- Full final test suite **559/559** S6 and **42/42** portable server/API checks PASS. These prove source/contract/security invariants and the fast feedback code can correctly run in isolation; **they do not prove beauty**.
+- Native iOS driver was occasionally killed/restarted under low disk space; old diagnostic logs only were removed and a Work/Date signed API generation was confirmed independently by Render safe result traces and device screenshot. Do not conflate Maestro runner failure with a styling API error or claim photo quality based only on UI navigation PASS.
+
+## Binding next real quality milestone
+
+Do NOT keep shifting small prompts, arbitrary garment subtype bans or self-referential AI taste thresholds. Confirm lawful source-hash/current SKU original-JPEG inference permissions and hydrate >=3 verified photos per each of the four garment roles, then run the already code-tested first photographic Creative Director on actual source photos BEFORE selecting SKUs. Persist independent human relative outfit/portfolio judgments (currently **0**) on the SAME held-out real source cohorts, with source/merchant/price/privacy evidence intact. Do at least 30 S5-vs-S6 paired evaluations and >=3 genuinely independent blinded human judges with >=70% S6 preference before a production GO. The current 1–2 conservatively photographed outfits per request remain **NO-GO**, regardless of number of generated candidates.
