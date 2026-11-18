@@ -715,6 +715,15 @@ export async function composeCatalogSkuLooks({
     const groundedPlans=revision?[]:groundedSkuDirections(directions,pool);
     const conceptCommissions=revision?[]:
       sourceGroundedCreativeCommissions(directions,pool);
+    // A REAL Work iPhone photo run had only TWO original artistic concepts:
+    // the separately trained 30B backup timed out before the 120B source-SKU
+    // creator began. A skipped original plan must not silently become a
+    // duplicate blazer formula. The ACTUAL merchandise artist owns that
+    // unfinished design rather than fabricating an upstream plan or SKU.
+    // Exact tokens and hard source/photo gates still apply after composition.
+    const commissioned=new Set(groundedPlans.map(x=>x.lookNumber));
+    const uncommissionedLookNumbers=revision?[]:[1,2,3]
+      .filter(i=>!commissioned.has(i));
     const textualFashionMemory=editorialTextMoodboards({
       style:context?.style,occasion:context?.occasion,
       preferences:context?.preferences,
@@ -772,6 +781,16 @@ export async function composeCatalogSkuLooks({
       'story and realize its intended color/fabric/proportion relationships.',
       'Commission candidates are NOT rules, restrictions, or visual approvals:',
       'choose OTHER permitted source tokens whenever the whole look is better.',
+      ...(uncommissionedLookNumbers.length?[
+        'Some original independent fashion plans could not be completed.',
+        'YOU are the acting Creative Director for the missing first-three',
+        'look numbers listed in uncommissionedLookNumbers. Compose an ORIGINAL',
+        'coherent four-piece artistic direction for each using ACTUAL available',
+        'source photos facts and the users occasion, not another recolored',
+        'copy of an earlier tailored/blazer/cardigan architecture.',
+        'Never shift the surviving plan numbers to another look index.',
+        'These are proposals, NOT permission to publish an unjudged look.',
+      ]:[]),
       ...(target===6?[
         'Looks 1, 2, 3 each embody Creative Director plans 1, 2, 3 when feasible.',
         'Looks 4, 5, 6 are YOUR three independent alternative fashion ideas:',
@@ -848,6 +867,7 @@ export async function composeCatalogSkuLooks({
         optionalUserTextLookbookIdeas:textualFashionMemory,
         inventoryGroundedDesignDirections:groundedPlans,
         creativeLookCommissions:conceptCommissions,
+        uncommissionedLookNumbers,
         explicitFeedbackAesthetics:anonymousExplicitTasteHistory(feedbackTaste),
         ...(revision?{independentPhotoCriticRevision:revision}:{}),
       }),
