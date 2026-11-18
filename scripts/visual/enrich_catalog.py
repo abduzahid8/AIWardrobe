@@ -47,13 +47,25 @@ def public_url(url):
   if not ipaddress.ip_address(info[4][0]).is_global: raise ValueError('non-public image host')
  return url
 
+# Merchant CDNs such as Armani, Fred Perry and Zara responded HTTP 403 to
+# python-requests' generic default UA, even when the exact original image
+# returned JPEG bytes to an identifying AIWardrobe client (2026-11-18 pilot).
+# Use our TRUE client identity, not a forged browser session. No cookies,
+# referer, auth, anti-bot bypass or unapproved host expansion. The existing
+# public-HTTPS/DNS, redirect, timeout, MIME, size and decode gates stay intact.
+IMAGE_REQUEST_HEADERS={
+ 'User-Agent':'AIWardrobe-Stylist6-Cloud/1.0',
+ 'Accept':'image/*,*/*;q=0.8',
+}
+
 def fetch_image(url):
  # Validate every redirect; cap bytes before decoding, never send credentials.
  started_request=time.monotonic()
  for _ in range(4):
   if time.monotonic()-started_request>20: raise ValueError('image deadline')
   public_url(url)
-  r=requests.get(url,timeout=(5,10),allow_redirects=False,stream=True)
+  r=requests.get(url,headers=IMAGE_REQUEST_HEADERS,
+    timeout=(5,10),allow_redirects=False,stream=True)
   if r.is_redirect:
    from urllib.parse import urljoin
    url=urljoin(url,r.headers['Location']); r.close(); continue

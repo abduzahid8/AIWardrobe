@@ -1,10 +1,12 @@
-name: Stylist 6 bounded footwear visual intelligence
-run-name: 'Stylist 6 | permitted-shoes photo intelligence, four bounded workers'
+name: Stylist 6 bounded catalog photo intelligence
+run-name: 'Stylist 6 | source-verified product photos, four bounded workers'
 on:
   push:
     branches: [codex/stylist6-visual-first-20261110]
     paths:
       - .github/workflows/stylist6-footwear-visual-backfill.yml
+      - scripts/visual/enrich_catalog.py
+      - scripts/visual/test_fetch_image_transport.py
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,6 +37,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Check true-source image download transport before model installation
+        run: python3 -m unittest discover -s scripts/visual -p 'test_fetch_image_transport.py' -v
       - name: Confirm narrowly scoped visual-worker credentials
         run: |
           test -n "$STYLIST_VISUAL_WORKER_URL"
@@ -53,5 +57,5 @@ jobs:
         run: |
           pip install --quiet torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet -r scripts/visual/cloud/requirements.txt
-      - name: Process one bounded 128-image cohort, do not seed entire catalog
+      - name: Process only 128 explicitly queued exact-source images per worker
         run: python scripts/visual/cloud/worker.py
