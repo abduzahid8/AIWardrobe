@@ -618,7 +618,7 @@ export async function designCreativeBriefsWithFallback(options={}){
     signal:options.signal
       ?AbortSignal.any([options.signal,abortSecondary.signal])
       :abortSecondary.signal,
-    timeoutMs:Math.max(1000,Math.min(7000,
+    timeoutMs:Math.max(1000,Math.min(9000,
       Number.isFinite(options.backupTimeoutMs)
         ?options.backupTimeoutMs:5500)),
   }):null;
