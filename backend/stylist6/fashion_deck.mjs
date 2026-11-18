@@ -2135,6 +2135,10 @@ export async function recommendFashionDeck({
              allowLayer:!noLayer||catalogFourItemIntent,
             });
           skuCompositionReceipt.status=String(composition?.status||'unavailable').slice(0,40);
+          skuCompositionReceipt.studio=
+            ['nemotron','cross_lab_kimi','nemotron_fallback',
+              'nemotron_plus_kimi_initial'].includes(composition?.providerFamily)
+              ?composition.providerFamily:'not_run';
           skuCompositionReceipt.visualMenuStatus=
             typeof composition?.visualMenuStatus==='string'
               ?composition.visualMenuStatus.slice(0,40):'not_run';
@@ -2144,7 +2148,7 @@ export async function recommendFashionDeck({
             status:String(composition?.status||'unavailable').slice(0,40),
             candidatesSeen:pool.length,
             chosen:0,
-            providerCalls:Math.min(1,Math.max(0,Number(composition?.providerCalls)||0)),
+            providerCalls:Math.min(2,Math.max(0,Number(composition?.providerCalls)||0)),
             compositionMode:true,
           };
           if(composition?.status==='composed'&&Array.isArray(composition.looks)){

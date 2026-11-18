@@ -449,6 +449,82 @@ test('initial source SKU creator stays proven Nemotron even when staging cross-l
   assert.equal(output.providerCalls,1);
 });
 
+test('first-pass AI fashion uses TWO independent studios before PHOTO review to explore fresh complete source SKUs',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const models=[],payloads=[];
+  const expectedFirst=Object.fromEntries(slots.map(slot=>
+    [slot,pool.filter(x=>x.slot===slot).slice(0,6).map(x=>x.token)]));
+  const resultSix=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-true-source-verified-creative-duel',
+    layerRequired:true,parallel:true,outfitCount:6,
+    initialStudioDuel:true,timeoutMs:15000,
+    fetchImpl:async(_url,opts)=>{
+      const body=JSON.parse(opts.body);
+      models.push(body.model);
+      payloads.push(body);
+      if(body.model==='nvidia/nemotron-3.5-super-vl-120b-a12b')
+        return result({slotPicks:expectedFirst});
+      assert.equal(body.model,CROSS_LAB_REVISION_MODEL);
+      assert.equal(body.response_format.type,'json_object');
+      assert.equal(body.top_p,undefined);
+      const words=body.messages[0].content;
+      assert.match(words,/SECOND INDEPENDENT exceptional menswear FASHION DESIGNER/);
+      const bounded=JSON.parse(words.slice(words.lastIndexOf('\n')+1));
+      assert.equal(bounded.previousUnreviewedArchitectures.length,3);
+      const secondary=bounded.unusedSourceBoundMerchandise;
+      for(const slot of slots){
+        assert.equal(secondary[slot].length,3);
+        for(const token of expectedFirst[slot].slice(0,3))
+          assert.ok(!secondary[slot].some(x=>x.token===token),
+            'second artist only sees source merchandise NEVER chosen by first three');
+      }
+      return result({slotPicks:Object.fromEntries(slots.map(slot=>
+        [slot,secondary[slot].slice(0,3).map(x=>x.token)]))});
+    },
+  });
+  assert.deepEqual(models,['nvidia/nemotron-3.5-super-vl-120b-a12b',
+    CROSS_LAB_REVISION_MODEL]);
+  assert.equal(resultSix.status,'composed');
+  assert.equal(resultSix.providerCalls,2);
+  assert.equal(resultSix.providerFamily,'nemotron_plus_kimi_initial');
+  assert.equal(resultSix.looks.length,6);
+  assert.equal(new Set(resultSix.looks.flat().map(x=>x.id)).size,24);
+  assert.ok(resultSix.looks.every(look=>look.length===4));
+  assert.ok(resultSix.looks.every(look=>
+    slots.every(slot=>look.some(item=>item.macroCategory===slot))));
+  assert.doesNotMatch(JSON.stringify(payloads),/PRIVATE_SKU_|images\.zara|shopUrl/,
+    'provider prompts may reveal only anonymous tokens and safe garment/photo facts');
+});
+
+test('failing second creative studio NEVER destroys six already-source-verified initial outfits',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const original=Object.fromEntries(slots.map(slot=>
+    [slot,pool.filter(x=>x.slot===slot).slice(0,6).map(x=>x.token)]));
+  const models=[];
+  const created=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-persist-first-designer',
+    layerRequired:true,parallel:true,outfitCount:6,
+    initialStudioDuel:true,timeoutMs:15000,
+    fetchImpl:async(_url,opts)=>{
+      const req=JSON.parse(opts.body);
+      models.push(req.model);
+      return req.model===CROSS_LAB_REVISION_MODEL
+        ?result({slotPicks:Object.fromEntries(slots.map(slot=>
+          [slot,['P999','P998','P997']]))})
+        :result({slotPicks:original});
+    },
+  });
+  assert.deepEqual(models,['nvidia/nemotron-3.5-super-vl-120b-a12b',
+    CROSS_LAB_REVISION_MODEL]);
+  assert.equal(created.status,'composed');
+  assert.equal(created.providerFamily,'nemotron');
+  assert.equal(created.providerCalls,2);
+  assert.equal(created.looks.length,6);
+  assert.equal(new Set(created.looks.flat().map(x=>x.id)).size,24);
+});
+
 test('malformed and unavailable AI fashion directions never invent missing merchandise',()=>{
   const missing={id:'ai-director-1',generatedBy:'s6-creative-director-v1',
     name:'Impossible',palette:['red'],roles:{

@@ -129,6 +129,10 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     skuCompositionParallel:f.skuCompositionReceipt?.parallel===true,
     skuCompositionAiFirst:f.skuCompositionReceipt?.aiFirst===true,
     skuCompositionRetrievalSkipped:f.skuCompositionReceipt?.retrievalSkipped===true,
+    skuCompositionStudio:['nemotron','cross_lab_kimi',
+      'nemotron_fallback','nemotron_plus_kimi_initial']
+      .includes(f.skuCompositionReceipt?.studio)
+      ?f.skuCompositionReceipt.studio:'not_run',
     skuCompositionPhotoFirst:[
       'applied','not_run','ready','invalid_input','insufficient_inventory',
       'insufficient_photo_inventory','deadline','oversized','media_unavailable',
@@ -1620,6 +1624,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           return composeCatalogSkuLooks({
             pool,context,directions,layerRequired,allowLayer,outfitCount,
             feedbackTaste,parallel,
+            // Isolated 72s cloud staging: let a SECOND independent designer
+            // propose genuinely different photo-verifiable outfits BEFORE
+            // the expensive final visual critic, rather than recolor the
+            // first model's exhausted cardigans after it is too late.
+            initialStudioDuel:parallel&&budgetMs>=70000,
             resolvePhoto:parallel&&photoFirstCatalogReady
               ?photoComposerCachedOnlyResolver:null,
             authorizePhoto:parallel&&photoFirstCatalogReady?isInferenceAuthorized:null,
