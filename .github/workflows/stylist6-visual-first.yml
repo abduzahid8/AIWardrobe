@@ -31,8 +31,8 @@ jobs:
           node --check backend/stylist6/cloud_handler.mjs
       - name: Verify anonymized, inventory-grounded AI creative planning (zero paid calls)
         run: node --test backend/stylist6/creative_director_ai.test.mjs backend/stylist6/fashion_director_slate.test.mjs
-      - name: Test real-SKU grounding and fail-closed contracts (mock providers, NO API calls)
-        run: node --test backend/stylist6/prototype.test.mjs backend/stylist6/fashion_deck.test.mjs backend/stylist6/creative_directions.test.mjs backend/stylist6/editorial_quality.test.mjs backend/stylist6/deck_editorial_copy.test.mjs
+      - name: Test real-SKU grounding, AI-first source menus and fail-closed contracts (mock providers, NO API calls)
+        run: node --test backend/stylist6/prototype.test.mjs backend/stylist6/fashion_deck.test.mjs backend/stylist6/sku_composer_ai.test.mjs backend/stylist6/creative_directions.test.mjs backend/stylist6/editorial_quality.test.mjs backend/stylist6/deck_editorial_copy.test.mjs
       - name: Verify benchmark scenarios contain 68 unique requests (v2 dev/held-out split)
         run: |
           node --input-type=module -e '
