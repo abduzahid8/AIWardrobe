@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   CREATIVE_DIRECTOR_VERSION, directorInventory, directorVisualAtlas, directorResponseSchema,
   validateDirectorDirections, designCreativeBriefs,designCreativeBriefsWithFallback,
+  boundedParallelCreativeBackupMs,PARALLEL_CREATIVE_BACKUP_MAX_MS,
 } from './creative_director_ai.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
 
@@ -356,6 +357,15 @@ test('provider cannot finish an incomplete original concept: preserve real sourc
   assert.deepEqual(reply.briefs.map(x=>x.name),
     ['Tailored Navy Signature','Modern Textural Refresh']);
   assert.equal(reply.invalidPlanBackupStatus,'provider_unavailable');
+});
+
+test('isolated 72s creative backup can finish a third real art plan after the old 6500ms cutoff without an unbounded call',()=>{
+  assert.equal(PARALLEL_CREATIVE_BACKUP_MAX_MS,9000);
+  assert.equal(boundedParallelCreativeBackupMs(8500),8500);
+  assert.equal(boundedParallelCreativeBackupMs(20000),9000,
+    'a slow model cannot exceed the independent source planner cap');
+  assert.equal(boundedParallelCreativeBackupMs(500),1000);
+  assert.equal(boundedParallelCreativeBackupMs(Number.NaN),5500);
 });
 
 test('PARALLEL staging Creative Director returns genuine source-valid independent 30B art when 120B times out',async()=>{
