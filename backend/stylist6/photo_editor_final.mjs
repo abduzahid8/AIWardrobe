@@ -309,8 +309,14 @@ export async function selectPhotoEditorialDeck({
               JSON.stringify({user,photoApprovedOutfits:options,
                 verifiedPortfolios:menu}),
             ].join('\n');
+            // Give the independent visual specialist the OUTER request
+            // deadline, not Nemotron's SHORTER per-model abort signal.
+            // Real primary VLM timeouts used to abort BOTH parallel judges,
+            // discarding a nearly-complete independent photo verdict.
+            // The cross-lab vote still has the same bounded total deadline
+            // and only chooses a fully source-validated F-token.
             independentPromise=Promise.resolve().then(()=>fetchImpl(URL,{
-              method:'POST',signal:visionSignal,
+              method:'POST',signal:combined,
               headers:{Authorization:'Bearer '+apiKey,
                 'Content-Type':'application/json'},
               body:JSON.stringify({

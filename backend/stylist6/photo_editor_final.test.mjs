@@ -357,6 +357,57 @@ test('Kimi second-lab original-photo verdict survives PRIMARY portfolio VLM outa
   assert.equal(chosen.creativeGap,gap);
 });
 
+test('independent original-photo Kimi may finish AFTER primary VLM-specific deadline without exceeding outer budget',async()=>{
+  const jpeg=await sharp({create:{width:110,height:145,channels:3,
+    background:'#86856c'}}).jpeg().toBuffer();
+  let primarySignal=null,kimiSignal=null;
+  const models=[];
+  const chosen=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    apiKey:'nvapi-primary-timeout-independent-photo',
+    timeoutMs:6000,independentVisionJury:true,
+    authorizePhoto:()=>true,resolvePhoto:async()=>({bytes:jpeg}),
+    fetchImpl:async(_url,req)=>{
+      const body=JSON.parse(req.body);
+      models.push(body.model);
+      if(body.model===PHOTO_PORTFOLIO_VISION_MODEL){
+        primarySignal=req.signal;
+        return new Promise((_resolve,reject)=>{
+          if(req.signal.aborted)return reject(Error('primary_vlm_timed_out'));
+          req.signal.addEventListener('abort',()=>{
+            reject(Error('primary_vlm_timed_out'));
+          },{once:true});
+        });
+      }
+      assert.equal(body.model,'moonshotai/kimi-k3.1-pro');
+      kimiSignal=req.signal;
+      return new Promise((resolve,reject)=>{
+        if(req.signal.aborted)return reject(Error('kimi_pre_aborted'));
+        req.signal.addEventListener('abort',()=>reject(Error('kimi_aborted')),
+          {once:true});
+        const respond=()=>setTimeout(()=>{
+          if(req.signal.aborted)return reject(Error('kimi_aborted_on_primary'));
+          resolve(result('F01'));
+        },100);
+        if(primarySignal?.aborted)respond();
+        else primarySignal.addEventListener('abort',respond,{once:true});
+      });
+    },
+  });
+  assert.equal(primarySignal.aborted,true,
+    'the real primary VLM-specific timeout must have fired');
+  assert.equal(kimiSignal.aborted,false,
+    'an independent completed photo verdict must NOT inherit primary VLM abort');
+  assert.equal(chosen.status,'selected');
+  assert.deepEqual(chosen.tokens,['L02','L00']);
+  assert.equal(chosen.visualJury,'applied');
+  assert.equal(chosen.independentJury,'standalone');
+  assert.equal(chosen.providerCalls,2,
+    'real Kimi photo verdict replaces extra text-only paid provider retry');
+  assert.deepEqual(new Set(models),new Set([
+    'moonshotai/kimi-k3.1-pro',PHOTO_PORTFOLIO_VISION_MODEL]));
+});
+
 test('cross-lab photo fallback cannot select a fabricated F-token after primary vision failure',async()=>{
   const jpeg=await sharp({create:{width:115,height:130,channels:3,
     background:'#b9a48c'}}).jpeg().toBuffer();
