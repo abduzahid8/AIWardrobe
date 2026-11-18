@@ -910,9 +910,20 @@ export async function composeCatalogSkuLooks({
               const secondAbort=new AbortController();
               const secondTimer=setTimeout(()=>secondAbort.abort(),remaining);
               try{
+                // Compare whole looks by real observed colors, textures and
+                // construction, not only a row of subtype names. These are
+                // the same privacy-bounded photo facts already in SKU menus;
+                // catalog text never masquerades as photo evidence.
                 const complementaryArchitectures=foundation.map(look=>
-                  Object.fromEntries(SLOTS.map(slot=>[slot,
-                    safe(look.find(item=>slotOf(item)===slot)?.subtype,36)])));
+                  Object.fromEntries(SLOTS.map(slot=>{
+                    const item=look.find(x=>slotOf(x)===slot);
+                    const observed=item?photoFacts(item):{};
+                    return [slot,{
+                      subtype:safe(item?.subtype,36)||'unknown',
+                      photo:observed,
+                      catalogTextClues:item?catalogTextClues(item,observed):{},
+                    }];
+                  })));
                 const secondPrompt=[
                   'You are a SECOND INDEPENDENT exceptional menswear FASHION DESIGNER.',
                   'Another creator already proposed '+independentCount+' source-authentic outfits.',
@@ -985,13 +996,30 @@ export async function composeCatalogSkuLooks({
                       const v=JSON.parse(secondText)?.choices?.[0];
                       if(v?.finish_reason==='stop'&&
                           typeof v?.message?.content==='string'){
+                        // A single malformed SKU in a four-look creative
+                        // slate must not erase three OTHER source-valid
+                        // alternative outfits. Accept only individually
+                        // validated nonreused complete looks. Refill any spare
+                        // photo-audition positions with still-compatible
+                        // original looks; never throw away real candidates
+                        // or repeat a physical SKU across the combined slate.
                         const extra=validateSkuCompositions(
                           JSON.parse(v.message.content),alternatePool,{
                             layerRequired,allowLayer,count:independentCount,
-                            allowPartial:false,
+                            allowPartial:true,minimumValid:1,
                           });
-                        if(extra.length===independentCount){
-                          composed=[...foundation,...extra];
+                        if(extra.length){
+                          const used=new Set([...foundation,...extra].flatMap(
+                            look=>look.map(item=>productKey(item))));
+                          const originalRemainder=choices.slice(independentCount)
+                            .filter(look=>{
+                              if(look.some(item=>used.has(productKey(item))))
+                                return false;
+                              for(const item of look)used.add(productKey(item));
+                              return true;
+                            });
+                          composed=[...foundation,...extra,
+                            ...originalRemainder].slice(0,8);
                           artist='nemotron_plus_kimi_initial';
                         }
                       }
