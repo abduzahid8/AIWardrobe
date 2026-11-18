@@ -1707,7 +1707,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const verifiedPhotoCounts=new Map([
       ['top',0],['outerwear',0],['bottom',0],['shoes',0],
     ]);
-    for(const item of shopItems)if(verifiedPhotoRows.has(String(item.id))&&
+    // Count only products still eligible for this exact catalog request.
+    // A license for an out-of-currency, unavailable or filtered SKU cannot
+    // satisfy the required FOUR-role source PHOTO quorum.
+    for(const item of feasible)if(item.isShopItem===true&&
+      verifiedPhotoRows.has(String(item.id))&&
       verifiedPhotoCounts.has(item.macroCategory))
       verifiedPhotoCounts.set(item.macroCategory,
         verifiedPhotoCounts.get(item.macroCategory)+1);
@@ -1804,6 +1808,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       catalog: feasible,
       referenceBriefs: refs,
       aiCreativeBriefs: creativePlan.briefs,
+      photoFirstPriorityIds:photoFirstCatalogReady
+        ?new Set(feasible.filter(item=>item.isShopItem===true&&
+          verifiedPhotoRows.has(String(item.id))).map(item=>String(item.id))):null,
       ...(selectDirectorFinalists?{selectDirectorFinalists}:{}),
       ...(selectCatalogCompositions?{selectCatalogCompositions}:{}),
       ...(selectCatalogRescueCompositions?{selectCatalogRescueCompositions}:{}),

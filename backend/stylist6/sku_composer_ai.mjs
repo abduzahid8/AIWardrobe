@@ -133,6 +133,9 @@ function explicitItemAffinity(item,model){
 export function sourceBoundCompositionPool(looks, {
   perSlot=MAX_PER_SLOT,additionalItems=[],explorationSlots=4,directions=[],
   feedbackTaste=null,inventoryFirst=false,
+  // ONLY trusted cloud handler passes exact source-hash+rights-current SKU
+  // IDs. The customer cannot nominate a copyrighted picture as authorized.
+  photoFirstPriorityIds=null,
 }={}){
   if(!Array.isArray(looks))return [];
   const limit=Math.max(1,Math.min(MAX_PER_SLOT,perSlot));
@@ -168,6 +171,9 @@ export function sourceBoundCompositionPool(looks, {
   const planned=Array.isArray(directions)?directions.slice(0,3).filter(x=>
     x?.generatedBy==='s6-creative-director-v1'&&x.roles):[];
   const extraCapacity=Math.max(0,Math.min(4,explorationSlots,limit-3));
+  const licensedPhotoIds=photoFirstPriorityIds instanceof Set
+    ?new Set([...photoFirstPriorityIds].filter(x=>typeof x==='string'&&x.length<210))
+    :new Set();
   const result=[];
   for(const slot of SLOTS){
     const pool=[...candidates.get(slot).values()].sort((a,b)=>b.strength-a.strength);
@@ -258,6 +264,33 @@ export function sourceBoundCompositionPool(looks, {
           });
         if(alternatives[0]&&append(alternatives[0]))
           signatures.add(observedSignature(alternatives[0].item));
+      }
+    }
+    // A full ORIGINAL-photo outfit artist needs THREE exact rights-cleared
+    // real garment photos in every role. Source-current permission records
+    // are validated by the server before this function is ever called.
+    // Previously a quota of 12 could fill with popular/unlicensed clothes,
+    // leaving 0 of the permitted cached photos inside its P-token menu even
+    // though the DB held >=3 authenticated photos per garment role.
+    // This grants *photo visibility* to real items, never photo approval or
+    // aesthetic merit; the independent whole-look photo jury stays strict.
+    if(inventoryFirst&&limit>=9&&licensedPhotoIds.size>0){
+      let pictured=chosen.filter(x=>
+        licensedPhotoIds.has(String(x.item.id))).length;
+      const considered=pool.filter(x=>
+        licensedPhotoIds.has(String(x.item.id)));
+      const knownSubtypes=new Set(chosen.filter(x=>
+        licensedPhotoIds.has(String(x.item.id))).map(x=>x.item.subtype));
+      const licensed=[...considered].sort((a,b)=>
+        Number(!knownSubtypes.has(b.item.subtype))-
+        Number(!knownSubtypes.has(a.item.subtype))||
+        b.strength-a.strength||String(a.item.id).localeCompare(String(b.item.id)));
+      for(const x of licensed){
+        if(pictured>=3||chosen.length>=limit)break;
+        if(append(x)){
+          pictured++;
+          knownSubtypes.add(x.item.subtype);
+        }
       }
     }
     // Fill remaining options with diverse, strong real products; the model

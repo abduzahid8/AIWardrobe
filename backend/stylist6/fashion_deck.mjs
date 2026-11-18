@@ -1826,6 +1826,9 @@ export async function recommendFashionDeck({
   // Optional trusted inventory-grounded AI directions; still subject to the
   // exact same retrieval, price, wardrobe, weather and visual checks.
   aiCreativeBriefs = [],
+  // Server-only exact licensed-photo product IDs, source-hash+rights checked
+  // against the CURRENT merchant catalog. Never a client styling control.
+  photoFirstPriorityIds=null,
   // Server-only AI chooser of REAL outfit finalists (no invented SKU access).
   selectDirectorFinalists,
   // Optional prebuilt model from feedback_taste.mjs (explicit thumbs rows).
@@ -1948,9 +1951,22 @@ export async function recommendFashionDeck({
     const prepared=Array.isArray(catalog)?catalog.slice(0,650)
       .filter(item=>!excludedBases.has(baseProductId(String(item.id))))
       .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
+    // When the first visual artist is legally enabled, ensure that even
+    // source-authorized items OUTSIDE the 650-item ranker window reach the
+    // actual artist's limited 48-P-token menu. All original SKU feasibility
+    // checks and catalogue product identities remain unchanged.
+    const pictured=photoFirstPriorityIds instanceof Set&&Array.isArray(catalog)
+      ?catalog.filter(item=>photoFirstPriorityIds.has(String(item.id))&&
+        !excludedBases.has(baseProductId(String(item.id))))
+        .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
+    const visualSeed=pictured.length
+      ?[...new Map([...pictured,...prepared].map(x=>
+        [baseProductId(String(x.id)),x])).values()].slice(0,650)
+      :prepared;
     const pool=sourceBoundCompositionPool([],{
-      additionalItems:prepared,inventoryFirst:true,
+      additionalItems:visualSeed,inventoryFirst:true,
       explorationSlots:4,directions:aiPlans,feedbackTaste,
+      photoFirstPriorityIds,
     });
     const counts=Object.fromEntries(slots.map(slot=>
       [slot,pool.filter(p=>p.slot===slot).length]));

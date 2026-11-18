@@ -1,4 +1,6 @@
 import test from 'node:test';
+import sharp from 'sharp';
+import {buildVisualSkuBoard} from './visual_sku_board.mjs';
 import assert from 'node:assert/strict';
 import {sourceBoundCompositionPool,groundedSkuDirections,
   sourceGroundedCreativeCommissions,
@@ -999,6 +1001,68 @@ test('inventory-first source menu lets AI design before any ranker has built an 
     slots.map(slot=>[slot,pool.filter(p=>p.slot===slot)[i].token])));
   assert.equal(validateSkuCompositions({outfits:choices},pool,
     {count:6,layerRequired:true}).length,6);
+});
+
+test('rights-cleared, source-current photos actually reach all FOUR image-first columns inside a bounded 48-item artist menu',async()=>{
+  // All JPEGs in this test are GENERATED NON-MERCHANT FIXTURES. Real server
+  // readiness comes ONLY from separately validated per-source grant records.
+  const palette=['cream','navy','brown','olive','stone','grey'];
+  const fakeCatalog=slots.flatMap((slot,j)=>Array.from({length:18},(_,i)=>({
+    id:`SOURCE_SKU_${j}_${i}`,macroCategory:slot,isShopItem:true,
+    subtype:[['dress-shirt','polo','fine-knit','shirt'],
+      ['blazer','coat','cardigan','overshirt'],
+      ['chino','tailored-trouser','jeans','trouser'],
+      ['loafer','derby','chelsea','oxford']][j][i%4],
+    color:palette[i%palette.length],currency:'USD',price:95,
+    name:`Source current ${slot} ${i}`,
+    imageUrl:`https://licensed-catalog-test.example/${slot}/${i}.jpg`,
+    shopUrl:`https://licensed-catalog-test.example/shop/${slot}/${i}`,
+  })));
+  const rights=new Set(slots.flatMap((_,j)=>[12,13,14].map(i=>`SOURCE_SKU_${j}_${i}`)));
+  const same=sourceBoundCompositionPool([],{additionalItems:fakeCatalog,
+    inventoryFirst:true,explorationSlots:4});
+  const promoted=sourceBoundCompositionPool([],{additionalItems:fakeCatalog,
+    inventoryFirst:true,explorationSlots:4,photoFirstPriorityIds:rights});
+  assert.equal(same.length,48);
+  assert.equal(promoted.length,48,
+    'rights clearance changes source PHOTO visibility, not the 48-SKU source admission budget');
+  for(const slot of slots){
+    assert.equal(promoted.filter(x=>x.slot===slot&&rights.has(x.item.id)).length,3,
+      'the real source-authorized first artist sees >=3 actual SKU PHOTOS per role');
+    assert.ok(promoted.filter(x=>x.slot===slot).length===12);
+  }
+  assert.equal(new Set(promoted.map(x=>x.item.id)).size,48);
+  assert.doesNotMatch(JSON.stringify(promoted.map(x=>x.public)),
+    /SOURCE_SKU_|licensed-catalog-test|imageUrl|shopUrl|rightsGranted/);
+  const jpeg=await sharp({create:{width:280,height:320,channels:3,
+    background:'#b6aea0'}}).jpeg().toBuffer();
+  let fetched=0;
+  const board=await buildVisualSkuBoard(promoted,{
+    authorizePhoto:url=>url.startsWith('https://licensed-catalog-test.example/'),
+    resolvePhoto:async item=>{
+      // Models never see fake/unapproved third-party source photos. The
+      // server will reject this path unless the source-hash+rights checks
+      // have already validated this exact item and the bytes hash.
+      if(!rights.has(item.id))return null;
+      fetched++;
+      return {bytes:jpeg};
+    },
+    minimumPerSlot:3,deadlineMs:1900,
+  });
+  assert.ok(board&&board.bytes.length>0,'the actual four-column IMAGE-FIRST creative source board can be built');
+  assert.equal(board.seenTokens.length,12);
+  assert.ok([...board.seenTokens].every(token=>
+    rights.has(promoted.find(x=>x.token===token)?.item.id)));
+  assert.equal(fetched,12);
+  assert.ok(jpeg.length<512*1024);
+  const empty=await buildVisualSkuBoard(same,{
+    authorizePhoto:()=>true,resolvePhoto:async()=>null,
+    minimumPerSlot:3,deadlineMs:400,
+  });
+  assert.equal(empty,null,'missing real licensed originals MUST abstain, never invent a substitute');
+  assert.deepEqual(same,sourceBoundCompositionPool([],{additionalItems:fakeCatalog,
+    inventoryFirst:true,explorationSlots:4,photoFirstPriorityIds:new Set()}),
+  'zero verified licenses preserves the exact old source-item selection');
 });
 
 test('each Creative Director fashion concept can see TWO genuinely distinct photographed real garment options per role',()=>{
