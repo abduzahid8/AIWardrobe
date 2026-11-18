@@ -1238,7 +1238,10 @@ test('rights-cleared, source-current photos actually reach all FOUR image-first 
       fetched++;
       return {bytes:jpeg};
     },
-    minimumPerSlot:3,deadlineMs:1900,
+    // Align the synthetic board fixture with the real 4.2s source-board
+    // assembly ceiling; runner CPU jitter must not masquerade as a fashion
+    // or permission regression. This does NOT change live model deadlines.
+    minimumPerSlot:3,deadlineMs:4200,
   });
   assert.ok(board&&board.bytes.length>0,'the actual four-column IMAGE-FIRST creative source board can be built');
   assert.equal(board.seenTokens.length,12);
@@ -1365,6 +1368,39 @@ test('AI sees two real photo-proven sole constructions even when merchant type, 
   assert.doesNotMatch(JSON.stringify(shoes.map(x=>x.public)),
     /PRIVATE_PHOTOGRAPHIC|PRIVATE_SOURCE|source-merchant|shopUrl|imageUrl|sourceHash/,
     'AI sees safe photographed facets and opaque tokens, not original URLs or private IDs');
+});
+
+test('remaining AI source tokens expose a late genuinely photographed material instead of twelve same-texture recolors',()=>{
+  const seen=value=>({value,confidence:.96,margin:.24,evidence:'image-model'});
+  const photo=(i,color,texture)=>({
+    id:'PRIVATE_REAL_BLAZER_'+i,isShopItem:true,
+    macroCategory:'outerwear',subtype:'blazer',
+    name:'Authenticated actual source product',price:120,currency:'USD',
+    imageUrl:'https://source-fashion.invalid/item-'+i+'.jpg',
+    shopUrl:'https://source-fashion.invalid/store',
+    visualSourceHash:'a'.repeat(32),
+    visualFashion:{version:1,sourceHash:'a'.repeat(32),
+      imageUrl:'https://source-fashion.invalid/item-'+i+'.jpg',
+      imageSha256:'b'.repeat(64),model:'photo-extractor',revision:'v1',
+      attributes:{color:seen(color),texture:seen(texture)}},
+  });
+  const ordinary=Array.from({length:13},(_,i)=>
+    photo(i,'shade'+i,'smooth'));
+  const late=photo('rare','midnight','tweed');
+  const pool=sourceBoundCompositionPool([],{
+    inventoryFirst:true,additionalItems:[...ordinary,late],
+    explorationSlots:4,
+  });
+  const layers=pool.filter(x=>x.slot==='outerwear');
+  assert.equal(layers.length,12,'unchanged capped real merchandise menu');
+  assert.ok(layers.some(x=>x.item===ordinary[0]),
+    'the leading source garment is still eligible for the creative director');
+  assert.ok(layers.some(x=>x.item===late),
+    'a later truly observed material enters the AI choice, despite plentiful near-duplicate merch');
+  assert.equal(layers.find(x=>x.item===late).public.photo.texture,'tweed');
+  assert.ok(layers.every(x=>x.item.isShopItem&&x.item.macroCategory==='outerwear'));
+  assert.doesNotMatch(JSON.stringify(layers.map(x=>x.public)),
+    /PRIVATE_REAL_BLAZER|source-fashion|imageUrl|shopUrl|sourceHash|imageSha256/);
 });
 
 test('AI-first source menu exposes real footwear silhouettes instead of twelve loafer recolors',()=>{
