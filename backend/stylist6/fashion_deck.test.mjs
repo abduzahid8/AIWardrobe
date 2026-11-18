@@ -2708,6 +2708,17 @@ test('two real PHOTO approvals still activate portfolio fashion judgment and its
       assert.equal(critiqueFeedback.editorPhotoGap,undefined,
         'real photo editor can omit optional free-text despite seeing JPEGs');
       assert.equal(critiqueFeedback.approvedPhotoEvidence.length,2);
+      assert.ok(Array.isArray(critiqueFeedback.rejectedOutfits)&&
+        critiqueFeedback.rejectedOutfits.length>=1,
+        'the final photo-informed creator needs real REJECTED garment relationships too');
+      assert.ok(critiqueFeedback.rejectedOutfits.some(row=>
+        typeof row.reason==='string'&&
+        typeof row.observations?.outerwear==='string'&&
+        Array.isArray(row.relationships)),
+        'send the actual independent photo observations, not merely a veto label');
+      assert.doesNotMatch(JSON.stringify(critiqueFeedback.rejectedOutfits),
+        /two-approvals-(top|bottom|outerwear|shoes)-[0-9]+|imageUrl|shopUrl/,
+        'never transmit original merchant identifiers or URLs as creative feedback');
       assert.ok(pool.length>=12);
       assert.ok(pool.every(p=>!firstArtistProducts.has(p.item.id)),
         'the creative correction must get INVENTORY never seen by the first AI');
