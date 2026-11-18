@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence, eligibleCatalogFourItemPhotoCandidate } from './fashion_deck.mjs';
+import { remainingEditorialCreativePhotoQuota, adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence, eligibleCatalogFourItemPhotoCandidate } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -2441,6 +2441,20 @@ test('real visual editor missing-direction feedback triggers NEW AI SKU composit
   assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
 });
 
+test('late photo editor can spend existing 18-19s on a newly designed third look, never a forced third card',()=>{
+  assert.equal(remainingEditorialCreativePhotoQuota(18900,11),3,
+    'after 8 candidate photos + 3 initial corrections, final artist has three NEW photo-review slots');
+  assert.equal(remainingEditorialCreativePhotoQuota(18200,10),3);
+  assert.equal(remainingEditorialCreativePhotoQuota(17499,10),0,
+    'too little remaining time must preserve the two already photo-approved outfits');
+  assert.equal(remainingEditorialCreativePhotoQuota(18900,14),0,
+    'no more than 14 paid photo-candidate evaluations in one staged request');
+  assert.equal(remainingEditorialCreativePhotoQuota(18900,13),1);
+  assert.equal(remainingEditorialCreativePhotoQuota(NaN,11),0);
+  assert.equal(remainingEditorialCreativePhotoQuota(19000,-2),0);
+  assert.equal(remainingEditorialCreativePhotoQuota(19000,1.1),0);
+});
+
 test('failed second visual editorial AI never replaces previously photo-approved outfits',async()=>{
   const request={sourceMode:'catalog',style:'classic',occasion:'Work',
     weather:{temp:18},optionalLayer:false,preferences:{},
@@ -2468,7 +2482,7 @@ test('failed second visual editorial AI never replaces previously photo-approved
       return {status:'selected',tokens:pair.orderedLooks,
         creativeGap:'Consider a genuinely different relaxed suede weekend-tailoring silhouette'};
     },
-    photoRescueRemainingMs:()=>40000,
+    photoRescueRemainingMs:()=>18900,
   };
   const baseline=await recommendFashionDeck({
     ...common,selectCatalogRescueCompositions:undefined});
