@@ -2560,8 +2560,7 @@ export async function recommendFashionDeck({
         modelFashionSelection.photoRevisionStatus=
           String(retry?.status||'unavailable').slice(0,32);
         modelFashionSelection.photoRevisionArtist=
-          ['nemotron','nemotron_fallback','cross_lab_kimi',
-              'nemotron_fast_photo_revision']
+          ['nemotron','nemotron_fallback','cross_lab_kimi']
             .includes(retry?.providerFamily)?retry.providerFamily:'not_run';
         if(retry?.status==='composed'&&Array.isArray(retry.looks)&&
             photoRescueRemainingMs()>=14000){
@@ -2949,8 +2948,7 @@ export async function recommendFashionDeck({
               editorial.feedbackRevisionStatus=
                 String(retry?.status||'unavailable').slice(0,32);
               editorial.feedbackRevisionArtist=
-                ['nemotron','nemotron_fallback','cross_lab_kimi',
-              'nemotron_fast_photo_revision']
+                ['nemotron','nemotron_fallback','cross_lab_kimi']
                   .includes(retry?.providerFamily)?retry.providerFamily:'not_run';
               if(retry?.status==='composed'&&Array.isArray(retry.looks)&&
                   photoRescueRemainingMs()>=16000){
