@@ -229,3 +229,34 @@ Next e2e native result must report
 \`agreed|narrowed|disagreed|unavailable\` (not \`not_run\`)
 for a feasible photographed triple before we claim any real Kimi
 visual evaluation. We still cannot claim excellent diverse style.
+
+## Exact Kimi HTTP 400 root-cause (reproduced with real provider)
+
+On \`2ecbce1\` actual iPhone Date night run 2026-11-18
+03:05:24Z, the optimized source-photo contact sheet succeeded
+(\`photoEditorialVisualMedia=ready\`) and the Nemotron original-photo
+portfolio jury was applied, with 3 full source-photographed looks
+already approved and one feasible three-look portfolio.
+The independent Kimi status was \`unavailable\`, so the user was
+shown two original-source PHOTO-approved sets (never padded).
+
+A safe isolated real NVIDIA \`/v1/chat/completions\` original-image
+probe, same exact production Kimi invocation options, reproduced
+HTTP 400 with this response:
+
+    Validation: top_p is fixed at 0.95 for this model;
+    received 0.9. Omit top_p or set it to 0.95.
+
+Kimi uses provider-fixed nucleus sampling. Our shared Nemotron
+request body incorrectly supplied \`top_p:0.9\` to independent Kimi,
+but Nemotron accepts that option. This Kimi-specific top_p field
+is now OMITTED, preserving its API-fixed 0.95 value. No new
+safety threshold or fallback changes. A regression test asserts
+the absence of top_p on the independent Kimi request; its same
+actual original-image F-token portfolio menu, strict source
+validation and no-fabrication properties still apply.
+
+A new LIVE authenticated iPhone call must prove
+\`photoEditorialIndependentJury\` becomes one of
+\`agreed|narrowed|disagreed\`, not \`unavailable\` or \`not_run\`,
+before counting this as a running independent reviewer.

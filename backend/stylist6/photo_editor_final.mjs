@@ -289,7 +289,11 @@ export async function selectPhotoEditorialDeck({
                   {type:'text',text:independentPrompt},
                   {type:'image_url',image_url:{url:sheetDataUrl}},
                 ]}],
-                temperature:0.1,top_p:0.9,max_tokens:280,stream:false,
+                // ACTUAL NVIDIA API probe 2026-11-18: Kimi K3.1
+                // rejects top_p=0.9 with HTTP 400. Its top_p is FIXED
+                // at 0.95; omit this argument and honor provider default.
+                // Nemotron's own top_p remains unchanged.
+                temperature:0.1,max_tokens:280,stream:false,
                 response_format:{type:'json_object'},
                 chat_template_kwargs:{enable_thinking:false},
               }),

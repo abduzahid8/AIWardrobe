@@ -295,6 +295,8 @@ test('independent Kimi photographic fashion jury can VETO repetitive three-look 
         nvidia++;return result('F00'); // 3 complete looks
       }
       assert.equal(body.model,'moonshotai/kimi-k3.1-pro');
+      assert.equal(Object.hasOwn(body,'top_p'),false,
+        'real Kimi provider FIXES top_p=0.95: sending Nemotron 0.9 causes HTTP 400');
       assert.equal(body.chat_template_kwargs.enable_thinking,false);
       assert.match(body.messages[0].content[0].text,
         /SECOND, INDEPENDENT expert VISUAL FASHION EDITOR/);
