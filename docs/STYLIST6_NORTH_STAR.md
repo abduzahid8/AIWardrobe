@@ -377,3 +377,74 @@ and blind human 70% fashion-preference evaluation.
 4. Where native photos still show cloned silhouettes, improve model-led whole-look design and creative revision from original PHOTO evidence; do not append product-name regex bans or relax the photo rejection floor. Include a same-inventory before/after visual comparison.
 5. Before scale or S5 replacement, achieve >=70% Stylist 6 wins in >=30 held-out blinded S5 pairwise scenarios with three human reviewers, zero source/price/auth/privacy violations, verified native delivery and rollback.
 
+## 2026-11-18 — independent creative model + photo-portfolio outage repair (current server checkpoint)
+
+**Only verified source/runtime evidence, NOT a successful fashion release.**
+
+- The 908 source-hash-queued active shoe images were processed by the bounded
+  visual worker: Supabase now reports **6,992** succeeded catalog visual jobs,
+  zero pending/leased. Exact current-source catalog joins confirm **1,643 of
+  1,649** active shoes have current `catalog_visual_fashion` profiles. Six still
+  lack current visual profiles. Earlier `unknown` worker jobs remain historical;
+  never count them as successful. The authorized product photo-first cache
+  `catalog_photo_cache_v1` still has **zero rows**, so the initial creative
+  design cannot truthfully claim it viewed a licensed image-board before SKU
+  composition. Host allowlists are NOT third-party media licenses.
+- `42584b0` authenticated Classic/Any iOS generated TWO honest four-source-SKU
+  results after 9 photo judgments; both were nearly identical knit/cardigan
+  silhouettes. This was Any because the native QA flow accidentally toggled
+  the selected Work occasion OFF. Fixed subsequent QA flows to capture the
+  selected occasion BEFORE submitting the paid request.
+- On source-deployed `649598d`, correct native Classic/Work showed THREE
+  full four-source-SKU looks. Diagnostics: six composed and six admitted, six
+  independent photo judgments, four photo approvals, three displayed.
+  Screenshots showed genuinely different leather-jacket, trench-coat and
+  blazer-based outfit constructions; the trench-coat merchant JPEG loaded
+  with a delayed native image render. This is evidence of variation for ONE
+  request, not consistent beauty.
+- Correct native Classic/Date night on that revision gave 11 PHOTO judgments,
+  seven individual approvals, but the final Kimi photographic portfolio vote
+  narrowed the final deck to TWO repetitive knit/cardigan-led looks. This is
+  a genuine failure of collection-level aesthetic diversity despite passing
+  per-outfit tests and strong catalog coverage.
+- `8e09ff5` adds real **independent Kimi K3.1 Pro CREATIVE rescue** after
+  photographic rejection, instead of the Nemotron composer repeatedly
+  rewriting its own stale concepts. Only source-menu-valid tokens are
+  admitted. On unavailability/malformed output, fall back once to Nemotron.
+  An actual Kimi hosted API probe returned valid three-four-item JSON in
+  ~2.36s; 224/224 relevant local tests and both integrated GitHub CI jobs
+  passed. Authenticated native Date night returned THREE photo-verified
+  cards (5 initial proposed source-feasible, 4 PHOTO approved) but its final
+  120B PHOTO portfolio VLM timed out, so Kimi CREATIVE rescue was **not**
+  exercised and the rendered 3 cards were NOT a confirmed visual-fashion win.
+- `0bb855a` repairs that concrete photo-portfolio failure: when the PRIMARY
+  visual 120B editorial call times out/returns invalid selection, the already
+  parallel, source-verified, photo-informed independent Kimi editor may supply
+  a strictly validated original F-token from the exact previously approved
+  outfits instead of discarding its completed real-photo judgment for a
+  text-only editor. The safe diagnostic enum is `standalone`; when Nemotron
+  succeeds, Kimi retains its previous restrictive subset-veto role. Kimi
+  cannot add SKUs, invent photos or bypass whole-outfit critic/replay.
+  **226/226** focused local tests and **2/2** dedicated GitHub CI jobs passed;
+  Render staging deployed LIVE on exact `0bb855a4`.
+- The first paid native attempt against LIVE `0bb855a4` was **INCONCLUSIVE**:
+  a concurrent Metro restart caused Maestro to report the app stopped before
+  result assertion; a second setup attempt was interrupted by Expo Go's
+  developer menu. This is an iOS QA environment collision, not evidence that
+  the backend model failed or that its new photo fallback succeeded.
+  A different development agent is also updating native JPEG negotiation
+  on the same branch; do not mix that client's code SHA with the Render
+  backend SHA or run two Maestro drivers against the same simulator.
+
+**Next high-leverage validation:** hold Metro + authenticated simulator
+stable for the entire generated request, capture the four real item photos
+for each of three proposed results, plus the `photoEditorialVisualJury`,
+`photoEditorialIndependentJury`, `photoEditorialCreativeArtist`, candidate
+counts, verified source/price facts, and real occasion. Repeat correct
+Classic/Work, Classic/Date, Old Money/Casual and Winter/Work. The `standalone`
+receipt should appear only when a real PHOTO Kimi judgment substitutes for
+failed primary VLM; no fabricated quality approval. If repeated architecture
+clones remain, use additional genuinely independent outfit-conception and
+human visual QA, not a lowered reject floor. Before any production switch,
+prove >=70% wins across >=30 held-out blind paired human reviews with three
+judges. Stylist 5 production remains unchanged.
