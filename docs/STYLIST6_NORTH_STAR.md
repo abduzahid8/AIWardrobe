@@ -566,3 +566,52 @@ substitute for real independent visual and human acceptance.
 - Lacoste HTTP 403 remains blocked. Merchant image hosting, third-party
   model usage rights, licensed photo-first cache, available sizes and
   delivery cannot be inferred from successful offline feature extraction.
+
+## 2026-11-18 noon+ — photo-verified source evidence and honest world-class fashion gate
+
+- Source visual enrichment confirmed 512/512 exact-current photo records:
+  510 worker-success and two honest `no_confident_facets` cases, four
+  GitHub workers SUCCESS. Active visual coverage: top 2,638/3,082,
+  outerwear 1,838/2,117, bottoms 1,435/1,672, shoes 1,643/1,649.
+- Repeating Work with the previous unchanged deployed creative algorithm
+  **after** image enrichment still gave **2/11** photo approvals and 2
+  native four-SKU cards. Source data recovery is necessary but insufficient.
+- Staging new creative commit `adde1c8`: both independent designers see
+  provenance-separated source-text hints and real confident photo features
+  and are asked for complete-look scene/texture/proportion judgment;
+  **252/252 focused tests, both CI SUCCESS; Render LIVE**.
+- Authenticated native Work `adde1c8`: 3/7 photo-approved, one feasible
+  triple, 2 shown. Authenticated Date night: 7/10 photo-approved, FOUR
+  feasible triples, but visual jury chose **2**. Actual photo cards were
+  two variants of blazer/trousers, NOT sufficiently differentiated.
+- This reveals the enduring creative ROOT CAUSE: selecting many attractive
+  **individual** four-piece candidates does not yield three genuinely
+  different, occasion-right *whole-portfolio* designs. The independent
+  photo editor's two-card veto is working as intended; never change
+  its threshold or add an unapproved third. The next change must
+  improve the original source-bound design DECISION across 3 artistic
+  directions and prove it via same-source photo QA, not extra garment
+  regex lists or fake images.
+- Complete evidence and QA distinctions:
+  `docs/reports/stylist6-real-iphone-owner-reference-20261118.md`.
+- **NO production rollout** and no claim of an excellent personal
+  stylist until authenticated repeatable 3×4, human-blind 30-case
+  >=70% S6 preference, and retailer rights/stock/size gates.
+
+## 2026-11-18 — independent designers must explore different REAL garment architectures
+
+- The live Date-night source/photo editor rejected an eligible third look
+  because the two displayed source-authentic looks both repeated
+  **blazer + trousers**, despite different top and footwear merchandise.
+- The second cross-lab AI stylist is now presented with a **dynamic,
+  source-authentic complementary product menu** when the first studio
+  repeatedly selected the same construction. The menu only withholds
+  that over-represented subtype from the second studio when >=4 genuine
+  alternatives from >=2 other known constructions exist for that role.
+  There are no item-name regex bans, no invented garments and no changes
+  to the first studio's choices or full-photo/editorial acceptance.
+- Sparse source categories are unchanged; the alternate studio can still
+  design looks within actual available inventory. The first model's
+  approved blazers remain eligible for the final collection.
+- Source menu behavior, abstention and identity preservation are directly
+  regression-tested; **real native iOS aesthetic effect is not yet proven**.

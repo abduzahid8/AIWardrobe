@@ -128,3 +128,116 @@ were not retried or bypassed.
 Improving SigLIP2 evidence should give the AI source composer a stronger
 photo-derived color/construction menu; it is **not** artistic acceptance
 or evidence of a source-photo commercial caching/rehosting license.
+
+## 2026-11-18 noon+ — recovery completed, validated AI evidence vs style quality
+
+### Original photo-feature recovery: 512/512 current photo profiles
+
+- Run: https://github.com/abduzahid8/AIWardrobe/actions/runs/44255130910
+- Four source-image processing workers **SUCCESS**, follow-on bounded
+  `catalog_visual_jobs` priority-1500 tranche exactly 512 entries.
+- 510 of 512 now have **succeeded** worker state and exact source-hash/URL
+  matched v1 fashion profiles. **Two** (one Armani and one Fred Perry) have
+  `unknown / no_confident_facets` despite their stored matching photo
+  profile; there is no defensible subtype/color to derive from them.
+  Do not count these two as successfully inferred image attributes.
+- Active verified visual v1 profile counts: top **2,638/3,082**; outerwear
+  **1,838/2,117**; bottom **1,435/1,672**; shoes **1,643/1,649**.
+  Whole catalogue image-rights and licensed source-photo cache still
+  remain unverified and empty respectively.
+
+### Controlled evidence check on unchanged LIVE staging SHA bd65cd8
+
+After 512 source profiles were recovered, an authenticated native iOS
+**Classic / New / Work** generated 8 Nemotron + Kimi source-bound proposals.
+Server photo assessment **2/11 approved**, **2 final** shown (55,885 ms),
+corrective Kimi new photo-approved **0/3**. This means replenishing raw
+source image features, even though necessary, **did not solve aesthetic
+composition by itself**.
+
+### Source-evidence and full-outfit creative review, SHA adde1c8
+
+New staged server commit:
+`adde1c82aec8d13da2cfa10a9962ed0cfea586f8`;
+Render deployment `dep-dbukveqfngtc73d43a40` verified **LIVE**
+(the previous stable is easily redeployable). Dedicated visual-first and
+integrated Stylist 6 GitHub CI: **SUCCESS / SUCCESS**. Local
+`node --import tsx --test` focused coverage **252/252 PASS**.
+
+Implementation:
+- The 120B original composer and independent Kimi creator receive
+  source-text **color / texture clues only when no confident exact-current
+  photo observation for that field exists**.
+- Clearly labeled `catalogTextClues` are unverified merchant-name-derived
+  hints, NOT observed photo facts. A mismatching confident photo feature
+  always wins. No private SKU, vendor URL, customer identity or photo
+  inference right is leaked.
+- Both artists are instructed to judge **actual complete four-garment
+  relationships**, scene, palette, proportion, layer-to-top, trouser-to-shoe
+  and coherent cross-look aesthetic *before* proposing combinations.
+- No photo-critic threshold, mandatory 4-real-SKU, availability, licensed
+  media, budget, JWT, hard source authenticity, independent photo review or
+  production Stylist 5 routing was weakened.
+
+Authenticated **real iOS** on the exact staging SHA:
+
+| Scenario | Initial source AI proposals | Actual photo decisions | Actual photo approvals | Feasible triples | Displayed | Editorial verdict |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Classic / New / Work | 8 (Nemotron + Kimi) | 7 | 3 | 1 | **2** | independent photo editors `agreed` on 2; revision attempted 3/1 approved |
+| Classic / New / Date night | 8 (Nemotron + Kimi) | 10 | 7 | 4 | **2** | real photo jury, arbitration favored primary 2; creative revision 3/3 individually approved |
+
+Latency: **57,600 ms Work**, **63,822 ms Date night**; both within the
+72s source Visual-First staged compute. Both device automation runs ended
+exit code 0 and all displayed items passed the four real source SKU contract.
+
+Important controlled-vs-uncontrolled distinction: the catalogue and
+unanchored random source window vary across native tests. The improved
+individual photo approval proportions are **NOT proven causal uplift**
+versus earlier versions; the Date-night two-look result is worse in
+cardinality than the earlier three-look run on `bd65cd8`. No release
+promotion can be justified from these two scenarios alone.
+
+### Direct visual inspection of the Date result
+
+Viewed each displayed native card with product photographs after lazy
+image loading completed. Both surviving *distinct-SKU* looks share the
+**blazer + trousers** design direction: one with a dark knit and another
+with a pale shirt. The photos appear plausible individually, but the
+two look concepts are closely related, so the final AI jury's refusal
+to pad a third look is justified. The newer photo-reviewer revisions
+were genuinely added to the reopened source/photo portfolio menu;
+they did not disappear in the backend. The missing third idea is
+**actual creative-portfolio architecture**, not an accidental array
+truncation, lost photo verdict, or unregistered garment.
+
+QA automation note: the occasion tile is a **toggle** and remains
+selected after returning from results. A test that taps the already
+selected Work tile accidentally deselects the occasion; this caused
+non-generation assertions. The successful actual generation tests
+asserted the selected context **before** pressing Generate. These
+automation failures are not source-API failures or fashion outcomes.
+
+**Release verdict: production NO-GO.** Next work must build three
+independently compelling, visibly different fashion directions from
+the *same real merchant catalogue*, ideally with licensed source
+photographic evidence in the original creative decision. Do not
+claim a style win from more source profiles or a model's own photo
+approvals until 30+ held-out blind human S5-vs-S6 tests with three
+reviewers consistently show >=70% wins and actual shoppable 3×4 looks.
+
+### Next targeted creative architecture trial, no threshold weakening
+
+The photo-editor failure case now directly motivates a structural
+creative *exploration* change in `sku_composer_ai.mjs`: after the
+first designer overuses one garment subtype, the independent second
+studio sees real **different existing** source subtypes when at least
+four feasible source-token candidates from at least two other
+constructions exist for that role. There is no source product rewrite,
+global garment disallowlist, invented outfit, or relaxation of the
+photographic veto. The first designer's stronger same-subtype outfits
+remain eligible. This is intended to expose underused combinations
+so the second artist can make genuine different fashion decisions.
+
+Verified by mocked cross-studio source/identity/scarcity tests; the next
+authenticated native staging canary must prove actual whole-look
+quality and three visually distinct outputs before this is a success.
