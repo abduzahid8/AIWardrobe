@@ -18,6 +18,32 @@ export function usableProductImageUri(raw: unknown): string {
   return typeof raw === 'string' && USABLE_URI_RE.test(raw.trim()) ? raw.trim() : '';
 }
 
+/** A real iPhone Classic/Work catalog tile showed an empty AllSaints
+ * image after PHOTO-approved generation. The original merchant's f_auto
+ * endpoint returned AVIF when the client advertised AVIF, but returned a
+ * valid JPEG for Accept:image/jpeg. Expo Image supports per-source headers.
+ *
+ * Keep the EXACT merchant photo URL (and its identity/source hash) intact.
+ * Only image-CDN paths explicitly using automatic FORMAT negotiation receive
+ * this JPEG preference. Other HTTPS photos, private wardrobe media, explicit
+ * .png/.webp assets and local sources remain unchanged. The distinct cache
+ * key prevents an older AVIF response cached under the same URL from being
+ * mistaken for the JPEG payload on native clients.
+ */
+export function productImageLoadSource(uri: string): {
+  uri: string; headers?: Record<string, string>; cacheKey?: string;
+} {
+  if (/^https:\/\/[^/?#]+\/[^?#]*\/f_auto(?:,|\/)/i.test(uri) &&
+      !wardrobeMediaReference(uri)) {
+    return {
+      uri,
+      headers: { Accept: 'image/jpeg' },
+      cacheKey: 'aiw-native-jpeg-v1:' + uri,
+    };
+  }
+  return { uri };
+}
+
 /** Fresh cache-busting query param so a transient CDN hiccup re-fetches. */
 export function cacheBustedImageUri(uri: string): string {
   const bust = `aiwr=${Date.now()}`;

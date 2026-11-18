@@ -72,7 +72,7 @@ import { SHOP_CATALOG_ITEMS } from '../data/shopCatalogItems';
 import { CLASSIC_MENS_ITEMS } from '../data/inspoMensShopItems';
 import { useSubscriptionGate } from '../src/hooks/useSubscriptionGate';
 import { Image, ExpoImage } from '../src/components/MediaImage';
-import { ImageUnavailablePlaceholder, useProductImageRetry } from '../src/components/ProductImageFallback';
+import { ImageUnavailablePlaceholder, productImageLoadSource, useProductImageRetry } from '../src/components/ProductImageFallback';
 
 
 const { width, height } = Dimensions.get('window');
@@ -459,7 +459,7 @@ const SlotCell = React.memo(function SlotCell({
         />
       ) : (
         <ExpoImage
-          source={bundledSource ?? { uri: activeUri }}
+          source={bundledSource ?? productImageLoadSource(activeUri)}
           placeholderContentFit="contain"
           style={[slotStyles.image, { backgroundColor: '#EEF3F8' }]}
           contentFit="contain"

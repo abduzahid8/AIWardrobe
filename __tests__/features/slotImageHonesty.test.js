@@ -21,6 +21,7 @@ import {
   ImageUnavailablePlaceholder,
   useProductImageRetry,
   usableProductImageUri,
+  productImageLoadSource,
   PRODUCT_IMAGE_RETRY_DELAY_MS,
 } from '../../src/components/ProductImageFallback';
 
@@ -67,6 +68,7 @@ const slotCell = build(extract(screenSource, 'SlotCell'), {
   formatMoney,
   ImageUnavailablePlaceholder,
   useProductImageRetry,
+  productImageLoadSource,
 });
 const outfitSlotGrid = build(extract(screenSource, 'OutfitSlotGrid'), {
   React, View,
@@ -155,6 +157,32 @@ describe('SlotCell image honesty', () => {
     const view = render(React.createElement(slotCell, cellProps('https://cdn.example/coat.jpg')));
     expect(currentImage().source).toEqual({ uri: 'https://cdn.example/coat.jpg' });
     expect(view.queryByTestId('slot-photo-unavailable-second-top-1')).toBeNull();
+  });
+
+  it('an auto-format merchant photo requests native-safe JPEG without changing the REAL source URL or leaking rights',()=>{
+    const source='https://media.i.allsaints.com/image/list/fn_select:jq:test/f_auto,q_auto,w_960,h_1200,c_fit/genuine.json?_i=AG';
+    const view=render(React.createElement(slotCell,cellProps(source)));
+    expect(currentImage().source).toEqual({
+      uri:source,
+      headers:{Accept:'image/jpeg'},
+      cacheKey:'aiw-native-jpeg-v1:'+source,
+    });
+    act(()=>currentImage().onError());
+    act(()=>jest.advanceTimersByTime(PRODUCT_IMAGE_RETRY_DELAY_MS));
+    expect(currentImage().source.uri).toMatch(/&aiwr=\d+$/);
+    expect(currentImage().source.headers).toEqual({Accept:'image/jpeg'});
+    expect(currentImage().source.cacheKey).toBe(
+      'aiw-native-jpeg-v1:'+currentImage().source.uri,
+    );
+    expect(view.queryByTestId('slot-photo-unavailable-second-top-1')).toBeNull();
+    // Explicitly formatted images, local/wardrobe URLs and untrusted raw
+    // media must never be silently rewritten or sent custom CDN headers.
+    for(const url of [
+      'https://cdn.example.com/coat.png',
+      'https://shop.example.com/image.webp',
+      'file:///local/photo.jpg',
+      'https://cdn.example.com/coat.jpg?f_auto=1',
+    ])expect(productImageLoadSource(url)).toEqual({uri:url});
   });
 
   it('retries a load error exactly once with a fresh cache-busting param, then shows the placeholder', () => {
