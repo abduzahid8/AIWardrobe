@@ -525,6 +525,72 @@ test('failing second creative studio NEVER destroys six already-source-verified 
   assert.equal(new Set(created.looks.flat().map(x=>x.id)).size,24);
 });
 
+test('LIVE original designer invalid six-look SKU response triggers independent Kimi FIRST-PASS creative backup',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const models=[],responses=[];
+  const valid=Object.fromEntries(slots.map(slot=>[
+    slot,pool.filter(x=>x.slot===slot).slice(0,6).map(x=>x.token)]));
+  const created=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-test-independent-initial-rescue',
+    layerRequired:true,parallel:true,outfitCount:6,
+    initialStudioDuel:true,timeoutMs:15000,
+    fetchImpl:async(_url,opts)=>{
+      const payload=JSON.parse(opts.body);
+      models.push(payload.model);responses.push(payload);
+      if(payload.model==='nvidia/nemotron-3.5-super-vl-120b-a12b'){
+        return result({slotPicks:Object.fromEntries(slots.map(slot=>[
+          slot,Array(6).fill('NONEXISTENT_SKU')]))});
+      }
+      assert.equal(payload.model,CROSS_LAB_REVISION_MODEL);
+      assert.equal(payload.response_format.type,'json_object');
+      assert.equal(payload.top_p,undefined);
+      return result({slotPicks:valid});
+    },
+  });
+  assert.deepEqual(models,['nvidia/nemotron-3.5-super-vl-120b-a12b',
+    CROSS_LAB_REVISION_MODEL],
+    'no silent fallback to old ranker after model proposes made-up SKUs');
+  assert.equal(created.status,'composed');
+  assert.equal(created.providerFamily,'cross_lab_kimi_initial_fallback');
+  assert.equal(created.providerCalls,2);
+  assert.equal(created.looks.length,6);
+  assert.ok(created.looks.every(look=>look.length===4));
+  assert.equal(new Set(created.looks.flat().map(x=>x.id)).size,24);
+  assert.doesNotMatch(JSON.stringify(responses),/PRIVATE_SKU_|shopUrl|image_url|https:\/\//,
+    'independent studio never sees real identity, private ID or raw photo URL');
+});
+
+test('first studio timeout leaves independent creative studio time, without relaxing valid SKU gates',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const models=[];
+  const valid=Object.fromEntries(slots.map(slot=>[
+    slot,pool.filter(x=>x.slot===slot).slice(0,6).map(x=>x.token)]));
+  const created=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-test-first-studio-timeout',
+    layerRequired:true,parallel:true,outfitCount:6,
+    initialStudioDuel:true,timeoutMs:6000,
+    fetchImpl:async(_url,opts)=>{
+      const payload=JSON.parse(opts.body);
+      models.push(payload.model);
+      if(payload.model===CROSS_LAB_REVISION_MODEL)
+        return result({slotPicks:valid});
+      return await new Promise((_resolve,reject)=>{
+        if(opts.signal.aborted)return reject(Error('first studio timed out'));
+        opts.signal.addEventListener('abort',()=>reject(Error('first studio timed out')),
+          {once:true});
+      });
+    },
+  });
+  assert.deepEqual(models,['nvidia/nemotron-3.5-super-vl-120b-a12b',
+    CROSS_LAB_REVISION_MODEL]);
+  assert.equal(created.status,'composed');
+  assert.equal(created.providerFamily,'cross_lab_kimi_initial_fallback');
+  assert.equal(created.providerCalls,2);
+  assert.equal(created.looks.length,6);
+});
+
 test('malformed and unavailable AI fashion directions never invent missing merchandise',()=>{
   const missing={id:'ai-director-1',generatedBy:'s6-creative-director-v1',
     name:'Impossible',palette:['red'],roles:{

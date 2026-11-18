@@ -757,15 +757,34 @@ export async function composeCatalogSkuLooks({
     const rescue=revision!==null;
     const minimumValid=rescue?1:3;
     const crossLab=rescue&&crossLabRevision===true;
-    const studios=crossLab?[CROSS_LAB_REVISION_MODEL,MODEL]:[MODEL];
+    // LIVE source-diverse iOS canary: Nemotron may emit an INVALID six-look
+    // token slate. Returning to the legacy outfit ranker at that point
+    // silently discards the second stylist AND the broader real catalog.
+    // Give the independently trained Kimi a complete source-bound creative
+    // fallback when the FIRST model cannot produce three valid real looks.
+    // This is the SAME exact validation and downstream independent PHOTO
+    // approval, not a shortcut, a stale style rule or a weaker third look.
+    const initialIndependentBackup=initialStudioDuel===true&&
+      parallel===true&&!rescue&&target===6;
+    const studios=crossLab?[CROSS_LAB_REVISION_MODEL,MODEL]:
+      initialIndependentBackup?[MODEL,CROSS_LAB_REVISION_MODEL]:[MODEL];
     let failure='provider_unavailable';
     for(const studio of studios){
       if(combined.aborted)break;
       providerCalls++;
       const isKimi=studio===CROSS_LAB_REVISION_MODEL;
+      // If the first artist stalls, save a genuine 5-6s window for Kimi
+      // instead of consuming the ENTIRE 16.5s creative deadline on a
+      // doomed first try. The parent 72s limit, privacy and media quotas
+      // stay untouched. Slow first responses may still be used if valid
+      // before this scoped deadline.
+      const firstStudio=initialIndependentBackup&&!isKimi;
+      const firstStudioMs=Math.min(10500,Math.max(1500,timeoutMs-5600));
+      const providerSignal=firstStudio
+        ?AbortSignal.any([combined,AbortSignal.timeout(firstStudioMs)]):combined;
       let res;
       try{
-        res=await fetchImpl(ENDPOINT,{method:'POST',signal:combined,
+        res=await fetchImpl(ENDPOINT,{method:'POST',signal:providerSignal,
           headers:{Authorization:'Bearer '+apiKey,
             'Content-Type':'application/json'},
           body:JSON.stringify({
@@ -814,8 +833,9 @@ export async function composeCatalogSkuLooks({
           // look or bypass later full outfit photo judgments. The first
           // studio's six original source-authentic looks are the fallback.
           let composed=choices;
-          let artist=isKimi?'cross_lab_kimi':
-            crossLab?'nemotron_fallback':'nemotron';
+          let artist=isKimi
+            ?rescue?'cross_lab_kimi':'cross_lab_kimi_initial_fallback'
+            :crossLab?'nemotron_fallback':'nemotron';
           if(initialStudioDuel===true&&parallel&&!rescue&&!isKimi&&
               target===6&&choices.length>=3&&!combined.aborted){
             const firstThree=choices.slice(0,3);

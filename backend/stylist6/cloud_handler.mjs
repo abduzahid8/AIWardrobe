@@ -137,7 +137,8 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     skuCompositionAiFirst:f.skuCompositionReceipt?.aiFirst===true,
     skuCompositionRetrievalSkipped:f.skuCompositionReceipt?.retrievalSkipped===true,
     skuCompositionStudio:['nemotron','cross_lab_kimi',
-      'nemotron_fallback','nemotron_plus_kimi_initial']
+      'nemotron_fallback','nemotron_plus_kimi_initial',
+      'cross_lab_kimi_initial_fallback']
       .includes(f.skuCompositionReceipt?.studio)
       ?f.skuCompositionReceipt.studio:'not_run',
     skuCompositionPhotoFirst:[

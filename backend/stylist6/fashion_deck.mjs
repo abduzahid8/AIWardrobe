@@ -2137,7 +2137,8 @@ export async function recommendFashionDeck({
           skuCompositionReceipt.status=String(composition?.status||'unavailable').slice(0,40);
           skuCompositionReceipt.studio=
             ['nemotron','cross_lab_kimi','nemotron_fallback',
-              'nemotron_plus_kimi_initial'].includes(composition?.providerFamily)
+              'nemotron_plus_kimi_initial','cross_lab_kimi_initial_fallback']
+              .includes(composition?.providerFamily)
               ?composition.providerFamily:'not_run';
           skuCompositionReceipt.visualMenuStatus=
             typeof composition?.visualMenuStatus==='string'
