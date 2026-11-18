@@ -77,6 +77,8 @@ export function stylist6CreativeServerConfig() {
     // Server-controlled only: makes real catalog cohort stable for a
     // controlled SAME-SKU artistic A/B, not a customer-controlled fetch flag.
     STYLIST6_STABLE_COHORT_ENABLED: envOf('STYLIST6_STABLE_COHORT_ENABLED'),
+    // Isolated 72s Render staging visual-evidence menu only, not client input.
+    STYLIST6_VISUAL_EVIDENCE_MENU_ENABLED: envOf('STYLIST6_VISUAL_EVIDENCE_MENU_ENABLED'),
   };
 }
 

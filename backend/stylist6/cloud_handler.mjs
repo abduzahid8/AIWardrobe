@@ -165,6 +165,7 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     skuCompositionProposed:safe(f.skuCompositionReceipt?.proposed,8),
     skuCompositionAdmitted:safe(f.skuCompositionReceipt?.admitted,6),
     skuCompositionExploration:safe(f.skuCompositionReceipt?.exploratoryProducts,48),
+    skuCompositionPhotoEvidence:safe(f.skuCompositionReceipt?.visualEvidenceProducts,48),
     skuCompositionParallel:f.skuCompositionReceipt?.parallel===true,
     skuCompositionAiFirst:f.skuCompositionReceipt?.aiFirst===true,
     skuCompositionRetrievalSkipped:f.skuCompositionReceipt?.retrievalSkipped===true,
@@ -1813,6 +1814,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       photoFirstPriorityIds:photoFirstCatalogReady
         ?new Set(feasible.filter(item=>item.isShopItem===true&&
           verifiedPhotoRows.has(String(item.id))).map(item=>String(item.id))):null,
+      visualEvidenceFirst:budgetMs>=70000&&sourceMode==='catalog'&&
+        env.STYLIST6_VISUAL_EVIDENCE_MENU_ENABLED==='true',
       ...(selectDirectorFinalists?{selectDirectorFinalists}:{}),
       ...(selectCatalogCompositions?{selectCatalogCompositions}:{}),
       ...(selectCatalogRescueCompositions?{selectCatalogRescueCompositions}:{}),

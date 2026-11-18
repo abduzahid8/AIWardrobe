@@ -1829,6 +1829,7 @@ export async function recommendFashionDeck({
   // Server-only exact licensed-photo product IDs, source-hash+rights checked
   // against the CURRENT merchant catalog. Never a client styling control.
   photoFirstPriorityIds=null,
+  visualEvidenceFirst=false,
   // Server-only AI chooser of REAL outfit finalists (no invented SKU access).
   selectDirectorFinalists,
   // Optional prebuilt model from feedback_taste.mjs (explicit thumbs rows).
@@ -1966,7 +1967,7 @@ export async function recommendFashionDeck({
     const pool=sourceBoundCompositionPool([],{
       additionalItems:visualSeed,inventoryFirst:true,
       explorationSlots:4,directions:aiPlans,feedbackTaste,
-      photoFirstPriorityIds,
+      photoFirstPriorityIds,visualEvidenceFirst,
     });
     const counts=Object.fromEntries(slots.map(slot=>
       [slot,pool.filter(p=>p.slot===slot).length]));
@@ -2136,6 +2137,8 @@ export async function recommendFashionDeck({
         }
         composerPool=pool;
         skuCompositionReceipt.previewProducts=pool.length;
+        skuCompositionReceipt.visualEvidenceProducts=pool.filter(item=>
+          Object.keys(item.public?.photo||{}).length>0).length;
         skuCompositionReceipt.designDirections=aiPlans.length;
         skuCompositionReceipt.exploratoryProducts=pool.filter(p=>
           !reviewable.some(look=>look.items.some(item=>item.id===p.item.id))).length;
