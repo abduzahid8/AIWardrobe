@@ -508,8 +508,9 @@ export async function designCreativeBriefs({
 }
 
 /**
- * A REAL initial 120B plan can return three creative concepts whose source
- * roles are ALL invalid, leaving zero artistic brief for the SKU author.
+ * A REAL initial 120B plan can either return wholly invalid creative
+ * concepts OR TIME OUT (seen in authenticated iOS Work). Both leave zero
+ * artistic brief for the source-SKU author.
  * The fallback is not a scripted garment rule or fabricated product set:
  * ONE independently generated 30B plan sees the SAME verified inventory,
  * same actual wearer's context, original photo feature evidence and exact
@@ -520,8 +521,8 @@ export async function designCreativeBriefs({
 export async function designCreativeBriefsWithFallback(options={}){
   const first=await designCreativeBriefs(options);
   if(options.highTaste!==true||options.allowIndependentFallback!==true||
-      first.status!=='invalid_plan'||first.briefs.length>0||
-      options.signal?.aborted)return first;
+      !['invalid_plan','timeout'].includes(first.status)||
+      first.briefs.length>0||options.signal?.aborted)return first;
   const backup=await designCreativeBriefs({...options,highTaste:false,
     allowIndependentFallback:false,
     timeoutMs:Math.max(650,Math.min(3600,

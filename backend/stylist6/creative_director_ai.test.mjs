@@ -195,6 +195,52 @@ test('source-INVALID first artistic plan receives one REAL independent 30B Creat
     row.roles.outerwear.length>0));
 });
 
+test('actual 120B director TIMEOUT commissions one independent source-grounded 30B art plan while global deadline is healthy',async()=>{
+  const plans=[];
+  const options={catalog,request:{...request,occasion:'Date night',
+    brief:'Independent source art AFTER first provider local timeout 18nov'},
+    apiKey:'nvapi-creative-timeout-real-fallback',highTaste:true,
+    allowIndependentFallback:true,timeoutMs:1000,backupTimeoutMs:2650,
+    fetchImpl:async(_url,init)=>{
+      const payload=JSON.parse(init.body);
+      plans.push(payload.model);
+      assert.match(payload.messages[0].content,/social DATE evening/);
+      if(plans.length===1){
+        assert.equal(payload.model,'nvidia/nemotron-3.5-super-vl-120b-a12b');
+        await new Promise((_resolve,reject)=>{
+          if(init.signal.aborted)return reject(new Error('aborted'));
+          init.signal.addEventListener('abort',()=>reject(new Error('aborted')),{once:true});
+        });
+        throw new Error('unreachable provider response');
+      }
+      assert.equal(payload.model,'nvidia/nemotron-3.5-lightning-30b-a3b');
+      return fakeResponse(proposal);
+    },
+  };
+  const reply=await designCreativeBriefsWithFallback(options);
+  assert.deepEqual(plans,['nvidia/nemotron-3.5-super-vl-120b-a12b',
+    'nvidia/nemotron-3.5-lightning-30b-a3b']);
+  assert.equal(reply.status,'planned');
+  assert.equal(reply.invalidPlanBackupStatus,'used_independent_source_grounded');
+  assert.equal(reply.providerCalls,2);
+  assert.equal(reply.briefs.length,3);
+  assert.ok(reply.briefs.every(x=>x.roles.outerwear.length>0),
+    'three real four-source-role art directions exist without hard-coded garment rules');
+});
+
+test('aborted entire request NEVER launches independent 30B plan even if first director timed out',async()=>{
+  const controller=new AbortController();let calls=0;
+  const reply=await designCreativeBriefsWithFallback({catalog,
+    request:{...request,brief:'Dead global deadline must never start more fashion tokens'},
+    highTaste:true,allowIndependentFallback:true,
+    apiKey:'nvapi-deadline-cannot-revive-creative',signal:controller.signal,
+    fetchImpl:async()=>{calls++;controller.abort();throw Error('provider closed');},
+  });
+  assert.equal(reply.status,'timeout');
+  assert.equal(calls,1);
+  assert.equal(reply.briefs.length,0);
+});
+
 test('independent plan rescue never discards good initial director art or overrides staging kill switch',async()=>{
   const config={catalog,apiKey:'nvapi-test-no-superfluous-director',
     highTaste:true,allowIndependentFallback:true};
