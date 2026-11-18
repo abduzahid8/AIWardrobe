@@ -241,3 +241,22 @@ so the second artist can make genuine different fashion decisions.
 Verified by mocked cross-studio source/identity/scarcity tests; the next
 authenticated native staging canary must prove actual whole-look
 quality and three visually distinct outputs before this is a success.
+
+### Failed staging Date-night canary — dynamic alternative-studio exclusions
+
+Commit `6d6539b468b7bdae3b30b30d170170617c0b16bf` was deployed
+LIVE to isolated Render compute and passed both CI checks and local
+mocked source/auth/schema tests. However its first **real authenticated
+native iOS** Date-night execution showed **8 source-valid AI
+compositions; seven independent full-look photo evaluations; ZERO
+individually photo-approved and ZERO displayed** (32,743ms).
+This is an important aesthetic *counterexample* to the naive belief
+that a wider/different-subtype menu makes a trained fashion AI create
+beautiful complete ensembles. No quality floors were lowered and the
+photographic critic correctly refused all candidates.
+
+The additional experimental cross-studio hard source-menu exclusion
+and its test were immediately reversed to the previously live and
+source-verified `adde1c8` logic. Documented source-photo enrichment
+and evidence honesty remain. This experiment must not be reported as
+achieving the excellent-stylist objective or retained in staging.

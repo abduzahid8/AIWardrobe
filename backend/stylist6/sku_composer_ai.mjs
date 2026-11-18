@@ -496,49 +496,6 @@ export function groundedPhotoRevisionFeedback(raw){
   };
 }
 
-/** A SECOND creative artist must be free to discover a new architecture.
- * The first six-look draft may spend most of its real outerwear tokens on
- * blazers. Re-presenting a dozen more nearly identical blazers to Kimi
- * cannot establish a distinct third outfit, even if every piece is
- * individually photogenic. This is a DYNAMIC source menu, not a wardrobe
- * compatibility veto: after an over-represented construction is observed
- * in the FIRST AI's own proposals, the independent second designer gets
- * genuine OTHER available subtypes if the admitted inventory supports
- * >=minimum picks from >=2 known alternatives. The first artist's
- * original choices stay eligible for the independent PHOTO editor.
- * Empty, unknown or source-unsupported types never create substitutes.
- */
-export function independentStudioSourceMenu(firstLooks, unusedPool, minimum=3){
-  if(!Array.isArray(firstLooks)||!Array.isArray(unusedPool)||
-      !Number.isInteger(minimum)||minimum<3||minimum>6)
-    return Object.fromEntries(SLOTS.map(slot=>[slot,[]]));
-  return Object.fromEntries(SLOTS.map(slot=>{
-    const raw=unusedPool.filter(x=>x?.slot===slot&&x?.public&&x?.item);
-    const history=new Map();
-    for(const look of firstLooks){
-      const item=Array.isArray(look)
-        ?look.find(x=>slotOf(x)===slot):null;
-      const kind=String(item?.subtype||'').toLowerCase();
-      if(!kind||['unknown','other'].includes(kind))continue;
-      history.set(kind,(history.get(kind)||0)+1);
-    }
-    const dominant=[...history.entries()]
-      .sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0];
-    if(!dominant||dominant[1]<2)return [slot,raw.map(x=>x.public)];
-    const alternatives=raw.filter(x=>{
-      const subtype=String(x.item.subtype||'').toLowerCase();
-      return subtype&&subtype!==dominant[0]&&
-        subtype!=='unknown'&&subtype!=='other';
-    });
-    // If the source menu is too sparse, NEVER strip the real creator's
-    // usable inventory. Creativity cannot be created by guessing products.
-    if(alternatives.length<minimum||new Set(alternatives.map(x=>
-      String(x.item.subtype).toLowerCase())).size<2)
-      return [slot,raw.map(x=>x.public)];
-    return [slot,alternatives.map(x=>x.public)];
-  }));
-}
-
 export async function composeCatalogSkuLooks({
   pool,context,directions=[],critiqueFeedback=null,outfitCount=3,
   feedbackTaste=null,
@@ -941,8 +898,8 @@ export async function composeCatalogSkuLooks({
               look.map(item=>productKey(item))));
             const alternatePool=pool.filter(p=>
               !alreadyUsed.has(productKey(p.item)));
-            const available=independentStudioSourceMenu(
-              foundation,alternatePool,independentCount);
+            const available=Object.fromEntries(SLOTS.map(slot=>[
+              slot,alternatePool.filter(p=>p.slot===slot).map(p=>p.public)]));
             const canOffer= ['top','bottom','shoes',
               ...(layerRequired?['outerwear']:[])]
               .every(slot=>available[slot].length>=independentCount);
@@ -968,11 +925,6 @@ export async function composeCatalogSkuLooks({
                   'A cardigan recolor, new shoe shade, or similar chino set does',
                   'NOT create a genuinely different fashion direction.',
                   'Make your OWN editorial choices based on available product facts.',
-                  'The actual source menu favors OTHER real constructions where',
-                  'the first artist overused a single type. Treat this as a',
-                  'creative invitation, not a claim that those items look good.',
-                  'Choose a truly different, convincing outfit architecture',
-                  'or let the later independent photo reviewer reject it.',
                   'Each SKU has confident original photo observations when available.',
                   'catalogTextClues are only tentative merchant-text hints; NEVER',
                   'pretend these are visual inspection or proven fiber/cut facts.',

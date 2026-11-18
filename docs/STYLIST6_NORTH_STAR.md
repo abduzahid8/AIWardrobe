@@ -615,3 +615,21 @@ substitute for real independent visual and human acceptance.
   approved blazers remain eligible for the final collection.
 - Source menu behavior, abstention and identity preservation are directly
   regression-tested; **real native iOS aesthetic effect is not yet proven**.
+
+## 2026-11-18 — dynamic exclusion of repeated source subtypes REVERTED
+
+- Staging native Date-night canary of `6d6539b`: 8 genuine
+  Nemotron+Kimi proposals, 7 independent original-photo evaluations,
+  **0 photo approvals, 0 displayed outfits**. The second-studio
+  dynamic construction-exclusion experiment therefore demonstrably
+  failed its first live quality gate, even though 253/253 mocked
+  local tests passed. Do not conflate source-item validity or CI with
+  actual fashionable combination quality.
+- The experiment restricting the alternate studio's product menu has
+  been **reverted immediately** to the previously deployed, photo-tested
+  `adde1c8` creative logic. Future source exploration must not
+  suppress the actual possibilities of a creative artist merely to
+  satisfy a subtype-diversity heuristic. Human reviewers must assess
+  three excellent looks as a collection.
+- Keep the confirmed 512 photo-profile recoveries and provenance-
+  separated source text/image facts. Do NOT promote to production.

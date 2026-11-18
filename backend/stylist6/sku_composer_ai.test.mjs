@@ -4,8 +4,7 @@ import {sourceBoundCompositionPool,groundedSkuDirections,
   groundedPhotoRevisionFeedback,anonymousExplicitTasteHistory,
   validateSkuCompositions,composeCatalogSkuLooks,
   sourceVerifyComposedOutfits,AI_SKU_COMPOSER_VERSION,
-  CROSS_LAB_REVISION_MODEL,
-  independentStudioSourceMenu} from './sku_composer_ai.mjs';
+  CROSS_LAB_REVISION_MODEL} from './sku_composer_ai.mjs';
 const slots=['top','outerwear','bottom','shoes'];
 const items=Array.from({length:6},(_,i)=>slots.map((slot,j)=>({
   id:'PRIVATE_SKU_'+i+'_'+j,macroCategory:slot,isShopItem:true,
@@ -29,67 +28,6 @@ const slotAnswer=pool=>{
 const result=answer=>Response.json({choices:[{
   finish_reason:'stop',message:{content:JSON.stringify(answer)},
 }]});
-test('second independent fashion studio explores real OTHER garment silhouettes after first AI overuses blazers',()=>{
-  const initial=Array.from({length:4},(_,i)=>[
-    {id:'SRC0-'+i,macroCategory:'top',subtype:'shirt'},
-    {id:'SRC1-'+i,macroCategory:'outerwear',subtype:'blazer'},
-    {id:'SRC2-'+i,macroCategory:'bottom',subtype:'chino'},
-    {id:'SRC3-'+i,macroCategory:'shoes',subtype:'loafer'},
-  ]);
-  const make=(slot,kind,i)=>({
-    slot,item:{id:'PRIVATE_'+slot+'_'+kind+'_'+i,macroCategory:slot,
-      subtype:kind},public:{token:'REAL_'+slot+'_'+kind+'_'+i,
-      slot,subtype:kind,photo:{}},
-  });
-  const inventory=[
-    ...Array.from({length:5},(_,i)=>make('top','shirt',i)),
-    ...Array.from({length:3},(_,i)=>make('top','polo',i)),
-    ...Array.from({length:3},(_,i)=>make('top','fine-knit',i)),
-    ...Array.from({length:5},(_,i)=>make('outerwear','blazer',i)),
-    ...Array.from({length:3},(_,i)=>make('outerwear','coat',i)),
-    ...Array.from({length:3},(_,i)=>make('outerwear','cardigan',i)),
-    ...Array.from({length:6},(_,i)=>make('bottom','chino',i)),
-    ...Array.from({length:6},(_,i)=>make('shoes','loafer',i)),
-  ];
-  const menus=independentStudioSourceMenu(initial,inventory,4);
-  assert.ok(menus.outerwear.length>=4);
-  assert.ok(menus.top.length>=4);
-  assert.ok(menus.outerwear.every(x=>x.subtype!=='blazer'),
-    'blazer repetition in FIRST studio should let independent artist see OTHER actual source layers');
-  assert.ok(menus.top.every(x=>x.subtype!=='shirt'),
-    'do not allow the second artist to merely recolor dominant first-model shirts');
-  assert.equal(new Set(menus.outerwear.map(x=>x.subtype)).size,2,
-    'the second artist can choose coat OR cardigan without a forced template');
-  assert.equal(menus.bottom.length,6,
-    'only a single authentic bottom construction: never invent unseen trousers');
-  assert.equal(menus.shoes.length,6,
-    'only a single authentic shoe type: no fake second footwear construction');
-  const allPublic=new Set(inventory.map(x=>x.public));
-  assert.ok(Object.values(menus).flat().every(x=>allPublic.has(x)),
-    'public creative menus are only original untouched source-backed items');
-  assert.doesNotMatch(JSON.stringify(menus),/PRIVATE_/);
-
-  const scarce=independentStudioSourceMenu(initial,[
-    ...inventory.filter(x=>x.slot!=='outerwear'),
-    make('outerwear','blazer',10),make('outerwear','coat',1),
-    make('outerwear','cardigan',1),
-  ],4);
-  assert.equal(scarce.outerwear.length,3,
-    'if alternative silhouettes cannot satisfy four source-backed outfits keep ALL inventory');
-  assert.equal(scarce.outerwear[0].subtype,'blazer',
-    'source scarcity must not silently erase the only genuine prior type');
-  const independentFirst=[
-    [{macroCategory:'outerwear',subtype:'blazer'}],
-    [{macroCategory:'outerwear',subtype:'cardigan'}],
-    [{macroCategory:'outerwear',subtype:'coat'}],
-    [{macroCategory:'outerwear',subtype:'overshirt'}],
-  ];
-  const varied=independentStudioSourceMenu(independentFirst,
-    inventory.filter(x=>x.slot==='outerwear'),4);
-  assert.equal(varied.outerwear.length,11,
-    'if artist already designed four distinct source architectures, no filtering is appropriate');
-});
-
 test('SKU Composer sees multiple real merchandise menus, never identity or private image URLs',()=>{
   assert.match(AI_SKU_COMPOSER_VERSION,/sku-composer/);
   const p=sourceBoundCompositionPool(looks);
