@@ -1573,24 +1573,6 @@ export function chooseFormalPhotoRescueCandidates(
  * anchors, visual novelty and (when applicable) photographed formal-palette
  * proof. Do not ask the model for impossible combinations then reject it.
  */
-/**
- * A real original-photo editor can find that only two full outfits deserve
- * the same curated collection, despite multiple individually approved sets.
- * Allow a FINAL source-unseen artist to explore a new third idea while the
- * actual isolated 72s request still has time. This is NOT a styling formula:
- * only the independently approved source/photos and full portfolio editor
- * may decide whether that attempt improves the final two-look capsule.
- * This pathway is supplied with photoRescueRemainingMs ONLY by 72s staging.
- */
-export function remainingEditorialCreativePhotoQuota(remainingMs,attempted){
-  if(!Number.isFinite(remainingMs)||remainingMs<17500||
-      !Number.isInteger(attempted)||attempted<0)return 0;
-  // Up to 8 initial + 3 existing critique corrections + 3 final editorial
-  // experiments; the original 8-look source audition limit is unchanged.
-  // Every new look still needs fresh full original-photo verification.
-  return Math.min(3,Math.max(0,MAX_VISUAL_CANDIDATES+6-attempted));
-}
-
 export function verifiedPhotoEditorialPortfolios(
   approvedLooks,critiques,reviewOptions,{triples=24,pairs=12,singles=4}={},
 ){
@@ -2809,10 +2791,11 @@ export async function recommendFashionDeck({
               Array.isArray(composerPool)&&
               typeof selectCatalogRescueCompositions==='function'&&
               typeof photoRescueRemainingMs==='function'&&
-              photoRescueRemainingMs()>=17500){
-            const photoQuota=remainingEditorialCreativePhotoQuota(
-              photoRescueRemainingMs(),
-              reviewed.diagnostics.visualAttempted||0);
+              photoRescueRemainingMs()>=22500){
+            const remainingPhotoQuota=Math.max(0,
+              MAX_VISUAL_CANDIDATES+3-
+              (reviewed.diagnostics.visualAttempted||0));
+            const photoQuota=Math.min(3,remainingPhotoQuota);
             const alreadyApprovedProductKeys=new Set(approvedLooks.flatMap(
               look=>(look.items||[]).map(it=>baseProductId(String(it.id)))));
             const freshPool=composerPool.filter(token=>
@@ -2919,7 +2902,7 @@ export async function recommendFashionDeck({
                 ['nemotron','nemotron_fallback','cross_lab_kimi']
                   .includes(retry?.providerFamily)?retry.providerFamily:'not_run';
               if(retry?.status==='composed'&&Array.isArray(retry.looks)&&
-                  photoRescueRemainingMs()>=13500){
+                  photoRescueRemainingMs()>=16000){
                 const validated=await sourceVerifyComposedOutfits({
                   looks:retry.looks,request:{...request,requiredIds},
                   requiredIds,hardGate,priceToBudgetCurrency,
@@ -2927,7 +2910,7 @@ export async function recommendFashionDeck({
                 });
                 const extras=[];
                 for(const look of validated){
-                  if(extras.length>=photoQuota||photoRescueRemainingMs()<12000)break;
+                  if(extras.length>=photoQuota||photoRescueRemainingMs()<15000)break;
                   if(candidates.some(c=>c.id===look.id))continue;
                   if(look.items.some(it=>alreadyApprovedProductKeys.has(
                        baseProductId(String(it.id)))))continue;
@@ -2937,13 +2920,9 @@ export async function recommendFashionDeck({
                   if(await permitted(look))extras.push(look);
                 }
                 editorial.feedbackRevisionAdmitted=extras.length;
-                if(extras.length>0&&photoRescueRemainingMs()>=12000){
-                  // The first garment reviews usually already warmed the
-                  // authorized JPEGs. Grant a bounded 4-6 second final photo
-                  // wave, while keeping >=7.5s for genuine final re-editing
-                  // and the signed proxy response inside the SAME 72s cap.
-                  const allowedMs=Math.max(1000,Math.min(6200,
-                    Math.floor(photoRescueRemainingMs()-7500)));
+                if(extras.length>0&&photoRescueRemainingMs()>=14500){
+                  const allowedMs=Math.max(1000,Math.min(8200,
+                    Math.floor(photoRescueRemainingMs()-8300)));
                   let extraCritiques=[];
                   let revised=null;
                   try{
@@ -2959,7 +2938,7 @@ export async function recommendFashionDeck({
                   editorial.feedbackRevisionApproved=
                     revised?.diagnostics?.visualApproved||0;
                   if(revised?.outfits?.length>0&&
-                      photoRescueRemainingMs()>=6700){
+                      photoRescueRemainingMs()>=7300){
                     const acceptedExtraIds=new Set(
                       (revised.diagnostics.visualQualityDecisions||[])
                         .filter(row=>row.reason==='approved')
