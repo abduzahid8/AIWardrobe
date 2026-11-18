@@ -332,6 +332,69 @@ test('source-invalid early design cannot shift third independent artistic commis
     'retained artistic plan never grants merchandise budget approval');
 });
 
+test('each independent artistic direction gets TWO genuinely proposed real-SKU interpretations before actual PHOTO verdict',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const plans=Array.from({length:3},(_,i)=>({
+    id:'ai-director-'+(i+1),generatedBy:'s6-creative-director-v1',
+    name:'Independent creative signature '+(i+1),
+    artDirection:'Create an expressive intentional four-piece look featuring strong garment proportions, tactile contrast between the upper layers, and purposeful refined footwear.',
+    roles:{top:['dress-shirt'],outerwear:['blazer'],
+      bottom:['tailored-trouser'],shoes:['oxford']},
+    palette:['navy','cream','brown'],silhouette:'tailored',layerPolicy:'required',
+  }));
+  let prompt='';
+  const composition=await composeCatalogSkuLooks({pool,
+    directions:plans,apiKey:'nvapi-staging-creative-three-double',
+    context:{style:'classic',occasion:'Date night'},
+    layerRequired:true,allowLayer:true,parallel:true,outfitCount:6,
+    dualPlanInterpretations:true,fetchImpl:async(_url,init)=>{
+      prompt=JSON.parse(init.body).messages[0].content;
+      const answer={slotPicks:Object.fromEntries(slots.map(slot=>[slot,
+        pool.filter(x=>x.slot===slot).slice(0,6).map(x=>x.token)]))};
+      return result(answer);
+    },
+  });
+  assert.equal(composition.status,'composed');
+  assert.equal(composition.looks.length,6);
+  assert.equal(composition.dualPlanInterpretations,true,
+    'the actual first artist confirms three source-grounded dual commissions were used');
+  assert.match(prompt,/Each studio designs TWO different complete real-SKU/);
+  assert.match(prompt,/Look 4 revisits artistic plan 1/);
+  assert.match(prompt,/Look 5 revisits plan 2/);
+  assert.match(prompt,/Look 6 revisits plan 3/);
+  assert.doesNotMatch(prompt,/PRIVATE_SKU_|images.zara|www.zara/,
+    'only anonymous real source P-tokens and publicly safe image observations reach the artist');
+  const scored=await sourceVerifyComposedOutfits({
+    looks:composition.looks,creativePlans:plans,
+    dualPlanInterpretations:true,request:{sourceMode:'catalog'},
+    hardGate:async()=>({ok:true}),scorer:{rankLook:()=>({score:.91})},
+  });
+  assert.deepEqual(scored.map(x=>x.briefId),[
+    'ai_director_1','ai_director_2','ai_director_3',
+    'ai_director_1','ai_director_2','ai_director_3']);
+  assert.deepEqual(scored.map(x=>x.brief.name),[
+    ...plans.map(x=>x.name),...plans.map(x=>x.name)]);
+  assert.equal(new Set(scored.flatMap(x=>x.items.map(it=>it.id))).size,24);
+  assert.ok(scored.every(x=>x.items.length===4&&
+    x.items.every(it=>it.isShopItem)),
+    'all six proposed interpretations remain real shoppable 4-item outfits');
+  const noCanary=await sourceVerifyComposedOutfits({
+    looks:composition.looks,creativePlans:plans,request:{sourceMode:'catalog'},
+    hardGate:async()=>({ok:true}),scorer:{rankLook:()=>({score:.91})},
+  });
+  assert.deepEqual(noCanary.slice(3).map(x=>x.briefId),[
+    'ai_composed_4','ai_composed_5','ai_composed_6'],
+    'the normal non-staging creator does not silently change original artistic attribution');
+  const tooExpensive=await sourceVerifyComposedOutfits({
+    looks:composition.looks,creativePlans:plans,dualPlanInterpretations:true,
+    request:{sourceMode:'catalog',budget:{amount:5,currency:'USD'}},
+    hardGate:async()=>({ok:true}),priceToBudgetCurrency:x=>x.price,
+    scorer:{rankLook:()=>({score:1})},
+  });
+  assert.equal(tooExpensive.length,0,
+    'no strongly directed concept bypasses actual whole-look merchandise budget');
+});
+
 test('composed choices rerun combination-level hard gate, budget and scorer; never invent approval',async()=>{
   const pool=sourceBoundCompositionPool(looks);
   const raw=validateSkuCompositions(validAnswer(pool),pool,{layerRequired:true});
