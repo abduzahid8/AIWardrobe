@@ -521,7 +521,7 @@ test('AI-first source menu exposes real footwear silhouettes instead of twelve l
     additionalItems:inventory,inventoryFirst:true,explorationSlots:4,
   });
   const footwear=menu.filter(x=>x.slot==='shoes');
-  assert.equal(footwear.length,12,'provider's fixed per-role token budget does not grow');
+  assert.equal(footwear.length,12,"provider's fixed per-role token budget does not grow");
   assert.ok(new Set(footwear.map(x=>x.item.subtype)).size>=7,
     'a model cannot invent creative shoe silhouettes absent from its real catalog menu');
   assert.ok(slots.every(slot=>menu.filter(x=>x.slot===slot).length>=6));
