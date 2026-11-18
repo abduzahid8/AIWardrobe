@@ -1357,8 +1357,9 @@ test('AI sees two real photo-proven sole constructions even when merchant type, 
   assert.ok(shoes.some(x=>x.item===slim));
   assert.ok(shoes.some(x=>x.item===outdoor),
     'the SECOND original-photo footwear construction is not hidden as a same-color clone');
-  assert.ok(!shoes.some(x=>x.item===stale),
-    'an outdated image profile cannot manufacture a different construction');
+  const staleCandidate=shoes.find(x=>x.item===stale);
+  if(staleCandidate)assert.deepEqual(staleCandidate.public.photo,{},
+    'an admissible real product with stale visual evidence stays UNKNOWN, never a fabricated construction');
   assert.deepEqual(shoes.filter(x=>x.item===outdoor).map(x=>x.public.photo.soleProfile),
     ['rugged']);
   assert.doesNotMatch(JSON.stringify(shoes.map(x=>x.public)),
