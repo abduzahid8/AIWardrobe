@@ -99,6 +99,7 @@ const knownAvoidPatterns = value => [...new Set(safeList(value)
  * which four authentic products are actually admitted and displayed.
  */
 const DIRECTOR_VISUAL_FIELDS = ['color','texture','volume','length',
+  'hemShape','closure','accentHue','footwearPurpose',
   'formality','pattern','soleProfile','collar'];
 // Actual-photo facets, not merchant labels, define how much visually new
 // evidence the designer sees. The two examples per subtype are a bounded,
