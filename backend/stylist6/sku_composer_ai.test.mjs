@@ -657,3 +657,35 @@ test('real PHOTO jury choosing TWO without optional creativeGap still equips the
   });
   assert.equal(output.status,'composed');
 });
+
+test('120B source-SKU artist actually sees original 120B creative director proportions and material intentions',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const intent='Make a clean long elegant silhouette: contrast airy cotton with softly structured dark wool, and anchor refined straight-leg trousers with streamlined suede shoes.';
+  const plans=[{
+    generatedBy:'s6-creative-director-v1',
+    id:'ai-director-1',name:'Expressive city tailoring',
+    artDirection:intent,
+    silhouette:'relaxed',palette:['cream','navy','brown'],
+    roles:{top:['dress-shirt'],outerwear:['blazer'],
+      bottom:['tailored-trouser'],shoes:['oxford']},
+  }];
+  const grounded=groundedSkuDirections(plans,pool);
+  assert.equal(grounded.length,1);
+  assert.equal(grounded[0].artDirection,intent);
+  let calls=0;
+  const deck=await composeCatalogSkuLooks({
+    pool,directions:plans,apiKey:'nvapi-test-creative-intent',
+    context:{style:'classic',occasion:'Work'},
+    fetchImpl:async(_,init)=>{
+      calls++;
+      const prompt=JSON.parse(init.body).messages[0].content;
+      assert.match(prompt,/artDirection/);
+      assert.match(prompt,/softly structured dark wool/);
+      assert.doesNotMatch(prompt,/SECRET-SKU|images\.zara/);
+      return result(slotAnswer(pool));
+    },
+  });
+  assert.equal(calls,1);
+  assert.equal(deck.status,'composed');
+  assert.equal(deck.looks.length,3);
+});

@@ -14,10 +14,14 @@ import { createHash } from 'node:crypto';
 import {editorialTextMoodboards} from './editorial_text_moodboards.mjs';
 
 export const CREATIVE_DIRECTOR_VERSION = 's6-creative-director-v1';
-// Text-only fashion planning does not need the expensive 120B VISION judge.
-// A live full-catalog NVIDIA A/B with the strict inventory-enum schema
-// returned three creative briefs and three visually judged looks in 26s.
+// The existing 30B planner remains available for 50s previews. On the
+// isolated 72s staging the stronger 120B creative mind may produce richer
+// art directions. Both models have the SAME source-bounded schema, and
+// neither can approve a SKU, price, photo or completed ensemble.
 const MODEL = 'nvidia/nemotron-3.5-lightning-30b-a3b';
+// For ISOLATED >=72s staging only, spend one more-capable 120B model
+// on complete-look artistic direction. Other environments retain 30B.
+const ART_DIRECTOR_MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
 const ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const SLOTS = ['top', 'outerwear', 'bottom', 'shoes'];
 const PALETTE = new Set([
@@ -49,6 +53,13 @@ const MAX_CONCURRENT_PROVIDER_CALLS = 3;
 let activeProviderCalls = 0;
 const safeText = (value, max = 220) =>
   typeof value === 'string' ? value.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max) : '';
+// Provider-generated creative text remains bounded untrusted DATA.
+// No raw URLs, email identities, markup or control characters propagate
+ // into the exact merchant source-SKU designer.
+const safeArtDirection = value => typeof value==='string'
+  ? value.replace(/https?:\/\/[^\s]+|\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi,'')
+    .replace(/[<>\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().slice(0,235)
+  : '';
 const safeList = (value, max = 8) =>
   Array.isArray(value)
     ? [...new Set(value.slice(0, max * 2).map(v => safeText(v, 32)).filter(Boolean))].slice(0, max)
@@ -146,6 +157,7 @@ export function directorResponseSchema(inventory) {
           type: 'object',
           properties: {
             title: { type: 'string' },
+            artDirection: { type: 'string' },
             silhouette: { type: 'string', enum: [...SHAPES] },
             palette: { type: 'array', minItems: 2, maxItems: 5,
               items: { type: 'string', enum: permittedColors } },
@@ -156,7 +168,7 @@ export function directorResponseSchema(inventory) {
               additionalProperties: false,
             },
           },
-          required: ['title', 'silhouette', 'palette', 'roles'],
+          required: ['title', 'artDirection', 'silhouette', 'palette', 'roles'],
           additionalProperties: false,
         },
       },
@@ -192,6 +204,7 @@ function normalizePlan(row, available, index, temperature) {
   return {
     id: 'ai-director-' + (index + 1),
     name,
+    artDirection: safeArtDirection(row.artDirection),
     roles,
     silhouette: row.silhouette,
     palette,
@@ -217,7 +230,15 @@ export function validateDirectorDirections(data, inventory) {
   const signatures = new Set();
   for (const plan of normalized) {
     if (!plan) continue;
-    const signature = SLOTS.map(slot => plan.roles[slot].join(',')).join('|');
+    // Two creative works may use identical nominal garment categories
+    // but radically different fit, materials, proportion and palettes.
+    // Never discard a source-verified AI ARTISTIC direction on categories
+    // alone. Exact duplicates still collapse regardless of title.
+    const signature = [
+      ...SLOTS.map(slot => plan.roles[slot].join(',')),
+      plan.silhouette,plan.palette.join(','),
+      plan.artDirection.length>=36?plan.artDirection.toLowerCase():'',
+    ].join('|');
     if (signatures.has(signature)) continue;
     signatures.add(signature);
     safe.push(plan);
@@ -253,7 +274,9 @@ async function boundedProviderText(response) {
  */
 export async function designCreativeBriefs({
   catalog, request, apiKey, fetchImpl = fetch, signal, timeoutMs = 7500,
+  highTaste = false,
 } = {}) {
+  const model=highTaste===true?ART_DIRECTOR_MODEL:MODEL;
   const inventory = directorInventory(catalog, request);
   // The owner supplied 46 manually annotated flat-lay outfit examples.
   // Their image rights are NOT independently verified. Retrieve ONLY
@@ -271,7 +294,7 @@ export async function designCreativeBriefs({
   if (typeof apiKey !== 'string' || !apiKey.startsWith('nvapi-')) {
     return { status: 'not_configured', briefs: [], providerCalls: 0 };
   }
-  const key = createHash('sha256').update(JSON.stringify(inventory)).digest('hex');
+  const key = createHash('sha256').update(model+'|'+JSON.stringify(inventory)).digest('hex');
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at <= TTL_MS) {
     cache.delete(key); cache.set(key, hit);
@@ -305,6 +328,14 @@ export async function designCreativeBriefs({
       'Use up to 3 subtypes for each role, or zero outerwear subtypes only when',
       'appropriate for warm weather. Include top, bottom and shoes in every plan.',
       'Make three genuinely different silhouette/material/formality concepts.',
+      'You must make your OWN autonomous whole-outfit artistic decisions.',
+      'For EACH concept write artDirection, a concrete 90–230 character',
+      'creative intention expressing flattering garment PROPORTIONS, textile',
+      'contrast, drape, construction, color rhythm and footwear relationships.',
+      'An archetype like blazer + trousers is NOT a fashion concept by itself.',
+      'Make THREE visibly different considered design stories for this wearer.',
+      'The next AI creates real-SKU looks; real PHOTO critics veto weak ones.',
+      'The examples are inspiration, never templates or claimed available SKUs.',
       'Respect weather, dress code and personal fit/color preferences.',
       'Never propose a color listed in preferences.avoidColors or a pattern',
       'listed in preferences.dislikedPatterns; these are user exclusions.',
@@ -331,7 +362,7 @@ export async function designCreativeBriefs({
       headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
       signal: combinedSignal,
       body: JSON.stringify({
-        model: MODEL,
+        model,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.45, top_p: 0.9, max_tokens: 1350,
         stream: false,

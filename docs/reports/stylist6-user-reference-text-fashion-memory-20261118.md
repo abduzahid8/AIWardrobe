@@ -84,3 +84,62 @@ veto floors and budget are unchanged.
 This visibility fix alone is NOT fashion-quality acceptance; review
 the next actual iPhone rejection mix and fix the model-led creative
 decision, not the veto threshold.
+
+## Follow-up 2026-11-18 — five REAL Work proposals, ZERO photo approvals
+
+Pinned \`080e0fc\`, real authenticated iPhone Classic / New clothing /
+Work, Render at **2026-11-18 02:37:07Z**:
+\`skuCompositionStatus=composed\`, proposed/admitted 5 real
+four-item looks, independent actual-JPEG NVIDIA reviewer attempted
+5, **approved ZERO**. Safe original-photo reason enums include
+\`below_quality_floor\` and \`model_veto\`. No personal data or
+merchant details logged. The iPhone showed
+\`stylist6_visual_quality_unmet\` without a poor substitute.
+~37.9 seconds server-side; independent photo judge cost ~28.2 sec.
+
+This confirms the real ROOT issue is not client transport, the
+number of prebuilt candidate SKUs, a missing output card, or an
+overzealous code-title regex: the WHOLE outfits produced by the
+autonomous AI are genuinely rejected by an independent photo critic.
+
+## Architectural response: a 120B art director and explicit creative INTENT
+
+The previous 30B Creative Director emitted only \`title\`,
+\`silhouette\` from three simplistic enum values, \`palette\`,
+and garment \`roles\`. Its rich actual artistic concept was
+NEVER represented in output. Worse,
+\`validateDirectorDirections\` discarded any two ideas sharing the
+same garment CATEGORY role tuple regardless of fit, drape,
+texture, construction or color story. The downstream 120B
+merchant-SKU composer was asked to choose six original outfits
+from a small P-token set, but saw no substantive AI fashion
+ART DIRECTION from the concept stage.
+
+On the isolated server-owned >=70s S6 budget only:
+- Use the existing NVIDIA 120B model for one **professional
+  concept design** call instead of the 30B lightning planner.
+  Preserve the original 30B path on normal 50s preview.
+- Add mandatory \`artDirection\` to the exact inventory-grounded
+  model JSON schema: original 90–230-character garment
+  proportions/material interaction/footwear-color-vibe statement
+  for EACH of the three different outfit concepts. No merchant
+  or SKU claims, no URLs, no unlicensed photos.
+- Copy the bounded, URL/email-sanitized art direction as
+  *untrusted descriptive DATA* into the existing 120B
+  source SKU composer, enabling it to translate an actual
+  designer's considered concept into current merchant products.
+- Reject only genuinely duplicate designs; don't collapse
+  radically different outfit concepts merely because both
+  use a blazer, shirt, trousers and shoes.
+- Even 120B designs must pass all unchanged hard
+  source/merchant/weather/budget/owner exclusions, an
+  independent actual-photo critic and the independent final
+  portfolio editor. Zero approvals => honest no-look error.
+
+Tests exercise separate 30B and 120B model caches, output schema,
+private-data sanitation and two different artistic directions
+built from the same nominal garment categories. Passing tests
+are NOT evidence of improved real photo acceptance.
+
+Human blind >=70% preference over S5 on >=30 held-out
+situations with 3 independent reviewers remains NOT DONE.

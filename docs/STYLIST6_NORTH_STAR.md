@@ -196,6 +196,29 @@ fulfill the owner's four-product contract.
 ## Each work session's completion report must include
 GitHub SHA; staging Supabase function version + pinned READY compute SHA; code/quality changes; real scenario IDs & images; what objectively improved; what deteriorated; how many looks were provider-judged vs fallback; product stock/rights truth; QA gate counts; production status; exact NEXT highest-leverage root cause.
 
+## 2026-11-18 — real whole-look artistic intent, not merely category lists
+
+Pinned \`080e0fc\` authenticated iOS Classic/Work: FIVE source-feasible
+four-item AI outfits, ZERO independent PHOTO approvals; rejected for
+\`below_quality_floor\` and \`model_veto\`. The original 30B director
+emitted only a name, a 3-value silhouette enum, palette and category
+subtypes. Worse, two artistically different designs sharing category
+roles were discarded BEFORE SKU composition.
+
+In isolated 72s S6 staging only, the concept-director now chooses a
+stronger 120B model and writes an actual professional \`artDirection\`
+for each of its THREE independent outfit ideas: proportions, garment
+construction, drape, material relationship, color and footwear.
+Those bounded textual intentions reach the original source-bound
+120B merchandise composer for its own creative SKU decisions. Same
+item categories with DIFFERENT designed materials/silhouettes may
+survive; exact duplicates are still deduplicated. Real merchant
+source/owner/budget/weather/photo rights and the independent whole
+look PHOTO critic and final editor are unchanged. Normal 50s
+preview remains with its 30B planning model. This has NOT yet
+passed real staging or human quality acceptance. Full receipt:
+\`docs/reports/stylist6-user-reference-text-fashion-memory-20261118.md\`.
+
 ## 2026-11-18 — genuine TEXT fashion inspiration, not product-title rules or unlicensed pictures
 
 Real iOS Classic/Date night PHOTO judged 3/5 initial source looks, and

@@ -279,3 +279,57 @@ test('opposing explicit style personalities produce different schema constraints
   assert.equal(safe.preferences.fitPreference,'');
   assert.ok(!JSON.stringify(safe).includes('bob@example.com'));
 });
+
+test('120B creative director makes grounded ARTISTIC decisions, not just same-category garment formulas (staging only)',async()=>{
+  const plans=structuredClone(proposal);
+  const artisticDirections=[
+    'Soft unstructured suiting with a relaxed natural shoulder; combine airy shirting against deep wool texture, lean sharply tapered dark trousers and polished low-profile derby shoes.',
+    'A close-gauge merino foundation under richly textured tailored wool; long vertical proportion, softly flowing trouser drape, muted earth contrast and slim clean leather shoes.',
+    'Play proportion between fine cotton and an expressive patterned outer layer, balancing generous upper-body volume with elegant narrow trousers and restrained leather footwear.',
+  ];
+  plans.directions.forEach((row,i)=>row.artDirection=artisticDirections[i]);
+  // Roles and palettes may be IDENTICAL while material/fit decisions
+  // differ. In the old code they were all thrown away as "duplicates".
+  plans.directions[1].roles=structuredClone(plans.directions[0].roles);
+  plans.directions[1].palette=[...plans.directions[0].palette];
+  plans.directions[1].silhouette=plans.directions[0].silhouette;
+  plans.directions[2].roles=structuredClone(plans.directions[0].roles);
+  plans.directions[2].palette=[...plans.directions[0].palette];
+  plans.directions[2].silhouette=plans.directions[0].silhouette;
+  const parsed=validateDirectorDirections(plans,directorInventory(catalog,request));
+  assert.equal(parsed.length,3,
+    'not a title rename: each model-generated texture/drape artDirection is a different creative concept');
+  assert.equal(parsed[1].artDirection,artisticDirections[1]);
+  assert.ok(directorResponseSchema(directorInventory(catalog,request))
+    .properties.directions.items.required.includes('artDirection'));
+  const injected=structuredClone(plans);
+  injected.directions[0].artDirection=
+    'Elegant relaxed tailoring with contrast http://private.example/account owner@example.net';
+  const clean=validateDirectorDirections(injected,directorInventory(catalog,request));
+  assert.doesNotMatch(clean[0].artDirection,/http|example|owner@|</i,
+    'never forward address/email/markup along the AI chain');
+
+  let provider=0;
+  const current={...request,brief:'isolated-120B-art-fashion-creative-director-test-v1'};
+  const testModel=async highTaste=>await designCreativeBriefs({
+    catalog,request:current,apiKey:'nvapi-test-creativity-high-taste',
+    highTaste,fetchImpl:async(_,init)=>{
+      provider++;
+      const body=JSON.parse(init.body);
+      assert.equal(body.model,highTaste
+        ?'nvidia/nemotron-3.5-super-vl-120b-a12b'
+        :'nvidia/nemotron-3.5-lightning-30b-a3b');
+      assert.match(body.messages[0].content,/outfit artistic decisions/);
+      assert.match(body.messages[0].content,/artDirection/);
+      assert.doesNotMatch(init.body,/SECRET-SKU-SHIRT|Private user-owned shirt|owner@example.net/);
+      return fakeResponse(plans);
+    },
+  });
+  const rich=await testModel(true);
+  assert.equal(rich.status,'planned');
+  assert.equal(rich.briefs.length,3);
+  assert.ok(rich.briefs.every(x=>x.artDirection.length>=90));
+  const cheap=await testModel(false);
+  assert.equal(cheap.status,'planned');
+  assert.equal(provider,2,'distinct inference-model caches never leak across 50s/72s budgets');
+});

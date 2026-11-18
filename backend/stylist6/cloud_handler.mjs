@@ -1404,6 +1404,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           ...(fetchImpl ? { fetchImpl } : {}),
           signal: deadlineController.signal,
           timeoutMs: Math.min(7500, Math.max(1000, remainingMs() - 7000)),
+          // Only 72s isolated staging: professional 120B creative director.
+          // 50s preview and untouched production S5 keep original behavior.
+          highTaste: budgetMs>=70000,
         })
       : { status: 'disabled_or_deadline', briefs: [], providerCalls: 0 };
     // Hosted NVIDIA review: strictly opt-in, server-side key only, bounded

@@ -319,6 +319,7 @@ export function groundedSkuDirections(directions,pool){
     return [{
       lookNumber:i+1,
       designConcept:safe(d.name,65),
+      artDirection:safe(d.artDirection,235),
       desiredSilhouette:safe(d.silhouette,50),
       desiredColors:Array.isArray(d.palette)
         ?d.palette.slice(0,5).map(x=>safe(x,24)).filter(Boolean):[],
@@ -506,6 +507,11 @@ export async function composeCatalogSkuLooks({
       'Use three materially DISTINCT directions (not a new shoe color alone).',
       'If inventory-backed Creative Director concepts are provided, use their',
       'lookNumber to compose that specific outfit (index = lookNumber - 1).',
+      'Each carries a creative AI-written whole-look artDirection, not merely',
+      'a list of garment categories: realize the INTENDED proportions, drape,',
+      'material interaction and footwear character in genuine source SKUs.',
+      'You may creatively revise any unsuitable specific choice; real PHOTO',
+      'critics will reject visually incoherent finished combinations.',
       'Each concept proposes a DIFFERENT silhouette, materials and color harmony.',
       ...(target===6?[
         'Looks 1, 2, 3 each embody Creative Director plans 1, 2, 3 when feasible.',
