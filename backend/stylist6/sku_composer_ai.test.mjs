@@ -978,6 +978,72 @@ test('inventory-first source menu lets AI design before any ranker has built an 
     {count:6,layerRequired:true}).length,6);
 });
 
+test('each Creative Director fashion concept can see TWO genuinely distinct photographed real garment options per role',()=>{
+  const roleKinds=[
+    ['fine-knit','cardigan','chino','loafer'],
+    ['dress-shirt','blazer','tailored-trouser','derby'],
+    ['polo','overshirt','jeans','chelsea'],
+  ];
+  const colors=[['cream','stone'],['navy','charcoal'],['olive','sand']];
+  const photos=roleKinds.flatMap((kinds,d)=>
+    kinds.flatMap((kind,j)=>[0,1].map(variant=>{
+      const sourceUrl=`https://permitted-real-photo.example/${d}/${j}/${variant}.jpg`;
+      const sourceHash=String.fromCharCode(97+d).repeat(32);
+      return {id:`PRIVATE_SOURCE_REAL_${d}_${j}_${variant}`,
+        macroCategory:slots[j],subtype:kind,isShopItem:true,
+        name:`Source available garment ${d} ${j} ${variant}`,
+        color:colors[d][variant],currency:'USD',price:90,
+        imageUrl:sourceUrl,shopUrl:'https://private-shop.example/private',
+        visualSourceHash:sourceHash,
+        visualFashion:{version:1,sourceHash,imageUrl:sourceUrl,
+          imageSha256:'a'.repeat(64),model:'verified-photo-observer',revision:'v1',
+          attributes:{color:{value:colors[d][variant],confidence:.97,
+            margin:.32,evidence:'image-model'},
+            volume:{value:variant?'relaxed':'tailored',confidence:.94,
+              margin:.25,evidence:'image-model'}},
+        },
+      };
+    })));
+  const noise=slots.flatMap((slot,j)=>Array.from({length:9},(_,k)=>({
+    id:`PRIVATE_GENERIC_${j}_${k}`,macroCategory:slot,
+    subtype:['t-shirt','jacket','trouser','oxford'][j],
+    isShopItem:true,name:'Public generic fashion item',
+    imageUrl:'https://unknown-generic.invalid/merchant-photo.jpg',
+    color:'black',currency:'USD',price:95,
+  })));
+  const plans=roleKinds.map((kinds,i)=>({
+    generatedBy:'s6-creative-director-v1',name:'Independent atelier idea '+i,
+    silhouette:i===0?'relaxed':i===1?'tailored':'balanced',
+    palette:colors[i],artDirection:'Intentional complete outfit construction',
+    roles:Object.fromEntries(slots.map((slot,j)=>[slot,[kinds[j]]])),
+    layerPolicy:'required',
+  }));
+  const pool=sourceBoundCompositionPool([],{additionalItems:[...noise,...photos],
+    inventoryFirst:true,directions:plans,explorationSlots:4});
+  assert.equal(pool.length,48,
+    '12 exact allowed source items per role, not new SKU manufacture or quota growth');
+  const commissions=sourceGroundedCreativeCommissions(plans,pool);
+  assert.equal(commissions.length,3);
+  for(let d=0;d<plans.length;d++){
+    const commission=commissions[d];
+    for(let slotIndex=0;slotIndex<slots.length;slotIndex++){
+      const role=slots[slotIndex];
+      const variants=commission.sourceSkuOptionsByRole[role];
+      assert.equal(variants.length,2,
+        'the same art direction must see two real VISUALLY DISTINCT possible clothes');
+      const witnessed=variants.map(token=>pool.find(x=>x.token===token));
+      assert.ok(witnessed.every(x=>x?.item?.subtype===roleKinds[d][slotIndex]));
+      assert.equal(new Set(witnessed.map(x=>x.public.photo.color)).size,2,
+        'verified color/volume alternatives reach the autonomous outfit designer');
+      assert.ok(witnessed.every(x=>photos.includes(x.item)),
+        'never derive an artistic option from a fabricated or unprepared SKU');
+    }
+  }
+  assert.doesNotMatch(JSON.stringify(pool.map(p=>p.public)),
+    /PRIVATE_SOURCE_REAL|PRIVATE_GENERIC|permitted-real-photo|private-shop|visualSourceHash|imageSha256/);
+  assert.equal(new Set(pool.map(x=>x.item.id)).size,48);
+});
+
 test('AI-first source menu exposes real footwear silhouettes instead of twelve loafer recolors',()=>{
   const firstPrice=items[0][3].price;
   const manyLoafers=Array.from({length:30},(_,i)=>({

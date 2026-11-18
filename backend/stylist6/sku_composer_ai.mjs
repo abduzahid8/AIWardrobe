@@ -191,8 +191,13 @@ export function sourceBoundCompositionPool(looks, {
     const plannedCandidates=[...pool,
       ...exploration.filter(x=>slotOf(x)===slot&&x.isShopItem===true)
         .map(item=>({item,strength:0.65}))];
+    // Leave genuine room in the finite 12-token menu for source subtypes
+    // that the first designer did not plan (the second designer may need
+    // these to invent a better collection). The FIRST visual concept still
+    // receives an exact, real option before any secondary variant is added.
+    const seededCap=Math.max(3,limit-extraCapacity);
     for(const direction of planned){
-      if(chosen.length>=limit)break;
+      if(chosen.length>=seededCap)break;
       const subtypes=Array.isArray(direction.roles?.[slot])
         ?direction.roles[slot].filter(x=>typeof x==='string').slice(0,3):[];
       if(!subtypes.length)continue;
@@ -211,9 +216,51 @@ export function sourceBoundCompositionPool(looks, {
         })[0];
       if(best)append(best);
     }
+    // Source-grounded Creative Director now commissions an actual *artistic
+    // choice* per slot rather than one preselected stock photo. On the
+    // isolated AI-FIRST catalog path reserve a SECOND visually distinct
+    // garment for each existing direction when its actual source-current
+    // image observations show an alternative color, texture, cut or shape.
+    // If no reliable photo contrast exists, do not invent one from a title.
+    // All source tokens remain OPTIONAL creative suggestions: the artist
+    // can choose any other prepared real item, and source/price/photo veto
+    // still judge the finished 4-product relationship, never this seed.
+    if(inventoryFirst&&planned.length>0&&limit>=9){
+      const observedSignature=item=>{
+        const p=photoFacts(item);
+        const values=['color','texture','volume','length','pattern',
+          'soleProfile','collar'].flatMap(key=>p[key]?[key+':'+p[key]]:[]);
+        return values.length?[item.subtype,...values].join('|'):null;
+      };
+      const signatures=new Set(chosen.map(x=>observedSignature(x.item)).filter(Boolean));
+      for(const direction of planned){
+        if(chosen.length>=seededCap)break;
+        const subtypes=new Set(Array.isArray(direction.roles?.[slot])
+          ?direction.roles[slot].filter(x=>typeof x==='string').slice(0,3):[]);
+        if(!subtypes.size)continue;
+        const palette=new Set(Array.isArray(direction.palette)
+          ?direction.palette.filter(x=>typeof x==='string').map(x=>x.toLowerCase()):[]);
+        const existing=chosen.filter(x=>subtypes.has(x.item.subtype));
+        if(!existing.length)continue;
+        const alternatives=plannedCandidates.filter(x=>
+          subtypes.has(x.item.subtype)&&!used.has(productKey(x.item))&&
+          observedSignature(x.item)&&!signatures.has(observedSignature(x.item)))
+          .sort((a,b)=>{
+            const score=x=>{
+              const observed=photoFacts(x.item);
+              const count=Object.keys(observed).length;
+              return (palette.has(String(observed.color||'').toLowerCase())?4:0)+
+                Math.min(3,count);
+            };
+            return score(b)-score(a)||b.strength-a.strength||
+              String(a.item.id).localeCompare(String(b.item.id));
+          });
+        if(alternatives[0]&&append(alternatives[0]))
+          signatures.add(observedSignature(alternatives[0].item));
+      }
+    }
     // Fill remaining options with diverse, strong real products; the model
     // decides if a planned direction should be revised for visual harmony.
-    const seededCap=Math.max(3,limit-extraCapacity);
     // Root cause of repetitive LIVE AI-first outfits: a photo-rich but
     // single-subtype merchant cohort (e.g. many different loafers or cardigans)
     // can occupy almost the entire 12-token menu. A 120B designer cannot
