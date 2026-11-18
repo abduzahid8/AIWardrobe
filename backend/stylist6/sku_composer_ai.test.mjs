@@ -635,7 +635,7 @@ test('independent creator keeps photo-grounded context and salvages only valid f
     initialStudioDuel:true,timeoutMs:15000,
     fetchImpl:async(_url,opts)=>{
       const payload=JSON.parse(opts.body);
-      if(payload.model!===CROSS_LAB_REVISION_MODEL)
+      if(payload.model!==CROSS_LAB_REVISION_MODEL)
         return result({slotPicks:six});
       secondSeen=true;
       const prompt=payload.messages[0].content;
