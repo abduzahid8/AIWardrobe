@@ -44,3 +44,17 @@ Both first creators used `skuCompositionStudio=nemotron`, `skuCompositionAiFirst
 4. Keep the staging JWT/HMAC, server-owned budgets, exact SKU source constraints, original photo review and production Stylist 5 untouched. Do not merge S6 as production-ready from a green CI or 2-card paid deck.
 
 **PR #15 is still work in progress. No unlicensed JPEGs, private account identifiers or paid-provider keys have been committed.**
+
+## Follow-up on code-only source/photo editor feedback fix (exact 2026-11-18 live)
+
+**Code change:** `b66ac862` sends grounded, source-authentic **REJECTED** photographed whole-outfit observations and inter-garment relationships to the *final* editor-invoked creative rescue composer, in addition to approved photo architecture. `c1ba69e3fc3f88c186cf54631b2551db50daaf70` adds a regression requiring source/photo failure evidence to reach the downstream creative call without any merchant URLs or IDs. [GitHub CI run 44362380039](https://github.com/abduzahid8/AIWardrobe/actions/runs/44362380039) completed **SUCCESS** at exact code SHA.
+
+**Render:** isolated staging deployment `dep-dbuu9q7f3r2c73fp3lqg` became **LIVE** at 2026-11-18 17:53:54 UTC on exact `c1ba69e3`. Production Stylist 5 remains unchanged. The Render startup was slow; do not treat build success or a long `update_in_progress` as LIVE.
+
+**Authenticated native iOS Classic / New / Date night canary:** genuine staging JWT/HMAC → Render generation, one Generate action; signed-in QA simulator. Render receipt after the code was LIVE: `elapsedMs=53217`, `skuCompositionProposed=5`, `skuCompositionAdmitted=3`, independent original-photo checks **2 approvals / 5 attempts**, **2 displayed**. `creativePlanCount=3`, `photoEditorialStatus=applied`, `photoEditorialVisualJury=applied`, `photoEditorialVisualMedia=ready`, `photoEditorialEligibleTriples=0`, `photoEditorialIndependentJury=unavailable`. `catalogFourItemContract=true`, `catalogFourItemDropped=0`. The earlier photo-informed retry tried **2** source-valid looks, **0** approvals.
+
+**Critical attribution limit:** `photoEditorialCreativeRevision=not_run` / `photoEditorialCreativeRevisionAttempted=null`. The final editor **did not invoke the newly enhanced late repair composer** in this canary (its existing bounded remaining-time gate may have been missed; do not assume a timeout without instrumented proof). Therefore this real iOS run proves stable deployed code and 2 real approved looks, **NOT** that the new rejected-photo evidence improved creative quality. Do not claim a third beautiful look or a causal A/B uplift.
+
+**QA reliability:** Maestro reached Generate but ended before the long native generation completed; final paid-delivery and original-photo verdict confirmed by actual Render receipt. macOS disk briefly ran out of space; only temporary failed QA debug folders created in this work were cleaned. No user-uploaded files, proprietary source photos, production code or identities were deleted.
+
+**Next engineering task:** reduce or overlap the actual latency of the after-photo fashion correction with the existing portfolio jury, or prove its decision utility on a bounded frozen same-source-SKU cohort. Preserve original source admission, four real SKUs, independently photographed aesthetic veto, merchant rights and all quotas. No extra card should be inserted for count. Only then evaluate blind human aesthetic preference on held-out fixed catalogs with >=30 scenarios and 3 reviewers.
