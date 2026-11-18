@@ -1791,12 +1791,13 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           });
         }:null;
     const selectPhotoApprovedPortfolio=modelSlateEnabled&&budgetMs>=70000
-      ? async({looks,critiques,portfolios,context})=>{
+      ? async({looks,critiques,portfolios,context,creativePlans})=>{
           const left=remainingMs();
           if(left<6500)return {status:'deadline',tokens:[],providerCalls:0};
           nextPhase('final_photo_portfolio_editor');
           return selectPhotoEditorialDeck({
-            looks,critiques,portfolios,context,apiKey:nvidiaKey,
+            looks,critiques,portfolios,context,creativePlans,
+            apiKey:nvidiaKey,
             // The optional visual jury sees ONLY source photos independently
             // authorized and photo-judged earlier in this same request.
             // A slow/unavailable visual model retains the original text editor.

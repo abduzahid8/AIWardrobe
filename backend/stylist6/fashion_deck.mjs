@@ -2763,7 +2763,7 @@ export async function recommendFashionDeck({
           try{
             decision=await selectPhotoApprovedPortfolio({
               looks:approvedLooks,critiques:allCritiques,
-              portfolios:verifiedPortfolios,
+              portfolios:verifiedPortfolios,creativePlans:aiPlans,
               context:{style:context.style,occasion:context.occasion,
                 brief:context.request,preferences:context.preferences},
             });

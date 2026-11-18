@@ -326,6 +326,7 @@ const admittedVisualVerdict = (candidate, overrides = {}) => ({
 test('real planned AI architectures reach visual evaluation before house challengers fill the eight-call limit', async () => {
   const aiBrief={id:'ai-director-1',name:'Cream Merino Contemporary',
     generatedBy:'s6-creative-director-v1',palette:['cream','brown','beige'],silhouette:'balanced',
+    artDirection:'Combine fine cream knit with a soft long camel wool layer, a gentle cotton leg silhouette, and grounded leather shoes to compose original textural evening ease.',
     layerPolicy:'required',roles:{top:['fine-knit'],outerwear:['coat'],bottom:['chino'],shoes:['loafer']}};
   const extra=[
     garment('ai-knit','Cream Fine Merino Knit','top','fine-knit',{color:'cream'}),
@@ -333,15 +334,24 @@ test('real planned AI architectures reach visual evaluation before house challen
     garment('ai-chino','Beige Tailored Chino','bottom','chino',{color:'beige'}),
     garment('ai-loafer','Brown Suede Penny Loafers','shoes','loafer',{color:'brown'}),
   ];
-  let judged=[];
+  let judged=[],artistAtFinalEditor=null;
   const result=await recommendFashionDeck({
     ...base, catalog:[...products,...extra], aiCreativeBriefs:[aiBrief],referenceBriefs:[],
     request:{sourceMode:'catalog',style:'old_money',occasion:'Weekend',
       weather:{temp:17},optionalLayer:true,budget:{amount:1500000,currency:'UZS'},
       preferences:{},requiredIds:[]},
     visualDeckReview:true,canJudgeOutfit:async()=>true,
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
     visualCritic:async candidates=>{judged=candidates;return candidates.map(x=>admittedVisualVerdict(x));},
+    selectPhotoApprovedPortfolio:async({creativePlans})=>{
+      artistAtFinalEditor=creativePlans;
+      return {status:'unavailable'};
+    },
   });
+  assert.ok(Array.isArray(artistAtFinalEditor));
+  assert.equal(artistAtFinalEditor[0].id,'ai-director-1');
+  assert.equal(artistAtFinalEditor[0].artDirection,aiBrief.artDirection,
+    'the actual source-grounded artistic story must reach the FINAL photo-collection editor, not just the first SKU scorer');
   assert.equal(result.diagnostics.aiCreativeDirectorBriefs,1);
   assert.ok(result.diagnostics.aiCreativeDirectorEligible>0,'real role match creates a feasible AI outfit');
   // The hosted critic only receives product photos/names, not trusted

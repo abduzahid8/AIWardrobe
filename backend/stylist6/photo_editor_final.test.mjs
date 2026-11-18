@@ -40,6 +40,58 @@ test('photo-grounded editorial options preserve evidence but never disclose priv
   assert.equal(x[0].photoAssessment.cohesion,.92);
   assert.doesNotMatch(JSON.stringify(x),/SECRET|PRIVATE|client|private\.example/);
 });
+test('final VISUAL collection editor sees which real four-SKU looks realize actual trusted creative art, without trusting labels',async()=>{
+  const plans=Array.from({length:3},(_,i)=>({
+    id:'ai-director-'+(i+1),generatedBy:'s6-creative-director-v1',
+    name:['Soft tactile date narrative','Fluid sculptural city energy',
+      'Minimal sharp expression'][i],
+    artDirection:[
+      'Build a deliberate material dialogue between finely textured knit, a softly tailored layer, long gentle trouser proportions and grounded footwear for the personal evening.',
+      'Create a self-possessed elegant silhouette through flowing outer construction, a clean shirt collar, lengthened trousers and delicate contrasted leather shoes.',
+      'Compose a third artistic expression with understated soft structure, distinct jacket length, an open top line, graceful leg drape and characterful evening footwear.',
+    ][i],
+  }));
+  const attributed=looks.map((look,i)=>({...look,
+    briefId:i<3?'ai_director_'+(i+1):'ai_composed_'+(i+1)}));
+  const options=anonymousPhotoEditorialOptions(attributed,reviews,{creativePlans:plans});
+  assert.equal(options.length,5);
+  assert.deepEqual(options.slice(0,3).map(x=>x.originalArtistConcept.planNumber),[1,2,3]);
+  assert.equal(options[1].originalArtistConcept.artisticTitle,plans[1].name);
+  assert.equal(options[2].originalArtistConcept.completeLookArtIntent,plans[2].artDirection);
+  assert.ok(options.slice(3).every(x=>!Object.hasOwn(x,'originalArtistConcept')),
+    'unscripted independently composed alternatives do not steal validated first-artist identity');
+  const spoof=anonymousPhotoEditorialOptions(attributed,reviews,{creativePlans:[
+    {...plans[0],generatedBy:'shopper-untrusted'},plans[1],
+    {...plans[2],id:'ai-director-2'},
+  ]});
+  assert.equal(spoof[0].originalArtistConcept,undefined);
+  assert.equal(spoof[1].originalArtistConcept.planNumber,2);
+  assert.equal(spoof[2].originalArtistConcept,undefined);
+  const scrubbed=anonymousPhotoEditorialOptions(attributed,reviews,{creativePlans:[
+    {...plans[0],artDirection:plans[0].artDirection+
+      ' https://private.example/secret/?token=abc and customer@example.com'},
+    plans[1],plans[2],
+  ]});
+  assert.doesNotMatch(JSON.stringify(scrubbed),/private\.example|customer@example\.com|SECRET-CLIENT|PRIVATE-0-0/);
+  let received='';
+  const answer=await selectPhotoEditorialDeck({looks:attributed,
+    critiques:reviews,portfolios:verifiedMenu,
+    creativePlans:plans,context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-concept-photos-trusted',fetchImpl:async(_url,init)=>{
+      received=JSON.parse(init.body).messages[0].content;
+      return result('F01');
+    },
+  });
+  assert.equal(answer.status,'selected');
+  assert.deepEqual(answer.tokens,['L02','L00'],
+    'the editor STILL chooses a verified two-look fashion portfolio rather than forced 3');
+  assert.match(received,/ORIGINAL ARTISTIC/);
+  assert.match(received,/Soft tactile date narrative/);
+  assert.match(received,/Fluid sculptural city energy/);
+  assert.match(received,/Minimal sharp expression/);
+  assert.doesNotMatch(received,/private\.example|SECRET-CLIENT-SKU|PRIVATE-2-3/);
+});
+
 test('only already-approved tokens, never hallucinated or duplicated, enter final deck',()=>{
   const a=anonymousPhotoEditorialOptions(looks,reviews);
   const menu=anonymousPhotoEditorialPortfolios(verifiedMenu,a);
