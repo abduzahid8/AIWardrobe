@@ -330,11 +330,29 @@ export function sourceBoundCompositionPool(looks, {
         if(append(x))represented.add(kind);
       }
     }
-    for(const x of pool){
-      if(families.has(family(x.item)))continue;
-      append(x);
-      if(chosen.length>=seededCap)break;
+    // Merchant popularity and an early-source ordering may crowd out
+    // garments whose current ORIGINAL photo proves a NEW construction or
+    // material. The three artistic commissions and permitted photo cache
+    // already have reserved first choice. For remaining optional P-tokens
+    // expose the greatest MARGINAL verified visual information to the artist.
+    // No source item is banned, no merchant text is upgraded to image proof,
+    // and this is NOT a whole-look aesthetic approval or quality score.
+    while(chosen.length<seededCap){
+      const covered=new Set(chosen.flatMap(x=>
+        Object.entries(photoFacts(x.item)).map(([k,v])=>k+':'+v)));
+      const possibilities=pool
+        .filter(x=>!used.has(productKey(x.item))&&
+          !families.has(family(x.item)))
+        .map(x=>({candidate:x,novelty:Object.entries(photoFacts(x.item))
+          .filter(([k,v])=>!covered.has(k+':'+v)).length}))
+        .sort((a,b)=>b.novelty-a.novelty||
+          b.candidate.strength-a.candidate.strength||
+          String(a.candidate.item.id).localeCompare(String(b.candidate.item.id)));
+      if(!possibilities.length||!append(possibilities[0].candidate))break;
     }
+    // Unknown photographic features stay UNKNOWN, never an exclusion:
+    // source-valid real items can still fill a sparse menu. The original
+    // hard source/occasion/budget and full four-item PHOTO judge apply.
     for(const x of pool){
       if(chosen.length>=seededCap)break;
       append(x);
