@@ -1829,6 +1829,7 @@ export async function recommendFashionDeck({
   // Server-only exact licensed-photo product IDs, source-hash+rights checked
   // against the CURRENT merchant catalog. Never a client styling control.
   photoFirstPriorityIds=null,
+  dualPlanInterpretations=false,
   // Server-only AI chooser of REAL outfit finalists (no invented SKU access).
   selectDirectorFinalists,
   // Optional prebuilt model from feedback_taste.mjs (explicit thumbs rows).
@@ -2005,6 +2006,10 @@ export async function recommendFashionDeck({
           looks:initial.looks,request:{...request,requiredIds},requiredIds,
           hardGate,priceToBudgetCurrency,scorer:fashionScorer,
           sourceMode:request.sourceMode,creativePlans:aiPlans,
+          // The AUTHOR, not a client flag or server guess, confirms that
+          // it really received all 3 source-grounded dual commissions.
+          dualPlanInterpretations:dualPlanInterpretations===true&&
+            initial?.dualPlanInterpretations===true,
         });
         // Source/budget/physical admission, original item identities and
         // transmission permission are all mandatory. This is NOT photo
@@ -2097,6 +2102,7 @@ export async function recommendFashionDeck({
       exploratoryProducts:0,parallel:!!parallelComposition,
       visualMenuStatus:'not_run',aiFirst:!!parallelComposition,
       retrievalSkipped:aiFirstFastTrack,
+      dualPlanInterpretations:false,
     };
     if(modelLed){
       const reviewable=[];
@@ -2163,6 +2169,9 @@ export async function recommendFashionDeck({
               ?composition.visualMenuStatus.slice(0,40):'not_run';
           skuCompositionReceipt.proposed=Array.isArray(composition?.looks)
             ?composition.looks.length:0;
+          skuCompositionReceipt.dualPlanInterpretations=
+            dualPlanInterpretations===true&&
+            composition?.dualPlanInterpretations===true;
           modelFashionSelection={
             status:String(composition?.status||'unavailable').slice(0,40),
             candidatesSeen:pool.length,
@@ -2176,6 +2185,8 @@ export async function recommendFashionDeck({
               request:{...request,requiredIds},requiredIds,
               hardGate,priceToBudgetCurrency,scorer:fashionScorer,
               sourceMode:request.sourceMode,creativePlans:aiPlans,
+              dualPlanInterpretations:dualPlanInterpretations===true&&
+                composition?.dualPlanInterpretations===true,
             });
             for(const look of admitted){
               if(explicitColorPreferences&&

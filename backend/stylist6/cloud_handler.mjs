@@ -1751,6 +1751,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           return composeCatalogSkuLooks({
             pool,context,directions,layerRequired,allowLayer,outfitCount,
             feedbackTaste,parallel,
+            dualPlanInterpretations:budgetMs>=70000,
             // Isolated 72s cloud staging: let a SECOND independent designer
             // propose genuinely different photo-verifiable outfits BEFORE
             // the expensive final visual critic, rather than recolor the
@@ -1815,6 +1816,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       catalog: feasible,
       referenceBriefs: refs,
       aiCreativeBriefs: creativePlan.briefs,
+      dualPlanInterpretations:budgetMs>=70000,
       photoFirstPriorityIds:photoFirstCatalogReady
         ?new Set(feasible.filter(item=>item.isShopItem===true&&
           verifiedPhotoRows.has(String(item.id))).map(item=>String(item.id))):null,
