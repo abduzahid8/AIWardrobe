@@ -501,6 +501,35 @@ test('inventory-first source menu lets AI design before any ranker has built an 
     {count:6,layerRequired:true}).length,6);
 });
 
+test('AI-first source menu exposes real footwear silhouettes instead of twelve loafer recolors',()=>{
+  const firstPrice=items[0][3].price;
+  const manyLoafers=Array.from({length:30},(_,i)=>({
+    ...items[0][3],id:'MERCHANT_LOAFER_'+i,
+    name:'Leather Loafer Tone '+i,subtype:'loafer',
+    color:'shade-'+i,price:firstPrice+i,
+  }));
+  const otherFootwear=['derby','oxford','boot','chelsea','monk','driver','sneaker']
+    .map((subtype,i)=>({
+      ...items[0][3],id:'MERCHANT_FOOTWEAR_'+subtype,
+      name:'Merchant '+subtype,subtype,color:'brown',price:firstPrice+20+i,
+    }));
+  const inventory=[
+    ...items.flat().filter(x=>x.macroCategory!=='shoes'),
+    ...manyLoafers,...otherFootwear,
+  ];
+  const menu=sourceBoundCompositionPool([],{
+    additionalItems:inventory,inventoryFirst:true,explorationSlots:4,
+  });
+  const footwear=menu.filter(x=>x.slot==='shoes');
+  assert.equal(footwear.length,12,'provider's fixed per-role token budget does not grow');
+  assert.ok(new Set(footwear.map(x=>x.item.subtype)).size>=7,
+    'a model cannot invent creative shoe silhouettes absent from its real catalog menu');
+  assert.ok(slots.every(slot=>menu.filter(x=>x.slot===slot).length>=6));
+  assert.ok(menu.every(x=>inventory.includes(x.item)&&x.item.isShopItem));
+  assert.doesNotMatch(JSON.stringify(menu.map(x=>x.public)),
+    /MERCHANT_LOAFER|MERCHANT_FOOTWEAR|images\\.zara|shopUrl|imageUrl/);
+});
+
 test('parallel six-look creative decision survives the OLD 3-second fashion model cutoff',async()=>{
   const pool=sourceBoundCompositionPool(looks);
   let fulfilled=0;
