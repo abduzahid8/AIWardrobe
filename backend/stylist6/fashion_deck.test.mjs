@@ -2176,9 +2176,12 @@ test('image-model rejection launches bounded SECOND AI SKU composition and real 
         'Photographed pointed shoe clashes with chunky knitted top');
       assert.equal(critiqueFeedback.rejectedOutfits[0].relationships[0].kind,'outfit');
       assert.ok(pool.length>=9,'new fashion alternatives remain from REAL source inventory');
-      const outfits=Array.from({length:3},(_,i)=>['top','bottom','shoes']
+      // Retry must design authentic FOUR-role source merchandise outfits.
+      // A layer-less mock used to pass quality gates but fail publication.
+      const outfits=Array.from({length:3},(_,i)=>['top','outerwear','bottom','shoes']
         .map(slot=>pool.filter(x=>x.slot===slot)[i]?.item));
-      assert.ok(outfits.every(l=>l.every(Boolean)));
+      assert.ok(outfits.every(l=>l.length===4&&l.every(Boolean)),
+        'rescue model needs four genuine source products, not a padded card');
       revisionIDs=outfits.flat().map(x=>x.id);
       return {status:'composed',looks:outfits,providerCalls:1};
     },
