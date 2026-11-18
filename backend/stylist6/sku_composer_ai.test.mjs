@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {sourceBoundCompositionPool,groundedSkuDirections,
-  sourceGroundedCreativeCommissions,
+  sourceGroundedCreativeCommissions,parallelCreativeStudioSourceMenus,
   groundedPhotoRevisionFeedback,anonymousExplicitTasteHistory,
   validateSkuCompositions,composeCatalogSkuLooks,
   sourceVerifyComposedOutfits,AI_SKU_COMPOSER_VERSION,
@@ -646,6 +646,111 @@ test('full 12-per-role merchandise breadth commissions FOUR different looks from
   });
   assert.equal(verified.length,8,'the actual paid photo review path receives all eight genuine four-SKU outfits');
   assert.ok(verified.every(look=>look.items.length===4));
+});
+
+test('two independent creative labs ACTUALLY start concurrently on disjoint real garment photos, produce eight source-verified looks',async()=>{
+  const extras=Array.from({length:8},(_,i)=>slots.map((slot,j)=>({
+    ...items[i%items.length][j],
+    id:`PRIVATE_REAL_SOURCE_ALTERNATIVE_${i}_${j}`,
+    name:`Merchant real styling alternative ${i} ${slot}`,
+    subtype:[['fine-knit','polo','dress-shirt','merino-crew'],
+      ['cardigan','overshirt','coat','blazer'],
+      ['chino','pleated-trouser','jeans','tailored-trouser'],
+      ['loafer','derby','chelsea','oxford']][j][i%4],
+    color:['cream','navy','olive','brown','stone','charcoal','white','burgundy'][i],
+  }))).flat();
+  const inventory=[...items.flat(),...extras];
+  const pool=sourceBoundCompositionPool(looks,{
+    inventoryFirst:true,additionalItems:inventory,explorationSlots:4,
+  });
+  const menus=parallelCreativeStudioSourceMenus(pool);
+  assert.ok(menus);
+  assert.ok(slots.every(slot=>menus.nemotron.filter(x=>x.slot===slot).length>=4));
+  assert.ok(slots.every(slot=>menus.kimi.filter(x=>x.slot===slot).length>=4));
+  const keys=ar=>new Set(ar.map(x=>x.item.id));
+  assert.ok([...keys(menus.nemotron)].every(x=>!keys(menus.kimi).has(x)));
+  const started=[];
+  let bothStarted;
+  const everyoneStarted=new Promise(resolve=>bothStarted=resolve);
+  let calls=0;
+  const created=await composeCatalogSkuLooks({
+    pool,initialStudioDuel:true,concurrentInitialStudios:true,
+    parallel:true,outfitCount:6,layerRequired:true,timeoutMs:15000,
+    apiKey:'nvapi-test-parallel-independent-atelier',
+    context:{style:'classic',occasion:'Work'},
+    fetchImpl:async(_url,req)=>{
+      calls++;
+      const body=JSON.parse(req.body);
+      started.push(body.model);
+      if(started.length===2)bothStarted();
+      await Promise.race([everyoneStarted,new Promise((_res,reject)=>
+        setTimeout(()=>reject(Error('not-concurrent')),1250))]);
+      assert.equal(body.messages.length,1);
+      const prompt=body.messages[0].content;
+      assert.match(prompt,/disjoint original products/i);
+      const context=JSON.parse(prompt.slice(prompt.lastIndexOf('\n')+1));
+      const assigned=body.model===CROSS_LAB_REVISION_MODEL?menus.kimi:menus.nemotron;
+      const fromPrompt=Object.values(context.sourceBoundGarments).flat();
+      assert.deepEqual(fromPrompt.map(x=>x.token),
+        slots.flatMap(slot=>assigned.filter(x=>x.slot===slot).map(x=>x.token)));
+      assert.ok(Array.isArray(context.artisticCommissions));
+      assert.doesNotMatch(prompt,/PRIVATE_REAL_SOURCE_ALTERNATIVE|shopUrl|imageUrl|sourceHash|imageSha256|https?:\/\//);
+      const choices=Object.fromEntries(slots.map(slot=>[slot,
+        context.sourceBoundGarments[slot].slice(0,4).map(x=>x.token)]));
+      return result({slotPicks:choices});
+    },
+  });
+  assert.equal(calls,2);
+  assert.deepEqual(new Set(started),new Set([
+    'nvidia/nemotron-3.5-super-vl-120b-a12b',CROSS_LAB_REVISION_MODEL]));
+  assert.equal(created.providerFamily,'nemotron_plus_kimi_parallel');
+  assert.equal(created.providerCalls,2);
+  assert.equal(created.looks.length,8);
+  assert.ok(created.looks.every(x=>x.length===4));
+  assert.equal(new Set(created.looks.flat().map(x=>x.id)).size,32);
+  const admitted=await sourceVerifyComposedOutfits({looks:created.looks,
+    request:{sourceMode:'catalog'},sourceMode:'catalog',requiredIds:[],
+    hardGate:async()=>({ok:true}),
+    scorer:{rankLook:()=>({score:.91})},
+  });
+  assert.equal(admitted.length,8);
+  assert.ok(admitted.flatMap(x=>x.items).every(x=>x.isShopItem));
+});
+
+test('independent concurrent studio can salvage a completely invalid first proposal without granting unapproved SKUs',async()=>{
+  const alternatives=Array.from({length:10},(_,i)=>slots.map((slot,j)=>({
+    ...items[i%items.length][j],id:`SECOND_SAFE_LAB_${i}_${j}`,
+    name:`Verified source new fashion family ${slot} ${i}`,
+    subtype:['fine-knit','cardigan','chino','chelsea'][j],
+  }))).flat();
+  const pool=sourceBoundCompositionPool(looks,{additionalItems:alternatives,
+    inventoryFirst:true,explorationSlots:4});
+  const menus=parallelCreativeStudioSourceMenus(pool);
+  assert.ok(menus,'test merchandise contains four real clothes per slot for both');
+  const created=await composeCatalogSkuLooks({pool,parallel:true,
+    initialStudioDuel:true,concurrentInitialStudios:true,
+    outfitCount:6,layerRequired:true,timeoutMs:15000,
+    apiKey:'nvapi-test-independent-creative-rescue',
+    fetchImpl:async(_url,req)=>{
+      const body=JSON.parse(req.body);
+      if(body.model==='nvidia/nemotron-3.5-super-vl-120b-a12b')
+        return result({slotPicks:Object.fromEntries(slots.map(slot=>
+          [slot,['P999','P999','P999','P999']]))});
+      const payload=JSON.parse(body.messages[0].content.split('\n').at(-1));
+      return result({slotPicks:Object.fromEntries(slots.map(slot=>[
+        slot,payload.sourceBoundGarments[slot].slice(0,4).map(x=>x.token),
+      ]))});
+    },
+  });
+  assert.equal(created.status,'composed');
+  assert.equal(created.providerFamily,'cross_lab_kimi_parallel');
+  assert.equal(created.providerCalls,2);
+  assert.equal(created.looks.length,4);
+  assert.ok(created.looks.flat().every(x=>x.isShopItem));
+  assert.equal(new Set(created.looks.flat().map(x=>x.id)).size,16);
+  const tooSparse=sourceBoundCompositionPool(looks,{perSlot:7});
+  assert.equal(parallelCreativeStudioSourceMenus(tooSparse),null,
+    'do not falsely offer two studios four unique sources per role');
 });
 
 test('independent creator keeps photo-grounded context and salvages only valid four-SKU designs',async()=>{
