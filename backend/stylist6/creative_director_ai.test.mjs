@@ -172,6 +172,36 @@ test('photo evidence atlas preserves genuine late visual discoveries instead of 
   assert.doesNotMatch(JSON.stringify(atlas),/PRIVATE_MERCHANT_SKU|original-merchant|imageUrl|sourceHash/);
 });
 
+test('Creative Director sees image-observed construction, trouser hem and footwear tone before designing combinations',()=>{
+  const obs=value=>({value,confidence:.94,margin:.19,evidence:'image-model'});
+  const visual=(id,slot,subtype,attributes)=>({
+    id:'PRIVATE_SOURCE_'+id,macroCategory:slot,subtype,
+    imageUrl:'https://original-merchant.invalid/source-'+id+'.jpg',
+    visualSourceHash:'a'.repeat(32),
+    visualFashion:{version:1,sourceHash:'a'.repeat(32),
+      imageUrl:'https://original-merchant.invalid/source-'+id+'.jpg',
+      imageSha256:'b'.repeat(64),model:'verified-photo-extractor',
+      revision:'v1',attributes:Object.fromEntries(
+        Object.entries(attributes).map(([key,value])=>[key,obs(value)]))},
+  });
+  const inventory=[
+    visual('layer','outerwear','blazer',{closure:'openable',accentHue:'brown'}),
+    visual('trouser','bottom','chino',{hemShape:'tapered'}),
+    visual('shoe','shoes','loafer',{footwearPurpose:'dress',accentHue:'brown'}),
+  ];
+  const available={
+    top:[],outerwear:[{subtype:'blazer'}],
+    bottom:[{subtype:'chino'}],shoes:[{subtype:'loafer'}]};
+  const atlas=directorVisualAtlas(inventory,available);
+  assert.deepEqual(atlas.outerwear[0].garmentExamples[0],
+    {closure:'openable',accentHue:'brown'});
+  assert.equal(atlas.bottom[0].garmentExamples[0].hemShape,'tapered');
+  assert.equal(atlas.shoes[0].garmentExamples[0].footwearPurpose,'dress');
+  assert.doesNotMatch(JSON.stringify(atlas),
+    /PRIVATE_SOURCE|original-merchant|imageUrl|imageSha256|sourceHash/,
+    'only approved anonymous visual observations reach the fashion planner');
+});
+
 test('PHOTO-GROUNDED Creative Director and explicit personal taste reach initial AI choice, not only late SKU ranking',async()=>{
   const source={...catalog[0],id:'PRIVATE_REAL_SHIRT_IDENTIFIER',
     imageUrl:'https://private-merchant.invalid/photo.jpg',
