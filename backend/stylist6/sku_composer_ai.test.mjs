@@ -1322,6 +1322,50 @@ test('each Creative Director fashion concept can see TWO genuinely distinct phot
   assert.equal(new Set(pool.map(x=>x.item.id)).size,48);
 });
 
+test('AI sees two real photo-proven sole constructions even when merchant type, color and texture are identical',()=>{
+  const originalUrl='https://source-merchant.invalid/photos/boot.jpg';
+  const observed=(id,soleProfile,{stale=false}={})=>({
+    id:'PRIVATE_PHOTOGRAPHIC_BOOT_'+id,
+    macroCategory:'shoes',subtype:'boot',isShopItem:true,
+    name:'Source merchant boot',color:'black',
+    price:90,currency:'USD',imageUrl:originalUrl,
+    shopUrl:'https://source-merchant.invalid/store',
+    visualSourceHash:'a'.repeat(32),
+    visualFashion:{version:1,
+      sourceHash:stale?'c'.repeat(32):'a'.repeat(32),
+      imageUrl:originalUrl,imageSha256:'d'.repeat(64),
+      model:'verified-photo-extractor',revision:'v1',
+      attributes:{soleProfile:{value:soleProfile,confidence:.96,
+        margin:.25,evidence:'image-model'}}},
+  });
+  const slim=observed('SLIM','dress');
+  const outdoor=observed('OUTDOOR','rugged');
+  const stale=observed('STALE','sneaker',{stale:true});
+  const alternatives=Array.from({length:12},(_,i)=>({
+    id:'PRIVATE_SOURCE_OPTION_'+i,macroCategory:'shoes',
+    subtype:'boot',isShopItem:true,
+    name:'Source boot variation',color:'verified-color-'+i,
+    price:95,currency:'USD',
+    imageUrl:'https://source-merchant.invalid/image-'+i+'.jpg',
+    shopUrl:'https://source-merchant.invalid/store',
+  }));
+  const pool=sourceBoundCompositionPool([],{inventoryFirst:true,
+    additionalItems:[slim,outdoor,stale,...alternatives],
+    explorationSlots:4});
+  const shoes=pool.filter(x=>x.slot==='shoes');
+  assert.equal(shoes.length,12,'never expand the real token menu to force variety');
+  assert.ok(shoes.some(x=>x.item===slim));
+  assert.ok(shoes.some(x=>x.item===outdoor),
+    'the SECOND original-photo footwear construction is not hidden as a same-color clone');
+  assert.ok(!shoes.some(x=>x.item===stale),
+    'an outdated image profile cannot manufacture a different construction');
+  assert.deepEqual(shoes.filter(x=>x.item===outdoor).map(x=>x.public.photo.soleProfile),
+    ['rugged']);
+  assert.doesNotMatch(JSON.stringify(shoes.map(x=>x.public)),
+    /PRIVATE_PHOTOGRAPHIC|PRIVATE_SOURCE|source-merchant|shopUrl|imageUrl|sourceHash/,
+    'AI sees safe photographed facets and opaque tokens, not original URLs or private IDs');
+});
+
 test('AI-first source menu exposes real footwear silhouettes instead of twelve loafer recolors',()=>{
   const firstPrice=items[0][3].price;
   const manyLoafers=Array.from({length:30},(_,i)=>({
