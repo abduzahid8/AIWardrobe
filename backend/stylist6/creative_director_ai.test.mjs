@@ -130,6 +130,48 @@ test('Creative Director observes REAL source-current visual clothes, never merch
     'a small, bounded fashion evidence atlas can scale without huge payloads');
 });
 
+test('photo evidence atlas preserves genuine late visual discoveries instead of the first two common SKU variants',()=>{
+  const observed=(value)=>({value,confidence:.97,margin:.24,evidence:'image-model'});
+  const photo=(id,subtype,color,texture,volume)=>({
+    id:'PRIVATE_MERCHANT_SKU_'+id,macroCategory:'outerwear',subtype,
+    imageUrl:'https://original-merchant.invalid/photo-'+id+'.jpg',
+    visualSourceHash:'a'.repeat(32),
+    visualFashion:{version:1,sourceHash:'a'.repeat(32),
+      imageUrl:'https://original-merchant.invalid/photo-'+id+'.jpg',
+      imageSha256:'f'.repeat(64),model:'source-photo-extractor',
+      revision:'v1',attributes:{
+        color:observed(color),texture:observed(texture),
+        volume:observed(volume),
+      }},
+  });
+  const looks=[
+    photo('a','blazer','navy','wool','regular'),
+    photo('b','blazer','olive','wool','regular'),
+    // The old first-two snapshot lost this DISTINCT photographic material
+    // and proportion evidence even though it was in the same trusted catalog.
+    photo('c','blazer','camel','linen','oversized'),
+  ];
+  const common=Array.from({length:9},(_,i)=>Array.from({length:6},
+    (_,j)=>photo('common-'+i+'-'+j,'common-layer-'+i,
+      'navy','wool','regular'))).flat();
+  const rare=photo('rare','rare-layer','camel','tweed','long');
+  const available={top:[],outerwear:[
+    {subtype:'blazer'},
+    ...Array.from({length:9},(_,i)=>({subtype:'common-layer-'+i})),
+    {subtype:'rare-layer'},
+  ],bottom:[],shoes:[]};
+  const atlas=directorVisualAtlas([...looks,...common,rare],available);
+  const blazers=atlas.outerwear.find(row=>row.subtype==='blazer');
+  assert.equal(blazers.observedGarments,3);
+  assert.equal(blazers.garmentExamples.length,2);
+  assert.ok(blazers.garmentExamples.some(x=>x.texture==='linen'&&
+    x.volume==='oversized'),'the later observed garment must inform the actual designer');
+  assert.equal(atlas.outerwear.length,8,'maintain the original bounded prompt budget');
+  assert.ok(atlas.outerwear.some(row=>row.subtype==='rare-layer'),
+    'a genuinely different photographed construction survives nine more numerous lookalike groups');
+  assert.doesNotMatch(JSON.stringify(atlas),/PRIVATE_MERCHANT_SKU|original-merchant|imageUrl|sourceHash/);
+});
+
 test('PHOTO-GROUNDED Creative Director and explicit personal taste reach initial AI choice, not only late SKU ranking',async()=>{
   const source={...catalog[0],id:'PRIVATE_REAL_SHIRT_IDENTIFIER',
     imageUrl:'https://private-merchant.invalid/photo.jpg',
