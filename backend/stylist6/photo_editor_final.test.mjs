@@ -92,6 +92,29 @@ test('final VISUAL collection editor sees which real four-SKU looks realize actu
   assert.doesNotMatch(received,/private\.example|SECRET-CLIENT-SKU|PRIVATE-2-3/);
 });
 
+test('final photo portfolio can still evaluate original art #3 after upstream art #2 was rejected',()=>{
+  const concepts=[
+    {id:'ai-director-1',generatedBy:'s6-creative-director-v1',
+      name:'Tailored warm signature',artDirection:'A confidently styled tailored silhouette balances open collar structure, tactile warmth, a long leg and softly grounded genuine leather footwear.'},
+    {id:'ai-director-3',generatedBy:'s6-creative-director-v1',
+      name:'Fluid independent discovery',artDirection:'A separate expressive editorial direction explores genuine garment layers, longer visual lines, relaxed construction and considered contrasting shoes.'},
+  ];
+  const attributed=looks.map((look,i)=>({...look,
+    briefId:i===0?'ai_director_1':i===1?'ai_director_3':'ai_composed_'+i}));
+  const actual=anonymousPhotoEditorialOptions(attributed,reviews,{creativePlans:concepts});
+  assert.equal(actual.length,5);
+  assert.equal(actual[0].originalArtistConcept.planNumber,1);
+  assert.equal(actual[1].originalArtistConcept.planNumber,3);
+  assert.equal(actual[1].originalArtistConcept.artisticTitle,
+    'Fluid independent discovery');
+  assert.equal(actual[2].originalArtistConcept,undefined);
+  const invalid=anonymousPhotoEditorialOptions(attributed,reviews,{
+    creativePlans:[concepts[0],{...concepts[1],id:'ai-director-1'}]});
+  assert.equal(invalid[1].originalArtistConcept,undefined,
+    'a duplicated or spoofed index never receives another plan\'s creative credit');
+  assert.doesNotMatch(JSON.stringify(actual),/PRIVATE|SECRET|private\.example/);
+});
+
 test('only already-approved tokens, never hallucinated or duplicated, enter final deck',()=>{
   const a=anonymousPhotoEditorialOptions(looks,reviews);
   const menu=anonymousPhotoEditorialPortfolios(verifiedMenu,a);
