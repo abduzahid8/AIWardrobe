@@ -359,3 +359,21 @@ selection, keeping the independent original-photo critic, verified
 SKU/offer, price, fixed 4-article and weather hard gates unchanged.
 No model selector or CI test can replace the required REAL native
 and blind human 70% fashion-preference evaluation.
+
+
+## 2026-11-18 — source-photo quality and footwear-scale checkpoint (verified)
+**This section is evidence, not aesthetic acceptance.** PR #15 remains isolated. Production Stylist 5 is unchanged.
+
+- Verified Render staging LIVE on exact source `9c8cdf0` after both dedicated Stylist 6 GitHub checks passed. The source-bound four-garment catalog contract is now enforced BEFORE expensive photo evaluation on the isolated AI-first path, not solely at publication. The photo-critic-informed second AI pass has a four-source-garment regression test. This is NOT a real native fashion approval.
+- Supabase verified 1,649 active shoe SKUs and 735 actual source/image-hash-current visual shoe profiles before the next work cohort. All 735 source hashes and source image URLs matched their current job and catalog rows. A previously pending 64-shoe cohort completed: total succeeded visual jobs 6,020 -> 6,084, no pending work at that snapshot.
+- Another 908 eligible currently active shoe SKUs with real HTTPS product/shop URLs and verified shoe slot were queued in two source-hash-bound, insert-only cohorts (512 + 396). GitHub Actions `stylist6-footwear-visual-backfill.yml` runs FOUR workers, max 128 images/worker and max 2,400 seconds, and is explicitly guarded with `STYLIST_VISUAL_SKIP_SEED=1`. First workflow run `44235881082` was in progress at checkpoint. **Queued is NOT processed**; independently query job success and current profile identity before reporting coverage gains. The new 396 must be handled in a subsequent bounded run; check its actual workflow status, never assume completion.
+- The source-hash-verified **licensed** first-party photo cache `catalog_photo_cache_v1` had **zero rows**. Therefore `photoFirstCatalogReady=false` and the AI SKU designer still works from names and authenticated derived visual attributes, not its own direct photo board. The independent whole-look critic can see real source photos, but that happens AFTER composition. Download/inference host allowlists are technical controls, **not merchant image rights**. Do NOT bypass or fabricate media licensing to enable photo-first.
+- Last documented real iOS Classic/Date night three-look output used near-identical cardigan/chino silhouettes despite 7/8 independent photo approvals. Later real Kimi secondary visual jury hit a source-photo montage deadline; the optimized raw-image/one-SVG contact sheet and Kimi provider sampler repair subsequently reached Render staging, but real native confirmation of the latest two-model PHOTO editor and genuine silhouette improvement was **not yet captured** in this checkpoint.
+
+**Next decision sequence — do NOT drift:**
+1. Verify current queued shoe profiles succeed with exact source/image-hash, and inspect relevant style-specific availability (not just broad catalog size).
+2. Run paid, authenticated **native** photo-backed QA on EXACT `9c8cdf0` or later deployed SHA for Classic/Work, Classic/Date, Old Money/Casual, Winter/Work. Capture only authorized original-source product-photo contact sheets privately. Log three true four-SKU shoppable looks, or honest fewer, plus Kimi/Nemotron photo editor statuses and architecture diversity. No claim of success from CI or 3/3 cards alone.
+3. Make the **composer see actual SKU photographs BEFORE selecting** only after documented external-AI and image-hosting rights for at least 3 exact current source SKUs in each of four roles, then >=12 per role; use the bounded already-implemented `catalog_photo_cache_v1`/SKU board, no live 48-CDN fanout.
+4. Where native photos still show cloned silhouettes, improve model-led whole-look design and creative revision from original PHOTO evidence; do not append product-name regex bans or relax the photo rejection floor. Include a same-inventory before/after visual comparison.
+5. Before scale or S5 replacement, achieve >=70% Stylist 6 wins in >=30 held-out blinded S5 pairwise scenarios with three human reviewers, zero source/price/auth/privacy violations, verified native delivery and rollback.
+
