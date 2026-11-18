@@ -55,3 +55,76 @@ Current source/URL-matched visual attribute profiles: active top ~2,402/3,082, o
 5. Keep production Stylist 5 untouched until those objective and owner gates have been met.
 
 **Bottom line:** One authentic 3-look Date result is a real milestone. The 2-look Work counterexample and visual office-style mismatch prove the world-class stylist goal remains open.
+
+## 2026-11-18 follow-up — photo-worker download transport, bounded source pilot
+
+A deeper LIVE source-data audit explained another visual quality ceiling:
+**1,520 active top/layer/bottom source-hash-current SKUs had no attached v1
+photo profile**, and every corresponding `catalog_visual_jobs` row was
+`unknown`, `attempts=3`, `reason=download_unavailable`.
+These are NOT merely unqueued jobs. Host-level distribution among the
+failed source photographs included Armani CDN 768, Loro Piana 263,
+Fred Perry 153, Zara 145, Lacoste 105, Massimo Dutti 85 and one Jack & Jones.
+
+Repro from a neutral macOS GET sample per host:
+- The exact original URLs for Armani, Loro Piana, Zara, Massimo Dutti
+  and Fred Perry returned **HTTP 200 JPEG** with a truthful
+  `User-Agent: AIWardrobe-Stylist6-Cloud/1.0` and neutral
+  `Accept: image/*,*/*;q=0.8`.
+- Several of these URLs rejected the previous plain Python Requests
+  default UA with **HTTP 403**. This is evidence of a *transport
+  compatibility issue*, not proof that every failed image is now
+  recoverable from a GitHub cloud runner.
+- The sample Lacoste image still returned **403**, and is deliberately
+  excluded. No anti-bot/session/cookie spoofing was attempted.
+- Worker change `b954367eb979bb4b01374a618df487800b6e57b6` gives the
+  original product-photo download an honest client identity and Accept
+  header **without changing** its public HTTPS/DNS, redirect, 12 MB byte,
+  30 MP pixel, source-hash and timeout checks. Two dependency-free
+  fail-closed transport regression tests pass.
+
+**Pilot, not a completed profile claim:** requeued ONLY **48 previously
+failed, currently source-hash-matching, active and priced original SKUs**
+under `catalog_visual_jobs` (16 Armani, 8 each Loro Piana, Zara,
+Massimo Dutti and Fred Perry). No wholesale rescan or Lacoste retry.
+Before GitHub Actions startup Supabase showed `pending=48`,
+`succeeded=6,992`, `unknown=1,509`, zero invalid pending hashes.
+
+Run: `https://github.com/abduzahid8/AIWardrobe/actions/runs/44254765390`.
+Four bounded GitHub workers confirmed started; they passed the new
+transport regression checks and were installing the pinned CPU model
+at last verification. **Do not report the pilot as successful until
+Supabase confirms finished, source-matching `catalog_visual_fashion`
+rows**. If cloud runner still reports `download_unavailable`, do not
+indefinitely requeue; classify status/rights and source merchant feed
+before making any further changes.
+
+Original photo hosting licenses remain **unverified**; this offline
+feature extraction is NOT proof of any merchant caching/rehosting right.
+The licensed original-photo-first creative cache still has **zero rows**.
+
+### Confirmed controlled transport recovery and follow-on bounded cohort
+
+After the new-source worker image loader deployed in commit
+`b954367eb979bb4b01374a618df487800b6e57b6`, **ALL 48 of the 48**
+originally failed pilot products completed SigLIP2 inference and acquired
+**current URL + source-hash verified** v1 visual profiles, separately checked
+against the live Supabase catalogue. The durable visual job total rose
+from **6,992 to 7,040 succeeded**; 48 moved out of the old
+`unknown` bucket without new merchant data or fabricated source URLs.
+The pilot GitHub Actions run **44254765390** completed **all four workers
+SUCCESS**. This confirms the neutral truthful UA compatibility recovery
+on the five permitted source hosts tested.
+
+A second, still bounded improvement tranche queues **exactly 512**
+additional same-source, already-failed legitimate top/outerwear/bottom
+products: Armani 256, Loro Piana 104, Fred Perry 60, Zara 60, Massimo
+Dutti 32. These are **QUEUED, NOT YET PROVEN RECOVERED** at the time
+of this note. Existing workflow runs four capped 128-image CPU workers,
+all with `STYLIST_VISUAL_SKIP_SEED=1`: the job cannot accidentally
+reseed the whole catalogue. Lacoste's consistently blocked 403 URLs
+were not retried or bypassed.
+
+Improving SigLIP2 evidence should give the AI source composer a stronger
+photo-derived color/construction menu; it is **not** artistic acceptance
+or evidence of a source-photo commercial caching/rehosting license.

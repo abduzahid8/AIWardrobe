@@ -532,3 +532,37 @@ substitute for real independent visual and human acceptance.
 - Zero records in the licensed original-product photo cache; raw-photo creative composition remains OFF. Existing v1 photo profiles are useful but frequently lack confident fabric/color observations. No stock/delivery/size claims.
 - **DO NOT promote S6 to production**: 30+ held-out 3-human-reviewer blind test requiring >=70% S6 preference has not been conducted; the fashion quality bar is demonstrably unmet.
 - Concrete receipts, limitations, repro details and next creative-work focus: `docs/reports/stylist6-real-iphone-owner-reference-20261118.md`.
+
+## 2026-11-18 — visual intelligence source transport recovery pilot (b954367)
+
+- The 1,520 unprofiled active top/layer/bottom products were already `unknown`
+  after THREE failed downloads, mostly on particular brand CDNs; blind
+  worker reruns without a source-transport diagnosis would waste time.
+- Neutral original JPEG GET recovered 5/6 sampled brand hosts when using
+  an **honestly identified AIWardrobe client** instead of the blocked
+  generic `python-requests` UA; Lacoste remained 403, no circumvention.
+- Fix `b954367`: source-only honest UA + Accept header, no added
+  credentials/cookies/redirect trust/host permissions. Two source
+  transport tests pass, existing visual quality and price/auth gates untouched.
+- EXACTLY 48 requeued current-hash garments across five previously failed
+  hosts; four bounded GitHub workers in Actions run 44254765390. **No
+  successful enrichment yet claimed** — check Supabase source-current
+  profile/queue and completed GitHub jobs before considering further batches.
+- Continue pursuing **beautiful, truly different outfits** on real iOS
+  with genuine photo approvals and human blind review. Raising technical
+  profile coverage alone does not close fashion taste or image-rights gates.
+
+## 2026-11-18 — original photo-worker root cause PROVEN in bounded pilot
+
+- **48/48 source-original product photo enrichments succeeded** after
+  the honest AIWardrobe client-identification fix; each current
+  `catalog_visual_fashion` URL/source hash verified. This is a real,
+  measured rise of completed jobs from 6,992 to 7,040 (GitHub Actions
+  run 44254765390 four out of four jobs SUCCESS).
+- A **second 512-image exact-source bounded queue** (Armani 256,
+  Loro Piana 104, Fred Perry 60, Zara 60, Massimo Dutti 32) is staged
+  to improve verified source-photo attribute coverage. **Do not call it
+  completed** until worker/DB receipts prove it.
+- Lacoste HTTP 403 remains blocked. Merchant image hosting, third-party
+  model usage rights, licensed photo-first cache, available sizes and
+  delivery cannot be inferred from successful offline feature extraction.

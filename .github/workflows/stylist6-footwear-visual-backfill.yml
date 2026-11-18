@@ -11,10 +11,10 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: stylist6-bounded-footwear-visual
+  group: stylist6-bounded-catalog-visual
   cancel-in-progress: false
 jobs:
-  enrich-footwear:
+  enrich-source-photos:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     strategy:
@@ -57,5 +57,8 @@ jobs:
         run: |
           pip install --quiet torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet -r scripts/visual/cloud/requirements.txt
+      # The exact-source Supabase queue determines product scope: the same
+      # vetted 4×128 runner handles top, outerwear, bottom OR shoes without
+      # silently enqueuing or rewriting any merchant catalog item.
       - name: Process only 128 explicitly queued exact-source images per worker
         run: python scripts/visual/cloud/worker.py
