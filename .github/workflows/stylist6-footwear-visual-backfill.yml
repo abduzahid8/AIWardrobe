@@ -1,4 +1,5 @@
 name: Stylist 6 bounded footwear visual intelligence
+run-name: 'Stylist 6 | permitted-shoes photo intelligence, four bounded workers'
 on:
   push:
     branches: [codex/stylist6-visual-first-20261110]
