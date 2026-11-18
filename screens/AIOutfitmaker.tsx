@@ -2416,6 +2416,42 @@ const AIOutfitGenerator = () => {
                     </View>
                   );
                 })()}
+                {/* Explicit, source-attributable human taste belongs beside
+                    the actual complete-look preview, not hidden far below
+                    prices, styling tips and action buttons. Never auto-vote:
+                    only an actual thumbs tap can persist this preference.
+                    The first artist will use these user-authored ratings on
+                    FUTURE generations; model photo criticism is different. */}
+                {canRecordLookFeedback(outfit) && (
+                  <View testID={`stylistTasteFeedback-${index}`} style={{
+                    flexDirection:'row',alignItems:'center',justifyContent:'space-between',
+                    gap:8,marginBottom:14,paddingVertical:8,paddingHorizontal:10,
+                    borderRadius:12,borderWidth:1,borderColor:'rgba(23,58,101,0.10)',
+                    backgroundColor:'rgba(23,58,101,0.04)',
+                  }}>
+                    <ScaledText style={{flex:1,fontSize:13,color:D.textPrimary}} minScale={0.75}>
+                      {lookRatings[`${outfit.generationRequestId}:${outfit.id}`]
+                        ? t('outfitMaker.feedbackSaved')
+                        : t('outfitMaker.feedbackPrompt')}
+                    </ScaledText>
+                    {([1,-1] as const).map(rating=>(
+                      <TouchableOpacity key={rating} testID={`stylistTaste-${rating===1?'like':'dislike'}-${index}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={t(rating===1?'outfitMaker.feedbackLike':'outfitMaker.feedbackDislike')}
+                        accessibilityState={{selected:lookRatings[`${outfit.generationRequestId}:${outfit.id}`]===rating,
+                          disabled:feedbackPending!==null}}
+                        disabled={feedbackPending!==null}
+                        onPress={()=>void submitLookFeedback(outfit,rating)}
+                        style={{padding:10,borderRadius:10,
+                          opacity:feedbackPending?0.5:1,
+                          backgroundColor:lookRatings[`${outfit.generationRequestId}:${outfit.id}`]===rating
+                            ?'rgba(23,58,101,0.10)':'transparent'}}>
+                        <Ionicons name={rating===1?'thumbs-up-outline':'thumbs-down-outline'} size={22}
+                          color={lookRatings[`${outfit.generationRequestId}:${outfit.id}`]===rating?D.accent:D.textSecondary}/>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
                 <OutfitSlotGrid
                   items={outfit.items}
                   weather={outfit.weather}
@@ -2473,19 +2509,7 @@ const AIOutfitGenerator = () => {
                   </View>
                 </View>}
 
-                {canRecordLookFeedback(outfit) && (
-                  <View style={{flexDirection:'row',alignItems:'center',gap:16,marginTop:12}}>
-                    <ScaledText>{lookRatings[`${outfit.generationRequestId}:${outfit.id}`] ? t('outfitMaker.feedbackSaved') : t('outfitMaker.feedbackPrompt')}</ScaledText>
-                    {([1,-1] as const).map(rating=>(
-                      <TouchableOpacity key={rating} accessibilityRole="button" accessibilityLabel={t(rating===1?'outfitMaker.feedbackLike':'outfitMaker.feedbackDislike')}
-                        disabled={feedbackPending!==null} onPress={()=>void submitLookFeedback(outfit,rating)}
-                        style={{padding:10,opacity:feedbackPending?0.5:1}}>
-                        <Ionicons name={rating===1?'thumbs-up-outline':'thumbs-down-outline'} size={22}
-                          color={lookRatings[`${outfit.generationRequestId}:${outfit.id}`]===rating?D.accent:D.textSecondary}/>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+
                 <View style={styles.actionRow}>
                   <TouchableOpacity
                     activeOpacity={0.85}
