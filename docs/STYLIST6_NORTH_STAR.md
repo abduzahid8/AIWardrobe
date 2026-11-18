@@ -633,3 +633,12 @@ substitute for real independent visual and human acceptance.
   three excellent looks as a collection.
 - Keep the confirmed 512 photo-profile recoveries and provenance-
   separated source text/image facts. Do NOT promote to production.
+
+## 2026-11-18 — independent PHOTO jury for two looks: actual iOS QA, not aesthetic acceptance
+
+- Exact documented evidence: `docs/reports/stylist6-live-visual-qa-20261118-followup.md`.
+- Live staging `2d44a18` Date-night and Work both returned **2 four-item looks**. Work used independent Nemotron+Kimi source authors and original-photo jury; **3/11** photo approvals, 2 displayed, and still repetitive two-blazer construction. Date approved **2/3**, text-editor fallback when primary photo VLM timed out with only two approved looks and the second image-capable judge was skipped. No causal fashion win is proven across randomly changing source cohorts.
+- Code `92c3a37` removed the unjustified **>=3** final-portfolio prerequisite for the *second independent original-photo judge*; all editor choices stay within already source-/budget-/original-photo-admitted F-token portfolios. Targeted tests and full **542/542** Stylist6 and **42/42** backend tests pass, unchanged S5 auth/quota hash.
+- New LIVE Render staging `dep-dbuldc2jnfac73djv2dg` on SHA `92c3a37`: authenticated real iOS Classic / New / Date night, **8 AI proposals, 2/9 original-photo approvals, final 2**, 55,019ms. Original JPEG editorial board `ready`; primary visual jury **applied**, independent different-lab true-photo jury **agreed** (2-look size) despite **zero** feasible triples. This repairs the missing independent PHOTO-curation behavior but not the weak initial fashion composition.
+- Production Stylist 5 remains unchanged, **NO-GO**. Merchant original-photo hosting/inference licenses remain unverified (zero READY rights-cleared cached original photos); visual-first SKU creation not live. Do not treat image-feature coverage, synthetic tests or AI editor agreement as a demonstrated excellent personal fashion stylist.
+- Prioritize rights-cleared source-photo creative decisions and **same fixed inventory** comparative human taste evaluations; do not revive the failed hard subtype exclusion or lower photo-quality standards. The owner requires beautiful, genuinely different 4-SKU looks, not 3 output cards.
