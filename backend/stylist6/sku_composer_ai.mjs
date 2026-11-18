@@ -185,8 +185,17 @@ export function sourceBoundCompositionPool(looks, {
     const used=new Set(),chosen=[],families=new Set();
     const family=item=>{
       const evidence=photoFacts(item);
-      return [item.subtype||'',evidence.color||item.color||'',
-        evidence.texture||'',evidence.volume||''].join('|');
+      // A real catalog may list several shoes, trousers or jackets as the
+      // same subtype/color/texture. Earlier we treated a different ORIGINAL
+      // photo-observed sole, trouser hem, opening or collar as a duplicate
+      // and never showed the second garment to the AI creator. The composer
+      // can only make its own fashion decision over merchandise it sees.
+      // Group by SOURCE-CURRENT confident image facts, never by invented
+      // material/cut labels or raw merchant marketing prose. This governs
+      // source-token menu EXPOSURE, not outfit admission/approval.
+      return JSON.stringify([item.subtype||'',evidence.color||item.color||'',
+        ...['texture','volume','length','hemShape','closure','accentHue',
+          'footwearPurpose','soleProfile','collar','pattern'].map(k=>evidence[k]||'')]);
     };
     const append=x=>{
       const key=productKey(x.item),group=family(x.item);
@@ -240,8 +249,9 @@ export function sourceBoundCompositionPool(looks, {
     if(inventoryFirst&&planned.length>0&&limit>=9){
       const observedSignature=item=>{
         const p=photoFacts(item);
-        const values=['color','texture','volume','length','pattern',
-          'soleProfile','collar'].flatMap(key=>p[key]?[key+':'+p[key]]:[]);
+        const values=['color','texture','volume','length','hemShape',
+          'closure','accentHue','footwearPurpose','pattern','soleProfile',
+          'collar'].flatMap(key=>p[key]?[key+':'+p[key]]:[]);
         return values.length?[item.subtype,...values].join('|'):null;
       };
       const signatures=new Set(chosen.map(x=>observedSignature(x.item)).filter(Boolean));
