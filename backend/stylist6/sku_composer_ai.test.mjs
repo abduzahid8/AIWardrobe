@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {sourceBoundCompositionPool,groundedSkuDirections,
   groundedPhotoRevisionFeedback,anonymousExplicitTasteHistory,
   validateSkuCompositions,composeCatalogSkuLooks,
-  sourceVerifyComposedOutfits,AI_SKU_COMPOSER_VERSION} from './sku_composer_ai.mjs';
+  sourceVerifyComposedOutfits,AI_SKU_COMPOSER_VERSION,
+  CROSS_LAB_REVISION_MODEL} from './sku_composer_ai.mjs';
 const slots=['top','outerwear','bottom','shoes'];
 const items=Array.from({length:6},(_,i)=>slots.map((slot,j)=>({
   id:'PRIVATE_SKU_'+i+'_'+j,macroCategory:slot,isShopItem:true,
@@ -368,6 +369,84 @@ test('PHOTO-informed second fashion decision abandons exhausted first-draft plan
   assert.deepEqual(revision.inventoryGroundedDesignDirections,[]);
   assert.ok(revision.independentPhotoCriticRevision);
   assert.ok(revision.independentPhotoCriticRevision.rejectedPhotoEvidence.length>0);
+});
+
+test('photo-rejected creative rescue commissions independently-trained Kimi for SOURCE-verified fashion choices',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  let sent=null;
+  const output=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-test-key',layerRequired:true,crossLabRevision:true,
+    critiqueFeedback:{reasons:['style_mismatch'],
+      approvedArchitectures:[{top:'dress-shirt',outerwear:'blazer',
+        bottom:'tailored-trouser',shoes:'oxford'}],
+      rejectedOutfits:[{reason:'style_mismatch',
+        roles:{top:'dress-shirt',outerwear:'blazer',
+          bottom:'tailored-trouser',shoes:'oxford'},
+        observations:{outerwear:'Same dark layering repeated across all outfits'}}]},
+    fetchImpl:async(_url,init)=>{
+      sent=JSON.parse(init.body);
+      return result(slotAnswer(pool));
+    },
+    timeoutMs:4500,
+  });
+  assert.equal(sent.model,CROSS_LAB_REVISION_MODEL);
+  assert.equal(sent.response_format.type,'json_object',
+    'Kimi supports JSON_OBJECT, not Nemotron strict json_schema');
+  assert.equal(sent.top_p,undefined,
+    'Kimi Pro server fixes the nucleus sampler and rejects nondefault top_p');
+  assert.match(sent.messages[0].content,/INDEPENDENT SECOND STUDIO/);
+  assert.doesNotMatch(sent.messages[0].content,/PRIVATE_SKU_|https:\/\//);
+  assert.equal(output.status,'composed');
+  assert.equal(output.providerFamily,'cross_lab_kimi');
+  assert.equal(output.providerCalls,1);
+  assert.equal(output.looks.length,3);
+  assert.equal(new Set(output.looks.flat().map(x=>x.id)).size,12);
+});
+
+test('cross-lab creative studio cannot bypass SKU validity; bad Kimi output recovers with Nemotron',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const models=[];
+  const output=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-test-key',layerRequired:true,crossLabRevision:true,
+    critiqueFeedback:{reasons:['model_veto']},
+    fetchImpl:async(_url,init)=>{
+      const payload=JSON.parse(init.body);
+      models.push(payload.model);
+      return models.length===1
+        ?result({slotPicks:{top:['P999','P998','P997'],
+          outerwear:['P111','P112','P113'],
+          bottom:['P222','P223','P224'],shoes:['P333','P334','P335']}})
+        :result(slotAnswer(pool));
+    },
+    timeoutMs:4500,
+  });
+  assert.deepEqual(models,[CROSS_LAB_REVISION_MODEL,
+    'nvidia/nemotron-3.5-super-vl-120b-a12b']);
+  assert.equal(output.status,'composed');
+  assert.equal(output.providerFamily,'nemotron_fallback');
+  assert.equal(output.providerCalls,2);
+  assert.equal(output.looks.length,3);
+  assert.ok(output.looks.flat().every(x=>x.id.startsWith('PRIVATE_SKU_')));
+});
+
+test('initial source SKU creator stays proven Nemotron even when staging cross-lab rescue enabled',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  let payload=null;
+  const output=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Work'},
+    apiKey:'nvapi-test-key',crossLabRevision:true,
+    layerRequired:true,fetchImpl:async(_url,init)=>{
+      payload=JSON.parse(init.body);
+      return result(slotAnswer(pool));
+    },
+  });
+  assert.equal(payload.model,'nvidia/nemotron-3.5-super-vl-120b-a12b');
+  assert.equal(payload.response_format.type,'json_schema');
+  assert.equal(output.status,'composed');
+  assert.equal(output.providerFamily,'nemotron');
+  assert.equal(output.providerCalls,1);
 });
 
 test('malformed and unavailable AI fashion directions never invent missing merchandise',()=>{

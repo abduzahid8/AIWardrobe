@@ -2505,6 +2505,9 @@ export async function recommendFashionDeck({
         }catch{/* always keep the already judged original deck */}
         modelFashionSelection.photoRevisionStatus=
           String(retry?.status||'unavailable').slice(0,32);
+        modelFashionSelection.photoRevisionArtist=
+          ['nemotron','nemotron_fallback','cross_lab_kimi']
+            .includes(retry?.providerFamily)?retry.providerFamily:'not_run';
         if(retry?.status==='composed'&&Array.isArray(retry.looks)&&
             photoRescueRemainingMs()>=14000){
           const admitted=await sourceVerifyComposedOutfits({
@@ -2887,6 +2890,9 @@ export async function recommendFashionDeck({
               }catch{/* preserve original PHOTO approved set */}
               editorial.feedbackRevisionStatus=
                 String(retry?.status||'unavailable').slice(0,32);
+              editorial.feedbackRevisionArtist=
+                ['nemotron','nemotron_fallback','cross_lab_kimi']
+                  .includes(retry?.providerFamily)?retry.providerFamily:'not_run';
               if(retry?.status==='composed'&&Array.isArray(retry.looks)&&
                   photoRescueRemainingMs()>=16000){
                 const validated=await sourceVerifyComposedOutfits({

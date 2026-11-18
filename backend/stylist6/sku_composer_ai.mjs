@@ -22,6 +22,10 @@ const ENDPOINT='https://integrate.api.nvidia.com/v1/chat/completions';
 // and 50-second preview never invoke this new catalog composer.
 const MODEL='nvidia/nemotron-3.5-super-vl-120b-a12b';
 const PHOTO_COMPOSER_MODEL='nvidia/nemotron-3.5-super-vl-120b-a12b';
+// Separate fashion STUDIO for photo-informed creative rescues. Verified
+// provider supports JSON_OBJECT but rejects the primary model's schema/top_p
+// settings; exact SKU validity is still checked locally before any photo call.
+export const CROSS_LAB_REVISION_MODEL='moonshotai/kimi-k3.1-pro';
 const SLOTS=['top','outerwear','bottom','shoes'];
 const MAX_PER_SLOT=12;
 let inflight=0;
@@ -469,6 +473,7 @@ export async function composeCatalogSkuLooks({
   feedbackTaste=null,
   apiKey,fetchImpl=fetch,signal,timeoutMs=2600,parallel=false,
   layerRequired=false,allowLayer=true,resolvePhoto,authorizePhoto,
+  crossLabRevision=false,
 }={}){
   const visible=Array.isArray(pool)?pool.slice(0,48).map(x=>x.public):[];
   const bySlot=new Map(SLOTS.map(slot=>[slot,visible.filter(v=>v.slot===slot)]));
@@ -491,7 +496,8 @@ export async function composeCatalogSkuLooks({
   // Other callers retain their original <=4s provider deadline, and the
   // server-owned total + photo critic deadlines remain unchanged.
   const timer=setTimeout(()=>abort.abort(),
-    Math.min(parallel?16500:4000,Math.max(500,timeoutMs)));
+    Math.min(parallel?16500:crossLabRevision?5600:4000,
+      Math.max(500,timeoutMs)));
   const combined=signal?AbortSignal.any([signal,abort.signal]):abort.signal;
   inflight++;
   let providerCalls=0,visualMenuStatus='not_run';
@@ -514,6 +520,18 @@ export async function composeCatalogSkuLooks({
     });
     const preface=[
       'You are an expert HUMAN-CALIBER personal menswear stylist.',
+      ...(crossLabRevision&&revision?[
+        'INDEPENDENT SECOND STUDIO: another designer proposed the earlier',
+        'collection, and a separate original-photo jury has identified',
+        'which complete garment relationships worked and which did not.',
+        'Use that photo evidence to create your OWN compelling, DIFFERENT',
+        'fashion solution from the supplied genuine merchandise.',
+        'Improve the entire collection: distinctive outer layer construction,',
+        'top-to-bottom proportions, textile rhythm and footwear relationships.',
+        'Merely changing cardigan color, shoe shade or trousers is NOT',
+        'a separate fashion direction. You decide how to do better;',
+        'the original AI designs are deliberately not passed to you.',
+      ]:[]),
       'CREATE '+(target===6?'SIX':'THREE')+' distinct beautiful complete outfits FROM THE EXACT REAL PRODUCTS',
       'below, rather than selecting combinations prepared by a ranking algorithm.',
       'Decide actual construction, silhouette, fit, drape, material, color,',
@@ -724,33 +742,78 @@ export async function composeCatalogSkuLooks({
         }finally{clearTimeout(visionTimer);visionAbort.abort();}
       }
     }
-    // Any unavailable image/VLM/shape falls back to proven source-bound
-    // TEXT composer. It still passes the SAME exact source/hard/photo gates.
-    providerCalls++;
-    const res=await fetchImpl(ENDPOINT,{method:'POST',signal:combined,
-      headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},
-      body:JSON.stringify({model:MODEL,messages:[{role:'user',content:preface}],
-        temperature:.35,top_p:.93,max_tokens:target===6?850:550,stream:false,
-        response_format:{type:'json_schema',json_schema:{
-          name:'aiw_personal_sku_composition',strict:true,schema}},
-        chat_template_kwargs:{enable_thinking:false}})});
-    if(!res.ok)return {status:res.status>=400&&res.status<500?
-      'provider_schema_rejected':'provider_unavailable',
-      looks:[],providerCalls,visualMenuStatus};
-    const max=Number(res.headers?.get?.('content-length'));
-    if(Number.isFinite(max)&&max>16000)throw Error('oversized');
-    const body=await res.text();if(body.length>16000)throw Error('oversized');
-    const answer=JSON.parse(body)?.choices?.[0];
-    if(answer?.finish_reason!=='stop'||typeof answer?.message?.content!=='string')
-      return {status:'incomplete',looks:[],providerCalls,visualMenuStatus};
+    // The FIRST author stays Nemotron, preserving the proven 16s parallel
+    // slate. A PHOTO-critic-informed rescue may ask Kimi K3.1 Pro, a
+    // DIFFERENT model family, to make an original fashion decision instead
+    // of repeatedly asking the rejecting author's own fashion model.
+    // NVIDIA owns initial photo criticism and the entire final collection
+    // jury. Kimi never approves, fabricates or edits any merchandise.
+    //
+    // Its hosted JSON_OBJECT endpoint was verified independently; no
+    // json_schema or top_p argument is sent to Kimi. A refused, malformed
+    // or SKU-invalid cross-lab result falls back ONCE to the previous
+    // Nemotron creator while the original request deadline permits it.
+    // Both studios face the exact same trusted source-token validator.
     const rescue=revision!==null;
     const minimumValid=rescue?1:3;
-    const choices=validateSkuCompositions(JSON.parse(answer.message.content),pool,
-      {layerRequired,allowLayer,count:target,
-        allowPartial:target===6||rescue,minimumValid});
-    return choices.length>=minimumValid
-      ?{status:'composed',looks:choices,providerCalls,visualMenuStatus}
-      :{status:'invalid_composition',looks:[],providerCalls,visualMenuStatus};
+    const crossLab=rescue&&crossLabRevision===true;
+    const studios=crossLab?[CROSS_LAB_REVISION_MODEL,MODEL]:[MODEL];
+    let failure='provider_unavailable';
+    for(const studio of studios){
+      if(combined.aborted)break;
+      providerCalls++;
+      const isKimi=studio===CROSS_LAB_REVISION_MODEL;
+      let res;
+      try{
+        res=await fetchImpl(ENDPOINT,{method:'POST',signal:combined,
+          headers:{Authorization:'Bearer '+apiKey,
+            'Content-Type':'application/json'},
+          body:JSON.stringify({
+            model:studio,messages:[{role:'user',content:preface}],
+            temperature:isKimi?.18:.35,
+            ...(!isKimi?{top_p:.93}:{}),
+            max_tokens:isKimi?700:target===6?850:550,stream:false,
+            response_format:isKimi?{type:'json_object'}:
+              {type:'json_schema',json_schema:{
+                name:'aiw_personal_sku_composition',strict:true,schema}},
+            chat_template_kwargs:{enable_thinking:false},
+          })});
+      }catch{
+        failure=combined.aborted?'timeout':'provider_unavailable';
+        continue;
+      }
+      if(!res.ok){
+        failure=res.status>=400&&res.status<500?
+          'provider_schema_rejected':'provider_unavailable';
+        continue;
+      }
+      try{
+        const size=Number(res.headers?.get?.('content-length'));
+        if(Number.isFinite(size)&&size>16000){
+          failure='invalid_composition';continue;
+        }
+        const body=await res.text();
+        if(body.length>16000){failure='invalid_composition';continue;}
+        const answer=JSON.parse(body)?.choices?.[0];
+        if(answer?.finish_reason!=='stop'||
+            typeof answer?.message?.content!=='string'){
+          failure='incomplete';continue;
+        }
+        const choices=validateSkuCompositions(
+          JSON.parse(answer.message.content),pool,{
+            layerRequired,allowLayer,count:target,
+            allowPartial:target===6||rescue,minimumValid,
+          });
+        if(choices.length>=minimumValid){
+          return {status:'composed',looks:choices,providerCalls,visualMenuStatus,
+            providerFamily:isKimi?'cross_lab_kimi':
+              crossLab?'nemotron_fallback':'nemotron'};
+        }
+        failure='invalid_composition';
+      }catch{failure='invalid_composition';}
+    }
+    return {status:combined.aborted?'timeout':failure,
+      looks:[],providerCalls,visualMenuStatus};
   }catch{return {status:combined.aborted?'timeout':'provider_unavailable',
     looks:[],providerCalls,visualMenuStatus};
   }finally{clearTimeout(timer);inflight--;}

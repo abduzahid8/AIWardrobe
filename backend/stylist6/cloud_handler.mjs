@@ -146,6 +146,8 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       .includes(f.photoRevisionStatus)?f.photoRevisionStatus:'not_run',
     photoRevisionAttempted:safe(f.photoRevisionAttempted,3),
     photoRevisionApproved:safe(f.photoRevisionApproved,3),
+    photoRevisionArtist:['nemotron','nemotron_fallback','cross_lab_kimi']
+      .includes(f.photoRevisionArtist)?f.photoRevisionArtist:'not_run',
     photoEditorialStatus:['applied','deadline','timeout','provider_unavailable',
       'invalid_combination','invalid_selection','not_enough_approved']
       .includes(f.photoEditorial?.status)?f.photoEditorial.status:'not_run',
@@ -181,6 +183,9 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       safe(f.photoEditorial?.feedbackRevisionAttempted,3),
     photoEditorialCreativeRevisionApproved:
       safe(f.photoEditorial?.feedbackRevisionApproved,3),
+    photoEditorialCreativeArtist:['nemotron','nemotron_fallback','cross_lab_kimi']
+      .includes(f.photoEditorial?.feedbackRevisionArtist)
+      ?f.photoEditorial.feedbackRevisionArtist:'not_run',
     formalPhotoProbe:f.formalPhotoProbe===true,
     prePhotoUniqueTriple:f.uniqueTripleAvailable===true,
     reasons,
@@ -1632,9 +1637,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           nextPhase('ai_vision_feedback_revision');
           return composeCatalogSkuLooks({
             pool,context,directions,critiqueFeedback,layerRequired,allowLayer,feedbackTaste,
+            // Isolated 72s staging: use a SECOND model family for creative
+            // response to genuine photo rejections; no S5 or preview change.
+            crossLabRevision:true,
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
-            timeoutMs:Math.min(2400,Math.max(550,left-13900)),
+            timeoutMs:Math.min(4900,Math.max(550,left-13900)),
           });
         }:null;
     const selectPhotoApprovedPortfolio=modelSlateEnabled&&budgetMs>=70000
