@@ -29,6 +29,19 @@ import { deliberatelyRelaxedIntent } from './editorial_intent.mjs';
 
 const slots = ['top', 'outerwear', 'bottom', 'shoes'];
 
+/** Early staging PHOTO admission for the SAME four-real-SKU catalog contract
+ * already enforced at cloud publication. Avoid wasting paid vision capacity
+ * on an inherently unpublishable three-piece candidate; never fabricate one.
+ */
+export function eligibleCatalogFourItemPhotoCandidate(look){
+  const items=look?.items;
+  return Array.isArray(items)&&items.length===4&&
+    slots.every(slot=>items.filter(item=>item?.macroCategory===slot).length===1)&&
+    items.every(item=>item?.isShopItem===true&&typeof item.id==='string'&&item.id.length>0)&&
+    new Set(items.map(item=>item.id)).size===4;
+}
+
+
 /** Guard against calling fashion-casual products workout equipment. A source
  * description or generic 'athletic fit' tag is not enough: the PRODUCT NAME
  * must support the intended physical activity, and hard contradictions win.
@@ -1858,6 +1871,11 @@ export async function recommendFashionDeck({
   const modelLed = context.sourceMode === 'catalog' &&
     visualDeckReview && typeof visualCritic === 'function' &&
     typeof canJudgeOutfit === 'function' && typeof selectDirectorFinalists === 'function';
+  // The isolated 72-second catalog publisher requires four real SKUs. Never
+  // pay a whole-look PHOTO verdict for three garments which the cloud release
+  // boundary must discard. Compose a suitable REAL layer, not a fake fourth.
+  const catalogFourItemIntent = modelLed &&
+    typeof selectCatalogCompositions === 'function';
   const weather = context.weather;
   const reference = referenceBriefs.find(({ referenceId }) => referenceId === request.referenceId);
   const forceLayer = !context.optionalLayer || hasColdLayerIntent(weather) ||
@@ -1951,7 +1969,8 @@ export async function recommendFashionDeck({
         // Start provider I/O NOW, before any retrieval kernel execution.
         promise=Promise.resolve(selectCatalogCompositions({
           pool,directions:aiPlans,outfitCount:6,feedbackTaste,context:contextPrompt,
-          layerRequired:forceLayer,allowLayer:!noLayer,parallel:true,
+          layerRequired:forceLayer||catalogFourItemIntent,
+             allowLayer:!noLayer||catalogFourItemIntent,parallel:true,
         })).catch(()=>({status:'provider_unavailable',looks:[],providerCalls:1}));
       }catch{
         promise=Promise.resolve({status:'provider_unavailable',
@@ -1976,6 +1995,7 @@ export async function recommendFashionDeck({
         // approval. Every surviving whole look still goes through NVIDIA.
         const palette=context.preferences;
         for(const look of admitted){
+          if(catalogFourItemIntent && !eligibleCatalogFourItemPhotoCandidate(look))continue;
           if(verifiedAvoidColors(palette?.avoidColors).length&&
             photographicPaletteEvidence(look,palette,requiredIds).blocked)continue;
           try{
@@ -2038,6 +2058,7 @@ export async function recommendFashionDeck({
   // verdicts referenceless and never claims a reference comparison). With a
   // reference, behavior is unchanged.
   const permitted = async (look) => {
+    if(catalogFourItemIntent && !eligibleCatalogFourItemPhotoCandidate(look))return false;
     try { return await canJudgeOutfit(look, reference?.referenceId ?? null) === true; } catch { return false; }
   };
   if (visualDeckReview && (selected.length || modelLed) && typeof visualCritic === 'function' &&
@@ -2110,7 +2131,8 @@ export async function recommendFashionDeck({
                 style:context.style,occasion:context.occasion,brief:context.request,
                 weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
                 preferences:context.preferences,
-              },layerRequired:forceLayer,allowLayer:!noLayer,
+              },layerRequired:forceLayer||catalogFourItemIntent,
+             allowLayer:!noLayer||catalogFourItemIntent,
             });
           skuCompositionReceipt.status=String(composition?.status||'unavailable').slice(0,40);
           skuCompositionReceipt.visualMenuStatus=
@@ -2477,7 +2499,8 @@ export async function recommendFashionDeck({
               brief:context.request,preferences:context.preferences,
               weatherCelsius:Number.isFinite(context.weather?.temp)
                 ?context.weather.temp:null},
-            layerRequired:forceLayer,allowLayer:!noLayer,
+            layerRequired:forceLayer||catalogFourItemIntent,
+             allowLayer:!noLayer||catalogFourItemIntent,
           });
         }catch{/* always keep the already judged original deck */}
         modelFashionSelection.photoRevisionStatus=
@@ -2853,7 +2876,8 @@ export async function recommendFashionDeck({
                     brief:context.request,preferences:context.preferences,
                     weatherCelsius:Number.isFinite(context.weather?.temp)
                       ?context.weather.temp:null},
-                  layerRequired:forceLayer,allowLayer:!noLayer,
+                  layerRequired:forceLayer||catalogFourItemIntent,
+             allowLayer:!noLayer||catalogFourItemIntent,
                 });
               }catch{/* preserve original PHOTO approved set */}
               editorial.feedbackRevisionStatus=

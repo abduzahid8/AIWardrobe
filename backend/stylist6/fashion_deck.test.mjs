@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence, eligibleCatalogFourItemPhotoCandidate } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -2647,4 +2647,24 @@ test('two real PHOTO approvals still activate portfolio fashion judgment and its
   assert.ok(result.outfits.every(x=>photoApproved.has(x.id)));
   assert.ok(result.outfits.every(x=>x.items.length===4));
   assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+});
+
+test('real catalog PHOTO audition admits only four distinct source merchandise roles',()=>{
+  const complete={
+    items:['top','outerwear','bottom','shoes'].map((slot,i)=>
+      garment('audition-item-'+i,'source authenticated garment',slot,'test')),
+  };
+  assert.equal(eligibleCatalogFourItemPhotoCandidate(complete),true);
+  assert.equal(eligibleCatalogFourItemPhotoCandidate({
+    items:complete.items.filter(item=>item.macroCategory!=='outerwear'),
+  }),false,'the optional layer cannot consume a paid photo review then be dropped');
+  assert.equal(eligibleCatalogFourItemPhotoCandidate({
+    items:[...complete.items.slice(0,3),{...complete.items[3],macroCategory:'top'}],
+  }),false,'four SKU count is not four garment roles');
+  assert.equal(eligibleCatalogFourItemPhotoCandidate({
+    items:[...complete.items.slice(0,3),{...complete.items[3],id:complete.items[0].id}],
+  }),false,'one source product cannot occupy two roles');
+  assert.equal(eligibleCatalogFourItemPhotoCandidate({
+    items:[...complete.items.slice(0,3),{...complete.items[3],isShopItem:false}],
+  }),false,'invented items cannot masquerade as a merchant catalog SKU');
 });
