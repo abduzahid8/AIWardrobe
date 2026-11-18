@@ -286,6 +286,102 @@ test('provider cannot finish an incomplete original concept: preserve real sourc
   assert.equal(reply.invalidPlanBackupStatus,'provider_unavailable');
 });
 
+test('PARALLEL staging Creative Director returns genuine source-valid independent 30B art when 120B times out',async()=>{
+  const models=[];
+  const decision=await designCreativeBriefsWithFallback({catalog,
+    request:{...request,occasion:'Date night',
+      brief:'Parallel 120B timeout 30B source-valid plan fashion test nov18'},
+    apiKey:'nvapi-parallel-creative-independent-fallback',
+    highTaste:true,allowIndependentFallback:true,
+    parallelIndependentFallback:true,timeoutMs:650,backupTimeoutMs:1350,
+    fetchImpl:async(_url,init)=>{
+      const body=JSON.parse(init.body);models.push(body.model);
+      assert.match(body.messages[0].content,/social DATE evening/);
+      assert.doesNotMatch(body.messages[0].content,
+        /SECRET-SKU-SHIRT|PRIVATE_REAL_SHIRT|https:\/\//);
+      if(body.model==='nvidia/nemotron-3.5-lightning-30b-a3b')
+        return fakeResponse(proposal);
+      assert.equal(body.model,'nvidia/nemotron-3.5-super-vl-120b-a12b');
+      await new Promise((_resolve,reject)=>{
+        if(init.signal.aborted)return reject(Error('first provider aborted'));
+        init.signal.addEventListener('abort',()=>reject(Error('first provider aborted')),
+          {once:true});
+      });
+      throw Error('unreachable');
+    },
+  });
+  assert.deepEqual(new Set(models),new Set([
+    'nvidia/nemotron-3.5-super-vl-120b-a12b',
+    'nvidia/nemotron-3.5-lightning-30b-a3b']));
+  assert.equal(decision.status,'planned');
+  assert.equal(decision.providerCalls,2);
+  assert.equal(decision.invalidPlanBackupStatus,'used_independent_source_grounded');
+  assert.equal(decision.briefs.length,3);
+  assert.ok(decision.briefs.every(plan=>plan.roles.outerwear.length>0));
+});
+
+test('PARALLEL independent 30B artistic draft cannot replace successful 120B fashion thinking',async()=>{
+  const seen=[];
+  let independentAborted=false;
+  const decision=await designCreativeBriefsWithFallback({catalog,
+    request:{...request,brief:'Parallel initial primary good independent canceled nov18'},
+    apiKey:'nvapi-parallel-successful-primary',
+    highTaste:true,allowIndependentFallback:true,
+    parallelIndependentFallback:true,timeoutMs:1800,backupTimeoutMs:1500,
+    fetchImpl:async(_url,init)=>{
+      const body=JSON.parse(init.body);seen.push(body.model);
+      if(body.model==='nvidia/nemotron-3.5-super-vl-120b-a12b')
+        return fakeResponse(proposal);
+      await new Promise((_resolve,reject)=>{
+        if(init.signal.aborted){independentAborted=true;return reject(Error('aborted'));}
+        init.signal.addEventListener('abort',()=>{
+          independentAborted=true;reject(Error('aborted'));
+        },{once:true});
+      });
+      throw Error('unreachable');
+    },
+  });
+  assert.equal(decision.status,'planned');
+  assert.equal(decision.briefs.length,3);
+  assert.deepEqual(decision.briefs.map(x=>x.name),[
+    'Tailored Navy Signature','Modern Textural Refresh',
+    'Structured Evening Discovery']);
+  assert.deepEqual(new Set(seen),new Set([
+    'nvidia/nemotron-3.5-super-vl-120b-a12b',
+    'nvidia/nemotron-3.5-lightning-30b-a3b']));
+  assert.equal(independentAborted,true,
+    'provider receives explicit cancellation instead of consuming unnecessary budget after first artist succeeds');
+});
+
+test('PARALLEL independent artistic completions preserve BOTH original valid fashion directions',async()=>{
+  const two={directions:[proposal.directions[0],proposal.directions[1],
+    {...proposal.directions[1]}]};
+  const seen=[];
+  const decision=await designCreativeBriefsWithFallback({catalog,
+    request:{...request,brief:'Parallel two source-valid initial plus third independent art nov18'},
+    apiKey:'nvapi-parallel-two-arts-completion',
+    highTaste:true,allowIndependentFallback:true,
+    parallelIndependentFallback:true,timeoutMs:1200,backupTimeoutMs:1050,
+    fetchImpl:async(_url,init)=>{
+      const body=JSON.parse(init.body);seen.push(body.model);
+      assert.equal(body.response_format.type,'json_schema');
+      if(body.model==='nvidia/nemotron-3.5-super-vl-120b-a12b'){
+        await new Promise(r=>setTimeout(r,35));
+        return fakeResponse(two);
+      }
+      return fakeResponse(proposal);
+    },
+  });
+  assert.equal(seen.length,2);
+  assert.equal(decision.status,'planned');
+  assert.equal(decision.providerCalls,2);
+  assert.equal(decision.invalidPlanBackupStatus,'supplemented_independent_source_grounded');
+  assert.deepEqual(decision.briefs.map(x=>x.name),[
+    'Tailored Navy Signature','Modern Textural Refresh',
+    'Structured Evening Discovery']);
+  assert.ok(decision.briefs.every(x=>x.generatedBy===CREATIVE_DIRECTOR_VERSION));
+});
+
 test('actual 120B director TIMEOUT commissions one independent source-grounded 30B art plan while global deadline is healthy',async()=>{
   const plans=[];
   const options={catalog,request:{...request,occasion:'Date night',

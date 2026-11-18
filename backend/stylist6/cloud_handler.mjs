@@ -1535,7 +1535,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       ? await designCreativeBriefsWithFallback({
           catalog: feasible, request: input,feedbackTaste,
           allowIndependentFallback:budgetMs>=70000&&remainingMs()>=33000,
-          backupTimeoutMs:3000,
+          parallelIndependentFallback:budgetMs>=70000,
+          // Both models now start together, NOT after a slow failed 120B.
+          // This preserves the 72s deadline and gives real 30B creativity
+          // ~6.5s instead of a near-guaranteed 3s sequential timeout.
+          backupTimeoutMs:budgetMs>=70000?6500:3000,
           apiKey: env.NVIDIA_API_KEY || '',
           ...(fetchImpl ? { fetchImpl } : {}),
           signal: deadlineController.signal,

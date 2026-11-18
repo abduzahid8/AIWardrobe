@@ -561,13 +561,41 @@ export async function designCreativeBriefs({
  * original art plan is NEVER overwritten.
  */
 export async function designCreativeBriefsWithFallback(options={}){
+  // REAL isolated 72s iOS Date and Work frequently lost ALL 120B artistic
+  // directions and THEN spent only ~3s on a doomed sequential 30B fallback.
+  // Start two independently sourced generative plans at the SAME moment so
+  // a 30B model gets its own useful provider window before the 120B times out.
+  // The original human-caliber 120B art ALWAYS wins if it is complete; the
+  // second author can fill only missing source-verified roles/concepts.
+  // No client can opt in; callsite gates this to the isolated 72s staging.
+  const parallel=options.parallelIndependentFallback===true&&
+    options.highTaste===true&&options.allowIndependentFallback===true&&
+    !options.signal?.aborted;
+  const abortSecondary=parallel?new AbortController():null;
+  const parallelBackup=parallel?designCreativeBriefs({
+    ...options,highTaste:false,allowIndependentFallback:false,
+    existingDirectionBriefs:null,
+    signal:options.signal
+      ?AbortSignal.any([options.signal,abortSecondary.signal])
+      :abortSecondary.signal,
+    timeoutMs:Math.max(1000,Math.min(7000,
+      Number.isFinite(options.backupTimeoutMs)
+        ?options.backupTimeoutMs:5500)),
+  }):null;
   const first=await designCreativeBriefs(options);
   if(options.highTaste!==true||options.allowIndependentFallback!==true||
       options.signal?.aborted||first.briefs.length>=3||
       (first.briefs.length===0&&
-       !['invalid_plan','timeout'].includes(first.status)))return first;
-  const backup=await designCreativeBriefs({...options,highTaste:false,
-    allowIndependentFallback:false,
+       !['invalid_plan','timeout'].includes(first.status))){
+    // Do not keep spending money on a second incomplete creative draft if
+    // the first artist already delivered all 3 art directions. The signal
+    // aborts its in-flight provider call; its promise is handled safely.
+    abortSecondary?.abort();
+    if(parallelBackup)void parallelBackup.then(()=>{},()=>{});
+    return first;
+  }
+  const backup=parallelBackup?await parallelBackup:await designCreativeBriefs({
+    ...options,highTaste:false,allowIndependentFallback:false,
     existingDirectionBriefs:first.briefs.length?first.briefs:null,
     timeoutMs:Math.max(650,Math.min(3600,
       Number.isFinite(options.backupTimeoutMs)?options.backupTimeoutMs:2500))});
