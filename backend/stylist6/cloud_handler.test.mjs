@@ -15,6 +15,7 @@ import {
   prewarmProductPhotos,
   stylist6SafeQualityTrace,enforceCatalogFourItemDeck,
   serverFashionSlateEnabled,
+  stylist6CatalogDiscoverySeed,shouldFreezeStylist6CatalogCohort,
   canonicalRequestFingerprint,
 } from './cloud_handler.mjs';
 import { HOST_ALLOWLIST, INFERENCE_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/image_access.mjs';
@@ -22,6 +23,45 @@ import { adaptCatalog, sourceHash } from './catalog_adapter.mjs';
 import { describeGarment } from '../../src/domain/garmentDescriptor.ts';
 import { garmentContextReason } from '../../src/domain/garmentContext.ts';
 import { stylingContext } from '../../src/domain/stylingContext.ts';
+
+test('server-owned frozen source cohort makes exact-SKU visual A/B scientifically reproducible without disabling real admission',()=>{
+  const ctx={style:'classic',occasion:'Date night',sourceMode:'catalog',
+    weather:{temp:22},budget:{amount:7000000,currency:'UZS'}};
+  const body1=JSON.stringify({request:{...ctx,generationRequestId:'one'}});
+  const body2=JSON.stringify({request:{...ctx,generationRequestId:'two'}});
+  const config={STYLIST6_STABLE_COHORT_ENABLED:'true'};
+  assert.equal(shouldFreezeStylist6CatalogCohort(config,{
+    budgetMs:72000,sourceMode:'catalog',hasAnchors:false}),true);
+  for(const mode of [
+    {budgetMs:50000,sourceMode:'catalog',hasAnchors:false},
+    {budgetMs:72000,sourceMode:'wardrobe',hasAnchors:false},
+    {budgetMs:72000,sourceMode:'catalog',hasAnchors:true},
+  ])assert.equal(shouldFreezeStylist6CatalogCohort(config,mode),false,
+    'the frozen source-sampling mode must remain isolated to staging');
+  assert.equal(shouldFreezeStylist6CatalogCohort({}, {
+    budgetMs:72000,sourceMode:'catalog',hasAnchors:false}),false);
+  const original1=stylist6CatalogDiscoverySeed('user-alpha',body1,ctx);
+  const original2=stylist6CatalogDiscoverySeed('user-alpha',body2,ctx);
+  assert.notEqual(original1,original2,
+    'default source refresh remains unchanged with a new paid request ID');
+  const freeze={...ctx,stableCohort:true};
+  const sample1=stylist6CatalogDiscoverySeed('user-alpha',body1,freeze);
+  const sample2=stylist6CatalogDiscoverySeed('user-alpha',body2,freeze);
+  assert.equal(sample1,sample2,
+    'two separately charged generations of the same style MUST see the SAME actual sampling seed');
+  assert.notEqual(sample1,stylist6CatalogDiscoverySeed('user-beta',body1,freeze),
+    'never share wearer-specific source cohorts between identities');
+  assert.notEqual(sample1,stylist6CatalogDiscoverySeed('user-alpha',body1,
+    {...freeze,occasion:'Work'}));
+  assert.notEqual(sample1,stylist6CatalogDiscoverySeed('user-alpha',body1,
+    {...freeze,budget:{amount:4000000,currency:'UZS'}}));
+  assert.match(sample1,/^[a-f0-9]{16}$/);
+  const anotherWithExclusions=JSON.stringify({request:{...ctx,
+    generationRequestId:'third',excludedIds:['source-new-exclusion']}});
+  assert.equal(sample1,stylist6CatalogDiscoverySeed('user-alpha',
+    anotherWithExclusions,freeze),
+  'a new exclusion filters the same stable source set, not quietly resamples it');
+});
 
 const SECRET = 'cloud-test-shared-secret-0123456789abcdef';
 const JWT = 'good-jwt-token';

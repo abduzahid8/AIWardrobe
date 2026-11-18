@@ -69,6 +69,38 @@ export function serverFashionSlateEnabled(env, {visualAsked, visualCriticAvailab
     && visualAsked===true && visualCriticAvailable===true;
 }
 
+/** An immutable source *sampling seed* for honest same-SKU visual QA.
+ * The default remains the existing new-request discovery contract. A server-
+ * owned >=72s isolated staging switch removes ephemeral request IDs from the
+ * sampling seed, so a changed Creative Director can be judged against the
+ * SAME real merchant products. This is NOT a client flag, a response cache,
+ * a quota bypass or a guarantee merchant inventory never updates externally.
+ */
+export function shouldFreezeStylist6CatalogCohort(env,{budgetMs,sourceMode,hasAnchors}={}){
+  return /^(1|true)$/i.test(String(env?.STYLIST6_STABLE_COHORT_ENABLED||'').trim())&&
+    Number.isFinite(budgetMs)&&budgetMs>=70000&&
+    sourceMode==='catalog'&&hasAnchors===false;
+}
+export function stylist6CatalogDiscoverySeed(userId,body,{
+  stableCohort=false,style='',occasion='',sourceMode='catalog',
+  weather=null,budget=null,
+}={}){
+  // The wearer remains a component of the sample key. Never permit a
+  // pooled fixed cohort to mix one account's catalog eligibility with another.
+  const hash=createHash('sha256').update(String(userId)).update('|');
+  if(stableCohort){
+    hash.update('stylist6_stable_source_cohort_v1|').update(JSON.stringify({
+      style:String(style||''),occasion:String(occasion||''),
+      sourceMode:String(sourceMode||''),
+      weatherCelsius:Number.isFinite(Number(weather?.temp))
+        ?Number(weather.temp):null,
+      budget:budget&&Number.isFinite(Number(budget.amount))
+        ?{amount:Number(budget.amount),currency:String(budget.currency||'')}:null,
+    }));
+  }else hash.update(String(body||''));
+  return hash.digest('hex').slice(0,16);
+}
+
 export function fashionSlateDecisionBudgetMs(remainingMs) {
   if (!Number.isFinite(remainingMs) || remainingMs < 11500) return 0;
   return Math.min(2600, Math.max(600, Math.floor(remainingMs - 9000)));
@@ -1290,8 +1322,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // Stable over retries of identical request bytes, different on fresh
     // requests (including a new client request id), private user scope; no
     // extra RPCs or cross-user data. Keep anchored inventory stable.
-    const discoverySeed = requiredIds.length ? null : createHash('sha256')
-      .update(userId).update('|').update(body).digest('hex').slice(0, 16);
+    const stableSourceCohort=shouldFreezeStylist6CatalogCohort(env,{
+      budgetMs,sourceMode,hasAnchors:requiredIds.length>0,
+    });
+    const discoverySeed=requiredIds.length?null:stylist6CatalogDiscoverySeed(
+      userId,body,{stableCohort:stableSourceCohort,style,occasion,sourceMode,
+        weather:request.weather,budget});
     nextPhase('catalog_discovery');
     const [shopRows, wardrobeRows] = await Promise.all([
       sourceMode === 'wardrobe' ? [] : io.fetchShopRows(discoverySeed, discoveryContext,
@@ -1826,6 +1862,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             'anchor_outfit_unavailable'].includes(failureCode)
             ?failureCode:'other',
           creativePlanCount:Math.min(3,creativePlan.briefs.length),
+          stableSourceCohort,
           creativePlanVisualExamples:Math.max(0,Math.min(64,
             Number(creativePlan.visualAtlasExamples)||0)),
           creativePlanStatus:['planned','planned_partial','cached','invalid_plan',
@@ -1915,6 +1952,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       console.info('stylist6_safe_visual_quality', {
         ...safeTrace,
         creativePlanCount:Math.min(3,creativePlan.briefs.length),
+        stableSourceCohort,
         creativePlanVisualExamples:Math.max(0,Math.min(64,
           Number(creativePlan.visualAtlasExamples)||0)),
         creativePlanStatus:['planned','planned_partial','cached','invalid_plan',
