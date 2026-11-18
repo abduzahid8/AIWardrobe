@@ -374,6 +374,12 @@ export function sourceBoundCompositionPool(looks, {
     },
   }));
 }
+// Keep the provider's ORIGINAL artistic commission position when malformed
+// individual source choices are rejected. A compressed 6-look array must
+// never rebrand plan 3 as plan 2, or assign independent ideas to director art.
+// A private symbol cannot be nominated by client JSON or merchant metadata.
+const ORIGINAL_CREATIVE_INDEX=Symbol('aiw_original_creative_index');
+const INDEPENDENT_CREATIVE_SOURCE=Symbol('aiw_independent_creative_source');
 export function validateSkuCompositions(answer,pool,{
   layerRequired=false,allowLayer=true,count=3,allowPartial=false,
   minimumValid=3,
@@ -393,7 +399,7 @@ export function validateSkuCompositions(answer,pool,{
   if(!Array.isArray(choices)||choices.length!==target)return [];
   const entries=new Map(pool.map(x=>[x.token,x]));
   const seen=new Set(),looks=[];
-  for(const choice of choices){
+  for(const [originalCreativeIndex,choice] of choices.entries()){
     if(!choice||typeof choice!=='object'||Array.isArray(choice)){
       if(allowPartial)continue;
       return [];
@@ -426,6 +432,8 @@ export function validateSkuCompositions(answer,pool,{
       return [];
     }
     for(const key of keys)seen.add(key);
+    Object.defineProperty(items,ORIGINAL_CREATIVE_INDEX,{
+      value:originalCreativeIndex,enumerable:false});
     looks.push(items);
   }
   // The INITIAL six-look audition must still offer >=3 coherent source sets.
@@ -1177,6 +1185,10 @@ export async function composeCatalogSkuLooks({
                             allowPartial:true,minimumValid:1,
                           });
                         if(extra.length){
+                          // These are independently commissioned ALTERNATIVES,
+                          // not the original director's numbered art concepts.
+                          for(const outfit of extra)Object.defineProperty(
+                            outfit,INDEPENDENT_CREATIVE_SOURCE,{value:true});
                           const used=new Set([...foundation,...extra].flatMap(
                             look=>look.map(item=>productKey(item))));
                           const originalRemainder=choices.slice(independentCount)
@@ -1252,15 +1264,21 @@ export async function sourceVerifyComposedOutfits({
     // actual source-grounded commissions, never for Kimi replacement ideas
     // or original-photo corrections. This is a SOFT creative alignment
     // ranking input, never a source, budget, garment or PHOTO acceptance.
-    const proposed=Array.isArray(creativePlans)&&i<3?creativePlans[i]:null;
+    const originalIndex=Number.isInteger(items[ORIGINAL_CREATIVE_INDEX])
+      ?items[ORIGINAL_CREATIVE_INDEX]:i;
+    const canAttribute=originalIndex>=0&&originalIndex<3&&
+      items[INDEPENDENT_CREATIVE_SOURCE]!==true;
+    const proposed=canAttribute&&Array.isArray(creativePlans)
+      ?creativePlans[originalIndex]:null;
     const sourceArt=proposed?.generatedBy==='s6-creative-director-v1'&&
-      proposed.id==='ai-director-'+(i+1)&&
+      proposed.id==='ai-director-'+(originalIndex+1)&&
       typeof proposed.artDirection==='string'&&
       proposed.artDirection.length>=85&&
       Array.isArray(proposed.palette)&&
       proposed.roles&&SLOTS.every(slot=>Array.isArray(proposed.roles[slot]))
       ?proposed:null;
-    const concept=sourceArt?'ai_director_'+(i+1):'ai_composed_'+(i+1);
+    const concept=sourceArt?'ai_director_'+(originalIndex+1)
+      :'ai_composed_'+(i+1);
     const actualRoles=Object.fromEntries(SLOTS.map(slot=>[slot,
       items.filter(x=>slotOf(x)===slot).map(x=>x.subtype)]));
     const brief=sourceArt?{

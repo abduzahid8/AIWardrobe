@@ -290,6 +290,48 @@ test('first THREE source-verified fashion compositions retain their actual whole
   'the presence of an elegant original plan CANNOT overrule physical retail cost admission');
 });
 
+test('source-invalid early design cannot shift third independent artistic commission into another concept',async()=>{
+  const plans=Array.from({length:3},(_,i)=>({
+    id:'ai-director-'+(i+1),generatedBy:'s6-creative-director-v1',
+    name:'Independent fashion scene '+(i+1),
+    artDirection:'A genuine complete outfit balances layer structure, textured materials, intentional color rhythm and footwear proportion according to the specific social occasion.',
+    roles:{top:['fine-knit'],outerwear:['coat'],bottom:['chino'],shoes:['loafer']},
+    palette:['cream','beige','brown'],silhouette:'relaxed',layerPolicy:'required',
+  }));
+  const pool=sourceBoundCompositionPool(looks);
+  const answer={slotPicks:Object.fromEntries(slots.map(slot=>[slot,
+    pool.filter(row=>row.slot===slot).slice(0,6).map(row=>row.token)]))};
+  // First model plans six source ensembles; one bad P-token is REJECTED,
+  // yet the intact third commission must still carry the THIRD art brief.
+  answer.slotPicks.top[1]='P999_NOT_IN_SOURCE';
+  const admitted=validateSkuCompositions(answer,pool,{layerRequired:true,
+    count:6,allowPartial:true,minimumValid:3});
+  assert.equal(admitted.length,5);
+  const scorers=[];
+  const ranked=await sourceVerifyComposedOutfits({looks:admitted,
+    creativePlans:plans,request:{sourceMode:'catalog'},
+    hardGate:async()=>({ok:true}),scorer:{rankLook:(_items,brief)=>{
+      scorers.push(brief);
+      return {score:.93};
+    }},
+  });
+  assert.equal(ranked.length,5);
+  assert.deepEqual(ranked.map(x=>x.briefId),[
+    'ai_director_1','ai_director_3',
+    'ai_composed_3','ai_composed_4','ai_composed_5']);
+  assert.equal(ranked[1].brief.name,'Independent fashion scene 3');
+  assert.deepEqual(scorers[1].roles.top,['fine-knit'],
+    'the third original creative brief, not the second or self-matched clothes, must inform the SCORE');
+  assert.ok(ranked.every(x=>x.items.length===4&&
+    x.items.every(it=>it.isShopItem===true)));
+  assert.equal(new Set(ranked.flatMap(x=>x.items.map(it=>it.id))).size,20);
+  assert.equal((await sourceVerifyComposedOutfits({looks:admitted,
+    creativePlans:plans,request:{budget:{amount:1,currency:'USD'}},
+    hardGate:async()=>({ok:true}),priceToBudgetCurrency:x=>x.price,
+    scorer:{rankLook:()=>({score:1})}})).length,0,
+    'retained artistic plan never grants merchandise budget approval');
+});
+
 test('composed choices rerun combination-level hard gate, budget and scorer; never invent approval',async()=>{
   const pool=sourceBoundCompositionPool(looks);
   const raw=validateSkuCompositions(validAnswer(pool),pool,{layerRequired:true});

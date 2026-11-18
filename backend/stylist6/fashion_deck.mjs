@@ -2318,10 +2318,13 @@ export async function recommendFashionDeck({
       .sort((a,b)=>b.evidence.score-a.evidence.score ||
         (b.look.fashion?.score??0)-(a.look.fashion?.score??0)) : [];
     let photoReserved=0;
-    // With a weak/unknown-color initial deck we can use up to five proven
-    // safe photo alternatives. Always reserve two paid-review slots for
-    // distinct Creative Director ideas or independent rescue challengers.
-    const photoSafeReserve=Math.min(5,Math.max(0,reviewedLimit-candidates.length-2));
+    // The AI commissions THREE independent source-backed designs, never just
+    // two. Keep PHOTO-review capacity for every actually available plan;
+    // the original reviewer may STILL reject any or all of those choices.
+    // This allocates scarce review ATTENTION, not artificial approval.
+    const plannedReserve=Math.max(2,Math.min(3,aiPlans.length));
+    const photoSafeReserve=Math.min(5,Math.max(0,
+      reviewedLimit-candidates.length-plannedReserve));
     // Prefer SKUs not already present anywhere in the model-review batch.
     // Only on the second pass accept a materially different shared-cardigan
     // alternative as a last resort: it can still be useful if the original
@@ -2344,9 +2347,8 @@ export async function recommendFashionDeck({
     // independent visual gate decides whether a lower-ranked but novel plan
     // deserves to displace a familiar safe house combination.
     const aiBriefIds = new Set(aiPlans.map(plan => canonicalBriefId(plan.id)));
-    let aiReserved=0;
     for (const plan of aiPlans) {
-      if (candidates.length >= reviewedLimit || (photoReserved>=2 && aiReserved>=2)) break;
+      if (candidates.length >= reviewedLimit) break;
       const planned = selectable.filter(look =>
         look.briefId === canonicalBriefId(plan.id) && !candidates.some(other => other.id === look.id) &&
         Number.isFinite(look.fashion?.score) &&
@@ -2362,7 +2364,7 @@ export async function recommendFashionDeck({
             photographicPaletteEvidence(a,context.preferences,requiredIds).score : 0) ||
           b.fashion.score - a.fashion.score);
       for (const look of planned.slice(0, 6)) {
-        if (await permitted(look)) { candidates.push(look); aiReserved++; break; }
+        if (await permitted(look)) { candidates.push(look); break; }
       }
     }
 
@@ -3156,6 +3158,11 @@ export async function recommendFashionDeck({
         // Only an approved, actually displayed look has review evidence.
         displayedEvidence: selected.filter(look => visualEvidenceById.has(look.id)).length,
         aiCreativeDirectorJudged: candidates.filter(look => aiBriefIds.has(look.briefId)).length,
+        // Only server-generated art-slot numbers, NEVER SKU ids, user data,
+        // private photos or raw AI fashion text in the safe audit receipt.
+        aiCreativePlansJudged:aiPlans.flatMap((plan,index)=>
+          candidates.some(look=>look.briefId===canonicalBriefId(plan.id))
+            ?[index+1]:[]),
         aiCreativeDirectorDisplayed: selected.filter(look => aiBriefIds.has(look.briefId)).length,
         fallbackUnreviewed: reviewed.diagnostics.visualValid === 0 || unreviewedFillAdded > 0,
         unreviewedFillAdded,
@@ -3238,6 +3245,9 @@ export async function recommendFashionDeck({
         outerwearArchetype(look,requiredIds)).filter(Boolean)).size,
       aiCreativeDirectorBriefs: aiPlans.length,
       aiCreativeDirectorEligible: selectable.filter(look => aiPlans.some(plan => look.briefId === canonicalBriefId(plan.id))).length,
+      aiCreativePlansEligible:aiPlans.flatMap((plan,index)=>
+        selectable.some(look=>look.briefId===canonicalBriefId(plan.id))
+          ?[index+1]:[]),
       aiCreativeDirectorDisplayed: selected.filter(look => aiPlans.some(plan => look.briefId === canonicalBriefId(plan.id))).length,
       neighborBriefs: neighborHouse.length,
       shortlistMix: { ...layerMix, best: ordered[0] ?? null, top20cutoff: ordered[19] ?? null },

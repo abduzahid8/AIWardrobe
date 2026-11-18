@@ -355,6 +355,53 @@ test('real planned AI architectures reach visual evaluation before house challen
   for(const look of result.outfits)assert.ok(look.items.every(it=>it.isShopItem));
 });
 
+test('all THREE viable original artistic briefs get a genuine source-photo jury opportunity, never a two-plan artificial cap',async()=>{
+  const families=[
+    {title:'Tactile creative evening',palette:['cream','brown'],
+      parts:[['fine-knit','Cream Open Knit'],['coat','Brown Wool Coat'],
+        ['chino','Stone Cotton Chino'],['loafer','Brown Leather Loafer']]},
+    {title:'Sculptural modern tailoring',palette:['navy','grey'],
+      parts:[['dress-shirt','Blue Dress Shirt'],['blazer','Navy Linen Blazer'],
+        ['pleated-trouser','Grey Pleated Trouser'],['oxford','Oxford Shoe']]},
+    {title:'Expressive texture and relaxation',palette:['olive','beige'],
+      parts:[['shirt','Cream Cotton Shirt'],['blazer','Olive Natural Wool Blazer'],
+        ['tailored-trouser','Stone Tailored Wool Trousers'],['derby','Leather City Derby']]},
+  ];
+  const slots=['top','outerwear','bottom','shoes'];
+  const all=families.flatMap((family,i)=>family.parts.map(([kind,name],j)=>
+    garment('three-director-'+i+'-'+j,name,slots[j],kind,{
+      color:family.palette[j%family.palette.length]})));
+  const plans=families.map((family,i)=>({
+    id:'ai-director-'+(i+1),generatedBy:'s6-creative-director-v1',
+    name:family.title,palette:family.palette,silhouette:'relaxed',
+    artDirection:'Balance natural garment length, material contrast, texture and footwear character to make an independent real four-item artistic scene that honors the wearer and the occasion.',
+    layerPolicy:'required',roles:Object.fromEntries(slots.map((slot,j)=>[
+      slot,[family.parts[j][0]]])),
+  }));
+  let photoCandidates=[];
+  const r=await recommendFashionDeck({...base,
+    catalog:[...all,...products],aiCreativeBriefs:plans,referenceBriefs:[],
+    request:{sourceMode:'catalog',style:'old_money',occasion:'Casual',
+      weather:{temp:19},optionalLayer:false,preferences:{},requiredIds:[],
+      budget:{amount:6000000,currency:'UZS'}},
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async candidates=>{
+      photoCandidates=candidates;
+      return candidates.map(x=>admittedVisualVerdict(x));
+    },
+  });
+  assert.ok(photoCandidates.length>=3);
+  const ids=new Set(photoCandidates.map(x=>x.id));
+  assert.ok([...ids].length<=8,'all three must fit inside existing photo-usage cap');
+  assert.deepEqual(r.diagnostics.aiCreativePlansEligible,[1,2,3]);
+  assert.deepEqual(r.diagnostics.visualReviewCoverage.aiCreativePlansJudged,[1,2,3],
+    'all THREE separately source-admitted original fashion directions are offered to the paid photo critic; the critic still controls which deserve display');
+  assert.equal(r.diagnostics.aiCreativeDirectorBriefs,3);
+  assert.ok(r.outfits.every(x=>x.items.length===4&&x.items.every(it=>it.isShopItem)));
+  assert.equal(r.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+});
+
 test('cloud full-deck review judges every authorized displayed card in one bounded batch', async () => {
   const baseline = await recommendFashionDeck(base);
   let reviewCalls = 0, reviewed = [];
