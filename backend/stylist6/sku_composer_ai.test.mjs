@@ -648,6 +648,29 @@ test('full 12-per-role merchandise breadth commissions FOUR different looks from
   assert.ok(verified.every(look=>look.items.length===4));
 });
 
+test('the first full-SKU artist explicitly designs for social DATE beauty rather than default OFFICE polish',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  let called=0;
+  const produced=await composeCatalogSkuLooks({
+    pool,outfitCount:3,layerRequired:true,
+    context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-test-first-social-fashion-studio',
+    fetchImpl:async(_url,req)=>{
+      called++;
+      const prompt=JSON.parse(req.body).messages[0].content;
+      assert.match(prompt,/social DATE evening/);
+      assert.match(prompt,/personal_evening_date/);
+      assert.match(prompt,/different full-look artistic points of view/);
+      assert.doesNotMatch(prompt,/A smart office look must not/);
+      return result(slotAnswer(pool));
+    },
+  });
+  assert.equal(called,1);
+  assert.equal(produced.status,'composed');
+  assert.equal(produced.looks.length,3);
+  assert.ok(produced.looks.every(x=>x.length===4));
+});
+
 test('independent creator keeps photo-grounded context and salvages only valid four-SKU designs',async()=>{
   const extras=Array.from({length:6},(_,i)=>slots.map((slot,j)=>({
     ...items[i][j],id:'DIVERSE_SOURCE_SKU_'+i+'_'+j,

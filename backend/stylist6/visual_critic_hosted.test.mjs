@@ -86,6 +86,25 @@ test('NVIDIA request sends only style context and ordered, pinned outfit images'
     [reference, ...photos].map(({ bytes }) => 'data:image/jpeg;base64,' + bytes.toString('base64')));
 });
 
+test('original-JPEG PHOTO critic receives DATE social objective while the exact visual acceptance contract remains unchanged',async()=>{
+  let sent;
+  const dateCandidate={...candidate,id:'s6_independent_date_social_scene_quality_001'};
+  const critic=createHostedVisualCritic({provider:'nvidia',apiKey,
+    resolveReference:()=>asset(44),resolveProduct:()=>asset(55),
+    fetchImpl:async(_url,init)=>{
+      sent=JSON.parse(init.body);
+      return nvidiaResponse({...verdict,candidateId:dateCandidate.id});
+    },
+  });
+  const actual=await critic([dateCandidate],{style:'classic',occasion:'Date night'});
+  assert.equal(actual.length,1);
+  const prompt=sent.messages[0].content[0].text;
+  assert.match(prompt,/PHOTOGRAPHED complete look for a personal evening date/);
+  assert.match(prompt,/not an office event/);
+  assert.match(prompt,/do not apply an invented color or garment ban/);
+  assert.match(prompt,/Return only JSON with keys candidateId/);
+});
+
 test('NVIDIA sees bounded source garment titles for dress-code judgment rather than images alone', async () => {
   let captured;
   const labeled = { ...candidate, id: 's6_real_office_resort', products: candidate.products.map(p => p.slot === 'top'

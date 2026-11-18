@@ -93,6 +93,29 @@ test('provider failure, duplicate, invented SKU and missing approvals fail safel
 });
 
 
+test('final whole-portfolio AI judges the DATE human social purpose without claiming a reference photo',async()=>{
+  let called=0;
+  const selected=await selectPhotoEditorialDeck({
+    looks,critiques:reviews,portfolios:verifiedMenu,
+    context:{style:'classic',occasion:'Date night'},
+    apiKey:'nvapi-test-date-fashion-final-editor',
+    fetchImpl:async(_url,init)=>{
+      called++;
+      const payload=JSON.parse(init.body);
+      const prompt=payload.messages[0].content;
+      assert.match(prompt,/social DATE evening/);
+      assert.match(prompt,/three compelling, genuinely different/);
+      const context=JSON.parse(prompt.slice(prompt.lastIndexOf('\n')+1));
+      assert.equal(context.user.humanFashionScene.scene,'personal_evening_date');
+      assert.doesNotMatch(prompt,/PRIVATE-|SECRET-CLIENT-SKU|private\.example/);
+      return result('F01');
+    },
+  });
+  assert.equal(called,1);
+  assert.equal(selected.status,'selected');
+  assert.deepEqual(selected.tokens,['L02','L00']);
+});
+
 test('real original product-photo visual jury chooses only a fully verified whole deck',async()=>{
   const jpeg=await sharp({create:{width:110,height:130,channels:3,
     background:'#8c958d'}}).jpeg().toBuffer();

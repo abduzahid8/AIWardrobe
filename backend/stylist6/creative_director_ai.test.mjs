@@ -146,6 +146,26 @@ test('PHOTO-GROUNDED Creative Director and explicit personal taste reach initial
   assert.equal(output.briefs.length,3);
 });
 
+test('DATE artistic director receives the same human-social mission as exact-SKU and photo editorial, not an office template',async()=>{
+  const date={...request,occasion:'Date night',sourceMode:'catalog',
+    optionalLayer:false,brief:'social romantic date evening independent from office'};
+  let called=0;
+  const output=await designCreativeBriefs({catalog,request:date,
+    apiKey:'nvapi-test-date-shared-scene-creative-director',
+    fetchImpl:async(_url,init)=>{
+      called++;
+      const prompt=JSON.parse(init.body).messages[0].content;
+      assert.match(prompt,/social DATE evening/);
+      assert.match(prompt,/not a product rule/);
+      assert.match(prompt,/three compelling, genuinely different/);
+      assert.doesNotMatch(prompt,/Dressy office should not include/);
+      return fakeResponse(proposal);
+    },
+  });
+  assert.equal(called,1);
+  assert.equal(output.status,'planned');
+});
+
 test('four-SKU catalog generation is a coherent FOUR-product Creative Director contract, not an optional random layer',async()=>{
   const four={...request,sourceMode:'catalog',optionalLayer:false,
     weather:{temp:22},brief:'Private exact four-piece style scenario'};

@@ -9,6 +9,7 @@
  * real SKU sets; the exact original visual gate is rerun afterwards.
  */
 import {buildPhotoEditorialContactSheet} from './photo_editor_contact_sheet.mjs';
+import {editorialFashionIntent} from './editorial_fashion_intent.mjs';
 export const PHOTO_EDITOR_FINAL_VERSION='s6-photo-grounded-multimodal-portfolio-director-v2';
 const URL='https://integrate.api.nvidia.com/v1/chat/completions';
 const MODEL='nvidia/nemotron-3.5-lightning-30b-a3b';
@@ -133,7 +134,9 @@ export async function selectPhotoEditorialDeck({
   let visualJury='not_run',visualMediaStatus='not_run',providerCalls=0;
   let independentJury='not_run';
   try{
+    const fashionScene=editorialFashionIntent(context);
     const user={
+      humanFashionScene:fashionScene,
       style:safe(context?.style,45),
       occasion:safe(context?.occasion,65),
       brief:safe(context?.brief,140),
@@ -153,6 +156,9 @@ export async function selectPhotoEditorialDeck({
       'and ALREADY APPROVED every outfit here for style, formality and occasion.',
       'Select the BEST COMBINATION of 1 to 3 outfits for this ONE human.',
       'You decide the complete final wardrobe edit, not just the top-scored items.',
+      'The creative artists and both PHOTO critics share this exact human',
+      'occasion: '+fashionScene.creativeGoal,
+      fashionScene.collectionGoal,
       'Value precise construction, fabric, proportion, color rhythm, refined taste,',
       'personal intent and true cross-look discovery over average safe outfits.',
       'Examine the photographic color, per-slot garment observations and outfit',
@@ -249,6 +255,8 @@ export async function selectPhotoEditorialDeck({
             'Each L-row is ONE already photo-approved whole outfit; four fixed columns',
             'are TOP, optional LAYER, BOTTOM and SHOES. A blank layer means none.',
             'You CAN see actual product photographs, NOT the clothes on a person.',
+            'This fashion collection must serve the real human scene:',
+            fashionScene.photoJudgment,
             'Judge whole-look elegance, silhouette balance, cut, color interplay,',
             'material compatibility, footwear polish and fit for THIS occasion.',
             'Do not invent an on-body fit, unseen fabric or missing price/size fact.',
@@ -302,6 +310,8 @@ export async function selectPhotoEditorialDeck({
               'You did NOT create these looks and have not seen the first',
               'editor verdict. The image is an original-product photo grid:',
               'each L-row has TOP, LAYER, BOTTOM, SHOES, with no worn-on-body fit.',
+              'Same original human fashion occasion as the source designer:',
+              fashionScene.photoJudgment,
               'First assess how the actual silhouette, fabric, length, texture',
               'and footwear RELATIONSHIPS differ between complete ensembles.',
               'Individual whole looks already passed independent actual-photo',

@@ -10,6 +10,7 @@
  */
 import {createHash} from 'node:crypto';
 import {buildVisualSkuBoard} from './visual_sku_board.mjs';
+import {editorialFashionIntent} from './editorial_fashion_intent.mjs';
 import {editorialTextMoodboards} from './editorial_text_moodboards.mjs';
 import {baseProductId} from './catalog_adapter.mjs';
 import {currentVisual,confidentVisual} from '../../src/domain/visualFashion.ts';
@@ -642,8 +643,12 @@ export async function composeCatalogSkuLooks({
       style:context?.style,occasion:context?.occasion,
       preferences:context?.preferences,
     });
+    const fashionScene=editorialFashionIntent(context);
     const preface=[
       'You are an expert HUMAN-CALIBER personal menswear stylist.',
+      'Shared HUMAN OCCASION and original PHOTO editor artistic objective:',
+      fashionScene.creativeGoal,
+      fashionScene.collectionGoal,
       ...(crossLabRevision&&revision?[
         'INDEPENDENT SECOND STUDIO: another designer proposed the earlier',
         'collection, and a separate original-photo jury has identified',
@@ -660,7 +665,8 @@ export async function composeCatalogSkuLooks({
       'below, rather than selecting combinations prepared by a ranking algorithm.',
       'Decide actual construction, silhouette, fit, drape, material, color,',
       'footwear and polish for the specific occasion and personal taste.',
-      'A smart office look must not quietly become hiking, training or resortwear.',
+      'Do not turn this occasion into a different social setting. The wearer',
+      'chooses their personal style; the occasion sets the reason for dressing.',
       'Photographed attributes are only observed if present, otherwise UNKNOWN.',
       'The optional owner reference archive offers textual fashion CONCEPTS',
       'only, not photos, proven fashion quality or real merchant products.',
@@ -761,6 +767,7 @@ export async function composeCatalogSkuLooks({
             context.preferences.favoriteColors.slice(0,7).map(x=>safe(x,25)):[],
           avoidColors:Array.isArray(context?.preferences?.avoidColors)?
             context.preferences.avoidColors.slice(0,7).map(x=>safe(x,25)):[]},
+        humanFashionScene:fashionScene.scene,
         realMerchantItemMenus:options,
         optionalUserTextLookbookIdeas:textualFashionMemory,
         inventoryGroundedDesignDirections:groundedPlans,
