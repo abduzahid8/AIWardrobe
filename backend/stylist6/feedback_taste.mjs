@@ -47,10 +47,87 @@ const DIRECTION_TRANSFER = { signature: 1, refresh: 0.5, discovery: 0.5, alterna
 const MAX_AGE_DAYS = 365;
 const DAY_MS = 86_400_000;
 
+export const FEEDBACK_CANONICAL_SLOTS = Object.freeze([
+  'top', 'outerwear', 'bottom', 'shoes', 'accessory', 'dress',
+]);
+export const FEEDBACK_CANONICAL_TAGS = Object.freeze([
+  'wrong_shoes',
+  'wrong_color',
+  'too_formal',
+  'too_casual',
+  'not_my_fit',
+  'over_budget',
+  'love_palette',
+  'love_silhouette',
+  'slot_swapped',
+]);
+
+const SLOT_INDEX = { top: 0, outerwear: 1, bottom: 2, shoes: 3 };
+const SLOT_ALIASES = {
+  top: 'top',
+  tops: 'top',
+  upper_body: 'top',
+  outerwear: 'outerwear',
+  layer: 'outerwear',
+  jacket: 'outerwear',
+  coat: 'outerwear',
+  bottom: 'bottom',
+  bottoms: 'bottom',
+  lower_body: 'bottom',
+  shoes: 'shoes',
+  shoe: 'shoes',
+  footwear: 'shoes',
+  accessory: 'accessory',
+  accessories: 'accessory',
+  dress: 'dress',
+  dresses: 'dress',
+};
+const TAG_SET = new Set(FEEDBACK_CANONICAL_TAGS);
+const TAG_ALIASES = {
+  wrong_shoe: 'wrong_shoes',
+  wrong_footwear: 'wrong_shoes',
+  footwear: 'wrong_shoes',
+  great_fit: 'love_silhouette',
+  love_fit: 'love_silhouette',
+  wrong_fit: 'not_my_fit',
+  bad_fit: 'not_my_fit',
+  too_expensive: 'over_budget',
+  swapped: 'slot_swapped',
+};
+const TAG_IMPLIES_SLOT = {
+  wrong_shoes: 'shoes',
+};
+const TARGETED_ITEM_COMPONENT_SCALE = 0.045;
+const SLOT_FEATURE_WEIGHTS = [0.4, 0.2, 0.2, 0.12, 0.08];
+const MIN_SLOT_SIMILARITY = 0.6;
+
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const token = (value) => typeof value === 'string'
   ? value.normalize('NFKC').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, MAX_TOKEN_LENGTH)
   : '';
+const normalizeSlot = (value) => {
+  const raw = token(value).replace(/[\s-]+/g, '_');
+  return SLOT_ALIASES[raw] || null;
+};
+const normalizeTag = (value) => {
+  const raw = token(value).replace(/[\s-]+/g, '_');
+  if (!raw) return null;
+  if (TAG_SET.has(raw)) return raw;
+  return TAG_ALIASES[raw] || null;
+};
+const normalizeFeedbackTags = (raw) => {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const entry of raw.slice(0, 12)) {
+    const normalized = normalizeTag(entry);
+    if (normalized && !seen.has(normalized)) {
+      seen.add(normalized);
+      out.push(normalized);
+    }
+  }
+  return out;
+};
 const itemId = (value) => {
   const id = typeof value === 'string' ? value.trim().slice(0, MAX_ITEM_ID_LENGTH) : '';
   return id.length >= 1 ? id : null;
@@ -127,12 +204,51 @@ function styleSimilarity(a, b) {
     ? Math.min(1, (similarity - MIN_STYLE_SIMILARITY) / (1 - MIN_STYLE_SIMILARITY)) : 0;
 }
 
+function slotFeatureSimilarity(aSlot, bSlot) {
+  if (!Array.isArray(aSlot) || !Array.isArray(bSlot) || aSlot.length !== 5 || bSlot.length !== 5) return 0;
+  let evidence = 0;
+  let agreements = 0;
+  let compared = 0;
+  for (let field = 0; field < 5; field++) {
+    if (!aSlot[field] || !bSlot[field]) continue;
+    const weight = SLOT_FEATURE_WEIGHTS[field];
+    evidence += weight;
+    compared++;
+    if (aSlot[field] === bSlot[field]) agreements += weight;
+  }
+  // Require at least subtype + one other attribute (e.g. color/texture/volume)
+  if (compared < 2 || !aSlot[0] || !bSlot[0] || aSlot[0] !== bSlot[0] || evidence < 0.5) return 0;
+  const similarity = agreements / evidence;
+  return similarity >= MIN_SLOT_SIMILARITY
+    ? Math.min(1, (similarity - MIN_SLOT_SIMILARITY) / (1 - MIN_SLOT_SIMILARITY))
+    : 0;
+}
+
+function resolveTargetedSku(row, rawItemIds, effectiveSlot, swappedSku) {
+  if (swappedSku) return swappedSku;
+  const slotItems = rowField(row, 'slot_items', 'slotItems');
+  if (slotItems && typeof slotItems === 'object' && !Array.isArray(slotItems) && effectiveSlot) {
+    const direct = itemId(slotItems[effectiveSlot]);
+    if (direct) return direct;
+  }
+  if (!Array.isArray(rawItemIds) || rawItemIds.length === 0) return null;
+  const cleanIds = rawItemIds.slice(0, MAX_ITEM_IDS_PER_ROW).map(itemId);
+  if (cleanIds.length === 1) return cleanIds[0];
+  const slotIdx = effectiveSlot !== null ? SLOT_INDEX[effectiveSlot] : undefined;
+  if (slotIdx !== undefined && cleanIds.length === 4 && cleanIds[slotIdx]) {
+    return cleanIds[slotIdx];
+  }
+  return null;
+}
+
 /**
  * Normalized, decayed model over the user's explicit feedback rows. Accepts
  * the DB projection ({rating, concept_id, item_ids, look_signature,
- * created_at}) and the camelCase test/fixture spelling alike. The styling
- * signature document transfers only high-similarity cross-SKU evidence
- * at a small weight. Returns an inert model for empty or hostile input.
+ * target_slot, feedback_tags, swapped_from_sku, created_at}) and the camelCase
+ * test/fixture spelling alike. Slot-attributed dislikes (`targetSlot`,
+ * `wrong_shoes`, `swappedFromSku`) penalize ONLY the offending slot/SKU without
+ * unfairly downweighting the other pieces in the outfit. Returns an inert model
+ * for empty or hostile input.
  */
 export function feedbackTasteModel(rows, nowMs = Date.now()) {
   const model = {
@@ -141,13 +257,23 @@ export function feedbackTasteModel(rows, nowMs = Date.now()) {
     active: false,
     rows: 0,
     itemTally: new Map(),
+    targetedItemTally: new Map(),
+    slotTally: new Map(),
+    swappedFromTally: new Map(),
+    tagTally: new Map(),
     pairTally: new Map(),
     featureEvidence: [],
+    slotFeatureEvidence: [],
   };
   if (!Array.isArray(rows)) return model;
   const now = typeof nowMs === 'number' && Number.isFinite(nowMs) ? nowMs : Date.now();
   const itemSums = new Map();
+  const targetedSums = new Map();
+  const slotSums = new Map();
+  const swappedSums = new Map();
+  const tagSums = new Map();
   const pairSums = new Map();
+
   for (const row of rows.slice(0, FEEDBACK_TASTE_MAX_ROWS)) {
     const rating = explicitRating(rowField(row, 'rating', 'rating'));
     const created = createdMs(rowField(row, 'created_at', 'createdAt'));
@@ -155,40 +281,120 @@ export function feedbackTasteModel(rows, nowMs = Date.now()) {
     // Future timestamps are treated as fresh, never as negative age.
     const ageDays = Math.max(0, (now - created) / DAY_MS);
     if (ageDays > MAX_AGE_DAYS) continue;
-    const weight = rating * 0.5 ** (ageDays / FEEDBACK_TASTE_HALF_LIFE_DAYS);
+    const decay = 0.5 ** (ageDays / FEEDBACK_TASTE_HALF_LIFE_DAYS);
+    const weight = rating * decay;
     let contributed = false;
+
     const rawItemIds = rowField(row, 'item_ids', 'itemIds');
-    if (Array.isArray(rawItemIds)) {
+    const explicitSlot = normalizeSlot(rowField(row, 'target_slot', 'targetSlot'));
+    const tags = normalizeFeedbackTags(rowField(row, 'feedback_tags', 'feedbackTags'));
+    const swappedSku = itemId(rowField(row, 'swapped_from_sku', 'swappedFromSku'));
+    const impliedSlot = explicitSlot || tags.map((t) => TAG_IMPLIES_SLOT[t]).find(Boolean) || null;
+    const isSlotSwap = Boolean(swappedSku) || tags.includes('slot_swapped');
+    const isSlotAttributedNegative = rating === -1 && Boolean(impliedSlot);
+    const isSlotScopedRow = isSlotAttributedNegative || Boolean(swappedSku);
+
+    for (const tag of tags) {
+      tagSums.set(tag, (tagSums.get(tag) || 0) + decay);
+      contributed = true;
+    }
+
+    if (swappedSku) {
+      // A swapped-away SKU is always an explicit negative signal for that SKU
+      // even if the user subsequently liked the replacement look.
+      const negWeight = -decay;
+      itemSums.set(swappedSku, (itemSums.get(swappedSku) || 0) + negWeight);
+      targetedSums.set(swappedSku, (targetedSums.get(swappedSku) || 0) + negWeight);
+      swappedSums.set(swappedSku, (swappedSums.get(swappedSku) || 0) + negWeight);
+      if (impliedSlot) {
+        const slotKey = `${impliedSlot}|${swappedSku}`;
+        slotSums.set(slotKey, (slotSums.get(slotKey) || 0) + negWeight);
+      }
+      contributed = true;
+    }
+
+    if (isSlotAttributedNegative) {
+      const targetSku = resolveTargetedSku(row, rawItemIds, impliedSlot, swappedSku);
+      if (targetSku && targetSku !== swappedSku) {
+        itemSums.set(targetSku, (itemSums.get(targetSku) || 0) + weight);
+        targetedSums.set(targetSku, (targetedSums.get(targetSku) || 0) + weight);
+        const slotKey = `${impliedSlot}|${targetSku}`;
+        slotSums.set(slotKey, (slotSums.get(slotKey) || 0) + weight);
+        contributed = true;
+      }
+    } else if (Array.isArray(rawItemIds) && !(isSlotSwap && rating === -1)) {
+      // Legacy whole-look attribution, or positive attribution on kept/swapped-in items.
       for (const entry of rawItemIds.slice(0, MAX_ITEM_IDS_PER_ROW)) {
         const id = itemId(entry);
-        if (!id) continue;
+        if (!id || id === swappedSku) continue;
         itemSums.set(id, (itemSums.get(id) || 0) + weight);
         contributed = true;
       }
     }
+
     const features = signedFeedbackFeatures(rowField(row, 'look_signature', 'lookSignature'));
-    if (features) { model.featureEvidence.push({ features, weight }); contributed = true; }
+    if (features) {
+      if (isSlotAttributedNegative && impliedSlot && SLOT_INDEX[impliedSlot] !== undefined) {
+        const slotIdx = SLOT_INDEX[impliedSlot];
+        if (features[slotIdx]) {
+          model.slotFeatureEvidence.push({
+            slot: impliedSlot,
+            slotIndex: slotIdx,
+            feature: features[slotIdx],
+            weight,
+            tags,
+          });
+          contributed = true;
+        }
+      } else {
+        model.featureEvidence.push({ features, weight });
+        contributed = true;
+      }
+    }
+
     const concept = token(rowField(row, 'concept_id', 'conceptId'));
     const direction = token(rowField(row, 'direction', 'directionLabel'));
-    if (concept && direction && DIRECTION_TRANSFER[direction] !== undefined) {
+    // Do not penalize an entire styling concept when the complaint was strictly
+    // a single slot (e.g., wrong_shoes or swappedFromSku).
+    if (!isSlotScopedRow && concept && direction && DIRECTION_TRANSFER[direction] !== undefined) {
       const key = `${concept}|${direction}`;
       pairSums.set(key, (pairSums.get(key) || 0) + weight);
       contributed = true;
     }
     if (contributed) model.rows += 1;
   }
+
   // Net signals saturate at ±1: repeated identical ratings say "strong",
   // not "stronger"; a like and a dislike of the same key cancel.
   for (const [id, sum] of itemSums) {
     const tally = clamp(sum, -1, 1);
     if (tally !== 0) model.itemTally.set(id, tally);
   }
+  for (const [id, sum] of targetedSums) {
+    const tally = clamp(sum, -1, 1);
+    if (tally !== 0) model.targetedItemTally.set(id, tally);
+  }
+  for (const [key, sum] of slotSums) {
+    const tally = clamp(sum, -1, 1);
+    if (tally !== 0) model.slotTally.set(key, tally);
+  }
+  for (const [id, sum] of swappedSums) {
+    const tally = clamp(sum, -1, 0);
+    if (tally !== 0) model.swappedFromTally.set(id, tally);
+  }
+  for (const [tag, sum] of tagSums) {
+    if (sum > 0) model.tagTally.set(tag, Math.round(sum * 1000) / 1000);
+  }
   for (const [key, sum] of pairSums) {
     const tally = clamp(sum, -1, 1);
     if (tally !== 0) model.pairTally.set(key, tally);
   }
-  model.active = model.itemTally.size > 0 || model.pairTally.size > 0 ||
-    model.featureEvidence.length > 0;
+  model.active = model.itemTally.size > 0
+    || model.pairTally.size > 0
+    || model.featureEvidence.length > 0
+    || model.slotFeatureEvidence.length > 0
+    || model.swappedFromTally.size > 0
+    || model.tagTally.size > 0;
   return model;
 }
 
@@ -200,15 +406,18 @@ export function evaluateFeedbackItem(item, model) {
   if (!model?.active || !item || typeof item !== 'object') return { score: 0, match: null };
   const id = itemId(item.id);
   const tally = id !== null ? model.itemTally.get(id) : undefined;
-  return tally === undefined ? { score: 0, match: null } : { score: tally, match: id };
+  if (tally !== undefined) return { score: tally, match: id };
+  const swapped = id !== null ? model.swappedFromTally?.get(id) : undefined;
+  if (swapped !== undefined) return { score: swapped, match: id };
+  return { score: 0, match: null };
 }
 
 /**
- * Capped per-look adjustment in ±FEEDBACK_TASTE_LOOK_CAP: the mean item
- * tally across the look's items plus the direction-weighted transfer of the
- * concept's own (concept, direction) tallies. conceptId is the candidate's
- * generating brief id (the native concept slug the deck displays). Malformed
- * items and unknown concepts contribute zero. Pure and deterministic.
+ * Capped per-look adjustment in ±FEEDBACK_TASTE_LOOK_CAP: combines per-item
+ * signals (honoring targeted slot penalties without 4x dilution when the user
+ * explicitly flagged a single slot or swapped a SKU), direction-weighted
+ * concept transfer, and bounded cross-SKU feature similarity. Pure and
+ * deterministic.
  */
 export function evaluateFeedbackLook(items, conceptId, model, stylingFeatures) {
   const inert = {
@@ -216,18 +425,30 @@ export function evaluateFeedbackLook(items, conceptId, model, stylingFeatures) {
   };
   if (!model?.active || !Array.isArray(items) || !items.length) return inert;
   const concept = token(conceptId);
-  let itemSum = 0;
+  const boundedItems = items.slice(0, MAX_ITEM_IDS_PER_ROW);
+  let untargetedSum = 0;
+  let targetedSum = 0;
+  let targetedCount = 0;
   const matches = [];
-  for (const item of items.slice(0, MAX_ITEM_IDS_PER_ROW)) {
+  for (const item of boundedItems) {
     const { score, match } = evaluateFeedbackItem(item, model);
-    itemSum += score;
+    const isTargeted = Boolean(match && model.targetedItemTally?.has(match));
+    if (isTargeted) {
+      targetedSum += score;
+      targetedCount += 1;
+    } else {
+      untargetedSum += score;
+    }
     if (score !== 0 && match) {
       matches.push({ type: 'feedback_item', value: score > 0 ? 'liked' : 'disliked', productId: match });
     }
   }
-  // Mean over the look's items: unseen items are exactly neutral, so a
-  // single disliked piece cannot dominate a four-piece look on its own.
-  const itemComponent = itemSum / Math.max(1, Math.min(items.length, MAX_ITEM_IDS_PER_ROW));
+  // Legacy untargeted item signals use mean over the look's items. Explicitly
+  // targeted slot dislikes / swapped-away SKUs are NOT diluted by 1/4 so
+  // re-introducing a rejected shoe meaningfully downranks the look while
+  // keeping non-targeted items unpenalized.
+  const untargetedComponent = untargetedSum / Math.max(1, boundedItems.length);
+  const targetedComponent = targetedCount > 0 ? clamp(targetedSum, -1, 1) : 0;
   let pairRaw = 0;
   if (concept) {
     for (const [key, tally] of model.pairTally) {
@@ -238,16 +459,26 @@ export function evaluateFeedbackLook(items, conceptId, model, stylingFeatures) {
   }
   const pairComponent = clamp(pairRaw, -1, 1);
   const candidateFeatures = normalizeFeatureMatrix(stylingFeatures);
-  const featureRaw = candidateFeatures && Array.isArray(model.featureEvidence)
+  let featureRaw = candidateFeatures && Array.isArray(model.featureEvidence)
     ? model.featureEvidence.reduce((sum, row) =>
-        sum + row.weight * styleSimilarity(row.features, candidateFeatures), 0) : 0;
+        sum + row.weight * styleSimilarity(row.features, candidateFeatures), 0)
+    : 0;
+  if (candidateFeatures && Array.isArray(model.slotFeatureEvidence) && model.slotFeatureEvidence.length > 0) {
+    for (const entry of model.slotFeatureEvidence) {
+      const candidateSlot = candidateFeatures[entry.slotIndex];
+      if (!candidateSlot) continue;
+      featureRaw += entry.weight * slotFeatureSimilarity(entry.feature, candidateSlot);
+    }
+  }
   const featureComponent = clamp(featureRaw, -1, 1);
   if (featureComponent !== 0) matches.push({
     type: 'feedback_style', value: featureComponent > 0 ? 'liked' : 'disliked',
   });
   const adjustment = clamp(
-    ITEM_COMPONENT_SCALE * itemComponent + PAIR_COMPONENT_SCALE * pairComponent +
-      FEATURE_COMPONENT_SCALE * featureComponent,
+    ITEM_COMPONENT_SCALE * untargetedComponent
+      + TARGETED_ITEM_COMPONENT_SCALE * targetedComponent
+      + PAIR_COMPONENT_SCALE * pairComponent
+      + FEATURE_COMPONENT_SCALE * featureComponent,
     -FEEDBACK_TASTE_LOOK_CAP, FEEDBACK_TASTE_LOOK_CAP,
   );
   return {
