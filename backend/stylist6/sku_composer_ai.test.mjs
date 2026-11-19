@@ -1817,7 +1817,7 @@ test('six-look PHOTO audition can explore new combinations around strong real me
   const proposals=Array.from({length:6},(_,i)=>Object.fromEntries(slots.map(
     slot=>[slot,exact(i,slot)]
   )));
-  assert.ok(proposals.every(p=>slots.every(slot=>/^P\\d{3}$/.test(p[slot]))));
+  assert.ok(proposals.every(p=>slots.every(slot=>/^P\d{3}$/.test(p[slot]))));
   // First three creative directions keep 12 entirely different products.
   // Later PHOTO auditions may deliberately retry a good shirt, layer or shoe
   // with a different full-look architecture, without displaying a repeat.
