@@ -2092,6 +2092,45 @@ test('regression: authenticated S6 critic callback REALLY uses concurrent photo 
 });
 
 
+test('PHOTO reward evidence writes ONLY vetted anonymous rows through the service role',async()=>{
+  const writes=[];
+  const io=createCloudIo({
+    url:'https://fake-supabase.example',
+    anonKey:'public-client-key-never-authorized',
+    serviceKey:'private-server-service-key',
+    supabaseJs:{createClient:(url,key)=>({
+      from:table=>({
+        upsert:(rows,options)=>({
+          abortSignal:async()=>{writes.push({url,key,table,rows,options});
+            return {error:null};},
+        }),
+      }),
+    })},
+  });
+  const row={
+    fingerprint:'a'.repeat(64),context_hash:'b'.repeat(64),
+    feature_hashes:Array.from({length:12},(_,i)=>i.toString(16).padStart(64,'0')),
+    photo_quality:.66,photo_outcome:-1,photo_reason:'style_mismatch',
+    evidence_version:'s6-photo-reward-journal-v1',
+  };
+  assert.equal(await io.savePhotoRewardExamples([row]),true);
+  assert.equal(writes.length,1);
+  assert.equal(writes[0].key,'private-server-service-key');
+  assert.equal(writes[0].table,'stylist6_photo_reward_examples');
+  assert.deepEqual(writes[0].options,
+    {onConflict:'fingerprint',ignoreDuplicates:true});
+  assert.deepEqual(writes[0].rows,[row]);
+  for(const extra of [
+    {...row,user_id:'PRIVATE_OWNER_ID'},
+    {...row,imageUrl:'https://private.invalid/image.jpg'},
+    {...row,photo_reason:'fake_personal_taste'},
+    {...row,feature_hashes:['SECRET_MERCHANT_SKU']},
+    {...row,photo_outcome:0},
+  ])assert.equal(await io.savePhotoRewardExamples([extra]),false);
+  assert.equal(writes.length,1,
+    'never upsert a single row with owner IDs, raw images or unverified outcomes');
+});
+
 test('safe Stage 6 quality trace includes only bounded status counters and reason codes',()=>{
   const out=stylist6SafeQualityTrace({
     personalSecret:'private-identity',request:'disclose this',

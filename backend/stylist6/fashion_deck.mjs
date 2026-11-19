@@ -1835,6 +1835,10 @@ export async function recommendFashionDeck({
   // Optional prebuilt model from feedback_taste.mjs (explicit thumbs rows).
   // Absent/inert model = byte-identical legacy ranking (back-compat).
   feedbackTaste,
+  // Staging-only, OPTIONAL private PHOTO reward recorder. Records only
+  // authenticated independent original-photo examples in a privacy-scrubbed
+  // server callback. No effect on ranking, any jury verdict or S5.
+  photoRewardSink=null,
   // Passed by the trusted cloud handler only after validating the official
   // CBU snapshot; the app never provides these rates to the ranker.
   valueFxRates,
@@ -2454,6 +2458,13 @@ export async function recommendFashionDeck({
       };
       let reviewed=await evaluateVisualShortlist(
         {...retrieval,shortlist:candidates},request,visualCritic,reviewOptions);
+      // Preserve the EXACT FIRST independent photo wave before source-SKU
+      // rescue and portfolio editors add more candidates. The server-only
+      // journal may use these actual critique outcomes, but never anything
+      // unjudged or displayed merely because it was proposed.
+      const photoJournalLooks=candidates.slice(0,MAX_VISUAL_CANDIDATES);
+      const photoJournalDecisions=
+        (reviewed.diagnostics.visualQualityDecisions||[]).slice(0,MAX_VISUAL_CANDIDATES);
       // Train an EPHEMERAL, in-request photographed outfit teacher from the
       // independently judged 4-item source looks; do not mix AI photo scores
       // with owner thumbs or promote them to actual aesthetic approval.
@@ -3248,6 +3259,25 @@ export async function recommendFashionDeck({
           }
           selected=[...selected,next];unreviewedFillAdded=1;break;
         }
+      }
+      // Optional EVIDENCE collection only; it NEVER affects this request's
+      // fashion outcome and is never sent to the user. Explicit preferences,
+      // owned wardrobe anchors and private styling contexts are excluded:
+      // the derived training signal must represent general catalog PHOTO
+      // qualities, never a different wearer's personal dislikes.
+      const prefs=context.preferences||{};
+      const hasPersonalConstraints=['avoidColors','favoriteColors','likedPatterns',
+        'dislikedPatterns'].some(k=>Array.isArray(prefs[k])&&prefs[k].length>0)||
+        (typeof prefs.fitPreference==='string'&&prefs.fitPreference.trim().length>0);
+      if(typeof photoRewardSink==='function'&&
+          context.sourceMode==='catalog'&&requiredIds.length===0&&
+          !hasPersonalConstraints&&primaryCritiques.length>0){
+        try{await photoRewardSink({
+          looks:photoJournalLooks,decisions:photoJournalDecisions,
+          critiques:primaryCritiques,
+          context:{style:context.style,occasion:context.occasion},
+          featuresOf:items=>outfitStylingFeatures(items),
+        });}catch{/* Nonessential training IO must NEVER fail a paid deck. */}
       }
       visualReviewCoverage = {
         mode: 'displayed_deck',

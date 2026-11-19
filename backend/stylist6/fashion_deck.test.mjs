@@ -5,6 +5,7 @@ import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, 
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
+import {compilePhotoRewardExamples} from './photo_reward_journal.mjs';
 
 function garment(id, name, macroCategory, subtype, extra = {}) {
   return { id, name, macroCategory, subtype, isShopItem: true, currency: 'UZS', price: 250000,
@@ -2213,8 +2214,13 @@ test('image-model rejection launches bounded SECOND AI SKU composition and real 
   const request={sourceMode:'catalog',style:'classic',occasion:'Casual',
     weather:{temp:22},optionalLayer:true,preferences:{},
     budget:{amount:2000000,currency:'UZS'},requiredIds:[]};
-  let critiques=0,revisions=0,revisionIDs=[];
+  let critiques=0,revisions=0,revisionIDs=[],journalCalls=0,photoJournalRows=[];
   const r=await recommendFashionDeck({...base,request,referenceBriefs:refs,
+    photoRewardSink:async evidence=>{
+      journalCalls++;
+      photoJournalRows=compilePhotoRewardExamples({...evidence,
+        secret:'private-staging-journal-secret-for-testing-only'});
+    },
     selectDirectorFinalists:async({options})=>({
       status:'selected',tokens:options.slice(0,6).map(x=>x.token),providerCalls:1,
     }),
@@ -2279,6 +2285,14 @@ test('image-model rejection launches bounded SECOND AI SKU composition and real 
   });
   assert.equal(revisions,1,'photo feedback must actually reach another AI composing real SKU looks');
   assert.equal(critiques,2,'a SECOND independent whole-look photo review must occur');
+  assert.equal(journalCalls,1,'only the FIRST independent photo review is journaled per request');
+  assert.ok(photoJournalRows.length>=4,
+    'real four-source-photo evidence flows into the anonymous learning corpus');
+  assert.ok(photoJournalRows.some(row=>row.photo_outcome===1));
+  assert.ok(photoJournalRows.some(row=>row.photo_outcome===-1));
+  assert.doesNotMatch(JSON.stringify(photoJournalRows),
+    /imageUrl|shopUrl|PRIVATE_USER|PRIVATE_SOURCE|\/catalog\.example\//,
+    'journal MUST have no seller URLs, user data, photos or SKU identities');
   assert.ok(r.diagnostics.modelFashionSelection.photoRevisionAttempted>0);
   assert.equal(r.diagnostics.modelFashionSelection.photoRevisionStatus,'composed');
   assert.equal(r.diagnostics.modelFashionSelection.photoTeacherPositive,1,

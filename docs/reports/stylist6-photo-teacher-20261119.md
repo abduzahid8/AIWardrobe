@@ -140,3 +140,62 @@ teacher. It verifies that one positive is **not** falsely labelled
 `photo_validated` and that all displayed source SKUs still undergo actual
 follow-up photo evaluation. The graded model can instead report its stricter
 `graded_photo_validated` outcome if its real PHOTO holdout succeeds.
+
+## Durable, **photo-AI-labelled** fashion reward learning across QA requests
+
+The on-request teacher still has very few reliable examples (real Work
+iOS canary on `eaeb8799`: **2** independently PHOTO approved, **3** rejected
+out of **8** photo attempts, +3 editor retries with 0 approvals; internal
+teacher **uncalibrated_on_photos**, left the source selection unchanged).
+This is NOT a human taste win.
+
+To avoid retraining from just five examples on every request, an additional
+privacy-preserving original-photo training *journal* is now available on
+isolated staging. Its purpose is collecting verified **full four-product**
+outfit outcome labels that could support a properly cross-validated learned
+fashion reward model after enough independent tests. It does NOT yet
+instantiate such a trained production model.
+
+- Pure compiler `backend/stylist6/photo_reward_journal.mjs`: only
+  internally source-admitted 4-SKU **catalog** outfits, one real photo
+  critique matched to the same inspected candidate, and the already
+  independently adjudicated `approved` / photo quality / style / occasion /
+  formality / model-veto results qualify. User color-exclusion vetoes and
+  uncertain photos never become universal fashion lessons.
+- **No raw attributes stored:** source-specific outfit identity, photo
+  pixels/URLs, product/SKU IDs, merchant names, request/user IDs, brands,
+  original photo descriptions, personal prompt and arbitrary context strings
+  are NEVER persisted. Only server-secret-keyed SHA-256 HMACs of 4-slot
+  semantic feature interactions and a closed two-field style/occasion
+  classification, plus numeric actual-photo quality and closed reason,
+  are stored. No free-form user input or personal outfit preference.
+- New Supabase table `public.stylist6_photo_reward_examples` created by
+  hosted migration `20261119073412_stylist6_photo_reward_journal_v1`;
+  RLS enabled; `anon` and `authenticated` have NO SELECT or INSERT
+  privilege; service_role only SELECT/INSERT/DELETE. Exactly 30-day
+  default TTL, pg_cron deletion every six hours. SQL verified grants,
+  active cleanup and **zero seeded example rows** after migration.
+- A bounded and optional staging-only callback in `recommendFashionDeck`
+  receives the **first real independent original-photo review** and calls
+  a service-role writer only when `STYLIST6_PHOTO_REWARD_JOURNAL_ENABLED=true`,
+  the server has 72s staging budget, mode is pure shop catalog, no pinned
+  owned items, and no explicit owner color/pattern/fit preferences. Client
+  supplies no training labels and cannot enable it. Failure to persist
+  never changes a paid response, source admission, four-SKU completeness,
+  independent photo acceptance or production Stylist 5 behavior.
+- Bounded 8-row best-effort batch; duplicate privacy-hashed signatures
+  deduplicate; record storage uses the same privileged Supabase service
+  client and a 1.2 second hard deadline. The writer has a second closed
+  validation boundary to reject extra fields such as `user_id`, URL
+  or photos if the compiler were ever bypassed.
+- Source HMAC key is derived in-memory from the existing **server-only**
+  staging signing secret; never saved in SQL, logs or QA reports.
+  Rotating it invalidates old hashed token matches, deliberately.
+
+**This is infrastructure, not the North Star result.** The next step is
+enable opt-in only on isolated Render staging, verify genuine catalog PHOTO
+example rows arrive without personal fields, and train a later **cross-request
+held-out** fashion preference model without mixing AI photo judgments with
+real independent human votes. Original JPEG-before-first-composition still
+requires licensed rights and remains a separate open issue. The >=30 frozen
+four-SKU contexts / 3 blind humans / >=70% stylist-6 preference gate remains.

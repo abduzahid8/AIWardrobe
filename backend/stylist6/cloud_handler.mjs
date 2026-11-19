@@ -25,6 +25,7 @@ import { createHash } from 'node:crypto';
 import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { hydrateCatalogObservations } from './catalog_observation.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
+import {compilePhotoRewardExamples} from './photo_reward_journal.mjs';
 import { designCreativeBriefsWithFallback, CREATIVE_DIRECTOR_VERSION } from './creative_director_ai.mjs';
 import { selectFashionSlate } from './fashion_director_slate.mjs';
 import { selectPhotoEditorialDeck } from './photo_editor_final.mjs';
@@ -620,6 +621,36 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
     // successful paid generation (confirmed in real iOS QA). Persist
     // the EXACT already-approved deck for owner-only read-only recovery.
     // Never issue new NVIDIA calls or debit quota during a recovery read.
+    // Private service-role ONLY journal of anonymized original-photo fashion
+    // decisions. Writer never receives owner IDs, request IDs, SKU URLs or
+    // images. A failed optional write cannot fail paid generation.
+    async savePhotoRewardExamples(rows) {
+      const allowed=new Set(['fingerprint','context_hash','feature_hashes',
+        'photo_quality','photo_outcome','photo_reason','evidence_version']);
+      const reason=new Set(['approved','model_veto','below_quality_floor',
+        'style_mismatch','occasion_mismatch','formality_mismatch']);
+      const digest=x=>typeof x==='string'&&/^[0-9a-f]{64}$/.test(x);
+      if(!Array.isArray(rows)||rows.length<1||rows.length>8||
+         rows.some(row=>!row||Object.keys(row).length!==7||
+           Object.keys(row).some(k=>!allowed.has(k))||
+           !digest(row.fingerprint)||!digest(row.context_hash)||
+           !Array.isArray(row.feature_hashes)||
+           row.feature_hashes.length<12||row.feature_hashes.length>180||
+           row.feature_hashes.some(x=>!digest(x))||
+           !Number.isFinite(row.photo_quality)||
+           row.photo_quality<0||row.photo_quality>1||
+           ![-1,1].includes(row.photo_outcome)||
+           !reason.has(row.photo_reason)||
+           row.evidence_version!=='s6-photo-reward-journal-v1'))
+        return false;
+      try{
+        const admin=this.adminClient();
+        const {error}=await admin.from('stylist6_photo_reward_examples')
+          .upsert(rows,{onConflict:'fingerprint',ignoreDuplicates:true})
+          .abortSignal(AbortSignal.timeout(1200));
+        return !error;
+      }catch{return false;}
+    },
     async saveCompletedResult(userId,requestId,payload) {
       if(typeof userId!=='string'||typeof requestId!=='string'||
          requestId.length>128||payload?.success!==true||
@@ -1826,6 +1857,24 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             timeoutMs:Math.min(9600,Math.max(500,left-3300)),
           });
         } : null;
+    // Explicit isolated-staging, server-owned opt-in only. The source of
+    // each label is the existing independent original PHOTO critic, NOT
+    // a human preference. Anonymous keyed feature hashes are produced before
+    // service-role storage; no user identifiers/raw photos leave this scope.
+    const photoRewardSink=budgetMs>=70000&&
+      env.STYLIST6_PHOTO_REWARD_JOURNAL_ENABLED==='true'&&
+      sourceMode==='catalog'&&typeof io.savePhotoRewardExamples==='function'
+      ?async evidence=>{
+        const rows=compilePhotoRewardExamples({
+          ...evidence,secret:env.STYLIST6_NODE_SHARED_SECRET,
+        });
+        if(rows.length===0)return;
+        const saved=await io.savePhotoRewardExamples(rows);
+        if(saved)console.info('stylist6_photo_reward_journal',{
+          status:'recorded',examples:rows.length,
+        });
+      }
+      :null;
     const computedDeck = await runWithinRemainingDeadline(() => recommendFashionDeck({
       request: input,
       catalog: feasible,
@@ -1840,6 +1889,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       hardGate: async (items) => devLookFeasibility(items),
       priceToBudgetCurrency,
       feedbackTaste,
+      photoRewardSink,
       valueFxRates: sourceMode === 'catalog' && !budget ? fxSnapshot?.uzsPerUnit : null,
       // Staging-only visual-first quality pass: review every admissible card
       // in one bounded batch, not just the first selection.
