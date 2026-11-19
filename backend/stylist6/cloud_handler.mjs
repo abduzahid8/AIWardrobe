@@ -184,6 +184,14 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     // not nested inside the earlier modelFashionSelection receipt.
     catalogFourItemContract:d.catalogFourItemContract===true,
     catalogFourItemDropped:safe(d.catalogFourItemDropped,12),
+    // Photo-critic TEACHER: only safe discrete status and bounded sample
+    // count; never emit a SKU, personal taste, merchant URL or model weights.
+    photoTeacherStatus:[
+      'unavailable','insufficient_independent_photos',
+      'no_comparable_photo_pair','uncalibrated_on_photos','photo_validated',
+    ].includes(f.photoTeacherStatus)?f.photoTeacherStatus:'not_run',
+    photoTeacherExamples:safe(f.photoTeacherExamples,8),
+    photoTeacherSelectionApplied:f.photoTeacherSelectionApplied===true,
     photoRevisionInventory:['unseen_source_skus','source_fallback',
       'remaining_source_skus'].includes(f.photoRevisionInventory)
       ?f.photoRevisionInventory:'not_run',

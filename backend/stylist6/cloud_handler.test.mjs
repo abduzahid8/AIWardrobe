@@ -2115,6 +2115,8 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     skuCompositionAiFirst:false,skuCompositionRetrievalSkipped:false,
     skuCompositionStudio:'not_run',skuCompositionPhotoFirst:'not_run',
     catalogFourItemContract:false,catalogFourItemDropped:null,
+    photoTeacherStatus:'not_run',photoTeacherExamples:null,
+    photoTeacherSelectionApplied:false,
     photoRevisionInventory:'not_run',
     photoRevisionStatus:'not_run',photoRevisionAttempted:null,
     photoRevisionApproved:null,photoRevisionArtist:'not_run',
@@ -2134,6 +2136,20 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     reasons:['approved','style_mismatch','other'],
   });
   assert.doesNotMatch(JSON.stringify(out),/secret|example|private|contact info/);
+  const teacher=stylist6SafeQualityTrace({modelFashionSelection:{
+    photoTeacherStatus:'photo_validated',photoTeacherExamples:7,
+    photoTeacherSelectionApplied:true,ownerEmail:'private@example.com',
+    weights:{'private-sku':999},
+  }},2,35000);
+  assert.equal(teacher.photoTeacherStatus,'photo_validated');
+  assert.equal(teacher.photoTeacherExamples,7);
+  assert.equal(teacher.photoTeacherSelectionApplied,true);
+  assert.doesNotMatch(JSON.stringify(teacher),/private|email|weights/);
+  const invalid=stylist6SafeQualityTrace({modelFashionSelection:{
+    photoTeacherStatus:'<owned-secret>',photoTeacherExamples:999,
+  }},2,35000);
+  assert.equal(invalid.photoTeacherStatus,'not_run');
+  assert.equal(invalid.photoTeacherExamples,null);
   assert.equal(stylist6SafeQualityTrace(null,5,-1).displayed,null,
     'trace cannot invent out-of-range deck counts');
 });
