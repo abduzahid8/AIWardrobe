@@ -19,6 +19,7 @@ import {
   DEFAULT_OPENROUTER_VISION_MODEL,
   DEFAULT_NVIDIA_TEXT_MODEL,
 } from './ai_provider_router.mjs';
+import { composeOutfitsVisually } from './visual_atelier.mjs';
 export const AI_SKU_COMPOSER_VERSION='s6-catalog-direct-sku-composer-v3-120b-staging-audition';
 const ENDPOINT='https://integrate.api.nvidia.com/v1/chat/completions';
 // STAGING-only quality audition: in a real paid provider probe the 120B
@@ -550,6 +551,73 @@ export function sourceBoundCompositionPool(looks, {
 // A private symbol cannot be nominated by client JSON or merchant metadata.
 const ORIGINAL_CREATIVE_INDEX=Symbol('aiw_original_creative_index');
 const INDEPENDENT_CREATIVE_SOURCE=Symbol('aiw_independent_creative_source');
+const VISUAL_ATELIER_COPY=Symbol('aiw_visual_atelier_copy');
+
+/**
+ * Adapt a verified `composeOutfitsVisually` result into the exact
+ * `composeCatalogSkuLooks` return contract while enforcing disjoint SKUs,
+ * 4-item contract when `layerRequired` is true, and Creative Director
+ * attribution (`ORIGINAL_CREATIVE_INDEX`) for `sourceVerifyComposedOutfits`.
+ */
+export function adaptVisualAtelierResultToSkuComposition(atelierResult, {
+  layerRequired = false,
+  minimumValid = 3,
+} = {}) {
+  if (!atelierResult || atelierResult.status !== 'applied' || !Array.isArray(atelierResult.outfits)) {
+    return null;
+  }
+  const seenKeys = new Set();
+  const looks = [];
+  const acceptedOutfits = [];
+  for (let i = 0; i < atelierResult.outfits.length; i++) {
+    const outfit = atelierResult.outfits[i];
+    const items = Array.isArray(outfit?.items)
+      ? outfit.items.filter(Boolean)
+      : SLOTS.map((slot) => outfit?.[slot]).filter(Boolean);
+    const requiredSlots = layerRequired ? SLOTS : ['top', 'bottom', 'shoes'];
+    if (!requiredSlots.every((slot) => items.some((it) => slotOf(it) === slot))) continue;
+    if (new Set(items.map(slotOf)).size !== items.length) continue;
+    const keys = items.map(productKey);
+    if (keys.some((k) => !k || seenKeys.has(k)) || new Set(keys).size !== keys.length) continue;
+    for (const k of keys) seenKeys.add(k);
+    const dirIdx = Number.isInteger(outfit?.directionIndex) && outfit.directionIndex >= 0 && outfit.directionIndex <= 2
+      ? outfit.directionIndex
+      : i;
+    const lookItems = [...items];
+    Object.defineProperty(lookItems, ORIGINAL_CREATIVE_INDEX, { value: dirIdx, enumerable: false });
+    Object.defineProperty(lookItems, VISUAL_ATELIER_COPY, {
+      value: {
+        title: outfit.title || null,
+        visualHarmonyRationale: outfit.visualHarmonyRationale || null,
+        stylingNote: outfit.stylingNote || outfit.stylistNote || null,
+        whyItFlattersYou: outfit.whyItFlattersYou || null,
+        stylingTips: Array.isArray(outfit.stylingTips) ? outfit.stylingTips : [],
+        tokens: outfit.tokens || null,
+        composedVisually: true,
+      },
+      enumerable: false,
+    });
+    looks.push(lookItems);
+    acceptedOutfits.push(outfit);
+  }
+  const floor = Math.max(1, Math.min(3, Math.floor(Number(minimumValid) || 3)));
+  if (looks.length < floor) return null;
+  return {
+    status: 'composed',
+    looks,
+    visualAtelierOutfits: acceptedOutfits,
+    showroomBoard: atelierResult.showroomBoard || null,
+    providerCalls: Math.max(1, Array.isArray(atelierResult.diagnostics?.attempts) && atelierResult.diagnostics.attempts.length
+      ? atelierResult.diagnostics.attempts.length : 1),
+    visualMenuStatus: 'applied',
+    visualAtelierStatus: 'applied',
+    providerFamily: 'visual_atelier_v1',
+    provider: atelierResult.provider || null,
+    model: atelierResult.model || null,
+    latencyMs: atelierResult.latencyMs ?? null,
+    diagnostics: atelierResult.diagnostics || null,
+  };
+}
 export function validateSkuCompositions(answer,pool,{
   layerRequired=false,allowLayer=true,count=3,allowPartial=false,
   minimumValid=3,
@@ -815,6 +883,7 @@ export async function composeCatalogSkuLooks({
   layerRequired=false,allowLayer=true,resolvePhoto,authorizePhoto,
   crossLabRevision=false,initialStudioDuel=false,
   fastPhotoRevision=false,
+  visualAtelierOptions=null,
 }={}){
   const {effectivePool,perDirectionMenus}=resolvePerDirectionCompositionInputs(pool,perDirectionPools);
   const visible=effectivePool.map(x=>x.public);
@@ -825,20 +894,34 @@ export async function composeCatalogSkuLooks({
     ['top','bottom','shoes',...(layerRequired?['outerwear']:[])]
       .every(s=>bySlot.get(s).length>=6);
   const target=sixReady?6:3;
-  if(['top','bottom','shoes'].some(s=>bySlot.get(s).length<3)||
-      (layerRequired&&bySlot.get('outerwear').length<3))
+  const visualAtelierEnabled=Boolean(
+    visualAtelierOptions && typeof visualAtelierOptions==='object' &&
+    visualAtelierOptions.enabled!==false &&
+    (critiqueFeedback==null || visualAtelierOptions.allowOnRevision===true),
+  );
+  if(!visualAtelierEnabled && (['top','bottom','shoes'].some(s=>bySlot.get(s).length<3)||
+      (layerRequired&&bySlot.get('outerwear').length<3)))
     return {status:'insufficient_inventory',looks:[],providerCalls:0};
   const hasNvidiaKey=typeof apiKey==='string'&&apiKey.startsWith('nvapi-');
   const hasOpenrouterKey=typeof openrouterApiKey==='string'&&openrouterApiKey.trim().length>=8;
   const hasRouter=Boolean(providerRouter&&typeof providerRouter.callTextModel==='function');
+  const hasVisualAtelierRouter=Boolean(
+    visualAtelierEnabled && (
+      typeof visualAtelierOptions.composeFn==='function' ||
+      (visualAtelierOptions.providerRouter&&typeof visualAtelierOptions.providerRouter.callVisionModel==='function') ||
+      (providerRouter&&typeof providerRouter.callVisionModel==='function')
+    ),
+  );
   const useFastRouter=fastMode===true||(!hasNvidiaKey&&(hasOpenrouterKey||hasRouter));
-  if(!hasNvidiaKey&&!hasOpenrouterKey&&!hasRouter)
+  if(!hasNvidiaKey&&!hasOpenrouterKey&&!hasRouter&&!hasVisualAtelierRouter)
     return {status:'not_configured',looks:[],providerCalls:0};
   const concurrencyLimit=resolveComposerConcurrency(maxConcurrency);
   if(inflight>=concurrencyLimit)return {status:'load_shed',looks:[],providerCalls:0};
-  const effectiveTimeoutMs=Math.min(parallel?16500:crossLabRevision&&fastPhotoRevision?9000
-    :crossLabRevision?5600:4000,
-    Math.max(500,timeoutMs));
+  const effectiveTimeoutMs=visualAtelierEnabled
+    ?Math.min(25000,Math.max(1000,Number(visualAtelierOptions.timeoutMs)||Number(timeoutMs)||18000))
+    :Math.min(parallel?16500:crossLabRevision&&fastPhotoRevision?9000
+      :crossLabRevision?5600:4000,
+      Math.max(500,timeoutMs));
   const abort=new AbortController();
   const timer=setTimeout(()=>abort.abort(),effectiveTimeoutMs);
   const combined=signal?AbortSignal.any([signal,abort.signal]):abort.signal;
@@ -846,6 +929,62 @@ export async function composeCatalogSkuLooks({
   let providerCalls=0,visualMenuStatus='not_run';
   try{
     const started=Date.now();
+    // Optional True Visual-First Atelier delegation: let the VLM see the 1600x1600
+    // 4-rack Visual Showroom Board BEFORE composing, falling back seamlessly to
+    // the proven SKU composer if the showroom board or VLM is unavailable.
+    if(visualAtelierEnabled && !combined.aborted){
+      const composeFn=typeof visualAtelierOptions.composeFn==='function'
+        ?visualAtelierOptions.composeFn
+        :composeOutfitsVisually;
+      try{
+        const atelierTimeout=Math.max(1500,Math.min(
+          Number(visualAtelierOptions.timeoutMs)||18000,
+          Math.max(1500,effectiveTimeoutMs-500),
+        ));
+        const atelierResult=await Promise.resolve(composeFn({
+          directions,
+          perDirectionPools,
+          catalog:Array.isArray(visualAtelierOptions.catalog)&&visualAtelierOptions.catalog.length
+            ?visualAtelierOptions.catalog
+            :effectivePool.map(e=>e.item),
+          context,
+          personalStyleDna,
+          styleDnaPromptBlock,
+          tastePromptBlock:visualAtelierOptions.tastePromptBlock||'',
+          providerRouter:visualAtelierOptions.providerRouter||providerRouter,
+          photoCache:visualAtelierOptions.photoCache||null,
+          fetchImpl:visualAtelierOptions.fetchImpl||fetchImpl,
+          resolvePhoto:visualAtelierOptions.resolvePhoto||resolvePhoto||null,
+          authorizePhoto:visualAtelierOptions.authorizePhoto||authorizePhoto||null,
+          ...(visualAtelierOptions.allowlist?{allowlist:visualAtelierOptions.allowlist}:{}),
+          ...(visualAtelierOptions.sharpImpl?{sharpImpl:visualAtelierOptions.sharpImpl}:{}),
+          signal:combined,
+          timeoutMs:atelierTimeout,
+          maxPerSlot:visualAtelierOptions.maxPerSlot||8,
+          apiKey,
+          openrouterApiKey,
+          ...(visualAtelierOptions.preferredModel?{preferredModel:visualAtelierOptions.preferredModel}:{}),
+          ...(visualAtelierOptions.priceToBudgetCurrency?{priceToBudgetCurrency:visualAtelierOptions.priceToBudgetCurrency}:{}),
+          ...(visualAtelierOptions.excludedIds?{excludedIds:visualAtelierOptions.excludedIds}:{}),
+        }));
+        const adapted=adaptVisualAtelierResultToSkuComposition(atelierResult,{
+          layerRequired,
+          minimumValid:visualAtelierOptions.minimumValid||3,
+        });
+        if(adapted)return adapted;
+        visualMenuStatus=atelierResult?.diagnostics?.reason||'visual_atelier_fallback';
+      }catch{
+        visualMenuStatus='visual_atelier_error';
+      }
+      // If fallback happened and text-composer prerequisites aren't met, return honestly
+      if(['top','bottom','shoes'].some(s=>bySlot.get(s).length<3)||
+          (layerRequired&&bySlot.get('outerwear').length<3)){
+        return {status:'insufficient_inventory',looks:[],providerCalls,visualMenuStatus};
+      }
+      if(!hasNvidiaKey&&!hasOpenrouterKey&&!hasRouter){
+        return {status:'provider_unavailable',looks:[],providerCalls,visualMenuStatus};
+      }
+    }
     const options=Object.fromEntries(SLOTS.map(slot=>[slot,bySlot.get(slot)]));
     const revision=groundedPhotoRevisionFeedback(critiqueFeedback);
     const groundedPlans=revision?[]:groundedSkuDirections(directions,effectivePool);
@@ -1550,7 +1689,11 @@ export async function sourceVerifyComposedOutfits({
     if(!Number.isFinite(fashion?.score))continue;
     const itemIds=items.map(x=>String(x.id)).sort();
     const id='s6_ai_'+createHash('sha256').update(itemIds.join('|')).digest('hex').slice(0,16);
-    produced.push({id,briefId:concept,brief,items,fashion,seedScore:fashion.score});
+    const visualAtelierCopy=items[VISUAL_ATELIER_COPY]||null;
+    produced.push({
+      id,briefId:concept,brief,items,fashion,seedScore:fashion.score,
+      ...(visualAtelierCopy?{visualAtelierCopy}:{}),
+    });
     for(const x of items)shared.add(productKey(x));
   }
   return produced;

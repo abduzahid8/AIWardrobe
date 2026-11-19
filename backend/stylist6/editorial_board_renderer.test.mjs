@@ -8,9 +8,15 @@ import {
   LOOK_BOARD_HEIGHT,
   PORTFOLIO_SHEET_WIDTH,
   PORTFOLIO_SHEET_HEIGHT,
+  SHOWROOM_BOARD_WIDTH,
+  SHOWROOM_BOARD_HEIGHT,
+  SWAP_BOARD_WIDTH,
+  SWAP_BOARD_HEIGHT,
   MAX_INPUT_IMAGE_BYTES,
   renderEditorialLookBoard,
   renderPortfolioComparisonSheet,
+  renderVisualShowroomBoard,
+  renderVisualSwapBoard,
   createPhotoByteCache,
   validateEditorialImageUrl,
   decodeNormalizedPhotoBytes,
@@ -255,4 +261,214 @@ test('stacks long title and subtitle vertically on 1024x1024 look boards with ze
   const meta = await sharp(board.jpegBuffer).metadata();
   assert.equal(meta.width, 1024);
   assert.equal(meta.height, 1024);
+});
+
+test('renderVisualShowroomBoard renders a crisp 1600x1600 4-rack 32-SKU studio JPEG with bold T/L/B/S token overlays and AVIF/WebP/PNG/JPEG decoding', async () => {
+  const [avifBuf, webpBuf, pngBuf, jpegBuf] = await Promise.all([
+    syntheticPhoto('avif', '#EFECE6', 180, 240),
+    syntheticPhoto('webp', '#263448', 180, 240),
+    syntheticPhoto('png', '#4F5258', 180, 240),
+    syntheticPhoto('jpeg', '#5B3D2E', 180, 140),
+  ]);
+  const makeSlotItems = (slot, buf, prefix) => Array.from({ length: 8 }, (_, idx) => ({
+    id: `sku-${slot}-${idx + 1}`,
+    macroCategory: slot,
+    subtype: slot === 'top' ? 'dress-shirt' : slot === 'outerwear' ? 'blazer' : slot === 'bottom' ? 'tailored-trouser' : 'loafer',
+    brand: `${prefix}House ${idx + 1}`,
+    price: 90 + idx * 35,
+    currency: 'USD',
+    bytes: buf,
+  }));
+
+  const slotPools = {
+    top: makeSlotItems('top', avifBuf, 'Top'),
+    outerwear: makeSlotItems('outerwear', webpBuf, 'Coat'),
+    bottom: makeSlotItems('bottom', pngBuf, 'Pant'),
+    shoes: makeSlotItems('shoes', jpegBuf, 'Shoe'),
+  };
+
+  let capturedOverlaySvg = '';
+  const inspectingSharp = (input, opts) => {
+    const inst = sharp(input, opts);
+    const origComposite = inst.composite.bind(inst);
+    inst.composite = (layers) => {
+      for (const layer of layers) {
+        if (Buffer.isBuffer(layer?.input) && layer.input.toString('utf8', 0, 40).includes('<svg')) {
+          capturedOverlaySvg = layer.input.toString('utf8');
+        }
+      }
+      return origComposite(layers);
+    };
+    return inst;
+  };
+
+  const board = await renderVisualShowroomBoard(slotPools, {
+    title: 'Milan Private Showroom',
+    sharpImpl: inspectingSharp,
+  });
+
+  assert.equal(board.ok, true);
+  assert.equal(board.width, SHOWROOM_BOARD_WIDTH);
+  assert.equal(board.height, SHOWROOM_BOARD_HEIGHT);
+  assert.equal(board.width, 1600);
+  assert.equal(board.height, 1600);
+  assert.equal(board.renderedCount, 32);
+  assert.equal(board.totalRequested, 32);
+  assert.ok(Buffer.isBuffer(board.jpegBuffer));
+  assert.equal(board.sha256, createHash('sha256').update(board.jpegBuffer).digest('hex'));
+  assert.equal(board.jpegBuffer[0], 0xff);
+  assert.equal(board.jpegBuffer[1], 0xd8);
+  assert.equal(board.jpegBuffer.readUInt16BE(board.jpegBuffer.length - 2), 0xffd9);
+
+  // Verify Sharp metadata & warm #F6F5F2 canvas backdrop
+  const meta = await sharp(board.jpegBuffer).metadata();
+  assert.equal(meta.format, 'jpeg');
+  assert.equal(meta.width, 1600);
+  assert.equal(meta.height, 1600);
+  const corner = await sharp(board.jpegBuffer).extract({ left: 2, top: 2, width: 1, height: 1 }).raw().toBuffer();
+  assert.ok(Math.abs(corner[0] - 246) <= 4 && Math.abs(corner[1] - 245) <= 4 && Math.abs(corner[2] - 242) <= 4);
+
+  // Verify exact token mapping & bold SVG overlays
+  assert.equal(Object.keys(board.tokens).length, 32);
+  assert.equal(board.tokens.T1.id, 'sku-top-1');
+  assert.equal(board.tokens.T8.id, 'sku-top-8');
+  assert.equal(board.tokens.L3.id, 'sku-outerwear-3');
+  assert.equal(board.tokens.B5.id, 'sku-bottom-5');
+  assert.equal(board.tokens.S2.id, 'sku-shoes-2');
+  assert.equal(board.tokenMap.get('S8').id, 'sku-shoes-8');
+  for (const tok of ['T1', 'T8', 'L3', 'B5', 'S2', 'S8']) {
+    assert.ok(capturedOverlaySvg.includes(`>${tok}</text>`), `SVG must include crisp badge overlay for ${tok}`);
+  }
+});
+
+test('renderVisualShowroomBoard honestly skips SSRF-blocked, HTTP-failed, and corrupted photos without emitting invalid tokens', async () => {
+  const validJpg = await syntheticPhoto('jpeg', '#3A4B5C', 160, 220);
+  const cache = createPhotoByteCache({ maxEntries: 32 });
+  const fetchedUrls = [];
+  const fetchImpl = async (url) => {
+    fetchedUrls.push(url);
+    if (url.includes('missing')) return new Response('not found', { status: 404 });
+    if (url.includes('corrupt')) return new Response(Buffer.from('not-a-real-image-at-all-0123456789abcdef'), { status: 200 });
+    return new Response(validJpg, { status: 200 });
+  };
+
+  const slotPools = {
+    top: [
+      { id: 't-ok-1', slot: 'top', brand: 'Eton', price: 180, currency: 'USD', imageUrl: 'https://static.zara.net/t1.jpg' },
+      { id: 't-ssrf', slot: 'top', brand: 'Evil', price: 90, currency: 'USD', imageUrl: 'https://169.254.169.254/latest/meta-data/' },
+      { id: 't-404', slot: 'top', brand: 'Gone', price: 90, currency: 'USD', imageUrl: 'https://static.zara.net/missing.jpg' },
+      { id: 't-ok-2', slot: 'top', brand: 'COS', price: 95, currency: 'USD', imageUrl: 'https://static.zara.net/t2.jpg' },
+    ],
+    outerwear: [
+      { id: 'l-corrupt', slot: 'outerwear', brand: 'BadImg', price: 320, currency: 'USD', imageUrl: 'https://static.zara.net/corrupt.jpg' },
+      { id: 'l-ok-1', slot: 'outerwear', brand: 'Canali', price: 650, currency: 'USD', imageUrl: 'https://static.zara.net/l1.jpg' },
+    ],
+    bottom: [
+      { id: 'b-ok-1', slot: 'bottom', brand: 'Incotex', price: 240, currency: 'USD', imageUrl: 'https://static.zara.net/b1.jpg' },
+    ],
+    shoes: [
+      { id: 's-ok-1', slot: 'shoes', brand: 'Velasca', price: 290, currency: 'USD', imageUrl: 'https://static.zara.net/s1.jpg' },
+    ],
+  };
+
+  const first = await renderVisualShowroomBoard(slotPools, { photoCache: cache, fetchImpl });
+  assert.equal(first.ok, true);
+  assert.equal(first.totalRequested, 8);
+  assert.equal(first.renderedCount, 5, 'only 5 genuinely valid photos should render');
+  assert.deepEqual(Object.keys(first.tokens).sort(), ['B1', 'L1', 'S1', 'T1', 'T2']);
+  assert.equal(first.tokens.T1.id, 't-ok-1');
+  assert.equal(first.tokens.T2.id, 't-ok-2');
+  assert.equal(first.tokens.L1.id, 'l-ok-1');
+  assert.ok(!fetchedUrls.some((u) => u.includes('169.254.169.254')), 'SSRF URL must never be fetched');
+  assert.equal(first.skipped.length, 3);
+
+  // Second render hits photoByteCache for all 5 valid URLs!
+  const beforeFetches = fetchedUrls.length;
+  const second = await renderVisualShowroomBoard(
+    {
+      top: [slotPools.top[0], slotPools.top[3]],
+      outerwear: [slotPools.outerwear[1]],
+      bottom: slotPools.bottom,
+      shoes: slotPools.shoes,
+    },
+    { photoCache: cache, fetchImpl },
+  );
+  assert.equal(second.ok, true);
+  assert.equal(second.cacheHits, 5);
+  assert.equal(second.cacheMisses, 0);
+  assert.equal(fetchedUrls.length, beforeFetches, 'cached showroom photos require 0 extra CDN fetches');
+});
+
+test('renderVisualSwapBoard renders a 1400x900 board with 3 locked garments on left (using photoCache) and R1..R6 candidates on right', async () => {
+  const lockedJpg = await syntheticPhoto('jpeg', '#2B3A4D', 180, 260);
+  const candJpg = await syntheticPhoto('webp', '#5D3D2A', 200, 160);
+  const cache = createPhotoByteCache({ maxEntries: 32 });
+  const fetches = [];
+  const fetchImpl = async (url) => {
+    fetches.push(url);
+    if (url.includes('broken')) return new Response('gone', { status: 404 });
+    return new Response(url.includes('cand') ? candJpg : lockedJpg, { status: 200 });
+  };
+
+  const lockedItems = [
+    { id: 'lock-outer', macroCategory: 'outerwear', subtype: 'blazer', brand: 'Canali', price: 620, currency: 'USD', imageUrl: 'https://static.zara.net/lock-outer.jpg' },
+    { id: 'lock-top', macroCategory: 'top', subtype: 'dress-shirt', brand: 'Eton', price: 185, currency: 'USD', imageUrl: 'https://static.zara.net/lock-top.jpg' },
+    { id: 'lock-bottom', macroCategory: 'bottom', subtype: 'tailored-trouser', brand: 'Incotex', price: 245, currency: 'USD', imageUrl: 'https://static.zara.net/lock-bottom.jpg' },
+  ];
+
+  // Warm cache for the 3 locked items first (simulating post-look-board surgical swap!)
+  await renderEditorialLookBoard(lockedItems, { photoCache: cache, fetchImpl });
+  assert.equal(fetches.length, 3);
+
+  const candidates = [
+    { id: 'cand-1', macroCategory: 'shoes', subtype: 'loafer', brand: 'Velasca', price: 280, currency: 'USD', imageUrl: 'https://static.zara.net/cand-1.jpg' },
+    { id: 'cand-broken', macroCategory: 'shoes', subtype: 'loafer', brand: 'Broken', price: 210, currency: 'USD', imageUrl: 'https://static.zara.net/cand-broken.jpg' },
+    { id: 'cand-2', macroCategory: 'shoes', subtype: 'derby', brand: 'Carmina', price: 390, currency: 'USD', imageUrl: 'https://static.zara.net/cand-2.jpg' },
+    { id: 'cand-3', macroCategory: 'shoes', subtype: 'oxford', brand: 'TLB Mallorca', price: 340, currency: 'USD', imageUrl: 'https://static.zara.net/cand-3.jpg' },
+    { id: 'cand-4', macroCategory: 'shoes', subtype: 'chelsea', brand: 'Meermin', price: 260, currency: 'USD', imageUrl: 'https://static.zara.net/cand-4.jpg' },
+    { id: 'cand-5', macroCategory: 'shoes', subtype: 'monk', brand: 'Berwick', price: 240, currency: 'USD', imageUrl: 'https://static.zara.net/cand-5.jpg' },
+  ];
+
+  let capturedOverlaySvg = '';
+  const inspectingSharp = (input, opts) => {
+    const inst = sharp(input, opts);
+    const origComposite = inst.composite.bind(inst);
+    inst.composite = (layers) => {
+      for (const layer of layers) {
+        if (Buffer.isBuffer(layer?.input) && layer.input.toString('utf8', 0, 40).includes('<svg')) {
+          capturedOverlaySvg = layer.input.toString('utf8');
+        }
+      }
+      return origComposite(layers);
+    };
+    return inst;
+  };
+
+  const swapBoard = await renderVisualSwapBoard(lockedItems, 'shoes', candidates, {
+    photoCache: cache,
+    fetchImpl,
+    sharpImpl: inspectingSharp,
+  });
+
+  assert.equal(swapBoard.ok, true);
+  assert.equal(swapBoard.width, SWAP_BOARD_WIDTH);
+  assert.equal(swapBoard.height, SWAP_BOARD_HEIGHT);
+  assert.equal(swapBoard.width, 1400);
+  assert.equal(swapBoard.height, 900);
+  assert.equal(swapBoard.renderedCount, 5, 'broken candidate skipped honestly; 5 rendered');
+  assert.equal(swapBoard.cacheHits, 3, 'all 3 locked items hit photoCache at 0ms CDN overhead');
+  assert.deepEqual(Object.keys(swapBoard.candidateTokens), ['R1', 'R2', 'R3', 'R4', 'R5']);
+  assert.equal(swapBoard.candidateTokens.R1.id, 'cand-1');
+  assert.equal(swapBoard.candidateTokens.R2.id, 'cand-2');
+  assert.equal(swapBoard.candidateTokens.R5.id, 'cand-5');
+  assert.equal(swapBoard.lockedSlotStatus.shoes.status, 'target_slot');
+  assert.equal(swapBoard.lockedSlotStatus.outerwear.status, 'rendered');
+  assert.ok(capturedOverlaySvg.includes('SWAP TARGET'));
+  for (const tok of ['R1', 'R2', 'R3', 'R4', 'R5']) {
+    assert.ok(capturedOverlaySvg.includes(`>${tok}</text>`), `Swap board SVG must include bold badge ${tok}`);
+  }
+  const meta = await sharp(swapBoard.jpegBuffer).metadata();
+  assert.equal(meta.format, 'jpeg');
+  assert.equal(meta.width, 1400);
+  assert.equal(meta.height, 900);
 });
