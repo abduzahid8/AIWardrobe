@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, photoHistoryRecompositionCandidates, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence, eligibleCatalogFourItemPhotoCandidate } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, photoHistoryRecompositionCandidates, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, prioritizeIndependentPhotoAuditions, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence, eligibleCatalogFourItemPhotoCandidate } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -1857,6 +1857,49 @@ test('AI photo review portfolio rescues three truly disjoint, independent outfit
   assert.ok(trio.filter(x=>!x.id.startsWith('clone-')).length>=2,
     'the slate must include two structural directions rather than repeated base items');
   assert.ok(trio.every(look=>options.some(x=>x.id===look.id)));
+});
+
+test('independent PHOTO audition ordering rescues a legitimate three-by-four shopping opportunity without inventing looks',()=>{
+  const mk=(id,top,layer,bottom,shoes)=>({
+    id,briefId:'independent-direction-'+id,fashion:{score:.91},
+    items:[
+      garment(id+'-top',top+' top','top',top),
+      garment(id+'-layer',layer+' layer','outerwear',layer),
+      garment(id+'-bottom',bottom+' trousers','bottom',bottom),
+      garment(id+'-shoes',shoes+' shoes','shoes',shoes),
+    ],
+  });
+  // A model can propose six visually near-identical 4-SKU iterations:
+  // one popular top and layer reappear on every card, so three independent
+  // approved photographs cannot make a catalog deck even if all six pass.
+  const clones=Array.from({length:6},(_,i)=>({
+    ...mk('clone-'+i,'shirt','blazer','trouser','loafer'),
+    items:[
+      garment('source-common-top','White shirt','top','shirt'),
+      garment('source-common-layer','Navy blazer','outerwear','blazer'),
+      garment('source-common-bottom','Grey trouser','bottom','trouser'),
+      garment('source-shoe-'+i,'Brown loafer '+i,'shoes','loafer'),
+    ],
+  }));
+  const creative=mk('creative','fine-knit','cardigan','chino','chelsea');
+  const tailored=mk('tailored','dress-shirt','coat','tailored-trouser','oxford');
+  const audition=[...clones,creative,tailored];
+  assert.equal(visualProductUniqueTripleCount(audition.slice(0,3)),0);
+  assert.ok(visualProductUniqueTripleCount(audition)>0,
+    'the permitted source actually contains a product-disjoint three-look path');
+  const ordered=prioritizeIndependentPhotoAuditions(audition,[]);
+  assert.equal(ordered.length,8,'same bounded paid photographic workload');
+  assert.deepEqual(new Set(ordered.map(x=>x.id)),new Set(audition.map(x=>x.id)),
+    'never replace a product, invent a ninth look or hide an existing look');
+  assert.ok(visualProductUniqueTripleCount(ordered.slice(0,3))>0,
+    'first THREE PHOTO auditions should be mutually publishable if approved');
+  assert.ok(ordered.slice(0,3).some(x=>x.id==='creative'));
+  assert.ok(ordered.slice(0,3).some(x=>x.id==='tailored'));
+  assert.ok(ordered.every(x=>x.items.length===4));
+  assert.equal(prioritizeIndependentPhotoAuditions(ordered),ordered,
+    'preserve the original designer order when three are already independent');
+  assert.equal(prioritizeIndependentPhotoAuditions(clones),clones,
+    'lack of an independent portfolio is not authority to fabricate a third');
 });
 
 test('photo critic gets a portfolio of independent SKU-unique rescue looks, not repeated model favorites',()=>{
