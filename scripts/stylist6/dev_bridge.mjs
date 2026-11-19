@@ -174,7 +174,18 @@ const hostOf = (value) => {
 // Lookbook reference bytes live next to the repo (owner-provided lookbook
 // photos). A reference metadata entry without a matching local photo is
 // NOT a usable reference photograph and fails admission honestly.
-const referencePhotosDir = path.join(root, 'image-teaste');
+const referencePhotosDir = [
+  process.env.STYLIST6_REFERENCE_PHOTOS_DIR,
+  path.join(root, 'image-teaste'),
+  '/Users/v.zahid/AIWardrobe/image-teaste',
+].find((candidate) => {
+  if (!candidate) return false;
+  try {
+    return fs.statSync(candidate).isDirectory();
+  } catch {
+    return false;
+  }
+}) || path.join(root, 'image-teaste');
 export function referenceFileFor(referenceId) {
   const entry = index.images.find((item) => item.id === referenceId);
   const filename = entry?.filename ? path.basename(String(entry.filename)) : '';

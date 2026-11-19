@@ -883,8 +883,8 @@ export function detectSlotMismatch(
     const explicitFootwear = SHOE_WORDS_RE.test(blob);
     const oxfordFootwear = isOxfordFootwearName(blob) && claimed === 'shoes';
     const hasTop = (TOP_WORDS_RE.test(blob) ||
-        (claimed === 'top' && /\b(?:crew[ -]?neck|v[ -]?neck|pullover)\b/.test(blob)
-            && /\b(?:sweater|sweaters|knitwear|jumper|jumpers)\b/.test(blob)
+        (claimed === 'top' && /\b(?:crew[ -]?neck|v[ -]?neck|pullover|fine[ -]?knit|merino|turtleneck|roll[ -]?neck|mock[ -]?neck)\b/.test(blob)
+            && /\b(?:sweater|sweaters|knitwear|jumper|jumpers|knit)\b/.test(blob)
             && !/\bcardigans?\b/.test(blob))) && !explicitFootwear;
     const hasOuter = OUTER_WORDS_RE.test(blob);
     // Strip "short-sleeved" first: `\bshorts?` / `\bshorts` otherwise
