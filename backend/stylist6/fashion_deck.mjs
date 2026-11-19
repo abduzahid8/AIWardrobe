@@ -2538,6 +2538,30 @@ export async function recommendFashionDeck({
                 .map(axis=>[axis,photo[axis]])),
           }];
         }).slice(0,4);
+        // CONTRASTIVE PHOTO LEARNING, not a product-category rule.
+        // This first rescue actually runs on real iPhone attempts, unlike
+        // the often-deadline-gated last portfolio revision. It previously
+        // saw failures but not WHAT WAS BEAUTIFUL in the accepted real
+        // photographs. Give the independent creative AI BOTH examples so
+        // it can compare proportions, materials and shoe-to-trouser harmony
+        // and form its own different source-SKU decision. The existing
+        // groundedPhotoRevisionFeedback gateway strips untrusted identity,
+        // URLs, extra fields and unsupported image claims before inference.
+        const approvedPhotoEvidence=approvedFirst.slice(0,2).flatMap(look=>{
+          const photo=photoById.get(look.id);
+          if(!photo||photo.reject===true)return [];
+          return [{
+            roles:Object.fromEntries(slots.map(slot=>[slot,
+              String(look.items?.find(it=>it.macroCategory===slot)?.subtype||'')
+                .slice(0,32)])),
+            observations:photo.slotObservations,
+            colors:photo.slotColors,
+            relationships:photo.relationships,
+            scores:Object.fromEntries(
+              ['visualCohesion','styleFit','occasionFit','formalityFit','confidence']
+                .map(axis=>[axis,photo[axis]])),
+          }];
+        });
         const feedback={
           reasons:decisions.filter(row=>row.reason!=='approved')
             .map(row=>row.reason).slice(0,8),
@@ -2545,6 +2569,7 @@ export async function recommendFashionDeck({
             Object.fromEntries(slots.map(slot=>[slot,
               String(look.items.find(it=>it.macroCategory===slot)?.subtype||'')
                 .slice(0,32)]))),
+          approvedPhotoEvidence,
           rejectedOutfits,
         };
         let retry={status:'unavailable',looks:[]};
