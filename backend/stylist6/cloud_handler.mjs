@@ -179,6 +179,13 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     // original-photo critic. No merchant or user identities ever logged.
     skuCompositionHistoryCreativeAuditions:
       safe(f.skuCompositionReceipt?.photoHistoryCreativeAuditions,8),
+    // The AI's first three source-verified PHOTO candidates have a genuinely
+    // product-unique, structurally independent triple BEFORE review. It is
+    // not a claim that any of their actual original photos passed.
+    skuCompositionPhotoAuditionCoreFeasible:
+      f.skuCompositionReceipt?.photoAuditionCoreFeasible===true,
+    skuCompositionPhotoAuditionCoreRecovered:
+      f.photoAuditionCoreRecovered===true,
     skuCompositionStudio:['nemotron','cross_lab_kimi',
       'nemotron_fallback','nemotron_plus_kimi_initial',
       'cross_lab_kimi_initial_fallback']
