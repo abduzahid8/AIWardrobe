@@ -66,12 +66,30 @@ export function stylist6CloudRecentExclusions(
 
 export type DevEngine = 'stylist5' | 'stylist6' | 'stylist6cloud';
 
+/**
+ * Default engine selection across build tiers:
+ * - Simulator dev builds with `EXPO_PUBLIC_STYLIST6_DEV_BRIDGE=true` default
+ *   to `'stylist6'` (local V3 Visual-First dev bridge on 127.0.0.1).
+ * - Opt-in TestFlight beta builds default to `'stylist6cloud'`.
+ * - Public App Store production builds always stay on `'stylist5'`.
+ */
+export function defaultStylist6DevEngine(): DevEngine {
+  if (STYLIST6_DEV_ENABLED) return 'stylist6';
+  return STYLIST6_CLOUD_ENABLED ? 'stylist6cloud' : 'stylist5';
+}
+
+/** Visual-first photography critique defaults ON whenever Stylist 6 dev or cloud beta is active. */
+export const STYLIST6_DEFAULT_VISUAL_ENABLED = STYLIST6_DEV_ENABLED || STYLIST6_CLOUD_ENABLED;
+
 const devPort = (): number => {
   const raw = Number(process.env.EXPO_PUBLIC_STYLIST6_DEV_PORT || 3127);
   return Number.isFinite(raw) && raw > 0 ? raw : 3127;
 };
 
-export const STYLIST6_DEV_URL = `http://127.0.0.1:${devPort()}/generate`;
+export const STYLIST6_DEV_BASE_URL = `http://127.0.0.1:${devPort()}`;
+export const STYLIST6_DEV_URL = `${STYLIST6_DEV_BASE_URL}/generate`;
+export const STYLIST6_DEV_SWAP_URL = `${STYLIST6_DEV_BASE_URL}/swap-slot`;
+export const STYLIST6_DEV_APPEARANCE_URL = `${STYLIST6_DEV_BASE_URL}/analyze-appearance`;
 
 export interface Stylist6BridgeRequest {
   style: string;
@@ -90,8 +108,50 @@ export interface Stylist6BridgeRequest {
   requiredIds?: string[];
   sourceMode?: 'wardrobe' | 'catalog' | 'mixed' | 'shop' | 'hybrid';
   language?: 'en' | 'ru' | 'uz';
+  generationRequestId?: string;
   /** Dev-only opt-in: run the hosted NVIDIA visual review on the backend. */
   enableVisual?: boolean;
+}
+
+export interface Stylist6EditorialFields {
+  stylistNote?: string;
+  whyItFlattersYou?: string;
+  colorStory?: string;
+  silhouetteFormula?: string;
+  stylingTips?: string[];
+}
+
+/**
+ * Extracts and sanitizes structured Stylist 6 editorial note fields from a
+ * bridge or cloud outfit object so UI cards render consistent luxury copy
+ * without mutating SKU data or fabricating missing fields.
+ */
+export function extractStylist6EditorialFields(
+  outfit: Record<string, unknown> | null | undefined,
+): Stylist6EditorialFields {
+  if (!outfit || typeof outfit !== 'object' || Array.isArray(outfit)) return {};
+  const clean = (val: unknown): string | undefined =>
+    typeof val === 'string' && val.trim().length > 0 ? val.trim() : undefined;
+  const stylistNote = clean(outfit.stylistNote) ?? clean(outfit.stylingNote);
+  const whyItFlattersYou = clean(outfit.whyItFlattersYou);
+  const colorStory = clean(outfit.colorStory);
+  const silhouetteFormula = clean(outfit.silhouetteFormula);
+  const rawTips = Array.isArray(outfit.stylingTips)
+    ? outfit.stylingTips
+    : typeof outfit.stylingTips === 'string' && outfit.stylingTips.trim().length > 0
+      ? [outfit.stylingTips]
+      : [];
+  const stylingTips = rawTips
+    .filter((tip): tip is string => typeof tip === 'string' && tip.trim().length > 0)
+    .map((tip) => tip.trim())
+    .slice(0, 6);
+  return {
+    ...(stylistNote ? { stylistNote } : {}),
+    ...(whyItFlattersYou ? { whyItFlattersYou } : {}),
+    ...(colorStory ? { colorStory } : {}),
+    ...(silhouetteFormula ? { silhouetteFormula } : {}),
+    ...(stylingTips.length > 0 ? { stylingTips } : {}),
+  };
 }
 
 const VALID_PRESENTATIONS = new Set<StylingPresentation>(['menswear', 'womenswear', 'unisex']);
@@ -487,12 +547,16 @@ export async function invokeStylist6Bridge(
   if (!STYLIST6_DEV_ENABLED) {
     throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_dev_disabled', 'stylist6_dev');
   }
+  const sanitizedBody = {
+    ...body,
+    request: applyStylist6Personalization(body.request),
+  };
   let response: Response;
   try {
     response = await fetch(STYLIST6_DEV_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(sanitizedBody),
       signal: options?.signal,
     });
   } catch (error) {
@@ -508,7 +572,13 @@ export async function invokeStylist6Bridge(
   if (!response.ok || data?.success !== true || !Array.isArray(data?.outfits)) {
     throw failureForBridge(data?.code);
   }
-  return data;
+  const normalizedOutfits = data.outfits.map((outfit: unknown) => {
+    if (!outfit || typeof outfit !== 'object' || Array.isArray(outfit)) return outfit;
+    const raw = outfit as Record<string, unknown>;
+    const editorial = extractStylist6EditorialFields(raw);
+    return Object.keys(editorial).length > 0 ? { ...raw, ...editorial } : raw;
+  });
+  return { ...data, outfits: normalizedOutfits };
 }
 
 /** True only for decks genuinely produced by the local Stylist 6 bridge. */
@@ -1009,6 +1079,12 @@ export interface Stylist6SlotSwapParams {
   reason?: string;
   context?: Partial<Stylist6CloudRequest>;
   excludedIds?: readonly string[];
+  /** Routing target: `'stylist6'` calls local dev bridge `/swap-slot`, `'stylist6cloud'` calls cloud staging. */
+  engine?: 'stylist6' | 'stylist6cloud';
+  /** Optional catalog rows for offline local dev bridge swaps. */
+  catalogRows?: Record<string, unknown>[];
+  /** Optional owned wardrobe items for local dev bridge wardrobe/mixed swaps. */
+  wardrobeItems?: Record<string, unknown>[];
   authToken?: string;
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -1025,6 +1101,8 @@ export interface Stylist6SlotSwapResult {
 export interface Stylist6AppearanceAnalysisParams {
   photoUrl: string;
   consentGranted: boolean;
+  /** Routing target: `'stylist6'` calls local dev bridge `/analyze-appearance`, `'stylist6cloud'` calls cloud staging. */
+  engine?: 'stylist6' | 'stylist6cloud';
   authToken?: string;
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -1167,17 +1245,63 @@ function verifySwappedOutfit(args: {
   return replacement;
 }
 
+async function invokeStylist6DevEndpoint(
+  url: string,
+  body: Record<string, unknown>,
+  options: { signal: AbortSignal; wasTimeout: () => boolean; stage: string },
+): Promise<Record<string, unknown>> {
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: options.signal,
+    });
+  } catch (error) {
+    if (options.wasTimeout()) {
+      throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', options.stage);
+    }
+    if (error instanceof Error && error.name === 'AbortError') throw error;
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_bridge_unreachable', options.stage);
+  }
+  if (options.wasTimeout()) {
+    throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', options.stage);
+  }
+  let data: Record<string, unknown>;
+  try {
+    data = (await response.json()) as Record<string, unknown>;
+  } catch {
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_bad_response', options.stage);
+  }
+  if (!response.ok || data?.success === false) {
+    throw failureForBridge(data?.code, options.stage);
+  }
+  return data;
+}
+
 /**
  * Requests a surgical 1-slot replacement for an existing Stylist 6 look
- * (`action: 'swap_slot'`). Locks the other 3 items, bounds transport timeout,
- * and enforces strict 4-SKU verification before returning any replacement.
+ * (`action: 'swap_slot'`). Supports BOTH the local dev bridge
+ * (`engine === 'stylist6'` -> `POST http://127.0.0.1:<port>/swap-slot`) and
+ * cloud staging (`engine === 'stylist6cloud'` -> `aiw-stylist6-node-staging`).
+ * Locks the other 3 items, bounds transport timeout, and enforces strict 4-SKU
+ * verification before returning any replacement.
  */
 export async function requestStylist6SlotSwap(
   params: Stylist6SlotSwapParams,
 ): Promise<Stylist6SlotSwapResult> {
-  if (!STYLIST6_CLOUD_ENABLED) {
+  const useLocalBridge = params.engine === 'stylist6'
+    || (params.engine === undefined && isStylist6DevVersion(params.outfit?.engineVersion));
+
+  if (useLocalBridge) {
+    if (!STYLIST6_DEV_ENABLED) {
+      throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_dev_disabled', 'stylist6_swap');
+    }
+  } else if (!STYLIST6_CLOUD_ENABLED) {
     throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_release_disabled', 'stylist6_swap');
   }
+
   if (!VALID_SWAP_SLOTS.has(params.targetSlot)) {
     throw new OutfitGenerationFailure('outfitMaker.invalidRequest', 'invalid_stylist6_request', 'stylist6_swap');
   }
@@ -1211,47 +1335,71 @@ export async function requestStylist6SlotSwap(
     ? applyStylist6Personalization(params.context)
     : undefined;
 
-  const { token, supabase } = await resolveStylist6AuthToken(params.authToken, 'stylist6_swap');
-  const target = STYLIST6_RENDER_CANARY_ENABLED
-    ? 'aiw-stylist6-node-render-staging'
-    : 'aiw-stylist6-node-staging';
-  const { signal, wasTimeout, cleanup } = withBoundedSignal(params.timeoutMs ?? 25_000, params.signal);
+  const payload: Record<string, unknown> = {
+    action: 'swap_slot',
+    outfit: params.outfit,
+    targetSlot: params.targetSlot,
+    ...(reason ? { reason } : {}),
+    ...(sanitizedContext ? { context: sanitizedContext } : {}),
+    excludedIds,
+    ...(useLocalBridge && Array.isArray(params.catalogRows) && params.catalogRows.length > 0
+      ? { catalogRows: params.catalogRows }
+      : {}),
+    ...(useLocalBridge && Array.isArray(params.wardrobeItems) && params.wardrobeItems.length > 0
+      ? { wardrobeItems: params.wardrobeItems }
+      : {}),
+  };
 
   let data: Record<string, unknown> | null = null;
-  let invokeError: unknown = null;
-  try {
-    const result = await supabase.functions.invoke(target, {
-      headers: { Authorization: `Bearer ${token}` },
-      body: {
-        action: 'swap_slot',
-        outfit: params.outfit,
-        targetSlot: params.targetSlot,
-        ...(reason ? { reason } : {}),
-        ...(sanitizedContext ? { context: sanitizedContext } : {}),
-        excludedIds,
-      },
-      signal,
-    });
-    data = result.data as Record<string, unknown> | null;
-    invokeError = result.error;
-  } catch (error) {
+  if (useLocalBridge) {
+    const { signal, wasTimeout, cleanup } = withBoundedSignal(params.timeoutMs ?? 25_000, params.signal);
+    try {
+      data = await invokeStylist6DevEndpoint(STYLIST6_DEV_SWAP_URL, payload, {
+        signal,
+        wasTimeout,
+        stage: 'stylist6_swap',
+      });
+    } finally {
+      cleanup();
+    }
+    if (!data || data.success !== true) {
+      throw failureForBridge(data?.code, 'stylist6_swap');
+    }
+  } else {
+    const { token, supabase } = await resolveStylist6AuthToken(params.authToken, 'stylist6_swap');
+    const target = STYLIST6_RENDER_CANARY_ENABLED
+      ? 'aiw-stylist6-node-render-staging'
+      : 'aiw-stylist6-node-staging';
+    const { signal, wasTimeout, cleanup } = withBoundedSignal(params.timeoutMs ?? 25_000, params.signal);
+
+    let invokeError: unknown = null;
+    try {
+      const result = await supabase.functions.invoke(target, {
+        headers: { Authorization: `Bearer ${token}` },
+        body: payload,
+        signal,
+      });
+      data = result.data as Record<string, unknown> | null;
+      invokeError = result.error;
+    } catch (error) {
+      if (wasTimeout()) {
+        throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'stylist6_swap');
+      }
+      if (error instanceof Error && error.name === 'AbortError') throw error;
+      throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'staging_compute_unavailable', 'stylist6_swap');
+    } finally {
+      cleanup();
+    }
+
     if (wasTimeout()) {
       throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'stylist6_swap');
     }
-    if (error instanceof Error && error.name === 'AbortError') throw error;
-    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'staging_compute_unavailable', 'stylist6_swap');
-  } finally {
-    cleanup();
-  }
-
-  if (wasTimeout()) {
-    throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'stylist6_swap');
-  }
-  if (invokeError) {
-    throw await cloudFailureFromInvokeError(invokeError);
-  }
-  if (!data || data.success !== true) {
-    throw failureForCloud(data?.code, 'stylist6_swap');
+    if (invokeError) {
+      throw await cloudFailureFromInvokeError(invokeError);
+    }
+    if (!data || data.success !== true) {
+      throw failureForCloud(data?.code, 'stylist6_swap');
+    }
   }
 
   const candidate = (data.outfit && typeof data.outfit === 'object' && !Array.isArray(data.outfit)
@@ -1280,11 +1428,16 @@ export async function requestStylist6SlotSwap(
     throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing', 'stylist6_swap_invalid_outfit', 'stylist6_swap');
   }
 
+  const editorial = extractStylist6EditorialFields(candidate);
+  const normalizedOutfit = Object.keys(editorial).length > 0
+    ? { ...candidate, ...editorial }
+    : candidate;
+
   const generationVersion = typeof data.generationVersion === 'string'
     ? data.generationVersion
     : undefined;
   return {
-    outfit: candidate,
+    outfit: normalizedOutfit,
     swappedSlot: params.targetSlot,
     previousItemId,
     replacementItem,
@@ -1294,6 +1447,9 @@ export async function requestStylist6SlotSwap(
 
 /**
  * Calls opt-in Stylist 6 appearance analysis (`action: 'analyze_appearance'`).
+ * Supports BOTH the local dev bridge (`engine === 'stylist6'` ->
+ * `POST http://127.0.0.1:<port>/analyze-appearance`) and cloud staging
+ * (`engine === 'stylist6cloud'` -> `aiw-stylist6-node-staging`).
  * Strictly enforces explicit consent before touching auth or the network,
  * validates HTTPS photo URLs, and sanitizes the response.
  */
@@ -1303,7 +1459,12 @@ export async function requestStylist6AppearanceAnalysis(
   if (params.consentGranted !== true) {
     return { status: 'consent_required', appearance: null };
   }
-  if (!STYLIST6_CLOUD_ENABLED) {
+  const useLocalBridge = params.engine === 'stylist6';
+  if (useLocalBridge) {
+    if (!STYLIST6_DEV_ENABLED) {
+      throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_dev_disabled', 'stylist6_appearance');
+    }
+  } else if (!STYLIST6_CLOUD_ENABLED) {
     throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_release_disabled', 'stylist6_appearance');
   }
   const photoUrl = typeof params.photoUrl === 'string' ? params.photoUrl.trim() : '';
@@ -1311,42 +1472,58 @@ export async function requestStylist6AppearanceAnalysis(
     throw new OutfitGenerationFailure('outfitMaker.invalidRequest', 'invalid_stylist6_request', 'stylist6_appearance');
   }
 
-  const { token, supabase } = await resolveStylist6AuthToken(params.authToken, 'stylist6_appearance');
-  const target = STYLIST6_RENDER_CANARY_ENABLED
-    ? 'aiw-stylist6-node-render-staging'
-    : 'aiw-stylist6-node-staging';
-  const { signal, wasTimeout, cleanup } = withBoundedSignal(params.timeoutMs ?? 20_000, params.signal);
+  const payload = {
+    action: 'analyze_appearance',
+    photoUrl,
+    consentGranted: true,
+  };
 
   let data: Record<string, unknown> | null = null;
-  let invokeError: unknown = null;
-  try {
-    const result = await supabase.functions.invoke(target, {
-      headers: { Authorization: `Bearer ${token}` },
-      body: {
-        action: 'analyze_appearance',
-        photoUrl,
-        consentGranted: true,
-      },
-      signal,
-    });
-    data = result.data as Record<string, unknown> | null;
-    invokeError = result.error;
-  } catch (error) {
+  if (useLocalBridge) {
+    const { signal, wasTimeout, cleanup } = withBoundedSignal(params.timeoutMs ?? 20_000, params.signal);
+    try {
+      data = await invokeStylist6DevEndpoint(STYLIST6_DEV_APPEARANCE_URL, payload, {
+        signal,
+        wasTimeout,
+        stage: 'stylist6_appearance',
+      });
+    } finally {
+      cleanup();
+    }
+  } else {
+    const { token, supabase } = await resolveStylist6AuthToken(params.authToken, 'stylist6_appearance');
+    const target = STYLIST6_RENDER_CANARY_ENABLED
+      ? 'aiw-stylist6-node-render-staging'
+      : 'aiw-stylist6-node-staging';
+    const { signal, wasTimeout, cleanup } = withBoundedSignal(params.timeoutMs ?? 20_000, params.signal);
+
+    let invokeError: unknown = null;
+    try {
+      const result = await supabase.functions.invoke(target, {
+        headers: { Authorization: `Bearer ${token}` },
+        body: payload,
+        signal,
+      });
+      data = result.data as Record<string, unknown> | null;
+      invokeError = result.error;
+    } catch (error) {
+      if (wasTimeout()) {
+        throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'stylist6_appearance');
+      }
+      if (error instanceof Error && error.name === 'AbortError') throw error;
+      throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'staging_compute_unavailable', 'stylist6_appearance');
+    } finally {
+      cleanup();
+    }
+
     if (wasTimeout()) {
       throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'stylist6_appearance');
     }
-    if (error instanceof Error && error.name === 'AbortError') throw error;
-    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'staging_compute_unavailable', 'stylist6_appearance');
-  } finally {
-    cleanup();
+    if (invokeError) {
+      throw await cloudFailureFromInvokeError(invokeError);
+    }
   }
 
-  if (wasTimeout()) {
-    throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'stylist6_appearance');
-  }
-  if (invokeError) {
-    throw await cloudFailureFromInvokeError(invokeError);
-  }
   if (!data) {
     return { status: 'unavailable', appearance: null };
   }
@@ -1354,7 +1531,9 @@ export async function requestStylist6AppearanceAnalysis(
     return { status: 'consent_required', appearance: null };
   }
   if (data.success === false) {
-    throw failureForCloud(data.code, 'stylist6_appearance');
+    throw useLocalBridge
+      ? failureForBridge(data.code, 'stylist6_appearance')
+      : failureForCloud(data.code, 'stylist6_appearance');
   }
   const rawAppearance = data.appearance && typeof data.appearance === 'object' && !Array.isArray(data.appearance)
     ? (data.appearance as StylingAppearanceProfile)

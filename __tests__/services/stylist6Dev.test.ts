@@ -1162,3 +1162,315 @@ describe('Stylist 6 surgical slot swap & opt-in appearance analysis helpers', ()
     expect(bridgeBody.request.dislikedPatterns).toEqual(['plaid']);
   });
 });
+
+describe('Stylist 6 V3 simulator bridge defaults, local swap/appearance routing & editorial parsing', () => {
+  const mockInvoke = jest.fn();
+  beforeEach(() => {
+    mockInvoke.mockReset();
+    jest.resetModules();
+    jest.doMock('../../lib/supabase', () => ({
+      supabase: {
+        auth: { getSession: async () => ({ data: { session: { access_token: 'session-token' } } }) },
+        functions: { invoke: mockInvoke },
+        from: jest.fn(),
+      },
+    }));
+  });
+
+  const makeShopItem = (id: string, macroCategory: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    macroCategory,
+    name: `${macroCategory} ${id}`,
+    brand: 'Canali',
+    imageUrl: `https://merchant.example/${id}.jpg`,
+    image: `https://merchant.example/${id}.jpg`,
+    isShopItem: true,
+    isWardrobe: false,
+    price: 180,
+    currency: 'USD',
+    shopUrl: `https://merchant.example/buy/${id}`,
+    ...extra,
+  });
+
+  const devLook = () => ({
+    id: 'outfit_1',
+    engineVersion: 'stylist-6-dev-local-20261119',
+    items: [
+      makeShopItem('sku-top-1', 'top'),
+      makeShopItem('sku-outer-1', 'outerwear'),
+      makeShopItem('sku-bottom-1', 'bottom'),
+      makeShopItem('sku-shoes-1', 'shoes'),
+    ],
+  });
+
+  test('defaultStylist6DevEngine selects local bridge in simulator dev, cloud in TestFlight, Stylist 5 in production', () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    let mod = loadDevModule();
+    expect(mod.defaultStylist6DevEngine()).toBe('stylist6');
+    expect(mod.STYLIST6_DEFAULT_VISUAL_ENABLED).toBe(true);
+    expect(mod.STYLIST6_DEV_SWAP_URL).toBe('http://127.0.0.1:3127/swap-slot');
+    expect(mod.STYLIST6_DEV_APPEARANCE_URL).toBe('http://127.0.0.1:3127/analyze-appearance');
+
+    (globalThis as any).__DEV__ = false;
+    delete process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE;
+    process.env.EXPO_PUBLIC_STYLIST6_BETA = 'true';
+    process.env.EXPO_PUBLIC_APP_STAGE = 'testflight';
+    mod = loadDevModule();
+    expect(mod.defaultStylist6DevEngine()).toBe('stylist6cloud');
+    expect(mod.STYLIST6_DEFAULT_VISUAL_ENABLED).toBe(true);
+
+    delete process.env.EXPO_PUBLIC_STYLIST6_BETA;
+    delete process.env.EXPO_PUBLIC_APP_STAGE;
+    mod = loadDevModule();
+    expect(mod.defaultStylist6DevEngine()).toBe('stylist5');
+    expect(mod.STYLIST6_DEFAULT_VISUAL_ENABLED).toBe(false);
+  });
+
+  test('invokeStylist6Bridge forwards full personalization + visual flag and parses structured editorial notes', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const mod = loadDevModule();
+    const validSha = 'c'.repeat(64);
+    const fetchSpy = jest.spyOn(globalThis, 'fetch' as any).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        generationVersion: 'stylist-6-dev-local-20261119',
+        visualStatus: 'NVIDIA_APPLIED',
+        outfits: [
+          {
+            ...devLook(),
+            stylingNote: '  Crisp ivory poplin grounds the structured navy blazer.  ',
+            whyItFlattersYou: '  Cool navy and charcoal sharpen your high-contrast palette.  ',
+            colorStory: '  Navy · Ivory · Charcoal · Espresso  ',
+            silhouetteFormula: '  Structured blazer over clean tapered trousers  ',
+            stylingTips: ['  Leave the top collar button undone for ease.  ', ''],
+          },
+        ],
+      }),
+    } as any);
+
+    const data = await mod.invokeStylist6Bridge({
+      request: {
+        style: 'old_money',
+        occasion: 'Work',
+        brief: 'Client board meeting',
+        weather: { temp: 14, condition: 'clear' },
+        budget: { amount: 1500, currency: 'USD' },
+        preferences: { favoriteColors: ['navy'], fitPreference: 'tailored' },
+        presentation: 'menswear',
+        bodyProfile: {
+          gender: 'male',
+          heightCm: 184,
+          weightKg: 80,
+          bodyType: 'athletic',
+          ...({ email: 'strip@example.com' } as any),
+        },
+        appearanceProfile: {
+          consentGranted: true,
+          skinUndertone: 'cool',
+          contrastLevel: 'high',
+          colorSeason: 'true_winter',
+          flatteringColors: ['#0A1931', 'charcoal'],
+          photoSha256: validSha,
+          ...({ rawPhotoBytes: 'MUST_NOT_SEND' } as any),
+        },
+        ownedWardrobeSummary: {
+          totalItems: 18,
+          dominantColors: ['navy', 'white'],
+          dominantCategories: ['top', 'bottom'],
+          topBrands: ['Canali'],
+          formalityMix: { smart: 0.7, casual: 0.3 },
+        },
+        dislikedPatterns: ['Leopard', 'leopard'],
+        enableVisual: true,
+      },
+      catalogRows: [{ id: 'sku-top-1' }],
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0][0]).toBe('http://127.0.0.1:3127/generate');
+    const sent = JSON.parse(String((fetchSpy.mock.calls[0][1] as { body?: string })?.body || '{}'));
+    expect(sent.request).toMatchObject({
+      presentation: 'menswear',
+      enableVisual: true,
+      weather: { temp: 14, condition: 'clear' },
+      budget: { amount: 1500, currency: 'USD' },
+      preferences: { favoriteColors: ['navy'], fitPreference: 'tailored' },
+      dislikedPatterns: ['leopard'],
+      bodyProfile: { gender: 'male', heightCm: 184, weightKg: 80, bodyType: 'athletic' },
+      appearanceProfile: {
+        consentGranted: true,
+        skinUndertone: 'cool',
+        contrastLevel: 'high',
+        colorSeason: 'true_winter',
+        flatteringColors: ['navy', 'charcoal'],
+        photoSha256: validSha,
+      },
+      ownedWardrobeSummary: {
+        totalItems: 18,
+        dominantColors: ['navy', 'white'],
+        dominantCategories: ['top', 'bottom'],
+        topBrands: ['Canali'],
+        formalityMix: { smart: 0.7, casual: 0.3 },
+      },
+    });
+    expect(sent.request.bodyProfile.email).toBeUndefined();
+    expect(sent.request.appearanceProfile.rawPhotoBytes).toBeUndefined();
+
+    expect(data.outfits[0]).toMatchObject({
+      stylistNote: 'Crisp ivory poplin grounds the structured navy blazer.',
+      whyItFlattersYou: 'Cool navy and charcoal sharpen your high-contrast palette.',
+      colorStory: 'Navy · Ivory · Charcoal · Espresso',
+      silhouetteFormula: 'Structured blazer over clean tapered trousers',
+      stylingTips: ['Leave the top collar button undone for ease.'],
+    });
+  });
+
+  test('requestStylist6SlotSwap routes to local dev bridge /swap-slot when engine=stylist6 or stylist-6-dev version', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const mod = loadDevModule();
+    const swappedOutfit = {
+      ...devLook(),
+      stylistNote: 'Swapped to espresso suede loafers for softer tonal warmth.',
+      whyItFlattersYou: 'Deep brown suede balances your warm tailoring palette.',
+      colorStory: 'Navy · Cream · Espresso',
+      silhouetteFormula: 'Tailored jacket + crisp trousers + suede loafers',
+      stylingTips: ['Cuff trousers cleanly to show the loafer vamp.'],
+      items: [
+        makeShopItem('sku-top-1', 'top'),
+        makeShopItem('sku-outer-1', 'outerwear'),
+        makeShopItem('sku-bottom-1', 'bottom'),
+        makeShopItem('sku-shoes-2', 'shoes', { price: 249, currency: 'GBP' }),
+      ],
+    };
+    const fetchSpy = jest.spyOn(globalThis, 'fetch' as any).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        sourceMode: 'catalog',
+        generationVersion: 'stylist-6-dev-local-20261119',
+        outfit: swappedOutfit,
+      }),
+    } as any);
+
+    const result = await mod.requestStylist6SlotSwap({
+      outfit: devLook(),
+      targetSlot: 'shoes',
+      engine: 'stylist6',
+      context: { style: 'classic', occasion: 'Work', enableVisual: true, sourceMode: 'catalog' },
+      excludedIds: ['sku-shoes-0'],
+    });
+
+    expect(mockInvoke).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0][0]).toBe('http://127.0.0.1:3127/swap-slot');
+    const body = JSON.parse(String((fetchSpy.mock.calls[0][1] as { body?: string })?.body || '{}'));
+    expect(body).toMatchObject({
+      action: 'swap_slot',
+      targetSlot: 'shoes',
+      excludedIds: ['sku-shoes-0', 'sku-shoes-1'],
+      context: { style: 'classic', occasion: 'Work', enableVisual: true, sourceMode: 'catalog' },
+    });
+    expect(result.replacementItem.id).toBe('sku-shoes-2');
+    expect(result.previousItemId).toBe('sku-shoes-1');
+    expect(result.outfit.stylistNote).toBe('Swapped to espresso suede loafers for softer tonal warmth.');
+    expect(result.outfit.silhouetteFormula).toBe('Tailored jacket + crisp trousers + suede loafers');
+
+    // Also auto-routes to local bridge when engine is omitted on a stylist-6-dev outfit
+    fetchSpy.mockClear();
+    await mod.requestStylist6SlotSwap({
+      outfit: devLook(),
+      targetSlot: 'shoes',
+    });
+    expect(mockInvoke).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledWith('http://127.0.0.1:3127/swap-slot', expect.anything());
+  });
+
+  test('requestStylist6SlotSwap & requestStylist6AppearanceAnalysis local routes fail closed in release builds and support local appearance analysis', async () => {
+    (globalThis as any).__DEV__ = false;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const releaseMod = loadDevModule();
+    const releaseFetch = jest.spyOn(globalThis, 'fetch' as any);
+    await expect(releaseMod.requestStylist6SlotSwap({
+      outfit: devLook(),
+      targetSlot: 'shoes',
+      engine: 'stylist6',
+    })).rejects.toMatchObject({ code: 'stylist6_dev_disabled', stage: 'stylist6_swap' });
+    await expect(releaseMod.requestStylist6AppearanceAnalysis({
+      photoUrl: 'https://cdn.example/selfie.jpg',
+      consentGranted: true,
+      engine: 'stylist6',
+    })).rejects.toMatchObject({ code: 'stylist6_dev_disabled', stage: 'stylist6_appearance' });
+    expect(releaseFetch).not.toHaveBeenCalled();
+
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const devMod = loadDevModule();
+    const sha = 'd'.repeat(64);
+    releaseFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        status: 'analyzed',
+        appearance: {
+          consentGranted: true,
+          skinUndertone: 'Warm',
+          contrastLevel: 'Medium',
+          colorSeason: 'Soft Autumn',
+          flatteringColors: ['#0A1931', 'olive'],
+          metalTone: 'gold',
+          photoSha256: sha,
+          leakedField: 'DROP_ME',
+        },
+      }),
+    } as any);
+
+    const analyzed = await devMod.requestStylist6AppearanceAnalysis({
+      photoUrl: 'https://cdn.example/selfie.jpg',
+      consentGranted: true,
+      engine: 'stylist6',
+    });
+    expect(mockInvoke).not.toHaveBeenCalled();
+    expect(releaseFetch).toHaveBeenCalledWith('http://127.0.0.1:3127/analyze-appearance', expect.anything());
+    expect(analyzed).toEqual({
+      status: 'analyzed',
+      appearance: {
+        consentGranted: true,
+        skinUndertone: 'warm',
+        contrastLevel: 'medium',
+        colorSeason: 'soft autumn',
+        flatteringColors: ['navy', 'olive'],
+        metalTone: 'gold',
+        photoSha256: sha,
+      },
+    });
+  });
+
+  test('extractStylist6EditorialFields cleanly trims fields, maps stylingNote alias, and drops empty values', () => {
+    const mod = loadDevModule();
+    expect(mod.extractStylist6EditorialFields({
+      stylingNote: '  Balanced smart-casual tailoring.  ',
+      whyItFlattersYou: '  Structured shoulders frame your build.  ',
+      colorStory: '  Stone · Navy · Chestnut  ',
+      silhouetteFormula: '  Unstructured blazer + pleated trousers  ',
+      stylingTips: '  Match leather belt to loafers.  ',
+    })).toEqual({
+      stylistNote: 'Balanced smart-casual tailoring.',
+      whyItFlattersYou: 'Structured shoulders frame your build.',
+      colorStory: 'Stone · Navy · Chestnut',
+      silhouetteFormula: 'Unstructured blazer + pleated trousers',
+      stylingTips: ['Match leather belt to loafers.'],
+    });
+    expect(mod.extractStylist6EditorialFields({
+      stylistNote: '   ',
+      whyItFlattersYou: '',
+      stylingTips: ['', '   '],
+    })).toEqual({});
+  });
+});
