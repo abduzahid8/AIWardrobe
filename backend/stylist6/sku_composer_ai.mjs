@@ -1461,7 +1461,9 @@ export async function sourceVerifyComposedOutfits({
       new Set(items.map(slotOf)).size!==items.length||
       items.some(x=>!x.isShopItem||
         (shared.has(productKey(x))&&
-          !(allowVariantProductReuse&&looks.length===6&&i>=3))))continue;
+          !(allowVariantProductReuse&&
+            Number.isInteger(items[ORIGINAL_CREATIVE_INDEX])&&
+            items[ORIGINAL_CREATIVE_INDEX]>=3))))continue;
     const identity=items.map(x=>productKey(x)).sort().join('|');
     if(seenOutfits.has(identity))continue;
     if(requiredIds.some(id=>!items.some(x=>String(x.id)===String(id))))continue;
@@ -1519,7 +1521,9 @@ export async function sourceVerifyComposedOutfits({
     const id='s6_ai_'+createHash('sha256').update(itemIds.join('|')).digest('hex').slice(0,16);
     produced.push({id,briefId:concept,brief,items,fashion,seedScore:fashion.score});
     seenOutfits.add(identity);
-    if(!allowVariantProductReuse||looks.length!==6||i<3)
+    if(!allowVariantProductReuse||
+        !Number.isInteger(items[ORIGINAL_CREATIVE_INDEX])||
+        items[ORIGINAL_CREATIVE_INDEX]<3)
       for(const x of items)shared.add(productKey(x));
   }
   return produced;
