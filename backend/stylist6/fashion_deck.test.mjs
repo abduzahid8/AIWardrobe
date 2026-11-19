@@ -2232,6 +2232,15 @@ test('image-model rejection launches bounded SECOND AI SKU composition and real 
       assert.equal(critiqueFeedback.rejectedOutfits[0].observations.shoes,
         'Photographed pointed shoe clashes with chunky knitted top');
       assert.equal(critiqueFeedback.rejectedOutfits[0].relationships[0].kind,'outfit');
+      assert.equal(critiqueFeedback.approvedPhotoEvidence.length,1,
+        'FIRST real-time photo revision must learn from the approved outfit too');
+      assert.match(critiqueFeedback.approvedPhotoEvidence[0].observations.top,
+        /Elegant light cotton shirt/);
+      assert.match(critiqueFeedback.approvedPhotoEvidence[0].relationships[0].observation,
+        /lightweight shirt complements streamlined leather/);
+      assert.doesNotMatch(JSON.stringify(critiqueFeedback.approvedPhotoEvidence),
+        /PRIVATE_USER|imageUrl|shopUrl|sourceHash|customerId/,
+        'only safe four-role image observations reach the creative AI');
       assert.ok(pool.length>=9,'new fashion alternatives remain from REAL source inventory');
       // Retry must design authentic FOUR-role source merchandise outfits.
       // A layer-less mock used to pass quality gates but fail publication.
@@ -2248,11 +2257,18 @@ test('image-model rejection launches bounded SECOND AI SKU composition and real 
       critiques++;
       if(critiques===1)return batch.map((look,i)=>
         admittedVisualVerdict(look,{reject:i>=1,
-          slotObservations:{top:'Chunky loose knit on actual photo',
-            bottom:'Tailored slim wool trousers from actual photo',
-            shoes:'Photographed pointed shoe clashes with chunky knitted top'},
-          relationships:[{kind:'outfit',slots:['top','shoes'],
-            observation:'Chunky knitted texture overwhelms pointed shoe silhouette'}],
+          slotObservations:i===0
+            ?{top:'Elegant light cotton shirt with refined subtle texture',
+              bottom:'Well draped trousers creating a balanced line',
+              shoes:'Streamlined leather loafer complementing the shirt'}
+            :{top:'Chunky loose knit on actual photo',
+              bottom:'Tailored slim wool trousers from actual photo',
+              shoes:'Photographed pointed shoe clashes with chunky knitted top'},
+          relationships:i===0
+            ?[{kind:'outfit',slots:['top','shoes'],
+                observation:'The lightweight shirt complements streamlined leather loafers'}]
+            :[{kind:'outfit',slots:['top','shoes'],
+                observation:'Chunky knitted texture overwhelms pointed shoe silhouette'}],
         }));
       return batch.map((look,i)=>admittedVisualVerdict(look,{
         slotColors:{top:['white','navy','cream'][i]||'white',
