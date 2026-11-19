@@ -2590,6 +2590,12 @@ export async function recommendFashionDeck({
             roles:Object.fromEntries(slots.map(slot=>[slot,
               String(look.items.find(it=>it.macroCategory===slot)?.subtype||'')
                 .slice(0,32)])),
+            // Trusted request-local source identities are converted to
+            // allowed opaque P-tokens by the composer. The raw IDs are
+            // NEVER included in an external model payload or logged.
+            sourceItemIds:Object.fromEntries(slots.map(slot=>[slot,
+              String(look.items.find(it=>it.macroCategory===slot)?.id||'')
+                .slice(0,220)])),
             observations:photo.slotObservations,
             colors:photo.slotColors,
             relationships:photo.relationships,
