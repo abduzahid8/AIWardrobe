@@ -1661,3 +1661,102 @@ test('120B source-SKU artist actually sees original 120B creative director propo
   assert.equal(deck.status,'composed');
   assert.equal(deck.looks.length,3);
 });
+
+test('two INDEPENDENT photo-informed fashion studios concurrently decide fresh authentic four-item looks',async()=>{
+  const pool=sourceBoundCompositionPool(looks),models=[];
+  const answerAt=offset=>({slotPicks:Object.fromEntries(slots.map(slot=>[
+    slot,pool.filter(x=>x.slot===slot).slice(offset,offset+3).map(x=>x.token),
+  ]))});
+  const revision={reasons:['style_mismatch'],
+    approvedArchitectures:[{top:'dress-shirt',outerwear:'blazer',
+      bottom:'tailored-trouser',shoes:'oxford'}],
+    rejectedOutfits:[{reason:'style_mismatch',
+      observations:{outerwear:'Source photos showed mismatch in textile rhythm'},
+      relationships:[{kind:'outfit',slots:['top','outerwear'],
+        observation:'Original source photo shows disproportionate layering'}]}],
+  };
+  let overlapObserved=false;
+  const outcome=await composeCatalogSkuLooks({
+    pool,layerRequired:true,crossLabRevision:true,fastPhotoRevision:true,
+    parallelPhotoRevision:true,timeoutMs:7600,
+    context:{style:'classic',occasion:'Date night'},critiqueFeedback:revision,
+    apiKey:'nvapi-test-cross-lab-parallel-photo-creator',
+    fetchImpl:async(_url,opts)=>{
+      const payload=JSON.parse(opts.body),model=payload.model;
+      models.push(model);
+      if(model===FAST_PHOTO_REVISION_MODEL){
+        assert.equal(payload.response_format.type,'json_schema');
+        assert.match(payload.messages[0].content,/Source photos showed mismatch/);
+        await new Promise(resolve=>setTimeout(resolve,12));
+        overlapObserved=models.includes(CROSS_LAB_REVISION_MODEL);
+        return result(answerAt(0));
+      }
+      assert.equal(model,CROSS_LAB_REVISION_MODEL);
+      assert.equal(payload.response_format.type,'json_object');
+      assert.equal(payload.top_p,undefined);
+      assert.match(payload.messages[0].content,/Original source photo shows disproportionate layering/);
+      assert.doesNotMatch(opts.body,/PRIVATE_SKU_|imageUrl|shopUrl|images\.zara|www\.zara/);
+      return result(answerAt(3));
+    },
+  });
+  assert.equal(overlapObserved,true,'both creative studios must start concurrently, not as a late fallback');
+  assert.deepEqual(new Set(models),new Set([FAST_PHOTO_REVISION_MODEL,CROSS_LAB_REVISION_MODEL]));
+  assert.equal(outcome.status,'composed');
+  assert.equal(outcome.providerCalls,2);
+  assert.equal(outcome.providerFamily,'parallel_kimi_nemotron_photo_revision');
+  assert.equal(outcome.looks.length,3,'same three-photo correction quota, not six paid reviews');
+  assert.equal(new Set(outcome.looks.flat().map(x=>x.id)).size,12);
+  assert.ok(outcome.looks.flat().every(x=>x.isShopItem===true));
+  assert.equal(outcome.looks[0][0].id,items[3][0].id,
+    'an independent artist can actually make the first revised garment decision');
+  assert.equal(outcome.looks[1][0].id,items[0][0].id,
+    'the original photo-critic-informed artist also contributes one look');
+  const rechecked=await sourceVerifyComposedOutfits({
+    looks:outcome.looks,request:{sourceMode:'catalog'},sourceMode:'catalog',
+    hardGate:async()=>({ok:true}),scorer:{rankLook:()=>({score:.89})},
+  });
+  assert.equal(rechecked.length,3,'the existing trusted four-SKU selector still owns legal admission');
+});
+
+test('parallel photo correction can ABSTAIN from Kimi while preserving complete real-source 30B outfits',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  let calls=0;
+  const recovery=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Work'},layerRequired:true,
+    crossLabRevision:true,fastPhotoRevision:true,parallelPhotoRevision:true,
+    critiqueFeedback:{reasons:['occasion_mismatch']},
+    apiKey:'nvapi-test-true-parallel-photo-fallback',timeoutMs:7500,
+    fetchImpl:async(_url,opts)=>{
+      calls++;
+      const model=JSON.parse(opts.body).model;
+      return result(model===CROSS_LAB_REVISION_MODEL
+        ?{slotPicks:{top:['P987','P988','P989'],
+          outerwear:['P888','P889','P890'],
+          bottom:['P777','P778','P779'],
+          shoes:['P666','P667','P668']}}
+        :slotAnswer(pool));
+    },
+  });
+  assert.equal(calls,2);
+  assert.equal(recovery.status,'composed');
+  assert.equal(recovery.providerFamily,'nemotron_fast_photo_revision');
+  assert.equal(recovery.looks.length,3);
+  assert.equal(new Set(recovery.looks.flat().map(it=>it.id)).size,12);
+});
+
+test('neither creative model may pass an invented source token or self-approve a third PHOTO outfit',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const failed=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Date night'},layerRequired:true,
+    crossLabRevision:true,fastPhotoRevision:true,parallelPhotoRevision:true,
+    critiqueFeedback:{reasons:['below_quality_floor']},
+    apiKey:'nvapi-test-true-dual-source-invalid',timeoutMs:7200,
+    fetchImpl:async()=>result({slotPicks:{
+      top:['P777','P778','P779'],outerwear:['P333','P334','P335'],
+      bottom:['P444','P445','P446'],shoes:['P555','P556','P557'],
+    }}),
+  });
+  assert.equal(failed.status,'invalid_composition');
+  assert.equal(failed.providerCalls,2);
+  assert.deepEqual(failed.looks,[]);
+});

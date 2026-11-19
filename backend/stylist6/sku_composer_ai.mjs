@@ -694,7 +694,7 @@ export async function composeCatalogSkuLooks({
   apiKey,fetchImpl=fetch,signal,timeoutMs=2600,parallel=false,
   layerRequired=false,allowLayer=true,resolvePhoto,authorizePhoto,
   crossLabRevision=false,initialStudioDuel=false,
-  fastPhotoRevision=false,
+  fastPhotoRevision=false,parallelPhotoRevision=false,
 }={}){
   const visible=Array.isArray(pool)?pool.slice(0,48).map(x=>x.public):[];
   const bySlot=new Map(SLOTS.map(slot=>[slot,visible.filter(v=>v.slot===slot)]));
@@ -1051,6 +1051,92 @@ export async function composeCatalogSkuLooks({
       :[CROSS_LAB_REVISION_MODEL,MODEL]):
       initialIndependentBackup?[MODEL,CROSS_LAB_REVISION_MODEL]:[MODEL];
     let failure='provider_unavailable';
+    // ORIGINAL-PHOTO REVISION: the quick 30B and an independent Kimi
+    // fashion studio now audition the same photographed failures IN
+    // PARALLEL, while the user still has time for the unchanged original-
+    // image independent critic. Previously a valid 30B result (often 0/3
+    // photo-approved in LIVE Date and Work) stopped processing, and the
+    // independently trained studio never had a chance to make a different
+    // whole-outfit decision. This is model diversity, NOT a new rule about
+    // garments or a lower fashion/photo acceptance threshold.
+    // Both studios see ONLY sanitized original-photo evidence and opaque
+    // source tokens and pass the SAME post-response SKU validator.
+    if(quickRevision&&parallelPhotoRevision){
+      const studioInputs=[
+        {model:FAST_PHOTO_REVISION_MODEL,lab:'nemotron'},
+        {model:CROSS_LAB_REVISION_MODEL,lab:'kimi'},
+      ];
+      const run=async({model,lab})=>{
+        const isKimi=lab==='kimi';
+        try{
+          const res=await fetchImpl(ENDPOINT,{
+            method:'POST',
+            signal:combined,
+            headers:{Authorization:'Bearer '+apiKey,
+              'Content-Type':'application/json'},
+            body:JSON.stringify({
+              model,messages:[{role:'user',content:preface}],
+              temperature:isKimi?.18:.35,
+              ...(!isKimi?{top_p:.93}:{}),
+              max_tokens:isKimi?700:550,stream:false,
+              response_format:isKimi?{type:'json_object'}:
+                {type:'json_schema',json_schema:{
+                  name:'aiw_personal_sku_composition',strict:true,schema}},
+              chat_template_kwargs:{enable_thinking:false},
+            }),
+          });
+          if(!res?.ok)return {lab,looks:[],status:'provider_unavailable'};
+          const length=Number(res.headers?.get?.('content-length'));
+          if(Number.isFinite(length)&&length>16000)
+            return {lab,looks:[],status:'invalid_composition'};
+          const body=await res.text();
+          if(body.length>16000)
+            return {lab,looks:[],status:'invalid_composition'};
+          const choice=JSON.parse(body)?.choices?.[0];
+          if(choice?.finish_reason!=='stop'||
+              typeof choice?.message?.content!=='string')
+            return {lab,looks:[],status:'incomplete'};
+          const looks=validateSkuCompositions(
+            JSON.parse(choice.message.content),pool,{
+              layerRequired,allowLayer,count:target,allowPartial:true,
+              minimumValid:1,
+            });
+          return {lab,looks,status:looks.length?'composed':'invalid_composition'};
+        }catch{return {lab,looks:[],status:combined.aborted?'timeout':'provider_unavailable'};}
+      };
+      providerCalls+=studioInputs.length;
+      // Promise.all starts both providers at the SAME time. An unavailable
+      // studio cannot cancel the other's valid proposals or authorize any
+      // rejected/non-source merchandise.
+      const outcomes=await Promise.all(studioInputs.map(run));
+      const byLab=new Map(outcomes.map(x=>[x.lab,x.looks]));
+      const merged=[],seen=new Set(),represented=new Set();
+      // Round-robin real four-piece decisions from INDEPENDENT labs. One
+      // weak or duplicate proposal doesn't consume a photo review slot.
+      // Creative freedom stays with both AI artists, downstream independent
+      // source/occasion/budget/photo gates are absolutely unchanged.
+      for(let rank=0;rank<target;rank++)for(const lab of ['kimi','nemotron']){
+        if(merged.length>=target)break;
+        const look=byLab.get(lab)?.[rank];
+        if(!look||!look.every(item=>item?.isShopItem===true))continue;
+        const keys=look.map(productKey);
+        if(new Set(keys).size!==look.length||
+            keys.some(key=>!key||seen.has(key)))continue;
+        merged.push(look);
+        represented.add(lab);
+        keys.forEach(key=>seen.add(key));
+        if(merged.length>=target)break;
+      }
+      if(merged.length)return {
+        status:'composed',looks:merged,providerCalls,visualMenuStatus,
+        providerFamily:represented.size===2
+          ?'parallel_kimi_nemotron_photo_revision'
+          :represented.has('kimi')?'cross_lab_kimi'
+            :'nemotron_fast_photo_revision',
+      };
+      return {status:combined.aborted?'timeout':'invalid_composition',
+        looks:[],providerCalls,visualMenuStatus};
+    }
     for(const studio of studios){
       if(combined.aborted)break;
       providerCalls++;

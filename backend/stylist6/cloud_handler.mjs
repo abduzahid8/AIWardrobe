@@ -224,7 +224,9 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       .includes(f.photoRevisionStatus)?f.photoRevisionStatus:'not_run',
     photoRevisionAttempted:safe(f.photoRevisionAttempted,3),
     photoRevisionApproved:safe(f.photoRevisionApproved,3),
-    photoRevisionArtist:['nemotron','nemotron_fallback','cross_lab_kimi','nemotron_fast_photo_revision']
+    photoRevisionStudioCalls:safe(f.photoRevisionStudioCalls,3),
+    photoRevisionArtist:['nemotron','nemotron_fallback','cross_lab_kimi',
+      'nemotron_fast_photo_revision','parallel_kimi_nemotron_photo_revision']
       .includes(f.photoRevisionArtist)?f.photoRevisionArtist:'not_run',
     photoEditorialStatus:['applied','deadline','timeout','provider_unavailable',
       'invalid_combination','invalid_selection','not_enough_approved']
@@ -263,7 +265,10 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       safe(f.photoEditorial?.feedbackRevisionAttempted,3),
     photoEditorialCreativeRevisionApproved:
       safe(f.photoEditorial?.feedbackRevisionApproved,3),
-    photoEditorialCreativeArtist:['nemotron','nemotron_fallback','cross_lab_kimi','nemotron_fast_photo_revision']
+    photoEditorialCreativeStudioCalls:
+      safe(f.photoEditorial?.feedbackRevisionStudioCalls,3),
+    photoEditorialCreativeArtist:['nemotron','nemotron_fallback','cross_lab_kimi',
+      'nemotron_fast_photo_revision','parallel_kimi_nemotron_photo_revision']
       .includes(f.photoEditorial?.feedbackRevisionArtist)
       ?f.photoEditorial.feedbackRevisionArtist:'not_run',
     formalPhotoProbe:f.formalPhotoProbe===true,
@@ -1859,6 +1864,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             // response to genuine photo rejections; no S5 or preview change.
             crossLabRevision:true,
             fastPhotoRevision:budgetMs>=70000&&
+              env.STYLIST6_FAST_PHOTO_REVISION_ENABLED==='true',
+            // Genuine independent source-SKU creative reasoning after the
+            // original PHOTO critique. Run two studios concurrently only
+            // on isolated 72s staging; S5 and regular cloud are unchanged.
+            parallelPhotoRevision:budgetMs>=70000&&
               env.STYLIST6_FAST_PHOTO_REVISION_ENABLED==='true',
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
