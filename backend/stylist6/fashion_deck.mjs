@@ -2021,6 +2021,11 @@ export async function recommendFashionDeck({
           looks:initial.looks,request:{...request,requiredIds},requiredIds,
           hardGate,priceToBudgetCurrency,scorer:fashionScorer,
           sourceMode:request.sourceMode,creativePlans:aiPlans,
+          // The 6-look AI slate is a PHOTO audition, not six final cards.
+          // First three directions remain source-disjoint. Optional later
+          // alternatives may remix admitted clothes; the FINAL photo deck
+          // still enforces strict no-product-reuse on displayed looks.
+          allowVariantProductReuse:true,
         });
         // Source/budget/physical admission, original item identities and
         // transmission permission are all mandatory. This is NOT photo
@@ -2192,6 +2197,7 @@ export async function recommendFashionDeck({
               request:{...request,requiredIds},requiredIds,
               hardGate,priceToBudgetCurrency,scorer:fashionScorer,
               sourceMode:request.sourceMode,creativePlans:aiPlans,
+              allowVariantProductReuse:true,
             });
             for(const look of admitted){
               if(explicitColorPreferences&&
