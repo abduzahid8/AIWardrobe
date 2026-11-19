@@ -1598,7 +1598,11 @@ test('real PHOTO jury choosing TWO without optional creativeGap still equips the
   assert.equal(evidence.approvedPhotoEvidence[0].wholeOutfitRelationships.length,1);
   assert.equal(evidence.approvedPhotoEvidence[0].photoQualityAxes.occasionFit,.9);
   assert.equal(evidence.approvedPhotoEvidence[0].photoQualityAxes.bankBalance,undefined);
-  assert.match(evidence.goal,/NEW third fashion direction/);
+  assert.match(evidence.goal,/2 independently photo-approved whole-look/);
+  assert.match(evidence.goal,/photographed failures/);
+  assert.match(evidence.goal,/own complementary excellent direction/i);
+  assert.doesNotMatch(evidence.goal,/cardigan|blazer|no sweaters|never choose/i,
+    'the model must learn whole-look aesthetics, not obey garment subtype bans');
   assert.equal(evidence.visualEditorMissingFashionDirection,undefined,
     'no creative text is invented or falsely attributed to VLM');
   assert.doesNotMatch(JSON.stringify(evidence),/PRIVATE|UUID|ACCOUNT|bankBalance/);
@@ -1615,7 +1619,9 @@ test('real PHOTO jury choosing TWO without optional creativeGap still equips the
     context:{style:'classic',occasion:'Work'},
     fetchImpl:async(_,opts)=>{
       const prompt=JSON.parse(opts.body).messages[0].content;
-      assert.match(prompt,/NEW third fashion direction/);
+      assert.match(prompt,/independentPhotoCriticRevision/);
+      assert.match(prompt,/whole-look example\(s\)/);
+      assert.match(prompt,/complementary excellent direction/);
       assert.match(prompt,/Fine cream cotton with clean vertical texture/);
       assert.doesNotMatch(prompt,/PRIVATE_CUSTOMER_UUID|ACCOUNT_TOKEN/);
       return result(slotAnswer(pool));
