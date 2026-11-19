@@ -78,3 +78,147 @@ test('hostile and oversized preferences are bounded without guessing body shape 
   assert.equal(evaluatePersonalItem(item(),descriptor(),taste).blocked,'excluded_brand');
   assert.equal(evaluatePersonalLook([],taste).adjustment,0);
 });
+
+test('color canonicalization fixes #0A1931 -> navy and gray -> grey across preferences and items', () => {
+  const taste = personalTaste({
+    favoriteColors: ['#0A1931', 'gray'],
+  });
+  assert.equal(taste.favoriteColors.has('navy'), true);
+  assert.equal(taste.favoriteColors.has('grey'), true);
+
+  const navyHit = evaluatePersonalItem(
+    item({ id: 'sku-midnight', color: 'navy' }),
+    descriptor({ color: 'navy', pattern: 'solid', volume: 'regular' }),
+    taste,
+  );
+  assert.ok(navyHit.score > 0);
+  assert.ok(navyHit.matches.some((m) => m.type === 'favorite_color' && m.value === 'navy'));
+
+  const greyHit = evaluatePersonalItem(
+    item({ id: 'sku-gray-trouser', color: 'gray' }),
+    descriptor({ color: 'gray', pattern: 'solid', volume: 'regular' }),
+    taste,
+  );
+  assert.ok(greyHit.score > 0);
+  assert.ok(greyHit.matches.some((m) => m.type === 'favorite_color' && m.value === 'grey'));
+});
+
+test('dislikedPatterns and avoidColors exert decisive negative pressure', () => {
+  const taste = personalTaste({
+    favoriteColors: ['#0A1931'],
+    avoidColors: ['red', 'orange'],
+    dislikedPatterns: ['graphic print', 'plaid'],
+  });
+  assert.equal(taste.richDnaActive, true);
+
+  const printedRed = evaluatePersonalItem(
+    item({ id: 'sku-bad', color: 'red', brand: 'Other' }),
+    descriptor({ slot: 'top', color: 'red', pattern: 'print', volume: 'regular' }),
+    taste,
+  );
+  assert.ok(printedRed.score <= -0.20, `expected strong penalty for avoided color + disliked pattern, got ${printedRed.score}`);
+  assert.ok(printedRed.penalties.some((p) => p.includes('avoided_color:red')));
+  assert.ok(printedRed.penalties.some((p) => p.includes('disliked_pattern:print')));
+
+  const cleanNavy = evaluatePersonalItem(
+    item({ id: 'sku-good', color: 'navy', brand: 'Other' }),
+    descriptor({ slot: 'outerwear', color: 'navy', pattern: 'solid', volume: 'regular' }),
+    taste,
+  );
+  assert.ok(cleanNavy.score >= 0.06);
+  assert.ok(cleanNavy.score - printedRed.score >= 0.25);
+});
+
+test('PersonalStyleDna + CIELAB colorTheory genuinely drives look selection between Warm Autumn and Cool Winter profiles', () => {
+  const earthLook = [
+    { item: item({ id: 'e-top', macroCategory: 'top', color: 'cream', brand: 'Loro' }), descriptor: descriptor({ slot: 'top', color: 'cream', pattern: 'solid', volume: 'regular' }) },
+    { item: item({ id: 'e-out', macroCategory: 'outerwear', color: 'camel', brand: 'Loro' }), descriptor: descriptor({ slot: 'outerwear', color: 'camel', pattern: 'solid', volume: 'regular' }) },
+    { item: item({ id: 'e-bot', macroCategory: 'bottom', color: 'olive', brand: 'Loro' }), descriptor: descriptor({ slot: 'bottom', color: 'olive', pattern: 'solid', volume: 'regular' }) },
+    { item: item({ id: 'e-sho', macroCategory: 'shoes', color: 'espresso', brand: 'Loro' }), descriptor: descriptor({ slot: 'shoes', color: 'espresso', pattern: 'solid', volume: 'regular' }) },
+  ];
+  const icyContrastLook = [
+    { item: item({ id: 'c-top', macroCategory: 'top', color: 'crisp_white', brand: 'COS' }), descriptor: descriptor({ slot: 'top', color: 'crisp_white', pattern: 'solid', volume: 'regular' }) },
+    { item: item({ id: 'c-out', macroCategory: 'outerwear', color: 'charcoal', brand: 'COS' }), descriptor: descriptor({ slot: 'outerwear', color: 'charcoal', pattern: 'solid', volume: 'regular' }) },
+    { item: item({ id: 'c-bot', macroCategory: 'bottom', color: 'slate', brand: 'COS' }), descriptor: descriptor({ slot: 'bottom', color: 'slate', pattern: 'solid', volume: 'regular' }) },
+    { item: item({ id: 'c-sho', macroCategory: 'shoes', color: 'black', brand: 'COS' }), descriptor: descriptor({ slot: 'shoes', color: 'black', pattern: 'solid', volume: 'regular' }) },
+  ];
+  const clashingCognacLook = [
+    { item: item({ id: 'x-top', macroCategory: 'top', color: 'crisp_white', brand: 'Other' }), descriptor: descriptor({ slot: 'top', color: 'crisp_white', pattern: 'solid', volume: 'regular' }) },
+    { item: item({ id: 'x-out', macroCategory: 'outerwear', color: 'black', brand: 'Other' }), descriptor: descriptor({ slot: 'outerwear', color: 'black', pattern: 'solid', volume: 'regular' }) },
+    { item: item({ id: 'x-bot', macroCategory: 'bottom', color: 'cool_grey', brand: 'Other' }), descriptor: descriptor({ slot: 'bottom', color: 'cool_grey', pattern: 'solid', volume: 'regular' }) },
+    { item: item({ id: 'x-sho', macroCategory: 'shoes', color: 'cognac', brand: 'Other' }), descriptor: descriptor({ slot: 'shoes', color: 'cognac', pattern: 'solid', volume: 'regular' }) },
+  ];
+
+  const warmAutumnTaste = personalTaste({
+    appearance: {
+      consentGranted: true,
+      skinUndertone: 'warm',
+      contrastLevel: 'low',
+      colorSeason: 'warm_autumn',
+      flatteringColors: ['camel', 'olive', 'espresso'],
+      powerNeutrals: ['cream'],
+      provenance: 'opt_in_photo_analysis',
+    },
+  });
+  const coolWinterTaste = personalTaste({
+    appearance: {
+      consentGranted: true,
+      skinUndertone: 'cool',
+      contrastLevel: 'high',
+      colorSeason: 'cool_winter',
+      flatteringColors: ['crisp_white', 'charcoal', 'black'],
+      powerNeutrals: ['slate'],
+      provenance: 'opt_in_photo_analysis',
+    },
+  });
+
+  const autumnOnEarth = evaluatePersonalLook(earthLook, warmAutumnTaste);
+  const autumnOnIcy = evaluatePersonalLook(icyContrastLook, warmAutumnTaste);
+  const autumnOnClash = evaluatePersonalLook(clashingCognacLook, warmAutumnTaste);
+
+  const winterOnIcy = evaluatePersonalLook(icyContrastLook, coolWinterTaste);
+  const winterOnEarth = evaluatePersonalLook(earthLook, coolWinterTaste);
+
+  // Genuine meaningful ranking separation (far larger than legacy ±0.025!)
+  assert.ok(autumnOnEarth.adjustment >= 0.14, `expected strong positive Warm Autumn adjustment, got ${autumnOnEarth.adjustment}`);
+  assert.ok(autumnOnEarth.adjustment - autumnOnIcy.adjustment >= 0.14);
+  assert.ok(autumnOnClash.adjustment < 0);
+  assert.equal(autumnOnClash.colorTheory.harmonyMode, 'discordant');
+
+  assert.ok(winterOnIcy.adjustment >= 0.14, `expected strong positive Cool Winter adjustment, got ${winterOnIcy.adjustment}`);
+  assert.ok(winterOnIcy.adjustment - winterOnEarth.adjustment >= 0.14);
+});
+
+test('opt-in body proportion directives and owned wardrobe DNA drive item scoring while unconsented appearance stays ignored', () => {
+  const petiteInvertedTaste = personalTaste({
+    body: {
+      bodyType: 'inverted_triangle',
+      heightCm: 164,
+      presentation: 'menswear',
+    },
+    wardrobeItems: [
+      { category: 'outerwear', name: 'Navy Merino Cardigan', primaryColor: 'navy', material: 'merino', brand: 'Suitsupply', wearCount: 15, isFavorite: true },
+    ],
+  });
+
+  const flatteringLayer = evaluatePersonalItem(
+    item({ id: 'sku-soft-crop', macroCategory: 'outerwear', name: 'Unstructured Cropped Soft-Shoulder Merino Jacket', color: 'navy', brand: 'Suitsupply', material: 'merino' }),
+    descriptor({ slot: 'outerwear', color: 'navy', pattern: 'solid', volume: 'regular', length: 'cropped', relaxedTailoring: true, materials: ['merino'] }),
+    petiteInvertedTaste,
+  );
+  const unflatteringLayer = evaluatePersonalItem(
+    item({ id: 'sku-padded-long', macroCategory: 'outerwear', name: 'Padded Shoulder Longline Overcoat', color: 'stone', brand: 'Other' }),
+    descriptor({ slot: 'outerwear', color: 'stone', pattern: 'solid', volume: 'slim', length: 'long' }),
+    petiteInvertedTaste,
+  );
+
+  assert.ok(flatteringLayer.score >= 0.12, `expected body+wardrobe reward, got ${flatteringLayer.score}`);
+  assert.ok(unflatteringLayer.score <= -0.10, `expected body cut penalty, got ${unflatteringLayer.score}`);
+
+  // Unconsented appearance profile must remain inactive
+  const unconsented = personalTaste({
+    appearance: { consentGranted: false, skinUndertone: 'warm', colorSeason: 'warm_autumn', flatteringColors: ['camel'] },
+  });
+  assert.equal(unconsented.active, false);
+  assert.equal(evaluatePersonalItem(item({ color: 'camel' }), descriptor({ color: 'camel' }), unconsented).score, 0);
+});

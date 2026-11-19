@@ -13,20 +13,64 @@ export const STYLE_PERSONALITIES = [
     { id: 'old_money', name: 'Old Money', emoji: '⚜️', description: 'Quiet luxury, heritage sophistication', tKey: 'styleQuiz.personality.oldMoney', tDescKey: 'styleQuiz.personality.oldMoneyDesc' },
 ] as const;
 
+/**
+ * Stable quiz color options.
+ *
+ * NOTE: Midnight Blue retains its legacy persisted `id: '#0A1931'` so already-saved
+ * user preferences and StyleQuizScreen React keys remain 100% backwards-compatible
+ * alongside `'navy'`. Stylist engines read `canonicalColor` (or pass IDs through
+ * `resolveQuizColorCanonical` / `canonicalizeStyleColor`) so `'#0A1931'` maps to
+ * `'navy'` and `'gray'` maps to `'grey'`.
+ */
 export const COLOR_OPTIONS = [
-    { id: '#0A1931', name: 'Midnight Blue', color: '#0A1931', tKey: 'styleQuiz.colors.names.midnightBlue' },
-    { id: 'white', name: 'White', color: '#FFFFFF', tKey: 'styleQuiz.colors.names.white' },
-    { id: 'navy', name: 'Navy', color: '#1a237e', tKey: 'styleQuiz.colors.names.navy' },
-    { id: 'beige', name: 'Beige', color: '#d4c4a8', tKey: 'styleQuiz.colors.names.beige' },
-    { id: 'gray', name: 'Gray', color: '#757575', tKey: 'styleQuiz.colors.names.gray' },
-    { id: 'burgundy', name: 'Burgundy', color: '#800020', tKey: 'styleQuiz.colors.names.burgundy' },
-    { id: 'olive', name: 'Olive', color: '#556b2f', tKey: 'styleQuiz.colors.names.olive' },
-    { id: 'brown', name: 'Brown', color: '#8b4513', tKey: 'styleQuiz.colors.names.brown' },
-    { id: 'pink', name: 'Pink', color: '#e91e63', tKey: 'styleQuiz.colors.names.pink' },
-    { id: 'blue', name: 'Blue', color: '#2196f3', tKey: 'styleQuiz.colors.names.blue' },
-    { id: 'red', name: 'Red', color: '#f44336', tKey: 'styleQuiz.colors.names.red' },
-    { id: 'green', name: 'Green', color: '#4caf50', tKey: 'styleQuiz.colors.names.green' },
+    { id: '#0A1931', canonicalColor: 'navy', name: 'Midnight Blue', color: '#0A1931', tKey: 'styleQuiz.colors.names.midnightBlue' },
+    { id: 'white', canonicalColor: 'white', name: 'White', color: '#FFFFFF', tKey: 'styleQuiz.colors.names.white' },
+    { id: 'navy', canonicalColor: 'navy', name: 'Navy', color: '#1a237e', tKey: 'styleQuiz.colors.names.navy' },
+    { id: 'beige', canonicalColor: 'beige', name: 'Beige', color: '#d4c4a8', tKey: 'styleQuiz.colors.names.beige' },
+    { id: 'gray', canonicalColor: 'grey', name: 'Gray', color: '#757575', tKey: 'styleQuiz.colors.names.gray' },
+    { id: 'burgundy', canonicalColor: 'burgundy', name: 'Burgundy', color: '#800020', tKey: 'styleQuiz.colors.names.burgundy' },
+    { id: 'olive', canonicalColor: 'olive', name: 'Olive', color: '#556b2f', tKey: 'styleQuiz.colors.names.olive' },
+    { id: 'brown', canonicalColor: 'brown', name: 'Brown', color: '#8b4513', tKey: 'styleQuiz.colors.names.brown' },
+    { id: 'pink', canonicalColor: 'pink', name: 'Pink', color: '#e91e63', tKey: 'styleQuiz.colors.names.pink' },
+    { id: 'blue', canonicalColor: 'blue', name: 'Blue', color: '#2196f3', tKey: 'styleQuiz.colors.names.blue' },
+    { id: 'red', canonicalColor: 'red', name: 'Red', color: '#f44336', tKey: 'styleQuiz.colors.names.red' },
+    { id: 'green', canonicalColor: 'green', name: 'Green', color: '#4caf50', tKey: 'styleQuiz.colors.names.green' },
 ] as const;
+
+export const LEGACY_QUIZ_COLOR_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+    '#0a1931': 'navy',
+    '0a1931': 'navy',
+    midnight_blue: 'navy',
+    'midnight blue': 'navy',
+    'midnight-blue': 'navy',
+    gray: 'grey',
+});
+
+const QUIZ_COLOR_BY_ID: Readonly<Record<string, string>> = Object.freeze(
+    Object.fromEntries(COLOR_OPTIONS.map((opt) => [opt.id.toLowerCase(), opt.canonicalColor])),
+);
+
+/** Resolve a stored or newly-picked quiz color ID (including legacy `'#0A1931'` / `'gray'`) to its canonical fashion color name. */
+export function resolveQuizColorCanonical(rawId: string): string {
+    const key = String(rawId || '').trim().toLowerCase();
+    if (!key) return 'unknown';
+    return QUIZ_COLOR_BY_ID[key] || LEGACY_QUIZ_COLOR_ALIASES[key] || key;
+}
+
+/** Normalize and deduplicate a list of saved quiz color IDs into canonical color tokens. */
+export function normalizeSavedQuizColors(ids: readonly string[]): string[] {
+    if (!Array.isArray(ids)) return [];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of ids) {
+        const canonical = resolveQuizColorCanonical(raw);
+        if (canonical !== 'unknown' && !seen.has(canonical)) {
+            seen.add(canonical);
+            out.push(canonical);
+        }
+    }
+    return out;
+}
 
 export const OCCASIONS = [
     { id: 'work', name: 'Work', icon: 'briefcase-outline', tKey: 'styleQuiz.occasions.work' },
