@@ -2992,7 +2992,14 @@ test('held-out validated real-PHOTO fashion reward changes FIRST source-bound au
   assert.equal(deck.diagnostics.retrievalMode,'source_verified_ai_first');
   assert.ok(deck.diagnostics.modelFashionSelection.skuCompositionReceipt
     .photoHistoryCreativeAuditions>0,
-    'validated real photo experience must reach source-verified creative alternatives');
+    'validated real photo experience must create source-verified creative alternatives');
+  assert.ok(deck.diagnostics.modelFashionSelection.skuCompositionReceipt
+    .photoHistoryReachedPhoto>0,
+    'learned real four-piece garment combinations must ACTUALLY enter the first independent original-photo wave, not disappear when AI compositions are reconstructed');
+  assert.ok(deck.diagnostics.modelFashionSelection.skuCompositionReceipt
+    .photoHistoryReachedPhoto<=
+    deck.diagnostics.modelFashionSelection.skuCompositionReceipt
+      .photoHistoryCreativeAuditions);
   assert.ok(inspected.length<=8);
   // The visual provider sees an anonymized product-photo menu, NOT the
   // privileged source item array. Compare the server-created identity hash
