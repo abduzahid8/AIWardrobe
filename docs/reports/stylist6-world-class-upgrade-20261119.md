@@ -15,6 +15,7 @@
   - `5c6af24f` (`swarm-taste-engine-v2-7764c4e6`) — **V2 Taste Engine**: indoor-layer-first (`>10°C`) outerwear classification, peacoat/heavy-coat elimination, tight-budget dynamic headroom + fail-closed FX, `>=24°C` breathable summer expansion, structural cropped/detail photo & full-slot daytime eveningwear hygiene, Master Stylist Craft prompts
   - `8b3878b9` (`swarm-speed-vision-v2-1ed7e1cc`) — **V2 Speed & Vision Engine**: fast cross-lab Gemini 2.5 Flash primary vision (`VISUAL_CONCURRENCY=6`), parallel `1024×1024` studio boards, hot-path parallel surgical 1-slot rescue, budget/climate-aware catalog discovery (`prioritizeCatalogForBudgetAndClimate`), `photo_editor_final` verified triple preservation
   - `ba711422` → `127eb509` + Phase 7 visual-proof commit — Disjoint V2 merges (0 conflicts) + live-verified Phase 7 root-cause fixes (`createDefaultAppearanceProvider` router/snake_case JSON fix, `user_appearance_analyzer` avoid-color deduplication, `surgical_refiner` `sku_collision` 1-slot rescue & strict `AbortSignal.timeout` deadline enforcement, `visual_critic_hosted` infographic/back-view photo defect veto, `creative_director_ai` / `sku_composer_ai` direct NVIDIA failover without Kimi detour, `per_direction_retrieval` `>10°C` 0-heavy-coat indoor discipline & minimalist loud-pattern restraint, `build_human_blind_package` 16 MiB studio JPEG support)
+  - `cd197f98` (`swarm-visual-atelier-v3-8bbcaa33`), `de1fda5b` (`swarm-bridge-vercel-v3-fe16321d`), `ade67a8e` (`swarm-ios-polish-v3-6098ead0`) + Phase 9 V3 integration — **V3 Visual-First Atelier Engine, Dev Bridge Parity, Vercel Fluid Compute `300s`, and iOS Simulator Visual Verification**: `renderVisualShowroomBoard` (`1600×1600` 4-rack 32-SKU visual showroom board), `composeOutfitsVisually` (VLM composes 3 disjoint 4-item outfits directly from real product photographs before server hard-gate & independent visual critic verification), `renderVisualSwapBoard` (`1400×900` 3-anchor + 6-replacement visual swap board), `selectVisualSlotReplacement` in `swapSingleSlot`, upgraded `scripts/stylist6/dev_bridge.mjs` (`/generate`, `/swap-slot`, `/appearance`, `/feedback`, `/health`), Vercel Fluid Compute (`maxDuration: 300`, `vercel.json`, `api/v1/stylist6.ts`), and iOS UI polish (`AIOutfitmaker.tsx` compact expandable `stylistDevPill`, 2-line brand/product layout, structured Stylist's Notes card, 1-tap swap with undo banner, structured feedback chips)
 - **Production Stylist 5 (`backend/supabase/functions/generate-outfits/index.ts`)**: **UNTOUCHED**
   - SHA-256: `f90ced33ca3b0034c61cd2dfa289b189728dc75398cd72329f0b7c1854efc5e1` (`git diff a99c268e..HEAD -- backend/supabase/functions/generate-outfits/` = **0 lines**)
 - **Catalog Evaluation Snapshot**: Frozen live `shop_catalog` snapshot (`8,554` active rows; `8,329` adapted across `3,768` tops, `1,323` outerwear, `1,591` bottoms, `1,647` shoes).
@@ -177,7 +178,46 @@ Honest audit of the post-fix `404ec768` live outputs surfaced three follow-ups (
 
 ---
 
-## 6. Mandatory Owner Release Gates Still Open (Required Before Production Promotion)
+## 6. V3 Visual-First Atelier Architecture, Vercel Fluid Compute & Booted iOS Simulator Verification
+
+### 6.1 V3 Visual-First Composition & Visual Slot Swap (`backend/stylist6/visual_atelier.mjs`)
+- **`renderVisualShowroomBoard` (`1600×1600`) & `composeOutfitsVisually`**:
+  - Instead of composing from text metadata and only using vision as a post-hoc veto, V3 renders up to 32 real product photographs (`8 TOP` `T1..T8`, `8 OUTERWEAR / LAYER` `L1..L8`, `8 BOTTOM` `B1..B8`, `8 SHOES` `S1..S8`) drawn round-robin across the 3 orthogonal Creative Director pools onto a single `1600×1600` studio showroom board.
+  - Per-slot primary budget-share caps (`0.36–0.48` of total budget, with converted `priceInBudgetCurrency` hints in the anonymized token ledger) ensure 4-item combinations stay comfortably under 100% of cross-currency budgets (`USD` / `EUR` / `UZS`).
+  - The Vision-Language Master Stylist inspects the actual garment colors, undertones, textures, drape, collar/lapel lines, and shoe profiles on the `1600×1600` photograph to compose 3 disjoint 4-item outfits (`0` shared tokens/SKUs) with look-grounded editorial copy (`stylingNote`, `whyItFlattersYou`, `stylingTips`), which then pass through `sourceVerifyComposedOutfits`, budget/climate hard gates, and the independent 6-axis Visual Critic (`visualJudgeDeck`).
+  - Cloud licensing safety is preserved: in cloud handlers (`backend/stylist-node/src/cloud_handler.mjs`), `visualAtelierAllowed` requires `photoCacheReady === true`, while local Simulator development (`scripts/stylist6/dev_bridge.mjs`) requires explicit `STYLIST6_ALLOW_LOCAL_SHOWROOM_VISUAL=true`.
+- **`renderVisualSwapBoard` (`1400×900`) & `selectVisualSlotReplacement`**:
+  - When a user taps `Swap` on any slot in iOS, `swapSingleSlot` (`backend/stylist6/surgical_refiner.mjs`) filters up to 6 hard-gate-verified replacement candidates and renders a `1400×900` side-by-side comparison board showing the 3 kept anchor garments on the left (`KEEP · TOP/LAYER/BOTTOM/SHOES`) and the 6 numbered replacement candidates (`R1..R6`) on the right.
+  - The VLM visually selects the best replacement token (`R1..R6`) for the kept anchors and user swap reason, falling back deterministically to the top compatibility-scored candidate if vision times out.
+
+### 6.2 Local Dev Bridge Parity & Vercel Fluid Compute (`300s`)
+- **Upgraded Local Dev Bridge (`scripts/stylist6/dev_bridge.mjs`)**:
+  - Upgraded to the full V3 Visual-First pipeline (`pipeline: 'stylist6-v3-world-class'`, `visualAtelier: true`) with shared `createMultiProviderRouter`, `128-entry / 40 MiB` LRU `photoByteCache`, and full parity endpoints (`POST /generate`, `POST /swap-slot`, `POST /appearance`, `POST /feedback`, `GET /health`).
+- **Vercel Fluid Compute (`300s`)**:
+  - Added root `vercel.json` and `api/v1/stylist6.ts` (`export const config = { maxDuration: 300 }` + `export const maxDuration = 300`) and raised `backend/stylist-node/src/env.ts` `requestDeadlineMs` upper bound from `90,000 ms` to `295,000 ms` so Vercel Pro/Enterprise Fluid Compute deployments never clip multi-stage VLM + High-Res Studio Board composition.
+
+### 6.3 Live V3 Visual Showroom, Visual Swap & Booted iOS Simulator Verification (`scratch/visual_eval_v3/`)
+- **Live V3 Showroom & Swap Evaluation (`3/3` scenarios `visualAtelierStatus: "applied"`, `3/3` swaps `visualSwapUsed: true`)**:
+  - `old_money_work` (`Old Money + Work`, Warm/Deep Autumn, 16°C, `$2,200`): `showroom_board_old_money_work.jpg` (`32/32` real garment tiles rendered), `v3_portfolio_old_money_work.jpg`, `swap_board_old_money_work.jpg` (`shoes` swap selected `R1` via VLM).
+  - `classic_date_night` (`Classic + Date Night`, Cool/Deep Winter, 14°C, `$2,200`): `showroom_board_classic_date_night.jpg` (`32/32` tiles), `v3_portfolio_classic_date_night.jpg`, `swap_board_classic_date_night.jpg` (`outerwear` swap selected `R2` via VLM).
+  - `smart_casual_weekend` (`Smart Casual + Weekend`, Warm Autumn, 18°C, `$2,200`): `showroom_board_smart_casual_weekend.jpg` (`32/32` tiles), `v3_portfolio_smart_casual_weekend.jpg` (`3/3` looks, `12/12` full-garment photos), `swap_board_smart_casual_weekend.jpg` (`top` swap selected `R1` via VLM).
+- **Booted iOS Simulator (`AIWardrobe-S6-QA-20261115`, UDID `01E3E659-7671-4480-885F-767551264BE8`) Visual Inspection & Iterative Fixes**:
+  - Drove live end-to-end outfit generation and 1-tap slot swaps inside Expo Go connected to `127.0.0.1:8081` and `127.0.0.1:3127`, capturing and visually inspecting actual iOS Simulator screenshots (`ios_sim_01_setup_v3.png` through `ios_sim_11_casual_tab03.png`):
+    - **Scenario 1 (`Old Money + Work`)**:
+      - `ios_sim_03_work_tab01.png`, `ios_sim_05_work_tab02.png`, `ios_sim_06_work_tab03.png`: Verified all 3 tabs (`01`, `02`, `03`) render 4 real product photos each, single compact `🟢 S6 Local · 3 looks · Visual OK` pill (`ios_sim_07_work_devpill_expanded.png` when tapped), and zero text clipping on `"Check at store"` or `⇄ Swap`.
+      - `ios_sim_04_work_tab01_scrolled.png`: Verified **Stylist's Notes** card (`stylistNote`, `WHY IT FLATTERS YOU` callout, `colorStory`, `silhouetteFormula`, bullet `stylingTips`), `Add to Calendar`, `Save Outfit`, and `Try On Look` CTA.
+      - `ios_sim_04b_work_tab01_feedback.png`, `ios_sim_04c_work_tab01_chips.png`: Verified CBU multi-currency reference total (`≈8 638 497 UZS · CBU reference estimate`), Thumbs Up/Down rating, and 1-tap structured feedback chips (`Wrong shoes`, `Wrong color`, `Too formal`, `Not my fit`, `Over budget`).
+      - `ios_sim_04d_work_tab01_after_swap.png`: Verified live 1-tap `Swap` on the Shoes card (`Thursday Boot Co. Executive Black` → `Beckett Simonon Marlow Derbies — Bordeaux`, `$239`) with `Swapped shoes with a verified replacement [Undo]` banner and updated CBU outfit total (`≈9 249 051 UZS`).
+    - **Scenario 2 (`Old Money + Casual`)**:
+      - `ios_sim_09_casual_tab01.png` (`CLOSEST TO YOUR STYLE · Smart knit layering`: AllSaints olive crew-neck + Matinique tobacco suede overshirt + Reiss tailored chinos + Thursday dark coffee Chelsea boots).
+      - `ios_sim_10_casual_tab02.png` (`A FRESH PERSPECTIVE · Jacket & Tailored Trousers`: COS navy jumper + Aurélien olive reversible resort jacket + AllSaints tailored pants + Beckett Simonon Bordeaux loafers).
+      - `ios_sim_11_casual_tab03.png` (`SOMETHING NEW TO TRY · Overshirt & Chinos`: Matinique olive merino pullover + Selected Homme espresso overshirt + Ralph Lauren navy corduroy pants + Beckett Simonon brown nubuck loafers).
+  - **Root-Cause Fixes Landed from Live Visual Inspection**:
+    - Fixed sentence/word-boundary truncation (`cleanEditorialText`), top subtype verification (`isGroundedAgainstLook`), `visualAtelierMeta` copy prioritization, and tailored drawstring trouser subtype mapping (`"Tailored Fit Stretch Drawstring Trousers"` → `'tailored-trouser'` instead of `'athletic-trouser'` / `"Joggers"`) in `backend/stylist6/deck_editorial_copy.mjs`.
+
+---
+
+## 7. Mandatory Owner Release Gates Still Open (Required Before Production Promotion)
 
 Per `AGENTS.md` and `docs/STYLIST6_NORTH_STAR.md`, **none** of the following release gates are satisfied by unit tests, scale benchmarks, or AI proxy jury scores:
 

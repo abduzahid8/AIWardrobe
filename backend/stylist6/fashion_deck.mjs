@@ -2202,6 +2202,8 @@ export async function recommendFashionDeck({
               ?{excludedIds:request.excludedIds}:{}),
             ...(photoByteCache?{photoCache:photoByteCache}:{}),
             ...(providerRouter?{providerRouter}:{}),
+            minValidOutfits:2,
+            repairDuplicateTokens:true,
             ...(visualAtelierOptions&&typeof visualAtelierOptions==='object'?visualAtelierOptions:{}),
           }));
         }catch{
@@ -2233,6 +2235,74 @@ export async function recommendFashionDeck({
         if(atelierAdmitted.length>=2){
           visualAtelierStatus='applied';
           sourceVerifiedAiFirst.push(...atelierAdmitted);
+          // Instantly top up Wave-1 backup candidates from per-direction pools (<2ms, 0 network calls)
+          // so Visual Critique has 5-6 disjoint 4-item candidates (with the Visual Atelier looks first)
+          // without triggering the 22s synchronous legacy retrieval or 16s secondary LLM composer.
+          if(sourceVerifiedAiFirst.length<6){
+            const usedBases=new Set(
+              sourceVerifiedAiFirst.flatMap(l=>(l.items||[]).map(it=>baseProductId(String(it.id)))),
+            );
+            const rawBackupCombos=[];
+            const dirBuckets=Array.isArray(resolvedPerDirectionPools?.directions)
+              ?resolvedPerDirectionPools.directions:[];
+            const showroomItemIds=new Set(
+              atelierResult?.showroomBoard?.tokens
+                ?Object.values(atelierResult.showroomBoard.tokens).map(e=>String(e?.item?.id||'')).filter(Boolean)
+                :[],
+            );
+            const slotSource=(dirIdx,slot)=>{
+              const fromDir=Array.isArray(dirBuckets[dirIdx]?.slots?.[slot])
+                ?dirBuckets[dirIdx].slots[slot].map(e=>e?.item||e).filter(Boolean):[];
+              const fromDirShowroom=fromDir.filter(it=>showroomItemIds.has(String(it?.id||'')));
+              const fromDirRest=fromDir.filter(it=>!showroomItemIds.has(String(it?.id||'')));
+              const fromPool=effectivePoolForCount.filter(e=>e?.slot===slot).map(e=>e?.item).filter(Boolean);
+              return [...fromDirShowroom,...fromDirRest,...fromPool];
+            };
+            for(let bIdx=0;bIdx<4&&rawBackupCombos.length<4;bIdx++){
+              const dirIdx=bIdx%Math.max(1,dirBuckets.length||3);
+              const combo=[];
+              const localBases=new Set();
+              for(const slot of ['top','outerwear','bottom','shoes']){
+                const candidate=slotSource(dirIdx,slot).find(it=>{
+                  const key=baseProductId(String(it?.id||''));
+                  if(!key||usedBases.has(key)||localBases.has(key))return false;
+                  if(request?.budget&&typeof priceToBudgetCurrency==='function'){
+                    const conv=priceToBudgetCurrency(it,request.budget.currency,request);
+                    if(!Number.isFinite(conv)||conv<=0||conv>request.budget.amount*0.42)return false;
+                  }
+                  return true;
+                });
+                if(candidate){
+                  combo.push(candidate);
+                  localBases.add(baseProductId(String(candidate.id)));
+                }
+              }
+              if(combo.length===4){
+                for(const k of localBases)usedBases.add(k);
+                rawBackupCombos.push(combo);
+              }
+            }
+            if(rawBackupCombos.length>0){
+              const backupVerified=await sourceVerifyComposedOutfits({
+                looks:rawBackupCombos,request:{...request,requiredIds},requiredIds,
+                hardGate,priceToBudgetCurrency,scorer:fashionScorer,
+                sourceMode:request.sourceMode,creativePlans:aiPlans,
+              });
+              const palette=context.preferences;
+              for(const look of backupVerified){
+                if(sourceVerifiedAiFirst.length>=6)break;
+                if(sourceVerifiedAiFirst.some(existing=>existing.id===look.id))continue;
+                if((catalogFourItemIntent||context.optionalLayer===false)&&!eligibleCatalogFourItemPhotoCandidate(look))continue;
+                if(verifiedAvoidColors(palette?.avoidColors).length&&
+                  photographicPaletteEvidence(look,palette,requiredIds).blocked)continue;
+                try{
+                  if(await canJudgeOutfit(look,reference?.referenceId??null)===true){
+                    sourceVerifiedAiFirst.push(look);
+                  }
+                }catch{}
+              }
+            }
+          }
         }else{
           visualAtelierStatus='fallback';
         }

@@ -52,6 +52,12 @@ function details(items) {
   // named technical T-SHIRT "knitwear". No admission, SKU or vision edits.
   const descriptors=(items||[]).map(item=>{
     const d=describeGarment(item);
+    if(d.slot==='bottom'&&typeof item?.name==='string'&&d.subtype==='athletic-trouser'){
+      if(/\b(?:tailored|suit|dress|pleated|wool|linen|flannel|trousers?|pants?|chinos?)\b/i.test(item.name)&&
+         !/\b(?:joggers?|sweatpants?|track(?:suit)?|gym|running)\b/i.test(item.name)){
+        return {...d,subtype:/\bchinos?\b/i.test(item.name)?'chino':/\btailored|suit|dress|pleated\b/i.test(item.name)?'tailored-trouser':'trouser',structured:/\btailored|suit|dress|pleated\b/i.test(item.name)};
+      }
+    }
     if(d.slot!=='top'||typeof item?.name!=='string')return d;
     if(/\b(?:tank(?:[ -]?top)?|sleeveless[ -]?(?:top|shirt|vest))\b/i.test(item.name))
       return {...d,subtype:'tank-top'};
@@ -699,12 +705,19 @@ const DARK_TONES = new Set(['black', 'navy', 'charcoal', 'brown', 'burgundy', 'd
 
 function cleanEditorialText(raw, max = 260) {
   if (typeof raw !== 'string') return '';
-  return raw
+  const cleaned = raw
     .replace(/https?:\/\/[^\s]+|\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi, '')
     .replace(/[<>{}\u0000-\u001f]/g, ' ')
     .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, max);
+    .trim();
+  if (cleaned.length <= max) return cleaned;
+  const slice = cleaned.slice(0, max);
+  const lastPeriod = slice.lastIndexOf('.');
+  if (lastPeriod >= Math.min(48, Math.floor(max * 0.4))) {
+    return slice.slice(0, lastPeriod + 1).trim();
+  }
+  const lastSpace = slice.lastIndexOf(' ');
+  return (lastSpace > 24 ? slice.slice(0, lastSpace) : slice).replace(/[,;:\s-]+$/, '').trim();
 }
 
 function canonicalNoteColor(raw) {
@@ -780,6 +793,17 @@ function isGroundedAgainstLook(sentence, part, verifiedMaterials) {
     if (actualOuter !== 'cardigan' && /\bcardigans?\b/.test(lower)) return false;
     if (actualOuter !== 'blazer' && /\bblazers?\b/.test(lower)) return false;
     if (actualOuter !== 'coat' && /\b(?:overcoats?|trench\s+coats?)\b/.test(lower)) return false;
+    if (actualOuter !== 'overshirt' && /\bovershirts?\b/.test(lower)) return false;
+  }
+  // Never misname the actual top subtype (e.g., calling a dress shirt a turtleneck or sweater).
+  if (part?.top?.subtype) {
+    const actualTop = part.top.subtype;
+    if (['dress-shirt', 'shirt'].includes(actualTop) && /\b(?:turtlenecks?|fine[- ]knit|sweaters?|hoodies?|t-shirts?|tees?)\b/.test(lower)) {
+      return false;
+    }
+    if (['fine-knit', 'sweater'].includes(actualTop) && /\b(?:dress[- ]shirts?|poplin\s+shirts?|oxford\s+shirts?)\b/.test(lower)) {
+      return false;
+    }
   }
   // Never fabricate rare/specific textiles not verified on any selected SKU.
   for (const mat of ['cashmere', 'silk', 'linen', 'suede', 'corduroy', 'tweed', 'velvet']) {
@@ -1119,6 +1143,9 @@ export function buildStylistNotes(look, context, direction, options = {}) {
   const verifiedMaterials = verifiedLookMaterials(items, part);
 
   const rawArtDirection = cleanEditorialText(
+    look?.visualAtelierMeta?.stylingNote ||
+    look?.visualAtelierCopy?.stylingNote ||
+    look?.visualAtelierMeta?.visualHarmonyRationale ||
     options.artDirection ||
     look?.brief?.artDirection ||
     look?.artDirection ||

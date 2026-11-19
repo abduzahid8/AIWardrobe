@@ -49,6 +49,13 @@ const SLOT_TOKEN_PREFIX = Object.freeze({
   shoes: 'S',
 });
 
+const PRIMARY_SLOT_BUDGET_SHARE_CAP = Object.freeze({
+  top: 0.36,
+  outerwear: 0.48,
+  bottom: 0.38,
+  shoes: 0.40,
+});
+
 const SLOT_BUDGET_SHARE_CAP = Object.freeze({
   top: 0.58,
   outerwear: 0.72,
@@ -180,7 +187,10 @@ function itemFitsBudgetHeadroom(item, slot, context, priceToBudgetCurrency) {
     return true;
   }
 
-  const cap = amount * (SLOT_BUDGET_SHARE_CAP[slot] ?? 0.65);
+  const capTable = context?.relaxedSlotBudgetCap === true
+    ? SLOT_BUDGET_SHARE_CAP
+    : PRIMARY_SLOT_BUDGET_SHARE_CAP;
+  const cap = amount * (capTable[slot] ?? 0.45);
   return converted <= cap + 1e-6;
 }
 
@@ -229,8 +239,10 @@ export function selectShowroomSlotPools({
     ...normalizeSet(personalStyleDna?.dislikedPatterns),
   ]);
   const blockedIds = new Set(Array.from(excludedIds || [], String));
+  const elevatedContext = /\b(?:work|office|business|formal|date|dinner|old[_ -]?money|classic)\b/i
+    .test(`${context?.occasion || ''} ${context?.style || ''}`);
 
-  const isEligible = (item, slot, enforceBudget = true) => {
+  const isEligible = (item, slot, enforceBudget = true, { strictRegister = true, relaxedBudgetCap = false } = {}) => {
     if (!item || typeof item !== 'object') return false;
     if (item.quarantined === true) return false;
     if (!hasUsablePhotoSource(item)) return false;
@@ -244,7 +256,14 @@ export function selectShowroomSlotPools({
     if (brand && excludedBrands.has(brand)) return false;
     const pattern = String(item.pattern || '').trim().toLowerCase();
     if (pattern && dislikedPatterns.has(pattern)) return false;
-    if (enforceBudget && !itemFitsBudgetHeadroom(item, slot, context, priceToBudgetCurrency)) return false;
+    if (strictRegister && elevatedContext) {
+      const titleLower = String(item.name || '').toLowerCase();
+      if (/\b(?:sweatshirts?|hoodies?|joggers?|tracksuits?|varsity|collegiate|graphic\s+tee)\b/.test(titleLower)) {
+        return false;
+      }
+    }
+    const budgetCtx = relaxedBudgetCap ? { ...context, relaxedSlotBudgetCap: true } : context;
+    if (enforceBudget && !itemFitsBudgetHeadroom(item, slot, budgetCtx, priceToBudgetCurrency)) return false;
     return true;
   };
 
@@ -273,9 +292,14 @@ export function selectShowroomSlotPools({
     const seenSignatures = new Set();
     const brandCounts = new Map();
 
-    const tryAdd = (item, dirIdx = null, { enforceVisualDiversity = true, enforceBudget = true } = {}) => {
+    const tryAdd = (item, dirIdx = null, {
+      enforceVisualDiversity = true,
+      enforceBudget = true,
+      strictRegister = true,
+      relaxedBudgetCap = false,
+    } = {}) => {
       if (selected.length >= perSlotCap) return false;
-      if (!isEligible(item, slot, enforceBudget)) return false;
+      if (!isEligible(item, slot, enforceBudget, { strictRegister, relaxedBudgetCap })) return false;
       const key = productKeyOf(item);
       if (key && seenKeys.has(key)) return false;
       const url = imageUrlOf(item);
@@ -373,6 +397,19 @@ export function selectShowroomSlotPools({
       if (selected.length >= perSlotCap) break;
       tryAdd(item, null, { enforceVisualDiversity: false, enforceBudget: true });
     }
+    // Pass 5: If tight 4-item slot budget cap left rack below capacity, allow up to standard slot cap
+    if (selected.length < perSlotCap) {
+      for (const q of dirQueues) {
+        for (const item of q.items) {
+          if (selected.length >= perSlotCap) break;
+          tryAdd(item, q.dirIdx, { enforceVisualDiversity: false, enforceBudget: true, relaxedBudgetCap: true });
+        }
+      }
+      for (const item of [...unified, ...catalogForSlot]) {
+        if (selected.length >= perSlotCap) break;
+        tryAdd(item, null, { enforceVisualDiversity: false, enforceBudget: true, relaxedBudgetCap: true });
+      }
+    }
 
     slotPools[slot] = selected;
   }
@@ -449,8 +486,11 @@ function chooseVisionRouteOptions(router, preferredModel = null) {
   };
 }
 
-function buildAnonymizedTokenLedger(tokens, directionHintsByItemId = new Map()) {
+function buildAnonymizedTokenLedger(tokens, directionHintsByItemId = new Map(), { context = null, priceToBudgetCurrency = null } = {}) {
   const ledger = { top: [], outerwear: [], bottom: [], shoes: [] };
+  const budgetCurrency = typeof context?.budget?.currency === 'string' && /^[A-Z]{3}$/.test(context.budget.currency.trim().toUpperCase())
+    ? context.budget.currency.trim().toUpperCase()
+    : null;
   for (const [token, item] of Object.entries(tokens || {})) {
     const prefix = token.charAt(0).toUpperCase();
     const slot = prefix === 'T' ? 'top'
@@ -463,12 +503,22 @@ function buildAnonymizedTokenLedger(tokens, directionHintsByItemId = new Map()) 
     const currency = typeof item.currency === 'string' && /^[A-Z]{3}$/.test(item.currency.trim())
       ? item.currency.trim()
       : null;
+    let priceInBudgetCurrency = null;
+    if (budgetCurrency && typeof priceToBudgetCurrency === 'function') {
+      try {
+        const conv = Number(priceToBudgetCurrency(item, budgetCurrency, context));
+        if (Number.isFinite(conv) && conv > 0) priceInBudgetCurrency = Math.round(conv * 100) / 100;
+      } catch {
+        priceInBudgetCurrency = null;
+      }
+    }
     const hints = item.id != null ? directionHintsByItemId.get(String(item.id)) : null;
     ledger[slot].push({
       token,
       subtype: sanitizeText(subtypeOfItem(item), 36) || 'unknown',
       brand: sanitizeText(item.brand || '', 32) || undefined,
       ...(Number.isFinite(price) && price > 0 && currency ? { price: Math.round(price * 100) / 100, currency } : {}),
+      ...(priceInBudgetCurrency !== null ? { priceInBudgetCurrency, budgetCurrency } : {}),
       ...(hints?.length ? { suggestedForDirections: hints } : {}),
     });
   }
@@ -561,6 +611,7 @@ export function validateVisualAtelierOutfits(parsed, showroomTokens, {
   targetCount = 3,
   minValidOutfits = 3,
   directions = [],
+  repairDuplicateTokens = false,
 } = {}) {
   const tokenLookup = showroomTokens instanceof Map
     ? Object.fromEntries(showroomTokens.entries())
@@ -590,13 +641,13 @@ export function validateVisualAtelierOutfits(parsed, showroomTokens, {
     let invalidReason = null;
 
     for (const slot of CANONICAL_SLOTS) {
-      const rawTok = typeof raw[slot] === 'string' ? raw[slot].trim().toUpperCase() : '';
+      let rawTok = typeof raw[slot] === 'string' ? raw[slot].trim().toUpperCase() : '';
       const expectedPrefix = SLOT_TOKEN_PREFIX[slot];
       if (!rawTok || !rawTok.startsWith(expectedPrefix)) {
         invalidReason = `outfit_${i}:invalid_or_wrong_slot_token_${slot}`;
         break;
       }
-      const item = Object.hasOwn(tokenLookup, rawTok) ? tokenLookup[rawTok] : null;
+      let item = Object.hasOwn(tokenLookup, rawTok) ? tokenLookup[rawTok] : null;
       if (!item || typeof item !== 'object') {
         invalidReason = `outfit_${i}:hallucinated_token_${rawTok}`;
         break;
@@ -606,11 +657,29 @@ export function validateVisualAtelierOutfits(parsed, showroomTokens, {
         invalidReason = `outfit_${i}:slot_mismatch_${rawTok}`;
         break;
       }
+      let prodKey = productKeyOf(item);
+      const isDuplicate = usedTokens.has(rawTok) || localTokens.has(rawTok)
+        || (prodKey && (usedBaseProductKeys.has(prodKey) || localKeys.has(prodKey)));
+      if (isDuplicate && repairDuplicateTokens) {
+        const replacementEntry = Object.entries(tokenLookup).find(([candTok, candItem]) => {
+          if (!candTok.startsWith(expectedPrefix) || !candItem || typeof candItem !== 'object') return false;
+          const cSlot = slotOfItem(candItem);
+          if (cSlot && cSlot !== slot) return false;
+          if (usedTokens.has(candTok) || localTokens.has(candTok)) return false;
+          const cKey = productKeyOf(candItem);
+          if (cKey && (usedBaseProductKeys.has(cKey) || localKeys.has(cKey))) return false;
+          return true;
+        });
+        if (replacementEntry) {
+          rawTok = replacementEntry[0];
+          item = replacementEntry[1];
+          prodKey = productKeyOf(item);
+        }
+      }
       if (usedTokens.has(rawTok) || localTokens.has(rawTok)) {
         invalidReason = `outfit_${i}:duplicate_token_${rawTok}`;
         break;
       }
-      const prodKey = productKeyOf(item);
       if (prodKey && (usedBaseProductKeys.has(prodKey) || localKeys.has(prodKey))) {
         invalidReason = `outfit_${i}:duplicate_product_${rawTok}`;
         break;
@@ -705,6 +774,7 @@ export async function composeOutfitsVisually({
   minPerSlot = 3,
   targetCount = 3,
   minValidOutfits = 3,
+  repairDuplicateTokens = false,
   apiKey = '',
   openrouterApiKey = '',
   preferredModel = null,
@@ -756,7 +826,7 @@ export async function composeOutfitsVisually({
   }
 
   // 2. Render the 1600x1600 Visual Showroom Board (SSRF-safe + LRU cached)
-  const boardDeadlineMs = Math.max(1_000, Math.min(8_000, Math.floor(boundedTimeout * 0.45)));
+  const boardDeadlineMs = Math.max(1_000, Math.min(8_000, Math.floor(boundedTimeout * 0.38)));
   const fashionScene = editorialFashionIntent(context);
   const occasionLabel = sanitizeText(context?.occasion || 'Personal Styling', 36);
   const styleLabel = sanitizeText(context?.style || '', 32);
@@ -806,7 +876,10 @@ export async function composeOutfitsVisually({
   const cleanDnaBlock = sanitizeText(styleDnaPromptBlock || personalStyleDna?.promptBlock || '', 1100);
   const cleanTasteBlock = sanitizeText(tastePromptBlock || '', 600);
   const directionSpecs = buildDirectionsBrief(directions);
-  const tokenLedger = buildAnonymizedTokenLedger(showroomBoard.tokens, directionHintsByItemId);
+  const tokenLedger = buildAnonymizedTokenLedger(showroomBoard.tokens, directionHintsByItemId, {
+    context,
+    priceToBudgetCurrency,
+  });
 
   const prompt = [
     'You are an elite personal fashion stylist (Vogue / Mr Porter / Milan private atelier caliber) standing inside a private luxury showroom inspecting REAL garments arranged across 4 racks in the supplied 1600x1600 photograph:',
@@ -899,6 +972,7 @@ export async function composeOutfitsVisually({
     targetCount: boundedTarget,
     minValidOutfits: Math.min(boundedTarget, minValidOutfits),
     directions,
+    repairDuplicateTokens,
   });
 
   if (!validated.ok) {
@@ -985,13 +1059,13 @@ export async function selectVisualSlotReplacement({
   allowlist = undefined,
   sharpImpl = undefined,
   signal = null,
-  timeoutMs = 10_000,
+  timeoutMs = 15_000,
   apiKey = '',
   openrouterApiKey = '',
   preferredModel = null,
 } = {}) {
   const startedAt = Date.now();
-  const boundedTimeout = Math.max(1_500, Math.min(25_000, Number(timeoutMs) || 10_000));
+  const boundedTimeout = Math.max(1_500, Math.min(25_000, Number(timeoutMs) || 15_000));
   const normSlot = String(targetSlot || '').trim().toLowerCase();
 
   const fallback = (reason, extra = {}) => ({
@@ -1023,7 +1097,7 @@ export async function selectVisualSlotReplacement({
   if (candidateItems.length === 0) return fallback('no_candidates');
 
   // 1. Render 1400x900 Visual Swap Board (3 locked garments hit photoCache at 0ms!)
-  const boardDeadlineMs = Math.max(800, Math.min(4_500, Math.floor(boundedTimeout * 0.45)));
+  const boardDeadlineMs = Math.max(800, Math.min(3_600, Math.floor(boundedTimeout * 0.30)));
   const cleanDirective = sanitizeText(repairDirective || '', 220);
   const swapBoard = await renderVisualSwapBoard(lockedItems, normSlot, candidateItems, {
     title: `VISUAL SWAP · REPLACE ${normSlot.toUpperCase()}`,
@@ -1107,10 +1181,10 @@ export async function selectVisualSlotReplacement({
       max_tokens: 320,
       response_format: responseFormat,
       timeoutMs: remainingMs,
-      providerTimeoutMs: Math.min(remainingMs, 8_000),
+      providerTimeoutMs: Math.min(remainingMs, 7_500),
       signal,
       parseJson: true,
-      maxTransientRetries: 0,
+      maxTransientRetries: 1,
     });
   } catch {
     return fallback('vision_router_error', { swapBoard });

@@ -825,7 +825,7 @@ async function prefilterAndPromoteVisualPick({
     ? visualReplacementSelector
     : selectVisualSlotReplacement;
   const remaining = Math.max(800, deadlineAt - Date.now());
-  const swapTimeoutMs = Math.min(8_000, Math.max(900, Math.floor(remaining * 0.55)));
+  const swapTimeoutMs = Math.min(15_000, Math.max(1_100, Math.floor(remaining * 0.75)));
 
   let visualSelection = null;
   try {

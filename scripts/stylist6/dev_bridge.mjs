@@ -186,9 +186,11 @@ function resolveAiKeys(options = {}) {
 // requested style and occasion.
 function pickReference(refs, { style, occasion }) {
   const norm = (v) => String(v || '').toLowerCase().replaceAll(' ', '_');
+  const normStyle = norm(style);
+  const normOccasion = norm(occasion);
   return refs.find(({ referenceId }) => {
     const ref = index.images.find((entry) => entry.id === referenceId);
-    return ref.styles.includes(style) && ref.occasions.includes(norm(occasion));
+    return ref.styles.includes(normStyle) && ref.occasions.includes(normOccasion);
   });
 }
 
@@ -652,8 +654,8 @@ async function resolveReferenceAsset(referenceId) {
 }
 
 const productPhotoCache = new Map();
-async function resolveProductAsset({ imageUrl }, fetchImpl = fetch, photoByteCache = null) {
-  const url = String(imageUrl || '');
+async function resolveProductAsset(product, fetchImpl = fetch, photoByteCache = null, signal = null) {
+  const url = String(product?.imageUrl || product?.image_url || '');
   if (!HOST_ALLOWLIST.has(hostOf(url))) throw new Error('product_host_not_allowlisted');
   if (fetchImpl === fetch && productPhotoCache.has(url)) {
     const cached = productPhotoCache.get(url);
@@ -661,10 +663,11 @@ async function resolveProductAsset({ imageUrl }, fetchImpl = fetch, photoByteCac
     return cached;
   }
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PRODUCT_FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), 3800);
+  const combinedSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   try {
     const response = await fetchImpl(url, {
-      signal: controller.signal, redirect: 'follow',
+      signal: combinedSignal, redirect: 'follow',
       headers: { 'User-Agent': 'AIWardrobe-Stylist6-Dev/1.0', Accept: 'image/*,*/*;q=0.8' },
     });
     if (!response.ok) throw new Error('product_image_unresolved');
@@ -1087,7 +1090,7 @@ export async function handleDevBridgeSwapSlot(payload, options = {}) {
   const allowLocalShowroom = options.allowLocalShowroomVisualComposition ?? true;
   const photoByteCache = options.photoByteCache || sharedPhotoByteCache;
   const fetchImpl = options.fetchImpl || fetch;
-  const resolveProduct = (product) => resolveProductAsset(product, fetchImpl, photoByteCache);
+  const resolveProduct = (product, sig) => resolveProductAsset(product, fetchImpl, photoByteCache, sig);
   const providerRouter = (visualEnabled || typeof options.visualReplacementSelector === 'function') && (hasNvidiaKey || hasOpenrouterKey)
     ? createProviderRouter({
         nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
@@ -1095,26 +1098,41 @@ export async function handleDevBridgeSwapSlot(payload, options = {}) {
         ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       })
     : null;
+  const authorizePhoto = (url) => HOST_ALLOWLIST.has(hostOf(url));
+  const debugBoardDir = String(options.debugBoardDir || process.env.STYLIST6_DEBUG_BOARD_DIR || '').trim();
+  const debugSlug = String(
+    source.debugScenarioTag || rawContext.debugScenarioTag || `${style}_${occasion}`
+  ).toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
   let visualReplacementSelector = typeof options.visualReplacementSelector === 'function'
     ? options.visualReplacementSelector
     : null;
   if (!visualReplacementSelector && allowLocalShowroom && visualEnabled) {
     const atelierMod = await loadOptionalVisualAtelier();
     if (typeof atelierMod?.selectVisualSlotReplacement === 'function') {
-      visualReplacementSelector = atelierMod.selectVisualSlotReplacement;
+      const baseSelector = atelierMod.selectVisualSlotReplacement;
+      visualReplacementSelector = async (selArgs) => {
+        const res = await baseSelector(selArgs);
+        if (debugBoardDir && Buffer.isBuffer(res?.swapBoard?.jpegBuffer)) {
+          try {
+            fs.mkdirSync(debugBoardDir, { recursive: true });
+            fs.writeFileSync(path.join(debugBoardDir, `swap_board_${debugSlug}.jpg`), res.swapBoard.jpegBuffer);
+          } catch { /* non-fatal debug dump */ }
+        }
+        return res;
+      };
     }
   }
-  const boardRenderer = (visualEnabled || typeof options.visualCritic === 'function')
+  const swapVisualCritic = typeof options.visualCritic === 'function'
+    ? options.visualCritic
+    : null;
+  const boardRenderer = swapVisualCritic
     ? (items, opts = {}) => renderEditorialLookBoard(items, {
         resolvePhoto: resolveProduct,
-        authorizePhoto: (url) => HOST_ALLOWLIST.has(hostOf(url)),
+        authorizePhoto,
         photoCache: photoByteCache,
         anonymizeLabels: true,
         ...opts,
       })
-    : null;
-  const swapVisualCritic = typeof options.visualCritic === 'function'
-    ? options.visualCritic
     : null;
 
   const swapResult = await swapSingleSlot({
@@ -1157,7 +1175,11 @@ export async function handleDevBridgeSwapSlot(payload, options = {}) {
     ...(boardRenderer ? { boardRenderer } : {}),
     ...(allowLocalShowroom && visualReplacementSelector ? { visualReplacementSelector } : {}),
     ...(allowLocalShowroom && providerRouter ? { providerRouter } : {}),
-    ...(allowLocalShowroom && (visualReplacementSelector || providerRouter) ? { photoCache: photoByteCache } : {}),
+    ...(allowLocalShowroom && (visualReplacementSelector || providerRouter) ? {
+      photoCache: photoByteCache,
+      resolvePhoto: resolveProduct,
+      authorizePhoto,
+    } : {}),
     excludedItemIds: excludedIds,
     qualityMap,
     priceToBudgetCurrency,
@@ -1240,6 +1262,12 @@ export async function handleDevBridgeSwapSlot(payload, options = {}) {
       previousItemId: swapResult.previousItem?.id ? String(swapResult.previousItem.id) : null,
       replacementItem: mappedReplacement,
       visualVerified: swapResult.visualVerified === true,
+      ...(swapResult.visualSwapUsed ? {
+        visualSwapUsed: true,
+        visuallySelected: swapResult.visuallySelected === true,
+        visualSwapToken: swapResult.visualSwapToken || null,
+        visualSwapRationale: swapResult.visualSwapRationale || null,
+      } : {}),
       outfit: updatedOutfit,
       outfits: [updatedOutfit],
     },
@@ -1485,7 +1513,7 @@ export async function generateStylist6Deck(payload, options = {}) {
   const visualEvents = [];
 
   if (visualAsked && hasVisionKeys) {
-    const resolveProduct = (product) => resolveProductAsset(product, fetchImpl, photoByteCache);
+    const resolveProduct = (product, sig) => resolveProductAsset(product, fetchImpl, photoByteCache, sig);
     const authorizePhoto = (url) => HOST_ALLOWLIST.has(hostOf(url));
     providerRouter = createProviderRouter({
       nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
@@ -1495,11 +1523,35 @@ export async function generateStylist6Deck(payload, options = {}) {
 
     if (!visualAtelierCompose || !visualReplacementSelector) {
       const atelierMod = await loadOptionalVisualAtelier();
+      const debugBoardDir = String(options.debugBoardDir || process.env.STYLIST6_DEBUG_BOARD_DIR || '').trim();
+      const debugSlug = String(
+        request.debugScenarioTag || payload?.debugScenarioTag || `${style}_${occasion}`
+      ).toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
       if (!visualAtelierCompose && typeof atelierMod?.composeOutfitsVisually === 'function') {
-        visualAtelierCompose = atelierMod.composeOutfitsVisually;
+        const baseComposer = atelierMod.composeOutfitsVisually;
+        visualAtelierCompose = async (compArgs) => {
+          const res = await baseComposer(compArgs);
+          if (debugBoardDir && Buffer.isBuffer(res?.showroomBoard?.jpegBuffer)) {
+            try {
+              fs.mkdirSync(debugBoardDir, { recursive: true });
+              fs.writeFileSync(path.join(debugBoardDir, `showroom_board_${debugSlug}.jpg`), res.showroomBoard.jpegBuffer);
+            } catch { /* non-fatal debug dump */ }
+          }
+          return res;
+        };
       }
       if (!visualReplacementSelector && typeof atelierMod?.selectVisualSlotReplacement === 'function') {
-        visualReplacementSelector = atelierMod.selectVisualSlotReplacement;
+        const baseSelector = atelierMod.selectVisualSlotReplacement;
+        visualReplacementSelector = async (selArgs) => {
+          const res = await baseSelector(selArgs);
+          if (debugBoardDir && Buffer.isBuffer(res?.swapBoard?.jpegBuffer)) {
+            try {
+              fs.mkdirSync(debugBoardDir, { recursive: true });
+              fs.writeFileSync(path.join(debugBoardDir, `swap_board_${debugSlug}.jpg`), res.swapBoard.jpegBuffer);
+            } catch { /* non-fatal debug dump */ }
+          }
+          return res;
+        };
       }
     }
 
@@ -1685,10 +1737,10 @@ export async function generateStylist6Deck(payload, options = {}) {
     ? {
         providerRouter,
         photoCache: photoByteCache,
-        resolvePhoto: (product) => resolveProductAsset(product, fetchImpl, photoByteCache),
+        resolvePhoto: (product, sig) => resolveProductAsset(product, fetchImpl, photoByteCache, sig),
         authorizePhoto: (url) => HOST_ALLOWLIST.has(hostOf(url)),
         ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
-        timeoutMs: Math.min(18_000, Math.max(2500, remainingMs() - 20_000)),
+        timeoutMs: Math.min(26_000, Math.max(3500, remainingMs() - 18_000)),
         maxPerSlot: 8,
       }
     : null;
@@ -1945,13 +1997,27 @@ export function createDevBridgeServer(serverOptions = {}) {
       if (req.method === 'GET' && route === '/health') {
         const { hasNvidiaKey, hasOpenrouterKey } = resolveAiKeys(defaultOpts);
         const { url, readKey } = resolveSupabaseReadConfig(defaultOpts);
+        const atelierMod = await loadOptionalVisualAtelier();
+        const visualAtelierReady = Boolean(
+          typeof atelierMod?.composeOutfitsVisually === 'function' &&
+          (hasNvidiaKey || hasOpenrouterKey),
+        );
         res.writeHead(200);
         res.end(JSON.stringify({
           ok: true,
           engine: STYLIST6_DEV_ENGINE_VERSION,
-          pipeline: 'stylist6-v3-visual-atelier',
+          engineVersion: STYLIST6_DEV_ENGINE_VERSION,
+          pipeline: 'stylist6-v3-world-class',
+          visualAtelier: visualAtelierReady,
           references: index.images.length,
           endpoints: ['/health', '/generate', '/swap-slot', '/analyze-appearance'],
+          capabilities: {
+            visualAtelier: visualAtelierReady,
+            liveCatalogConfigured: Boolean(url && readKey),
+            cbuFxConfigured: true,
+            nvidiaConfigured: hasNvidiaKey,
+            openrouterConfigured: hasOpenrouterKey,
+          },
           nvidiaConfigured: hasNvidiaKey,
           openrouterConfigured: hasOpenrouterKey,
           supabaseConfigured: Boolean(url && readKey),
