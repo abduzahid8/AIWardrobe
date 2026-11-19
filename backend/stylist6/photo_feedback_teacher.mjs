@@ -17,6 +17,16 @@ import {outfitRelationshipFeatures,normalizedOutfitLearningFeatures} from './lea
 
 export const PHOTO_FEEDBACK_TEACHER_VERSION='s6-photo-pairwise-teacher-v1';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+// These reasons already came from the INDEPENDENT photographic review.
+// An NVIDIA verdict can be reject=false but still fail the unchanged
+// original-photo quality/style/occasion gate. Those are useful NEGATIVE
+// fashion comparisons, not missing evidence or fabricated vetoes.
+// User-requested color exclusion and low-confidence verdicts are NOT
+// generalized into learned aesthetic preferences.
+const PHOTO_NEGATIVE_REASONS=new Set([
+  'model_veto','below_quality_floor','style_mismatch',
+  'occasion_mismatch','formality_mismatch',
+]);
 const similarityFeatures=(items,featuresOf)=>{
   if(!Array.isArray(items)||items.length!==4||typeof featuresOf!=='function')return null;
   try {return outfitRelationshipFeatures(featuresOf(items));}catch{return null;}
@@ -24,13 +34,15 @@ const similarityFeatures=(items,featuresOf)=>{
 const dot=(weights,features)=>features.reduce((sum,x)=>sum+(weights.get(x)||0),0);
 const difference=(weights,pos,neg)=>dot(weights,pos.features)-dot(weights,neg.features);
 const marginGradient=margin=>1/(1+Math.exp(clamp(margin,-30,30)));
-function fit(positives,negatives){
+function fitPairs(pairs){
   const w=new Map();
-  // Learn inter-garment relations from real photographically evaluated
-  // COMPLETE looks; no color/silhouette rules or manually scored pairs.
+  // No manually specified outfit/category/color weights. Each observed
+  // comparison comes from the original-photo judge and the correct source
+  // context, or the original-photo judge's own graded quality within its
+  // rejected group. The fitted weights are local to this ONE request.
   for(let epoch=0;epoch<18;epoch++){
     const step=0.06/(1+epoch*0.16);
-    for(const p of positives)for(const n of negatives){
+    for(const [p,n] of pairs){
       const gradient=marginGradient(difference(w,p,n));
       const diff=new Map();
       for(const x of p.features)diff.set(x,(diff.get(x)||0)+1);
@@ -43,6 +55,63 @@ function fit(positives,negatives){
     }
   }
   return w;
+}
+function fit(positives,negatives){
+  return fitPairs(positives.flatMap(p=>negatives.map(n=>[p,n])));
+}
+const sharedPhotoFeatures=(a,b)=>{
+  let same=0;
+  for(let slot=0;slot<4;slot++)for(let field=0;field<5;field++)
+    if(a.matrix[slot]?.[field]&&a.matrix[slot][field]===b.matrix[slot]?.[field])
+      same++;
+  return same;
+};
+// A frequently observed REAL scenario: one approved and four rejected
+// complete PHOTO looks. Do not discard useful graded critic evidence merely
+// because we lack a SECOND positive photo. Learn a ranking within the
+// *rejected group* and only use it when a matched, unseen PHOTO quality
+// comparison is correctly predicted. This cannot APPROVE a rejected look.
+function trainGradedPhotoTeacher(positive,negative){
+  if(positive.length<1||negative.length<4)return null;
+  const available=negative.filter(x=>Number.isFinite(x.quality));
+  if(available.length<4)return null;
+  const pairs=[];
+  for(let i=0;i<available.length;i++)for(let j=i+1;j<available.length;j++){
+    const x=available[i],y=available[j];
+    const gap=Math.abs(x.quality-y.quality);
+    const shared=sharedPhotoFeatures(x,y);
+    if(gap<0.075||shared<7)continue;
+    const [better,worse]=x.quality>y.quality?[x,y]:[y,x];
+    pairs.push({better,worse,gap,shared});
+  }
+  // Prefer the most comparable *unseen* photographic pair with meaningful
+  // quality separation; the selection never depends on learned predictions.
+  pairs.sort((a,b)=>b.shared-a.shared||b.gap-a.gap||
+    (a.better.key+a.worse.key).localeCompare(b.better.key+b.worse.key));
+  const held=pairs[0];
+  if(!held)return null;
+  const remaining=negative.filter(x=>x!==held.better&&x!==held.worse);
+  if(remaining.length<2)return null;
+  const comparisons=[
+    ...positive.flatMap(p=>remaining.map(n=>[p,n])),
+    ...remaining.flatMap((a,i)=>remaining.slice(i+1).flatMap(b=>{
+      if(!Number.isFinite(a.quality)||!Number.isFinite(b.quality)||
+          Math.abs(a.quality-b.quality)<0.075)return [];
+      return [a.quality>b.quality?[a,b]:[b,a]];
+    })),
+  ];
+  if(comparisons.length<2)return null;
+  const weights=fitPairs(comparisons);
+  if(difference(weights,held.better,held.worse)<=0)
+    return {status:'uncalibrated_on_photos',usable:false};
+  const full=[
+    ...positive.flatMap(p=>negative.map(n=>[p,n])),
+    ...negative.flatMap((a,i)=>negative.slice(i+1).flatMap(b=>
+      Number.isFinite(a.quality)&&Number.isFinite(b.quality)&&
+      Math.abs(a.quality-b.quality)>=0.075
+        ?[a.quality>b.quality?[a,b]:[b,a]]:[])),
+  ];
+  return {status:'graded_photo_validated',usable:true,weights:fitPairs(full)};
 }
 export function trainPhotoFeedbackTeacher({looks,decisions,critiques,featuresOf}={}){
   const inactive=(status,extra={})=>({version:PHOTO_FEEDBACK_TEACHER_VERSION,
@@ -62,39 +131,44 @@ export function trainPhotoFeedbackTeacher({looks,decisions,critiques,featuresOf}
     if(typeof d?.candidateId!=='string'||!byId.has(d.candidateId))continue;
     const critique=byCritique.get(d.candidateId);
     const positive=d.reason==='approved'&&critique?.reject===false;
-    const negative=d.reason!=='approved'&&typeof d.reason==='string'&&
-      d.reason.length>0&&critique?.reject===true;
+    const negative=PHOTO_NEGATIVE_REASONS.has(d.reason)&&!!critique&&
+      // An explicit model_veto must actually be a model rejection; other
+      // negative reasons come from the authenticated selector's real-photo
+      // numerical/occasion gates even if the provider reject flag was false.
+      (d.reason!=='model_veto'||critique.reject===true);
     if(!positive&&!negative)continue;
     const look=byId.get(d.candidateId);
-    const features=similarityFeatures(look.items,featuresOf);
-    const matrix=normalizedOutfitLearningFeatures(featuresOf(look.items));
+    let raw=null;
+    try{raw=featuresOf(look.items);}catch{continue;}
+    const features=outfitRelationshipFeatures(raw);
+    const matrix=normalizedOutfitLearningFeatures(raw);
     if(!features||!matrix)continue;
     const key=JSON.stringify(features),label=positive?1:-1;
     const previous=signatures.get(key);
     if(previous&&previous.label!==label)signatures.set(key,{conflict:true});
-    else if(!previous)signatures.set(key,{features,matrix,label,key});
+    else if(!previous)signatures.set(key,{features,matrix,label,key,
+      quality:Number.isFinite(d.quality)&&d.quality>=0&&d.quality<=1
+        ?d.quality:null});
   }
   const unique=[...signatures.values()].filter(x=>!x.conflict);
   const positive=unique.filter(x=>x.label===1).sort((a,b)=>a.key.localeCompare(b.key));
   const negative=unique.filter(x=>x.label===-1).sort((a,b)=>a.key.localeCompare(b.key));
   const count={examples:positive.length+negative.length,positive:positive.length,
     negative:negative.length};
-  if(positive.length<2||negative.length<3)
+  if(positive.length<2||negative.length<3){
+    const graded=trainGradedPhotoTeacher(positive,negative);
+    if(graded?.usable)return {version:PHOTO_FEEDBACK_TEACHER_VERSION,
+      ...count,...graded};
+    if(graded)return inactive(graded.status,count);
     return inactive('insufficient_independent_photos',count);
+  }
   // Select a matched held-out pair: two original-photo verdicts that
   // shared the most SOURCE-GROUNDED product traits BEFORE the decision.
   // This tests whether a learned four-piece RELATIONSHIP predicts a
   // photo critic's decision rather than memorizing arbitrary garment types.
   // A small run without comparable outfits must ABSTAIN.
-  const comparisonEvidence=(a,b)=>{
-    let same=0;
-    for(let slot=0;slot<4;slot++)for(let field=0;field<5;field++)
-      if(a.matrix[slot]?.[field]&&a.matrix[slot][field]===b.matrix[slot]?.[field])
-        same++;
-    return same;
-  };
   const matched=positive.flatMap(p=>negative.map(n=>({
-    p,n,shared:comparisonEvidence(p,n),
+    p,n,shared:sharedPhotoFeatures(p,n),
   }))).sort((a,b)=>b.shared-a.shared||
     (a.p.key+a.n.key).localeCompare(b.p.key+b.n.key))[0];
   if(!matched||matched.shared<7)

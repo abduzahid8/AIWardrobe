@@ -58,12 +58,61 @@ test('independent PHOTO labels teach four-slot relationships, not garment bans',
  assert.equal(pool[0].id,makeLook(false,12).id,'source menu stays unchanged');
 });
 
+test('ONE photo-approved look can still learn relative photographic quality across rejected looks',()=>{
+  // Real mobile symptom: 1/5 photo-approved, while other four have usable
+  // photographic quality and occasion scores but did not reach final floor.
+  // None of those rejected items can be published without a fresh jury.
+  const evidence=input(1,4);
+  const actual={...evidence,
+    decisions:evidence.decisions.map((row,i)=>({
+      ...row,quality:i===0?.91:i%2?.65:.44,
+    })),
+    critiques:evidence.critiques.map((row,i)=>({
+      ...row,reject:false,
+      visualCohesion:i===0?.92:i%2?.65:.44,
+    })),
+  };
+  const model=trainPhotoFeedbackTeacher(actual);
+  assert.equal(model.positive,1);
+  assert.equal(model.negative,4,
+    'quality floor failures are genuine photographic NEGATIVE examples even if model reject=false');
+  assert.equal(model.examples,5);
+  assert.equal(model.status,'graded_photo_validated');
+  assert.equal(model.usable,true);
+  const offered=[
+    makeLook(false,88),makeLook(false,89),
+  ];
+  const ranked=photoTaughtRescueOrder(offered,model,actual.featuresOf);
+  assert.deepEqual(ranked.map(x=>x.id),[offered[0].id,offered[1].id],
+    'teacher orders real unapproved SKU candidates but never declares either approved');
+  assert.ok(photoTeacherScore(model,offered[0],actual.featuresOf)>
+    photoTeacherScore(model,offered[1],actual.featuresOf));
+});
+
+test('explicit avoided garment colors and ambiguous no-photo verdicts are NEVER generalized into fashion taste',()=>{
+  const evidence=input(1,4);
+  const rows=evidence.decisions.map((row,i)=>({
+    ...row,reason:i===0?'approved':'excluded_visual_color',
+    quality:i===0?.9:.4,
+  }));
+  const teacher=trainPhotoFeedbackTeacher({...evidence,decisions:rows});
+  assert.equal(teacher.negative,0);
+  assert.equal(teacher.usable,false);
+  assert.equal(teacher.status,'insufficient_independent_photos');
+  const ambiguity=trainPhotoFeedbackTeacher({...evidence,
+    decisions:rows.map(row=>({...row,reason:'low_confidence'}))});
+  assert.equal(ambiguity.examples,0);
+});
+
 test('photo-critic labels are NOT owner taste, and judge conflicts are inert',()=>{
  const evidence=input(4,4);
  const fake={...evidence,critiques:evidence.critiques.map(x=>({...x,reject:!x.reject}))};
  const untrusted=trainPhotoFeedbackTeacher(fake);
  assert.equal(untrusted.usable,false);
- assert.equal(untrusted.examples,0);
+ assert.equal(untrusted.positive,0,
+   'a reversed photo verdict cannot create a fictitious approval');
+ assert.equal(untrusted.negative,4,
+   'a real independent below-floor PHOTO quality decision stays learnable');
  const contradictory={...evidence,decisions:evidence.decisions.map(d=>({
    ...d,reason:d.reason==='approved'?'model_veto':'approved',
  }))};

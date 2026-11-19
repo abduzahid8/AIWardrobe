@@ -76,3 +76,57 @@ human judges, >=70% S6 preference over S5, and zero hard violations.
 **Interpretation:** The new code is correctly deployed and safe, but **no observed improvement in real fashion beauty**. In these autonomous generations, there are too few independent approved PHOTO outfit examples for an in-request binary teacher to generalize. Both canaries were stochastic and did **not** share the exact same source-SKU cohort, so comparing 2/6 to 1/5 is NOT a causal A/B experiment. The next modeling step needs either a safely retained, provenance-bounded set of photo-critic judgments across requests (separate from explicit human preferences), or a calibrated **continuous / pairwise photographic-quality teacher** that can learn from graded verified photo scores even with one approved look, while preserving held-out checks. Do not weaken the final real-original-photo aesthetic veto or invent rights to pre-composition merchant images.
 
 **Release gate:** AESTHETIC NO-GO; user goal (three outstanding, distinct, personalized four-product looks) remains unmet. No promotion of Stylist 6 and no changes to production Stylist 5. No fabricated human ratings or photo rights.
+
+## LIVE iOS quality feedback and graded-photo learning correction (19 Nov, exact 5ada6095)
+
+The first monitored authentic iOS Classic / Work request on isolated staging
+`5ada60958c7ca1d2efe0e13ccefc7eeab7ab54ef` returned
+**1 / 5 PHOTO-approved**, **1 displayed**, 43,398 ms, 4 legitimate
+merchant SKUs. Photo-informed SKU retry 2 attempts, 0 approvals. The
+newly exposed truthful telemetry reported:
+`photoTeacherStatus=insufficient_independent_photos`,
+`photoTeacherExamples=1`, `photoTeacherSelectionApplied=false`.
+Thus the earlier teacher *did not actually change candidate selection*,
+and **did not improve aesthetic quality**. No editor-selected third.
+
+Analysis exposed a real implementation defect, not the need for a new
+fashion rule: a full-outfit NVIDIA verdict may have `reject=false` yet
+still fail the original independently established style, occasion, formality
+or overall photographic quality gate. These were legitimate photographic
+**negative examples** but incorrectly dropped from preference training.
+
+The corrected trainer accepts these source-bound genuinely photographed
+negative decision reasons **only** when the same candidate has a valid
+independent photo critique, while still excluding uncertain photos and
+user-specific avoid-color vetoes. It does NOT reinterpret a bad photo as
+approved or transfer this model's training to owner taste.
+
+With **one real PHOTO approval + four or more PHOTO rejections**, the trainer
+can additionally learn from the *graded original photo quality among the
+rejected outfits* rather than waiting for a second full approval. It holds
+out a matched high-quality/low-quality rejected pair, trains on the remaining
+original-photo comparisons, and can only reorder a few *unreviewed* source-
+valid next-round candidates when it predicts the held-out order correctly.
+A failed held-out comparison causes honest abstention. This is a much
+weaker supervised signal than blind **human** outfit preferences and does
+not count toward their acceptance metric.
+
+A real-data training verdict status now distinguishes `photo_validated`
+(two or more true approved photo examples),
+`graded_photo_validated` (photo quality learned **within rejected** sets),
+`insufficient_independent_photos`, `uncalibrated_on_photos`, and related
+safe abstention reasons. The safe Render log also exposes anonymous bounded
+positive/negative counts, but **no user IDs, product IDs, photos, inference
+weights or merchant URLs**.
+
+Live visual evidence remains the authority: the next deployed canary must
+confirm whether the teacher actually validated **and** whether subsequent
+photo-approved outfit rates and independent human beauty improved. Existing
+physical source authenticity, 4-SKU, merchant-rights and original-photo
+critic requirements remain. This is NOT a production-ready sign-off.
+
+Catalog data caveat from read-only Supabase at this checkpoint: 8,554 active
+products, 7,556 visual profiles, only 1,093 visible volume attributes and
+1,838 texture attributes. Missing photo evidence is not known fashion
+information and may limit learning; building a properly authorized original-
+photo first-pass fashion vision process remains strategically necessary.

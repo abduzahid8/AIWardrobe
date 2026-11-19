@@ -2467,6 +2467,8 @@ export async function recommendFashionDeck({
       });
       modelFashionSelection.photoTeacherStatus=photoTeacher.status;
       modelFashionSelection.photoTeacherExamples=photoTeacher.examples;
+      modelFashionSelection.photoTeacherPositive=photoTeacher.positive;
+      modelFashionSelection.photoTeacherNegative=photoTeacher.negative;
       let rescueAttempted=0;
       let secondaryCritiques=[];
       // THE FASHION-LEARNING LOOP: The first set of real product photographs

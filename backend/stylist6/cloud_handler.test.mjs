@@ -2116,6 +2116,7 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     skuCompositionStudio:'not_run',skuCompositionPhotoFirst:'not_run',
     catalogFourItemContract:false,catalogFourItemDropped:null,
     photoTeacherStatus:'not_run',photoTeacherExamples:null,
+    photoTeacherPositive:null,photoTeacherNegative:null,
     photoTeacherSelectionApplied:false,
     photoRevisionInventory:'not_run',
     photoRevisionStatus:'not_run',photoRevisionAttempted:null,
@@ -2137,12 +2138,15 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
   });
   assert.doesNotMatch(JSON.stringify(out),/secret|example|private|contact info/);
   const teacher=stylist6SafeQualityTrace({modelFashionSelection:{
-    photoTeacherStatus:'photo_validated',photoTeacherExamples:7,
+    photoTeacherStatus:'graded_photo_validated',photoTeacherExamples:7,
+    photoTeacherPositive:1,photoTeacherNegative:6,
     photoTeacherSelectionApplied:true,ownerEmail:'private@example.com',
     weights:{'private-sku':999},
   }},2,35000);
-  assert.equal(teacher.photoTeacherStatus,'photo_validated');
+  assert.equal(teacher.photoTeacherStatus,'graded_photo_validated');
   assert.equal(teacher.photoTeacherExamples,7);
+  assert.equal(teacher.photoTeacherPositive,1);
+  assert.equal(teacher.photoTeacherNegative,6);
   assert.equal(teacher.photoTeacherSelectionApplied,true);
   assert.doesNotMatch(JSON.stringify(teacher),/private|email|weights/);
   const invalid=stylist6SafeQualityTrace({modelFashionSelection:{

@@ -189,8 +189,11 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     photoTeacherStatus:[
       'unavailable','insufficient_independent_photos',
       'no_comparable_photo_pair','uncalibrated_on_photos','photo_validated',
+      'graded_photo_validated',
     ].includes(f.photoTeacherStatus)?f.photoTeacherStatus:'not_run',
     photoTeacherExamples:safe(f.photoTeacherExamples,8),
+    photoTeacherPositive:safe(f.photoTeacherPositive,8),
+    photoTeacherNegative:safe(f.photoTeacherNegative,8),
     photoTeacherSelectionApplied:f.photoTeacherSelectionApplied===true,
     photoRevisionInventory:['unseen_source_skus','source_fallback',
       'remaining_source_skus'].includes(f.photoRevisionInventory)
