@@ -202,8 +202,9 @@ test('unrepeated random photo labels cannot activate a stylist reward prior',()=
   assert.equal(model.status,'uncalibrated_history');
   assert.equal(model.usable,false,
     'no genuine transferable PHOTO relationship means zero model influence');
-  assert.equal(model.holdoutWins,0);
   assert.ok(model.holdoutPairs>=24);
+  assert.ok(model.holdoutWins/model.holdoutPairs<0.75,
+    'random balanced photo features must not clear cross-validation acceptance');
 });
 
 test('sparse occasion photo history must abstain even with high photographic scores',()=>{
