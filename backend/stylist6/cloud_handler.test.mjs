@@ -2193,6 +2193,7 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     skuCompositionParallel:false,
     skuCompositionAiFirst:false,skuCompositionRetrievalSkipped:false,
     skuCompositionHistoryCreativeAuditions:null,
+    skuCompositionHistoryReachedPhoto:null,
     skuCompositionPhotoAuditionCoreFeasible:false,
     skuCompositionPhotoAuditionCoreRecovered:false,
     skuCompositionStudio:'not_run',skuCompositionPhotoFirst:'not_run',
@@ -2233,6 +2234,7 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     photoHistoryHoldoutPairs:98,photoHistoryPriorConsidered:true,
     photoAuditionCoreRecovered:true,
     skuCompositionReceipt:{photoHistoryCreativeAuditions:2,
+      photoHistoryReachedPhoto:1,
       photoAuditionCoreFeasible:true,
       privateSourceSku:'do-not-log-owner-shop-SKU'},
     ownerEmail:'private@example.com',
@@ -2250,6 +2252,8 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     '4-fold cross-validated real PHOTO reward data must remain observable');
   assert.equal(teacher.skuCompositionHistoryCreativeAuditions,2,
     'real source-admitted learned alternatives, not fake AI photo approvals');
+  assert.equal(teacher.skuCompositionHistoryReachedPhoto,1,
+    'actual PHOTO candidates, not merely created and discarded AI remixes');
   assert.equal(teacher.skuCompositionPhotoAuditionCoreFeasible,true);
   assert.equal(teacher.skuCompositionPhotoAuditionCoreRecovered,true);
   assert.equal(teacher.photoHistoryPriorConsidered,true);
@@ -2258,12 +2262,14 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
   const invalid=stylist6SafeQualityTrace({modelFashionSelection:{
     photoTeacherStatus:'<owned-secret>',photoTeacherExamples:999,
     photoHistoryHoldoutWins:1e10,photoHistoryHoldoutPairs:1e10,
-    skuCompositionReceipt:{photoHistoryCreativeAuditions:999},
+    skuCompositionReceipt:{photoHistoryCreativeAuditions:999,
+      photoHistoryReachedPhoto:999},
   }},2,35000);
   assert.equal(invalid.photoTeacherStatus,'not_run');
   assert.equal(invalid.photoTeacherExamples,null);
   assert.equal(invalid.photoHistoryHoldoutPairs,null);
   assert.equal(invalid.skuCompositionHistoryCreativeAuditions,null);
+  assert.equal(invalid.skuCompositionHistoryReachedPhoto,null);
   assert.equal(stylist6SafeQualityTrace(null,5,-1).displayed,null,
     'trace cannot invent out-of-range deck counts');
 });
