@@ -682,17 +682,17 @@ export async function renderEditorialLookBoard(items, options = {}) {
 
     const headerTitle = anonymizeLabels
       ? escapeXml(sanitizeLabelText(lookToken || 'LOOK BOARD', 28).toUpperCase())
-      : escapeXml(sanitizeLabelText(title, 44).toUpperCase() || 'STUDIO LOOK BOARD');
+      : escapeXml(sanitizeLabelText(title, 52).toUpperCase() || 'STUDIO LOOK BOARD');
     const headerSub = anonymizeLabels
       ? 'PROPORTION-SCALED FLAT-LAY'
-      : escapeXml(sanitizeLabelText(subtitle, 54).toUpperCase());
+      : escapeXml(sanitizeLabelText(subtitle, 84).toUpperCase());
 
     const baseSvg = Buffer.from(
       `<svg xmlns="http://www.w3.org/2000/svg" width="${LOOK_BOARD_WIDTH}" height="${LOOK_BOARD_HEIGHT}">`
       + `<rect width="${LOOK_BOARD_WIDTH}" height="${LOOK_BOARD_HEIGHT}" fill="${STUDIO_BACKDROP_HEX}"/>`
-      + `<text x="36" y="54" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="22" font-weight="700" letter-spacing="2">${headerTitle}</text>`
-      + (headerSub ? `<text x="988" y="54" text-anchor="end" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="13" font-weight="600" letter-spacing="1.4">${headerSub}</text>` : '')
-      + `<line x1="36" y1="80" x2="988" y2="80" stroke="${STUDIO_BORDER_HEX}" stroke-width="1.5"/>`
+      + `<text x="36" y="${headerSub ? 42 : 54}" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="20" font-weight="700" letter-spacing="1.6">${headerTitle}</text>`
+      + (headerSub ? `<text x="36" y="66" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="12" font-weight="600" letter-spacing="1.2">${headerSub}</text>` : '')
+      + `<line x1="36" y1="84" x2="988" y2="84" stroke="${STUDIO_BORDER_HEX}" stroke-width="1.5"/>`
       + cardRects.join('')
       + `</svg>`,
     );

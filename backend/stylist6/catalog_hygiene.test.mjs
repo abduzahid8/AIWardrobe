@@ -270,3 +270,78 @@ test('filterHygienicCatalog preserves immutability, handles owned wardrobe items
   assert.equal(result.stats.excludedCount, 1);
   assert.equal(result.excluded[0].id, 'm-1');
 });
+
+test('evening/black-tie tuxedo and dinner stud shirts are excluded from daytime work/office/casual but allowed for formal/black-tie', () => {
+  const msDinnerShirt = validItem({
+    id: 'ms-clp60542508-z0',
+    brand: 'M&S',
+    name: 'Regular Fit Luxury Cotton Double Cuff Dress Shirt',
+    category: 'tops',
+    garment_type: 'upper_body',
+    fashion_slot: 'top',
+    fashion_subtype: 'dress-shirt',
+    source_url: 'https://www.marksandspencer.com/regular-fit-pure-cotton-dinner-shirt/p/clp60542508',
+    visual_fashion: {
+      ...validItem().visual_fashion,
+      attributes: { slot: { value: 'top', confidence: 0.97, margin: 0.95, evidence: 'image-model' } },
+    },
+  });
+  const tuxedoShirt = validItem({
+    id: 'gant-tux-1',
+    name: 'Tailored Tuxedo Shirt White',
+    category: 'tops',
+    garment_type: 'upper_body',
+    fashion_slot: 'top',
+    fashion_subtype: 'dress-shirt',
+    source_url: 'https://gant.example.com/p/tailored-tuxedo-shirt-white',
+    visual_fashion: {
+      ...validItem().visual_fashion,
+      attributes: { slot: { value: 'top', confidence: 0.97, margin: 0.95, evidence: 'image-model' } },
+    },
+  });
+  const studFrontShirt = validItem({
+    id: 'marcella-1',
+    name: 'Wing-Collar Dinner Marcella Stud-Front Shirt',
+    category: 'tops',
+    garment_type: 'upper_body',
+    fashion_slot: 'top',
+    fashion_subtype: 'dress-shirt',
+    source_url: 'https://shirtmaker.example.com/p/marcella-shirt',
+    visual_fashion: {
+      ...validItem().visual_fashion,
+      attributes: { slot: { value: 'top', confidence: 0.97, margin: 0.95, evidence: 'image-model' } },
+    },
+  });
+  const regularPoplinShirt = validItem({
+    id: 'eton-poplin-1',
+    name: 'Slim Fit White Cotton Poplin Dress Shirt',
+    category: 'tops',
+    garment_type: 'upper_body',
+    fashion_slot: 'top',
+    fashion_subtype: 'dress-shirt',
+    source_url: 'https://eton.example.com/p/white-poplin-dress-shirt',
+    visual_fashion: {
+      ...validItem().visual_fashion,
+      attributes: { slot: { value: 'top', confidence: 0.97, margin: 0.95, evidence: 'image-model' } },
+    },
+  });
+
+  for (const occasion of ['Work', 'Office', 'Casual']) {
+    for (const eveningItem of [msDinnerShirt, tuxedoShirt, studFrontShirt]) {
+      const verdict = evaluateCatalogItemHygiene(eveningItem, null, { occasion });
+      assert.equal(verdict.eligible, false, `${eveningItem.id} must be excluded for daytime ${occasion}`);
+      assert.ok(verdict.reasons.includes('evening_tuxedo_shirt_in_daytime_occasion'));
+    }
+    assert.equal(evaluateCatalogItemHygiene(regularPoplinShirt, null, { occasion }).eligible, true);
+  }
+
+  for (const formalOccasion of ['Formal', 'Black Tie', 'Evening Gala']) {
+    for (const eveningItem of [msDinnerShirt, tuxedoShirt, studFrontShirt]) {
+      assert.equal(
+        evaluateCatalogItemHygiene(eveningItem, null, { occasion: formalOccasion }).eligible,
+        true,
+        `${eveningItem.id} must stay eligible for ${formalOccasion}`,
+      );
+    }
+  }
+});

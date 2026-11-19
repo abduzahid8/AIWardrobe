@@ -224,3 +224,35 @@ test('enforces byte cap and safely escapes XML/SVG injection in brand/title labe
   assert.equal(meta.width, 1024);
   assert.equal(meta.height, 1024);
 });
+
+test('stacks long title and subtitle vertically on 1024x1024 look boards with zero horizontal collision', async () => {
+  const jpg = await syntheticPhoto('jpeg', '#887766', 120, 150);
+  let capturedBaseSvg = '';
+  const inspectingSharp = (input, opts) => {
+    if (Buffer.isBuffer(input) && input.toString('utf8', 0, 40).includes('<svg')) {
+      const text = input.toString('utf8');
+      if (text.includes('S6-LIVE-06 AFTER')) capturedBaseSvg = text;
+    }
+    return sharp(input, opts);
+  };
+  const board = await renderEditorialLookBoard(
+    [
+      { id: 'o1', slot: 'outerwear', brand: 'Canali', price: 650, currency: 'USD', bytes: jpg },
+      { id: 't1', slot: 'top', brand: 'Eton', price: 180, currency: 'USD', bytes: jpg },
+      { id: 'b1', slot: 'bottom', brand: 'Incotex', price: 240, currency: 'USD', bytes: jpg },
+      { id: 's1', slot: 'shoes', brand: 'Beckett Simonon', price: 229, currency: 'USD', bytes: jpg },
+    ],
+    {
+      title: 'S6-LIVE-06 AFTER 1-TAP SHOE SWAP · Look 1 (Refined Evening Tailoring)',
+      subtitle: 'Swapped Shoe: Beckett Simonon Dunham Brown Suede Derby ($229) · 13ms surgical swap',
+      sharpImpl: inspectingSharp,
+    },
+  );
+  assert.equal(board.ok, true);
+  assert.ok(capturedBaseSvg.includes('y="42"'), 'title sits on top header baseline y=42');
+  assert.ok(capturedBaseSvg.includes('x="36" y="66"'), 'subtitle stacks cleanly below title at y=66');
+  assert.ok(!capturedBaseSvg.includes('x="988" y="54"'), 'legacy colliding same-baseline subtitle removed');
+  const meta = await sharp(board.jpegBuffer).metadata();
+  assert.equal(meta.width, 1024);
+  assert.equal(meta.height, 1024);
+});

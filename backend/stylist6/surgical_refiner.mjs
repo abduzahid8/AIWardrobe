@@ -326,7 +326,7 @@ function computeBudgetHeadroom(lockedItems, context, priceToBudgetCurrency) {
 
   const convert = (item) => {
     if (typeof priceToBudgetCurrency === 'function') {
-      const val = Number(priceToBudgetCurrency(item));
+      const val = Number(priceToBudgetCurrency(item, currency));
       return Number.isFinite(val) ? val : null;
     }
     const p = Number(item?.price);

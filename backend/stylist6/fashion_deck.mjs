@@ -2051,10 +2051,16 @@ export async function recommendFashionDeck({
         });
       }catch{resolvedPerDirectionPools=null;}
     }
+    const effectivePoolForCount = Array.isArray(resolvedPerDirectionPools?.unifiedPool) &&
+      resolvedPerDirectionPools.unifiedPool.length >= 12
+      ? resolvedPerDirectionPools.unifiedPool
+      : pool;
     const counts=Object.fromEntries(slots.map(slot=>
-      [slot,pool.filter(p=>p.slot===slot).length]));
+      [slot,effectivePoolForCount.filter(p=>p.slot===slot).length]));
+    const minSlotCount = Array.isArray(resolvedPerDirectionPools?.unifiedPool) &&
+      resolvedPerDirectionPools.unifiedPool.length >= 12 ? 3 : 6;
     const enough=['top','bottom','shoes',...(forceLayer?['outerwear']:[])]
-      .every(slot=>counts[slot]>=6);
+      .every(slot=>counts[slot]>=minSlotCount);
     if(enough){
       const contextPrompt={
         style:context.style,occasion:context.occasion,brief:context.request,
@@ -3380,6 +3386,30 @@ export async function recommendFashionDeck({
                 }
               }
             }else editorial.feedbackRevision='insufficient_safe_capacity';
+          }
+          if(reviewed.outfits.length<3&&editorial.eligibleTriples>0&&
+              (editorial.visualJury!=='not_run'||editorial.independentJury==='narrowed'||editorial.status!=='applied')){
+            const chosenIds=new Set(reviewed.outfits.map(x=>x?.id).filter(Boolean));
+            const triples=verifiedPortfolios.filter(p=>p.size===3);
+            const bestTriple=triples.find(p=>
+              p.orderedLooks.map(t=>approvedLooks[Number(t.slice(1))]?.id)
+                .filter(Boolean).filter(id=>chosenIds.has(id)).length===chosenIds.size
+            )||triples[0];
+            if(bestTriple){
+              const tripleLooks=bestTriple.orderedLooks
+                .map(t=>approvedLooks[Number(t.slice(1))]).filter(Boolean);
+              const replay=selectVisualDeck(
+                {...retrieval,shortlist:tripleLooks},allCritiques,
+                {...reviewOptions,target:3,onCritiques:undefined});
+              if(replay.outfits.length===3){
+                const byId=new Map(replay.outfits.map(x=>[x.id,x]));
+                reviewed={...reviewed,status:replay.status,
+                  outfits:tripleLooks.map(x=>byId.get(x.id)).filter(Boolean)};
+                editorial.chosen=reviewed.outfits.length;
+                editorial.status='applied';
+                editorial.restoredVerifiedTriple=true;
+              }
+            }
           }
           modelFashionSelection.photoEditorial=editorial;
         }

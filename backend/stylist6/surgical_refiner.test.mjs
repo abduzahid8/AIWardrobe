@@ -289,3 +289,56 @@ test('swapSingleSlot powers 1-tap UI slot replacement with over_budget preferenc
   const scoreInfo = computeCritiqueCompositeScore({ visualCohesion: 0.85, styleFit: 0.8, occasionFit: 0.8, formalityFit: 0.8, confidence: 0.9, reject: false, referenceless: true });
   assert.equal(scoreInfo.passedFloor, true);
 });
+
+test('budgeted refineLookSurgically and swapSingleSlot pass 2-arg (item, currency) to strict FX converter', async () => {
+  const seenCurrencies = [];
+  const strictFxConverter = (item, currency) => {
+    // Mirrors src/domain/budgetFx.ts referenceAmount calling to.trim()
+    const target = currency.trim().toUpperCase();
+    seenCurrencies.push(target);
+    return item.currency === target ? item.price : item.price * 1.1;
+  };
+
+  const swapRes = await swapSingleSlot({
+    look: baseLook,
+    targetSlot: 'shoes',
+    reason: 'wrong_shoes',
+    catalogPool,
+    context: { occasion: 'Work', budget: { amount: 900, currency: 'USD' } },
+    excludedItemIds: ['shoes-deck-used-loafer'],
+    priceToBudgetCurrency: strictFxConverter,
+    hardGateValidator: () => ({ ok: true }),
+  });
+  assert.equal(swapRes.status, 'swapped');
+  assert.ok(seenCurrencies.length > 0 && seenCurrencies.every((c) => c === 'USD'));
+
+  const refineRes = await refineLookSurgically({
+    look: baseLook,
+    critique: {
+      candidateId: baseLook.id,
+      reject: true,
+      editorialScore: 5.5,
+      weakestSlot: 'shoes',
+      defectCategory: 'formality_mismatch',
+      repairDirective: 'Swap shoes for brown suede loafer',
+      confidence: 0.92,
+      referenceless: true,
+    },
+    catalogPool,
+    context: { occasion: 'Work', budget: { amount: 900, currency: 'USD' } },
+    excludedItemIds: ['shoes-deck-used-loafer'],
+    priceToBudgetCurrency: strictFxConverter,
+    hardGateValidator: () => ({ ok: true }),
+    visualCritic: async ([candidate]) => [{
+      candidateId: candidate.id,
+      reject: false,
+      editorialScore: 8.6,
+      weakestSlot: null,
+      defectCategory: 'none',
+      confidence: 0.94,
+      referenceless: true,
+    }],
+  });
+  assert.equal(refineRes.status, 'refined_and_approved');
+  assert.equal(refineRes.committed, true);
+});

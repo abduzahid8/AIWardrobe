@@ -19,7 +19,7 @@ import {
   canonicalRequestFingerprint,
 } from './cloud_handler.mjs';
 import { HOST_ALLOWLIST, INFERENCE_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/image_access.mjs';
-import { adaptCatalog, sourceHash } from './catalog_adapter.mjs';
+import { adaptCatalog, projectCatalogItem, sourceHash } from './catalog_adapter.mjs';
 import { describeGarment } from '../../src/domain/garmentDescriptor.ts';
 import { garmentContextReason } from '../../src/domain/garmentContext.ts';
 import { stylingContext } from '../../src/domain/stylingContext.ts';
@@ -1938,9 +1938,10 @@ test('fresh visual image colors exclude otherwise unknown-colored merchant cardi
   const hydration=hydrateProfiles(rows,[{product_id:row.id,version:1,
     source_hash:hash,image_url:row.image_url,profile}]);
   assert.deepEqual(hydration,{fetched:1,attached:1,drifted:0});
+  assert.equal(projectCatalogItem(row).color,'unknown','merchant title alone does not tell the color');
   const mapped=adaptCatalog(rows).items;
   assert.equal(mapped.length,1);
-  assert.equal(mapped[0].color,'unknown','merchant title alone does not tell the color');
+  assert.equal(mapped[0].color,'grey','source-hash-verified visual_fashion propagates confident photographic color');
   const descriptor=describeGarment(mapped[0]);
   assert.equal(descriptor.color,'grey');
   assert.ok(descriptor.evidence.some(x=>x.startsWith('image:color:')));
@@ -2261,4 +2262,129 @@ test('failed optional result-store write NEVER reclassifies an approved paid dec
   assert.equal(data.calls.debitQuota,1);
   assert.equal(data.calls.finishRequest,1);
   assert.equal(data.calls.saveCompletedResult,1);
+});
+
+test('warm-weather discovery hints (>=24C), mapDeckItem subtype/color, budgeted swap_slot FX, and feedback swapped_from_sku exclusion', async () => {
+  // Fix 4: Warm-weather (>=24C) discovery hints include breathable subtypes
+  const warmHints = catalogStylingDiscoveryHints({
+    style: 'classic',
+    occasion: 'Weekend',
+    brief: 'Hot summer rooftop brunch',
+    weather: { temp: 31 },
+  });
+  for (const sub of ['overshirt', 'cardigan', 'polo', 'chino', 'minimal-sneaker', 'loafer', 'driver']) {
+    assert.ok(warmHints.preferredSubtypes.includes(sub), `expected warm-weather subtype ${sub}`);
+  }
+
+  // Fix 2: Stale or low-confidence visual_fashion NEVER overrides unknown color in adaptCatalog
+  const baseRow = {
+    ...shopRow('stale-color-cardigan', 'outerwear'),
+    name: '100% WOOL REGULAR-FIT CARDIGAN',
+    description: 'Plain wool cardigan',
+    source: 'trusted-merchant',
+  };
+  const validHash = sourceHash(baseRow);
+  const lowConf = adaptCatalog([{
+    ...baseRow,
+    visual_source_hash: validHash,
+    visual_fashion: { version: 1, sourceHash: validHash, attributes: { color: { value: 'navy', confidence: 0.72, margin: 0.5 } } },
+  }]).items[0];
+  assert.equal(lowConf.color, 'unknown', 'confidence < 0.8 must not propagate photo color');
+  const staleHash = adaptCatalog([{
+    ...baseRow,
+    visual_source_hash: 'f'.repeat(32),
+    visual_fashion: { version: 1, sourceHash: 'f'.repeat(32), attributes: { color: { value: 'navy', confidence: 0.95, margin: 0.8 } } },
+  }]).items[0];
+  assert.equal(staleHash.color, 'unknown', 'stale source_hash must not propagate photo color');
+
+  // Fix 1 + Fix 2 + Fix 5b: generate deck -> verify subtype & color -> swap_slot with real FX+budget -> feedback excludes swapped_from_sku
+  const richShop = [
+    { ...shopRow('fx-top-1', 'top', 95, 'USD'), name: 'White Poplin Dress Shirt', fashion_slot: 'top', fashion_subtype: 'dress-shirt' },
+    { ...shopRow('fx-top-2', 'top', 110, 'EUR'), name: 'Sky Blue Cotton Oxford Shirt', fashion_slot: 'top', fashion_subtype: 'shirt' },
+    { ...shopRow('fx-top-3', 'top', 85, 'GBP'), name: 'Cream Fine Knit Polo', fashion_slot: 'top', fashion_subtype: 'polo' },
+    { ...shopRow('fx-outer-1', 'outerwear', 260, 'EUR'), name: 'Navy Wool Tailored Blazer', fashion_slot: 'outerwear', fashion_subtype: 'blazer' },
+    { ...shopRow('fx-outer-2', 'outerwear', 240, 'GBP'), name: 'Charcoal Cashmere Cardigan', fashion_slot: 'outerwear', fashion_subtype: 'cardigan' },
+    { ...shopRow('fx-outer-3', 'outerwear', 290, 'USD'), name: 'Olive Wool Overshirt', fashion_slot: 'outerwear', fashion_subtype: 'overshirt' },
+    { ...shopRow('fx-bottom-1', 'bottom', 160, 'USD'), name: 'Charcoal Tailored Wool Trousers', fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser' },
+    { ...shopRow('fx-bottom-2', 'bottom', 140, 'EUR'), name: 'Navy Pleated Tailored Trousers', fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser' },
+    { ...shopRow('fx-bottom-3', 'bottom', 110, 'GBP'), name: 'Stone Cotton Chinos', fashion_slot: 'bottom', fashion_subtype: 'chino' },
+    { ...shopRow('fx-shoes-1', 'shoes', 220, 'USD'), name: 'Black Calf Leather Oxfords', fashion_slot: 'shoes', fashion_subtype: 'oxford' },
+    { ...shopRow('fx-shoes-2', 'shoes', 210, 'EUR'), name: 'Brown Suede Penny Loafers', fashion_slot: 'shoes', fashion_subtype: 'loafer' },
+    { ...shopRow('fx-shoes-3', 'shoes', 195, 'GBP'), name: 'Espresso Leather Derbies', fashion_slot: 'shoes', fashion_subtype: 'derby' },
+    { ...shopRow('fx-shoes-4', 'shoes', 230, 'USD'), name: 'Burgundy Leather Monk Straps', fashion_slot: 'shoes', fashion_subtype: 'monk' },
+  ];
+  const todayUz = new Date(Date.now() + 5 * 3600 * 1000).toISOString().slice(0, 10);
+  const fxSnap = {
+    id: `CBU:${todayUz}:12800:13600:16100`,
+    source: 'CBU',
+    asOf: todayUz,
+    fetchedAt: new Date().toISOString(),
+    uzsPerUnit: { UZS: 1, USD: 12800, EUR: 13600, GBP: 16100 },
+  };
+  const fxIo = { shopRows: richShop, fetchBudgetFxSnapshot: async () => fxSnap };
+
+  const first = await signedCall({
+    request: {
+      ...baseRequest,
+      budget: { amount: 1500, currency: 'USD' },
+      generationRequestId: 'qa-phase5-first-deck',
+    },
+  }, {}, fxIo);
+  assert.equal(first.status, 200);
+  assert.ok(first.body.outfits.length >= 1);
+  const firstLook = first.body.outfits[0];
+  for (const it of firstLook.items) {
+    assert.equal(typeof it.subtype, 'string', 'mapDeckItem preserves subtype');
+    assert.ok(it.subtype.length > 0, `expected non-empty subtype for ${it.id}`);
+  }
+
+  const oldShoe = firstLook.items.find((it) => it.macroCategory === 'shoes');
+  assert.ok(oldShoe, 'look has a shoes item');
+
+  const swapRes = await signedCall({
+    action: 'swap_slot',
+    request: {
+      outfit: firstLook,
+      targetSlot: 'shoes',
+      reason: 'wrong_shoes',
+      context: { ...baseRequest, budget: { amount: 1500, currency: 'USD' } },
+      excludedIds: [oldShoe.id],
+    },
+  }, {}, fxIo);
+  assert.equal(swapRes.status, 200, 'budgeted swap_slot with cross-currency FX must never crash with HTTP 500');
+  assert.equal(swapRes.body.status, 'swapped');
+  const swappedShoe = swapRes.body.outfit.items.find((it) => it.macroCategory === 'shoes');
+  assert.ok(swappedShoe && swappedShoe.id !== oldShoe.id);
+
+  // Post-feedback generation must exclude swapped_from_sku AND explicit slot-targeted negative-rated SKU
+  const secondShoe = first.body.outfits[1]?.items?.find((it) => it.macroCategory === 'shoes');
+  const feedbackRows = [
+    {
+      rating: -1,
+      target_slot: 'shoes',
+      feedback_tags: ['wrong_shoes'],
+      swapped_from_sku: oldShoe.id,
+      item_ids: firstLook.items.map((it) => it.id),
+      created_at: new Date().toISOString(),
+    },
+    ...(secondShoe && secondShoe.id !== oldShoe.id ? [{
+      rating: -1,
+      target_slot: 'shoes',
+      item_ids: first.body.outfits[1].items.map((it) => it.id),
+      created_at: new Date().toISOString(),
+    }] : []),
+  ];
+  const afterFb = await signedCall({
+    request: {
+      ...baseRequest,
+      budget: { amount: 1500, currency: 'USD' },
+      generationRequestId: 'qa-phase5-post-feedback',
+    },
+  }, {}, { ...fxIo, feedbackRows });
+  assert.equal(afterFb.status, 200);
+  const allReturnedIds = afterFb.body.outfits.flatMap((o) => o.items.map((it) => it.id));
+  assert.equal(allReturnedIds.includes(oldShoe.id), false, 'swapped_from_sku must be excluded on subsequent generations');
+  if (secondShoe && secondShoe.id !== oldShoe.id) {
+    assert.equal(allReturnedIds.includes(secondShoe.id), false, 'explicit slot-targeted negative-rated SKU must be excluded');
+  }
 });

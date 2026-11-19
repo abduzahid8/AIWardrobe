@@ -991,6 +991,7 @@ function normalizePrecomputedWardrobeSummary(
 
 function normalizeAppearance(
   raw: PersonalStyleDnaInput['appearance'],
+  favoriteColors: readonly string[] = [],
 ): NormalizedAppearanceProfile {
   const empty: NormalizedAppearanceProfile = {
     skinUndertone: 'unknown',
@@ -1024,6 +1025,17 @@ function normalizeAppearance(
   const flatteringColors = canonicalizeColorList(raw.flatteringColors, 12);
   const powerNeutrals = canonicalizeColorList(raw.powerNeutrals, 8);
   const avoidColors = canonicalizeColorList(raw.avoidColors, 12);
+  // Opt-in Cool Winter (cool undertone + high contrast) avoids warm earthy brown
+  // unless the user explicitly listed brown in favoriteColors.
+  if (
+    skinUndertone === 'cool' &&
+    contrastLevel === 'high' &&
+    !favoriteColors.includes('brown') &&
+    !avoidColors.includes('brown') &&
+    avoidColors.length < 12
+  ) {
+    avoidColors.push('brown');
+  }
   const confNum = typeof raw.confidence === 'number' && Number.isFinite(raw.confidence)
     ? Math.max(0, Math.min(1, Math.round(raw.confidence * 1000) / 1000))
     : null;
@@ -1153,7 +1165,7 @@ export function normalizePersonalStyleDna(input?: PersonalStyleDnaInput | null):
     if (VALID_STYLES.has(k)) styleSet.add(k);
   }
 
-  const appearance = normalizeAppearance(src.appearance ?? src.appearanceProfile);
+  const appearance = normalizeAppearance(src.appearance ?? src.appearanceProfile, favoriteColors);
   const body = deriveBodyStylingDirectives(
     bodySrc
       ? {

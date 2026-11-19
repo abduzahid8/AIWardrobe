@@ -2799,3 +2799,121 @@ test('real catalog PHOTO audition admits only four distinct source merchandise r
     items:[...complete.items.slice(0,3),{...complete.items[3],isShopItem:false}],
   }),false,'invented items cannot masquerade as a merchant catalog SKU');
 });
+
+test('multimodal visual jury narrowing below 3 looks restores best verified 3-look triple when eligibleTriples > 0', async () => {
+  const slots = ['top', 'outerwear', 'bottom', 'shoes'];
+  const subtypes = [
+    ['dress-shirt', 'shirt', 'polo', 'fine-knit', 'shirt', 'polo'],
+    ['blazer', 'cardigan', 'coat', 'overshirt', 'jacket', 'blazer'],
+    ['tailored-trouser', 'chino', 'trouser', 'tailored-trouser', 'chino', 'trouser'],
+    ['oxford', 'loafer', 'derby', 'chelsea', 'oxford', 'loafer'],
+  ];
+  const colors = ['white', 'navy', 'grey', 'olive', 'cream', 'charcoal'];
+  const catalog = slots.flatMap((slot, j) =>
+    Array.from({ length: 8 }, (_, i) => ({
+      ...garment(`triple-restore-${slot}-${i}`, `${colors[i % colors.length]} ${subtypes[j][i % 6]} ${i}`, slot, subtypes[j][i % 6]),
+      color: colors[i % colors.length],
+    })),
+  );
+  const request = {
+    sourceMode: 'catalog',
+    style: 'classic',
+    occasion: 'Work',
+    weather: { temp: 16 },
+    optionalLayer: false,
+    preferences: {},
+    requiredIds: [],
+    budget: { amount: 3000000, currency: 'UZS' },
+  };
+  const result = await recommendFashionDeck({
+    ...base,
+    request,
+    catalog,
+    referenceBriefs: refs,
+    selectDirectorFinalists: async () => ({ status: 'timeout', tokens: [] }),
+    selectCatalogCompositions: async ({ pool }) => ({
+      status: 'composed',
+      looks: Array.from({ length: 6 }, (_, i) =>
+        slots.map((slot) => pool.filter((p) => p.slot === slot)[i].item),
+      ),
+      providerCalls: 1,
+    }),
+    selectCatalogRescueCompositions: async () => ({ status: 'provider_unavailable', looks: [], providerCalls: 1 }),
+    photoRescueRemainingMs: () => 40000,
+    visualDeckReview: true,
+    canJudgeOutfit: async () => true,
+    visualCritic: async (batch) =>
+      batch.map((look, i) =>
+        admittedVisualVerdict(look, {
+          referenceless: true,
+          slotColors: {
+            top: ['white', 'sky', 'cream', 'grey', 'blue', 'white'][i % 6],
+            outerwear: ['navy', 'charcoal', 'olive', 'brown', 'grey', 'black'][i % 6],
+            bottom: ['grey', 'navy', 'beige', 'charcoal', 'olive', 'grey'][i % 6],
+            shoes: ['black', 'brown', 'burgundy', 'black', 'brown', 'black'][i % 6],
+          },
+        }),
+      ),
+    selectPhotoApprovedPortfolio: async ({ portfolios }) => {
+      const triple = portfolios.find((p) => p.size === 3);
+      assert.ok(triple, 'expected at least one verified 3-look triple');
+      const pair = portfolios.find((p) => p.size === 2);
+      assert.ok(pair, 'expected a 2-look pair');
+      return {
+        status: 'selected',
+        tokens: pair.orderedLooks,
+        visualJury: 'applied',
+        visualMediaStatus: 'ready',
+        independentJury: 'narrowed',
+      };
+    },
+  });
+
+  assert.equal(result.outfits.length, 3, 'restores full 3-look verified triple when multimodal jury narrowed with eligibleTriples > 0');
+  assert.equal(result.diagnostics.modelFashionSelection.photoEditorial.restoredVerifiedTriple, true);
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded, 0);
+  assert.ok(result.outfits.every((o) => Array.isArray(o.visualEvidence)));
+});
+
+test('warm-weather sparse outerwear still invokes AI SKU composer via per-direction unifiedPool quorum (>=3/slot)', async () => {
+  const slots = ['top', 'outerwear', 'bottom', 'shoes'];
+  const catalog = [
+    ...Array.from({ length: 8 }, (_, i) => garment(`warm-top-${i}`, `linen polo ${i}`, 'top', 'polo')),
+    ...Array.from({ length: 4 }, (_, i) => garment(`warm-outer-${i}`, `linen overshirt ${i}`, 'outerwear', 'overshirt')),
+    ...Array.from({ length: 8 }, (_, i) => garment(`warm-bottom-${i}`, `chino trouser ${i}`, 'bottom', 'chino')),
+    ...Array.from({ length: 8 }, (_, i) => garment(`warm-shoes-${i}`, `suede loafer ${i}`, 'shoes', 'loafer')),
+  ];
+  let composerCalled = 0;
+  const result = await recommendFashionDeck({
+    ...base,
+    request: {
+      sourceMode: 'catalog',
+      style: 'smart_casual',
+      occasion: 'Weekend',
+      weather: { temp: 31 },
+      optionalLayer: false,
+      preferences: {},
+      requiredIds: [],
+      budget: { amount: 3000000, currency: 'UZS' },
+    },
+    catalog,
+    referenceBriefs: refs,
+    visualDeckReview: true,
+    canJudgeOutfit: async () => true,
+    visualCritic: async (batch) => batch.map((look) => admittedVisualVerdict(look, { referenceless: true })),
+    selectDirectorFinalists: async () => ({ status: 'timeout', tokens: [] }),
+    selectCatalogCompositions: async ({ pool, perDirectionPools }) => {
+      composerCalled++;
+      const src = perDirectionPools?.unifiedPool?.length ? perDirectionPools.unifiedPool : pool;
+      return {
+        status: 'composed',
+        looks: Array.from({ length: 3 }, (_, i) =>
+          slots.map((slot) => src.filter((p) => p.slot === slot)[i % src.filter((p) => p.slot === slot).length].item),
+        ),
+        providerCalls: 1,
+      };
+    },
+  });
+  assert.equal(composerCalled, 1, 'composer quorum passes with 4 warm-weather outerwear items via unifiedPool >=3/slot');
+  assert.ok(result.outfits.length >= 1);
+});

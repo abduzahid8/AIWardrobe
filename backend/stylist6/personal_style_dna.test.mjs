@@ -236,3 +236,44 @@ test('normalizePersonalStyleDna respects opt-in consent and builds injection-saf
   // Zero PII, zero raw weight, zero URLs/emails/injection phrases
   assert.doesNotMatch(block, /https?:\/\/|evil\.example|owner@example\.com|ignore previous|82\s*kg|\b82\b/i);
 });
+
+test('opt-in Cool Winter (cool undertone + high contrast) auto-includes brown in appearance.avoidColors unless user favors brown', () => {
+  const coolWinter = normalizePersonalStyleDna({
+    appearance: {
+      consentGranted: true,
+      skinUndertone: 'cool',
+      contrastLevel: 'high',
+      colorSeason: 'cool_winter',
+      flatteringColors: ['navy', 'charcoal', 'white', 'burgundy'],
+      avoidColors: ['orange', 'yellow'],
+    },
+    preferences: {
+      favoriteColors: ['navy', 'white'],
+    },
+  });
+  assert.ok(coolWinter.appearance.avoidColors.includes('brown'), 'Cool Winter auto-derives brown in avoidColors');
+  assert.ok(buildStyleDnaPromptBlock(coolWinter).includes('brown'));
+
+  const brownLover = normalizePersonalStyleDna({
+    appearance: {
+      consentGranted: true,
+      skinUndertone: 'cool',
+      contrastLevel: 'high',
+      colorSeason: 'cool_winter',
+      avoidColors: ['orange'],
+    },
+    preferences: {
+      favoriteColors: ['brown', 'navy'],
+    },
+  });
+  assert.equal(brownLover.appearance.avoidColors.includes('brown'), false, 'explicit favoriteColors brown overrides auto-avoid');
+
+  const unconsented = normalizePersonalStyleDna({
+    appearance: {
+      consentGranted: false,
+      skinUndertone: 'cool',
+      contrastLevel: 'high',
+    },
+  });
+  assert.deepEqual(unconsented.appearance.avoidColors, []);
+});

@@ -860,7 +860,7 @@ export async function designCreativeBriefs({
         ] : []),
         'The examples are inspiration, never templates or claimed available SKUs.',
         'Respect weather, dress code and personal fit/color preferences.',
-        'Never propose a color listed in preferences.avoidColors or a pattern',
+        'Never propose a color listed in preferences.avoidColors or personalStyleDna.appearance.avoidColors, or a pattern',
         'listed in preferences.dislikedPatterns; these are user exclusions.',
         'Prefer explicit favoriteColors/likedPatterns if suitable, but do not',
         'sacrifice occasion or outfit coherence merely for a color preference.',

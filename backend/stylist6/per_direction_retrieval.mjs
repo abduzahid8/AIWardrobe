@@ -503,9 +503,9 @@ export function scoreItemForDirection(enriched, direction, scoringCtx = {}) {
       (personalStyleDna?.appearance?.avoidColors || []).map(canonicalColor).filter(Boolean),
     );
     if (flattering.has(enriched.color)) paletteScore += 0.045;
-    if (appearanceAvoid.has(enriched.color)) paletteScore -= 0.07;
+    if (appearanceAvoid.has(enriched.color)) paletteScore -= 0.25;
   }
-  paletteScore = Math.max(-0.07, Math.min(0.20, paletteScore));
+  paletteScore = Math.max(-0.25, Math.min(0.20, paletteScore));
 
   // 3. Material & Texture Alignment (0..0.12)
   let textureScore = 0;

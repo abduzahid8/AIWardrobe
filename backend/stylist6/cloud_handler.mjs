@@ -324,8 +324,11 @@ export function catalogStylingDiscoveryHints({style,occasion,brief='',weather=nu
   // At <=5°C prefer coats and actual boots within the existing bounded
   // inventory rather than extra uninsulated polos or summer slippers.
   const cold=Number.isFinite(weather?.temp) && weather.temp<=5;
+  const warm=Number.isFinite(weather?.temp) && weather.temp>=24;
   return {dressCode,preferredSubtypes:[...new Set([
-    ...(cold?['coat','boot','chelsea']:[]),...roles,
+    ...(cold?['coat','boot','chelsea']:[]),
+    ...(warm?['overshirt','cardigan','shirt','polo','t-shirt','chino','trouser','minimal-sneaker','loafer','driver']:[]),
+    ...roles,
   ])]};
 }
 
@@ -902,11 +905,20 @@ export function hydrateProfiles(rows, profiles) {
 }
 
 function mapDeckItem(item, rankScore, offerVerification = null) {
+  const vfColor = item?.visualFashion?.attributes?.color;
+  const resolvedColor = (item?.color && item.color !== 'unknown')
+    ? item.color
+    : (vfColor && Number.isFinite(vfColor.confidence) && vfColor.confidence >= 0.8 &&
+        (!Number.isFinite(vfColor.margin) || vfColor.margin >= 0.1) &&
+        typeof vfColor.value === 'string' && vfColor.value && vfColor.value !== 'unknown'
+        ? vfColor.value.toLowerCase()
+        : 'unknown');
   return {
     id: String(item.id),
     type: item.type || item.macroCategory,
     macroCategory: item.macroCategory,
-    color: item.color || 'unknown',
+    subtype: item.subtype || '',
+    color: resolvedColor,
     name: item.name,
     brand: item.brand || '',
     description: item.description || item.name,
@@ -1347,11 +1359,12 @@ async function handleSwapSlotAction({ payload, userId, env, io, fetchImpl, timeo
     }
   }
   const priceToBudgetCurrency = fxSnapshot
-    ? (item, currency) => {
+    ? (item, currency = budget?.currency) => {
+        if (typeof currency !== 'string' || !currency.trim()) return NaN;
         const converted = referenceAmount(item.price, item.currency, currency, fxSnapshot);
         return Number.isFinite(converted) ? converted : NaN;
       }
-    : (item, currency) => (item.currency === currency ? item.price : NaN);
+    : (item, currency = budget?.currency) => (currency && item.currency === currency ? item.price : NaN);
 
   const [shopRows, wardrobeRows] = await Promise.all([
     sourceMode === 'wardrobe' ? [] : io.fetchShopRows(null, null, null),
@@ -1836,11 +1849,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           }
         : { active: false, reason: fxUnavailableReason || 'same_currency_only', budgetCurrency: budget.currency };
     const priceToBudgetCurrency = fxSnapshot
-      ? (item, currency) => {
+      ? (item, currency = budget?.currency) => {
+          if (typeof currency !== 'string' || !currency.trim()) return NaN;
           const converted = referenceAmount(item.price, item.currency, currency, fxSnapshot);
           return Number.isFinite(converted) ? converted : NaN;
         }
-      : (item, currency) => (item.currency === currency ? item.price : NaN);
+      : (item, currency = budget?.currency) => (currency && item.currency === currency ? item.price : NaN);
     const feasible = budget
       ? pool.filter((item) => item.isShopItem !== true || Number.isFinite(priceToBudgetCurrency(item, budget.currency)))
       : pool;
@@ -1874,6 +1888,67 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     }
     const feedbackTaste = feedbackTasteModel(feedbackRows, Date.now());
     const catalogByIdMap = new Map(feasible.map((item) => [String(item.id), item]));
+    // Explicitly swapped-out SKUs and slot-targeted negative-rated SKUs are
+    // direct user rejections of that exact product: add them to resolvedExcludedIds
+    // (never overriding an explicitly pinned requiredId in the current request).
+    if (Array.isArray(feedbackRows) && feedbackRows.length > 0) {
+      const pinnedSet = new Set(resolvedRequiredIds);
+      const excludedSet = new Set(resolvedExcludedIds);
+      const slotAliases = {
+        top: 'top', tops: 'top', upper_body: 'top',
+        outerwear: 'outerwear', layer: 'outerwear', jacket: 'outerwear', coat: 'outerwear',
+        bottom: 'bottom', bottoms: 'bottom', lower_body: 'bottom',
+        shoes: 'shoes', shoe: 'shoes', footwear: 'shoes',
+        accessory: 'accessory', accessories: 'accessory',
+        dress: 'dress', dresses: 'dress',
+      };
+      const slotIdxMap = { top: 0, outerwear: 1, bottom: 2, shoes: 3 };
+      const addFeedbackExclusion = (rawSku) => {
+        if (typeof rawSku !== 'string') return;
+        const trimmed = rawSku.trim();
+        if (!trimmed) return;
+        const resolved = resolvePoolId(trimmed);
+        if (pinnedSet.has(resolved) || excludedSet.has(resolved)) return;
+        excludedSet.add(resolved);
+        resolvedExcludedIds.push(resolved);
+      };
+      for (const row of feedbackRows) {
+        if (!row || typeof row !== 'object') continue;
+        addFeedbackExclusion(row.swapped_from_sku ?? row.swappedFromSku);
+        if (typeof row.rating === 'number' && row.rating < 0) {
+          const rawSlot = String(row.target_slot ?? row.targetSlot ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+          const tags = Array.isArray(row.feedback_tags ?? row.feedbackTags) ? (row.feedback_tags ?? row.feedbackTags) : [];
+          const normalizedSlot = slotAliases[rawSlot] || (tags.some((t) => String(t || '').trim().toLowerCase() === 'wrong_shoes') ? 'shoes' : null);
+          if (normalizedSlot) {
+            const slotItems = row.slot_items ?? row.slotItems;
+            const directSku = (slotItems && typeof slotItems === 'object' ? slotItems[normalizedSlot] : null)
+              ?? row.target_sku ?? row.targetSku ?? row.sku_id ?? row.skuId;
+            if (typeof directSku === 'string' && directSku.trim()) {
+              addFeedbackExclusion(directSku);
+            } else {
+              const rawIds = row.item_ids ?? row.itemIds;
+              if (Array.isArray(rawIds) && rawIds.length === 1) {
+                addFeedbackExclusion(rawIds[0]);
+              } else if (Array.isArray(rawIds) && rawIds.length > 1) {
+                let matchedByCatalog = false;
+                for (const rawId of rawIds) {
+                  if (typeof rawId !== 'string' || !rawId.trim()) continue;
+                  const resolved = resolvePoolId(rawId.trim());
+                  const item = catalogByIdMap.get(resolved);
+                  if (item && item.macroCategory === normalizedSlot) {
+                    addFeedbackExclusion(resolved);
+                    matchedByCatalog = true;
+                  }
+                }
+                if (!matchedByCatalog && rawIds.length === 4 && slotIdxMap[normalizedSlot] !== undefined) {
+                  addFeedbackExclusion(rawIds[slotIdxMap[normalizedSlot]]);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
     const tasteProfile = buildUnifiedTasteProfile({
       explicitFeedback: feedbackRows,
       savedOutfits: Array.isArray(request.savedOutfits) ? request.savedOutfits : [],

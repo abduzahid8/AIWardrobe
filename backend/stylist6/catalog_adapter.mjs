@@ -476,12 +476,24 @@ export function adaptCatalog(rows) {
       bump(projected.skipped);
       continue;
     }
+    const vfSourceFresh = !row.visual_fashion?.sourceHash || row.visual_fashion.sourceHash === row.visual_source_hash;
+    const vfColor = row.visual_fashion && row.visual_source_hash === sourceHash(row) && vfSourceFresh
+      ? row.visual_fashion?.attributes?.color
+      : null;
+    const verifiedPhotoColor = vfColor &&
+      Number.isFinite(vfColor.confidence) && vfColor.confidence >= 0.8 &&
+      Number.isFinite(vfColor.margin) && vfColor.margin >= 0.1 &&
+      typeof vfColor.value === 'string' && vfColor.value !== 'unknown'
+      ? vfColor.value.toLowerCase()
+      : null;
     items.push(Object.freeze({
       // A legacy merchant import can store real trousers as upper_body/tops.
       // The *admitted, trusted* garment slot is already confirmed above;
       // never let the stale feed type override that slot in the mobile card.
       // Keep the raw feed value only in the source row for audit/migrations.
-      ...projected, description: row.description || '', type: projected.macroCategory,
+      ...projected,
+      color: projected.color !== 'unknown' ? projected.color : (verifiedPhotoColor || 'unknown'),
+      description: row.description || '', type: projected.macroCategory,
       ...(row.visual_fashion && row.visual_source_hash ? {
         visualFashion: row.visual_fashion, visualSourceHash: row.visual_source_hash,
       } : {}),

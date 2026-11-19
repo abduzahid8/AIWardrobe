@@ -34,6 +34,9 @@ const UNUSABLE_IMAGE_URL_RE = /(?:\.(?:svg|ico)(?:[?#]|$)|\/(?:placeholder|no[-_
 const SWIMWEAR_RE = /\b(?:swim(?:wear|suits?|shorts?|trunks?|briefs?)?|swimming(?:\s+(?:shorts?|trunks?|briefs?))?|board[- ]?shorts?|beach(?:wear|side)(?:\s+(?:shorts?|trunks?|swim|tank|t-?shirt|shirt))?|beach[- ]?shorts?|bathing[- ]?(?:suits?|trunks?)|surf[- ]?trunks?|short\s+de\s+bain|maillot\s+de\s+bain|badehose|costume\s+da\s+bagno|speedo)\b|плавк|купальн/i;
 const UNDERWEAR_SLEEPWEAR_RE = /\b(?:boxer[- ]?briefs?|underwear|underpants|briefs|pyjamas?|pajamas?|bathrobes?|nightgowns?|lingerie|undershirts?)\b/i;
 const BEACH_OCCASION_RE = /\b(?:beach|pool|poolside|swim|swimming|resort|waterpark|seaside|coastal\s+swim)\b|пляж|бассейн/i;
+const EVENING_TUXEDO_SHIRT_RE = /\b(?:tuxedo|evening\s+studs?|stud[- ]?front|marcella\s+dinner|wing[- ]?collar\s+dinner|dinner\s+shirts?)\b/i;
+const DAYTIME_OCCASION_RE = /\b(?:work|office|business|meeting|conference|casual|weekend|everyday|travel|brunch|commute)\b/i;
+const FORMAL_EVENING_OCCASION_RE = /\b(?:formal|black[- ]?tie|tuxedo|gala|evening|cocktail|wedding|opera|ball)\b/i;
 
 // Dress / one-piece classification — carefully excludes "dress shirt", "dress shoes", etc.
 const DRESS_MODIFIER_FOLLOWED_BY_GARMENT_RE = /\bdress(?:es)?[- ]+(?:shirts?|shoes?|trousers?|pants?|slacks?|boots?|loafers?|oxfords?|derb(?:y|ies)|coats?|jackets?|socks?|belts?|watch(?:es)?|code|attire|uniform)\b/i;
@@ -235,6 +238,26 @@ export function isUnderwearOrSleepwearItem(item) {
   }
   // Careful: "briefcase" is a bag, not underwear; \bbriefs\b is plural only.
   return UNDERWEAR_SLEEPWEAR_RE.test(`${name} ${pathText}`);
+}
+
+/**
+ * Structural evening / black-tie tuxedo & dinner stud shirt detector.
+ * Inspects product title, description, and canonical merchant URL slug
+ * (e.g. M&S `regular-fit-pure-cotton-dinner-shirt`) so formal stud-front
+ * evening shirts stay available for formal/black-tie while being excluded
+ * from daytime work/office/casual styling.
+ */
+export function isEveningTuxedoShirtItem(item) {
+  const name = String(item?.name || item?.title || '');
+  const desc = String(item?.description || '');
+  const shopUrl = String(item?.shopUrl || item?.source_url || '');
+  let pathText = '';
+  try {
+    if (shopUrl) pathText = decodeURIComponent(new URL(shopUrl).pathname).replace(/[-_/]+/g, ' ');
+  } catch {
+    pathText = '';
+  }
+  return EVENING_TUXEDO_SHIRT_RE.test(`${name} ${pathText} ${desc}`);
 }
 
 function isDressOrJumpsuitText(item) {
@@ -570,7 +593,7 @@ export function evaluateCatalogItemHygiene(item, qualityMap = null, context = nu
     reasons.push(slotInfo.contradiction);
   }
 
-  // 5. Swimwear / beachwear & underwear/sleepwear occasion gate.
+  // 5. Swimwear / beachwear, underwear/sleepwear, and evening-shirt daytime occasion gates.
   const swimwear = isSwimwearItem(item);
   const occasionText = `${context?.occasion || ''} ${context?.brief || ''} ${context?.request || ''}`;
   const isBeachOccasion = context?.allowSwimwear === true || BEACH_OCCASION_RE.test(occasionText);
@@ -579,6 +602,10 @@ export function evaluateCatalogItemHygiene(item, qualityMap = null, context = nu
   }
   if (isUnderwearOrSleepwearItem(item)) {
     reasons.push('underwear_or_sleepwear_item');
+  }
+  const isDaytimeNonBlackTie = DAYTIME_OCCASION_RE.test(occasionText) && !FORMAL_EVENING_OCCASION_RE.test(occasionText);
+  if (resolvedSlot === 'top' && isDaytimeNonBlackTie && isEveningTuxedoShirtItem(item)) {
+    reasons.push('evening_tuxedo_shirt_in_daytime_occasion');
   }
 
   // 6. Optional presentation / gender alignment (only when item explicitly carries a gender).
