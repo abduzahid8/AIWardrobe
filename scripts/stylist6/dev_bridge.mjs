@@ -1,29 +1,30 @@
-// Dev-only localhost bridge: runs the REAL Stylist 6 fashion ranker for the
-// iOS simulator app. Never deployed, never imported by the app bundle.
+// Dev-only localhost bridge: runs the FULL World-Class Stylist 6 V3 fashion
+// engine for the iOS Simulator app. Never deployed, never imported by the app
+// bundle.
 //
-// Start:  node scripts/stylist6/dev_bridge.mjs [--port 3127]
-// Health: GET  http://127.0.0.1:3127/health
-// Rank:   POST http://127.0.0.1:3127/generate  { request, catalogRows }
+// Start:      node scripts/stylist6/dev_bridge.mjs [--port 3127]
+// Health:     GET  http://127.0.0.1:3127/health
+// Generate:   POST http://127.0.0.1:3127/generate  { request, catalogRows?, wardrobeItems? }
+//             (also routes action:'swap_slot' and action:'analyze_appearance')
+// Swap slot:  POST http://127.0.0.1:3127/swap-slot { outfit, targetSlot, reason?, context?, excludedIds? }
+// Appearance: POST http://127.0.0.1:3127/analyze-appearance { photoUrl, consentGranted }
 //
-// - `request` carries { style, occasion, brief, weather, budget?, preferences?,
-//   recentSignatures?, excludeItemIds?, enableVisual? } — the same fields the
-//   app already collects for the generate-outfits edge function, plus the
-//   dev-only NVIDIA toggle.
-// - `catalogRows` are live shop_catalog-shaped rows (id, name, brand, price,
-//   currency, image_url, source_url, description, is_active, ...). The bridge
-//   hydrates cached visual profiles with the exact SKU + source-hash
-//   predicate, adapts rows with the real catalog_adapter and ranks with the
-//   real recommendFashionDeck. Cached-profile hydration is a bounded
-//   read-only lookup of the already-computed visual cache.
-// - Visual review: when `request.enableVisual === true` AND an NVIDIA API key
-//   is configured AND every candidate photo is admissible (lookbook reference
-//   bytes on local disk, product hosts on the committed allowlist), the real
-//   hosted critic (nvidia/nemotron-3.5-super-vl) judges the strongest
-//   finalist(s) through the ranker's bounded visual policy (at most one
-//   batch of <=2 candidates per deck). Anything else stays NOT_RUN by
-//   admission — never faked, never a cached profile relabeled as NVIDIA.
-// - Failures are reported as success:false with a Stylist 6 code. The app
-//   must surface them, never silently substitute a Stylist 5 deck.
+// Full V3 Pipeline (local Simulator dev bridge):
+// - Hydrates & caches full active Supabase `shop_catalog` +
+//   `catalog_garment_intelligence` + `catalog_visual_fashion` (10-min TTL)
+//   and live CBU `budget_exchange_rates` (15-min TTL) in live server mode
+//   when `catalogRows` is omitted/small, while strictly honoring passed
+//   `catalogRows` fixtures in deterministic offline unit tests.
+// - Runs PersonalStyleDna, filterHygienicCatalog, Creative Director,
+//   buildPerDirectionCandidatePools, Visual-First Showroom Composition
+//   (`allowLocalShowroomVisualComposition: true` when visual keys exist),
+//   1024x1024 Studio Board 6-Axis Visual Critique, Parallel Surgical 1-Slot
+//   Visual Refinement, Cross-Lab Portfolio Jury, and grounded Stylist's Notes.
+// - Enforces exact 4 shoppable items per outfit (`top`, `outerwear`, `bottom`,
+//   `shoes`, `optionalLayer: false`, `compositionProtocol: 'four-slot-v1'`)
+//   on catalog mode.
+// - Failures are reported honestly as success:false with a Stylist 6 code;
+//   never silently substitutes Stylist 5.
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -34,26 +35,72 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { adaptCatalog, DEV_PURCHASE_EVIDENCE, devLookFeasibility, sourceHash } from '../../backend/stylist6/catalog_adapter.mjs';
+import { filterHygienicCatalog } from '../../backend/stylist6/catalog_hygiene.mjs';
 import { recommendFashionDeck } from '../../backend/stylist6/fashion_deck.mjs';
-import { feedbackTasteModel } from '../../backend/stylist6/feedback_taste.mjs';
+import { designCreativeBriefsWithFallback, CREATIVE_DIRECTOR_VERSION } from '../../backend/stylist6/creative_director_ai.mjs';
+import { composeCatalogSkuLooks } from '../../backend/stylist6/sku_composer_ai.mjs';
+import { selectFashionSlate } from '../../backend/stylist6/fashion_director_slate.mjs';
+import { selectPhotoEditorialDeck } from '../../backend/stylist6/photo_editor_final.mjs';
+import { feedbackTasteModel, FEEDBACK_TASTE_VERSION } from '../../backend/stylist6/feedback_taste.mjs';
+import { buildUnifiedTasteProfile } from '../../backend/stylist6/taste_learning.mjs';
 import { referenceFirstBriefs, explicitLookbookPhotoRequested } from '../../backend/stylist6/lookbook_briefs.mjs';
 import { buildReferenceBlueprints } from '../../backend/stylist6/reference_blueprint.mjs';
 import { verifyMerchantOffer, summarizeDeckOffers, MERCHANT_OFFER_VERSION } from '../../backend/stylist6/merchant_offers.mjs';
-import { projectWardrobeItem } from '../../backend/stylist6/cloud_handler.mjs';
+import {
+  projectWardrobeItem,
+  enforceCatalogFourItemDeck,
+  catalogStylingDiscoveryHints,
+  prioritizeCatalogForBudgetAndClimate,
+  balancedGarmentCatalogWindow,
+  balancedShoeCatalogWindow,
+  fetchCbuBudgetFxSnapshot,
+  loadOptionalVisualAtelier,
+} from '../../backend/stylist6/cloud_handler.mjs';
+import { createQualityFlywheel, buildQualityLookupMap } from '../../backend/stylist6/catalog_quality_flywheel.mjs';
+import { createStylistCache } from '../../backend/stylist6/distributed_cache.mjs';
+import { swapSingleSlot } from '../../backend/stylist6/surgical_refiner.mjs';
+import { analyzeUserAppearance } from '../../backend/stylist6/user_appearance_analyzer.mjs';
+import { buildStylistNotes } from '../../backend/stylist6/deck_editorial_copy.mjs';
+import { createProviderRouter } from '../../backend/stylist6/ai_provider_router.mjs';
+import { renderEditorialLookBoard, createPhotoByteCache } from '../../backend/stylist6/editorial_board_renderer.mjs';
 import { HOST_ALLOWLIST } from './image_access.mjs';
 import {
-  createHostedVisualCritic, NVIDIA_VISION_MODEL,
-  VISUAL_CONCURRENCY, VISUAL_PROVIDER_TIMEOUT_MS, VISUAL_TIMEOUT_MS,
+  createHostedVisualCritic,
+  NVIDIA_VISION_MODEL,
+  OPENROUTER_VISION_MODEL,
+  MAX_VISUAL_CANDIDATES,
+  VISUAL_CONCURRENCY,
+  VISUAL_PROVIDER_TIMEOUT_MS,
+  VISUAL_TIMEOUT_MS,
 } from '../../backend/stylist6/visual_critic_hosted.mjs';
 import { currentVisual } from '../../src/domain/visualFashion.ts';
 import { resolveStylistWeather } from '../../src/domain/outfitComposition.ts';
+import { isWorkoutOccasion } from '../../src/domain/occasionRules.ts';
 import { normalizeStylistLanguage } from '../../src/domain/stylingContext.ts';
+import { normalizePersonalStyleDna, buildStyleDnaPromptBlock } from '../../src/domain/personalStyleDna.ts';
+import { validateBudgetFxSnapshot, referenceAmount } from '../../src/domain/budgetFx.ts';
 import { STYLIST6_DEV_ENGINE_VERSION } from './engine_identity.mjs';
 export { STYLIST6_DEV_ENGINE_VERSION } from './engine_identity.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
-dotenv.config({ path: path.join(root, '.env') });
+
+// Load local worktree .env first, then non-overriding fallbacks from the main
+// AIWardrobe checkout so NVIDIA_API_KEY, OPENROUTER_API_KEY, and Supabase
+// credentials resolve cleanly without ever printing raw values.
+for (const envPath of [
+  path.join(root, '.env'),
+  '/Users/v.zahid/AIWardrobe/.env',
+  '/Users/v.zahid/AIWardrobe/backend/api/.env',
+]) {
+  try {
+    if (fs.existsSync(envPath)) {
+      dotenv.config({ path: envPath, override: false, quiet: true });
+    }
+  } catch {
+    // Non-fatal: missing or unreadable optional fallback env file
+  }
+}
 
 const DEFAULT_PORT = 3127;
 const MAX_BODY_BYTES = 12 * 1024 * 1024;
@@ -61,12 +108,78 @@ const MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_VISUAL_IMAGE_BYTES = 512 * 1024;
 const VISUAL_DIMENSION_LIMIT = 2048;
 const PRODUCT_FETCH_TIMEOUT_MS = 8000;
+const BRIDGE_GENERATION_BUDGET_MS = 75_000;
+const LIVE_CATALOG_TTL_MS = 10 * 60 * 1000;
+const LIVE_FX_TTL_MS = 15 * 60 * 1000;
+const MIN_FULL_CATALOG_ROWS = 1000;
+const BRIDGE_WINDOW_PER_SLOT = 160;
+const CANONICAL_SLOTS = ['top', 'outerwear', 'bottom', 'shoes'];
+const VALID_SWAP_SLOTS = new Set(['top', 'outerwear', 'bottom', 'shoes', 'accessory', 'dress']);
 const execFileAsync = promisify(execFile);
 
 const indexPath = path.join(root, 'benchmarks/stylist6/references/image_teaste_46.json');
 const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
 
+const devQualityFlywheel = createQualityFlywheel();
+const devAppearanceCache = createStylistCache({
+  namespace: 's6:dev:appearance',
+  maxMemoryEntries: 128,
+  maxMemoryBytes: 8 * 1024 * 1024,
+});
+const devDirectorCache = createStylistCache({
+  namespace: 's6:dev:director',
+  maxMemoryEntries: 64,
+  maxMemoryBytes: 4 * 1024 * 1024,
+});
+const sharedPhotoByteCache = createPhotoByteCache({
+  maxEntries: 256,
+  maxBytes: 48 * 1024 * 1024,
+});
+
+let liveCatalogCache = { rows: null, fetchedAt: 0, visualAttached: 0, intelAttached: 0 };
+let liveCatalogInFlight = null;
+let liveFxCache = { snapshot: null, fetchedAt: 0 };
+let liveFxInFlight = null;
+
+export function clearDevBridgeCaches() {
+  liveCatalogCache = { rows: null, fetchedAt: 0, visualAttached: 0, intelAttached: 0 };
+  liveCatalogInFlight = null;
+  liveFxCache = { snapshot: null, fetchedAt: 0 };
+  liveFxInFlight = null;
+  productPhotoCache.clear();
+}
+
 const seasonOf = (temp) => (temp >= 25 ? 'summer' : temp < 12 ? 'winter' : 'autumn');
+
+function resolveSupabaseReadConfig(options = {}) {
+  const url = String(
+    options.supabaseUrl ?? process.env.EXPO_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
+  ).trim().replace(/\/+$/, '');
+  const anonKey = String(
+    options.supabaseAnonKey ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '',
+  ).trim();
+  const serviceKey = String(
+    options.supabaseServiceKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+  ).trim();
+  const readKey = anonKey || serviceKey;
+  return { url, anonKey, serviceKey, readKey };
+}
+
+function resolveAiKeys(options = {}) {
+  const explicitNvidia = options.nvidiaApiKey !== undefined;
+  const explicitOpenrouter = options.openrouterApiKey !== undefined;
+  const nvidiaKey = String(explicitNvidia ? options.nvidiaApiKey : (process.env.NVIDIA_API_KEY || '')).trim();
+  // When a test injects `options.nvidiaApiKey` without `options.openrouterApiKey`,
+  // do NOT silently pick up a developer's real `.env` OpenRouter key.
+  const openrouterKey = String(
+    explicitOpenrouter
+      ? options.openrouterApiKey
+      : (explicitNvidia ? '' : (process.env.OPENROUTER_API_KEY || '')),
+  ).trim();
+  const hasNvidiaKey = nvidiaKey.startsWith('nvapi-') && nvidiaKey.length >= 20;
+  const hasOpenrouterKey = openrouterKey.length >= 16;
+  return { nvidiaKey, openrouterKey, hasNvidiaKey, hasOpenrouterKey };
+}
 
 // Same metadata-reference match the offline replay uses: the reference is an
 // input common to both engines, only when the shortlist contains the
@@ -83,19 +196,209 @@ const VISUAL_PROFILE_CAP = 500;
 const VISUAL_FETCH_CHUNK = 100;
 
 /**
- * Bounded dev-safe hydration of cached visual intelligence. For each raw
- * catalog row, fetches the matching `catalog_visual_fashion` entry (exact
- * SKU + `source_hash` equality + `image_url` equality, version 1 only) and
- * attaches the profile only when the row bytes are unchanged since
- * profiling — verified by recomputing `sourceHash(row)` locally — and the
- * profile passes the shared `currentVisual` gate. Anything drifted,
- * unversioned or unconfident is left absent, never invented.
- * Read-only; failures degrade to unhydrated ranking, never to a failure.
+ * Paginate a public read-only Supabase REST table cleanly (Range 1000/page).
+ */
+async function restPaginate({ baseUrl, key, table, select, extra = {}, order = 'id.asc', fetchImpl = fetch }) {
+  const rows = [];
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  for (let offset = 0; offset < 40_000; offset += 1000) {
+    const url = new URL(`/rest/v1/${table}`, baseUrl);
+    url.searchParams.set('select', select);
+    url.searchParams.set('order', order);
+    for (const [k, v] of Object.entries(extra)) url.searchParams.set(k, v);
+    const res = await fetchImpl(url, {
+      headers: { ...headers, Range: `${offset}-${offset + 999}` },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res?.ok) throw new Error(`${table}_http_${res?.status || 'failed'}`);
+    const page = await res.json();
+    if (!Array.isArray(page) || page.length === 0) break;
+    rows.push(...page);
+    if (page.length < 1000) break;
+  }
+  return rows;
+}
+
+/**
+ * Hydrate and cache (10-min TTL) the full active Supabase `shop_catalog`
+ * joined with `catalog_garment_intelligence` (version 1) and source-hash-verified
+ * `catalog_visual_fashion` (version 1) so every live iOS Simulator generation
+ * searches the full hygienic 8,554-SKU catalog.
+ */
+export async function hydrateFullLiveCatalog(options = {}) {
+  const now = options.now ?? Date.now();
+  const forceRefresh = options.forceRefresh === true;
+  if (!forceRefresh && Array.isArray(liveCatalogCache.rows) && (now - liveCatalogCache.fetchedAt) < LIVE_CATALOG_TTL_MS) {
+    return {
+      rows: liveCatalogCache.rows,
+      status: 'cached',
+      totalRows: liveCatalogCache.rows.length,
+      intelAttached: liveCatalogCache.intelAttached,
+      visualAttached: liveCatalogCache.visualAttached,
+    };
+  }
+  const { url, readKey } = resolveSupabaseReadConfig(options);
+  if (!url || !readKey) {
+    return { rows: null, status: 'skipped_no_credentials', totalRows: 0, intelAttached: 0, visualAttached: 0 };
+  }
+  const fetchImpl = options.fetchImpl || fetch;
+  if (!forceRefresh && liveCatalogInFlight) {
+    return liveCatalogInFlight;
+  }
+  const task = (async () => {
+    try {
+      const [catalog, intelligence, visual] = await Promise.all([
+        restPaginate({
+          baseUrl: url,
+          key: readKey,
+          table: 'shop_catalog',
+          select: 'id,name,brand,description,category,garment_type,image_url,source_url,price,currency,is_active,last_seen_at',
+          extra: { is_active: 'eq.true' },
+          order: 'id.asc',
+          fetchImpl,
+        }),
+        restPaginate({
+          baseUrl: url,
+          key: readKey,
+          table: 'catalog_garment_intelligence',
+          select: 'product_id,source_hash,slot,subtype',
+          extra: { version: 'eq.1' },
+          order: 'product_id.asc',
+          fetchImpl,
+        }).catch(() => []),
+        restPaginate({
+          baseUrl: url,
+          key: readKey,
+          table: 'catalog_visual_fashion',
+          select: 'product_id,source_hash,image_url,profile,version',
+          extra: { version: 'eq.1' },
+          order: 'product_id.asc',
+          fetchImpl,
+        }).catch(() => []),
+      ]);
+      const intelBySku = new Map(intelligence.map((r) => [String(r.product_id), r]));
+      const visualBySku = new Map(visual.map((r) => [String(r.product_id), r]));
+      let intelAttached = 0;
+      let visualAttached = 0;
+      const hydrated = catalog.map((raw) => {
+        const id = String(raw?.id || '');
+        const intel = intelBySku.get(id);
+        const vis = visualBySku.get(id);
+        const row = { ...raw, is_active: raw?.is_active ?? true };
+        if (intel && typeof intel.slot === 'string' && intel.slot) {
+          row.fashion_slot = intel.slot;
+          if (typeof intel.subtype === 'string' && intel.subtype) {
+            row.fashion_subtype = intel.subtype;
+          }
+          intelAttached += 1;
+        }
+        if (vis && vis.version === 1 && vis.profile && vis.image_url === row.image_url && vis.source_hash === sourceHash(row)) {
+          if (currentVisual({ ...row, imageUrl: row.image_url, visualFashion: vis.profile, visualSourceHash: vis.source_hash })) {
+            row.visual_fashion = vis.profile;
+            row.visual_source_hash = vis.source_hash;
+            visualAttached += 1;
+          }
+        }
+        return row;
+      });
+      liveCatalogCache = { rows: hydrated, fetchedAt: now, visualAttached, intelAttached };
+      return {
+        rows: hydrated,
+        status: 'ok',
+        totalRows: hydrated.length,
+        intelAttached,
+        visualAttached,
+      };
+    } catch (error) {
+      return {
+        rows: null,
+        status: `fetch_failed:${error?.message || 'unknown'}`,
+        totalRows: 0,
+        intelAttached: 0,
+        visualAttached: 0,
+      };
+    } finally {
+      liveCatalogInFlight = null;
+    }
+  })();
+  if (!forceRefresh) liveCatalogInFlight = task;
+  return task;
+}
+
+/**
+ * Hydrate and cache (15-min TTL) live CBU FX rates — first from Supabase
+ * `budget_exchange_rates` when service credentials are available, then falling
+ * back directly to official Central Bank of Uzbekistan JSON rates. Never invents
+ * exchange rates when unavailable.
+ */
+export async function fetchLiveCbuFxSnapshot(options = {}) {
+  const now = options.now ?? Date.now();
+  if (options.fxSnapshot) {
+    try {
+      return { snapshot: validateBudgetFxSnapshot(options.fxSnapshot, now), source: 'injected' };
+    } catch {
+      return { snapshot: null, source: 'invalid_injected' };
+    }
+  }
+  const forceRefresh = options.forceRefresh === true;
+  if (!forceRefresh && liveFxCache.snapshot && (now - liveFxCache.fetchedAt) < LIVE_FX_TTL_MS) {
+    try {
+      return { snapshot: validateBudgetFxSnapshot(liveFxCache.snapshot, now), source: 'cached' };
+    } catch {
+      liveFxCache = { snapshot: null, fetchedAt: 0 };
+    }
+  }
+  if (!forceRefresh && liveFxInFlight) return liveFxInFlight;
+  const fetchImpl = options.fetchImpl || fetch;
+  const task = (async () => {
+    try {
+      const { url, serviceKey } = resolveSupabaseReadConfig(options);
+      if (url && serviceKey) {
+        try {
+          const tableUrl = new URL('/rest/v1/budget_exchange_rates', url);
+          tableUrl.searchParams.set('select', 'snapshot');
+          tableUrl.searchParams.set('order', 'fetched_at.desc');
+          tableUrl.searchParams.set('limit', '1');
+          const res = await fetchImpl(tableUrl, {
+            headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+            signal: AbortSignal.timeout(4000),
+          });
+          if (res?.ok) {
+            const rows = await res.json();
+            const rawSnap = Array.isArray(rows) ? rows[0]?.snapshot : null;
+            if (rawSnap) {
+              const validated = validateBudgetFxSnapshot(rawSnap, now);
+              liveFxCache = { snapshot: validated, fetchedAt: now };
+              return { snapshot: validated, source: 'supabase_budget_exchange_rates' };
+            }
+          }
+        } catch {
+          // Fall through cleanly to direct official CBU reference rates
+        }
+      }
+      const snapshot = await fetchCbuBudgetFxSnapshot(fetchImpl, now);
+      if (snapshot) {
+        liveFxCache = { snapshot, fetchedAt: now };
+        return { snapshot, source: 'cbu_live' };
+      }
+      return { snapshot: null, source: 'unavailable' };
+    } catch {
+      return { snapshot: null, source: 'unavailable' };
+    } finally {
+      liveFxInFlight = null;
+    }
+  })();
+  if (!forceRefresh) liveFxInFlight = task;
+  return task;
+}
+
+/**
+ * Bounded dev-safe hydration of cached visual intelligence for small explicit
+ * `catalogRows` pools (legacy / fixture hydration path).
  */
 export async function hydrateVisualProfiles(rows) {
   const outcome = { attempted: 0, fetched: 0, attached: 0, drifted: 0, status: 'skipped_no_credentials' };
-  const base = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+  const { url: base, readKey: key } = resolveSupabaseReadConfig();
   if (!base || !key) return outcome;
   const ids = [...new Set((rows || []).map((row) => String(row?.id || '').trim()).filter(Boolean))]
     .slice(0, VISUAL_PROFILE_CAP);
@@ -128,8 +431,6 @@ export async function hydrateVisualProfiles(rows) {
     }
     row.visual_fashion = entry.profile;
     row.visual_source_hash = entry.source_hash;
-    // The shared gate reads camelCase item fields (as the adapter projects
-    // them); the raw row keeps the snake_case RPC names.
     if (!currentVisual({ ...row, imageUrl: row.image_url, visualFashion: entry.profile, visualSourceHash: entry.source_hash })) {
       delete row.visual_fashion;
       delete row.visual_source_hash;
@@ -142,14 +443,109 @@ export async function hydrateVisualProfiles(rows) {
 }
 
 /**
- * Dev-interface visual status vocabulary. The ranker reports the raw
- * verdict (JUDGED/ABSTAINED/NOT_RUN); the dev bridge maps it to what the
- * hosted review actually did to this deck:
- * - NVIDIA_APPLIED: valid model evidence changed or determined the selection.
- * - NVIDIA_EVALUATED_NO_CHANGE: valid verdicts arrived, catalog winner kept.
- * - NVIDIA_ABSTAINED: the evaluation ran but yielded no actionable verdict.
- * - NVIDIA_NOT_RUN: no external visual evaluation occurred.
- * Cached catalog profiles are never reported as NVIDIA evidence.
+ * Select a balanced, style/occasion/weather/budget-prioritized window of up to
+ * ~640 items (160/slot) from the full 8,554-SKU catalog so `recommendFashionDeck`
+ * gets maximum relevant diversity in <200ms CPU while keeping all `requiredIds`.
+ * Small pools (<= 650 items, such as unit test fixtures) pass through untouched.
+ */
+export function selectBridgeCatalogWindow(items, {
+  style,
+  occasion,
+  brief = '',
+  weather = null,
+  budget = null,
+  fxSnapshot = null,
+  priceToBudgetCurrency = null,
+  requiredIds = [],
+  excludedIds = [],
+  perSlot = BRIDGE_WINDOW_PER_SLOT,
+} = {}) {
+  if (!Array.isArray(items) || items.length <= perSlot * CANONICAL_SLOTS.length) {
+    return Array.isArray(items) ? items : [];
+  }
+  const pinnedSet = new Set(Array.from(requiredIds || [], String));
+  const excludedSet = new Set(Array.from(excludedIds || [], String));
+  const hints = catalogStylingDiscoveryHints({ style, occasion, brief, weather });
+  const preferredSubtypes = new Set(
+    (Array.isArray(hints?.preferredSubtypes) ? hints.preferredSubtypes : [])
+      .map((s) => String(s || '').trim().toLowerCase().replace(/_/g, '-')),
+  );
+  const workout = isWorkoutOccasion(occasion);
+  const cold = Number.isFinite(weather?.temp) && weather.temp < 5;
+
+  // Apply budget-headroom & hot-weather breathability sorting first across ALL 8,554 SKUs!
+  const prioritized = prioritizeCatalogForBudgetAndClimate(items, {
+    budget,
+    priceToBudgetCurrency,
+    weather,
+    fxSnapshot,
+    requiredIds,
+  });
+
+  const pinned = [];
+  const bySlot = Object.fromEntries(CANONICAL_SLOTS.map((s) => [s, []]));
+  for (const item of prioritized) {
+    if (!item?.id) continue;
+    const id = String(item.id);
+    if (pinnedSet.has(id)) {
+      pinned.push(item);
+      continue;
+    }
+    if (excludedSet.has(id)) continue;
+    if (bySlot[item.macroCategory]) bySlot[item.macroCategory].push(item);
+  }
+
+  const slotScore = (item) => {
+    const sub = String(item.subtype || item.fashion_subtype || '').trim().toLowerCase().replace(/_/g, '-');
+    const name = String(item.name || '').toLowerCase();
+    let score = 0;
+    if (preferredSubtypes.has(sub)) score += 3;
+    if (currentVisual(item)) score += 1.5;
+    if (workout && /\b(?:training|running|gym|athletic|jogger|activewear|sport)\b/.test(name)) score += 4;
+    if (cold && item.macroCategory === 'outerwear' && /\b(?:coat|overcoat|puffer|parka|wool)\b/.test(name)) score += 3;
+    if (cold && item.macroCategory === 'shoes' && /\b(?:boot|chelsea)\b/.test(name)) score += 3;
+    return score;
+  };
+
+  const windowedBySlot = {};
+  for (const slot of CANONICAL_SLOTS) {
+    const list = bySlot[slot];
+    // Preserve budget/climate priority tier while lifting style-relevant + visually profiled items
+    const sorted = [...list].sort((a, b) => slotScore(b) - slotScore(a));
+    // Interleave balanced brand/subtype diversity (up to 100/slot) + top prioritized tail up to `perSlot`
+    const capBalanced = Math.min(100, perSlot);
+    const diverse = slot === 'shoes'
+      ? balancedShoeCatalogWindow(sorted, capBalanced)
+      : balancedGarmentCatalogWindow(sorted, capBalanced);
+    const chosen = [...diverse];
+    const seenIds = new Set(chosen.map((it) => String(it.id)));
+    for (const item of list) {
+      if (chosen.length >= perSlot) break;
+      if (!seenIds.has(String(item.id))) {
+        seenIds.add(String(item.id));
+        chosen.push(item);
+      }
+    }
+    windowedBySlot[slot] = chosen;
+  }
+
+  // Round-robin across the 4 slots so every slot stays evenly represented
+  const out = [...pinned];
+  const seen = new Set(pinned.map((it) => String(it.id)));
+  for (let i = 0; i < perSlot; i++) {
+    for (const slot of CANONICAL_SLOTS) {
+      const it = windowedBySlot[slot][i];
+      if (it && !seen.has(String(it.id))) {
+        seen.add(String(it.id));
+        out.push(it);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Dev-interface visual status vocabulary.
  */
 export function mapDevVisualStatus(deck) {
   const verdict = deck?.diagnostics?.visualVerdict;
@@ -186,6 +582,7 @@ const referencePhotosDir = [
     return false;
   }
 }) || path.join(root, 'image-teaste');
+
 export function referenceFileFor(referenceId) {
   const entry = index.images.find((item) => item.id === referenceId);
   const filename = entry?.filename ? path.basename(String(entry.filename)) : '';
@@ -226,9 +623,7 @@ async function sipsFit(bytes) {
   }
 }
 
-// Fit raw bytes to the hosted critic's contract (JPEG, <=512KiB,
-// <=2048px per side). Returns fitted bytes; never upscales. Throws when no
-// local toolchain can do the conversion — the candidate then abstains.
+// Fit raw bytes to the hosted critic's contract (JPEG, <=512KiB, <=2048px).
 async function prepareVisualBytes(bytes) {
   if (!Buffer.isBuffer(bytes) || bytes.length < 1024) throw new Error('image_bytes_invalid');
   const sharp = await loadSharp();
@@ -257,10 +652,14 @@ async function resolveReferenceAsset(referenceId) {
 }
 
 const productPhotoCache = new Map();
-async function resolveProductAsset({ imageUrl }, fetchImpl = fetch) {
+async function resolveProductAsset({ imageUrl }, fetchImpl = fetch, photoByteCache = null) {
   const url = String(imageUrl || '');
   if (!HOST_ALLOWLIST.has(hostOf(url))) throw new Error('product_host_not_allowlisted');
-  if (fetchImpl === fetch && productPhotoCache.has(url)) return productPhotoCache.get(url);
+  if (fetchImpl === fetch && productPhotoCache.has(url)) {
+    const cached = productPhotoCache.get(url);
+    if (photoByteCache && cached?.bytes) photoByteCache.set(url, cached.bytes);
+    return cached;
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PRODUCT_FETCH_TIMEOUT_MS);
   try {
@@ -274,6 +673,7 @@ async function resolveProductAsset({ imageUrl }, fetchImpl = fetch) {
     const fitted = await prepareVisualBytes(raw);
     const asset = { bytes: fitted, sha256: createHash('sha256').update(fitted).digest('hex') };
     if (fetchImpl === fetch) productPhotoCache.set(url, asset);
+    if (photoByteCache) photoByteCache.set(url, fitted);
     return asset;
   } finally {
     clearTimeout(timer);
@@ -311,12 +711,20 @@ function adaptWardrobeRow(row) {
 }
 
 function mapDeckItem(item, rankScore, offerVerification = null) {
+  const vfColor = item?.visualFashion?.attributes?.color;
+  const resolvedColor = (item?.color && item.color !== 'unknown')
+    ? item.color
+    : (vfColor && Number.isFinite(vfColor.confidence) && vfColor.confidence >= 0.8 &&
+        (!Number.isFinite(vfColor.margin) || vfColor.margin >= 0.1) &&
+        typeof vfColor.value === 'string' && vfColor.value && vfColor.value !== 'unknown'
+        ? vfColor.value.toLowerCase()
+        : 'unknown');
   return {
     id: String(item.id),
     type: item.type || item.macroCategory,
     macroCategory: item.macroCategory,
     subtype: item.subtype || item.fashion_subtype || (typeof item.type === 'string' && item.type !== item.macroCategory ? item.type : '') || '',
-    color: item.color || 'unknown',
+    color: resolvedColor,
     name: item.name,
     brand: item.brand || '',
     description: item.description || item.name,
@@ -328,9 +736,6 @@ function mapDeckItem(item, rankScore, offerVerification = null) {
     price: item.price ?? null,
     currency: item.currency || null,
     shopUrl: item.shopUrl || null,
-    // Gate F price freshness, identical to the cloud contract: when the
-    // adapter last saw this listing price, honestly unknown when the catalog
-    // row carries no last_seen_at.
     priceAgeDays: Number.isFinite(item.priceAgeDays) ? item.priceAgeDays : null,
     priceFreshness: typeof item.priceFreshness === 'string' && item.isShopItem === true
       ? item.priceFreshness
@@ -339,17 +744,531 @@ function mapDeckItem(item, rankScore, offerVerification = null) {
   };
 }
 
-export async function generateStylist6Deck(payload, options = {}) {
-  const { request = {}, catalogRows = [] } = payload || {};
-  // Dev-only feedback fixture (gate D local testing): the bridge has no
-  // database, so an optional `feedbackTaste` request array of
-  // stylist_look_feedback-shaped rows feeds the same pure model the cloud
-  // handler builds from real reads. Never persisted, never used outside
-  // this dev process; production reads feedback only in the cloud handler.
-  const feedbackTaste = feedbackTasteModel(
-    Array.isArray(payload?.feedbackTaste) ? payload.feedbackTaste.slice(0, 60) : [],
-    Date.now(),
+function buildBridgePersonalStyleDna(request, style, rawWardrobeRows = []) {
+  const rawPrefs = request.preferences && typeof request.preferences === 'object' ? request.preferences : {};
+  const mergedPrefs = {
+    ...rawPrefs,
+    ...(Array.isArray(request.dislikedPatterns) && !rawPrefs.dislikedPatterns
+      ? { dislikedPatterns: request.dislikedPatterns }
+      : {}),
+  };
+  const safeAppearance = request.appearanceProfile && request.appearanceProfile.consentGranted === true
+    ? { ...request.appearanceProfile, provenance: 'opt_in_photo_vlm' }
+    : null;
+  const hasInput = Boolean(
+    request.presentation ||
+    request.bodyProfile ||
+    safeAppearance ||
+    request.ownedWardrobeSummary ||
+    (Array.isArray(rawWardrobeRows) && rawWardrobeRows.length > 0) ||
+    Object.keys(mergedPrefs).length > 0,
   );
+  if (!hasInput) return { personalStyleDna: null, styleDnaPromptBlock: '', safeAppearance: null };
+  const personalStyleDna = normalizePersonalStyleDna({
+    preferences: mergedPrefs,
+    style,
+    presentation: request.presentation || request.bodyProfile?.gender || null,
+    body: request.bodyProfile || null,
+    appearance: safeAppearance,
+    wardrobeItems: Array.isArray(rawWardrobeRows) && rawWardrobeRows.length > 0 ? rawWardrobeRows : null,
+    ...(request.ownedWardrobeSummary && (!Array.isArray(rawWardrobeRows) || rawWardrobeRows.length === 0)
+      ? {
+          ownedWardrobeDna: {
+            totalItems: Number(request.ownedWardrobeSummary.totalItems) || 0,
+            dominantPalette: Array.isArray(request.ownedWardrobeSummary.dominantColors)
+              ? request.ownedWardrobeSummary.dominantColors
+              : [],
+            dominantCategories: Array.isArray(request.ownedWardrobeSummary.dominantCategories)
+              ? request.ownedWardrobeSummary.dominantCategories
+              : [],
+            topBrands: Array.isArray(request.ownedWardrobeSummary.topBrands)
+              ? request.ownedWardrobeSummary.topBrands
+              : [],
+          },
+        }
+      : {}),
+  });
+  return {
+    personalStyleDna,
+    styleDnaPromptBlock: personalStyleDna ? buildStyleDnaPromptBlock(personalStyleDna) : '',
+    safeAppearance,
+  };
+}
+
+async function resolveBridgeCatalogRows({ rawCatalogRows, sourceMode, options }) {
+  const allowLive = options.liveServer === true || options.allowLiveCatalogHydration === true;
+  if (sourceMode === 'wardrobe') {
+    return {
+      rows: [],
+      catalogSource: 'wardrobe_only',
+      visualHydration: { attempted: 0, fetched: 0, attached: 0, drifted: 0, status: 'skipped_wardrobe_mode' },
+    };
+  }
+  const clientRows = Array.isArray(rawCatalogRows) ? rawCatalogRows : [];
+  if (allowLive && options.skipHydration !== true && clientRows.length < MIN_FULL_CATALOG_ROWS) {
+    const live = await hydrateFullLiveCatalog(options);
+    if (Array.isArray(live.rows) && live.rows.length > 0) {
+      // Merge any extra client-supplied rows (such as pinned anchors) without losing full catalog
+      const byId = new Map(live.rows.map((r) => [String(r.id), r]));
+      for (const row of clientRows) {
+        if (row && typeof row === 'object' && row.id && !byId.has(String(row.id))) {
+          byId.set(String(row.id), 'is_active' in row ? row : { ...row, is_active: true });
+        }
+      }
+      return {
+        rows: [...byId.values()],
+        catalogSource: `supabase_live_${live.status}`,
+        visualHydration: {
+          attempted: live.totalRows,
+          fetched: live.visualAttached,
+          attached: live.visualAttached,
+          drifted: 0,
+          status: live.status === 'cached' ? 'ok_cached' : 'ok',
+        },
+      };
+    }
+  }
+  if (!clientRows.length) {
+    return {
+      rows: [],
+      catalogSource: 'empty',
+      visualHydration: { attempted: 0, fetched: 0, attached: 0, drifted: 0, status: 'empty_pool' },
+    };
+  }
+  const liveRows = clientRows.map((row) =>
+    row && typeof row === 'object' && !('is_active' in row) ? { ...row, is_active: true } : row,
+  );
+  const visualHydration = options.skipHydration === true
+    ? { attempted: 0, fetched: 0, attached: 0, drifted: 0, status: 'skipped_by_option' }
+    : await hydrateVisualProfiles(liveRows);
+  return {
+    rows: liveRows,
+    catalogSource: 'client_fixture',
+    visualHydration,
+  };
+}
+
+function createBridgeAppearanceProvider(options = {}) {
+  const { nvidiaKey, openrouterKey, hasNvidiaKey, hasOpenrouterKey } = resolveAiKeys(options);
+  if (!hasNvidiaKey && !hasOpenrouterKey) return null;
+  const router = createProviderRouter({
+    nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
+    openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
+    ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+  });
+  return async ({ mimeType, imageBase64, prompt, responseFormat }) => {
+    const res = await router.callVisionModel({
+      preferCrossLabFastVision: hasOpenrouterKey,
+      allowFailover: true,
+      parseJson: true,
+      timeoutMs: 18_000,
+      primaryTimeoutMs: 10_000,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
+          ],
+        },
+      ],
+      response_format: responseFormat,
+      max_tokens: 500,
+      temperature: 0.1,
+    });
+    if (!res?.ok) throw new Error(res?.error || 'provider_call_failed');
+    if (res.parsedJson && typeof res.parsedJson === 'object') return res.parsedJson;
+    if (typeof res.content === 'string') return JSON.parse(res.content);
+    throw new Error('appearance_invalid_json');
+  };
+}
+
+/**
+ * Local dev-bridge opt-in Appearance Analysis (`action: 'analyze_appearance'`
+ * and `POST /analyze-appearance`). Strictly enforces fail-closed consent.
+ */
+export async function handleDevBridgeAnalyzeAppearance(payload, options = {}) {
+  const started = Date.now();
+  const source = payload?.request && typeof payload.request === 'object'
+    ? { ...payload, ...payload.request }
+    : (payload || {});
+  const consent = source.consentGranted === true || source.consent === true;
+  if (!consent) {
+    return {
+      status: 200,
+      body: {
+        success: true,
+        action: 'analyze_appearance',
+        status: 'consent_required',
+        appearance: null,
+        generationVersion: STYLIST6_DEV_ENGINE_VERSION,
+      },
+    };
+  }
+  const providerFn = typeof options.providerFn === 'function'
+    ? options.providerFn
+    : createBridgeAppearanceProvider(options);
+  const cache = options.appearanceCache || devAppearanceCache;
+  const result = await analyzeUserAppearance({
+    photoUrl: source.photoUrl,
+    photoBytes: source.photoBytes,
+    consent: true,
+    userId: typeof source.userId === 'string' && source.userId.trim() ? source.userId.trim().slice(0, 64) : 'dev-simulator',
+    providerFn,
+    cache,
+    ...(options.fetchImpl ? { fetchFn: options.fetchImpl } : {}),
+    ...(typeof options.dnsLookupFn === 'function' ? { dnsLookupFn: options.dnsLookupFn } : {}),
+    ...(Array.isArray(source.allowedHosts) ? { allowedHosts: source.allowedHosts } : {}),
+  });
+  process.stdout.write(
+    `[stylist6-dev-bridge] analyze_appearance status=${result.status} cached=${result.cached === true} latencyMs=${Date.now() - started}\n`,
+  );
+  if (result.status === 'blocked_url' || result.status === 'invalid_photo') {
+    return {
+      status: 400,
+      body: {
+        success: false,
+        code: 'invalid_stylist6_request',
+        stage: 'stylist6_appearance',
+        reason: result.reason || result.status,
+        generationVersion: STYLIST6_DEV_ENGINE_VERSION,
+      },
+    };
+  }
+  if (result.status === 'ok' || result.status === 'low_confidence') {
+    return {
+      status: 200,
+      body: {
+        success: true,
+        action: 'analyze_appearance',
+        status: result.status === 'ok' ? 'analyzed' : 'low_confidence',
+        appearance: result.appearance
+          ? {
+              ...result.appearance,
+              consentGranted: true,
+              ...(result.photoSha256 ? { photoSha256: result.photoSha256 } : {}),
+            }
+          : null,
+        cached: result.cached === true,
+        photoSha256: result.photoSha256 || null,
+        generationVersion: STYLIST6_DEV_ENGINE_VERSION,
+      },
+    };
+  }
+  return {
+    status: 200,
+    body: {
+      success: true,
+      action: 'analyze_appearance',
+      status: 'unavailable',
+      appearance: null,
+      reason: result.reason || result.status,
+      generationVersion: STYLIST6_DEV_ENGINE_VERSION,
+    },
+  };
+}
+
+/**
+ * Local dev-bridge 1-Tap Surgical Slot Swap (`action: 'swap_slot'` and
+ * `POST /swap-slot`): locks 3 items, searches full hygienic catalog with live
+ * CBU FX, supports Visual Swap Boards (`selectVisualSlotReplacement`) + hard
+ * gate & budget verification + updated Stylist's Notes + honest offer truth.
+ */
+export async function handleDevBridgeSwapSlot(payload, options = {}) {
+  const started = Date.now();
+  const source = payload?.request && typeof payload.request === 'object'
+    ? { ...payload, ...payload.request }
+    : (payload || {});
+  const outfit = source.outfit && typeof source.outfit === 'object' && !Array.isArray(source.outfit)
+    ? source.outfit
+    : null;
+  const targetSlot = typeof source.targetSlot === 'string' ? source.targetSlot.trim().toLowerCase() : '';
+  if (!outfit || !Array.isArray(outfit.items) || outfit.items.length < 3 || outfit.items.length > 4 || !VALID_SWAP_SLOTS.has(targetSlot)) {
+    return {
+      status: 400,
+      body: {
+        success: false,
+        code: 'invalid_stylist6_request',
+        stage: 'stylist6_swap',
+        generationVersion: STYLIST6_DEV_ENGINE_VERSION,
+      },
+    };
+  }
+  const rawContext = source.context && typeof source.context === 'object' && !Array.isArray(source.context)
+    ? source.context
+    : source;
+  const style = typeof rawContext.style === 'string' && rawContext.style.trim() ? rawContext.style.trim() : 'classic';
+  const occasion = typeof rawContext.occasion === 'string' && rawContext.occasion.trim() ? rawContext.occasion.trim() : 'Casual';
+  const sourceMode = normalizeBridgeSourceMode(rawContext.sourceMode ?? source.sourceMode) || 'catalog';
+  const language = normalizeStylistLanguage(rawContext.language ?? rawContext.locale ?? source.language);
+  const budget = rawContext.budget?.amount && rawContext.budget?.currency &&
+    Number.isFinite(Number(rawContext.budget.amount)) && Number(rawContext.budget.amount) > 0 &&
+    /^[A-Z]{3}$/.test(String(rawContext.budget.currency))
+    ? { amount: Number(rawContext.budget.amount), currency: String(rawContext.budget.currency) }
+    : undefined;
+  const weather = resolveStylistWeather(rawContext.brief || '', rawContext.weather || {});
+
+  const shouldHydrateFx = options.fxSnapshot !== undefined ||
+    ((options.liveServer === true || options.allowLiveFx === true) && options.skipHydration !== true);
+  const fxRes = shouldHydrateFx ? await fetchLiveCbuFxSnapshot(options) : { snapshot: null, source: 'skipped' };
+  const fxSnapshot = fxRes.snapshot;
+  const priceToBudgetCurrency = fxSnapshot
+    ? (item, currency = budget?.currency) => {
+        if (typeof currency !== 'string' || !currency.trim()) return NaN;
+        const converted = referenceAmount(item.price, item.currency, currency, fxSnapshot);
+        return Number.isFinite(converted) ? converted : NaN;
+      }
+    : (item, currency = budget?.currency) => (currency && item.currency === currency ? item.price : NaN);
+
+  const rawCatalogRows = Array.isArray(payload?.catalogRows)
+    ? payload.catalogRows
+    : Array.isArray(source.catalogRows)
+      ? source.catalogRows
+      : [];
+  const rawWardrobeRows = Array.isArray(payload?.wardrobeItems)
+    ? payload.wardrobeItems
+    : Array.isArray(source.wardrobeItems)
+      ? source.wardrobeItems
+      : [];
+  const resolvedCat = await resolveBridgeCatalogRows({ rawCatalogRows, sourceMode, options });
+  const rawShopItems = resolvedCat.rows.length ? adaptCatalog(resolvedCat.rows).items : [];
+  const qualityMap = options.qualityMap
+    ? buildQualityLookupMap(options.qualityMap)
+    : devQualityFlywheel.getLookupMap();
+  const hygiene = filterHygienicCatalog(
+    rawShopItems,
+    {
+      occasion,
+      brief: rawContext.brief,
+      presentation: rawContext.presentation,
+      bodyProfile: rawContext.bodyProfile,
+    },
+    qualityMap,
+  );
+  const shopItems = hygiene.items;
+  const wardrobeItems = sourceMode !== 'catalog'
+    ? rawWardrobeRows.map(adaptWardrobeRow).filter(Boolean)
+    : [];
+  const pool = sourceMode === 'catalog'
+    ? shopItems
+    : sourceMode === 'wardrobe'
+      ? wardrobeItems
+      : [...wardrobeItems, ...shopItems];
+  const feasible = budget
+    ? pool.filter((item) => item.isShopItem !== true || Number.isFinite(priceToBudgetCurrency(item, budget.currency)))
+    : pool;
+  if (!feasible.length) {
+    return {
+      status: 502,
+      body: {
+        success: false,
+        code: 'stylist6_no_feasible_looks',
+        stage: 'stylist6_swap',
+        generationVersion: STYLIST6_DEV_ENGINE_VERSION,
+      },
+    };
+  }
+
+  // Rehydrate locked outfit items from pool when available so hardGate/ranker see full metadata,
+  // while preserving original client item fields verbatim for any non-catalog/wardrobe piece.
+  const poolById = new Map(pool.map((item) => [String(item.id), item]));
+  const hydratedLook = {
+    ...outfit,
+    items: outfit.items.map((item) => poolById.get(String(item?.id)) || item),
+  };
+  const { personalStyleDna, styleDnaPromptBlock } = buildBridgePersonalStyleDna(rawContext, style, rawWardrobeRows);
+  const excludedIds = [
+    ...(Array.isArray(source.excludedIds) ? source.excludedIds : []),
+    ...(Array.isArray(rawContext.excludeItemIds) ? rawContext.excludeItemIds : []),
+  ].map((id) => String(id || '').trim()).filter(Boolean);
+
+  const { nvidiaKey, openrouterKey, hasNvidiaKey, hasOpenrouterKey } = resolveAiKeys(options);
+  const visualEnabled = rawContext.enableVisual !== false && source.enableVisual !== false && (hasNvidiaKey || hasOpenrouterKey);
+  const allowLocalShowroom = options.allowLocalShowroomVisualComposition ?? true;
+  const photoByteCache = options.photoByteCache || sharedPhotoByteCache;
+  const fetchImpl = options.fetchImpl || fetch;
+  const resolveProduct = (product) => resolveProductAsset(product, fetchImpl, photoByteCache);
+  const providerRouter = (visualEnabled || typeof options.visualReplacementSelector === 'function') && (hasNvidiaKey || hasOpenrouterKey)
+    ? createProviderRouter({
+        nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
+        openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
+        ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+      })
+    : null;
+  let visualReplacementSelector = typeof options.visualReplacementSelector === 'function'
+    ? options.visualReplacementSelector
+    : null;
+  if (!visualReplacementSelector && allowLocalShowroom && visualEnabled) {
+    const atelierMod = await loadOptionalVisualAtelier();
+    if (typeof atelierMod?.selectVisualSlotReplacement === 'function') {
+      visualReplacementSelector = atelierMod.selectVisualSlotReplacement;
+    }
+  }
+  const boardRenderer = (visualEnabled || typeof options.visualCritic === 'function')
+    ? (items, opts = {}) => renderEditorialLookBoard(items, {
+        resolvePhoto: resolveProduct,
+        authorizePhoto: (url) => HOST_ALLOWLIST.has(hostOf(url)),
+        photoCache: photoByteCache,
+        anonymizeLabels: true,
+        ...opts,
+      })
+    : null;
+  const swapVisualCritic = typeof options.visualCritic === 'function'
+    ? options.visualCritic
+    : null;
+
+  const swapResult = await swapSingleSlot({
+    look: hydratedLook,
+    targetSlot,
+    reason: typeof source.reason === 'string' ? source.reason : '',
+    catalogPool: feasible,
+    context: {
+      ...rawContext,
+      style,
+      occasion,
+      weather,
+      sourceMode,
+      budget,
+    },
+    personalStyleDna,
+    ...(styleDnaPromptBlock ? { styleDnaPromptBlock } : {}),
+    hardGateValidator: async (candidateItems) => {
+      if (sourceMode === 'catalog' && (!Array.isArray(candidateItems) || candidateItems.length !== 4)) {
+        return { ok: false, reason: 'catalog_four_item_contract' };
+      }
+      const feasibility = devLookFeasibility(candidateItems);
+      if (feasibility === false || (feasibility && typeof feasibility === 'object' && feasibility.ok === false)) {
+        return { ok: false, reason: feasibility?.reason || 'infeasible_look' };
+      }
+      if (budget) {
+        let total = 0;
+        for (const it of candidateItems) {
+          if (it?.isShopItem !== false) {
+            const conv = priceToBudgetCurrency(it, budget.currency);
+            if (!Number.isFinite(conv)) return { ok: false, reason: 'currency_unconvertible' };
+            total += conv;
+          }
+        }
+        if (total > budget.amount) return { ok: false, reason: 'over_budget' };
+      }
+      return { ok: true };
+    },
+    visualCritic: swapVisualCritic,
+    ...(boardRenderer ? { boardRenderer } : {}),
+    ...(allowLocalShowroom && visualReplacementSelector ? { visualReplacementSelector } : {}),
+    ...(allowLocalShowroom && providerRouter ? { providerRouter } : {}),
+    ...(allowLocalShowroom && (visualReplacementSelector || providerRouter) ? { photoCache: photoByteCache } : {}),
+    excludedItemIds: excludedIds,
+    qualityMap,
+    priceToBudgetCurrency,
+    deadlineMs: Math.min(20_000, Math.max(1000, Number(options.timeoutMs) || 18_000)),
+  });
+
+  if (!swapResult.swapped || !swapResult.look || !swapResult.newItem) {
+    process.stdout.write(
+      `[stylist6-dev-bridge] swap_slot status=${swapResult.status} slot=${targetSlot} latencyMs=${Date.now() - started}\n`,
+    );
+    return {
+      status: 502,
+      body: {
+        success: false,
+        code: 'stylist6_no_feasible_looks',
+        stage: 'stylist6_swap',
+        swapStatus: swapResult.status,
+        generationVersion: STYLIST6_DEV_ENGINE_VERSION,
+      },
+    };
+  }
+
+  const rankScore = Number.isFinite(Number(outfit.confidence)) ? Number(outfit.confidence) : 0.85;
+  const mappedItems = swapResult.look.items.map((item) => mapDeckItem(
+    item,
+    rankScore,
+    verifyMerchantOffer(item, { targetMarket: 'UZ' }),
+  ));
+  const mappedReplacement = mappedItems.find((it) => String(it.macroCategory || '').toLowerCase() === targetSlot)
+    || mapDeckItem(swapResult.newItem, rankScore, verifyMerchantOffer(swapResult.newItem, { targetMarket: 'UZ' }));
+  const notes = buildStylistNotes(
+    { ...swapResult.look, items: mappedItems },
+    { style, occasion, language, personalStyleDna, preferences: rawContext.preferences || {} },
+    outfit.direction || { id: 'signature' },
+    { personalStyleDna, visualVerdict: swapResult.critique },
+  );
+  const updatedOutfit = {
+    ...outfit,
+    id: String(outfit.id || 'outfit_1'),
+    items: mappedItems,
+    offerVerification: summarizeDeckOffers([{ items: mappedItems }]),
+    description: notes.stylistNote || outfit.description || '',
+    stylistNote: notes.stylistNote,
+    whyItFlattersYou: notes.whyItFlattersYou,
+    stylingTips: notes.stylingTips,
+    colorStory: notes.colorStory,
+    silhouetteFormula: notes.silhouetteFormula,
+    engineVersion: STYLIST6_DEV_ENGINE_VERSION,
+  };
+  const currencyConversion = !budget
+    ? { active: false, reason: 'unbudgeted' }
+    : fxSnapshot
+      ? {
+          active: true,
+          source: fxSnapshot.source,
+          asOf: fxSnapshot.asOf,
+          snapshotId: fxSnapshot.id,
+          budgetCurrency: budget.currency,
+          snapshot: fxSnapshot,
+        }
+      : { active: false, reason: 'same_currency_only', budgetCurrency: budget.currency };
+
+  process.stdout.write(
+    `[stylist6-dev-bridge] swap_slot slot=${targetSlot} prev=${swapResult.previousItem?.id || '-'} next=${mappedReplacement.id} ` +
+    `visualVerified=${swapResult.visualVerified === true} latencyMs=${Date.now() - started}\n`,
+  );
+
+  return {
+    status: 200,
+    body: {
+      success: true,
+      action: 'swap_slot',
+      status: 'swapped',
+      generationVersion: STYLIST6_DEV_ENGINE_VERSION,
+      source: 'stylist-6-dev-local',
+      sourceMode,
+      language,
+      currencyConversion,
+      swappedSlot: targetSlot,
+      previousItemId: swapResult.previousItem?.id ? String(swapResult.previousItem.id) : null,
+      replacementItem: mappedReplacement,
+      visualVerified: swapResult.visualVerified === true,
+      outfit: updatedOutfit,
+      outfits: [updatedOutfit],
+    },
+  };
+}
+
+export async function generateStylist6Deck(payload, options = {}) {
+  const rawAction = typeof payload?.action === 'string'
+    ? payload.action.trim().toLowerCase()
+    : (typeof payload?.request?.action === 'string' ? payload.request.action.trim().toLowerCase() : '');
+  if (rawAction === 'swap_slot') {
+    return handleDevBridgeSwapSlot(payload, options);
+  }
+  if (rawAction === 'analyze_appearance') {
+    return handleDevBridgeAnalyzeAppearance(payload, options);
+  }
+
+  const started = Date.now();
+  const budgetMs = Number.isFinite(Number(options.timeoutMs)) && Number(options.timeoutMs) > 0
+    ? Number(options.timeoutMs)
+    : BRIDGE_GENERATION_BUDGET_MS;
+  const remainingMs = () => budgetMs - (Date.now() - started);
+
+  const { request = {}, catalogRows = [] } = payload || {};
+  const feedbackRows = Array.isArray(payload?.feedbackTaste)
+    ? payload.feedbackTaste.slice(0, 60)
+    : (Array.isArray(request?.feedbackTaste) ? request.feedbackTaste.slice(0, 60) : []);
+  const feedbackTaste = feedbackTasteModel(feedbackRows, Date.now());
+
   const { style, occasion } = request;
   if (typeof style !== 'string' || !style || typeof occasion !== 'string' || !occasion) {
     return { status: 400, body: { success: false, code: 'invalid_stylist6_request', stage: 'stylist6_admission' } };
@@ -370,35 +1289,74 @@ export async function generateStylist6Deck(payload, options = {}) {
       ? request.wardrobeItems
       : [];
   const rawCatalogRows = Array.isArray(catalogRows) ? catalogRows : [];
-  if (sourceMode === 'catalog' && !rawCatalogRows.length) {
+
+  const resolvedCat = await resolveBridgeCatalogRows({ rawCatalogRows, sourceMode, options });
+  const visualHydration = resolvedCat.visualHydration;
+  if (sourceMode === 'catalog' && !resolvedCat.rows.length) {
     return { status: 400, body: { success: false, code: 'stylist6_empty_catalog', stage: 'catalog_adaptation' } };
   }
-  // Live discovery rows come from the catalog_discovery_candidates RPC, which
-  // filters is_active=true server-side and omits the key. The shared adapter
-  // treats a missing key as inactive, so default it here — explicit false
-  // still filters out. No production code is touched by this normalization.
-  let visualHydration = { attempted: 0, fetched: 0, attached: 0, drifted: 0, status: 'skipped_wardrobe_mode' };
-  let shopItems = [];
-  if (sourceMode !== 'wardrobe' && rawCatalogRows.length) {
-    const liveRows = rawCatalogRows.map((row) =>
-      row && typeof row === 'object' && !('is_active' in row) ? { ...row, is_active: true } : row);
-    visualHydration = options.skipHydration === true
-      ? { attempted: 0, fetched: 0, attached: 0, drifted: 0, status: 'skipped_by_option' }
-      : await hydrateVisualProfiles(liveRows);
-    shopItems = adaptCatalog(liveRows).items;
+
+  const budget = request.budget?.amount && request.budget?.currency ? request.budget : undefined;
+  if (budget && !/^[A-Z]{3}$/.test(String(budget.currency))) {
+    return { status: 400, body: { success: false, code: 'invalid_stylist6_request', stage: 'stylist6_admission' } };
   }
+  const shouldHydrateFx = options.fxSnapshot !== undefined ||
+    ((options.liveServer === true || options.allowLiveFx === true) && options.skipHydration !== true);
+  const fxRes = shouldHydrateFx ? await fetchLiveCbuFxSnapshot(options) : { snapshot: null, source: 'skipped' };
+  const fxSnapshot = fxRes.snapshot;
+  const currencyConversion = !budget
+    ? { active: false, reason: 'unbudgeted' }
+    : fxSnapshot
+      ? {
+          active: true,
+          source: fxSnapshot.source,
+          asOf: fxSnapshot.asOf,
+          snapshotId: fxSnapshot.id,
+          budgetCurrency: budget.currency,
+          snapshot: fxSnapshot,
+        }
+      : { active: false, reason: 'same_currency_only', budgetCurrency: budget.currency };
+  const priceToBudgetCurrency = fxSnapshot
+    ? (item, currency = budget?.currency) => {
+        if (typeof currency !== 'string' || !currency.trim()) return NaN;
+        const converted = referenceAmount(item.price, item.currency, currency, fxSnapshot);
+        return Number.isFinite(converted) ? converted : NaN;
+      }
+    : (item, currency = budget?.currency) => (currency && item.currency === currency ? item.price : NaN);
+
+  const rawShopItems = resolvedCat.rows.length ? adaptCatalog(resolvedCat.rows).items : [];
+  const qualityMap = options.qualityMap
+    ? buildQualityLookupMap(options.qualityMap)
+    : devQualityFlywheel.getLookupMap();
+  const catalogHygiene = filterHygienicCatalog(
+    rawShopItems,
+    {
+      occasion,
+      brief: request.brief,
+      presentation: request.presentation,
+      bodyProfile: request.bodyProfile,
+      requiredIds,
+    },
+    qualityMap,
+  );
+  const shopItems = catalogHygiene.items;
   const wardrobeItems = sourceMode !== 'catalog'
     ? rawWardrobeRows.map(adaptWardrobeRow).filter(Boolean)
     : [];
+  const rawItems = sourceMode === 'catalog'
+    ? rawShopItems
+    : sourceMode === 'wardrobe'
+      ? wardrobeItems
+      : [...wardrobeItems, ...rawShopItems];
   const items = sourceMode === 'catalog'
     ? shopItems
     : sourceMode === 'wardrobe'
       ? wardrobeItems
       : [...wardrobeItems, ...shopItems];
-  if (!items.length) {
+  if (!rawItems.length || !items.length) {
     return { status: 502, body: { success: false, code: 'stylist6_empty_catalog', stage: 'catalog_adaptation' } };
   }
-  const itemIds = new Set(items.map((item) => String(item.id)));
+  const itemIds = new Set(rawItems.map((item) => String(item.id)));
   const missingAnchors = requiredIds.filter((id) => !itemIds.has(id));
   if (missingAnchors.length) {
     return {
@@ -411,19 +1369,14 @@ export async function generateStylist6Deck(payload, options = {}) {
       },
     };
   }
-  const budget = request.budget?.amount && request.budget?.currency ? request.budget : undefined;
-  if (budget && !/^[A-Z]{3}$/.test(String(budget.currency))) {
-    return { status: 400, body: { success: false, code: 'invalid_stylist6_request', stage: 'stylist6_admission' } };
-  }
-  // Same-currency pool, mirroring the offline replay: cross-currency looks
-  // cannot be priced honestly without an FX snapshot the ranker owns. Owned
-  // wardrobe pieces are free and remain eligible under any currency cap.
-  const pool = budget
-    ? items.filter((item) => item.isShopItem !== true || item.currency === budget.currency)
+
+  const budgetFeasible = budget
+    ? items.filter((item) => item.isShopItem !== true || Number.isFinite(priceToBudgetCurrency(item, budget.currency)))
     : items;
-  if (!pool.length) {
+  if (!budgetFeasible.length) {
     return { status: 502, body: { success: false, code: 'stylist6_no_feasible_looks', stage: 'stylist6_ranking' } };
   }
+
   const weather = resolveStylistWeather(request.brief || '', request.weather || {});
   const temp = Number(weather?.temp);
   const refs = referenceFirstBriefs(index, {
@@ -433,6 +1386,38 @@ export async function generateStylist6Deck(payload, options = {}) {
   const excludedIds = Array.isArray(request.excludeItemIds)
     ? [...new Set(request.excludeItemIds.map((id) => String(id || '').trim()).filter(Boolean))]
     : [];
+
+  const pool = sourceMode === 'wardrobe'
+    ? budgetFeasible
+    : selectBridgeCatalogWindow(budgetFeasible, {
+        style,
+        occasion,
+        brief: request.brief || '',
+        weather,
+        budget,
+        fxSnapshot,
+        priceToBudgetCurrency,
+        requiredIds,
+        excludedIds,
+      });
+
+  const { personalStyleDna, styleDnaPromptBlock, safeAppearance } = buildBridgePersonalStyleDna(
+    request,
+    style,
+    rawWardrobeRows,
+  );
+  const catalogByIdMap = new Map(pool.map((item) => [String(item.id), item]));
+  const tasteProfile = buildUnifiedTasteProfile({
+    explicitFeedback: feedbackRows,
+    savedOutfits: Array.isArray(request.savedOutfits) ? request.savedOutfits : [],
+    wearLogs: Array.isArray(request.wearLogs) ? request.wearLogs : [],
+    brandClicks: Array.isArray(request.brandClicks) ? request.brandClicks : [],
+    catalogById: catalogByIdMap,
+    nowMs: Date.now(),
+  });
+
+  // Catalog mode strictly enforces exact 4 items per outfit (top, outerwear,
+  // bottom, shoes); wardrobe & mixed modes retain flexible layering.
   const input = {
     brief: request.brief || '',
     weather,
@@ -444,39 +1429,117 @@ export async function generateStylist6Deck(payload, options = {}) {
     budget,
     style,
     occasion,
-    optionalLayer: true,
+    optionalLayer: sourceMode !== 'catalog',
     preferences: request.preferences && typeof request.preferences === 'object' ? request.preferences : {},
     language,
+    ...(request.presentation ? { presentation: request.presentation } : {}),
+    ...(request.bodyProfile ? { bodyProfile: request.bodyProfile } : {}),
+    ...(safeAppearance ? { appearanceProfile: safeAppearance } : {}),
   };
-  // Hosted NVIDIA review is strictly opt-in per request (`enableVisual`),
-  // strictly local-backend (the key never leaves this process), and strictly
-  // bounded. When no local lookbook photo matches `reference.referenceId`,
-  // textual editorial blueprints inform the critique without claiming
-  // photographic reference fidelity (matching cloud_handler.mjs).
-  let visualCritic, canJudgeOutfit;
-  const visualEvents = [];
+
   const visualAsked = request.enableVisual === true;
-  const nvidiaKey = options.nvidiaApiKey ?? (process.env.NVIDIA_API_KEY || '');
-  // A generic style/occasion selection is NOT consent to recreate the first
-  // arbitrary lookbook photograph. In production, reference bytes are absent
-  // and the critic reviews product photos with textual style blueprints.
-  // Mirror that behavior in local iOS QA. Only an explicitly selected, known
-  // reference gets pixel-to-pixel fidelity grading when local bytes exist.
+  const { nvidiaKey, openrouterKey, hasNvidiaKey, hasOpenrouterKey } = resolveAiKeys(options);
+  const hasVisionKeys = hasNvidiaKey || hasOpenrouterKey;
+  const fastVisualMode = request.fastVisualMode !== false && (hasOpenrouterKey || request.fastVisualMode === true);
+  const allowLocalShowroomVisualComposition = options.allowLocalShowroomVisualComposition ?? true;
+  const fetchImpl = options.fetchImpl || fetch;
+  const photoByteCache = options.photoByteCache || (options.fetchImpl
+    ? createPhotoByteCache({ maxEntries: 64, maxBytes: 16 * 1024 * 1024 })
+    : sharedPhotoByteCache);
+
   const hasLocalReference = Boolean(reference &&
     explicitLookbookPhotoRequested(request, reference) &&
     referenceFileFor(reference.referenceId));
-  if (visualAsked && nvidiaKey.startsWith('nvapi-') && nvidiaKey.length >= 20) {
-    visualCritic = createHostedVisualCritic({
-      provider: 'nvidia',
-      apiKey: nvidiaKey,
-      model: NVIDIA_VISION_MODEL,
+
+  let creativePlan = { status: 'disabled', briefs: [], providerCalls: 0 };
+  if (visualAsked && hasVisionKeys && !isWorkoutOccasion(occasion) && options.disableCreativeDirector !== true) {
+    creativePlan = await designCreativeBriefsWithFallback({
+      catalog: pool,
+      request: input,
+      feedbackTaste,
+      tasteProfile,
+      personalStyleDna,
+      styleDnaPromptBlock,
+      cacheStore: devDirectorCache,
+      allowIndependentFallback: true,
+      parallelIndependentFallback: true,
+      backupTimeoutMs: 6500,
+      apiKey: hasNvidiaKey ? nvidiaKey : '',
+      ...(hasOpenrouterKey ? { openrouterApiKey: openrouterKey } : {}),
+      ...(fastVisualMode ? { fastMode: true } : {}),
+      ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+      timeoutMs: Math.min(9500, Math.max(1000, remainingMs() - 7000)),
+      highTaste: true,
+    });
+  }
+
+  let visualCritic, canJudgeOutfit, studioBoardRenderer, prewarmCandidatePhotos;
+  let selectDirectorFinalists = null;
+  let selectCatalogCompositions = null;
+  let selectCatalogRescueCompositions = null;
+  let selectPhotoApprovedPortfolio = null;
+  let visualAtelierCompose = typeof options.visualAtelierCompose === 'function' ? options.visualAtelierCompose : null;
+  let visualReplacementSelector = typeof options.visualReplacementSelector === 'function' ? options.visualReplacementSelector : null;
+  let providerRouter = null;
+  let visualCriticActiveModel = hasNvidiaKey ? NVIDIA_VISION_MODEL : OPENROUTER_VISION_MODEL;
+  const visualEvents = [];
+
+  if (visualAsked && hasVisionKeys) {
+    const resolveProduct = (product) => resolveProductAsset(product, fetchImpl, photoByteCache);
+    const authorizePhoto = (url) => HOST_ALLOWLIST.has(hostOf(url));
+    providerRouter = createProviderRouter({
+      nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
+      openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
+      ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+    });
+
+    if (!visualAtelierCompose || !visualReplacementSelector) {
+      const atelierMod = await loadOptionalVisualAtelier();
+      if (!visualAtelierCompose && typeof atelierMod?.composeOutfitsVisually === 'function') {
+        visualAtelierCompose = atelierMod.composeOutfitsVisually;
+      }
+      if (!visualReplacementSelector && typeof atelierMod?.selectVisualSlotReplacement === 'function') {
+        visualReplacementSelector = atelierMod.selectVisualSlotReplacement;
+      }
+    }
+
+    studioBoardRenderer = (lookItems, opts = {}) => renderEditorialLookBoard(lookItems, {
+      resolvePhoto: resolveProduct,
+      authorizePhoto,
+      photoCache: photoByteCache,
+      anonymizeLabels: true,
+      ...opts,
+    });
+    prewarmCandidatePhotos = async (candidateLooks) => {
+      const urls = [...new Set(
+        (Array.isArray(candidateLooks) ? candidateLooks : []).flatMap((look) =>
+          (look?.items || look?.products || [])
+            .map((item) => item?.imageUrl || item?.image_url)
+            .filter(authorizePhoto),
+        ),
+      )].slice(0, MAX_VISUAL_CANDIDATES * 4);
+      await Promise.allSettled(urls.map((imageUrl) => resolveProduct({ imageUrl })));
+    };
+
+    const rawVisualCritic = createHostedVisualCritic({
+      provider: hasNvidiaKey ? 'nvidia' : 'openrouter',
+      apiKey: hasNvidiaKey ? nvidiaKey : openrouterKey,
+      openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
+      model: hasNvidiaKey ? NVIDIA_VISION_MODEL : OPENROUTER_VISION_MODEL,
+      enableFailover: hasOpenrouterKey || fastVisualMode,
+      preferCrossLabFastVision: fastVisualMode && hasOpenrouterKey,
+      fastVisualMode,
+      boardRenderer: studioBoardRenderer,
       referenceMediaConfigured: hasLocalReference,
       referenceBlueprints: buildReferenceBlueprints(index),
-      timeoutMs: VISUAL_TIMEOUT_MS,
-      providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
+      timeoutMs: Math.min(VISUAL_TIMEOUT_MS, Math.max(2000, remainingMs() - 1000)),
+      providerTimeoutMs: (fastVisualMode && hasOpenrouterKey)
+        ? Math.min(VISUAL_PROVIDER_TIMEOUT_MS, 14_000)
+        : VISUAL_PROVIDER_TIMEOUT_MS,
+      concurrency: Math.min(MAX_VISUAL_CANDIDATES, Math.max(VISUAL_CONCURRENCY, 6)),
       ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       resolveReference: (id) => resolveReferenceAsset(id),
-      resolveProduct: (product) => resolveProductAsset(product, options.fetchImpl || fetch),
+      resolveProduct,
       onEvent: (event) => {
         visualEvents.push({
           outcome: event.outcome,
@@ -486,28 +1549,188 @@ export async function generateStylist6Deck(payload, options = {}) {
           ...(event.mediaFailure ? { mediaFailure: event.mediaFailure } : {}),
           httpStatus: event.httpStatus ?? null,
           latencyMs: Math.round(event.latencyMs || event.providerMs || 0),
+          ...(event.evaluatedEditorialBoard === true ? { evaluatedEditorialBoard: true } : {}),
+          ...(event.routedModel ? { routedModel: event.routedModel } : {}),
+          ...(event.routedProvider ? { routedProvider: event.routedProvider } : {}),
           ...(event.usage && typeof event.usage === 'object' ? { usage: event.usage } : {}),
         });
       },
     });
+    visualCriticActiveModel = rawVisualCritic.activeModel || visualCriticActiveModel;
+    visualCritic = async (candidates, critiqueRequest, criticOptions = {}) => rawVisualCritic(
+      candidates,
+      {
+        ...critiqueRequest,
+        ...(Number.isFinite(weather?.temp) ? { weather } : {}),
+        ...(styleDnaPromptBlock ? { personalStyleDnaPromptBlock: styleDnaPromptBlock } : {}),
+      },
+      criticOptions,
+    );
     canJudgeOutfit = async (look) => {
       if (hasLocalReference && reference && !referenceFileFor(reference.referenceId)) return false;
-      return (look?.items || []).every((item) =>
-        HOST_ALLOWLIST.has(hostOf(item.imageUrl || item.image_url)));
+      return (look?.items || []).every((item) => authorizePhoto(item.imageUrl || item.image_url));
     };
+
+    if (sourceMode === 'catalog' && !requiredIds.length) {
+      selectDirectorFinalists = async ({ options: slateOptions, context: slateContext }) => {
+        const left = remainingMs();
+        if (left < 12_000 || !hasNvidiaKey) return { status: 'not_configured', tokens: [], providerCalls: 0 };
+        return selectFashionSlate({
+          options: slateOptions,
+          context: slateContext,
+          apiKey: nvidiaKey,
+          ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+          timeoutMs: Math.min(2600, Math.max(600, left - 9000)),
+        });
+      };
+      selectCatalogCompositions = async ({
+        pool: compPool,
+        perDirectionPools,
+        personalStyleDna: dnaOpt,
+        styleDnaPromptBlock: dnaBlockOpt,
+        context: compContext,
+        directions,
+        layerRequired,
+        allowLayer,
+        outfitCount = 6,
+        feedbackTaste: fbOpt,
+        parallel = false,
+      }) => {
+        const left = remainingMs();
+        if (left < 20_000) return { status: 'deadline', looks: [], providerCalls: 0 };
+        return composeCatalogSkuLooks({
+          pool: compPool,
+          perDirectionPools,
+          personalStyleDna: dnaOpt || personalStyleDna,
+          styleDnaPromptBlock: dnaBlockOpt || styleDnaPromptBlock,
+          context: compContext,
+          directions,
+          layerRequired,
+          allowLayer,
+          outfitCount,
+          feedbackTaste: fbOpt,
+          parallel,
+          initialStudioDuel: parallel && hasNvidiaKey,
+          apiKey: hasNvidiaKey ? nvidiaKey : '',
+          ...(hasOpenrouterKey ? { openrouterApiKey: openrouterKey } : {}),
+          ...(fastVisualMode ? { fastMode: true } : {}),
+          ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+          timeoutMs: parallel ? Math.min(16_000, Math.max(2000, left - 18_000)) : Math.min(4000, Math.max(600, left - 18_000)),
+        });
+      };
+      selectCatalogRescueCompositions = async ({
+        pool: compPool,
+        perDirectionPools,
+        personalStyleDna: dnaOpt,
+        styleDnaPromptBlock: dnaBlockOpt,
+        context: compContext,
+        directions,
+        critiqueFeedback,
+        layerRequired,
+        allowLayer,
+        feedbackTaste: fbOpt,
+      }) => {
+        const left = remainingMs();
+        if (left < 14_000) return { status: 'deadline', looks: [], providerCalls: 0 };
+        return composeCatalogSkuLooks({
+          pool: compPool,
+          perDirectionPools,
+          personalStyleDna: dnaOpt || personalStyleDna,
+          styleDnaPromptBlock: dnaBlockOpt || styleDnaPromptBlock,
+          context: compContext,
+          directions,
+          critiqueFeedback,
+          layerRequired,
+          allowLayer,
+          feedbackTaste: fbOpt,
+          crossLabRevision: hasNvidiaKey,
+          fastPhotoRevision: true,
+          apiKey: hasNvidiaKey ? nvidiaKey : '',
+          ...(hasOpenrouterKey ? { openrouterApiKey: openrouterKey } : {}),
+          ...(fastVisualMode ? { fastMode: true } : {}),
+          ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+          timeoutMs: Math.min(8000, Math.max(600, left - 12_000)),
+        });
+      };
+      selectPhotoApprovedPortfolio = async ({ looks, critiques, portfolios, context: edContext, creativePlans }) => {
+        const left = remainingMs();
+        if (left < 4000) return { status: 'deadline', tokens: [], providerCalls: 0 };
+        return selectPhotoEditorialDeck({
+          looks,
+          critiques,
+          portfolios,
+          context: edContext,
+          creativePlans,
+          apiKey: hasNvidiaKey ? nvidiaKey : '',
+          openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
+          enableCrossLabFailover: true,
+          fastVisualMode,
+          preserveDistinctVerifiedTriple: true,
+          photoCache: photoByteCache,
+          resolvePhoto: resolveProduct,
+          authorizePhoto,
+          independentVisionJury: hasNvidiaKey,
+          crossLabTieBreak: hasNvidiaKey,
+          ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+          timeoutMs: fastVisualMode ? Math.min(6000, Math.max(1200, left - 2000)) : Math.min(9600, Math.max(1000, left - 2500)),
+        });
+      };
+    }
   }
-  const deck = await recommendFashionDeck({
+
+  const visualAtelierConfigured = Boolean(
+    visualAtelierCompose || (visualAsked && hasVisionKeys && sourceMode === 'catalog' && !requiredIds.length && allowLocalShowroomVisualComposition === false),
+  );
+  const visualAtelierOptions = (visualAsked && hasVisionKeys && allowLocalShowroomVisualComposition)
+    ? {
+        providerRouter,
+        photoCache: photoByteCache,
+        resolvePhoto: (product) => resolveProductAsset(product, fetchImpl, photoByteCache),
+        authorizePhoto: (url) => HOST_ALLOWLIST.has(hostOf(url)),
+        ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+        timeoutMs: Math.min(18_000, Math.max(2500, remainingMs() - 20_000)),
+        maxPerSlot: 8,
+      }
+    : null;
+
+  const computedDeck = await recommendFashionDeck({
     request: input,
     catalog: pool,
     referenceBriefs: refs,
-    // Real feasibility checks (known slot, reachable photo, verified
-    // merchant offer, price/currency, identity) — never an open gate.
+    aiCreativeBriefs: creativePlan.briefs,
     hardGate: async (lookItems) => devLookFeasibility(lookItems),
-    priceToBudgetCurrency: (item, currency) => (item.currency === currency ? item.price : NaN),
+    priceToBudgetCurrency,
+    ...(fxSnapshot ? { fxSnapshot } : {}),
+    valueFxRates: sourceMode === 'catalog' && !budget ? fxSnapshot?.uzsPerUnit : null,
     feedbackTaste,
+    personalStyleDna,
+    styleDnaPromptBlock,
+    tasteProfile,
+    qualityFlywheel: devQualityFlywheel,
+    qualityMap,
+    fastVisualMode,
+    ...(studioBoardRenderer ? { boardRenderer: studioBoardRenderer } : {}),
+    photoByteCache,
+    ...(prewarmCandidatePhotos ? { prewarmPhotos: prewarmCandidatePhotos } : {}),
     visualDeckReview: true,
+    visualCandidateLimit: 8,
+    allowUnreviewedVisualFill: false,
+    photoRescueRemainingMs: visualCritic ? remainingMs : null,
+    ...(visualAtelierCompose ? { visualAtelierCompose } : {}),
+    visualAtelierAllowed: Boolean(allowLocalShowroomVisualComposition && visualAsked && hasVisionKeys),
+    visualAtelierConfigured,
+    ...(visualAtelierOptions ? { visualAtelierOptions } : {}),
+    ...(visualReplacementSelector ? { visualReplacementSelector } : {}),
+    ...(providerRouter ? { providerRouter } : {}),
+    ...(selectDirectorFinalists ? { selectDirectorFinalists } : {}),
+    ...(selectCatalogCompositions ? { selectCatalogCompositions } : {}),
+    ...(selectCatalogRescueCompositions ? { selectCatalogRescueCompositions } : {}),
+    ...(selectPhotoApprovedPortfolio ? { selectPhotoApprovedPortfolio } : {}),
     ...(visualCritic ? { visualCritic, canJudgeOutfit } : {}),
   });
+
+  // Enforce exact 4 authentic shoppable items per look in catalog mode.
+  const deck = enforceCatalogFourItemDeck(computedDeck, sourceMode);
   const visualStatus = mapDevVisualStatus(deck);
   const providerCalls = visualEvents.filter((event) => event.dispatched).length;
   const displayedLooks = deck.outfits.length;
@@ -518,7 +1741,8 @@ export async function generateStylist6Deck(payload, options = {}) {
         : displayedLooks > 0 && displayedJudged === displayedLooks ? 'verified_partial'
           : 'unverified_fallback';
   const visualReceipt = {
-    model: visualAsked ? NVIDIA_VISION_MODEL : null,
+    model: visualAsked ? visualCriticActiveModel : null,
+    ...(fastVisualMode ? { fastVisualMode: true } : {}),
     requested: visualAsked,
     referenceMediaConfigured: hasLocalReference,
     providerCalls,
@@ -531,45 +1755,43 @@ export async function generateStylist6Deck(payload, options = {}) {
       sum + (Number.isFinite(event.usage?.total_tokens) ? event.usage.total_tokens : 0), 0) || null,
     events: visualEvents,
   };
-  process.stdout.write(`[stylist6-dev-bridge] visual requested=${visualAsked} key=${nvidiaKey.startsWith('nvapi-') ? 'present' : 'missing'} ` +
-    `reference=${reference ? reference.referenceId : 'none'} localMedia=${hasLocalReference} status=${visualStatus} providerCalls=${providerCalls}\n`);
+  const visualAtelierStatus = deck?.diagnostics?.visualAtelierStatus || 'not_configured';
+  const surgicalSwaps = Number(deck?.diagnostics?.modelFashionSelection?.surgicalRefinement?.approved || 0);
+  const latencyMs = Date.now() - started;
+
   if ((deck.status !== 'complete' && deck.status !== 'partial') || !deck.outfits.length) {
-    // The simulator must reveal the *real quality bottleneck*, not just a
-    // generic 502. This is local QA telemetry only: no item IDs, photos,
-    // authenticated data, provider evidence or customer secrets are logged.
     const diagnostic = deck.diagnostics || {};
     const rejectionCounts = Object.entries((diagnostic.visualQualityDecisions || []).reduce(
-      (counts, item) => ({...counts,[String(item?.reason || 'unknown')]:
-        (counts[String(item?.reason || 'unknown')] || 0) + 1}), {}));
-    process.stdout.write(`[stylist6-dev-bridge] quality_failed ${JSON.stringify({
-      deckStatus:deck.status,finalLooks:deck.outfits.length,
-      catalogInput:diagnostic.catalogInput,admittedCatalogItems:diagnostic.admittedCatalogItems,
-      candidateCount:diagnostic.candidateCount,shortlisted:diagnostic.shortlisted,
-      editorialEligible:diagnostic.editorialRegister?.eligible,
-      visualCoverage:diagnostic.visualReviewCoverage,
-      visualDecisionCounts:Object.fromEntries(rejectionCounts),
-      visualScores:(diagnostic.visualQualityDecisions||[]).slice(0,8).map(d=>({
-        reason:d.reason,quality:d.quality,confidence:d.confidence,
-        cohesion:d.scores?.cohesion,style:d.scores?.styleFit,
-        occasion:d.scores?.occasionFit,formality:d.scores?.formalityFit,
-        reference:d.scores?.referenceFidelity,
-      })),
-    })}\n`);
+      (counts, item) => ({
+        ...counts,
+        [String(item?.reason || 'unknown')]: (counts[String(item?.reason || 'unknown')] || 0) + 1,
+      }),
+      {},
+    ));
+    process.stdout.write(
+      `[stylist6-dev-bridge] run scenario=${style}/${occasion} mode=${sourceMode} lang=${language} ` +
+      `latencyMs=${latencyMs} looks=0 visualStatus=${visualStatus} visualAtelier=${visualAtelierStatus} ` +
+      `surgicalSwaps=${surgicalSwaps} status=${deck.status} rejections=${JSON.stringify(Object.fromEntries(rejectionCounts))}\n`,
+    );
+    const qualityFailed = (diagnostic.visualReviewCoverage?.valid ?? 0) > 0 &&
+      (diagnostic.visualReviewCoverage?.approved ?? 0) === 0;
     return {
       status: 502,
       body: {
-        success: false, code: 'stylist6_no_feasible_looks', stage: 'stylist6_ranking',
-        engineVersion: STYLIST6_DEV_ENGINE_VERSION, visualHydration, diagnostics: deck.diagnostics || null,
+        success: false,
+        code: qualityFailed ? 'stylist6_visual_quality_unmet' : 'stylist6_no_feasible_looks',
+        stage: 'stylist6_ranking',
+        engineVersion: STYLIST6_DEV_ENGINE_VERSION,
+        visualHydration,
+        visualStatus,
+        visualReceipt,
+        diagnostics: deck.diagnostics || null,
       },
     };
   }
-  // Dev observability: one compact line per served deck so repeat-tap
-  // diversity and SKU/price identity can be audited from bridge output.
-  process.stdout.write(`[stylist6-dev-bridge] deck style=${request.style} occasion=${request.occasion} lang=${language} mode=${sourceMode} ` +
-    deck.outfits.map((look) => look.items.map((i) => `${i.id}@${i.price ?? 0}${i.currency || 'OWNED'}`).join('+')).join(' | ') + '\n');
-  const excluded = new Set(Array.isArray(request.excludeItemIds) ? request.excludeItemIds.map(String) : []);
-  const previousDeckOverlapBySlot = {};
-  for (const slot of ['top', 'outerwear', 'bottom', 'shoes']) previousDeckOverlapBySlot[slot] = 0;
+
+  const excluded = new Set(excludedIds);
+  const previousDeckOverlapBySlot = { top: 0, outerwear: 0, bottom: 0, shoes: 0 };
   for (const look of deck.outfits) {
     for (const item of look.items) {
       if (excluded.has(String(item.id)) && previousDeckOverlapBySlot[item.macroCategory] !== undefined) {
@@ -577,27 +1799,47 @@ export async function generateStylist6Deck(payload, options = {}) {
       }
     }
   }
-  const mappedOutfits = deck.outfits.map((look, index) => {
+
+  const mappedOutfits = deck.outfits.map((look, lookIndex) => {
     const mappedItems = look.items.map((item) => mapDeckItem(
       item,
       look.fashion?.score,
       verifyMerchantOffer(item, { targetMarket: 'UZ' }),
     ));
     const lookVerified = Array.isArray(look.visualEvidence);
+    const fallbackNotes = (!look.stylistNote || !look.whyItFlattersYou || !look.colorStory || !look.silhouetteFormula)
+      ? buildStylistNotes(
+          { ...look, items: mappedItems },
+          { style, occasion, language, personalStyleDna, preferences: input.preferences },
+          look.direction || { id: 'signature' },
+          { personalStyleDna },
+        )
+      : null;
+    const stylistNote = look.stylistNote || fallbackNotes?.stylistNote || look.description || '';
+    const whyItFlattersYou = look.whyItFlattersYou || fallbackNotes?.whyItFlattersYou || '';
+    const stylingTips = Array.isArray(look.stylingTips) && look.stylingTips.length > 0
+      ? look.stylingTips
+      : (Array.isArray(fallbackNotes?.stylingTips) ? fallbackNotes.stylingTips : []);
+    const colorStory = look.colorStory || fallbackNotes?.colorStory || '';
+    const silhouetteFormula = look.silhouetteFormula || fallbackNotes?.silhouetteFormula || '';
+
     return {
-      // Same positional id convention as the cloud handler and the S5 edge,
-      // so locally-served decks carry feedback-attributable look ids too.
-      id: `outfit_${index + 1}`,
+      id: `outfit_${lookIndex + 1}`,
       selectionSource: lookVerified ? 'ai' : 'deterministic_fallback',
       items: mappedItems,
       offerVerification: summarizeDeckOffers([{ items: mappedItems }]),
-      description: look.description,
+      description: look.description || stylistNote,
+      stylistNote,
+      whyItFlattersYou,
+      stylingTips,
+      colorStory,
+      silhouetteFormula,
       concept: { id: look.concept?.id, title: look.concept?.title, story: '', score: look.fashion?.score },
       direction: look.direction ?? null,
-      stylingTips: [],
       confidence: look.fashion?.score,
       matchScore: look.fashion?.score,
       engineVersion: STYLIST6_DEV_ENGINE_VERSION,
+      ...(look.surgicalRefinement ? { surgicalRefinement: look.surgicalRefinement } : {}),
       ...(look.fashionQuality || look.fashion?.fashionQuality ? {
         fashionQuality: look.fashionQuality || look.fashion?.fashionQuality,
       } : {}),
@@ -616,6 +1858,18 @@ export async function generateStylist6Deck(payload, options = {}) {
       },
     };
   });
+
+  const skuSummary = mappedOutfits
+    .map((look) => look.items.map((i) => String(i.id)).join('+'))
+    .join(' | ');
+  // Clean structured per-generation QA trace (zero secrets, zero user PII).
+  process.stdout.write(
+    `[stylist6-dev-bridge] run scenario=${style}/${occasion} mode=${sourceMode} lang=${language} ` +
+    `catalogSource=${resolvedCat.catalogSource}(${pool.length}/${items.length}) latencyMs=${latencyMs} ` +
+    `looks=${mappedOutfits.length} visualStatus=${visualStatus} visualAtelier=${visualAtelierStatus} ` +
+    `surgicalSwaps=${surgicalSwaps} providerCalls=${providerCalls} skus=[${skuSummary}]\n`,
+  );
+
   const offerVerification = summarizeDeckOffers(mappedOutfits);
   return {
     status: 200,
@@ -623,22 +1877,36 @@ export async function generateStylist6Deck(payload, options = {}) {
       success: true,
       generationVersion: STYLIST6_DEV_ENGINE_VERSION,
       source: 'stylist-6-dev-local',
-      compositionProtocol: 'optional-layer-v1',
+      compositionProtocol: sourceMode === 'catalog' ? 'four-slot-v1' : 'optional-layer-v1',
       deckTarget: 3,
       status: deck.status,
       sourceMode,
       language,
+      currencyConversion,
       feedbackTasteActive: feedbackTaste.active === true,
       previousDeckOverlapBySlot,
       visualHydration,
       visualStatus,
+      visualAtelierStatus,
       visualReceipt,
       offerVerification,
       purchaseEvidence: DEV_PURCHASE_EVIDENCE,
+      creativeDirector: {
+        version: CREATIVE_DIRECTOR_VERSION,
+        status: creativePlan.status,
+        providerCalls: creativePlan.providerCalls,
+        briefsAccepted: creativePlan.briefs.length,
+      },
+      feedbackTaste: {
+        rows: feedbackRows.length,
+        active: feedbackTaste.active === true,
+        version: FEEDBACK_TASTE_VERSION,
+      },
       diagnostics: deck.diagnostics || null,
       meta: {
         language,
         sourceMode,
+        catalogSource: resolvedCat.catalogSource,
         offerTruth: {
           version: MERCHANT_OFFER_VERSION,
           ...offerVerification,
@@ -649,8 +1917,6 @@ export async function generateStylist6Deck(payload, options = {}) {
     },
   };
 }
-
-const handleGenerate = (payload) => generateStylist6Deck(payload);
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -670,16 +1936,30 @@ function readBody(req) {
   });
 }
 
-export function createDevBridgeServer() {
+export function createDevBridgeServer(serverOptions = {}) {
+  const defaultOpts = { liveServer: true, ...serverOptions };
   return http.createServer(async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
+    const route = String(req.url || '').split('?')[0];
     try {
-      if (req.method === 'GET' && req.url === '/health') {
+      if (req.method === 'GET' && route === '/health') {
+        const { hasNvidiaKey, hasOpenrouterKey } = resolveAiKeys(defaultOpts);
+        const { url, readKey } = resolveSupabaseReadConfig(defaultOpts);
         res.writeHead(200);
-        res.end(JSON.stringify({ ok: true, engine: STYLIST6_DEV_ENGINE_VERSION, references: index.images.length }));
+        res.end(JSON.stringify({
+          ok: true,
+          engine: STYLIST6_DEV_ENGINE_VERSION,
+          pipeline: 'stylist6-v3-visual-atelier',
+          references: index.images.length,
+          endpoints: ['/health', '/generate', '/swap-slot', '/analyze-appearance'],
+          nvidiaConfigured: hasNvidiaKey,
+          openrouterConfigured: hasOpenrouterKey,
+          supabaseConfigured: Boolean(url && readKey),
+          cachedCatalogSkus: Array.isArray(liveCatalogCache.rows) ? liveCatalogCache.rows.length : 0,
+        }));
         return;
       }
-      if (req.method === 'POST' && req.url === '/generate') {
+      if (req.method === 'POST' && (route === '/generate' || route === '/swap-slot' || route === '/analyze-appearance')) {
         const raw = await readBody(req);
         let payload;
         try {
@@ -689,10 +1969,16 @@ export function createDevBridgeServer() {
           res.end(JSON.stringify({ success: false, code: 'invalid_stylist6_request', stage: 'stylist6_admission' }));
           return;
         }
-        const { status, body } = await handleGenerate(payload);
-        process.stdout.write(`[stylist6-dev-bridge] POST /generate -> ${status} success=${body?.success} code=${body?.code || '-'} outfits=${body?.outfits?.length ?? 0}\n`);
-        res.writeHead(status);
-        res.end(JSON.stringify(body));
+        let result;
+        if (route === '/swap-slot') {
+          result = await handleDevBridgeSwapSlot(payload, defaultOpts);
+        } else if (route === '/analyze-appearance') {
+          result = await handleDevBridgeAnalyzeAppearance(payload, defaultOpts);
+        } else {
+          result = await generateStylist6Deck(payload, defaultOpts);
+        }
+        res.writeHead(result.status);
+        res.end(JSON.stringify(result.body));
         return;
       }
       res.writeHead(404);
@@ -714,8 +2000,13 @@ if (isMain) {
   const argvPort = Number(process.argv.slice(2).find((a) => a.startsWith('--port='))?.slice('--port='.length));
   const port = Number.isFinite(argvPort) && argvPort > 0 ? argvPort
     : Number(process.env.STYLIST6_DEV_PORT) > 0 ? Number(process.env.STYLIST6_DEV_PORT) : DEFAULT_PORT;
-  const server = createDevBridgeServer();
+  const { hasNvidiaKey, hasOpenrouterKey } = resolveAiKeys();
+  const { url, readKey } = resolveSupabaseReadConfig();
+  const server = createDevBridgeServer({ liveServer: true });
   server.listen(port, '127.0.0.1', () => {
-    process.stdout.write(`[stylist6-dev-bridge] ${STYLIST6_DEV_ENGINE_VERSION} on http://127.0.0.1:${port} (${index.images.length} references)\n`);
+    process.stdout.write(
+      `[stylist6-dev-bridge] ${STYLIST6_DEV_ENGINE_VERSION} (v3-visual-atelier) on http://127.0.0.1:${port} ` +
+      `(refs=${index.images.length} supabase=${Boolean(url && readKey)} nvidia=${hasNvidiaKey} openrouter=${hasOpenrouterKey})\n`,
+    );
   });
 }

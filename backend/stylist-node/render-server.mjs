@@ -21,7 +21,8 @@ export function createStylist6RenderServer(post=POST){
       res.end(JSON.stringify({ok:true,engine:'stylist-6-render-staging',
         computeConfigured:Boolean(process.env.STYLIST6_NODE_SHARED_SECRET &&
           process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY &&
-          process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NVIDIA_API_KEY)}));
+          process.env.SUPABASE_SERVICE_ROLE_KEY &&
+          (process.env.NVIDIA_API_KEY || process.env.OPENROUTER_API_KEY))}));
       return;
     }
     if(route!==RENDER_STYLIST6_ROUTE){json(res,404,'not_found');return;}
@@ -41,7 +42,8 @@ export function createStylist6RenderServer(post=POST){
         headers.set(key,Array.isArray(val)?val.join(', '):String(val));
       // In-process trusted Render entrypoint only. The user cannot choose
       // this budget via headers or body, and the HMAC/JWT handler still owns
-      // verification and billing. The Vercel route keeps the default 50s.
+      // verification and billing. Vercel Fluid Compute defaults to 75s (env-configurable);
+      // Render canary uses 72s within its 85s proxy timeout.
       const response=await post(new Request('http://localhost'+RENDER_STYLIST6_ROUTE,
         {method:'POST',headers,body}),{renderCanary:true});
       const data=Buffer.from(await response.arrayBuffer());

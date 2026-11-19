@@ -1883,6 +1883,64 @@ export function directorSlatePreview(looks, aiPlans = [], { includePublicCatalog
   }));
 }
 
+function extractVisualAtelierOutfits(rawOutfits, preparedById) {
+  if (!Array.isArray(rawOutfits) || !(preparedById instanceof Map)) {
+    return { looks: [], metaByKey: new Map() };
+  }
+  const safeStr = (value, maxLen = 280) => (typeof value === 'string'
+    ? value.replace(/https?:\/\/[^\s]+/gi, '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, maxLen)
+    : '');
+  const entries = [];
+  for (let idx = 0; idx < Math.min(8, rawOutfits.length); idx++) {
+    const raw = rawOutfits[idx];
+    if (!raw || typeof raw !== 'object') continue;
+    const rawItems = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw.items)
+        ? raw.items
+        : slots.map((slot) => raw[slot]).filter(Boolean);
+    if (!Array.isArray(rawItems) || rawItems.length < 3 || rawItems.length > 4) continue;
+    const resolvedItems = [];
+    let valid = true;
+    const seenSlots = new Set();
+    for (const candidate of rawItems) {
+      const id = candidate && typeof candidate === 'object' ? String(candidate.id || '').trim() : '';
+      const authentic = id ? preparedById.get(id) : null;
+      if (!authentic || seenSlots.has(authentic.macroCategory)) {
+        valid = false;
+        break;
+      }
+      seenSlots.add(authentic.macroCategory);
+      resolvedItems.push(authentic);
+    }
+    if (!valid || !['top', 'bottom', 'shoes'].every((slot) => seenSlots.has(slot))) continue;
+    const dirIdx = Number.isInteger(raw.directionIndex) && raw.directionIndex >= 0 && raw.directionIndex < 3
+      ? raw.directionIndex
+      : idx;
+    const meta = Array.isArray(raw)
+      ? null
+      : {
+          directionIndex: dirIdx,
+          title: safeStr(raw.title, 80),
+          visualHarmonyRationale: safeStr(raw.visualHarmonyRationale, 240),
+          stylingNote: safeStr(raw.stylingNote || raw.stylistNote, 320),
+          whyItFlattersYou: safeStr(raw.whyItFlattersYou, 260),
+          stylingTips: Array.isArray(raw.stylingTips)
+            ? raw.stylingTips.map((tip) => safeStr(tip, 140)).filter(Boolean).slice(0, 4)
+            : [],
+        };
+    entries.push({ dirIdx, order: idx, items: resolvedItems, meta });
+  }
+  entries.sort((a, b) => a.dirIdx - b.dirIdx || a.order - b.order);
+  const metaByKey = new Map();
+  const looks = entries.map((entry) => {
+    const key = entry.items.map((item) => String(item.id)).sort().join('|');
+    if (entry.meta && !metaByKey.has(key)) metaByKey.set(key, entry.meta);
+    return entry.items;
+  });
+  return { looks, metaByKey };
+}
+
 export async function recommendFashionDeck({
   request, catalog, referenceBriefs = [], hardGate, priceToBudgetCurrency, visualCritic, canJudgeOutfit,
   // Optional trusted inventory-grounded AI directions; still subject to the
@@ -1942,18 +2000,40 @@ export async function recommendFashionDeck({
   prewarmPhotos = null,
   fxSnapshot = null,
   perDirectionPools = null,
+  // Visual-First Atelier Showroom Composition & Visual Swap Selection (V3):
+  // Fail-closed by default (`visualAtelierAllowed = false`) so merchant photo
+  // rights are NEVER violated silently in cloud staging/production. Only runs
+  // when licensed `catalog_photo_cache_v1` (`photoFirstCatalogReady`) is ready
+  // OR explicit dev/QA `allowLocalShowroomVisualComposition === true`.
+  visualAtelierCompose = null,
+  visualAtelierAllowed = false,
+  visualAtelierConfigured = false,
+  visualAtelierOptions = null,
+  visualReplacementSelector = null,
+  providerRouter = null,
 }) {
   const reviewedLimit = Number.isInteger(visualCandidateLimit)
     ? Math.max(3,Math.min(MAX_VISUAL_CANDIDATES,visualCandidateLimit)) : MAX_VISUAL_CANDIDATES;
   const context = fashionStylingContext(request);
+  const hasVisualAtelier = typeof visualAtelierCompose === 'function';
+  const visualAtelierPermitted = visualAtelierAllowed === true;
+  let visualAtelierStatus = (hasVisualAtelier || visualAtelierConfigured === true)
+    ? (visualAtelierPermitted ? 'not_configured' : 'skipped_unlicensed')
+    : 'not_configured';
+  let visualAtelierDetails = null;
+  const canRunVisualAtelier = hasVisualAtelier && visualAtelierPermitted &&
+    context.sourceMode === 'catalog' &&
+    visualDeckReview && typeof visualCritic === 'function' &&
+    typeof canJudgeOutfit === 'function';
   const modelLed = context.sourceMode === 'catalog' &&
     visualDeckReview && typeof visualCritic === 'function' &&
     typeof canJudgeOutfit === 'function' && typeof selectDirectorFinalists === 'function';
   // The isolated 72-second catalog publisher requires four real SKUs. Never
   // pay a whole-look PHOTO verdict for three garments which the cloud release
   // boundary must discard. Compose a suitable REAL layer, not a fake fourth.
-  const catalogFourItemIntent = modelLed &&
-    typeof selectCatalogCompositions === 'function';
+  const catalogFourItemIntent = (modelLed &&
+    typeof selectCatalogCompositions === 'function') ||
+    (canRunVisualAtelier && context.optionalLayer === false);
   const weather = context.weather;
   const reference = referenceBriefs.find(({ referenceId }) => referenceId === request.referenceId);
   const forceLayer = !context.optionalLayer || hasColdLayerIntent(weather) ||
@@ -2021,8 +2101,9 @@ export async function recommendFashionDeck({
   // the same independent full-look hard gate and NVIDIA PHOTO judge approve.
   let parallelComposition=null;
   let sourceVerifiedAiFirst=[];
-  if(modelLed&&typeof selectCatalogCompositions==='function'&&
-      request.sourceMode==='catalog'&&!requiredIds.length){
+  const runAiFirstComposition = request.sourceMode==='catalog'&&!requiredIds.length&&
+    ((modelLed&&typeof selectCatalogCompositions==='function')||canRunVisualAtelier);
+  if(runAiFirstComposition){
     const excludedBases=new Set(
       (Array.isArray(request.excludedIds)?request.excludedIds:[])
         .map(id=>baseProductId(String(id))));
@@ -2089,13 +2170,99 @@ export async function recommendFashionDeck({
       resolvedPerDirectionPools.unifiedPool.length >= 12 ? 3 : 6;
     const enough=['top','bottom','shoes',...(forceLayer?['outerwear']:[])]
       .every(slot=>counts[slot]>=minSlotCount);
-    if(enough){
-      const contextPrompt={
-        style:context.style,occasion:context.occasion,brief:context.request,
-        weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
-        preferences:context.preferences,
-        ...(personalStyleDna?.presentation?{presentation:personalStyleDna.presentation}:{}),
+    const contextPrompt={
+      style:context.style,occasion:context.occasion,brief:context.request,
+      weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
+      preferences:context.preferences,
+      ...(personalStyleDna?.presentation?{presentation:personalStyleDna.presentation}:{}),
+    };
+    // VISUAL-FIRST SHOWROOM COMPOSITION (V3):
+    // Runs ONLY when `visualAtelierAllowed === true` (licensed photo cache ready
+    // in cloud OR explicit local Simulator dev/QA opt-in). Every visually composed
+    // outfit MUST still pass the immutable source, budget, physical, 4-item, and
+    // independent full-photo critic gates.
+    if(canRunVisualAtelier){
+      const preparedById=new Map(visualSeed.map(item=>[String(item.id),item]));
+      const atelierSlotsReady=['top','bottom','shoes',...(forceLayer||catalogFourItemIntent?['outerwear']:[])]
+        .every(slot=>visualSeed.some(item=>item.macroCategory===slot));
+      if(atelierSlotsReady){
+        let atelierResult=null;
+        try{
+          atelierResult=await Promise.resolve(visualAtelierCompose({
+            directions:aiPlans,
+            perDirectionPools:resolvedPerDirectionPools,
+            catalog:visualSeed,
+            context:{...contextPrompt,budget:request.budget,weather:context.weather,sourceMode:request.sourceMode,language:context.language},
+            personalStyleDna,
+            styleDnaPromptBlock,
+            ...(typeof tasteProfile?.promptSummary==='string'&&tasteProfile.promptSummary
+              ?{tastePromptBlock:tasteProfile.promptSummary}:{}),
+            ...(typeof priceToBudgetCurrency==='function'?{priceToBudgetCurrency}:{}),
+            ...(Array.isArray(request.excludedIds)&&request.excludedIds.length
+              ?{excludedIds:request.excludedIds}:{}),
+            ...(photoByteCache?{photoCache:photoByteCache}:{}),
+            ...(providerRouter?{providerRouter}:{}),
+            ...(visualAtelierOptions&&typeof visualAtelierOptions==='object'?visualAtelierOptions:{}),
+          }));
+        }catch{
+          atelierResult={status:'fallback',outfits:[]};
+        }
+        const rawOutfits=Array.isArray(atelierResult?.outfits)?atelierResult.outfits:[];
+        const {looks:extractedLooks,metaByKey}=extractVisualAtelierOutfits(rawOutfits,preparedById);
+        const atelierAdmitted=[];
+        if(atelierResult?.status==='applied'&&extractedLooks.length>0){
+          const verified=await sourceVerifyComposedOutfits({
+            looks:extractedLooks,request:{...request,requiredIds},requiredIds,
+            hardGate,priceToBudgetCurrency,scorer:fashionScorer,
+            sourceMode:request.sourceMode,creativePlans:aiPlans,
+          });
+          const palette=context.preferences;
+          for(const look of verified){
+            if((catalogFourItemIntent||context.optionalLayer===false)&&!eligibleCatalogFourItemPhotoCandidate(look))continue;
+            if(verifiedAvoidColors(palette?.avoidColors).length&&
+              photographicPaletteEvidence(look,palette,requiredIds).blocked)continue;
+            try{
+              if(await canJudgeOutfit(look,reference?.referenceId??null)===true){
+                const metaKey=look.items.map(it=>String(it.id)).sort().join('|');
+                const visualAtelierMeta=metaByKey.get(metaKey)||null;
+                atelierAdmitted.push(visualAtelierMeta?{...look,visualAtelierMeta}:look);
+              }
+            }catch{}
+          }
+        }
+        if(atelierAdmitted.length>=2){
+          visualAtelierStatus='applied';
+          sourceVerifiedAiFirst.push(...atelierAdmitted);
+        }else{
+          visualAtelierStatus='fallback';
+        }
+        visualAtelierDetails={
+          status:visualAtelierStatus,
+          proposed:rawOutfits.length,
+          admitted:atelierAdmitted.length,
+          provider:typeof atelierResult?.provider==='string'?atelierResult.provider.slice(0,32):null,
+          model:typeof atelierResult?.model==='string'?atelierResult.model.slice(0,80):null,
+          latencyMs:Number.isFinite(atelierResult?.latencyMs)?Math.round(atelierResult.latencyMs):null,
+        };
+      }else{
+        visualAtelierStatus='fallback';
+        visualAtelierDetails={status:'fallback',proposed:0,admitted:0,reason:'insufficient_inventory'};
+      }
+    }
+    if(sourceVerifiedAiFirst.length>=3&&visualAtelierStatus==='applied'){
+      parallelComposition={
+        pool,
+        fromVisualAtelier:true,
+        visualAtelierAdmitted:[...sourceVerifiedAiFirst],
+        promise:Promise.resolve({
+          status:'composed',
+          looks:sourceVerifiedAiFirst.map(l=>l.items),
+          providerCalls:1,
+          visualMenuStatus:'applied',
+          providerFamily:'visual_atelier',
+        }),
       };
+    }else if(enough&&modelLed&&typeof selectCatalogCompositions==='function'){
       // Invoke the bounded provider request synchronously: its first await
       // yields while the ranker computes. Never leave a dangling rejection.
       let promise;
@@ -2119,7 +2286,6 @@ export async function recommendFashionDeck({
       // AI is the PRIMARY designer. Await its independently submitted
       // source-bound outfit design FIRST, before any legacy CPU work.
       const initial=await promise;
-      parallelComposition={pool,promise:Promise.resolve(initial)};
       if(initial?.status==='composed'&&Array.isArray(initial.looks)){
         const admitted=await sourceVerifyComposedOutfits({
           looks:initial.looks,request:{...request,requiredIds},requiredIds,
@@ -2131,6 +2297,7 @@ export async function recommendFashionDeck({
         // approval. Every surviving whole look still goes through NVIDIA.
         const palette=context.preferences;
         for(const look of admitted){
+          if(sourceVerifiedAiFirst.some(existing=>existing.id===look.id))continue;
           if(catalogFourItemIntent && !eligibleCatalogFourItemPhotoCandidate(look))continue;
           if(verifiedAvoidColors(palette?.avoidColors).length&&
             photographicPaletteEvidence(look,palette,requiredIds).blocked)continue;
@@ -2140,6 +2307,29 @@ export async function recommendFashionDeck({
           }catch{}
         }
       }
+      if(visualAtelierStatus==='applied'&&sourceVerifiedAiFirst.length>=2){
+        parallelComposition={
+          pool,
+          fromVisualAtelier:true,
+          visualAtelierAdmitted:[...sourceVerifiedAiFirst],
+          promise:Promise.resolve(initial),
+        };
+      }else{
+        parallelComposition={pool,promise:Promise.resolve(initial)};
+      }
+    }else if(visualAtelierStatus==='applied'&&sourceVerifiedAiFirst.length>=2){
+      parallelComposition={
+        pool,
+        fromVisualAtelier:true,
+        visualAtelierAdmitted:[...sourceVerifiedAiFirst],
+        promise:Promise.resolve({
+          status:'composed',
+          looks:sourceVerifiedAiFirst.map(l=>l.items),
+          providerCalls:1,
+          visualMenuStatus:'applied',
+          providerFamily:'visual_atelier',
+        }),
+      };
     }
   }
   const aiFirstFastTrack=sourceVerifiedAiFirst.length>=3;
@@ -2273,6 +2463,29 @@ export async function recommendFashionDeck({
         skuCompositionReceipt.exploratoryProducts=pool.filter(p=>
           !reviewable.some(look=>look.items.some(item=>item.id===p.item.id))).length;
         try{
+          if(parallelComposition?.fromVisualAtelier&&Array.isArray(parallelComposition.visualAtelierAdmitted)){
+            skuCompositionReceipt.status='composed';
+            skuCompositionReceipt.studio='not_run';
+            skuCompositionReceipt.visualMenuStatus='applied';
+            skuCompositionReceipt.proposed=visualAtelierDetails?.proposed??parallelComposition.visualAtelierAdmitted.length;
+            modelFashionSelection={
+              status:'composed',
+              candidatesSeen:pool.length,
+              chosen:0,
+              providerCalls:1,
+              compositionMode:true,
+              ...(visualAtelierDetails?{visualAtelier:visualAtelierDetails}:{}),
+            };
+            for(const look of parallelComposition.visualAtelierAdmitted){
+              if(explicitColorPreferences&&
+                photographicPaletteEvidence(look,context.preferences,requiredIds).blocked)continue;
+              if(await permitted(look))candidates.push(look);
+            }
+            skuCompositionReceipt.admitted=candidates.length;
+            modelFashionSelection.chosen=candidates.length;
+            modelChosen=candidates.length>=2;
+            if(!modelChosen)candidates.length=0;
+          }else{
           const composition=parallelComposition
             ?await parallelComposition.promise
             :await selectCatalogCompositions({
@@ -2305,6 +2518,7 @@ export async function recommendFashionDeck({
             chosen:0,
             providerCalls:Math.min(2,Math.max(0,Number(composition?.providerCalls)||0)),
             compositionMode:true,
+            ...(visualAtelierDetails?{visualAtelier:visualAtelierDetails}:{}),
           };
           if(composition?.status==='composed'&&Array.isArray(composition.looks)){
             const admitted=await sourceVerifyComposedOutfits({
@@ -2325,6 +2539,7 @@ export async function recommendFashionDeck({
             modelChosen=candidates.length>=2;
             if(!modelChosen)candidates.length=0;
             else modelFashionSelection.status='composed';
+          }
           }
         }catch{
           skuCompositionReceipt.status='composition_unavailable';
@@ -2431,6 +2646,25 @@ export async function recommendFashionDeck({
       }
     }
     if(modelLed)modelFashionSelection.skuCompositionReceipt=skuCompositionReceipt;
+    if(!modelLed&&visualAtelierStatus==='applied'&&sourceVerifiedAiFirst.length>=2){
+      for(const look of sourceVerifiedAiFirst){
+        if(candidates.some(other=>other.id===look.id))continue;
+        if(explicitColorPreferences&&
+          photographicPaletteEvidence(look,context.preferences,requiredIds).blocked)continue;
+        if(await permitted(look))candidates.push(look);
+      }
+      if(candidates.length>=2){
+        modelChosen=true;
+        modelFashionSelection={
+          status:'composed',
+          candidatesSeen:sourceVerifiedAiFirst.length,
+          chosen:candidates.length,
+          providerCalls:1,
+          compositionMode:true,
+          ...(visualAtelierDetails?{visualAtelier:visualAtelierDetails}:{}),
+        };
+      }
+    }
     if(!modelChosen)for(const look of selected) {
       if (explicitColorPreferences) {
         const evidence=photographicPaletteEvidence(look,context.preferences,requiredIds);
@@ -2863,8 +3097,13 @@ export async function recommendFashionDeck({
             catalogPool: preparedSurgicalCatalog,
             context: { ...context, budget: request.budget, requiredIds },
             personalStyleDna,
+            styleDnaPromptBlock,
             visualCritic: waveAwareVisualCritic,
             boardRenderer: boundBoardRenderer,
+            ...(visualAtelierPermitted && typeof visualReplacementSelector === 'function'
+              ? { visualReplacementSelector } : {}),
+            ...(visualAtelierPermitted && providerRouter ? { providerRouter } : {}),
+            ...(photoByteCache ? { photoCache: photoByteCache } : {}),
             maxRounds: 1,
             topCandidatesPerRound: 2,
             parallelCandidates: fastVisualMode,
@@ -3268,7 +3507,7 @@ export async function recommendFashionDeck({
       // can return fewer, more worthwhile looks, or select three compelling
       // candidates from a larger pool of already approved looks.
       // If unavailable, keep the original independently approved deck.
-      if(modelLed&&typeof selectPhotoApprovedPortfolio==='function'&&
+      if((modelLed||visualAtelierStatus==='applied')&&typeof selectPhotoApprovedPortfolio==='function'&&
           reviewed.diagnostics.visualValid>=3){
         // Deduplicate by candidateId so surgical rescues never double-enter selectVisualDeck
         const allCritiques=[...new Map(
@@ -3826,6 +4065,8 @@ export async function recommendFashionDeck({
       deckCopyVersion: DECK_COPY_VERSION,
       feedbackTasteVersion: FEEDBACK_TASTE_VERSION,
       feedbackTasteActive: !!(feedbackTaste && feedbackTaste.active),
+      visualAtelierStatus,
+      ...(visualAtelierDetails ? { visualAtelier: visualAtelierDetails } : {}),
       modelFashionSelection,
       ...(visualReviewCoverage ? { visualReviewCoverage } : {}),
       ...(visualQualityDecisions ? { visualQualityDecisions } : {}),

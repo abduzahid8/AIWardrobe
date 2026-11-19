@@ -68,6 +68,25 @@ const defaultQualityFlywheel = createQualityFlywheel();
 const defaultAppearanceCache = createStylistCache({ namespace: 's6:appearance', maxMemoryEntries: 256, maxMemoryBytes: 8 * 1024 * 1024 });
 const defaultSharedPhotoByteCache = createPhotoByteCache({ maxEntries: 256, maxBytes: 32 * 1024 * 1024 });
 
+let optionalVisualAtelierCache = undefined;
+/**
+ * Optional dynamic loader for `visual_atelier.mjs` (`composeOutfitsVisually` &
+ * `selectVisualSlotReplacement`). Uses a computed specifier so esbuild bundles
+ * cleanly standalone before `visual_atelier.mjs` is present, and seamlessly
+ * loads the Visual-First Atelier module at runtime when available.
+ */
+export async function loadOptionalVisualAtelier() {
+  if (optionalVisualAtelierCache !== undefined) return optionalVisualAtelierCache;
+  try {
+    const filename = ['./visual', 'atelier.mjs'].join('_');
+    const mod = await import(new URL(filename, import.meta.url).href);
+    optionalVisualAtelierCache = mod && typeof mod === 'object' ? mod : null;
+  } catch {
+    optionalVisualAtelierCache = null;
+  }
+  return optionalVisualAtelierCache;
+}
+
 /** Leave the actual photographic judge enough time while admitting the
  * smaller model-led fashion slate even on real cloud catalog retrievals.
  * A hard 22.5s reservation previously made the Director NOT_RUN on live iOS
@@ -1717,6 +1736,32 @@ async function handleSwapSlotAction({ payload, userId, env, io, fetchImpl, timeo
     ...(Array.isArray(ctxReq.excludeItemIds) ? ctxReq.excludeItemIds : []),
   ].map((id) => String(id || '').trim()).filter(Boolean);
 
+  const allowLocalShowroomSwap =
+    /^(1|true)$/i.test(String(env?.STYLIST6_ALLOW_LOCAL_SHOWROOM_VISUAL || '').trim()) ||
+    io?.allowLocalShowroomVisualComposition === true;
+  const swapNvidiaKey = String(env?.NVIDIA_API_KEY || '').trim();
+  const swapOpenrouterKey = String(env?.OPENROUTER_API_KEY || '').trim();
+  const hasSwapVisionKeys = swapNvidiaKey.startsWith('nvapi-') || swapOpenrouterKey.length >= 16;
+  const swapPhotoCache = io?.photoByteCache || defaultSharedPhotoByteCache;
+  let swapVisualReplacementSelector = typeof io?.visualReplacementSelector === 'function'
+    ? io.visualReplacementSelector
+    : null;
+  let swapProviderRouter = null;
+  if (allowLocalShowroomSwap && hasSwapVisionKeys) {
+    swapProviderRouter = createProviderRouter({
+      nvidiaApiKey: swapNvidiaKey.startsWith('nvapi-') ? swapNvidiaKey : '',
+      openrouterApiKey: swapOpenrouterKey.length >= 16 ? swapOpenrouterKey : '',
+      ...(fetchImpl ? { fetchImpl } : {}),
+    });
+    if (!swapVisualReplacementSelector) {
+      const atelierMod = await loadOptionalVisualAtelier();
+      if (typeof atelierMod?.selectVisualSlotReplacement === 'function') {
+        swapVisualReplacementSelector = atelierMod.selectVisualSlotReplacement;
+      }
+    }
+  }
+  const swapStyleDnaBlock = personalStyleDna ? buildStyleDnaPromptBlock(personalStyleDna) : '';
+
   const swapResult = await swapSingleSlot({
     look: outfit,
     targetSlot,
@@ -1730,6 +1775,7 @@ async function handleSwapSlotAction({ payload, userId, env, io, fetchImpl, timeo
       budget,
     },
     personalStyleDna,
+    ...(swapStyleDnaBlock ? { styleDnaPromptBlock: swapStyleDnaBlock } : {}),
     hardGateValidator: async (candidateItems) => {
       if (sourceMode === 'catalog' && (!Array.isArray(candidateItems) || candidateItems.length !== 4)) {
         return { ok: false, reason: 'catalog_four_item_contract' };
@@ -1752,6 +1798,9 @@ async function handleSwapSlotAction({ payload, userId, env, io, fetchImpl, timeo
       return { ok: true };
     },
     visualCritic: typeof io?.swapVisualCritic === 'function' ? io.swapVisualCritic : null,
+    ...(swapVisualReplacementSelector ? { visualReplacementSelector: swapVisualReplacementSelector } : {}),
+    ...(swapProviderRouter ? { providerRouter: swapProviderRouter } : {}),
+    ...(swapVisualReplacementSelector || swapProviderRouter ? { photoCache: swapPhotoCache } : {}),
     excludedItemIds: excludedIds,
     qualityMap,
     priceToBudgetCurrency,
@@ -1827,7 +1876,7 @@ async function handleSwapSlotAction({ payload, userId, env, io, fetchImpl, timeo
  * (injectable fakes in tests); `env` carries server-only configuration.
  * Returns {status, body} with an edge-shaped payload.
  */
-export async function handleStylist6CloudGenerate({ method, headers, bodyText, env, io, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS }) {
+export async function handleStylist6CloudGenerate({ method, headers, bodyText, env, io, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS, fastVisualMode: fastVisualModeOpt }) {
   const secret = env.STYLIST6_NODE_SHARED_SECRET || '';
   const previousSecret = env.STYLIST6_NODE_SHARED_SECRET_PREVIOUS || '';
   if (!secret || secret.length < 32) return fail('stylist_compute_unconfigured', 503);
@@ -2378,7 +2427,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const fastVisualDisabled = /^(0|false)$/i.test(String(env.STYLIST6_FAST_VISUAL_MODE || '').trim());
     const fastVisualExplicit = /^(1|true)$/i.test(String(env.STYLIST6_FAST_VISUAL_MODE || '').trim());
     const fastVisualMode = !fastVisualDisabled && (
-      fastVisualExplicit
+      fastVisualModeOpt === true
+      || fastVisualExplicit
       || hasOpenrouterKey
       || request.fastVisualMode === true
     );
@@ -2631,6 +2681,56 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         verifiedPhotoCounts.get(item.macroCategory)+1);
     const photoFirstCatalogReady=photoCacheOptIn &&
       [...verifiedPhotoCounts.values()].every(n=>n>=3);
+    // Strictly preserve merchant photo-rights honesty per AGENTS.md &
+    // STYLIST6_NORTH_STAR.md: in cloud staging/production, Visual Showroom
+    // Composition runs ONLY when licensed `catalog_photo_cache_v1`
+    // (`photoFirstCatalogReady`) is ready OR explicit dev/QA flag
+    // `allowLocalShowroomVisualComposition === true` is set server-side.
+    const allowLocalShowroomVisualComposition =
+      /^(1|true)$/i.test(String(env?.STYLIST6_ALLOW_LOCAL_SHOWROOM_VISUAL || '').trim()) ||
+      io?.allowLocalShowroomVisualComposition === true;
+    const visualAtelierAllowed = Boolean(photoFirstCatalogReady || allowLocalShowroomVisualComposition);
+    const visualAtelierEligibleContext = Boolean(
+      visualAsked && !visualDisabled && (hasNvidiaKey || hasOpenrouterKey) &&
+      sourceMode === 'catalog' && !requiredIds.length && budgetMs >= 70000,
+    );
+    const atelierMod = (visualAtelierEligibleContext || typeof io?.visualAtelierCompose === 'function' || typeof io?.visualReplacementSelector === 'function')
+      ? await loadOptionalVisualAtelier()
+      : null;
+    const visualAtelierCompose = typeof io?.visualAtelierCompose === 'function'
+      ? io.visualAtelierCompose
+      : (visualAtelierEligibleContext && typeof atelierMod?.composeOutfitsVisually === 'function'
+        ? atelierMod.composeOutfitsVisually
+        : null);
+    const visualReplacementSelector = typeof io?.visualReplacementSelector === 'function'
+      ? io.visualReplacementSelector
+      : (visualAtelierAllowed && visualAsked && !visualDisabled && (hasNvidiaKey || hasOpenrouterKey) &&
+         typeof atelierMod?.selectVisualSlotReplacement === 'function'
+        ? atelierMod.selectVisualSlotReplacement
+        : null);
+    const visualAtelierConfigured = Boolean(
+      typeof io?.visualAtelierCompose === 'function' ||
+      (visualAtelierEligibleContext && (typeof atelierMod?.composeOutfitsVisually === 'function' || !visualAtelierAllowed)),
+    );
+    const atelierProviderRouter = (hasNvidiaKey || hasOpenrouterKey) &&
+      (visualAtelierAllowed || typeof io?.visualAtelierCompose === 'function' || typeof io?.visualReplacementSelector === 'function')
+      ? createProviderRouter({
+          nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
+          openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
+          ...(fetchImpl ? { fetchImpl } : {}),
+        })
+      : null;
+    const visualAtelierOptions = visualAtelierAllowed
+      ? {
+          providerRouter: atelierProviderRouter,
+          photoCache: photoByteCache,
+          resolvePhoto: photoFirstCatalogReady ? photoComposerCachedOnlyResolver : photoPortfolioResolver,
+          authorizePhoto: isInferenceAuthorized,
+          ...(fetchImpl ? { fetchImpl } : {}),
+          signal: deadlineController.signal,
+          timeoutMs: Math.min(18_000, Math.max(2500, remainingMs() - 24_000)),
+        }
+      : null;
     const selectDirectorFinalists=modelSlateEnabled
       ? async({options,context})=>{
           const timeLeftMs=Math.max(0,Math.floor(remainingMs()));
@@ -2786,6 +2886,12 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       // for a small SECOND real-photo review wave after an initial fashion
       // rejection. Never widen paid inference or deadlines in Vercel/S5.
       photoRescueRemainingMs: budgetMs >= 70000 ? remainingMs : null,
+      ...(visualAtelierCompose ? { visualAtelierCompose } : {}),
+      visualAtelierAllowed,
+      visualAtelierConfigured,
+      ...(visualAtelierOptions ? { visualAtelierOptions } : {}),
+      ...(visualReplacementSelector ? { visualReplacementSelector } : {}),
+      ...(atelierProviderRouter ? { providerRouter: atelierProviderRouter } : {}),
       ...(selectPhotoApprovedPortfolio?{selectPhotoApprovedPortfolio}:{}),
       ...(visualCritic ? { visualCritic, canJudgeOutfit, canDisplayOutfit } : {}),
     }));
@@ -2924,6 +3030,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         deck.diagnostics,deck.outfits.length,Date.now()-started);
       console.info('stylist6_safe_visual_quality', {
         ...safeTrace,
+        visualAtelierStatus: ['applied', 'skipped_unlicensed', 'fallback', 'not_configured']
+          .includes(deck.diagnostics?.visualAtelierStatus)
+          ? deck.diagnostics.visualAtelierStatus : 'not_configured',
         creativePlanCount:Math.min(3,creativePlan.briefs.length),
         creativePlanDetailedArtDirections:creativePlan.briefs.filter(plan=>
           typeof plan.artDirection==='string'&&plan.artDirection.length>=85)

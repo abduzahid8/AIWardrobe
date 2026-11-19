@@ -2719,3 +2719,116 @@ test('action analyze_appearance default provider routes env keys & fetchImpl thr
   assert.equal(second.body.cached, true);
   assert.equal(vlmCalls, 1, 'second identical photo must hit SHA-256 cache with 0 VLM calls');
 });
+
+test('cloud handler strictly enforces photo-rights honesty for visualAtelierCompose (skipped_unlicensed vs explicit dev/QA opt-in)', async () => {
+  const bigJpeg = await sharp({
+    create: { width: 256, height: 256, channels: 3, noise: { type: 'gaussian', mean: 128, sigma: 25 } },
+  }).jpeg({ quality: 90 }).toBuffer();
+
+  const authImg = (id) => `https://fyqpifmrsftsfqibhwhy.supabase.co/storage/v1/object/shop-catalog/${id}.jpg`;
+  const catalogRows = [
+    { ...shopRow('va-c-top-1', 'top', 450000), name: 'White Poplin Dress Shirt', fashion_slot: 'top', fashion_subtype: 'dress-shirt', color: 'white', image_url: authImg('va-c-top-1') },
+    { ...shopRow('va-c-top-2', 'top', 480000), name: 'Sky Blue Cotton Oxford Shirt', fashion_slot: 'top', fashion_subtype: 'shirt', color: 'blue', image_url: authImg('va-c-top-2') },
+    { ...shopRow('va-c-top-3', 'top', 510000), name: 'Cream Merino Fine Knit Sweater', fashion_slot: 'top', fashion_subtype: 'fine-knit', color: 'cream', image_url: authImg('va-c-top-3') },
+    { ...shopRow('va-c-outer-1', 'outerwear', 950000), name: 'Navy Wool Tailored Blazer', fashion_slot: 'outerwear', fashion_subtype: 'blazer', color: 'navy', image_url: authImg('va-c-outer-1') },
+    { ...shopRow('va-c-outer-2', 'outerwear', 1100000), name: 'Camel Wool Overcoat', fashion_slot: 'outerwear', fashion_subtype: 'coat', color: 'camel', image_url: authImg('va-c-outer-2') },
+    { ...shopRow('va-c-outer-3', 'outerwear', 780000), name: 'Charcoal Fine Merino Cardigan', fashion_slot: 'outerwear', fashion_subtype: 'cardigan', color: 'charcoal', image_url: authImg('va-c-outer-3') },
+    { ...shopRow('va-c-bot-1', 'bottom', 540000), name: 'Charcoal Tailored Trousers', fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser', color: 'charcoal', image_url: authImg('va-c-bot-1') },
+    { ...shopRow('va-c-bot-2', 'bottom', 490000), name: 'Stone Tailored Wool Trousers', fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser', color: 'beige', image_url: authImg('va-c-bot-2') },
+    { ...shopRow('va-c-bot-3', 'bottom', 560000), name: 'Navy Pleated Dress Trousers', fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser', color: 'navy', image_url: authImg('va-c-bot-3') },
+    { ...shopRow('va-c-shoe-1', 'shoes', 680000), name: 'Black Leather Dress Oxfords', fashion_slot: 'shoes', fashion_subtype: 'oxford', color: 'black', image_url: authImg('va-c-shoe-1') },
+    { ...shopRow('va-c-shoe-2', 'shoes', 640000), name: 'Dark Brown Suede Loafers', fashion_slot: 'shoes', fashion_subtype: 'loafer', color: 'brown', image_url: authImg('va-c-shoe-2') },
+    { ...shopRow('va-c-shoe-3', 'shoes', 690000), name: 'Espresso Leather Derbies', fashion_slot: 'shoes', fashion_subtype: 'derby', color: 'brown', image_url: authImg('va-c-shoe-3') },
+  ];
+
+  const fetchStub = async (url, options = {}) => {
+    const parsed = new URL(String(url));
+    if (parsed.hostname === 'integrate.api.nvidia.com') {
+      const payload = JSON.parse(options.body);
+      const content = payload.messages?.[0]?.content;
+      if (!Array.isArray(content)) return new Response(JSON.stringify({ error: 'critic_only' }), { status: 503 });
+      const prompt = content[0]?.text || '';
+      const id = prompt.match(/candidateId must be exactly "([^"]+)"/)?.[1];
+      if (!id) return new Response(JSON.stringify({ error: 'critic_only' }), { status: 503 });
+      return new Response(JSON.stringify({
+        choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(verdictForPrompt(prompt, id)) } }],
+        usage: { prompt_tokens: 100, completion_tokens: 40, total_tokens: 140 },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(bigJpeg, { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+  };
+
+  // 1. Unlicensed cloud staging (photoFirstCatalogReady === false, allowLocalShowroomVisualComposition === false):
+  // MUST NOT call visualAtelierCompose and MUST transparently report skipped_unlicensed!
+  let unlicensedAtelierCalls = 0;
+  const body1 = JSON.stringify({
+    request: { ...baseRequest, weather: { temp: 14, condition: 'clear' }, enableVisual: true, generationRequestId: 'va-cloud-unlicensed-1' },
+  });
+  const sig1 = await signStylistTransport({ secret: SECRET, body: body1, authorization: `Bearer ${JWT}` });
+  const { io: io1 } = makeIo({ shopRows: catalogRows });
+  const resUnlicensed = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization: `Bearer ${JWT}`, ...sig1 },
+    bodyText: body1,
+    env: { ...env, NVIDIA_API_KEY: 'nvapi-test-key-0123456789abcdef', STYLIST6_CREATIVE_DIRECTOR_ENABLED: '1', STYLIST6_AI_SLATE_ENABLED: '1' },
+    io: {
+      ...io1,
+      visualAtelierCompose: async () => {
+        unlicensedAtelierCalls += 1;
+        return { status: 'applied', outfits: [] };
+      },
+    },
+    fetchImpl: fetchStub,
+    timeoutMs: 75000,
+  });
+  assert.equal(resUnlicensed.status, 200);
+  assert.equal(unlicensedAtelierCalls, 0, 'unlicensed cloud staging must NEVER invoke visualAtelierCompose');
+  assert.equal(resUnlicensed.body.diagnostics.visualAtelierStatus, 'skipped_unlicensed');
+
+  // 2. Explicit dev/QA allowLocalShowroomVisualComposition: true -> invokes visualAtelierCompose and enforces hard gates + critic!
+  let licensedAtelierCalls = 0;
+  const body2 = JSON.stringify({
+    request: { ...baseRequest, weather: { temp: 14, condition: 'clear' }, enableVisual: true, generationRequestId: 'va-cloud-allowed-2' },
+  });
+  const sig2 = await signStylistTransport({ secret: SECRET, body: body2, authorization: `Bearer ${JWT}` });
+  const { io: io2 } = makeIo({ shopRows: catalogRows });
+  const resAllowed = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization: `Bearer ${JWT}`, ...sig2 },
+    bodyText: body2,
+    env: { ...env, NVIDIA_API_KEY: 'nvapi-test-key-0123456789abcdef', STYLIST6_CREATIVE_DIRECTOR_ENABLED: '1', STYLIST6_AI_SLATE_ENABLED: '1' },
+    io: {
+      ...io2,
+      allowLocalShowroomVisualComposition: true,
+      visualAtelierCompose: async ({ catalog }) => {
+        licensedAtelierCalls += 1;
+        const byId = (id) => catalog.find((x) => x.id === id);
+        return {
+          status: 'applied',
+          provider: 'nvidia',
+          model: 'nvidia/nemotron-3.5-super-vl-120b-a12b',
+          latencyMs: 320,
+          outfits: [
+            { directionIndex: 0, top: byId('va-c-top-1'), outerwear: byId('va-c-outer-1'), bottom: byId('va-c-bot-1'), shoes: byId('va-c-shoe-1') },
+            { directionIndex: 1, top: byId('va-c-top-3'), outerwear: byId('va-c-outer-2'), bottom: byId('va-c-bot-2'), shoes: byId('va-c-shoe-3') },
+            { directionIndex: 2, top: byId('va-c-top-2'), outerwear: byId('va-c-outer-3'), bottom: byId('va-c-bot-3'), shoes: byId('va-c-shoe-2') },
+          ],
+        };
+      },
+    },
+    fetchImpl: fetchStub,
+    timeoutMs: 75000,
+  });
+  assert.equal(resAllowed.status, 200);
+  assert.equal(licensedAtelierCalls, 1);
+  assert.equal(resAllowed.body.diagnostics.visualAtelierStatus, 'applied');
+  assert.equal(resAllowed.body.outfits.length, 3);
+  assert.ok(resAllowed.body.outfits.every((o) => o.items.length === 4));
+});
+
+test('Vercel Fluid Compute config sets maxDuration: 300 on Stylist 6 routes while keeping Stylist 5 untouched at 60', () => {
+  const vercelConfig = JSON.parse(readFileSync(new URL('../stylist-node/vercel.json', import.meta.url), 'utf8'));
+  assert.equal(vercelConfig.functions['api/generate-outfits.ts'].maxDuration, 60, 'Stylist 5 maxDuration must stay untouched');
+  assert.equal(vercelConfig.functions['api/stylist6-generate-outfits.ts'].maxDuration, 300);
+  assert.equal(vercelConfig.functions['api/stylist6-vision-test.ts'].maxDuration, 300);
+});
