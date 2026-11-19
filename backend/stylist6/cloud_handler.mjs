@@ -1898,8 +1898,15 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       env.STYLIST6_PHOTO_REWARD_JOURNAL_ENABLED==='true'&&
       sourceMode==='catalog'&&typeof io.savePhotoRewardExamples==='function'
       ?async evidence=>{
+        // Reader and writer MUST use the exact same authenticated request
+        // context, not potentially re-normalized/trimmed fashion-deck
+        // context fields. The complete preferences influence only the
+        // ephemeral HMAC: no raw value is included in any stored row.
         const rows=compilePhotoRewardExamples({
-          ...evidence,secret:env.STYLIST6_NODE_SHARED_SECRET,
+          ...evidence,
+          context:{style:input.style,occasion:input.occasion,
+            preferences:input.preferences},
+          secret:env.STYLIST6_NODE_SHARED_SECRET,
         });
         if(rows.length===0){
           console.info('stylist6_photo_reward_journal',
@@ -1929,7 +1936,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       try{
         const contextHash=photoHistoryContextHash({
           style:input.style,occasion:input.occasion,
-          fitPreference:input.preferences?.fitPreference,
+          preferences:input.preferences,
         },env.STYLIST6_NODE_SHARED_SECRET);
         if(contextHash){
           const rows=await io.readPhotoRewardHistory(contextHash);

@@ -110,7 +110,7 @@ test('personal wardrobe, missing layer, duplicate real source items and unknown 
   }
 });
 
-test('real RN fit modes use separate anonymous PHOTO contexts, never arbitrary personal inputs',()=>{
+test('real personal styling choices are HMAC-context isolated, never generalized as owner taste',()=>{
   const base={sourceMode:'catalog',requiredIds:[],preferences:{
     fitPreference:'balanced',favoriteColors:[],avoidColors:[],
     likedPatterns:[],dislikedPatterns:[],favoriteBrands:[],avoidBrands:[],
@@ -122,16 +122,40 @@ test('real RN fit modes use separate anonymous PHOTO contexts, never arbitrary p
     assert.equal(anonymousPhotoJournalAllowed({...base,
       preferences:{...base.preferences,fitPreference:fit}}),true,
       'the THREE documented app fit choices must not all be dropped');
+  for(const personal of [
+    {favoriteColors:['red']},{avoidBrands:['Private Merchant']},
+    {styleGoals:['private_goal']},{bodyType:'athletic'},
+    {workDressCode:'formal'},{prefersSustainable:true},
+  ])assert.equal(anonymousPhotoJournalAllowed({...base,
+    preferences:{...base.preferences,...personal}}),true,
+    'ordinary personal fashion context is allowed ONLY under unique HMAC scope');
   for(const altered of [
     {...base,sourceMode:'wardrobe'},
     {...base,sourceMode:'mixed'},
     {...base,requiredIds:['PRIVATE_ANCHOR_ID']},
     {...base,preferences:{...base.preferences,fitPreference:'PRIVATE PERSONAL FIT'}},
-    {...base,preferences:{...base.preferences,favoriteColors:['red']}},
-    {...base,preferences:{...base.preferences,avoidBrands:['Private Merchant']}},
-    {...base,preferences:{...base.preferences,styleGoals:['private_goal']}},
-    {...base,preferences:{...base.preferences,bodyType:'athletic'}},
-    {...base,preferences:{...base.preferences,workDressCode:'formal'}},
     {...base,preferences:{...base.preferences,unexpectedOwnerField:'phone'}},
+    {...base,preferences:{...base.preferences,styleGoals:['mailto:private@example.com']}},
   ])assert.equal(anonymousPhotoJournalAllowed(altered),false);
+});
+test('independent personal color and fit contexts never share the same PHOTO training HMAC',()=>{
+  const base=input();
+  const one=compilePhotoRewardExamples({...base,context:{
+    ...base.context,preferences:{fitPreference:'balanced',
+      avoidColors:['navy'],favoriteBrands:['Private Merchant Brand']},
+  }});
+  const other=compilePhotoRewardExamples({...base,context:{
+    ...base.context,preferences:{fitPreference:'balanced',
+      avoidColors:['red'],favoriteBrands:['Private Merchant Brand']},
+  }});
+  const sameReordered=compilePhotoRewardExamples({...base,context:{
+    ...base.context,preferences:{favoriteBrands:['Private Merchant Brand'],
+      avoidColors:['navy'],fitPreference:'balanced'},
+  }});
+  assert.equal(one.length,2);
+  assert.equal(other.length,2);
+  assert.notEqual(one[0].context_hash,other[0].context_hash);
+  assert.deepEqual(one,sameReordered,'equivalent preferences share privacy scope regardless of key order');
+  assert.doesNotMatch(JSON.stringify(one),
+    /navy|red|Private Merchant|PRIVATE|Brand|http|imageUrl|SKU|user_id/i);
 });

@@ -26,8 +26,10 @@ server-enabled `STYLIST6_PHOTO_REWARD_JOURNAL_ENABLED=true` gate.
   the unchanged quality/occasion/style/photo gate have genuinely judged it.
   A photo quality failure with `reject=false` remains a *negative*.
   Color exclusions and low confidence are not taught as fashion dislike.
-  Owned wardrobe, fixed anchors and explicit owner color, fit and pattern
-  constraints are excluded entirely.
+  Owned wardrobe and fixed anchors are excluded. Personalized catalog
+  fashion preferences are partitioned by a distinct keyed context HMAC:
+  full supported color, fit, pattern, brand and style goals are never
+  stored in the clear or treated as universal garment bans.
 - The sample includes ONLY seven bounded fields: keyed HMAC-SHA256
   fingerprint and style/occasion/fit context digest, up to 180 keyed HMAC
   hashes of observed four-slot garment and between-slot relationships,
@@ -36,10 +38,11 @@ server-enabled `STYLIST6_PHOTO_REWARD_JOURNAL_ENABLED=true` gate.
   shop or image URL, product description, prompt or raw photograph**.
 - The signature uses server-only domain-separated HMAC;
   no raw feature text or unkeyed hash goes to the database.
-  Only six supported style codes, six supported occasion codes and the
-  THREE documented app fit modes (balanced/loose/fitted) are allowed as
-  HMAC-separated contexts. The user's free-text request and body data
-  never become training context. The QA app previously had a loose-fit
+  Only six supported style codes and six supported occasion codes and
+  bounded, permitted app preference fields are allowed as distinct
+  HMAC-separated contexts. The user's free-text request, identifiers,
+  images and body metadata never become persisted training attributes.
+  App fit modes balanced/loose/fitted are kept separate. The QA app previously had a loose-fit
   setting that erroneously made an otherwise safe test untrainable.
 - `createCloudIo().savePhotoRewardExamples` is service-role only,
   validates every field/row again, uses bounded 1.2-second upsert,
@@ -115,3 +118,24 @@ before claiming trained fashion skill. The safe diagnostic now emits
 `photoJournalScope` and an enum `recorded` /
 `no_anonymous_source_photo_examples` / `write_failed` if a safe
 journal capture was attempted. It never logs a user's fit or identity.
+
+## Root-cause fix verified after e24225ee
+
+2026-11-19 09:07 UTC LIVE iOS Classic/Work on exact `e24225ee`
+returned 0 independently approved outfits from 7 photos; all photo
+quality gates remained intact. The first bug (Node route silently
+dropping `STYLIST6_PHOTO_REWARD_JOURNAL_ENABLED`) was FIXED in
+`e24225ee`; new safe telemetry reported
+`photoJournalScope=personal_context_excluded`, proving that the flag
+did reach the cloud engine and that privacy exclusion was the next
+obstacle. DB still had **zero** real rows; a 0/7 photo verdict is not
+an excuse to invent training examples.
+
+The updated journal design accepts *only the explicitly authorized*
+source-authentic catalog personal styling context and HMAC-hashes all
+bounded, normalized, known preference fields (not SKU IDs, customer ID,
+photos, URLs or free-text brief). Writer and reader derive the SAME
+context hash from the full authenticated server request. Scores never
+cross different color/fit/style-goal contexts, and never turn a
+photographic AI veto into an owner preference. Only allowed catalog
+four-item photo verdicts enter the 30-day RLS-private journal.

@@ -13,7 +13,7 @@
  */
 import {createHash,createHmac} from 'node:crypto';
 import {outfitRelationshipFeatures} from './learned_outfit_preference.mjs';
-import {PHOTO_REWARD_JOURNAL_VERSION} from './photo_reward_journal.mjs';
+import {PHOTO_REWARD_JOURNAL_VERSION,photoRewardContextHash} from './photo_reward_journal.mjs';
 export const PHOTO_REWARD_HISTORY_VERSION='s6-photo-history-pairwise-v1';
 const DIGEST=/^[0-9a-f]{64}$/;
 const MAX_ROWS=240,MAX_FEATURES=180,MIN_FEATURES=12;
@@ -26,19 +26,12 @@ const gradient=difference=>1/(1+Math.exp(clamp(difference,-30,30)));
 const sha=s=>createHash('sha256').update(s).digest('hex');
 const hmac=(secret,type,value)=>createHmac('sha256',secret)
   .update(PHOTO_REWARD_JOURNAL_VERSION+'\0'+type+'\0'+value).digest('hex');
-const SAFE_STYLES=new Set(['old_money','semi_classic','minimalist','casual',
-  'classic','business_casual']);
-const SAFE_OCCASIONS=new Set(['work','casual','date','formal','sport','travel']);
-const SAFE_FITS=new Set(['balanced','loose','fitted']);
-/** Match the journal's exact HMAC domain without exposing the shared secret
- * or accepting arbitrary user-provided free-text outfit scenarios. */
+/** EXACT SAME protected photo-context digest as the writer: the reader
+ * must not mix fashion quality judgments across different real preference
+ * contexts or accidentally train on another user's explicit exclusions.
+ */
 export function photoHistoryContextHash(context,secret){
-  if(typeof secret!=='string'||secret.length<32)return null;
-  const style=String(context?.style||'').trim().toLowerCase();
-  const occasion=String(context?.occasion||'').trim().toLowerCase();
-  const fit=String(context?.fitPreference||'balanced').trim().toLowerCase();
-  return SAFE_STYLES.has(style)&&SAFE_OCCASIONS.has(occasion)&&SAFE_FITS.has(fit)
-    ?hmac(secret,'context',style+'\0'+occasion+'\0'+fit):null;
+  return photoRewardContextHash(context,secret);
 }
 /** Extract ONLY source-grounded outfit relations already available to the
  * fashion engine; emit stable keyed fingerprints, not raw item identities. */

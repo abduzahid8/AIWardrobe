@@ -3290,10 +3290,12 @@ export async function recommendFashionDeck({
         }
       }
       // Optional EVIDENCE collection only; it NEVER affects this request's
-      // fashion outcome and is never sent to the user. Explicit preferences,
-      // owned wardrobe anchors and private styling contexts are excluded:
-      // the derived training signal must represent general catalog PHOTO
-      // qualities, never a different wearer's personal dislikes.
+      // fashion outcome and is never sent to the user. Personal-wardrobe
+      // anchors are excluded. For real catalog PHOTO tests with personalized
+      // preferences, the server HMAC-isolates the ENTIRE preference context
+      // before persistence: a photo-quality verdict on someone's avoided
+      // colors must not become an unconditional general fashion rule.
+      // Human thumbs are learned separately, never from these PHOTO labels.
       const journalEligible=anonymousPhotoJournalAllowed({
         sourceMode:context.sourceMode,requiredIds,preferences:context.preferences});
       modelFashionSelection.photoJournalScope=typeof photoRewardSink!=='function'
@@ -3305,7 +3307,7 @@ export async function recommendFashionDeck({
           looks:photoJournalLooks,decisions:photoJournalDecisions,
           critiques:primaryCritiques,
           context:{style:context.style,occasion:context.occasion,
-            fitPreference:context.preferences?.fitPreference},
+            preferences:context.preferences},
           featuresOf:items=>outfitStylingFeatures(items),
         });}catch{/* Nonessential training IO must NEVER fail a paid deck. */}
       }

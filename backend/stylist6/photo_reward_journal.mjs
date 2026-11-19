@@ -18,53 +18,115 @@ const VALID_REASONS=new Set([
   'style_mismatch','occasion_mismatch','formality_mismatch',
 ]);
 const SLOTS=['top','outerwear','bottom','shoes'];
-// Security/consent boundary, NOT a styling rule: never persist custom
-// requests, free-text occasions, company names or personal information as
-// even pseudonymous context. These are the app's fixed UI codes only.
+// This is a privacy boundary, NEVER a styling rule. The independent
+// PHOTO judge may legitimately have evaluated a personalized request:
+// do not mislabel that approval as universal aesthetic truth. Instead
+// separate every supported non-identifying preference profile using a
+// keyed, one-way HMAC context. No raw preference, free-text brief, body
+// attribute, user ID, URL or merchant/SKU identity is persisted.
 const SAFE_STYLES=new Set([
   'old_money','semi_classic','minimalist','casual','classic','business_casual',
 ]);
 const SAFE_OCCASIONS=new Set(['work','casual','date','formal','sport','travel']);
-// These are the EXACT three values from the app's typed preference schema.
-// This is a privacy context discriminator, NOT a fashion decision rule.
 const SAFE_FITS=new Set(['balanced','loose','fitted']);
-const safeContext=(context)=>{
-  const style=String(context?.style||'').trim().toLowerCase();
-  const occasion=String(context?.occasion||'').trim().toLowerCase();
-  const fit=String(context?.fitPreference||'balanced').trim().toLowerCase();
-  return SAFE_STYLES.has(style)&&SAFE_OCCASIONS.has(occasion)&&SAFE_FITS.has(fit)
-    ?{style,occasion,fit}:null;
+const PHOTO_PREF_ARRAYS=new Set([
+  'avoidColors','favoriteColors','likedPatterns','dislikedPatterns',
+  'favoriteBrands','avoidBrands','primaryOccasions','styleGoals',
+]);
+const PHOTO_PREF_TEXT=new Set([
+  'bodyType','workDressCode','stylePersonality',
+]);
+const PHOTO_PREF_BOOLEAN=new Set(['prefersSustainable']);
+const PHOTO_PREF_BUDGET=new Set(['priceRange','maxShopBudget']);
+const PHOTO_PREF_KNOWN=new Set([
+  ...PHOTO_PREF_ARRAYS,...PHOTO_PREF_TEXT,...PHOTO_PREF_BOOLEAN,
+  ...PHOTO_PREF_BUDGET,'fitPreference','budgetRatesId',
+]);
+const PHOTO_BUDGET_KEYS=new Set(['min','max','amount','currency']);
+const safeString=v=>{
+  if(typeof v!=='string'||v.length>80||
+    /[\x00-\x1f<>@]/.test(v)||/:\/\//.test(v))return null;
+  const norm=v.trim().toLowerCase();
+  return norm.length?norm:null;
+};
+function normalizedPhotoPrefs(input,fitOverride){
+  if(input!==undefined&&input!==null&&
+      (typeof input!=='object'||Array.isArray(input)))return null;
+  const p=input||{},out={};
+  const fit=safeString(p.fitPreference??fitOverride??'balanced');
+  if(!fit||!SAFE_FITS.has(fit))return null;
+  out.fitPreference=fit;
+  for(const key of Object.keys(p).sort()){
+    const value=p[key];
+    if(!PHOTO_PREF_KNOWN.has(key)){
+      if(value!==undefined&&value!==null)return null;
+      continue;
+    }
+    if(key==='fitPreference'||key==='budgetRatesId'||
+        value===undefined||value===null)continue;
+    if(PHOTO_PREF_ARRAYS.has(key)){
+      if(!Array.isArray(value)||value.length>16)return null;
+      const vals=value.map(safeString);
+      if(vals.some(x=>x===null))return null;
+      if(vals.length)out[key]=[...new Set(vals)].sort();
+    }else if(PHOTO_PREF_TEXT.has(key)){
+      const val=safeString(value);
+      if(!val)return null;
+      out[key]=val;
+    }else if(PHOTO_PREF_BOOLEAN.has(key)){
+      if(typeof value!=='boolean')return null;
+      if(value)out[key]=true;
+    }else if(PHOTO_PREF_BUDGET.has(key)){
+      if(!value||typeof value!=='object'||Array.isArray(value)||
+          Object.keys(value).length>4)return null;
+      const budget={};
+      for(const bkey of Object.keys(value).sort()){
+        if(!PHOTO_BUDGET_KEYS.has(bkey))return null;
+        const item=value[bkey];
+        if(item===undefined||item===null)continue;
+        if(bkey==='currency'){
+          const str=safeString(item);
+          if(!str||!/^[a-z]{3}$/.test(str))return null;
+          budget[bkey]=str;
+        }else{
+          if(typeof item!=='number'||!Number.isFinite(item)||
+              item<0||item>1e12)return null;
+          budget[bkey]=Math.round(item*100)/100;
+        }
+      }
+      if(Object.keys(budget).length)out[key]=budget;
+    }
+  }
+  return out;
+}
+const safeContext=context=>{
+  const style=safeString(context?.style);
+  const occasion=safeString(context?.occasion);
+  const preferences=normalizedPhotoPrefs(context?.preferences,
+    context?.fitPreference);
+  return style&&occasion&&preferences&&
+    SAFE_STYLES.has(style)&&SAFE_OCCASIONS.has(occasion)
+    ?{style,occasion,preferences}:null;
 };
 const validQuality=q=>Number.isFinite(q)&&q>=0&&q<=1;
 const hash=(key,type,value)=>createHmac('sha256',key)
   .update(PHOTO_REWARD_JOURNAL_VERSION+'\0'+type+'\0'+value).digest('hex');
-
-/** Privacy boundary for generalized PHOTO data, never a fashion rule.
- * Fit 'balanced' with empty preference arrays is the actual app default;
- * it must NOT silently prevent all real staging catalog QA examples.
+/** The ONLY stored representation of personalized PHOTO context. Keyed,
+ * bounded, stable across requests with equivalent preferences and opaque
+ * across distinct profiles. Never emit its unhashed canonical source.
+ */
+export function photoRewardContextHash(context,secret){
+  if(typeof secret!=='string'||secret.length<32)return null;
+  const normalized=safeContext(context);
+  return normalized?hash(secret,'context',JSON.stringify(normalized)):null;
+}
+/** Accept actual styled catalog PHOTO verdicts, but never without a
+ * contextual HMAC isolation guarantee. This is NOT authorization to read
+ * a personal wardrobe or copy original image bytes.
  */
 export function anonymousPhotoJournalAllowed({sourceMode,requiredIds,preferences}={}){
-  if(sourceMode!=='catalog'||!Array.isArray(requiredIds)||requiredIds.length>0)
-    return false;
-  const p=preferences&&typeof preferences==='object'&&!Array.isArray(preferences)
-    ?preferences:{};
-  const personalArrays=['avoidColors','favoriteColors','likedPatterns',
-    'dislikedPatterns','favoriteBrands','avoidBrands','primaryOccasions',
-    'styleGoals'];
-  if(personalArrays.some(k=>Array.isArray(p[k])&&p[k].length>0))return false;
-  if(['bodyType','workDressCode'].some(k=>typeof p[k]==='string'&&p[k].length>0))
-    return false;
-  if(p.prefersSustainable===true)return false;
-  // Isolate the three real app fit modes in separate anonymized context
-  // hashes; do not collapse the personal loose/fitted choice into neutral.
-  if(p.fitPreference!==undefined&&p.fitPreference!==null&&
-      !SAFE_FITS.has(String(p.fitPreference).trim().toLowerCase()))
-    return false;
-  const known=new Set([...personalArrays,'bodyType','workDressCode',
-    'prefersSustainable','fitPreference','priceRange','stylePersonality']);
-  if(Object.entries(p).some(([k,v])=>!known.has(k)&&v!==undefined&&v!==null))
-    return false;
-  return true;
+  return sourceMode==='catalog'&&Array.isArray(requiredIds)&&
+    requiredIds.length===0&&normalizedPhotoPrefs(preferences)!==null;
 }
 
 /** Bounded, anonymized journal inputs ONLY from actual independent photo
@@ -77,12 +139,10 @@ export function compilePhotoRewardExamples({
 }={}){
   if(!Array.isArray(looks)||!Array.isArray(decisions)||
       !Array.isArray(critiques)||typeof featuresOf!=='function'||
-      typeof secret!=='string'||secret.length<32||
-      !safeContext(context))
+      typeof secret!=='string'||secret.length<32)
     return [];
-  const safe=safeContext(context);
-  const contextHash=hash(secret,'context',
-    safe.style+'\0'+safe.occasion+'\0'+safe.fit);
+  const contextHash=photoRewardContextHash(context,secret);
+  if(!contextHash)return [];
   const available=new Map(looks.slice(0,8).filter(look=>
     typeof look?.id==='string'&&
     Array.isArray(look.items)&&look.items.length===4&&
