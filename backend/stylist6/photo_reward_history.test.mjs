@@ -47,8 +47,9 @@ test('whole-look relationship reward generalizes to unseen product features with
   const model=trainPhotoRewardHistory(evidence(),CONTEXT);
   assert.equal(model.status,'heldout_photo_validated');
   assert.equal(model.usable,true);
-  assert.equal(model.holdoutPairs,4);
-  assert.equal(model.holdoutWins,4);
+  assert.equal(model.holdoutPairs,50,
+    'all four independent OOF folds must be tested rather than only 4 pairs');
+  assert.equal(model.holdoutWins,50);
   const good=scorePhotoRewardHistory(model,observed(true,111));
   const bad=scorePhotoRewardHistory(model,observed(false,111));
   assert.ok(good>bad,{good,bad});
@@ -180,4 +181,35 @@ test('cross-request hash scorer EXACTLY matches independently judged journal evi
     style:'classic',occasion:'mailto:private@example.com',
   },secret),null);
   assert.equal(photoHistoryFeatureHashes(items,featuresOf,'weak'),null);
+});
+
+test('unrepeated random photo labels cannot activate a stylist reward prior',()=>{
+  const noisy=Array.from({length:44},(_,i)=>{
+    const positive=i%2===0;
+    return {
+      ...sample(positive,i),
+      // There is NO consistent photographed outfit relationship: source
+      // features are shared across BOTH outcome classes, with one-off
+      // identifiers that must be down-weighted, not memorized.
+      feature_hashes:[
+        ...Array.from({length:17},(_,j)=>digest('common_photo_fact_'+j)),
+        digest('unrepeated_' + i),
+        digest('balanced_color_'+ (i%4)),
+      ].sort(),
+    };
+  });
+  const model=trainPhotoRewardHistory(noisy,CONTEXT);
+  assert.equal(model.status,'uncalibrated_history');
+  assert.equal(model.usable,false,
+    'no genuine transferable PHOTO relationship means zero model influence');
+  assert.equal(model.holdoutWins,0);
+  assert.ok(model.holdoutPairs>=24);
+});
+
+test('sparse occasion photo history must abstain even with high photographic scores',()=>{
+  const tiny=evidence().slice(0,14);
+  const model=trainPhotoRewardHistory(tiny,CONTEXT);
+  assert.equal(model.status,'insufficient_real_photo_history');
+  assert.equal(model.usable,false);
+  assert.equal(scorePhotoRewardHistory(model,observed(true,444)),null);
 });
