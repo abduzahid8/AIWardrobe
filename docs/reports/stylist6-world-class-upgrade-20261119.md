@@ -83,7 +83,7 @@ Private contact sheets inspected (not committed to git per merchant-image rights
 
 | Verification Suite | Command | Result |
 | --- | --- | --- |
-| Stylist 6 Backend Unit & Integration Tests | `node --import tsx --test backend/stylist6/*.test.mjs` | **673 / 673 PASS** (`0` fail) |
+| Stylist 6 Backend Unit & Integration Tests | `node --import tsx --test backend/stylist6/*.test.mjs` | **675 / 675 PASS** (`0` fail) |
 | Stylist 6 Scripts & Eval Harness Tests | `node --import tsx --test scripts/stylist6/*.test.mjs` | **70 / 70 PASS** (`0` fail) |
 | Cloud Compute Node Typecheck & Tests | `npm --prefix backend/stylist-node run typecheck && npm --prefix backend/stylist-node test` | **42 / 42 PASS** (`0` fail) |
 | Cloud Compute Production/Staging Bundles | `npm --prefix backend/stylist-node run build` | **PASS** (`stylist-bundle.mjs`, `stylist6-bundle.mjs`, `stylist6-http-route.mjs`; S5 `sourceSha256` unchanged) |
@@ -112,13 +112,13 @@ Measured on `404ec768` over the full adapted 8,329-SKU catalog snapshot (`174.39
 
 ---
 
-## 5. Minor Residual Catalog & Quality Observations
+## 5. Follow-Up Polish & Residual Catalog Observations
 
-Honest audit of the post-fix `404ec768` live outputs surfaced three non-blocking follow-ups for future iterations:
+Honest audit of the post-fix `404ec768` live outputs surfaced three follow-ups (items 1 and 2 are now resolved in the final polish commit; item 3 remains an operator catalog backfill task):
 
-1. **Title Color Dictionary Edge Cases**: `canali-knt00252954` (`"Milk-colored extra-fine merino wool crew neck"`) mapped to `color: "unknown"` because `"milk"` is not yet in `COLOR_TABLE` (and lacked a `visual_fashion` row), while `aurelien-10228846690634` (`"Navy Pleated Metropolitan Trousers"`) carried a URL/visual color mismatch (`tan` vs navy photograph). Worth auditing in the catalog intelligence backfill.
-2. **Independent Portfolio Jury Availability**: In the post-commit live runs, primary multimodal portfolio editing (`photoEditorialVisualJury: 'applied'`, `photoEditorialVisualMedia: 'ready'`) succeeded on 4/4 runs, while the secondary cross-lab portfolio jury (`Kimi K3.1 Pro`) reported `unavailable` within the 9.6s timeout window; wiring OpenRouter Gemini 2.5 Flash directly as the secondary portfolio juror in `cloud_handler.mjs` (passing `openrouterApiKey` & `enableCrossLabFailover: true` to `selectPhotoEditorialDeck`) is the highest-leverage next code change.
-3. **Catalog Visual Profile & Embedding Backfill**: 977 active footwear SKUs still await `catalog_visual_jobs` completion, and pgvector embeddings (`20261119_stylist6_pgvector_embeddings.sql`) must be populated once migrations are applied to staging.
+1. **Title Color Dictionary (`milk` → `cream`) — RESOLVED**: `canali-knt00252954` (`"Milk-colored extra-fine merino wool crew neck"`) previously mapped to `color: "unknown"` when lacking a `visual_fashion` row. Added `\bmilk(?:[- ]?colou?red)?\b` → `'cream'` in `backend/stylist6/catalog_adapter.mjs` with a unit regression test. Separate merchant row `aurelien-10228846690634` (`"Navy Pleated Metropolitan Trousers"`) still carries an upstream URL/visual color conflict (`tan` vs navy photograph) that warrants catalog QA audit.
+2. **Independent Portfolio Jury Cross-Lab Failover — RESOLVED**: In the post-commit live runs, primary multimodal portfolio editing (`photoEditorialVisualJury: 'applied'`, `photoEditorialVisualMedia: 'ready'`) succeeded on 4/4 runs while the secondary cross-lab juror (`Kimi K3.1 Pro`) timed out within the 9.6s window. Wired `openrouterApiKey` and `enableCrossLabFailover: true` from `cloud_handler.mjs` into `selectPhotoEditorialDeck`, split per-provider timeout headroom cleanly inside `photo_editor_final.mjs`, and added a unit test proving automatic failover from a Kimi timeout to OpenRouter `google/gemini-2.5-flash`.
+3. **Catalog Visual Profile & Embedding Backfill (Remaining)**: 977 active footwear SKUs still await `catalog_visual_jobs` completion, and pgvector embeddings (`backend/supabase/migrations/20261119090000_stylist6_pgvector_and_scale_indexes.sql`) must be populated once migrations are applied to staging.
 
 ---
 
@@ -128,10 +128,10 @@ Per `AGENTS.md` and `docs/STYLIST6_NORTH_STAR.md`, **none** of the following rel
 
 1. **Independent Human Blind Panel vs Stylist 5 (Primary Acceptance Gate)**:
    - Required: `>=70%` Stylist 6 preference over Stylist 5 across `>=30` diverse held-out scenarios evaluated blindly by `>=3` independent human reviewers, with `0` hard-rule violations.
-   - Current status: **OPEN** (blind AI proxy jury achieved `9/10` vs baseline `a99c268e`, which is proxy evidence only; `scripts/stylist6/build_human_blind_eval.mjs` is ready for operator execution).
+   - Current status: **OPEN** (blind AI proxy jury achieved `9/10` vs baseline `a99c268e`, which is proxy evidence only; `scripts/stylist6/build_human_blind_package.mjs` is ready for operator execution).
 2. **Merchant Image Rights, Live Size-Specific Stock & Landed Delivery Verification**:
    - Required: Confirmed commercial hosting/inference rights for `catalog_photo_cache_v1` (currently `0` READY licensed rows) and live merchant size/stock APIs before displaying `live_in_stock` (currently remains honestly labeled `Check at store`).
    - Current status: **OPEN** (operator/legal gate).
 3. **Staged Cloud Deployment & Authenticated Native iOS Verification**:
-   - Required: Deploy exact SHA (`404ec768` + this report commit) to isolated Render Stylist 6 staging compute and Supabase edge proxy `aiw-stylist6-node-staging`, apply SQL migrations (`20261119_stylist6_taste_flywheel.sql`, `20261119_stylist6_pgvector_embeddings.sql`) to staging Postgres, and verify authenticated 3-look generation + 1-tap slot swap + structured feedback end-to-end on native iOS without touching production Stylist 5 (`generate-outfits`).
+   - Required: Deploy exact SHA (`404ec768` + final polish commit) to isolated Render Stylist 6 staging compute and Supabase edge proxy `aiw-stylist6-node-staging`, apply SQL migrations (`backend/supabase/migrations/20261119090000_stylist6_pgvector_and_scale_indexes.sql`, `backend/supabase/migrations/20261119091000_stylist6_personal_dna_and_flywheel.sql`) to staging Postgres, and verify authenticated 3-look generation + 1-tap slot swap + structured feedback end-to-end on native iOS without touching production Stylist 5 (`generate-outfits`).
    - Current status: **OPEN** (committing to GitHub does NOT automatically update pinned Supabase or Render staging).

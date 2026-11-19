@@ -800,3 +800,51 @@ test('high-res 1800x1000 comparison sheet verifies JPEG dimensions, uses photoCa
   assert.equal(concurrent.length, 6);
   assert.ok(concurrent.every((r) => r.status === 'selected'), 'all 6 concurrent requests must succeed without load_shed');
 });
+
+test('secondary independent portfolio jury fails over cleanly from Kimi timeout to OpenRouter Gemini 2.5 Flash', async () => {
+  const jpeg = await sharp({ create: { width: 120, height: 150, channels: 3, background: '#5b6770' } }).jpeg().toBuffer();
+  const attempted = [];
+  const selection = await selectPhotoEditorialDeck({
+    looks,
+    critiques: reviews,
+    portfolios: verifiedMenu,
+    context: { style: 'classic', occasion: 'Work' },
+    apiKey: 'nvapi-test-kimi-timeout-failover',
+    openrouterApiKey: 'sk-or-v1-test-openrouter-failover-key-0123456789',
+    enableCrossLabFailover: true,
+    timeoutMs: 6500,
+    independentVisionJury: true,
+    authorizePhoto: () => true,
+    resolvePhoto: async () => ({ bytes: jpeg }),
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      attempted.push({ url: String(url), model: body.model });
+      if (body.model === PHOTO_PORTFOLIO_VISION_MODEL) {
+        return result('F00');
+      }
+      if (body.model === 'moonshotai/kimi-k3.1-pro') {
+        // Simulate Kimi hanging past its per-provider timeout so signal aborts
+        return await new Promise((_, reject) => {
+          const onAbort = () => {
+            const err = new Error('The operation was aborted due to timeout');
+            err.name = 'TimeoutError';
+            reject(err);
+          };
+          if (init.signal?.aborted) return onAbort();
+          init.signal?.addEventListener('abort', onAbort, { once: true });
+        });
+      }
+      assert.equal(body.model, OPENROUTER_JURY_MODEL, 'must fail over to OpenRouter Gemini 2.5 Flash after Kimi timeout');
+      assert.match(String(url), /openrouter\.ai/);
+      return result('F00');
+    },
+  });
+
+  assert.equal(selection.status, 'selected');
+  assert.equal(selection.visualJury, 'applied');
+  assert.equal(selection.independentJury, 'agreed');
+  assert.equal(selection.independentJuryProvider, 'openrouter');
+  assert.equal(selection.independentJuryModel, OPENROUTER_JURY_MODEL);
+  assert.ok(attempted.some((a) => a.model === 'moonshotai/kimi-k3.1-pro'));
+  assert.ok(attempted.some((a) => a.model === OPENROUTER_JURY_MODEL));
+});

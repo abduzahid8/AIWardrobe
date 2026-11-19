@@ -515,7 +515,9 @@ export async function selectPhotoEditorialDeck({
               response_format: { type: 'json_object' },
               chat_template_kwargs: { enable_thinking: false },
               timeoutMs: outerRemaining,
-              providerTimeoutMs: outerRemaining,
+              providerTimeoutMs: allowCrossLabFailover
+                ? Math.max(1200, Math.min(4500, Math.floor(outerRemaining * 0.52)))
+                : outerRemaining,
               signal: combined,
               maxResponseBytes: 15_000,
               maxTransientRetries: 0,

@@ -27,7 +27,7 @@ export const CATALOG_ADAPTER_VERSION = 'catalog-adapter-v4-canonical-display-rol
 const has = (text, re) => re.test(text);
 
 const COLOR_TABLE = [
-  [/ivory/, 'ivory'], [/cream/, 'cream'], [/beige/, 'beige'],
+  [/ivory/, 'ivory'], [/cream|\bmilk(?:[- ]?colou?red)?\b/, 'cream'], [/beige/, 'beige'],
   [/stone/, 'stone'], [/sand/, 'sand'], [/taupe/, 'taupe'],
   [/camel/, 'camel'], [/cognac/, 'cognac'], [/tan/, 'tan'],
   [/chocolate/, 'chocolate'], [/espresso/, 'espresso'],

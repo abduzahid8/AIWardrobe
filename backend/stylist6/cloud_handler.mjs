@@ -2094,6 +2094,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         ? (visualAsked ? 'explicit_client' : 'default_off')
         : (/^(1|true)$/i.test(String(env.STYLIST6_DEFAULT_VISUAL_EVAL || '').trim()) ? 'server_default' : 'default_off');
     const nvidiaKey = env.NVIDIA_API_KEY || '';
+    const openrouterKey = String(env.OPENROUTER_API_KEY || '').trim();
     const photoCache = new Map();
     const verifiedPhotoTasks=new Map();
     // Exact image bytes are shared with the independent photo-critic cache.
@@ -2336,6 +2337,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           return selectPhotoEditorialDeck({
             looks,critiques,portfolios,context,creativePlans,
             apiKey:nvidiaKey,
+            openrouterApiKey:openrouterKey,
+            enableCrossLabFailover:true,
             // The optional visual jury sees ONLY source photos independently
             // authorized and photo-judged earlier in this same request.
             // A slow/unavailable visual model retains the original text editor.

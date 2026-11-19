@@ -425,3 +425,16 @@ test('rejects genuine native category conflicts instead of canonicalizing into a
   assert.equal(items.length,0);
   assert.equal(skipped.catalog_category_conflict,1);
 });
+
+test('milk-colored garment titles resolve to cream instead of unknown', () => {
+  const item = projectCatalogItem(row({
+    id: 'canali-knt00252954',
+    name: 'Milk-colored extra-fine merino wool crew neck',
+    category: 'tops',
+    garment_type: 'upper_body',
+    fashion_slot: 'top',
+    fashion_subtype: 'fine-knit',
+  }));
+  assert.equal(item.color, 'cream');
+  assert.equal(item.subtype, 'fine-knit');
+});
