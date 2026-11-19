@@ -594,7 +594,7 @@ export function groundedPhotoRevisionFeedback(raw,pool=[]){
     const id=productKey(entry?.item);
     return entry?.item?.isShopItem===true&&
       PHOTO_REVISION_SLOTS.includes(entry.slot)&&
-      typeof entry.token==='string'&&/^P\\d{3}$/.test(entry.token)&&id
+      typeof entry.token==='string'&&/^P\d{3}$/.test(entry.token)&&id
       ?[[entry.slot+':'+id,entry.token]]:[];
   }):[]);
   const exactPhotoRejectedTokens=sourceItemIds=>{
