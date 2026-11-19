@@ -28,6 +28,7 @@ type CloudHandler = {
     env: Record<string, string>;
     io: unknown;
     timeoutMs?: number;
+    fastVisualMode?: boolean;
   }) => Promise<{ status: number; body: unknown }>;
   createCloudIo: (input: {
     url: string; anonKey: string; serviceKey: string; supabaseJs: unknown;
@@ -85,13 +86,33 @@ export function stylist6CreativeServerConfig() {
 
 /** Render-only S6 staging deadline. The signed Supabase Render proxy has an
  * 85-second compute deadline; reserve 13 seconds for proxy/cold-start/return
- * JSON. Vercel staging and ALL Stylist 5 routes keep the existing 50s bound.
- * This flag is passed ONLY by the server's in-process Render entrypoint,
+ * JSON. This flag is passed ONLY by the server's in-process Render entrypoint,
  * never read from user headers, body, or environment supplied by a client.
  */
 export const STYLIST6_RENDER_CANARY_BUDGET_MS = 72_000;
 export function stylist6ComputeBudgetMs(runtime?: { renderCanary?: boolean }): number | undefined {
   return runtime?.renderCanary === true ? STYLIST6_RENDER_CANARY_BUDGET_MS : undefined;
+}
+
+/** Vercel Fluid Compute default Stylist 6 execution budget (`vercel.json`
+ * configures `maxDuration: 300`). Unlocks the full >=70s Creative Director,
+ * SKU Composition, Studio Board Critique, Surgical Refinement, and Cross-Lab
+ * Portfolio Jury pipeline on Vercel with zero 23s Render cold starts.
+ * Configurable server-side via `STYLIST6_MAX_DURATION_MS` or
+ * `STYLIST6_TIMEOUT_MS` (clamped safely to 15s–280s); Stylist 5 untouched.
+ */
+export const STYLIST6_DEFAULT_MAX_DURATION_MS = 75_000;
+export function stylist6DefaultTimeoutMs(): number {
+  const raw = Number(envOf('STYLIST6_MAX_DURATION_MS') || envOf('STYLIST6_TIMEOUT_MS'));
+  if (Number.isFinite(raw) && raw >= 15_000 && raw <= 280_000) return Math.floor(raw);
+  return STYLIST6_DEFAULT_MAX_DURATION_MS;
+}
+
+export function stylist6FastVisualModeEnabled(openrouterApiKey: string): boolean {
+  const flag = envOf('STYLIST6_FAST_VISUAL_MODE').trim();
+  if (/^(0|false)$/i.test(flag)) return false;
+  if (/^(1|true)$/i.test(flag)) return true;
+  return openrouterApiKey.trim().length >= 16;
 }
 
 export async function POST(request: Request, runtime?: { renderCanary?: boolean }): Promise<Response> {
@@ -121,6 +142,8 @@ export async function POST(request: Request, runtime?: { renderCanary?: boolean 
   });
   if (!authorized) return errorResponse('unauthorized', 401);
 
+  const openrouterKey = envOf('OPENROUTER_API_KEY');
+  const fastVisualMode = stylist6FastVisualModeEnabled(openrouterKey);
   const env = {
     STYLIST6_NODE_SHARED_SECRET: secret,
     STYLIST6_NODE_SHARED_SECRET_PREVIOUS: previousSecret,
@@ -128,10 +151,13 @@ export async function POST(request: Request, runtime?: { renderCanary?: boolean 
     SUPABASE_ANON_KEY: envOf('SUPABASE_ANON_KEY'),
     SUPABASE_SERVICE_ROLE_KEY: envOf('SUPABASE_SERVICE_ROLE_KEY'),
     NVIDIA_API_KEY: envOf('NVIDIA_API_KEY'),
-    OPENROUTER_API_KEY: envOf('OPENROUTER_API_KEY'),
+    OPENROUTER_API_KEY: openrouterKey,
     // Forward the server-owned switch: without this, Creative Director is
     // silently disabled despite being enabled in the compute environment.
     ...stylist6CreativeServerConfig(),
+    STYLIST6_FAST_VISUAL_MODE: envOf('STYLIST6_FAST_VISUAL_MODE') || (fastVisualMode ? 'true' : ''),
+    STYLIST6_PHOTO_FIRST_COMPOSER_ENABLED: envOf('STYLIST6_PHOTO_FIRST_COMPOSER_ENABLED'),
+    STYLIST6_PHOTO_ASSETS_READY: envOf('STYLIST6_PHOTO_ASSETS_READY'),
     STYLIST6_REFERENCE_BUCKET: envOf('STYLIST6_REFERENCE_BUCKET'),
     // Owner kill-switch: any truthy value ('1'/'true') forces an honest
     // NVIDIA_NOT_RUN for the hosted visual review, whatever the client asks.
@@ -165,10 +191,11 @@ export async function POST(request: Request, runtime?: { renderCanary?: boolean 
       serviceKey: env.SUPABASE_SERVICE_ROLE_KEY,
       supabaseJs,
     });
+    const effectiveTimeoutMs = stylist6ComputeBudgetMs(runtime) ?? stylist6DefaultTimeoutMs();
     const { status, body: responseBody } = await handler.handleStylist6CloudGenerate({
       method: 'POST', headers, bodyText: body, env, io,
-      ...(stylist6ComputeBudgetMs(runtime) === undefined
-        ? {} : { timeoutMs: stylist6ComputeBudgetMs(runtime) }),
+      timeoutMs: effectiveTimeoutMs,
+      fastVisualMode,
     });
     const cpu = process.cpuUsage(cpuStart);
     const cpuMs = (cpu.user + cpu.system) / 1000;

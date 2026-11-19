@@ -3124,3 +3124,122 @@ test('hot-path surgical editorial polish upgrades a low-scoring (<7.5) approved 
   const allSkus = result.outfits.flatMap((o) => o.items.map((it) => it.id));
   assert.equal(new Set(allSkus).size, 12, 'all 3 polished looks remain 100% SKU-disjoint');
 });
+
+test('visualAtelierCompose respects photo-rights gate (skipped_unlicensed), applies when permitted, and falls back gracefully', async () => {
+  const catalog = [
+    garment('va-top-1', 'White Poplin Dress Shirt', 'top', 'dress-shirt', { color: 'white' }),
+    garment('va-top-2', 'Sky Blue Oxford Shirt', 'top', 'shirt', { color: 'blue' }),
+    garment('va-top-3', 'Cream Merino Knit Sweater', 'top', 'fine-knit', { color: 'cream' }),
+    garment('va-outer-1', 'Navy Structured Wool Blazer', 'outerwear', 'blazer', { color: 'navy' }),
+    garment('va-outer-2', 'Camel Single-Breasted Overcoat', 'outerwear', 'coat', { color: 'camel' }),
+    garment('va-outer-3', 'Charcoal Fine Merino Cardigan', 'outerwear', 'cardigan', { color: 'charcoal' }),
+    garment('va-bot-1', 'Charcoal Tailored Trousers', 'bottom', 'tailored-trouser', { color: 'charcoal' }),
+    garment('va-bot-2', 'Stone Tailored Wool Trousers', 'bottom', 'tailored-trouser', { color: 'beige' }),
+    garment('va-bot-3', 'Navy Pleated Dress Trousers', 'bottom', 'tailored-trouser', { color: 'navy' }),
+    garment('va-shoe-1', 'Black Leather Oxfords', 'shoes', 'oxford', { color: 'black' }),
+    garment('va-shoe-2', 'Dark Brown Suede Loafers', 'shoes', 'loafer', { color: 'brown' }),
+    garment('va-shoe-3', 'Espresso Leather Derbies', 'shoes', 'derby', { color: 'brown' }),
+  ];
+  const req = {
+    sourceMode: 'catalog',
+    style: 'classic',
+    occasion: 'Work',
+    weather: { temp: 15 },
+    optionalLayer: false,
+    preferences: {},
+    requiredIds: [],
+    budget: { amount: 3000000, currency: 'UZS' },
+  };
+  const critic = async (batch) => batch.map((cand) => admittedVisualVerdict(cand, {
+    referenceless: true,
+    editorialScore: 8.8,
+    weakestSlot: null,
+  }));
+
+  // 1. Default fail-closed photo-rights gate: visualAtelierCompose MUST NOT be called
+  let unlicensedCalls = 0;
+  const unlicensed = await recommendFashionDeck({
+    ...base,
+    request: req,
+    catalog,
+    referenceBriefs: [],
+    visualDeckReview: true,
+    canJudgeOutfit: async () => true,
+    visualCritic: critic,
+    visualAtelierAllowed: false,
+    visualAtelierCompose: async () => {
+      unlicensedCalls += 1;
+      return { status: 'applied', outfits: [] };
+    },
+  });
+  assert.equal(unlicensedCalls, 0, 'visualAtelierCompose must never execute when visualAtelierAllowed is false');
+  assert.equal(unlicensed.diagnostics.visualAtelierStatus, 'skipped_unlicensed');
+
+  // 2. Permitted (licensed cache or explicit local dev opt-in): runs Visual Showroom Composition,
+  // rejects any hallucinated SKU, verifies authentic looks through hard gates + visual critic
+  let appliedCalls = 0;
+  let textComposerCalls = 0;
+  const applied = await recommendFashionDeck({
+    ...base,
+    request: req,
+    catalog,
+    referenceBriefs: [],
+    visualDeckReview: true,
+    canJudgeOutfit: async () => true,
+    visualCritic: critic,
+    selectDirectorFinalists: async () => ({ status: 'timeout', tokens: [] }),
+    selectCatalogCompositions: async () => {
+      textComposerCalls += 1;
+      return { status: 'composed', looks: [] };
+    },
+    visualAtelierAllowed: true,
+    visualAtelierCompose: async ({ catalog: seed }) => {
+      appliedCalls += 1;
+      const byId = (id) => seed.find((x) => x.id === id);
+      return {
+        status: 'applied',
+        provider: 'openrouter',
+        model: 'google/gemini-2.5-flash',
+        latencyMs: 510,
+        outfits: [
+          { directionIndex: 0, title: 'Boardroom Navy', top: byId('va-top-1'), outerwear: byId('va-outer-1'), bottom: byId('va-bot-1'), shoes: byId('va-shoe-1') },
+          { directionIndex: 1, title: 'Warm Camel', top: byId('va-top-2'), outerwear: byId('va-outer-2'), bottom: byId('va-bot-2'), shoes: byId('va-shoe-2') },
+          { directionIndex: 2, title: 'Refined Knit', top: byId('va-top-3'), outerwear: byId('va-outer-3'), bottom: byId('va-bot-3'), shoes: byId('va-shoe-3') },
+          // Hallucinated SKU must be cleanly rejected
+          { directionIndex: 3, top: { id: 'hallucinated-sku', macroCategory: 'top' }, outerwear: byId('va-outer-1'), bottom: byId('va-bot-1'), shoes: byId('va-shoe-1') },
+        ],
+      };
+    },
+  });
+  assert.equal(appliedCalls, 1);
+  assert.equal(textComposerCalls, 0, 'when visual atelier yields 3 verified looks, redundant text composer is skipped');
+  assert.equal(applied.status, 'complete');
+  assert.equal(applied.outfits.length, 3);
+  assert.equal(applied.diagnostics.visualAtelierStatus, 'applied');
+  assert.equal(applied.diagnostics.visualAtelier.admitted, 3);
+
+  // 3. Fallback when visualAtelierCompose fails / returns status: 'fallback'
+  const fallbackRes = await recommendFashionDeck({
+    ...base,
+    request: req,
+    catalog,
+    referenceBriefs: [],
+    visualDeckReview: true,
+    canJudgeOutfit: async () => true,
+    visualCritic: critic,
+    visualAtelierAllowed: true,
+    visualAtelierCompose: async () => ({ status: 'fallback', outfits: [] }),
+  });
+  assert.equal(fallbackRes.status, 'complete');
+  assert.equal(fallbackRes.outfits.length, 3);
+  assert.equal(fallbackRes.diagnostics.visualAtelierStatus, 'fallback');
+
+  // 4. Not configured when omitted
+  const notConfigured = await recommendFashionDeck({
+    ...base,
+    request: req,
+    catalog,
+    referenceBriefs: [],
+  });
+  assert.equal(notConfigured.diagnostics.visualAtelierStatus, 'not_configured');
+});
