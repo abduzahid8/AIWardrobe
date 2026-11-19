@@ -42,7 +42,8 @@ test('unrelated personal occasions, unsafe identity metadata and malformed prefe
   const bare={style:'classic',occasion:'work',preferences:{}};
   for(const [context,reason] of [
     [{...bare,style:''},'unsupported_style'],
-    [{...bare,occasion:'Private personal wedding'},'unsupported_occasion'],
+    [{...bare,occasion:'mailto:private@example.com'},'unsupported_occasion'],
+    [{...bare,occasion:'https://private.example/event'},'unsupported_occasion'],
     [{...bare,preferences:{ownerEmail:'private@example.com'}},
       'unsupported_preferences'],
     [{...bare,preferences:{fitPreference:'secret-private-body-type'}},
@@ -53,6 +54,25 @@ test('unrelated personal occasions, unsafe identity metadata and malformed prefe
     assert.equal(photoRewardContextStatus(context),reason);
     assert.equal(photoRewardContextHash(context,SECRET),null);
   }
+});
+
+test('nonstandard real fashion occasions become distinct opaque learning contexts, never garment bans',()=>{
+  const base={style:'classic',occasion:'work',preferences:{
+    fitPreference:'loose',favoriteBrands:['Massimo Dutti'],
+  }};
+  const work=photoRewardContextHash(base,SECRET);
+  const businessLunch={...base,occasion:'Business lunch'};
+  const custom=photoRewardContextHash(businessLunch,SECRET);
+  assert.equal(photoRewardContextStatus(businessLunch),'supported');
+  assert.match(custom,/^[0-9a-f]{64}$/);
+  assert.notEqual(work,custom);
+  assert.equal(custom,photoHistoryContextHash(businessLunch,SECRET),
+    'cross-request trainer and journal MUST agree on opaque custom scene');
+  assert.equal(custom,photoRewardContextHash({...businessLunch,
+    occasion:'business lunch'},SECRET));
+  assert.doesNotMatch(JSON.stringify({contextHash:custom}),/business|Massimo|lunch|Dutti/);
+  assert.equal(photoRewardContextHash({...businessLunch,
+    occasion:'https://private.example/path'},SECRET),null);
 });
 
 test('genuine photo context hashes cannot be used without the server key',()=>{

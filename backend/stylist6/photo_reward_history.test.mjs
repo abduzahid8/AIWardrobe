@@ -170,6 +170,14 @@ test('cross-request hash scorer EXACTLY matches independently judged journal evi
     'do not mix relaxed/loose wearers with balanced-fit training decisions');
   assert.deepEqual(photoHistoryFeatureHashes(items,featuresOf,secret),
     source[0].feature_hashes);
-  assert.equal(photoHistoryContextHash({style:'classic',occasion:'private graduation'},secret),null);
+  const custom=photoHistoryContextHash({
+    style:'classic',occasion:'private graduation',
+  },secret);
+  assert.match(custom,/^[0-9a-f]{64}$/);
+  assert.notEqual(custom,source[0].context_hash,
+    'custom occasions only survive as their OWN private keyed HMAC scope');
+  assert.equal(photoHistoryContextHash({
+    style:'classic',occasion:'mailto:private@example.com',
+  },secret),null);
   assert.equal(photoHistoryFeatureHashes(items,featuresOf,'weak'),null);
 });

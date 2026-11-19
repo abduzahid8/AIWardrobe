@@ -173,9 +173,17 @@ test('real UI Old Money, Semi Classic and Date night aliases have canonical phot
   },key),photoRewardContextHash({
     style:'semi_classic',occasion:'work',preferences:prefs,
   },key));
-  assert.equal(photoRewardContextHash({
+  const custom=photoRewardContextHash({
     style:'new private style',occasion:'private wedding',preferences:prefs,
-  },key),null,'never train on uncontrolled free text or private event names');
+  },key);
+  assert.match(custom,/^[0-9a-f]{64}$/,
+    'a bounded custom occasion is isolated by server HMAC, never saved as plaintext');
+  assert.notEqual(custom,photoRewardContextHash({
+    style:'new private style',occasion:'work',preferences:prefs,
+  },key),'custom and standard occasions must not mix photo-supervision');
+  assert.equal(photoRewardContextHash({
+    style:'new private style',occasion:'https://private.example/event',preferences:prefs,
+  },key),null,'private URLs are NOT acceptable learning context');
 });
 
 test('actual RN stylePreferenceStore full typed state is accepted consistently for writer and reader',()=>{

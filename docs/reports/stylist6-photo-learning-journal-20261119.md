@@ -216,3 +216,36 @@ demonstrates more original-photo-approved, *genuinely distinct* ensembles,
 and blinded independent humans prefer the resulting 3×4 deck.
 Do not replace the human-beauty 30-context release gate with photo-model
 self-agreement, positive unit tests or a forced third card.
+
+## 19 Nov — exact c7aded8 real iOS retry and custom-scene isolation
+
+The CI-green `c7aded87866e5ea68aa3fb7237a78ac1370cd5ac` was deployed LIVE
+on isolated Render staging and the authenticated Classic/Work iOS 26.5
+request actually executed: 8 photographed auditions, only 1 approved and
+1 displayed, 46.6s server duration. This is NOT a satisfactory stylist.
+Its journal log gave `context_unsupported` with safe enum
+`unsupported_occasion`, so no new training was written and no
+photo-history model was activated. Critique reasons were predominantly
+`style_mismatch` / `below_quality_floor` rather than source-SKU errors.
+
+Root cause: the PRIVATE photo-history context rejected any valid
+non-preset occasion string, despite the application accepting these
+as real source-bound fashion situations. That cut off persistent
+learning for precisely the personalized scenes we need to serve.
+This is NOT a reason to reject any garment category or lower the
+independent photo critic.
+
+The corrected context generator accepts any bounded, syntactically safe
+occasion string (including custom office/social events), trims and
+normalizes standard Date night aliases, and stores the occasion ONLY
+inside an HMAC-SHA256 digest keyed by the server's private secret.
+Custom contexts are not merged with one another, and none of the
+original text, user IDs, merchant names, source photos or URLs appear
+in the private reward table or safe observability. Email, URL, control
+characters, oversized or malformed values still abstain. The
+source-original PHOTO approval and four-real-product requirements
+remain unchanged.
+
+This change must be verified by exact-sha CI, Render LIVE deployment,
+actual authenticated iOS QA, Supabase sample count and historical
+learning status; tests alone cannot establish improved fashion taste.

@@ -27,7 +27,6 @@ const SLOTS=['top','outerwear','bottom','shoes'];
 const SAFE_STYLES=new Set([
   'old_money','semi_classic','minimalist','casual','classic','business_casual',
 ]);
-const SAFE_OCCASIONS=new Set(['work','casual','date','formal','sport','travel']);
 const SAFE_FITS=new Set(['balanced','loose','fitted']);
 const PHOTO_PREF_ARRAYS=new Set([
   'avoidColors','favoriteColors','likedPatterns','dislikedPatterns',
@@ -122,8 +121,12 @@ const normalizedContextParts=context=>{
 export function photoRewardContextStatus(context){
   const {style,occasion}=normalizedContextParts(context);
   if(!style)return 'unsupported_style';
-  if(!occasion||!SAFE_OCCASIONS.has(occasion))
-    return 'unsupported_occasion';
+  // The actual app supports not only the six preset occasions but also
+  // bounded custom scenes (e.g. "business lunch", "office event").
+  // They are keyed HMAC context ONLY; they are never a public label, a
+  // global style rule or a source of raw user text in the database.
+  // Reject unsafe content/URLs, not legitimate original-photo judgments.
+  if(!occasion)return 'unsupported_occasion';
   if(!normalizedPhotoPrefs(context?.preferences,context?.fitPreference))
     return 'unsupported_preferences';
   return 'supported';
