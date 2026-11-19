@@ -1760,3 +1760,52 @@ test('neither creative model may pass an invented source token or self-approve a
   assert.equal(failed.providerCalls,2);
   assert.deepEqual(failed.looks,[]);
 });
+
+test('PHOTO failure maps exact four real source products to current opaque tokens, not private merchant IDs',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const source=slots.map(slot=>pool.find(x=>x.slot===slot));
+  assert.ok(source.every(Boolean));
+  const sourceItemIds=Object.fromEntries(source.map(x=>[x.slot,x.item.id]));
+  const expected=Object.fromEntries(source.map(x=>[x.slot,x.token]));
+  const critique={reasons:['style_mismatch'],
+    rejectedOutfits:[{
+      reason:'style_mismatch',sourceItemIds,
+      observations:{top:'Visible cotton top looks stiff beneath selected layer'},
+      relationships:[{kind:'outfit',slots:['top','outerwear'],
+        observation:'Photographed top and jacket have unbalanced proportion'}],
+    }]};
+  const grounded=groundedPhotoRevisionFeedback(critique,pool);
+  assert.deepEqual(grounded.rejectedPhotoEvidence[0].rejectedCurrentSkuTokens,expected);
+  assert.doesNotMatch(JSON.stringify(grounded),/PRIVATE_SKU_|images\\.zara|shopUrl|sourceItemIds/,
+    'only current opaque P-tokens, never any real merchant identity, leave the trusted boundary');
+
+  const wrong=groundedPhotoRevisionFeedback({
+    ...critique,rejectedOutfits:[{
+      ...critique.rejectedOutfits[0],
+      sourceItemIds:{...sourceItemIds,shoes:'PRIVATE_UNKNOWN_MERCHANT_SKU'},
+    }],
+  },pool);
+  assert.equal(wrong.rejectedPhotoEvidence[0].rejectedCurrentSkuTokens,undefined,
+    'a partial or stale photo combination must not be misrepresented as current source evidence');
+  const noCurrentProducts=groundedPhotoRevisionFeedback(critique,[]);
+  assert.equal(noCurrentProducts.rejectedPhotoEvidence[0].rejectedCurrentSkuTokens,undefined,
+    'a genuine PHOTO critique must not acquire invented source-token grounding in a different catalog cohort');
+
+  let providerPrompt=null;
+  const resultCase=await composeCatalogSkuLooks({
+    pool,context:{style:'classic',occasion:'Date night'},
+    critiqueFeedback:critique,layerRequired:true,
+    apiKey:'nvapi-photo-exact-source-relationships',
+    timeoutMs:4500,
+    fetchImpl:async(_url,opts)=>{
+      const payload=JSON.parse(opts.body);
+      providerPrompt=payload.messages[0].content;
+      assert.match(providerPrompt,/rejectedCurrentSkuTokens/);
+      assert.doesNotMatch(opts.body,/PRIVATE_SKU_|sourceItemIds|images\\.zara|shopUrl/);
+      return result(slotAnswer(pool));
+    },
+  });
+  assert.equal(resultCase.status,'composed');
+  assert.equal(resultCase.looks.length,3);
+  assert.ok(providerPrompt);
+});
