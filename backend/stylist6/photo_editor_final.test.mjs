@@ -2,10 +2,13 @@ import sharp from 'sharp';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  PHOTO_EDITOR_FINAL_VERSION,PHOTO_PORTFOLIO_VISION_MODEL,anonymousPhotoEditorialOptions,
+  PHOTO_EDITOR_FINAL_VERSION,PHOTO_PORTFOLIO_VISION_MODEL,OPENROUTER_JURY_MODEL,GEMMA_JURY_MODEL,
+  anonymousPhotoEditorialOptions,
   anonymousPhotoEditorialPortfolios,validatePhotoEditorialPortfolioChoice,selectPhotoEditorialDeck,
   safePhotoEditorialCreativeGap,
 } from './photo_editor_final.mjs';
+import { PROVIDER_ENDPOINTS } from './ai_provider_router.mjs';
+import { createPhotoByteCache } from './editorial_board_renderer.mjs';
 const looks=Array.from({length:5},(_,i)=>({
   id:'SECRET-CLIENT-SKU-'+i,
   items:['top','outerwear','bottom','shoes'].map((slot,j)=>({
@@ -680,4 +683,120 @@ test('independent studio jury may NEVER add a nonprimary look, silently override
   assert.equal(onlyTwo.independentJury,'agreed');
   assert.equal(onlyTwo.providerCalls,2);
   assert.equal(onlyTwo.visualMediaStatus,'ready');
+});
+
+test('cross-lab portfolio jury fails over from Kimi 503 to OpenRouter Gemini 2.5 Flash and Gemma 4 instead of returning unavailable', async () => {
+  const jpeg = await sharp({ create: { width: 140, height: 180, channels: 3, background: '#7f7264' } }).jpeg().toBuffer();
+
+  // Case 1: Kimi 503 -> OpenRouter Gemini 2.5 Flash narrows repetitive 3-look F00 to verified 2-look F01
+  const openrouterAttempts = [];
+  const orSelection = await selectPhotoEditorialDeck({
+    looks,
+    critiques: reviews,
+    portfolios: verifiedMenu,
+    context: { style: 'classic', occasion: 'Date night' },
+    apiKey: 'nvapi-test-crosslab-failover',
+    openrouterApiKey: 'sk-or-v1-test-crosslab-key-0123456',
+    timeoutMs: 9500,
+    independentVisionJury: true,
+    authorizePhoto: () => true,
+    resolvePhoto: async () => ({ bytes: jpeg }),
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      openrouterAttempts.push({ url, model: body.model });
+      if (body.model === PHOTO_PORTFOLIO_VISION_MODEL) return result('F00');
+      if (body.model === 'moonshotai/kimi-k3.1-pro') return new Response('kimi outage', { status: 503 });
+      assert.equal(url, PROVIDER_ENDPOINTS.openrouter);
+      assert.equal(body.model, OPENROUTER_JURY_MODEL);
+      assert.equal(Object.hasOwn(body, 'chat_template_kwargs'), false);
+      assert.match(body.messages[0].content[0].text, /RUTHLESSLY PENALIZE VISUAL REDUNDANCY/);
+      return result('F01');
+    },
+  });
+
+  assert.equal(orSelection.status, 'selected');
+  assert.equal(orSelection.visualJury, 'applied');
+  assert.equal(orSelection.independentJury, 'narrowed');
+  assert.equal(orSelection.independentJuryModel, OPENROUTER_JURY_MODEL);
+  assert.equal(orSelection.independentJuryProvider, 'openrouter');
+  assert.deepEqual(orSelection.tokens, ['L02', 'L00']);
+  assert.deepEqual(orSelection.boardDimensions, { width: 1800, height: 1000 });
+  assert.ok(openrouterAttempts.some((a) => a.model === OPENROUTER_JURY_MODEL));
+
+  // Case 2: NVIDIA-only with enableCrossLabFailover: Kimi 410 -> Gemma 4 31B succeeds!
+  const gemmaSelection = await selectPhotoEditorialDeck({
+    looks,
+    critiques: reviews,
+    portfolios: verifiedMenu,
+    context: { style: 'classic', occasion: 'Work' },
+    apiKey: 'nvapi-test-gemma-failover',
+    enableCrossLabFailover: true,
+    timeoutMs: 9500,
+    independentVisionJury: true,
+    authorizePhoto: () => true,
+    resolvePhoto: async () => ({ bytes: jpeg }),
+    fetchImpl: async (_url, init) => {
+      const body = JSON.parse(init.body);
+      if (body.model === PHOTO_PORTFOLIO_VISION_MODEL) return result('F00');
+      if (body.model === 'moonshotai/kimi-k3.1-pro') return new Response('gone', { status: 410 });
+      assert.equal(body.model, GEMMA_JURY_MODEL);
+      return result('F00');
+    },
+  });
+  assert.equal(gemmaSelection.independentJury, 'agreed');
+  assert.equal(gemmaSelection.independentJuryModel, GEMMA_JURY_MODEL);
+});
+
+test('high-res 1800x1000 comparison sheet verifies JPEG dimensions, uses photoCache, and handles 6 concurrent editors without load_shed', async () => {
+  const jpeg = await sharp({ create: { width: 120, height: 150, channels: 3, background: '#687482' } }).jpeg().toBuffer();
+  const photoCache = createPhotoByteCache({ maxEntries: 64 });
+  let photoFetches = 0;
+  let capturedBoardMeta = null;
+
+  const first = await selectPhotoEditorialDeck({
+    looks: looks.slice(0, 3),
+    critiques: reviews,
+    portfolios: [{ portfolioToken: 'F00', orderedLooks: ['L00', 'L01', 'L02'] }],
+    context: { style: 'classic', occasion: 'Work' },
+    apiKey: 'nvapi-test-highres-board',
+    timeoutMs: 9200,
+    photoCache,
+    authorizePhoto: () => true,
+    resolvePhoto: async () => { photoFetches++; return { bytes: jpeg }; },
+    fetchImpl: async (_url, init) => {
+      const body = JSON.parse(init.body);
+      const dataUrl = body.messages[1].content[1].image_url.url;
+      const b64 = dataUrl.replace(/^data:image\/jpeg;base64,/, '');
+      capturedBoardMeta = await sharp(Buffer.from(b64, 'base64')).metadata();
+      assert.match(body.messages[1].content[0].text, /RUTHLESSLY PENALIZE VISUAL REDUNDANCY/);
+      return result('F00');
+    },
+  });
+
+  assert.equal(first.status, 'selected');
+  assert.equal(photoFetches, 12);
+  assert.equal(capturedBoardMeta.format, 'jpeg');
+  assert.equal(capturedBoardMeta.width, 1800);
+  assert.equal(capturedBoardMeta.height, 1000);
+
+  // 6 concurrent portfolio editor calls succeed with ZERO load_shed (legacy inFlight >= 2 wall removed!)
+  const concurrent = await Promise.all(
+    Array.from({ length: 6 }, () =>
+      selectPhotoEditorialDeck({
+        looks: looks.slice(0, 3),
+        critiques: reviews,
+        portfolios: [{ portfolioToken: 'F00', orderedLooks: ['L00', 'L01', 'L02'] }],
+        context: { style: 'classic', occasion: 'Work' },
+        apiKey: 'nvapi-test-concurrent-scale',
+        timeoutMs: 4000,
+        fetchImpl: async () => {
+          await new Promise((r) => setTimeout(r, 20));
+          return result('F00');
+        },
+      }),
+    ),
+  );
+
+  assert.equal(concurrent.length, 6);
+  assert.ok(concurrent.every((r) => r.status === 'selected'), 'all 6 concurrent requests must succeed without load_shed');
 });

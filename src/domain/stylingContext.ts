@@ -1,6 +1,37 @@
 /** Request intent is independent of catalog identity, I/O and UI. */
 import { normalizeStyleId } from './styleInference.ts';
 import type { BudgetFxContext } from './budgetFx.ts';
+export type StylingPresentation = 'menswear' | 'womenswear' | 'unisex';
+
+export interface StylingBodyProfile {
+  gender?: string | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  bodyType?: string | null;
+  measurements?: Record<string, number> | null;
+  fitPreference?: string | null;
+}
+
+export interface StylingAppearanceProfile {
+  consentGranted: boolean;
+  skinUndertone?: string;
+  skinDepth?: string;
+  contrastLevel?: string;
+  colorSeason?: string;
+  flatteringColors?: string[];
+  avoidColors?: string[];
+  metalTone?: string;
+  photoSha256?: string;
+}
+
+export interface OwnedWardrobeSummary {
+  totalItems: number;
+  dominantColors: string[];
+  dominantCategories: string[];
+  topBrands: string[];
+  formalityMix: Record<string, number>;
+}
+
 export interface StylingPreferences {
   favoriteColors?: readonly string[];
   avoidColors?: readonly string[];
@@ -22,6 +53,11 @@ export interface StylingContext {
   sourceMode: 'wardrobe' | 'catalog' | 'mixed';
   budget?: { amount: number; currency?: string; fx?: BudgetFxContext };
   preferences?: StylingPreferences;
+  presentation?: StylingPresentation;
+  bodyProfile?: StylingBodyProfile;
+  appearanceProfile?: StylingAppearanceProfile;
+  ownedWardrobeSummary?: OwnedWardrobeSummary;
+  dislikedPatterns?: string[];
   uncertainty: string[];
   /** Private aggregate concept preferences; soft and bounded, never admission. */
   conceptFeedback?: Readonly<Record<string, number>>;
@@ -51,6 +87,11 @@ export function stylingContext(input: {
   sourceMode?: StylingContext['sourceMode'];
   budget?: StylingContext['budget'];
   preferences?: StylingPreferences;
+  presentation?: StylingPresentation | null;
+  bodyProfile?: StylingBodyProfile | null;
+  appearanceProfile?: StylingAppearanceProfile | null;
+  ownedWardrobeSummary?: OwnedWardrobeSummary | null;
+  dislikedPatterns?: readonly string[];
   language?: StylistCopyLanguage | string | null;
 }): StylingContext {
   const occasion = (input.occasion || '').toLowerCase().trim();
@@ -65,6 +106,49 @@ export function stylingContext(input: {
           temp: Number.isFinite(input.weather.temp) ? (input.weather.temp as number) : undefined,
         }
       : null;
+  const presentation =
+    input.presentation === 'menswear' || input.presentation === 'womenswear' || input.presentation === 'unisex'
+      ? input.presentation
+      : undefined;
+  const bodyProfile = input.bodyProfile
+    ? {
+        ...input.bodyProfile,
+        measurements: input.bodyProfile.measurements
+          ? { ...input.bodyProfile.measurements }
+          : input.bodyProfile.measurements,
+      }
+    : undefined;
+  const appearanceProfile = input.appearanceProfile
+    ? input.appearanceProfile.consentGranted === true
+      ? {
+          consentGranted: true,
+          ...(input.appearanceProfile.skinUndertone ? { skinUndertone: input.appearanceProfile.skinUndertone } : {}),
+          ...(input.appearanceProfile.skinDepth ? { skinDepth: input.appearanceProfile.skinDepth } : {}),
+          ...(input.appearanceProfile.contrastLevel ? { contrastLevel: input.appearanceProfile.contrastLevel } : {}),
+          ...(input.appearanceProfile.colorSeason ? { colorSeason: input.appearanceProfile.colorSeason } : {}),
+          ...(input.appearanceProfile.flatteringColors
+            ? { flatteringColors: [...input.appearanceProfile.flatteringColors] }
+            : {}),
+          ...(input.appearanceProfile.avoidColors
+            ? { avoidColors: [...input.appearanceProfile.avoidColors] }
+            : {}),
+          ...(input.appearanceProfile.metalTone ? { metalTone: input.appearanceProfile.metalTone } : {}),
+          ...(input.appearanceProfile.photoSha256 ? { photoSha256: input.appearanceProfile.photoSha256 } : {}),
+        }
+      : { consentGranted: false }
+    : undefined;
+  const ownedWardrobeSummary = input.ownedWardrobeSummary
+    ? {
+        totalItems: input.ownedWardrobeSummary.totalItems,
+        dominantColors: [...input.ownedWardrobeSummary.dominantColors],
+        dominantCategories: [...input.ownedWardrobeSummary.dominantCategories],
+        topBrands: [...input.ownedWardrobeSummary.topBrands],
+        formalityMix: { ...input.ownedWardrobeSummary.formalityMix },
+      }
+    : undefined;
+  const dislikedPatterns = Array.isArray(input.dislikedPatterns)
+    ? [...input.dislikedPatterns]
+    : undefined;
   return {
     optionalLayer: input.optionalLayer === true,
     ruleVersion: 'stylist-quality-v1',
@@ -89,6 +173,11 @@ export function stylingContext(input: {
             : undefined,
         }
       : undefined,
+    ...(presentation ? { presentation } : {}),
+    ...(bodyProfile ? { bodyProfile } : {}),
+    ...(appearanceProfile ? { appearanceProfile } : {}),
+    ...(ownedWardrobeSummary ? { ownedWardrobeSummary } : {}),
+    ...(dislikedPatterns ? { dislikedPatterns } : {}),
     uncertainty: [
       ...(!weather ? ['weather_unknown'] : []),
       ...(!occasion ? ['occasion_unknown'] : []),

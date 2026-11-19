@@ -305,3 +305,143 @@ test('feature-only feedback remains below the existing look quality cap', () => 
   assert.equal(result.adjustment, 0.02);
   assert.ok(result.adjustment < FEEDBACK_TASTE_LOOK_CAP);
 });
+
+test('slot-level attribution (wrong_shoes / targetSlot) penalizes ONLY the shoe without penalizing top/coat/bottom', () => {
+  const features = [
+    ['shirt', 'regular', 'white', 'cotton', 'plain'],
+    ['coat', 'relaxed', 'camel', 'wool', 'plain'],
+    ['trousers', 'regular', 'navy', 'wool', 'plain'],
+    ['sneaker', 'chunky', 'neon', 'synthetic', 'graphic'],
+  ];
+  const model = feedbackTasteModel([{
+    rating: -1,
+    item_ids: ['top-1', 'coat-1', 'bottom-1', 'shoe-bad'],
+    target_slot: 'shoes',
+    feedback_tags: ['wrong_shoes'],
+    concept_id: 'clean-lines',
+    direction: 'signature',
+    look_signature: { version: 1, direction: 'signature', features },
+    created_at: daysAgo(0),
+  }], NOW);
+
+  assert.equal(model.active, true);
+  assert.equal(model.tagTally.get('wrong_shoes'), 1);
+  // Innocent sibling items are completely unpenalized.
+  assert.equal(evaluateFeedbackItem(item('top-1'), model).score, 0);
+  assert.equal(evaluateFeedbackItem(item('coat-1'), model).score, 0);
+  assert.equal(evaluateFeedbackItem(item('bottom-1'), model).score, 0);
+  // The offending shoe carries the full targeted negative signal.
+  assert.equal(evaluateFeedbackItem(item('shoe-bad'), model).score, -1);
+  assert.equal(model.slotTally.get('shoes|shoe-bad'), -1);
+
+  // Reusing the great top, coat, and trousers with a DIFFERENT shoe has zero penalty!
+  const repairedFeatures = [
+    features[0],
+    features[1],
+    features[2],
+    ['loafer', 'regular', 'brown', 'suede', 'plain'],
+  ];
+  const repairedLook = evaluateFeedbackLook(
+    [item('top-1'), item('coat-1'), item('bottom-1'), item('shoe-good')],
+    'clean-lines',
+    model,
+    repairedFeatures,
+  );
+  assert.equal(repairedLook.adjustment, 0);
+  assert.equal(repairedLook.dislikedItems, 0);
+
+  // Re-introducing the bad shoe gets full targeted penalty (not diluted by /4) and stays within cap.
+  const badLook = evaluateFeedbackLook(
+    [item('top-2'), item('coat-2'), item('bottom-2'), item('shoe-bad')],
+    'clean-lines',
+    model,
+    features,
+  );
+  assert.equal(badLook.dislikedItems, 1);
+  assert.ok(badLook.adjustment <= -0.045, `expected strong targeted penalty, got ${badLook.adjustment}`);
+  assert.ok(badLook.adjustment >= -FEEDBACK_TASTE_LOOK_CAP);
+});
+
+test('swappedFromSku penalizes only the swapped-away SKU even on a positive rating for the updated look', () => {
+  const model = feedbackTasteModel([{
+    rating: 1,
+    itemIds: ['top-1', 'coat-1', 'bottom-1', 'shoe-new'],
+    targetSlot: 'shoes',
+    feedbackTags: ['slot_swapped', 'love_palette'],
+    swappedFromSku: 'shoe-old',
+    createdAt: daysAgo(0),
+  }], NOW);
+
+  assert.equal(model.active, true);
+  assert.equal(evaluateFeedbackItem(item('shoe-old'), model).score, -1);
+  assert.equal(model.swappedFromTally.get('shoe-old'), -1);
+  // Kept pieces and the new shoe receive positive credit.
+  assert.equal(evaluateFeedbackItem(item('top-1'), model).score, 1);
+  assert.equal(evaluateFeedbackItem(item('shoe-new'), model).score, 1);
+  assert.equal(model.tagTally.get('slot_swapped'), 1);
+  assert.equal(model.tagTally.get('love_palette'), 1);
+});
+
+test('wrong_shoes tag alone implies shoes slot even when targetSlot is omitted', () => {
+  const model = feedbackTasteModel([{
+    rating: -1,
+    item_ids: ['top-x', 'coat-x', 'trouser-x', 'bad-boot'],
+    feedback_tags: ['wrong_shoes', 'too_casual', 'unknown_junk_tag'],
+    created_at: daysAgo(0),
+  }], NOW);
+
+  assert.equal(evaluateFeedbackItem(item('top-x'), model).score, 0);
+  assert.equal(evaluateFeedbackItem(item('coat-x'), model).score, 0);
+  assert.equal(evaluateFeedbackItem(item('trouser-x'), model).score, 0);
+  assert.equal(evaluateFeedbackItem(item('bad-boot'), model).score, -1);
+  assert.equal(model.tagTally.get('wrong_shoes'), 1);
+  assert.equal(model.tagTally.get('too_casual'), 1);
+  assert.equal(model.tagTally.has('unknown_junk_tag'), false);
+});
+
+test('slot-level feature evidence transfers softly to another shoe with matching subtype+color without penalizing coats', () => {
+  const features = [
+    ['shirt', 'regular', 'white', 'cotton', 'plain'],
+    ['blazer', 'regular', 'navy', 'wool', 'plain'],
+    ['trousers', 'regular', 'grey', 'wool', 'plain'],
+    ['sneaker', 'oversized', 'white', 'leather', 'plain'],
+  ];
+  const model = feedbackTasteModel([{
+    rating: -1,
+    item_ids: ['top-1', 'blazer-1', 'trouser-1', 'sneaker-1'],
+    targetSlot: 'shoes',
+    feedbackTags: ['wrong_shoes'],
+    look_signature: { version: 1, direction: 'signature', features },
+    created_at: daysAgo(0),
+  }], NOW);
+
+  // Another look with a different oversized white sneaker gets negative cross-SKU slot transfer
+  const anotherWhiteSneakerLook = [
+    ['polo', 'regular', 'cream', 'knit', 'plain'],
+    ['coat', 'relaxed', 'camel', 'wool', 'plain'],
+    ['chino', 'regular', 'beige', 'cotton', 'plain'],
+    ['sneaker', 'oversized', 'white', 'leather', 'plain'],
+  ];
+  const resSneaker = evaluateFeedbackLook(
+    [item('t2'), item('o2'), item('b2'), item('s2')],
+    '',
+    model,
+    anotherWhiteSneakerLook,
+  );
+  assert.ok(resSneaker.adjustment < 0, `expected negative cross-SKU slot transfer, got ${resSneaker.adjustment}`);
+
+  // A look reusing the exact same blazer+shirt+trousers but with suede loafers has 0 penalty!
+  const loaferLook = [
+    features[0],
+    features[1],
+    features[2],
+    ['loafer', 'regular', 'espresso', 'suede', 'plain'],
+  ];
+  const resLoafer = evaluateFeedbackLook(
+    [item('t3'), item('o3'), item('b3'), item('s3')],
+    '',
+    model,
+    loaferLook,
+  );
+  assert.equal(resLoafer.adjustment, 0);
+});

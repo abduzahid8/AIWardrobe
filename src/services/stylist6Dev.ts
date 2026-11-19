@@ -1,5 +1,11 @@
 import { OutfitGenerationFailure } from './outfitGenerationFailure';
-import { normalizeStylistLanguage } from '../domain/stylingContext';
+import {
+  normalizeStylistLanguage,
+  type StylingPresentation,
+  type StylingBodyProfile,
+  type StylingAppearanceProfile,
+  type OwnedWardrobeSummary,
+} from '../domain/stylingContext';
 import { budgetFxContext, validateBudgetFxSnapshot } from '../domain/budgetFx';
 import type { ParsedBudget } from '../utils/outfitBudget';
 
@@ -74,6 +80,11 @@ export interface Stylist6BridgeRequest {
   weather?: { temp: number; condition: string };
   budget?: { amount: number; currency: string };
   preferences?: unknown;
+  presentation?: StylingPresentation;
+  bodyProfile?: StylingBodyProfile;
+  appearanceProfile?: StylingAppearanceProfile;
+  ownedWardrobeSummary?: OwnedWardrobeSummary;
+  dislikedPatterns?: string[];
   recentSignatures?: string[];
   excludeItemIds?: string[];
   requiredIds?: string[];
@@ -81,6 +92,313 @@ export interface Stylist6BridgeRequest {
   language?: 'en' | 'ru' | 'uz';
   /** Dev-only opt-in: run the hosted NVIDIA visual review on the backend. */
   enableVisual?: boolean;
+}
+
+const VALID_PRESENTATIONS = new Set<StylingPresentation>(['menswear', 'womenswear', 'unisex']);
+const SHA256_HEX_RE = /^[a-f0-9]{64}$/i;
+
+/**
+ * Normalizes a color token for Stylist 6 requests.
+ * Fixes legacy style-quiz Midnight Blue hex (`#0A1931` -> `navy`) and
+ * American/British gray spelling (`gray` -> `grey`) without mutating
+ * Stylist 5 callers.
+ */
+export function normalizeStylistColorToken(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim().toLowerCase();
+  if (!trimmed) return null;
+  if (trimmed === '#0a1931' || trimmed === 'midnight blue' || trimmed === 'midnight_blue' || trimmed === 'midnight-blue') {
+    return 'navy';
+  }
+  if (trimmed === 'gray') return 'grey';
+  if (trimmed === 'unknown' || trimmed === 'none') return null;
+  return trimmed.slice(0, 40);
+}
+
+/** Derives a safe Stylist 6 presentation value from an explicit gender field. */
+export function deriveStylist6Presentation(gender: unknown): StylingPresentation | undefined {
+  if (typeof gender !== 'string') return undefined;
+  const normalized = gender.trim().toLowerCase();
+  if (normalized === 'male' || normalized === 'man' || normalized === 'men' || normalized === 'menswear') {
+    return 'menswear';
+  }
+  if (normalized === 'female' || normalized === 'woman' || normalized === 'women' || normalized === 'womenswear') {
+    return 'womenswear';
+  }
+  if (normalized === 'other' || normalized === 'unisex' || normalized === 'nonbinary' || normalized === 'non-binary') {
+    return 'unisex';
+  }
+  return undefined;
+}
+
+function sanitizeStringList(
+  values: unknown,
+  maxItems: number,
+  maxChars: number,
+  normalizer?: (raw: unknown) => string | null,
+): string[] {
+  if (!Array.isArray(values)) return [];
+  const out: string[] = [];
+  for (const item of values) {
+    const cleaned = normalizer
+      ? normalizer(item)
+      : typeof item === 'string'
+        ? item.trim().toLowerCase().slice(0, maxChars)
+        : null;
+    if (cleaned && !out.includes(cleaned)) {
+      out.push(cleaned);
+      if (out.length >= maxItems) break;
+    }
+  }
+  return out;
+}
+
+/**
+ * Normalizes stored StylePreference values for Stylist 6 without losing
+ * legacy `#0A1931` Midnight Blue or `gray` selections.
+ */
+export function normalizeStylist6Preferences(rawPrefs: unknown): Record<string, unknown> | undefined {
+  if (!rawPrefs || typeof rawPrefs !== 'object' || Array.isArray(rawPrefs)) return undefined;
+  const src = rawPrefs as Record<string, unknown>;
+  const favoriteColors = sanitizeStringList(src.favoriteColors, 16, 40, normalizeStylistColorToken);
+  const avoidColors = sanitizeStringList(
+    Array.isArray(src.avoidColors) ? src.avoidColors : src.avoidedColors,
+    16,
+    40,
+    normalizeStylistColorToken,
+  );
+  const likedPatterns = sanitizeStringList(src.likedPatterns, 16, 40);
+  const dislikedPatterns = sanitizeStringList(src.dislikedPatterns, 20, 40);
+  const favoriteBrands = sanitizeStringList(src.favoriteBrands, 20, 60);
+  const avoidBrands = sanitizeStringList(src.avoidBrands, 20, 60);
+  const preferredFits = sanitizeStringList(src.preferredFits, 6, 40);
+  const fitPreference = typeof src.fitPreference === 'string' && src.fitPreference.trim()
+    ? src.fitPreference.trim().toLowerCase().slice(0, 40)
+    : preferredFits[0];
+
+  const out: Record<string, unknown> = {};
+  if (typeof src.stylePersonality === 'string' && src.stylePersonality.trim()) {
+    out.stylePersonality = src.stylePersonality.trim().slice(0, 40);
+  }
+  if (typeof src.bodyType === 'string' && src.bodyType.trim()) {
+    out.bodyType = src.bodyType.trim().toLowerCase().slice(0, 40);
+  }
+  if (favoriteColors.length > 0) out.favoriteColors = favoriteColors;
+  if (avoidColors.length > 0) out.avoidColors = avoidColors;
+  if (likedPatterns.length > 0) out.likedPatterns = likedPatterns;
+  if (dislikedPatterns.length > 0) out.dislikedPatterns = dislikedPatterns;
+  if (fitPreference) out.fitPreference = fitPreference;
+  if (preferredFits.length > 0) out.preferredFits = preferredFits;
+  if (favoriteBrands.length > 0) out.favoriteBrands = favoriteBrands;
+  if (avoidBrands.length > 0) out.avoidBrands = avoidBrands;
+  if (typeof src.workDressCode === 'string' && src.workDressCode.trim()) {
+    out.workDressCode = src.workDressCode.trim().toLowerCase().slice(0, 40);
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * Summarizes owned wardrobe items into aggregate style DNA (no user IDs,
+ * item IDs, or private photo URLs) so catalog-only Stylist 6 requests still
+ * honor the wearer's real closet palette, categories, brands, and formality.
+ */
+export function summarizeOwnedWardrobeForStylist6(
+  items: readonly Record<string, unknown>[] | null | undefined,
+): OwnedWardrobeSummary | undefined {
+  if (!Array.isArray(items) || items.length === 0) return undefined;
+  const colorCounts = new Map<string, number>();
+  const categoryCounts = new Map<string, number>();
+  const brandCounts = new Map<string, number>();
+  const formalityCounts: Record<'formal' | 'smart' | 'casual' | 'athletic', number> = {
+    formal: 0,
+    smart: 0,
+    casual: 0,
+    athletic: 0,
+  };
+  let classifiedFormality = 0;
+
+  const bump = (map: Map<string, number>, key: string | null) => {
+    if (!key) return;
+    map.set(key, (map.get(key) || 0) + 1);
+  };
+
+  for (const item of items.slice(0, 250)) {
+    if (!item || typeof item !== 'object') continue;
+    const rawColor = item.primaryColor ?? item.primary_color ?? (Array.isArray(item.color) ? item.color[0] : item.color);
+    const normColor = normalizeStylistColorToken(rawColor);
+    if (normColor && normColor !== 'neutral') bump(colorCounts, normColor);
+
+    const rawCat = item.category ?? item.macroCategory ?? item.subCategory ?? item.type;
+    if (typeof rawCat === 'string' && rawCat.trim()) {
+      bump(categoryCounts, rawCat.trim().toLowerCase().slice(0, 40));
+    }
+
+    if (typeof item.brand === 'string' && item.brand.trim()) {
+      bump(brandCounts, item.brand.trim().slice(0, 50));
+    }
+
+    const occasions = Array.isArray(item.occasions)
+      ? (item.occasions as unknown[])
+          .filter((o: unknown): o is string => typeof o === 'string')
+          .map((o: string) => o.toLowerCase())
+      : [];
+    const text = `${String(item.subCategory ?? item.type ?? '')} ${String(item.name ?? '')} ${String(item.style ?? '')}`.toLowerCase();
+    let bucket: 'formal' | 'smart' | 'casual' | 'athletic' | null = null;
+    if (occasions.includes('sport') || /\b(gym|sport|running|jogger|track|athletic|sneaker)\b/.test(text)) {
+      bucket = 'athletic';
+    } else if (occasions.includes('formal') || /\b(tuxedo|suit|oxford|dress shirt|evening|gown)\b/.test(text)) {
+      bucket = 'formal';
+    } else if (occasions.includes('work') || occasions.includes('date') || /\b(blazer|loafer|derby|trouser|chino|button|coat|cardigan|cashmere|merino)\b/.test(text)) {
+      bucket = 'smart';
+    } else if (occasions.includes('casual') || occasions.includes('travel') || /\b(tee|t-shirt|jeans|denim|hoodie|shorts|polo|sweater)\b/.test(text)) {
+      bucket = 'casual';
+    }
+    if (bucket) {
+      formalityCounts[bucket] += 1;
+      classifiedFormality += 1;
+    }
+  }
+
+  const topKeys = (map: Map<string, number>, limit: number): string[] =>
+    [...map.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, limit)
+      .map(([k]) => k);
+
+  const formalityMix: Record<string, number> = {};
+  if (classifiedFormality > 0) {
+    for (const [key, count] of Object.entries(formalityCounts)) {
+      if (count > 0) {
+        formalityMix[key] = Math.round((count / classifiedFormality) * 100) / 100;
+      }
+    }
+  }
+
+  return {
+    totalItems: items.length,
+    dominantColors: topKeys(colorCounts, 5),
+    dominantCategories: topKeys(categoryCounts, 5),
+    topBrands: topKeys(brandCounts, 5),
+    formalityMix,
+  };
+}
+
+function sanitizeBodyProfile(input: StylingBodyProfile | null | undefined): StylingBodyProfile | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const out: StylingBodyProfile = {};
+  if (typeof input.gender === 'string') {
+    const g = input.gender.trim().toLowerCase();
+    if (g && g !== 'prefer_not_to_say' && g.length <= 32) out.gender = g;
+  }
+  if (typeof input.heightCm === 'number' && Number.isFinite(input.heightCm) && input.heightCm >= 100 && input.heightCm <= 250) {
+    out.heightCm = Math.round(input.heightCm * 10) / 10;
+  }
+  if (typeof input.weightKg === 'number' && Number.isFinite(input.weightKg) && input.weightKg >= 25 && input.weightKg <= 300) {
+    out.weightKg = Math.round(input.weightKg * 10) / 10;
+  }
+  if (typeof input.bodyType === 'string' && input.bodyType.trim()) {
+    out.bodyType = input.bodyType.trim().toLowerCase().slice(0, 40);
+  }
+  if (input.measurements && typeof input.measurements === 'object' && !Array.isArray(input.measurements)) {
+    const cleanMeasurements: Record<string, number> = {};
+    let count = 0;
+    for (const [key, value] of Object.entries(input.measurements)) {
+      if (count >= 16) break;
+      if (/^[a-zA-Z][a-zA-Z0-9_]{0,31}$/.test(key) && typeof value === 'number' && Number.isFinite(value) && value >= 10 && value <= 250) {
+        cleanMeasurements[key] = Math.round(value * 10) / 10;
+        count += 1;
+      }
+    }
+    if (count > 0) out.measurements = cleanMeasurements;
+  }
+  if (typeof input.fitPreference === 'string' && input.fitPreference.trim()) {
+    out.fitPreference = input.fitPreference.trim().toLowerCase().slice(0, 40);
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function sanitizeAppearanceProfile(input: StylingAppearanceProfile | null | undefined): StylingAppearanceProfile | undefined {
+  // Strictly opt-in: never forward appearance attributes without explicit consent.
+  if (!input || typeof input !== 'object' || input.consentGranted !== true) return undefined;
+  const out: StylingAppearanceProfile = { consentGranted: true };
+  if (typeof input.skinUndertone === 'string' && input.skinUndertone.trim()) {
+    out.skinUndertone = input.skinUndertone.trim().toLowerCase().slice(0, 32);
+  }
+  if (typeof input.skinDepth === 'string' && input.skinDepth.trim()) {
+    out.skinDepth = input.skinDepth.trim().toLowerCase().slice(0, 32);
+  }
+  if (typeof input.contrastLevel === 'string' && input.contrastLevel.trim()) {
+    out.contrastLevel = input.contrastLevel.trim().toLowerCase().slice(0, 32);
+  }
+  if (typeof input.colorSeason === 'string' && input.colorSeason.trim()) {
+    out.colorSeason = input.colorSeason.trim().toLowerCase().slice(0, 48);
+  }
+  const flattering = sanitizeStringList(input.flatteringColors, 12, 40, normalizeStylistColorToken);
+  if (flattering.length > 0) out.flatteringColors = flattering;
+  const avoid = sanitizeStringList(input.avoidColors, 12, 40, normalizeStylistColorToken);
+  if (avoid.length > 0) out.avoidColors = avoid;
+  if (typeof input.metalTone === 'string' && input.metalTone.trim()) {
+    out.metalTone = input.metalTone.trim().toLowerCase().slice(0, 32);
+  }
+  if (typeof input.photoSha256 === 'string' && SHA256_HEX_RE.test(input.photoSha256.trim())) {
+    out.photoSha256 = input.photoSha256.trim().toLowerCase();
+  }
+  return out;
+}
+
+function sanitizeOwnedWardrobeSummary(input: OwnedWardrobeSummary | null | undefined): OwnedWardrobeSummary | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  if (typeof input.totalItems !== 'number' || !Number.isSafeInteger(input.totalItems) || input.totalItems <= 0) {
+    return undefined;
+  }
+  const formalityMix: Record<string, number> = {};
+  if (input.formalityMix && typeof input.formalityMix === 'object' && !Array.isArray(input.formalityMix)) {
+    let count = 0;
+    for (const [k, v] of Object.entries(input.formalityMix)) {
+      if (count >= 8) break;
+      if (/^[a-z_]{1,24}$/i.test(k) && typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1) {
+        formalityMix[k.toLowerCase()] = Math.round(v * 100) / 100;
+        count += 1;
+      }
+    }
+  }
+  return {
+    totalItems: Math.min(input.totalItems, 10000),
+    dominantColors: sanitizeStringList(input.dominantColors, 8, 40, normalizeStylistColorToken),
+    dominantCategories: sanitizeStringList(input.dominantCategories, 8, 40),
+    topBrands: sanitizeStringList(input.topBrands, 8, 50, (raw) =>
+      typeof raw === 'string' && raw.trim() ? raw.trim().slice(0, 50) : null,
+    ),
+    formalityMix,
+  };
+}
+
+function applyStylist6Personalization<T extends Partial<Stylist6BridgeRequest | Stylist6CloudRequest>>(
+  source: T,
+): T {
+  const req = { ...source };
+  delete req.presentation;
+  delete req.bodyProfile;
+  delete req.appearanceProfile;
+  delete req.ownedWardrobeSummary;
+  delete req.dislikedPatterns;
+
+  if (source.presentation && VALID_PRESENTATIONS.has(source.presentation)) {
+    req.presentation = source.presentation;
+  }
+  const cleanBody = sanitizeBodyProfile(source.bodyProfile);
+  if (cleanBody) req.bodyProfile = cleanBody;
+
+  const cleanAppearance = sanitizeAppearanceProfile(source.appearanceProfile);
+  if (cleanAppearance) req.appearanceProfile = cleanAppearance;
+
+  const cleanWardrobe = sanitizeOwnedWardrobeSummary(source.ownedWardrobeSummary);
+  if (cleanWardrobe) req.ownedWardrobeSummary = cleanWardrobe;
+
+  const cleanDislikedPatterns = sanitizeStringList(source.dislikedPatterns, 20, 40);
+  if (cleanDislikedPatterns.length > 0) req.dislikedPatterns = cleanDislikedPatterns;
+
+  return req;
 }
 
 function normalizeBridgeSourceMode(
@@ -103,7 +421,7 @@ export function buildStylist6BridgeBody(args: {
   catalogRows: Record<string, unknown>[];
   wardrobeItems?: Record<string, unknown>[];
 } {
-  const req: Stylist6BridgeRequest = { ...args.request };
+  const req: Stylist6BridgeRequest = applyStylist6Personalization(args.request);
   if (Array.isArray(args.request.requiredIds)) {
     const cleanRequired = [...new Set(
       args.request.requiredIds
@@ -275,6 +593,11 @@ export interface Stylist6CloudRequest {
   weather?: { temp: number; condition: string };
   budget?: { amount: number; currency: string };
   preferences?: unknown;
+  presentation?: StylingPresentation;
+  bodyProfile?: StylingBodyProfile;
+  appearanceProfile?: StylingAppearanceProfile;
+  ownedWardrobeSummary?: OwnedWardrobeSummary;
+  dislikedPatterns?: string[];
   recentSignatures?: string[];
   excludeItemIds?: string[];
   requiredIds?: string[];
@@ -422,9 +745,13 @@ export async function invokeStylist6Cloud(
   try {
     const target = STYLIST6_RENDER_CANARY_ENABLED
       ? 'aiw-stylist6-node-render-staging' : 'aiw-stylist6-node-staging';
+    const sanitizedBody = {
+      ...body,
+      request: applyStylist6Personalization(body.request),
+    };
     const result = await supabase.functions.invoke(target, {
       headers: { Authorization: `Bearer ${token}` },
-      body,
+      body: sanitizedBody,
       ...(options?.signal ? { signal: options.signal } : {}),
     });
     data = result.data as Record<string, any> | null;
@@ -663,4 +990,380 @@ export function acceptStylist6CloudDeck(
     accepted.push(look as Record<string, any>);
   }
   return { accepted, rejections };
+}
+
+export type Stylist6SwapSlot = 'top' | 'outerwear' | 'bottom' | 'shoes' | 'accessory' | 'dress';
+
+const VALID_SWAP_SLOTS = new Set<Stylist6SwapSlot>([
+  'top',
+  'outerwear',
+  'bottom',
+  'shoes',
+  'accessory',
+  'dress',
+]);
+
+export interface Stylist6SlotSwapParams {
+  outfit: Record<string, unknown>;
+  targetSlot: Stylist6SwapSlot;
+  reason?: string;
+  context?: Partial<Stylist6CloudRequest>;
+  excludedIds?: readonly string[];
+  authToken?: string;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
+export interface Stylist6SlotSwapResult {
+  outfit: Record<string, unknown>;
+  swappedSlot: Stylist6SwapSlot;
+  previousItemId: string | null;
+  replacementItem: Record<string, unknown>;
+  generationVersion?: string;
+}
+
+export interface Stylist6AppearanceAnalysisParams {
+  photoUrl: string;
+  consentGranted: boolean;
+  authToken?: string;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
+export interface Stylist6AppearanceAnalysisResult {
+  status: 'analyzed' | 'consent_required' | 'unavailable';
+  appearance: StylingAppearanceProfile | null;
+}
+
+function withBoundedSignal(
+  timeoutMs: number,
+  externalSignal?: AbortSignal,
+): { signal: AbortSignal; wasTimeout: () => boolean; cleanup: () => void } {
+  const controller = new AbortController();
+  let timedOut = false;
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+  }
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, Math.max(500, timeoutMs));
+  const cleanup = () => {
+    clearTimeout(timer);
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onExternalAbort);
+    }
+  };
+  return { signal: controller.signal, wasTimeout: () => timedOut, cleanup };
+}
+
+async function resolveStylist6AuthToken(
+  explicitToken: string | undefined,
+  stage: string,
+): Promise<{
+  token: string;
+  supabase: typeof import('../../lib/supabase').supabase;
+}> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+  const { supabase } = require('../../lib/supabase') as typeof import('../../lib/supabase');
+  const trimmed = typeof explicitToken === 'string' ? explicitToken.trim() : '';
+  if (trimmed) return { token: trimmed, supabase };
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData?.session?.access_token;
+  if (!token) {
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'unauthorized', stage);
+  }
+  return { token, supabase };
+}
+
+function slotItemOf(item: unknown): Record<string, unknown> | null {
+  return item && typeof item === 'object' && !Array.isArray(item)
+    ? (item as Record<string, unknown>)
+    : null;
+}
+
+function hasValidSwapProvenance(
+  items: Record<string, unknown>[],
+  mode: 'wardrobe' | 'catalog' | 'mixed',
+): boolean {
+  return items.every((item) => {
+    if (typeof item.isShopItem !== 'boolean') return false;
+    if (!isHttpsPhoto(item.imageUrl || item.image)) return false;
+    if (item.isShopItem) {
+      if (mode === 'wardrobe') return false;
+      return isHttpsPhoto(item.shopUrl)
+        && typeof item.price === 'number'
+        && Number.isFinite(item.price)
+        && /^[A-Z]{3}$/.test(String(item.currency || ''));
+    }
+    return mode !== 'catalog';
+  });
+}
+
+function verifySwappedOutfit(args: {
+  candidate: Record<string, unknown>;
+  sourceMode: 'wardrobe' | 'catalog' | 'mixed';
+  targetSlot: Stylist6SwapSlot;
+  previousItemId: string | null;
+  originalItems: Record<string, unknown>[];
+  excludedSet: Set<string>;
+}): Record<string, unknown> | null {
+  const rawItems = args.candidate.items;
+  if (!Array.isArray(rawItems)) return null;
+  const items = rawItems.map(slotItemOf).filter((x): x is Record<string, unknown> => x !== null);
+  if (items.length !== rawItems.length) return null;
+
+  // Catalog mode strictly requires 4 unique shoppable SKUs.
+  if (args.sourceMode === 'catalog' && items.length !== 4) return null;
+  if (items.length < 3 || items.length > 4) return null;
+
+  const ids = items.map((item) => (typeof item.id === 'string' ? item.id.trim() : ''));
+  if (ids.some((id) => !id) || new Set(ids).size !== items.length) return null;
+
+  const slots = items.map((item) => String(item.macroCategory || '').trim().toLowerCase());
+  const usesStandardSlots = slots.every((s) => (DEV_SLOTS as readonly string[]).includes(s));
+  if (usesStandardSlots) {
+    const check = acceptStylist6CloudDeck([args.candidate], args.sourceMode);
+    if (check.accepted.length !== 1 || Object.keys(check.rejections).length > 0) return null;
+  } else {
+    // Extended 4-item grammars (warm_weather_separates / one_piece_editorial)
+    if (items.length !== 4) return null;
+    if (slots.some((s) => !VALID_SWAP_SLOTS.has(s as Stylist6SwapSlot))) return null;
+    if (new Set(slots).size !== items.length) return null;
+    if (slots.includes('dress') && slots.includes('bottom')) return null;
+    if (!hasValidSwapProvenance(items, args.sourceMode)) return null;
+  }
+
+  const replacement = items.find(
+    (item) => String(item.macroCategory || '').trim().toLowerCase() === args.targetSlot,
+  );
+  if (!replacement || typeof replacement.id !== 'string') return null;
+  const replacementId = replacement.id.trim();
+  if (!replacementId) return null;
+  if (args.previousItemId && replacementId === args.previousItemId) return null;
+  if (args.excludedSet.has(replacementId)) return null;
+
+  // Ensure locked non-target slots stayed intact (no silent rewrite of other items).
+  const expectedLocked = args.originalItems
+    .filter((item) => String(item.macroCategory || '').trim().toLowerCase() !== args.targetSlot)
+    .map((item) => ({
+      slot: String(item.macroCategory || '').trim().toLowerCase(),
+      id: typeof item.id === 'string' ? item.id.trim() : '',
+    }))
+    .filter((entry) => entry.slot && entry.id);
+
+  for (const locked of expectedLocked) {
+    const matching = items.find(
+      (item) => String(item.macroCategory || '').trim().toLowerCase() === locked.slot,
+    );
+    if (!matching || String(matching.id || '').trim() !== locked.id) return null;
+  }
+
+  return replacement;
+}
+
+/**
+ * Requests a surgical 1-slot replacement for an existing Stylist 6 look
+ * (`action: 'swap_slot'`). Locks the other 3 items, bounds transport timeout,
+ * and enforces strict 4-SKU verification before returning any replacement.
+ */
+export async function requestStylist6SlotSwap(
+  params: Stylist6SlotSwapParams,
+): Promise<Stylist6SlotSwapResult> {
+  if (!STYLIST6_CLOUD_ENABLED) {
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_release_disabled', 'stylist6_swap');
+  }
+  if (!VALID_SWAP_SLOTS.has(params.targetSlot)) {
+    throw new OutfitGenerationFailure('outfitMaker.invalidRequest', 'invalid_stylist6_request', 'stylist6_swap');
+  }
+  const rawOriginalItems = params.outfit && Array.isArray(params.outfit.items)
+    ? params.outfit.items
+    : null;
+  if (!rawOriginalItems || rawOriginalItems.length === 0) {
+    throw new OutfitGenerationFailure('outfitMaker.invalidRequest', 'invalid_stylist6_request', 'stylist6_swap');
+  }
+  const originalItems = rawOriginalItems
+    .map(slotItemOf)
+    .filter((x): x is Record<string, unknown> => x !== null);
+  const previousItem = originalItems.find(
+    (item) => String(item.macroCategory || '').trim().toLowerCase() === params.targetSlot,
+  );
+  const previousItemId = typeof previousItem?.id === 'string' && previousItem.id.trim()
+    ? previousItem.id.trim()
+    : null;
+
+  const excludedIds = [...new Set([
+    ...(Array.isArray(params.excludedIds) ? params.excludedIds : []),
+    ...(previousItemId ? [previousItemId] : []),
+  ]
+    .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+    .map((id) => id.trim().slice(0, 200)))].slice(0, 40);
+
+  const reason = typeof params.reason === 'string' && params.reason.trim()
+    ? params.reason.trim().slice(0, 160)
+    : undefined;
+  const sanitizedContext = params.context
+    ? applyStylist6Personalization(params.context)
+    : undefined;
+
+  const { token, supabase } = await resolveStylist6AuthToken(params.authToken, 'stylist6_swap');
+  const target = STYLIST6_RENDER_CANARY_ENABLED
+    ? 'aiw-stylist6-node-render-staging'
+    : 'aiw-stylist6-node-staging';
+  const { signal, wasTimeout, cleanup } = withBoundedSignal(params.timeoutMs ?? 25_000, params.signal);
+
+  let data: Record<string, unknown> | null = null;
+  let invokeError: unknown = null;
+  try {
+    const result = await supabase.functions.invoke(target, {
+      headers: { Authorization: `Bearer ${token}` },
+      body: {
+        action: 'swap_slot',
+        outfit: params.outfit,
+        targetSlot: params.targetSlot,
+        ...(reason ? { reason } : {}),
+        ...(sanitizedContext ? { context: sanitizedContext } : {}),
+        excludedIds,
+      },
+      signal,
+    });
+    data = result.data as Record<string, unknown> | null;
+    invokeError = result.error;
+  } catch (error) {
+    if (wasTimeout()) {
+      throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'stylist6_swap');
+    }
+    if (error instanceof Error && error.name === 'AbortError') throw error;
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'staging_compute_unavailable', 'stylist6_swap');
+  } finally {
+    cleanup();
+  }
+
+  if (wasTimeout()) {
+    throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'stylist6_swap');
+  }
+  if (invokeError) {
+    throw await cloudFailureFromInvokeError(invokeError);
+  }
+  if (!data || data.success !== true) {
+    throw failureForCloud(data?.code, 'stylist6_swap');
+  }
+
+  const candidate = (data.outfit && typeof data.outfit === 'object' && !Array.isArray(data.outfit)
+    ? data.outfit
+    : Array.isArray(data.outfits) && data.outfits[0] && typeof data.outfits[0] === 'object'
+      ? data.outfits[0]
+      : null) as Record<string, unknown> | null;
+
+  if (!candidate) {
+    throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing', 'stylist6_swap_invalid_outfit', 'stylist6_swap');
+  }
+
+  const rawSourceMode = data.sourceMode ?? params.context?.sourceMode;
+  const sourceMode: 'wardrobe' | 'catalog' | 'mixed' =
+    rawSourceMode === 'wardrobe' || rawSourceMode === 'mixed' ? rawSourceMode : 'catalog';
+
+  const replacementItem = verifySwappedOutfit({
+    candidate,
+    sourceMode,
+    targetSlot: params.targetSlot,
+    previousItemId,
+    originalItems,
+    excludedSet: new Set(excludedIds),
+  });
+  if (!replacementItem) {
+    throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing', 'stylist6_swap_invalid_outfit', 'stylist6_swap');
+  }
+
+  const generationVersion = typeof data.generationVersion === 'string'
+    ? data.generationVersion
+    : undefined;
+  return {
+    outfit: candidate,
+    swappedSlot: params.targetSlot,
+    previousItemId,
+    replacementItem,
+    ...(generationVersion ? { generationVersion } : {}),
+  };
+}
+
+/**
+ * Calls opt-in Stylist 6 appearance analysis (`action: 'analyze_appearance'`).
+ * Strictly enforces explicit consent before touching auth or the network,
+ * validates HTTPS photo URLs, and sanitizes the response.
+ */
+export async function requestStylist6AppearanceAnalysis(
+  params: Stylist6AppearanceAnalysisParams,
+): Promise<Stylist6AppearanceAnalysisResult> {
+  if (params.consentGranted !== true) {
+    return { status: 'consent_required', appearance: null };
+  }
+  if (!STYLIST6_CLOUD_ENABLED) {
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'stylist6_release_disabled', 'stylist6_appearance');
+  }
+  const photoUrl = typeof params.photoUrl === 'string' ? params.photoUrl.trim() : '';
+  if (!isHttpsPhoto(photoUrl)) {
+    throw new OutfitGenerationFailure('outfitMaker.invalidRequest', 'invalid_stylist6_request', 'stylist6_appearance');
+  }
+
+  const { token, supabase } = await resolveStylist6AuthToken(params.authToken, 'stylist6_appearance');
+  const target = STYLIST6_RENDER_CANARY_ENABLED
+    ? 'aiw-stylist6-node-render-staging'
+    : 'aiw-stylist6-node-staging';
+  const { signal, wasTimeout, cleanup } = withBoundedSignal(params.timeoutMs ?? 20_000, params.signal);
+
+  let data: Record<string, unknown> | null = null;
+  let invokeError: unknown = null;
+  try {
+    const result = await supabase.functions.invoke(target, {
+      headers: { Authorization: `Bearer ${token}` },
+      body: {
+        action: 'analyze_appearance',
+        photoUrl,
+        consentGranted: true,
+      },
+      signal,
+    });
+    data = result.data as Record<string, unknown> | null;
+    invokeError = result.error;
+  } catch (error) {
+    if (wasTimeout()) {
+      throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'stylist6_appearance');
+    }
+    if (error instanceof Error && error.name === 'AbortError') throw error;
+    throw new OutfitGenerationFailure('outfitMaker.generateFailed', 'staging_compute_unavailable', 'stylist6_appearance');
+  } finally {
+    cleanup();
+  }
+
+  if (wasTimeout()) {
+    throw new OutfitGenerationFailure('outfitMaker.requestTimeout', 'request_timeout', 'stylist6_appearance');
+  }
+  if (invokeError) {
+    throw await cloudFailureFromInvokeError(invokeError);
+  }
+  if (!data) {
+    return { status: 'unavailable', appearance: null };
+  }
+  if (data.status === 'consent_required') {
+    return { status: 'consent_required', appearance: null };
+  }
+  if (data.success === false) {
+    throw failureForCloud(data.code, 'stylist6_appearance');
+  }
+  const rawAppearance = data.appearance && typeof data.appearance === 'object' && !Array.isArray(data.appearance)
+    ? (data.appearance as StylingAppearanceProfile)
+    : null;
+  const sanitized = rawAppearance
+    ? sanitizeAppearanceProfile({ ...rawAppearance, consentGranted: true })
+    : undefined;
+  if (!sanitized) {
+    return { status: 'unavailable', appearance: null };
+  }
+  return { status: 'analyzed', appearance: sanitized };
 }

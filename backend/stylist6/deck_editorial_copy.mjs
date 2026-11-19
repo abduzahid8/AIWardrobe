@@ -18,8 +18,10 @@
 import { describeGarment } from '../../src/domain/garmentDescriptor.ts';
 import { lookConcept } from '../../src/domain/outfitConcepts.ts';
 import { normalizeStylistLanguage } from '../../src/domain/stylingContext.ts';
+import { currentVisual, confidentVisual } from '../../src/domain/visualFashion.ts';
 
 export const DECK_COPY_VERSION = 's6-grounded-deck-copy-v5';
+export const STYLIST_NOTES_VERSION = 's6-editorial-stylist-notes-v1';
 const slotOrder = ['top','outerwear','bottom','shoes'];
 const known = x => typeof x === 'string' && !!x &&
   !['unknown','neutral','missing'].includes(x.toLowerCase());
@@ -676,30 +678,531 @@ function shortCopy(basePart, part, context, direction) {
   return [prefix,change,actualRelationship(part)].filter(Boolean).join(' ');
 }
 
-/** Assign each actual selected look a title + explanation, preserving order
- * and keeping a unique headline even when all native concept IDs are equal.
+// ── Personalized Editorial Stylist's Notes (grounded, zero-fabrication) ──
+
+const SPECIFIC_MATERIALS = [
+  'cashmere', 'silk', 'linen', 'suede', 'corduroy', 'tweed', 'velvet',
+  'leather', 'denim', 'merino', 'wool', 'cotton', 'flannel', 'poplin', 'satin',
+];
+const UNSAFE_CLAIMS_RE = /\b(?:in\s+stock|available\s+now|free\s+shipping|ships?\s+today|guaranteed|100%\s+[a-z]+|waterproof|viewed\s+your\s+photos?)\b/i;
+const COLOR_NAME_ALIASES = new Map([
+  ['#0a1931', 'navy'], ['0a1931', 'navy'], ['gray', 'grey'],
+  ['ivory', 'cream'], ['off-white', 'cream'], ['ecru', 'cream'],
+  ['taupe', 'beige'], ['sand', 'beige'], ['slate', 'grey'],
+  ['chocolate', 'brown'], ['espresso', 'brown'], ['cognac', 'brown'],
+  ['oxblood', 'burgundy'], ['bordeaux', 'burgundy'], ['wine', 'burgundy'],
+]);
+const WARM_TONES = new Set(['cream', 'beige', 'camel', 'tan', 'brown', 'olive', 'khaki', 'rust', 'burgundy', 'stone', 'yellow', 'orange']);
+const COOL_TONES = new Set(['navy', 'blue', 'grey', 'charcoal', 'black', 'white', 'green', 'purple', 'pink']);
+const LIGHT_TONES = new Set(['white', 'cream', 'beige', 'stone', 'light']);
+const DARK_TONES = new Set(['black', 'navy', 'charcoal', 'brown', 'burgundy', 'dark', 'dark-neutral', 'cool-dark']);
+
+function cleanEditorialText(raw, max = 260) {
+  if (typeof raw !== 'string') return '';
+  return raw
+    .replace(/https?:\/\/[^\s]+|\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi, '')
+    .replace(/[<>{}\u0000-\u001f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
+function canonicalNoteColor(raw) {
+  if (typeof raw !== 'string') return null;
+  const cleaned = raw.trim().toLowerCase().replace(/[\s_]+/g, '-');
+  if (!cleaned || ['unknown', 'neutral', 'missing', 'other'].includes(cleaned)) return null;
+  if (COLOR_NAME_ALIASES.has(cleaned)) return COLOR_NAME_ALIASES.get(cleaned);
+  return cleaned;
+}
+
+function verifiedItemColor(item, descriptor) {
+  const vf = item ? currentVisual(item) : null;
+  const vCol = vf?.attributes?.color;
+  if (confidentVisual(vCol) && typeof vCol.value === 'string') {
+    const canon = canonicalNoteColor(vCol.value);
+    if (canon) return canon;
+  }
+  const explicit = canonicalNoteColor(item?.color);
+  if (explicit) return explicit;
+  const desc = canonicalNoteColor(descriptor?.color);
+  // Avoid generic descriptor buckets ('dark', 'cool-dark', 'earth') if specific name color exists
+  if (desc && !['dark', 'dark-neutral', 'cool-dark', 'cool-mid', 'mid', 'earth', 'light', 'warm'].includes(desc)) {
+    return desc;
+  }
+  const nameText = String(item?.name || '').toLowerCase();
+  for (const c of ['navy', 'charcoal', 'cream', 'beige', 'camel', 'olive', 'burgundy', 'stone', 'brown', 'black', 'white', 'grey', 'blue', 'green', 'tan']) {
+    if (new RegExp(`\\b${c}\\b`, 'i').test(nameText)) return c;
+  }
+  return desc || null;
+}
+
+function verifiedLookMaterials(items, part) {
+  const found = new Set();
+  for (const item of items || []) {
+    const text = `${item?.name || ''} ${item?.texture || ''} ${Array.isArray(item?.materials) ? item.materials.join(' ') : ''}`.toLowerCase();
+    for (const mat of SPECIFIC_MATERIALS) {
+      if (new RegExp(`\\b${mat}\\b`, 'i').test(text)) found.add(mat);
+    }
+    const vf = currentVisual(item);
+    const vTex = vf?.attributes?.texture;
+    if (confidentVisual(vTex) && typeof vTex.value === 'string') {
+      found.add(vTex.value.toLowerCase());
+    }
+  }
+  for (const slot of slotOrder) {
+    const d = part?.[slot];
+    if (!d) continue;
+    if (known(d.texture)) found.add(d.texture.toLowerCase());
+    for (const m of Array.isArray(d.materials) ? d.materials : []) {
+      found.add(String(m).toLowerCase());
+    }
+  }
+  return found;
+}
+
+/**
+ * Validate that a Creative Director or Visual Critic sentence does not fabricate
+ * missing garment roles (e.g. claiming a cardigan or blazer when absent) or
+ * unverified fiber claims (e.g. claiming cashmere/silk when none of the selected
+ * SKUs have that verified material).
+ */
+function isGroundedAgainstLook(sentence, part, verifiedMaterials) {
+  if (!sentence || sentence.length < 18) return false;
+  if (UNSAFE_CLAIMS_RE.test(sentence)) return false;
+  const lower = sentence.toLowerCase();
+  // Never claim an outer layer exists when the actual outfit has no outerwear.
+  if (!part?.outerwear && /\b(blazer|cardigan|overcoat|coat|jacket|overshirt|outer\s+layer|layered\s+over)\b/.test(lower)) {
+    return false;
+  }
+  // Never misname the actual outerwear subtype (e.g., calling a blazer a cardigan).
+  if (part?.outerwear?.subtype) {
+    const actualOuter = part.outerwear.subtype;
+    if (actualOuter !== 'cardigan' && /\bcardigans?\b/.test(lower)) return false;
+    if (actualOuter !== 'blazer' && /\bblazers?\b/.test(lower)) return false;
+    if (actualOuter !== 'coat' && /\b(?:overcoats?|trench\s+coats?)\b/.test(lower)) return false;
+  }
+  // Never fabricate rare/specific textiles not verified on any selected SKU.
+  for (const mat of ['cashmere', 'silk', 'linen', 'suede', 'corduroy', 'tweed', 'velvet']) {
+    if (new RegExp(`\\b${mat}\\b`, 'i').test(lower) && !verifiedMaterials.has(mat)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function extractVisualCriticInsights(look, options, part, verifiedMaterials) {
+  const verdict = options?.visualVerdict || look?.visualCritique || look?.visualVerdict || look?.visualReview || null;
+  if (!verdict || typeof verdict !== 'object') return [];
+  const insights = [];
+  if (Array.isArray(verdict.relationships)) {
+    for (const rel of verdict.relationships.slice(0, 3)) {
+      const obs = cleanEditorialText(rel?.observation || rel?.note || '', 180);
+      if (obs && !/\b(clash|mismatch|reject|veto|poor|bad|wrong|fail|incoherent)\b/i.test(obs) &&
+          isGroundedAgainstLook(obs, part, verifiedMaterials)) {
+        insights.push(obs);
+      }
+    }
+  }
+  if (Array.isArray(verdict.strengths)) {
+    for (const st of verdict.strengths.slice(0, 2)) {
+      const text = cleanEditorialText(typeof st === 'string' ? st : st?.observation || '', 160);
+      if (text && isGroundedAgainstLook(text, part, verifiedMaterials)) {
+        insights.push(text);
+      }
+    }
+  }
+  if (!insights.length && verdict.observations && typeof verdict.observations === 'object') {
+    for (const slot of ['outerwear', 'top', 'bottom', 'shoes']) {
+      const text = cleanEditorialText(verdict.observations[slot], 150);
+      if (text && !/\b(clash|mismatch|reject|veto|poor|bad|wrong|fail)\b/i.test(text) &&
+          isGroundedAgainstLook(text, part, verifiedMaterials)) {
+        insights.push(text);
+        if (insights.length >= 1) break;
+      }
+    }
+  }
+  return [...new Set(insights)];
+}
+
+function buildSilhouetteFormula(lang, part, items) {
+  const hasDress = (items || []).some(it => String(it?.macroCategory || '').toLowerCase() === 'dress');
+  const formatSlot = (slot) => {
+    const d = part?.[slot];
+    if (!d) return null;
+    const role = roleFor(lang, d);
+    if (!role) return null;
+    const name = lang === 'en' ? role.name : role.nom;
+    if (lang === 'en') {
+      if (slot === 'outerwear' && d.structured) return `structured ${name}`;
+      if (slot === 'outerwear' && d.volume === 'wide') return `relaxed ${name}`;
+      if (slot === 'bottom' && d.volume === 'slim') return `slim ${name}`;
+      if (slot === 'bottom' && d.volume === 'wide') return `wide-leg ${name}`;
+      if (slot === 'shoes' && ['oxford', 'derby', 'monk', 'loafer', 'chelsea', 'dress-boot'].includes(d.subtype) && !d.casualSole) {
+        return `sleek ${name}`;
+      }
+    }
+    return name;
+  };
+  const topLabel = hasDress
+    ? (lang === 'ru' ? 'платье' : lang === 'uz' ? "ko'ylak-libos" : 'dress')
+    : formatSlot('top');
+  const outerLabel = formatSlot('outerwear');
+  const bottomLabel = hasDress ? null : formatSlot('bottom');
+  const shoesLabel = formatSlot('shoes');
+
+  const upper = outerLabel && topLabel
+    ? (lang === 'ru' ? `${outerLabel} поверх ${roleFor('ru', part.top)?.gen || topLabel}`
+      : lang === 'uz' ? `${topLabel} ustidan ${outerLabel}`
+        : `${outerLabel} over ${topLabel}`)
+    : (outerLabel || topLabel);
+
+  const pieces = [upper, bottomLabel, shoesLabel].filter(Boolean);
+  if (!pieces.length) {
+    return lang === 'ru' ? 'Собранный комплект из выбранных вещей'
+      : lang === 'uz' ? 'Tanlangan buyumlardan uygʻun toʻplam'
+        : 'Balanced complete silhouette';
+  }
+  return cap(pieces.join(' + '));
+}
+
+function buildColorStory(lang, part, items) {
+  const verifiedColors = [];
+  for (const slot of slotOrder) {
+    const item = (items || []).find(it => String(it?.macroCategory || '').toLowerCase() === slot);
+    const d = part?.[slot];
+    if (!item && !d) continue;
+    const col = verifiedItemColor(item, d);
+    if (col && !verifiedColors.includes(col)) verifiedColors.push(col);
+  }
+  if (!verifiedColors.length) {
+    return lang === 'ru' ? 'Спокойная базовая палитра без визуального шума.'
+      : lang === 'uz' ? "Ortiqcha shovqinsiz sokin asosiy palitra."
+        : 'Restrained neutral palette grounded in the selected pieces.';
+  }
+  const hasLight = verifiedColors.some(c => LIGHT_TONES.has(c));
+  const hasDark = verifiedColors.some(c => DARK_TONES.has(c));
+  const warmCount = verifiedColors.filter(c => WARM_TONES.has(c)).length;
+  const coolCount = verifiedColors.filter(c => COOL_TONES.has(c)).length;
+  const isTonal = verifiedColors.length <= 2 && !(hasLight && hasDark);
+
+  const toneMode = isTonal ? 'tonal'
+    : (hasLight && hasDark) ? 'contrast'
+      : (warmCount >= coolCount && warmCount >= 2) ? 'warm'
+        : (coolCount >= 2) ? 'cool' : 'balanced';
+
+  if (lang === 'ru') {
+    const names = verifiedColors.map(c => colorFor('ru', c, 'm')).filter(Boolean);
+    if (!names.length) return 'Спокойная выверенная палитра комплекта.';
+    const mood = toneMode === 'contrast' ? 'выразительный чистый контраст'
+      : toneMode === 'tonal' ? 'спокойная тональная гармония'
+        : toneMode === 'warm' ? 'тёплая природная палитра'
+          : toneMode === 'cool' ? 'собранная прохладная палитра' : 'сбалансированная палитра';
+    return `${cap(names.join(', '))} — ${mood}.`;
+  }
+  if (lang === 'uz') {
+    const names = verifiedColors.map(c => colorFor('uz', c)).filter(Boolean);
+    if (!names.length) return "Sokin va uyg'un ranglar palitrasi.";
+    const mood = toneMode === 'contrast' ? 'aniq va toza kontrast'
+      : toneMode === 'tonal' ? "sokin tonli uyg'unlik"
+        : toneMode === 'warm' ? 'iliq tabiiy palitra'
+          : toneMode === 'cool' ? 'saranjom sovuq palitra' : "muvozanatli palitra";
+    return `${cap(names.join(', '))} — ${mood}.`;
+  }
+  const names = verifiedColors.map(c => titleCase(c));
+  const listStr = names.length === 1 ? names[0]
+    : names.length === 2 ? `${names[0]} and ${names[1]}`
+      : `${names.slice(0, -1).join(', ')}, and ${names.at(-1)}`;
+  const mood = toneMode === 'contrast' ? 'crisp light-dark contrast'
+    : toneMode === 'tonal' ? 'cohesive tonal depth'
+      : toneMode === 'warm' ? 'warm earth harmony'
+        : toneMode === 'cool' ? 'cool tailored balance' : 'grounded neutral balance';
+  return `${listStr} create ${mood}.`;
+}
+
+function buildWhyItFlattersYou(lang, part, items, context, options) {
+  const dna = options?.personalStyleDna || context?.personalStyleDna || null;
+  const appearance = dna?.appearance || context?.appearanceProfile || null;
+  const body = dna?.body || context?.bodyProfile || null;
+  const wardrobe = dna?.ownedWardrobeDna || dna?.ownedWardrobeSummary || context?.ownedWardrobeSummary || null;
+  const favColors = [
+    ...(Array.isArray(dna?.favoriteColors) ? dna.favoriteColors : []),
+    ...(Array.isArray(dna?.preferences?.favoriteColors) ? dna.preferences.favoriteColors : []),
+    ...(Array.isArray(context?.preferences?.favoriteColors) ? context.preferences.favoriteColors : []),
+  ].map(canonicalNoteColor).filter(Boolean);
+
+  const lookColors = [];
+  for (const slot of slotOrder) {
+    const item = (items || []).find(it => String(it?.macroCategory || '').toLowerCase() === slot);
+    const col = verifiedItemColor(item, part?.[slot]);
+    if (col && !lookColors.includes(col)) lookColors.push(col);
+  }
+
+  const reasons = [];
+
+  // 1. Explicit opt-in appearance / undertone / contrast harmony (NEVER inferred when absent!)
+  if (appearance && typeof appearance === 'object' && appearance.consentGranted !== false) {
+    const undertone = String(appearance.skinUndertone || '').trim().toLowerCase();
+    const contrast = String(appearance.contrastLevel || '').trim().toLowerCase();
+    const flattering = new Set([
+      ...(Array.isArray(appearance.flatteringColors) ? appearance.flatteringColors : []),
+      ...(Array.isArray(appearance.powerNeutrals) ? appearance.powerNeutrals : []),
+    ].map(canonicalNoteColor).filter(Boolean));
+    const matchedFlattering = lookColors.filter(c => flattering.has(c));
+    const hasLight = lookColors.some(c => LIGHT_TONES.has(c));
+    const hasDark = lookColors.some(c => DARK_TONES.has(c));
+
+    if (matchedFlattering.length && ['warm', 'cool', 'neutral', 'olive'].includes(undertone)) {
+      if (lang === 'ru') {
+        const cNames = matchedFlattering.slice(0, 2).map(c => colorFor('ru', c, 'm')).filter(Boolean);
+        const uRu = { warm: 'тёплый', cool: 'холодный', neutral: 'нейтральный', olive: 'оливковый' }[undertone];
+        if (cNames.length) reasons.push(`Оттенки (${cNames.join(', ')}) поддерживают ваш ${uRu} подтон.`);
+      } else if (lang === 'uz') {
+        const cNames = matchedFlattering.slice(0, 2).map(c => colorFor('uz', c)).filter(Boolean);
+        const uUz = { warm: 'iliq', cool: 'sovuq', neutral: 'neytral', olive: 'zaytun' }[undertone];
+        if (cNames.length) reasons.push(`${cap(cNames.join(' va '))} ranglari sizning ${uUz} teri ohangizga mos tushadi.`);
+      } else {
+        const cNames = matchedFlattering.slice(0, 2).map(c => c.toLowerCase()).join(' and ');
+        const contrastTail = contrast === 'high' && hasLight && hasDark
+          ? ' with crisp high-contrast framing'
+          : contrast === 'low' && !(hasLight && hasDark) ? ' in a softly blended low-contrast range' : '';
+        reasons.push(`The ${cNames} tones complement your ${undertone} undertone${contrastTail}.`);
+      }
+    } else if (['warm', 'cool', 'neutral', 'olive'].includes(undertone)) {
+      const undertoneMatch = undertone === 'warm' ? lookColors.some(c => WARM_TONES.has(c))
+        : undertone === 'cool' ? lookColors.some(c => COOL_TONES.has(c)) : lookColors.length > 0;
+      if (undertoneMatch) {
+        if (lang === 'en') {
+          reasons.push(`This palette aligns with your ${undertone} undertone${contrast && contrast !== 'unknown' ? ` and ${contrast}-contrast balance` : ''}.`);
+        } else if (lang === 'ru') {
+          const uRu = { warm: 'тёплым', cool: 'холодным', neutral: 'нейтральным', olive: 'оливковым' }[undertone];
+          reasons.push(`Палитра гармонирует с вашим ${uRu} подтоном.`);
+        } else {
+          const uUz = { warm: 'iliq', cool: 'sovuq', neutral: 'neytral', olive: 'zaytun' }[undertone];
+          reasons.push(`Palitra sizning ${uUz} ohangiz bilan uyg'unlashadi.`);
+        }
+      }
+    }
+  }
+
+  // 2. Explicit body proportion / fit preference alignment (NEVER fabricates measurements!)
+  const fitPref = String(body?.fitPreference || dna?.fitPreference || context?.preferences?.fitPreference || '').trim().toLowerCase();
+  const bodyType = String(body?.bodyType || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const validBodyTypes = new Set(['inverted_triangle', 'rectangle', 'triangle_pear', 'oval_apple', 'hourglass', 'athletic', 'trapezoid']);
+  if (validBodyTypes.has(bodyType) || ['fitted', 'loose', 'balanced'].includes(fitPref)) {
+    const hasStructuredLayer = part?.outerwear?.structured || part?.outerwear?.subtype === 'blazer' || part?.outerwear?.subtype === 'coat';
+    const hasOpenLayer = part?.outerwear?.closure === 'openable';
+    if (lang === 'en') {
+      if (hasStructuredLayer && validBodyTypes.has(bodyType)) {
+        reasons.push(`The structured ${enRole(part.outerwear) || 'outer layer'} frames your shoulders cleanly while keeping balanced lower proportions.`);
+      } else if (hasOpenLayer && validBodyTypes.has(bodyType)) {
+        reasons.push(`The open ${enRole(part.outerwear) || 'layer'} creates an elongating vertical line tailored to your proportions.`);
+      } else if (['fitted', 'loose', 'balanced'].includes(fitPref)) {
+        reasons.push(`The cut respects your ${fitPref} fit preference across the full silhouette.`);
+      }
+    } else if (lang === 'ru') {
+      if (hasStructuredLayer && validBodyTypes.has(bodyType)) {
+        reasons.push('Структурированный верхний слой выстраивает чёткую линию плеч и уравновешивает силуэт.');
+      } else if (['fitted', 'loose', 'balanced'].includes(fitPref)) {
+        const fRu = { fitted: 'приталенный', loose: 'свободный', balanced: 'сбалансированный' }[fitPref];
+        reasons.push(`Посадка поддерживает ваш ${fRu} крой по всему силуэту.`);
+      }
+    } else {
+      if (hasStructuredLayer && validBodyTypes.has(bodyType)) {
+        reasons.push("Tuzilmali ustki qatlam yelka chizig'ini aniq ko'rsatib, siluetni muvozanatlashtiradi.");
+      } else if (['fitted', 'loose', 'balanced'].includes(fitPref)) {
+        const fUz = { fitted: 'torroq', loose: 'erkin', balanced: 'muvozanatli' }[fitPref];
+        reasons.push(`Bichim siz tanlagan ${fUz} o'tirishga mos keladi.`);
+      }
+    }
+  }
+
+  // 3. Explicit favorite colors or owned wardrobe continuity
+  const matchedFav = lookColors.filter(c => favColors.includes(c));
+  const wardrobeColors = (Array.isArray(wardrobe?.dominantColors) ? wardrobe.dominantColors : [])
+    .map(canonicalNoteColor).filter(Boolean);
+  const matchedWardrobe = lookColors.filter(c => wardrobeColors.includes(c));
+
+  if (!reasons.length && matchedFav.length) {
+    if (lang === 'en') {
+      reasons.push(`Anchors the look in your preferred ${matchedFav.slice(0, 2).join(' and ')} palette.`);
+    } else if (lang === 'ru') {
+      const names = matchedFav.slice(0, 2).map(c => colorFor('ru', c, 'm')).filter(Boolean);
+      if (names.length) reasons.push(`Образ опирается на ваши любимые оттенки: ${names.join(', ')}.`);
+    } else {
+      const names = matchedFav.slice(0, 2).map(c => colorFor('uz', c)).filter(Boolean);
+      if (names.length) reasons.push(`To'plam siz yoqtirgan ${names.join(' va ')} ranglariga tayanadi.`);
+    }
+  } else if (reasons.length < 2 && matchedWardrobe.length && !matchedFav.length) {
+    if (lang === 'en') {
+      reasons.push(`Pairs effortlessly with the ${matchedWardrobe[0]} pieces already anchoring your wardrobe.`);
+    } else if (lang === 'ru') {
+      const cName = colorFor('ru', matchedWardrobe[0], 'm');
+      if (cName) reasons.push(`Легко сочетается с вещами вашего гардероба в базовой гамме.`);
+    } else {
+      reasons.push(`Garderobingizdagi asosiy ranglar bilan oson uyg'unlashadi.`);
+    }
+  }
+
+  return reasons.length ? reasons.slice(0, 2).join(' ') : null;
+}
+
+function buildStylingTips(lang, part, context) {
+  const tips = [];
+  const temp = Number(context?.weather?.temp ?? context?.weatherCelsius);
+
+  if (part?.outerwear && part?.top) {
+    const outerName = roleFor(lang, part.outerwear);
+    const topName = roleFor(lang, part.top);
+    if (part.outerwear.closure === 'openable' && outerName && topName) {
+      if (lang === 'ru') {
+        tips.push(`Носите ${outerName.acc} расстёгнутым в движении, чтобы открыть вертикаль ${topName.gen}.`);
+      } else if (lang === 'uz') {
+        tips.push(`Harakatda ${outerName.nom}ni ochiq qoldiring — bu ${topName.nom} chizig'ini ko'rsatib turadi.`);
+      } else {
+        tips.push(`Wear the ${outerName.name} open in motion to reveal the clean vertical contrast of the ${topName.name}.`);
+      }
+    }
+  }
+
+  if (part?.top && ['dress-shirt', 'shirt'].includes(part.top.subtype) && part?.bottom?.structured) {
+    if (lang === 'ru') {
+      tips.push('Заправьте рубашку аккуратно в классические брюки, чтобы подчеркнуть линию талии.');
+    } else if (lang === 'uz') {
+      tips.push("Bel chizig'ini aniq ko'rsatish uchun ko'ylakni klassik shim ichiga tartibli kiriting.");
+    } else {
+      tips.push('Tuck the shirt cleanly into the structured trousers to sharpen the waist-to-leg proportion.');
+    }
+  } else if (part?.bottom && ['chino', 'jeans', 'tailored-trouser', 'trouser'].includes(part.bottom.subtype) && part?.shoes) {
+    const shoeRole = roleFor(lang, part.shoes);
+    const botRole = roleFor(lang, part.bottom);
+    if (shoeRole && botRole) {
+      if (lang === 'ru') {
+        tips.push(`Держите чистую длину ${botRole.gen} с минимальным заломом, чтобы ${shoeRole.nom} завершали силуэт.`);
+      } else if (lang === 'uz') {
+        tips.push(`${cap(botRole.nom)} etagi toza tursin — shunda ${shoeRole.nom} siluetni aniq yakunlaydi.`);
+      } else {
+        tips.push(`Keep a clean, minimal break at the ${botRole.name} hem so the ${shoeRole.name} anchor the silhouette.`);
+      }
+    }
+  }
+
+  if (Number.isFinite(temp)) {
+    if (temp >= 26 && part?.outerwear) {
+      if (lang === 'ru') tips.push('В тёплую погоду держите верхний слой открытым или слегка подверните манжеты для лёгкости.');
+      else if (lang === 'uz') tips.push("Issiq havoda ustki qatlamni ochiq tuting yoki yeng uchlarini yengil qayirib oling.");
+      else tips.push('Keep the outer layer unbuttoned and roll the cuffs slightly for warm-weather airflow.');
+    } else if (temp <= 10 && part?.outerwear) {
+      if (lang === 'ru') tips.push('В прохладную погоду застегните верхний слой, чтобы сохранить чёткий собранный силуэт.');
+      else if (lang === 'uz') tips.push("Salqin havoda aniq va issiq siluet uchun ustki qatlamni tugmalab kiying.");
+      else tips.push('Fasten the outer layer outdoors to lock in warmth while preserving a sharp silhouette.');
+    }
+  }
+
+  if (!tips.length && part?.top && part?.bottom) {
+    if (lang === 'ru') tips.push('Соблюдайте баланс пропорций между верхом и низом, избегая лишних контрастных деталей.');
+    else if (lang === 'uz') tips.push("Yuqori va pastki qism proporsiyasini muvozanatda saqlang, ortiqcha detallardan tiyiling.");
+    else tips.push('Keep the proportions clean between top and bottom and let the natural garment lines lead.');
+  }
+
+  return tips.slice(0, 3);
+}
+
+/**
+ * Build personalized, editorial-caliber Stylist's Notes strictly grounded in
+ * verified SKU facts, Creative Director `artDirection`, Visual Critic real
+ * visual observations, and explicit user `PersonalStyleDna`.
+ */
+export function buildStylistNotes(look, context, direction, options = {}) {
+  const lang = options.language || normalizeStylistLanguage(context?.language);
+  const items = Array.isArray(look?.items) ? look.items : [];
+  const part = options.part || details(items);
+  const verifiedMaterials = verifiedLookMaterials(items, part);
+
+  const rawArtDirection = cleanEditorialText(
+    options.artDirection ||
+    look?.brief?.artDirection ||
+    look?.artDirection ||
+    direction?.artDirection ||
+    '',
+    235,
+  );
+  const groundedArtDirection = lang === 'en' && isGroundedAgainstLook(rawArtDirection, part, verifiedMaterials)
+    ? rawArtDirection
+    : '';
+
+  const criticInsights = lang === 'en'
+    ? extractVisualCriticInsights(look, options, part, verifiedMaterials)
+    : [];
+
+  let stylistNote = '';
+  if (lang === 'en') {
+    const parts = [];
+    if (groundedArtDirection) {
+      parts.push(groundedArtDirection.endsWith('.') ? groundedArtDirection : `${groundedArtDirection}.`);
+    }
+    if (criticInsights.length) {
+      const leadCritic = criticInsights[0];
+      // Avoid duplicating near-identical phrasing if artDirection already covers it.
+      if (!groundedArtDirection || !groundedArtDirection.toLowerCase().includes(leadCritic.slice(0, 32).toLowerCase())) {
+        parts.push(leadCritic.endsWith('.') ? leadCritic : `${leadCritic}.`);
+      }
+    }
+    if (!parts.length) {
+      const rel = actualRelationship(part);
+      const formula = buildSilhouetteFormula('en', part, items);
+      stylistNote = rel ? `${formula}. ${rel}` : `${formula}.`;
+    } else {
+      stylistNote = parts.join(' ');
+    }
+  } else {
+    const formula = buildSilhouetteFormula(lang, part, items);
+    const rel = localizedRelationship(lang, part);
+    stylistNote = rel ? `${formula}. ${rel}` : `${formula}.`;
+  }
+
+  return {
+    stylistNote,
+    whyItFlattersYou: buildWhyItFlattersYou(lang, part, items, context, options),
+    stylingTips: buildStylingTips(lang, part, context),
+    colorStory: buildColorStory(lang, part, items),
+    silhouetteFormula: buildSilhouetteFormula(lang, part, items),
+  };
+}
+
+/** Assign each actual selected look a title + explanation + Stylist's Notes,
+ * preserving order and keeping a unique headline even when all native concept IDs are equal.
  * The display language comes from context.language ('en' | 'ru' | 'uz'). */
-export function editorialDeckCopy(looks, context, directions) {
+export function editorialDeckCopy(looks, context, directions, options = {}) {
   const lang = normalizeStylistLanguage(context?.language);
   const seen = new Set();
   const basePart = details(looks?.[0]?.items || []);
-  return (looks || []).map((look,index) => {
-    const native = lookConcept(look.items,context).concept;
-    const direction = directions?.[index] || {id:index?'alternative':'signature'};
+  return (looks || []).map((look, index) => {
+    const native = lookConcept(look.items, context).concept;
+    const direction = directions?.[index] || { id: index ? 'alternative' : 'signature' };
+    const cardOptions = {
+      personalStyleDna: options?.personalStyleDna || context?.personalStyleDna || null,
+      artDirection: options?.creativeBriefs?.[index]?.artDirection || look?.brief?.artDirection || look?.artDirection || direction?.artDirection,
+      visualVerdict: options?.visualVerdicts?.[index] || look?.visualCritique || look?.visualVerdict || look?.visualReview,
+    };
     if (lang !== 'en') {
-      return localizedCard(lang, seen, index, look, basePart, context, direction, native);
+      const card = localizedCard(lang, seen, index, look, basePart, context, direction, native);
+      return {
+        ...card,
+        ...buildStylistNotes(look, context, direction, { ...cardOptions, language: lang }),
+      };
     }
     const part = details(look.items);
     const truthfulNative = groundedNativeHeadline(native.title, part);
-    const options = index === 0
+    const headlineOpts = index === 0
       ? [truthfulNative]
-      : [...headlineCandidates(part,direction),truthfulNative];
-    let title = options.find(s=>s&& !seen.has(s.toLowerCase()));
-    if (!title) title = `${truthfulNative} · Option ${index+1}`;
+      : [...headlineCandidates(part, direction), truthfulNative];
+    let title = headlineOpts.find(s => s && !seen.has(s.toLowerCase()));
+    if (!title) title = `${truthfulNative} · Option ${index + 1}`;
     seen.add(title.toLowerCase());
     return {
-      concept: {id:native.id,title,referenceId:look.referenceId??null},
-      description: shortCopy(basePart,part,context,direction),
+      concept: { id: native.id, title, referenceId: look.referenceId ?? null },
+      description: shortCopy(basePart, part, context, direction),
+      ...buildStylistNotes(look, context, direction, { ...cardOptions, part, language: 'en' }),
     };
   });
 }
