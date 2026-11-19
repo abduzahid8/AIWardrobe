@@ -209,6 +209,8 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       'personal_context_excluded','context_unsupported',
     ].includes(f.photoHistoryStatus)?f.photoHistoryStatus:'not_run',
     photoHistoryExamples:safe(f.photoHistoryExamples,240),
+    photoHistoryHoldoutWins:safe(f.photoHistoryHoldoutWins,16),
+    photoHistoryHoldoutPairs:safe(f.photoHistoryHoldoutPairs,16),
     photoHistoryPriorConsidered:f.photoHistoryPriorConsidered===true,
     photoJournalScope:[
       'not_enabled','no_photo_evidence','personal_context_excluded','eligible',
@@ -1955,7 +1957,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         if(contextHash){
           const rows=await io.readPhotoRewardHistory(contextHash);
           const model=trainPhotoRewardHistory(rows,contextHash);
-          photoHistory={status:model.status,examples:model.examples};
+          photoHistory={status:model.status,examples:model.examples,
+            holdoutWins:model.holdoutWins,holdoutPairs:model.holdoutPairs};
           if(model.usable){
             photoHistory.scoreFeatures=features=>{
               const tokens=photoHistoryFeatureHashes(features,items=>items,

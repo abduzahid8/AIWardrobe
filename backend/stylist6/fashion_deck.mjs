@@ -2483,6 +2483,10 @@ export async function recommendFashionDeck({
         photoHistory?.status||'not_run').slice(0,42);
       modelFashionSelection.photoHistoryExamples=Number.isSafeInteger(
         photoHistory?.examples)?photoHistory.examples:0;
+      modelFashionSelection.photoHistoryHoldoutWins=Number.isSafeInteger(
+        photoHistory?.holdoutWins)?photoHistory.holdoutWins:0;
+      modelFashionSelection.photoHistoryHoldoutPairs=Number.isSafeInteger(
+        photoHistory?.holdoutPairs)?photoHistory.holdoutPairs:0;
       modelFashionSelection.photoHistoryPriorConsidered=
         typeof photoHistory?.scoreFeatures==='function';
       let reviewed=await evaluateVisualShortlist(

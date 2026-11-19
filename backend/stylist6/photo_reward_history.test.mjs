@@ -74,7 +74,9 @@ test('training is order-invariant and remains scoped to trusted context',()=>{
 test('contradictory labels of same profile are ignored; no implicit approvals from numeric scores',()=>{
   const rows=evidence();
   const contradict=rows.map(row=>({
-    ...row,fingerprint:digest('different'+row.fingerprint),photo_outcome:-row.photo_outcome,
+    ...row,fingerprint:digest('different'+row.fingerprint),
+    photo_outcome:-row.photo_outcome,
+    photo_reason:row.photo_outcome===1?'below_quality_floor':'approved',
   }));
   const model=trainPhotoRewardHistory([...rows,...contradict],CONTEXT);
   assert.equal(model.usable,false);
@@ -99,6 +101,34 @@ test('no raw merchant descriptions or images qualify as private scored features'
   const other=trainPhotoRewardHistory(withoutUserIds,CONTEXT);
   assert.equal(other.usable,true);
   assert.doesNotMatch(JSON.stringify([...other.weights.keys()]),/PRIVATE|secret|owner/);
+});
+
+test('single-photo source quirks do NOT become transferable fashion knowledge',()=>{
+  const withUniqueSku=evidence().map(row=>({
+    ...row,feature_hashes:[...row.feature_hashes,
+      digest('singleton_not_a_fashion_rule:'+row.fingerprint)].sort(),
+  }));
+  const model=trainPhotoRewardHistory(withUniqueSku,CONTEXT);
+  assert.equal(model.usable,true);
+  for(const row of withUniqueSku)
+    assert.equal(model.weights.has(digest('singleton_not_a_fashion_rule:'+row.fingerprint)),false,
+      'unrepeated SKU-like features cannot masquerade as learned whole-look taste');
+  assert.ok(scorePhotoRewardHistory(model,observed(true,111))>
+    scorePhotoRewardHistory(model,observed(false,111)));
+});
+
+test('source-verified photo provenance and numeric grade are mandatory for reward learning',()=>{
+  const source=evidence();
+  for(const invalid of [
+    source.map(x=>({...x,photo_reason:'owner_like',photo_outcome:1})),
+    source.map(x=>({...x,photo_quality:null})),
+    source.map(x=>({...x,photo_outcome:-1,photo_reason:'approved'})),
+    source.map(x=>({...x,photo_outcome:1,photo_reason:'model_veto'})),
+  ]){
+    const learner=trainPhotoRewardHistory(invalid,CONTEXT);
+    assert.equal(learner.usable,false);
+    assert.equal(learner.examples,0);
+  }
 });
 
 test('cross-request hash scorer EXACTLY matches independently judged journal evidence',()=>{

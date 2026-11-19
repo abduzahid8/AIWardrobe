@@ -172,3 +172,47 @@ All hard requirements are unchanged: per-look original photo assessment,
 four real source-bound retail items, budget/availability constraints,
 personalized style and occasion, and independent blind human acceptance
 before Stylist 6 replaces Stylist 5.
+
+## 19 Nov — regularized photographic comparison learner (v2)
+
+The private staging journal contains 27 authentic photo-outcome rows
+(12 approved, 15 rejected at the read-only checkpoint). The v1 trainer
+saw 20 distinct, mutually consistent four-SKU histories and rejected
+its own 3/4 held-out pairwise accuracy. This is **good abstention**,
+not a completed stylist. A separate read-only analysis showed that the
+median feature overlap between good/poor photo looks was roughly 0.13,
+and individual looks had ~100 hashed descriptive features. Many rare
+product conjunctions cannot be safely interpreted as universal taste.
+
+v2 makes a *statistical* (not garment-rule) improvement:
+- Features appearing only once in the TRAINING subset have no fitted
+  weight. Evidence shared by two or more original-photo outfits gets
+  progressively more weight. Photo holdouts NEVER feed this support
+  calculation.
+- Cross-outfit comparisons use the actual independent photo quality
+  difference: a 0.85 vs 0.55 outfit supplies more ranking evidence than
+  an almost-tied 0.75 vs 0.748 pair. No style name, clothing type, brand,
+  item ID, SKU identity or color receives a manual positive/negative
+  style prior.
+- Independently rejected photo looks may be contrasted with each other
+  by *graded quality*. This DOES NOT grant them approval, change the
+  original verdict, lower photo quality requirements or override owner
+  constraints.
+- Inputs still require the original-photo provenance/reason; owner likes
+  and other label types are rejected and never treated as photographic
+  ground truth.
+- The model STILL needs at least six distinct genuine photographic
+  positives, ten negatives and ALL FOUR independently held-out
+  positive-vs-negative comparisons better than the 0.04 margin.
+  If any fails, the prior is neutral and original fashion-deck decision
+  behavior remains in control.
+- Safe server receipts now expose bounded counts of held-out pairwise
+  passes/total, NOT merchant IDs, raw apparel features, HMAC tokens or
+  private preferences.
+
+This is only engineering preparation. Its production value is ZERO
+until a LIVE staging generation on an exact tested/deployed SHA
+demonstrates more original-photo-approved, *genuinely distinct* ensembles,
+and blinded independent humans prefer the resulting 3×4 deck.
+Do not replace the human-beauty 30-context release gate with photo-model
+self-agreement, positive unit tests or a forced third card.

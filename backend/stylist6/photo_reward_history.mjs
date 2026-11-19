@@ -14,8 +14,12 @@
 import {createHash,createHmac} from 'node:crypto';
 import {outfitRelationshipFeatures} from './learned_outfit_preference.mjs';
 import {PHOTO_REWARD_JOURNAL_VERSION,photoRewardContextHash} from './photo_reward_journal.mjs';
-export const PHOTO_REWARD_HISTORY_VERSION='s6-photo-history-pairwise-v1';
+export const PHOTO_REWARD_HISTORY_VERSION='s6-photo-history-pairwise-v2';
 const DIGEST=/^[0-9a-f]{64}$/;
+const PHOTO_REJECTION_REASONS=new Set([
+  'model_veto','below_quality_floor','style_mismatch',
+  'occasion_mismatch','formality_mismatch',
+]);
 const MAX_ROWS=240,MAX_FEATURES=180,MIN_FEATURES=12;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const neutral=(status,extra={})=>({version:PHOTO_REWARD_HISTORY_VERSION,
@@ -52,26 +56,69 @@ function evidence(row,contextHash){
       row.feature_hashes.length<MIN_FEATURES||row.feature_hashes.length>MAX_FEATURES||
       row.feature_hashes.some(x=>typeof x!=='string'||!DIGEST.test(x))||
       ![-1,1].includes(row.photo_outcome)||
+      (row.photo_outcome===1
+        ?row.photo_reason!=='approved'
+        :!PHOTO_REJECTION_REASONS.has(row.photo_reason))||
+      row.photo_quality===null||row.photo_quality===undefined||
       !Number.isFinite(Number(row.photo_quality))||
       Number(row.photo_quality)<0||Number(row.photo_quality)>1)
     return null;
   const features=[...new Set(row.feature_hashes)].sort();
   if(features.length<MIN_FEATURES)return null;
   const key=sha(features.join(','));
-  return {key,features,label:row.photo_outcome};
+  return {key,features,label:row.photo_outcome,
+    quality:Number(row.photo_quality)};
 }
+/**
+ * Actual-photo contrastive learning, not a catalog/subtype rule.
+ *
+ * The old classifier gave every one-off feature of a single photograph the
+ * same authority as a garment RELATIONSHIP repeated across independent
+ * photos. That memorized SKU accidents instead of transferable style.
+ *
+ * Only SHARED visual relations in the TRAINING fold can move weights;
+ * unseen held-out features never participate in fitting the frequency
+ * prior. The source-independent original-photo QUALITY gap controls how
+ * strongly two complete photographed outfits are compared. Ratings are
+ * from the PHOTO critic, never from the owner's explicit likes.
+ */
 function fit(positive,negative){
+  const all=[...positive,...negative];
+  const frequency=new Map();
+  for(const look of all)for(const feature of look.features)
+    frequency.set(feature,(frequency.get(feature)||0)+1);
+  // Statistical support shrinkage, not a garment ban: one-off exact source
+  // quirks supply zero training weight, repeated evidence increasingly so.
+  const reliability=new Map([...frequency].map(([key,count])=>
+    [key,clamp((count-1)/3,0,1)]));
+  const pairs=positive.flatMap(p=>negative.map(n=>({
+    p,n,confidence:clamp(0.5+Math.max(0,p.quality-n.quality)*2,0.5,1.5),
+  })));
+  // A failed photographed outfit may still be BETTER than another failed
+  // outfit. Learn that degree of genuine visual quality without ever
+  // treating either rejection as a pass. This helps with the common
+  // 1-approval / many-rejections staging batches.
+  for(const group of [positive,negative])
+    for(let i=0;i<group.length;i++)for(let j=i+1;j<group.length;j++){
+      const p=group[i],n=group[j],gap=Math.abs(p.quality-n.quality);
+      if(gap<0.08)continue;
+      pairs.push({p:p.quality>n.quality?p:n,
+        n:p.quality>n.quality?n:p,
+        confidence:Math.min(0.22,gap*0.55)});
+    }
   const weights=new Map();
   for(let epoch=0;epoch<18;epoch++){
     const lr=0.055/(1+0.12*epoch);
-    for(const p of positive)for(const n of negative){
-      const delta=new Map(),d=gradient(score(weights,p.features)-score(weights,n.features));
+    for(const {p,n,confidence} of pairs){
+      const delta=new Map(),d=confidence*
+        gradient(score(weights,p.features)-score(weights,n.features));
       for(const f of p.features)delta.set(f,(delta.get(f)||0)+1);
       for(const f of n.features)delta.set(f,(delta.get(f)||0)-1);
       for(const [key,v] of delta){
-        if(!v)continue;
+        const support=reliability.get(key)||0;
+        if(!v||!support)continue;
         const current=weights.get(key)||0;
-        const next=current*(1-0.001*lr)+lr*d*v;
+        const next=current*(1-0.003*lr)+lr*d*v*support;
         if(Number.isFinite(next))weights.set(key,clamp(next,-3,3));
       }
     }
