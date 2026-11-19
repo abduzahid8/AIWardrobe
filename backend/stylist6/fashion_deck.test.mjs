@@ -2378,6 +2378,85 @@ test('image-model rejection launches bounded SECOND AI SKU composition and real 
   assert.ok(revisionIDs.length>=9);
 });
 
+test('TWO approved actual-photo outfits and ZERO viable triples trigger independent UNUSED source creative studio',async()=>{
+  const slots=['top','outerwear','bottom','shoes'];
+  const family=[
+    ['shirt','fine-knit','polo','dress-shirt','merino-crew','turtleneck'],
+    ['blazer','coat','cardigan','overshirt','wool-jacket','suede-jacket'],
+    ['tailored-trouser','chino','pleated-trouser','wide-trouser','wool-trouser','relaxed-chino'],
+    ['loafer','derby','chelsea','oxford','monk','suede-loafer'],
+  ];
+  const catalog=slots.flatMap((slot,j)=>Array.from({length:30},(_,i)=>
+    garment('photo-gap-'+slot+'-'+i,
+      ['Cream','Navy','Brown','Olive','Grey','Stone'][i%6]+' genuine '+slot+' '+i,
+      slot,family[j][i%6])));
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:18},optionalLayer:false,preferences:{},requiredIds:[],
+    budget:{amount:3000000,currency:'UZS'}};
+  let photoRounds=0,studioCalls=0;
+  let originalMenuIds=new Set();
+  let revisedIDs=[];
+  const judgedApproval=new Set();
+  const result=await recommendFashionDeck({...base,request,catalog,referenceBriefs:refs,
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
+    selectCatalogCompositions:async({pool,parallel})=>{
+      assert.equal(parallel,true);
+      originalMenuIds=new Set(pool.map(x=>x.item.id));
+      assert.ok(slots.every(slot=>pool.filter(x=>x.slot===slot).length>=8));
+      return {status:'composed',looks:Array.from({length:8},(_,i)=>
+        slots.map(slot=>pool.filter(x=>x.slot===slot)[i].item)),
+        providerCalls:1};
+    },
+    selectCatalogRescueCompositions:async({pool,critiqueFeedback})=>{
+      studioCalls++;
+      assert.equal(critiqueFeedback.approvedArchitectures.length,2,
+        'the new creator must learn from both actual accepted PHOTO looks');
+      assert.ok(critiqueFeedback.approvedPhotoEvidence.length>=1,
+        'new fashion decision receives real positive image observations');
+      assert.ok(critiqueFeedback.rejectedOutfits.length>=1,
+        'new decision also sees concrete rejected PHOTO relationships');
+      assert.ok(slots.every(slot=>pool.filter(x=>x.slot===slot).length>=3));
+      assert.ok(pool.every(x=>!originalMenuIds.has(x.item.id)),
+        'partial-but-nonviable portfolios MUST explore real source merchandise never shown to first AI');
+      const looks=Array.from({length:3},(_,i)=>
+        slots.map(slot=>pool.filter(x=>x.slot===slot)[i].item));
+      revisedIDs=looks.flat().map(x=>x.id);
+      return {status:'composed',looks,providerCalls:1,
+        providerFamily:'nemotron_fast_photo_revision'};
+    },
+    photoRescueRemainingMs:()=>34000,
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      photoRounds++;
+      return batch.map((look,i)=>{
+        const data=admittedVisualVerdict(look,{
+          reject:photoRounds===1&&i>=2,
+          slotColors:{top:['white','cream','navy'][i%3],
+            outerwear:['navy','brown','olive'][i%3],
+            bottom:['grey','stone','brown'][i%3],shoes:'brown'},
+          slotObservations:{top:'Photographic shirt drape is harmonious',
+            bottom:'Good photographed trouser proportions'},
+        });
+        if(!data.reject)judgedApproval.add(data.candidateId);
+        return data;
+      });
+    },
+  });
+  assert.equal(studioCalls,1,'one bounded PHOTO-guided correction with NEW source goods');
+  assert.equal(photoRounds,2,'a SECOND authentic PHOTO review must happen');
+  assert.equal(result.diagnostics.modelFashionSelection.photoRevisionInventory,
+    'unseen_source_skus');
+  assert.equal(result.diagnostics.modelFashionSelection.photoRevisionStatus,'composed');
+  assert.ok(result.diagnostics.modelFashionSelection.photoRevisionAttempted>=1);
+  assert.ok(revisedIDs.length>=12);
+  assert.equal(result.outfits.length,3,
+    'new independently judged real merchandise must allow a full three-look deck if PHOTO approves');
+  assert.ok(result.outfits.every(x=>judgedApproval.has(x.id)));
+  assert.ok(result.outfits.every(x=>x.items.length===4&&
+    x.items.every(it=>it.isShopItem===true)));
+  assert.equal(result.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
+});
+
 test('ZERO of eight actual-photo approvals triggers a NEW unseen-source creative fashion studio, not silent empty-deck abandonment',async()=>{
   const slots=['top','outerwear','bottom','shoes'];
   const family=[

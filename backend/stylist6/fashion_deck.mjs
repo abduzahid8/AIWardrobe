@@ -2805,22 +2805,24 @@ export async function recommendFashionDeck({
         // the verified original partial deck remains intact.
         const freshPool=composerPool.filter(p=>
           !firstProductKeys.has(baseProductId(String(p.item?.id))));
-        // A real Work mobile failure: all 8 initial outfits were SOURCE
-        // genuine, but all 8 ORIGINAL PHOTOGRAPHS were rejected. The old
-        // correction required >=1 accepted look and therefore never even
-        // asked a SECOND AI what new outfit to make. For this specific
-        // complete fashion failure, the second studio must SEE ACTUAL new
-        // inventory that the first author never saw, together with concrete
-        // original photo-veto observations. No new database access and no
-        // new aesthetic prohibitions: every source product will again pass
-        // strict admission and actual independent PHOTO quality evaluation.
-        const failedWholeCollection=reviewed.diagnostics.visualApproved===0;
+        // Actual authenticated iOS Work evidence: 11 original-product PHOTO
+        // critiques yielded FIVE approved looks but still ZERO feasible
+        // independent THREE-look portfolios (the final editor chose two
+        // near-identical shirt/blazer/loafer architectures). The former
+        // rescue explored genuinely UNSEEN merchandise only when ZERO
+        // photographs were approved. That is the wrong creative stopping
+        // condition: the goal is a complete, beautiful, diverse COLLECTION,
+        // not one or two individually acceptable photo cards. Let a second
+        // PHOTO-informed author see different authentic merchandise any
+        // time the first judged collection cannot fulfill three looks.
+        // Keep original owner constraints and PHOTO vetoes unchanged.
+        const needsNewCreativeInventory=reviewed.outfits.length<3;
         const initialSkuKeys=new Set(composerPool.map(p=>
           baseProductId(String(p.item?.id))));
         const excludedKeys=new Set(
           (Array.isArray(request.excludedIds)?request.excludedIds:[])
             .map(id=>baseProductId(String(id))));
-        const unexplored=failedWholeCollection&&Array.isArray(catalog)
+        const unexplored=needsNewCreativeInventory&&Array.isArray(catalog)
           ?catalog.filter(item=>item?.isShopItem===true&&
               !initialSkuKeys.has(baseProductId(String(item.id)))&&
               !excludedKeys.has(baseProductId(String(item.id))))
@@ -2831,12 +2833,10 @@ export async function recommendFashionDeck({
           :[];
         const totallyNew=slots.every(slot=>unfamiliarPool.filter(p=>
           p.slot===slot).length>=3);
-        const creativeRetryPool=failedWholeCollection&&totallyNew
+        const creativeRetryPool=needsNewCreativeInventory&&totallyNew
           ?unfamiliarPool:freshPool;
-        modelFashionSelection.photoRevisionInventory=
-          failedWholeCollection
-            ?totallyNew?'unseen_source_skus':'source_fallback'
-            :'remaining_source_skus';
+        modelFashionSelection.photoRevisionInventory=totallyNew
+          ?'unseen_source_skus':'source_fallback';
         // Transfer concrete photographic evidence from the exact FAILED
         // outfit to the autonomous composer. Generic reason codes alone do
         // not tell a stylist whether the shoe shape, proportion or fabric
