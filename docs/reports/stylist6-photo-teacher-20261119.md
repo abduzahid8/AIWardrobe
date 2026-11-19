@@ -130,3 +130,13 @@ products, 7,556 visual profiles, only 1,093 visible volume attributes and
 1,838 texture attributes. Missing photo evidence is not known fashion
 information and may limit learning; building a properly authorized original-
 photo first-pass fashion vision process remains strategically necessary.
+
+**Additional real-engine integration regression:** in an authenticated-source
+fashion-deck fixture with one independently photographed winner and multiple
+independently photographed failures, the first actual rescue callback now
+receives one genuine positive and at least three rejected photo comparisons.
+The test calls the real fashion-deck entrypoint, not only a standalone
+teacher. It verifies that one positive is **not** falsely labelled
+`photo_validated` and that all displayed source SKUs still undergo actual
+follow-up photo evaluation. The graded model can instead report its stricter
+`graded_photo_validated` outcome if its real PHOTO holdout succeeds.

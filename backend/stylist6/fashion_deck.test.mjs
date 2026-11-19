@@ -2281,6 +2281,14 @@ test('image-model rejection launches bounded SECOND AI SKU composition and real 
   assert.equal(critiques,2,'a SECOND independent whole-look photo review must occur');
   assert.ok(r.diagnostics.modelFashionSelection.photoRevisionAttempted>0);
   assert.equal(r.diagnostics.modelFashionSelection.photoRevisionStatus,'composed');
+  assert.equal(r.diagnostics.modelFashionSelection.photoTeacherPositive,1,
+    'one original PHOTO-verified winner is the positive teacher example');
+  assert.ok(r.diagnostics.modelFashionSelection.photoTeacherNegative>=3,
+    'original PHOTO reject cases, not just a literal model-veto flag, supply negative comparisons');
+  assert.ok(r.diagnostics.modelFashionSelection.photoTeacherExamples>=4,
+    'training must receive the actual original-photo comparison examples');
+  assert.ok(r.diagnostics.modelFashionSelection.photoTeacherStatus!=='photo_validated',
+    'one approval cannot claim two-photo validated taste');
   assert.ok(r.diagnostics.visualReviewCoverage.attempted>8);
   assert.equal(r.diagnostics.visualReviewCoverage.unreviewedFillAdded,0);
   assert.ok(r.outfits.every(l=>Array.isArray(l.visualEvidence)));
