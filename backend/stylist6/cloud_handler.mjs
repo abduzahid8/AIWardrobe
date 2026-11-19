@@ -179,6 +179,10 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     // original-photo critic. No merchant or user identities ever logged.
     skuCompositionHistoryCreativeAuditions:
       safe(f.skuCompositionReceipt?.photoHistoryCreativeAuditions,8),
+    // Actual initial PHOTO submissions (not inferred from the number of
+    // created variants, and never evidence of the PHOTO judge's approval).
+    skuCompositionHistoryReachedPhoto:
+      safe(f.skuCompositionReceipt?.photoHistoryReachedPhoto,8),
     // The AI's first three source-verified PHOTO candidates have a genuinely
     // product-unique, structurally independent triple BEFORE review. It is
     // not a claim that any of their actual original photos passed.
