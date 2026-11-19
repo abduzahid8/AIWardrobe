@@ -139,3 +139,36 @@ context hash from the full authenticated server request. Scores never
 cross different color/fit/style-goal contexts, and never turn a
 photographic AI veto into an owner preference. Only allowed catalog
 four-item photo verdicts enter the 30-day RLS-private journal.
+
+## Authentic PHOTO history calibration — 19 November
+
+Verified via **real authenticated iOS** and isolated Render staging on
+`fdbe96fe`, not synthetic labels: 21 anonymized, independently photo-judged
+source-bound four-product examples retained in the private Supabase table;
+8 positives, 13 negatives, ONE HMAC-protected owner styling context.
+Only 20 unique semantic four-garment signatures remain after deduplicating
+a repeated profile: 8 true positive / 12 negative, no conflicting labels.
+
+Reproduced the exact read-only logistic pairwise training and deterministic
+held-out split from `photo_reward_history.mjs` against those 21 pseudonymous
+profile rows (NO merchandise photos or owner data copied): **3/4 of held-out
+PHOTO comparisons correctly ordered; one margin 0.001 < required 0.04**.
+Therefore model status is correctly **uncalibrated_history / abstain**.
+We have NOT taught the product to select reliably beautiful looks yet.
+Do not lower this threshold or claim a human style preference.
+
+On one same-context real mobile attempt the server instead reported
+`context_unsupported` (0 displayed / 8 judged original-photo looks).
+The existing native preference store was inspected LOCALLY for its *field
+names/types only*: all twelve typed fields independently pass the
+anonymization function for canonical Classic/Work. We did not inspect or
+publish user preference contents. Thus the unsupported case is likely in
+the generated fashion scene's style/occasion normalization, not the user's
+actual stored preferences. The new journal logs ONLY a fixed, nonpersonal
+unsupported_style / unsupported_occasion / unsupported_preferences enum
+when this occurs, with no original values.
+
+All hard requirements are unchanged: per-look original photo assessment,
+four real source-bound retail items, budget/availability constraints,
+personalized style and occasion, and independent blind human acceptance
+before Stylist 6 replaces Stylist 5.

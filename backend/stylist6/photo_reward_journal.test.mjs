@@ -177,3 +177,27 @@ test('real UI Old Money, Semi Classic and Date night aliases have canonical phot
     style:'new private style',occasion:'private wedding',preferences:prefs,
   },key),null,'never train on uncontrolled free text or private event names');
 });
+
+test('actual RN stylePreferenceStore full typed state is accepted consistently for writer and reader',()=>{
+  const secret='isolated-staging-private-hmac-0123456789abcdef';
+  const preferences={
+    bodyType:'athletic',stylePersonality:'semi-classic',
+    favoriteColors:['Navy','Beige'],avoidColors:['red'],
+    likedPatterns:['solid'],dislikedPatterns:['large graphic'],
+    fitPreference:'loose',primaryOccasions:['work','date'],
+    workDressCode:'business_casual',
+    favoriteBrands:['Massimo Dutti'],avoidBrands:[],
+    priceRange:{min:0,max:500,currency:'USD'},
+    prefersSustainable:false,
+    styleGoals:['get_styled','shop_smarter'],
+  };
+  const ctx={style:' Classic ',occasion:' Work ',preferences};
+  const rows=compilePhotoRewardExamples({...input(),
+    context:ctx,secret});
+  assert.equal(rows.length,2);
+  assert.equal(rows[0].context_hash,photoRewardContextHash(ctx,secret));
+  assert.equal(anonymousPhotoJournalAllowed({
+    sourceMode:'catalog',requiredIds:[],preferences}),true);
+  assert.doesNotMatch(JSON.stringify(rows),
+    /athletic|Massimo|Beige|Navy|Beige|work|red|styleGoals|Dutti/i);
+});

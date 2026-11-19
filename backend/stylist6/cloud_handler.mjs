@@ -26,7 +26,7 @@ import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.
 import { hydrateCatalogObservations } from './catalog_observation.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
 import {compilePhotoRewardExamples,anonymousPhotoJournalAllowed,
-  photoRewardContextHash} from './photo_reward_journal.mjs';
+  photoRewardContextHash,photoRewardContextStatus} from './photo_reward_journal.mjs';
 import {
   trainPhotoRewardHistory,scorePhotoRewardHistory,
   photoHistoryContextHash,photoHistoryFeatureHashes,
@@ -1907,8 +1907,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           preferences:input.preferences};
         const secret=env.STYLIST6_NODE_SHARED_SECRET;
         if(!photoRewardContextHash(journalContext,secret)){
-          console.info('stylist6_photo_reward_journal',
-            {status:'context_unsupported',examples:0});
+          console.info('stylist6_photo_reward_journal',{
+            status:'context_unsupported',
+            // This is a fixed enum only, NEVER a raw request field.
+            reason:photoRewardContextStatus(journalContext),examples:0,
+          });
           return;
         }
         const rows=compilePhotoRewardExamples({

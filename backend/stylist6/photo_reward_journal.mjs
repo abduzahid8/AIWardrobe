@@ -99,19 +99,40 @@ function normalizedPhotoPrefs(input,fitOverride){
   }
   return out;
 }
-const safeContext=context=>{
-  // Match the APP's canonical UI style/occasion codes, NOT arbitrary
-  // free-text hints. "Old Money", "old-money" and "old_money" are one
-  // scenario; "Date night" must not silently become an untrainable label.
-  const style=safeString(context?.style)?.replace(/[\s-]+/g,'_');
+const normalizedContextParts=context=>{
+  // Match the actual fashion engine (normalizeStyleId) rather than
+  // rejecting a valid app request whose free-form style is mapped by
+  // THAT engine to casual. Unknown style is never an invented aesthetic:
+  // it is the engine's already-existing fallback, not a fashion rule.
+  const sourceStyle=safeString(context?.style)?.replace(/[\s-]+/g,'_');
+  // Unknown short UI labels use the actual engine's existing 'casual'
+  // fallback. Never accept arbitrary long/free-text identity material as
+  // an anonymous learning context (e.g. private phone numbers).
+  const uiShapedStyle=sourceStyle&&
+    /^[a-z]{2,20}(?:_[a-z]{2,20}){0,2}$/.test(sourceStyle);
+  const style=uiShapedStyle
+    ?(SAFE_STYLES.has(sourceStyle)?sourceStyle:'casual'):null;
   const rawOccasion=safeString(context?.occasion);
   const occasion=['date night','date_night'].includes(rawOccasion)
     ?'date':rawOccasion;
-  const preferences=normalizedPhotoPrefs(context?.preferences,
-    context?.fitPreference);
-  return style&&occasion&&preferences&&
-    SAFE_STYLES.has(style)&&SAFE_OCCASIONS.has(occasion)
-    ?{style,occasion,preferences}:null;
+  return {style,occasion};
+};
+/** Nonpersonal failure reason only: values, emails, brands and garment
+ * characteristics are NEVER logged. */
+export function photoRewardContextStatus(context){
+  const {style,occasion}=normalizedContextParts(context);
+  if(!style)return 'unsupported_style';
+  if(!occasion||!SAFE_OCCASIONS.has(occasion))
+    return 'unsupported_occasion';
+  if(!normalizedPhotoPrefs(context?.preferences,context?.fitPreference))
+    return 'unsupported_preferences';
+  return 'supported';
+}
+const safeContext=context=>{
+  if(photoRewardContextStatus(context)!=='supported')return null;
+  const {style,occasion}=normalizedContextParts(context);
+  return {style,occasion,
+    preferences:normalizedPhotoPrefs(context?.preferences,context?.fitPreference)};
 };
 const validQuality=q=>Number.isFinite(q)&&q>=0&&q<=1;
 const hash=(key,type,value)=>createHmac('sha256',key)
