@@ -35,6 +35,10 @@ export const LOOK_BOARD_WIDTH = 1024;
 export const LOOK_BOARD_HEIGHT = 1024;
 export const PORTFOLIO_SHEET_WIDTH = 1800;
 export const PORTFOLIO_SHEET_HEIGHT = 1000;
+export const SHOWROOM_BOARD_WIDTH = 1600;
+export const SHOWROOM_BOARD_HEIGHT = 1600;
+export const SWAP_BOARD_WIDTH = 1400;
+export const SWAP_BOARD_HEIGHT = 900;
 
 export const MAX_INPUT_IMAGE_BYTES = 4 * 1024 * 1024;
 export const MAX_INPUT_IMAGE_PIXELS = 36 * 1024 * 1024;
@@ -42,6 +46,8 @@ export const MAX_INPUT_EDGE = 8192;
 export const MIN_INPUT_EDGE = 16;
 export const DEFAULT_LOOK_BOARD_MAX_BYTES = 512 * 1024;
 export const DEFAULT_PORTFOLIO_MAX_BYTES = 850 * 1024;
+export const DEFAULT_SHOWROOM_MAX_BYTES = 1024 * 1024;
+export const DEFAULT_SWAP_MAX_BYTES = 768 * 1024;
 export const DEFAULT_FETCH_TIMEOUT_MS = 8000;
 
 const SUPPORTED_DECODE_FORMATS = new Set(['jpeg', 'png', 'webp', 'avif']);
@@ -1161,6 +1167,919 @@ export async function renderPortfolioComparisonSheet(looks, options = {}) {
       lookTokens,
       slotStatuses,
       allLooksRendered: false,
+      renderMs: Math.round(performance.now() - started),
+      cacheHits,
+      cacheMisses,
+      version: EDITORIAL_BOARD_RENDERER_VERSION,
+    };
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+}
+
+function unwrapGarmentEntry(entry) {
+  if (!entry || typeof entry !== 'object') return null;
+  if (entry.item && typeof entry.item === 'object') return entry.item;
+  return entry;
+}
+
+const SHOWROOM_RACKS = Object.freeze([
+  Object.freeze({ slot: 'top', aliases: ['top', 'tops'], prefix: 'T', label: 'TOP' }),
+  Object.freeze({ slot: 'outerwear', aliases: ['outerwear', 'layer', 'layers'], prefix: 'L', label: 'OUTERWEAR' }),
+  Object.freeze({ slot: 'bottom', aliases: ['bottom', 'bottoms'], prefix: 'B', label: 'BOTTOM' }),
+  Object.freeze({ slot: 'shoes', aliases: ['shoes', 'footwear'], prefix: 'S', label: 'SHOES' }),
+]);
+
+/**
+ * Render a 1600x1600 4-rack Visual Showroom Board (TOP T1..T8, OUTERWEAR L1..L8,
+ * BOTTOM B1..B8, SHOES S1..S8 — up to 32 real photographed garments on warm
+ * `#F6F5F2` studio canvas) so a Vision-Language Stylist can see real fabric,
+ * drape, shade, silhouette, shoe profile, and photo cleanliness BEFORE composing.
+ *
+ * Security & honesty guarantees:
+ *   - Reuses `resolveItemRawBytes` (SSRF allowlist + bounded LRU `photoCache`)
+ *     and `decodeNormalizedPhotoBytes` (AVIF/WebP/PNG/JPEG + byte/pixel caps).
+ *   - Skips unreachable/broken/blocked photos honestly and ONLY emits tokens
+ *     for garments whose photographs actually decoded and rendered on the board.
+ */
+export async function renderVisualShowroomBoard(slotPools, options = {}) {
+  const started = performance.now();
+  const {
+    title = 'PRIVATE VISUAL SHOWROOM',
+    subtitle = 'REAL GARMENT PHOTOGRAPHS · CHOOSE EXACT TOKENS (T / L / B / S)',
+    maxPerSlot = 8,
+    minPerSlot = 0,
+    requireMinPerSlot = false,
+    anonymizeLabels = false,
+    includePriceTags = true,
+    maxOutputBytes = DEFAULT_SHOWROOM_MAX_BYTES,
+    deadlineMs = 9000,
+    signal = null,
+    photoCache = null,
+    resolvePhoto = null,
+    authorizePhoto = null,
+    allowlist = HOST_ALLOWLIST,
+    fetchImpl = globalThis.fetch,
+    sharpImpl = sharp,
+  } = options;
+
+  const perSlotCap = Math.max(1, Math.min(8, Math.floor(Number(maxPerSlot) || 8)));
+  const poolsObj = slotPools && typeof slotPools === 'object' ? slotPools : {};
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(400, Math.min(25_000, deadlineMs)));
+  const combinedSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+
+  const rackCardW = 185;
+  const rackCardH = 336;
+  const rackGapX = 10;
+  const rackStartX = 25;
+  const rackStartY = 74;
+  const rackH = 368;
+  const rackGapY = 10;
+  const imgPadX = 8;
+  const imgOffsetY = 36;
+  const imgW = 169;
+  const imgH = 254;
+
+  const requestedByRack = SHOWROOM_RACKS.map((rack) => {
+    let rawList = [];
+    for (const alias of rack.aliases) {
+      if (Array.isArray(poolsObj[alias]) && poolsObj[alias].length > 0) {
+        rawList = poolsObj[alias];
+        break;
+      }
+    }
+    const items = [];
+    const seenIds = new Set();
+    for (const entry of rawList) {
+      const item = unwrapGarmentEntry(entry);
+      if (!item) continue;
+      const dedupeKey = item.id != null ? String(item.id) : null;
+      if (dedupeKey && seenIds.has(dedupeKey)) continue;
+      if (dedupeKey) seenIds.add(dedupeKey);
+      items.push(item);
+      if (items.length >= perSlotCap) break;
+    }
+    return { rack, items };
+  });
+
+  const totalRequested = requestedByRack.reduce((sum, r) => sum + r.items.length, 0);
+  const tokens = {};
+  const tokensBySlot = { top: [], outerwear: [], bottom: [], shoes: [] };
+  const slotCounts = { top: 0, outerwear: 0, bottom: 0, shoes: 0 };
+  const skipped = [];
+  let cacheHits = 0;
+  let cacheMisses = 0;
+
+  if (totalRequested === 0) {
+    clearTimeout(timer);
+    controller.abort();
+    return {
+      ok: false,
+      error: 'empty_showroom_pool',
+      jpegBuffer: null,
+      bytes: null,
+      width: SHOWROOM_BOARD_WIDTH,
+      height: SHOWROOM_BOARD_HEIGHT,
+      mediaType: 'image/jpeg',
+      mimeType: 'image/jpeg',
+      sha256: null,
+      tokens,
+      tokenMap: new Map(),
+      tokensBySlot,
+      slotCounts,
+      skipped,
+      renderedCount: 0,
+      totalRequested: 0,
+      renderMs: Math.round(performance.now() - started),
+      cacheHits: 0,
+      cacheMisses: 0,
+      version: EDITORIAL_BOARD_RENDERER_VERSION,
+    };
+  }
+
+  try {
+    const rackResults = await Promise.all(
+      requestedByRack.map(async ({ rack, items }, rackIdx) => {
+        const fetchedEntries = await Promise.all(
+          items.map(async (item, itemIdx) => {
+            const fetched = await resolveItemRawBytes(item, {
+              resolvePhoto,
+              authorizePhoto,
+              allowlist,
+              fetchImpl,
+              photoCache,
+              signal: combinedSignal,
+              fetchTimeoutMs: Math.min(DEFAULT_FETCH_TIMEOUT_MS, deadlineMs),
+            });
+            if (fetched.cacheHit) cacheHits++;
+            else cacheMisses++;
+
+            if (!fetched.ok) {
+              return { ok: false, item, itemIdx, status: fetched.status };
+            }
+            try {
+              const decoded = await decodeNormalizedPhotoBytes(fetched.bytes, {
+                width: imgW,
+                height: imgH,
+                background: STUDIO_CARD_HEX,
+                sharpImpl,
+              });
+              return { ok: true, item, itemIdx, decoded };
+            } catch (err) {
+              return { ok: false, item, itemIdx, status: err?.code || 'decode_failed' };
+            }
+          }),
+        );
+        return { rack, rackIdx, fetchedEntries };
+      }),
+    );
+
+    if (combinedSignal.aborted) {
+      return {
+        ok: false,
+        error: 'deadline',
+        jpegBuffer: null,
+        bytes: null,
+        width: SHOWROOM_BOARD_WIDTH,
+        height: SHOWROOM_BOARD_HEIGHT,
+        mediaType: 'image/jpeg',
+        mimeType: 'image/jpeg',
+        sha256: null,
+        tokens,
+        tokenMap: new Map(),
+        tokensBySlot,
+        slotCounts,
+        skipped,
+        renderedCount: 0,
+        totalRequested,
+        renderMs: Math.round(performance.now() - started),
+        cacheHits,
+        cacheMisses,
+        version: EDITORIAL_BOARD_RENDERER_VERSION,
+      };
+    }
+
+    const baseShapes = [];
+    const overlayShapes = [];
+    const rawComposites = [];
+    let renderedCount = 0;
+
+    for (const { rack, rackIdx, fetchedEntries } of rackResults) {
+      const rackY = rackStartY + rackIdx * (rackH + rackGapY);
+      const cardY = rackY + 26;
+      const renderedInRack = [];
+
+      for (const entry of fetchedEntries) {
+        if (!entry.ok) {
+          skipped.push({
+            slot: rack.slot,
+            id: entry.item?.id != null ? String(entry.item.id) : null,
+            status: entry.status,
+          });
+          continue;
+        }
+        renderedInRack.push(entry);
+      }
+
+      const rackCount = renderedInRack.length;
+      slotCounts[rack.slot] = rackCount;
+
+      // Subtle rack shelf strip + header label
+      baseShapes.push(
+        `<rect x="18" y="${rackY}" width="1564" height="${rackH}" rx="10" fill="#F0EEE9" stroke="${STUDIO_BORDER_HEX}" stroke-width="1"/>`,
+      );
+      const rangeText = rackCount > 0 ? `${rack.prefix}1–${rack.prefix}${rackCount}` : 'NO PHOTOS';
+      overlayShapes.push(
+        `<text x="28" y="${rackY + 18}" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="13" font-weight="800" letter-spacing="1.6">${escapeXml(rack.label)} · ${escapeXml(rangeText)}</text>`,
+      );
+      overlayShapes.push(
+        `<text x="1572" y="${rackY + 18}" text-anchor="end" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="600" letter-spacing="1.0">${rackCount} OF ${fetchedEntries.length} PHOTOGRAPHED</text>`,
+      );
+
+      for (let col = 0; col < renderedInRack.length; col++) {
+        const entry = renderedInRack[col];
+        const token = `${rack.prefix}${col + 1}`;
+        tokens[token] = entry.item;
+        tokensBySlot[rack.slot].push(token);
+        renderedCount++;
+
+        const cardX = rackStartX + col * (rackCardW + rackGapX);
+        const imgX = cardX + imgPadX;
+        const imgY = cardY + imgOffsetY;
+
+        baseShapes.push(
+          `<rect x="${cardX}" y="${cardY}" width="${rackCardW}" height="${rackCardH}" rx="8" fill="${STUDIO_CARD_HEX}" stroke="${STUDIO_BORDER_HEX}" stroke-width="1.2"/>`,
+        );
+
+        rawComposites.push({
+          input: entry.decoded.raw,
+          raw: {
+            width: entry.decoded.info.width,
+            height: entry.decoded.info.height,
+            channels: entry.decoded.info.channels,
+          },
+          left: imgX,
+          top: imgY,
+        });
+
+        // Bold high-contrast token badge pill (T1..S8)
+        overlayShapes.push(
+          `<rect x="${cardX + 8}" y="${cardY + 6}" width="44" height="24" rx="5" fill="${STUDIO_INK_HEX}"/>`,
+          `<text x="${cardX + 30}" y="${cardY + 23}" text-anchor="middle" fill="#FFFFFF" font-family="Helvetica Neue,Arial,sans-serif" font-size="14" font-weight="800" letter-spacing="0.6">${escapeXml(token)}</text>`,
+        );
+
+        if (!anonymizeLabels) {
+          const subtypeTag = sanitizeLabelText(String(entry.item?.subtype || '').replace(/[_-]+/g, ' '), 17);
+          if (subtypeTag && subtypeTag.toLowerCase() !== 'unknown') {
+            overlayShapes.push(
+              `<text x="${cardX + 58}" y="${cardY + 22}" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" font-weight="600">${escapeXml(subtypeTag.toUpperCase())}</text>`,
+            );
+          }
+          const brand = sanitizeLabelText(entry.item?.brand || entry.item?.subtype || '', 20);
+          const price = includePriceTags ? formatPriceTag(entry.item) : '';
+          if (brand) {
+            overlayShapes.push(
+              `<text x="${cardX + 8}" y="${cardY + 309}" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="12" font-weight="700">${escapeXml(brand)}</text>`,
+            );
+          }
+          if (price) {
+            overlayShapes.push(
+              `<text x="${cardX + 8}" y="${cardY + 326}" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="600">${escapeXml(price)}</text>`,
+            );
+          }
+        }
+      }
+    }
+
+    const tokenMap = new Map(Object.entries(tokens));
+    const minRequired = Math.max(0, Math.floor(Number(minPerSlot) || 0));
+    const failedFloor = requireMinPerSlot && minRequired > 0
+      && SHOWROOM_RACKS.some((r) => slotCounts[r.slot] < minRequired);
+
+    if (renderedCount === 0 || failedFloor) {
+      return {
+        ok: false,
+        error: renderedCount === 0 ? 'no_rendered_photos' : 'insufficient_rendered_photos',
+        jpegBuffer: null,
+        bytes: null,
+        width: SHOWROOM_BOARD_WIDTH,
+        height: SHOWROOM_BOARD_HEIGHT,
+        mediaType: 'image/jpeg',
+        mimeType: 'image/jpeg',
+        sha256: null,
+        tokens,
+        tokenMap,
+        tokensBySlot,
+        slotCounts,
+        skipped,
+        renderedCount,
+        totalRequested,
+        renderMs: Math.round(performance.now() - started),
+        cacheHits,
+        cacheMisses,
+        version: EDITORIAL_BOARD_RENDERER_VERSION,
+      };
+    }
+
+    const headerTitle = anonymizeLabels
+      ? 'PRIVATE VISUAL SHOWROOM'
+      : escapeXml(sanitizeLabelText(title, 54).toUpperCase() || 'PRIVATE VISUAL SHOWROOM');
+    const headerSub = anonymizeLabels
+      ? 'REAL SOURCE GARMENT PHOTOGRAPHS · TOKENS T / L / B / S'
+      : escapeXml(sanitizeLabelText(subtitle, 96).toUpperCase());
+
+    const baseSvg = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${SHOWROOM_BOARD_WIDTH}" height="${SHOWROOM_BOARD_HEIGHT}">`
+      + `<rect width="${SHOWROOM_BOARD_WIDTH}" height="${SHOWROOM_BOARD_HEIGHT}" fill="${STUDIO_BACKDROP_HEX}"/>`
+      + `<text x="26" y="32" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="19" font-weight="800" letter-spacing="1.6">${headerTitle}</text>`
+      + (headerSub ? `<text x="26" y="52" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="600" letter-spacing="1.1">${headerSub}</text>` : '')
+      + `<text x="1574" y="38" text-anchor="end" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="1.2">${renderedCount} PHOTOGRAPHED GARMENTS · 4 RACKS</text>`
+      + `<line x1="26" y1="64" x2="1574" y2="64" stroke="${STUDIO_BORDER_HEX}" stroke-width="1.5"/>`
+      + baseShapes.join('')
+      + `</svg>`,
+    );
+
+    overlayShapes.push(
+      `<text x="26" y="1592" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" font-weight="600" letter-spacing="1.3">STYLIST 6 VISUAL ATELIER · REAL GARMENT PHOTOGRAPHS ONLY · ZERO FABRICATED MEDIA</text>`,
+    );
+
+    const overlaySvg = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${SHOWROOM_BOARD_WIDTH}" height="${SHOWROOM_BOARD_HEIGHT}">${overlayShapes.join('')}</svg>`,
+    );
+
+    const composites = [
+      ...rawComposites,
+      { input: overlaySvg, left: 0, top: 0 },
+    ];
+
+    const pipeline = sharpImpl(baseSvg).composite(composites);
+    const encoded = await encodeBoundedJpeg(pipeline, maxOutputBytes, [80, 70, 58, 48]);
+    if (!encoded.ok) {
+      return {
+        ok: false,
+        error: 'oversized',
+        jpegBuffer: null,
+        bytes: null,
+        width: SHOWROOM_BOARD_WIDTH,
+        height: SHOWROOM_BOARD_HEIGHT,
+        mediaType: 'image/jpeg',
+        mimeType: 'image/jpeg',
+        sha256: null,
+        tokens,
+        tokenMap,
+        tokensBySlot,
+        slotCounts,
+        skipped,
+        renderedCount,
+        totalRequested,
+        renderMs: Math.round(performance.now() - started),
+        cacheHits,
+        cacheMisses,
+        version: EDITORIAL_BOARD_RENDERER_VERSION,
+      };
+    }
+
+    const sha256 = createHash('sha256').update(encoded.buffer).digest('hex');
+    return {
+      ok: true,
+      jpegBuffer: encoded.buffer,
+      bytes: encoded.buffer,
+      width: SHOWROOM_BOARD_WIDTH,
+      height: SHOWROOM_BOARD_HEIGHT,
+      mediaType: 'image/jpeg',
+      mimeType: 'image/jpeg',
+      sha256,
+      tokens,
+      tokenMap,
+      tokensBySlot,
+      slotCounts,
+      skipped,
+      renderedCount,
+      totalRequested,
+      renderMs: Math.round(performance.now() - started),
+      cacheHits,
+      cacheMisses,
+      version: EDITORIAL_BOARD_RENDERER_VERSION,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: combinedSignal.aborted ? 'deadline' : (err?.code || 'photo_processing'),
+      jpegBuffer: null,
+      bytes: null,
+      width: SHOWROOM_BOARD_WIDTH,
+      height: SHOWROOM_BOARD_HEIGHT,
+      mediaType: 'image/jpeg',
+      mimeType: 'image/jpeg',
+      sha256: null,
+      tokens,
+      tokenMap: new Map(Object.entries(tokens)),
+      tokensBySlot,
+      slotCounts,
+      skipped,
+      renderedCount: Object.keys(tokens).length,
+      totalRequested,
+      renderMs: Math.round(performance.now() - started),
+      cacheHits,
+      cacheMisses,
+      version: EDITORIAL_BOARD_RENDERER_VERSION,
+    };
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+}
+
+// Proportion-aware left-half zones inside 1400x900 Visual Swap Board
+const SWAP_LOCKED_ZONES = Object.freeze({
+  outerwear: Object.freeze({
+    cardX: 24, cardY: 108, cardW: 202, cardH: 764,
+    imgX: 34, imgY: 144, imgW: 182, imgH: 668,
+    labelX: 34, labelY: 129,
+    footerY1: 836, footerY2: 856,
+  }),
+  top: Object.freeze({
+    cardX: 238, cardY: 108, cardW: 176, cardH: 408,
+    imgX: 248, imgY: 144, imgW: 156, imgH: 312,
+    labelX: 248, labelY: 129,
+    footerY1: 480, footerY2: 500,
+  }),
+  shoes: Object.freeze({
+    cardX: 238, cardY: 528, cardW: 176, cardH: 344,
+    imgX: 248, imgY: 564, imgW: 156, imgH: 248,
+    labelX: 248, labelY: 549,
+    footerY1: 836, footerY2: 856,
+  }),
+  bottom: Object.freeze({
+    cardX: 426, cardY: 108, cardW: 198, cardH: 764,
+    imgX: 436, imgY: 144, imgW: 178, imgH: 668,
+    labelX: 436, labelY: 129,
+    footerY1: 836, footerY2: 856,
+  }),
+});
+
+/**
+ * Render a 1400x900 Visual Swap Board for surgical single-slot replacement:
+ *   - Left half: the 3 LOCKED garments rendered in true proportion with slot labels
+ *     plus a warm highlight placeholder marking `targetSlot`.
+ *   - Right half: up to 6 photographed replacement candidates (`R1..R6`) for
+ *     `targetSlot` with bold high-contrast `R1..R6` badges + brand & price.
+ */
+export async function renderVisualSwapBoard(lockedItems, targetSlot, candidates, options = {}) {
+  const started = performance.now();
+  const {
+    title = null,
+    subtitle = '',
+    maxCandidates = 6,
+    anonymizeLabels = false,
+    includePriceTags = true,
+    maxOutputBytes = DEFAULT_SWAP_MAX_BYTES,
+    deadlineMs = 7000,
+    signal = null,
+    photoCache = null,
+    resolvePhoto = null,
+    authorizePhoto = null,
+    allowlist = HOST_ALLOWLIST,
+    fetchImpl = globalThis.fetch,
+    sharpImpl = sharp,
+  } = options;
+
+  const normTargetSlot = String(targetSlot || '').trim().toLowerCase();
+  const targetSlotLabel = (normTargetSlot || 'SLOT').toUpperCase();
+  const targetZoneKey = CANONICAL_SLOTS.includes(normTargetSlot) ? normTargetSlot : 'outerwear';
+  const candidateCap = Math.max(1, Math.min(6, Math.floor(Number(maxCandidates) || 6)));
+
+  const rawLocked = (Array.isArray(lockedItems) ? lockedItems : [])
+    .map(unwrapGarmentEntry)
+    .filter(Boolean);
+  const { bySlot: lockedBySlot, slotLabels } = mapItemsToBoardSlots(rawLocked);
+  // Ensure the target slot itself is never rendered as a locked garment
+  if (CANONICAL_SLOTS.includes(normTargetSlot)) {
+    lockedBySlot[normTargetSlot] = null;
+  }
+
+  const candidateList = [];
+  const seenCandidateIds = new Set();
+  for (const entry of Array.isArray(candidates) ? candidates : []) {
+    const item = unwrapGarmentEntry(entry);
+    if (!item) continue;
+    const dedupeKey = item.id != null ? String(item.id) : null;
+    if (dedupeKey && seenCandidateIds.has(dedupeKey)) continue;
+    if (dedupeKey) seenCandidateIds.add(dedupeKey);
+    candidateList.push(item);
+    if (candidateList.length >= candidateCap) break;
+  }
+
+  const totalCandidatesRequested = candidateList.length;
+  const candidateTokens = {};
+  const lockedSlotStatus = {};
+  const skippedCandidates = [];
+  let cacheHits = 0;
+  let cacheMisses = 0;
+
+  if (totalCandidatesRequested === 0) {
+    return {
+      ok: false,
+      error: 'empty_swap_candidates',
+      jpegBuffer: null,
+      bytes: null,
+      width: SWAP_BOARD_WIDTH,
+      height: SWAP_BOARD_HEIGHT,
+      mediaType: 'image/jpeg',
+      mimeType: 'image/jpeg',
+      sha256: null,
+      candidateTokens,
+      candidateTokenMap: new Map(),
+      lockedSlotStatus,
+      skippedCandidates,
+      renderedCount: 0,
+      totalCandidatesRequested: 0,
+      renderMs: Math.round(performance.now() - started),
+      cacheHits: 0,
+      cacheMisses: 0,
+      version: EDITORIAL_BOARD_RENDERER_VERSION,
+    };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(400, Math.min(20_000, deadlineMs)));
+  const combinedSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+
+  const candCardW = 230;
+  const candCardH = 375;
+  const candGapX = 14;
+  const candGapY = 14;
+  const candStartX = 657;
+  const candStartY = 108;
+  const candImgW = 210;
+  const candImgH = 280;
+
+  try {
+    const [lockedDecoded, candidatesDecoded] = await Promise.all([
+      Promise.all(
+        CANONICAL_SLOTS.map(async (slot) => {
+          const item = lockedBySlot[slot];
+          const zone = SWAP_LOCKED_ZONES[slot];
+          if (!item) {
+            lockedSlotStatus[slot] = { status: slot === targetZoneKey ? 'target_slot' : 'absent', cacheHit: false };
+            return { slot, item: null, zone, rawComposite: null };
+          }
+          const fetched = await resolveItemRawBytes(item, {
+            resolvePhoto,
+            authorizePhoto,
+            allowlist,
+            fetchImpl,
+            photoCache,
+            signal: combinedSignal,
+            fetchTimeoutMs: Math.min(DEFAULT_FETCH_TIMEOUT_MS, deadlineMs),
+          });
+          if (fetched.cacheHit) cacheHits++;
+          else cacheMisses++;
+          if (!fetched.ok) {
+            lockedSlotStatus[slot] = { status: fetched.status, cacheHit: fetched.cacheHit };
+            return { slot, item, zone, rawComposite: null };
+          }
+          try {
+            const decoded = await decodeNormalizedPhotoBytes(fetched.bytes, {
+              width: zone.imgW,
+              height: zone.imgH,
+              background: STUDIO_CARD_HEX,
+              sharpImpl,
+            });
+            lockedSlotStatus[slot] = {
+              status: 'rendered',
+              cacheHit: fetched.cacheHit,
+              sourceFormat: decoded.sourceFormat,
+            };
+            return {
+              slot,
+              item,
+              zone,
+              rawComposite: {
+                input: decoded.raw,
+                raw: {
+                  width: decoded.info.width,
+                  height: decoded.info.height,
+                  channels: decoded.info.channels,
+                },
+                left: zone.imgX,
+                top: zone.imgY,
+              },
+            };
+          } catch (err) {
+            lockedSlotStatus[slot] = { status: err?.code || 'decode_failed', cacheHit: fetched.cacheHit };
+            return { slot, item, zone, rawComposite: null };
+          }
+        }),
+      ),
+      Promise.all(
+        candidateList.map(async (item) => {
+          const fetched = await resolveItemRawBytes(item, {
+            resolvePhoto,
+            authorizePhoto,
+            allowlist,
+            fetchImpl,
+            photoCache,
+            signal: combinedSignal,
+            fetchTimeoutMs: Math.min(DEFAULT_FETCH_TIMEOUT_MS, deadlineMs),
+          });
+          if (fetched.cacheHit) cacheHits++;
+          else cacheMisses++;
+          if (!fetched.ok) {
+            return { ok: false, item, status: fetched.status };
+          }
+          try {
+            const decoded = await decodeNormalizedPhotoBytes(fetched.bytes, {
+              width: candImgW,
+              height: candImgH,
+              background: STUDIO_CARD_HEX,
+              sharpImpl,
+            });
+            return { ok: true, item, decoded };
+          } catch (err) {
+            return { ok: false, item, status: err?.code || 'decode_failed' };
+          }
+        }),
+      ),
+    ]);
+
+    if (combinedSignal.aborted) {
+      return {
+        ok: false,
+        error: 'deadline',
+        jpegBuffer: null,
+        bytes: null,
+        width: SWAP_BOARD_WIDTH,
+        height: SWAP_BOARD_HEIGHT,
+        mediaType: 'image/jpeg',
+        mimeType: 'image/jpeg',
+        sha256: null,
+        candidateTokens,
+        candidateTokenMap: new Map(),
+        lockedSlotStatus,
+        skippedCandidates,
+        renderedCount: 0,
+        totalCandidatesRequested,
+        renderMs: Math.round(performance.now() - started),
+        cacheHits,
+        cacheMisses,
+        version: EDITORIAL_BOARD_RENDERER_VERSION,
+      };
+    }
+
+    const renderedCandidates = [];
+    for (const c of candidatesDecoded) {
+      if (!c.ok) {
+        skippedCandidates.push({
+          id: c.item?.id != null ? String(c.item.id) : null,
+          status: c.status,
+        });
+        continue;
+      }
+      renderedCandidates.push(c);
+    }
+
+    if (renderedCandidates.length === 0) {
+      return {
+        ok: false,
+        error: 'no_rendered_candidates',
+        jpegBuffer: null,
+        bytes: null,
+        width: SWAP_BOARD_WIDTH,
+        height: SWAP_BOARD_HEIGHT,
+        mediaType: 'image/jpeg',
+        mimeType: 'image/jpeg',
+        sha256: null,
+        candidateTokens,
+        candidateTokenMap: new Map(),
+        lockedSlotStatus,
+        skippedCandidates,
+        renderedCount: 0,
+        totalCandidatesRequested,
+        renderMs: Math.round(performance.now() - started),
+        cacheHits,
+        cacheMisses,
+        version: EDITORIAL_BOARD_RENDERER_VERSION,
+      };
+    }
+
+    const baseShapes = [];
+    const overlayShapes = [];
+    const rawComposites = [];
+
+    // Left Half: 3 locked garments in proportion + target slot callout
+    for (const entry of lockedDecoded) {
+      const { slot, item, zone, rawComposite } = entry;
+      const st = lockedSlotStatus[slot]?.status;
+      const isTarget = slot === targetZoneKey && !item;
+
+      if (isTarget) {
+        baseShapes.push(
+          `<rect x="${zone.cardX}" y="${zone.cardY}" width="${zone.cardW}" height="${zone.cardH}" rx="10" fill="#FAF4EB" stroke="#B88A44" stroke-width="2" stroke-dasharray="8 6"/>`,
+        );
+        const cx = Math.round(zone.cardX + zone.cardW / 2);
+        const cy = Math.round(zone.cardY + zone.cardH / 2);
+        overlayShapes.push(
+          `<text x="${zone.labelX}" y="${zone.labelY}" fill="#9B6E2C" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.4">SWAP TARGET</text>`,
+          `<text x="${cx}" y="${cy - 10}" text-anchor="middle" fill="#8A5F22" font-family="Helvetica Neue,Arial,sans-serif" font-size="15" font-weight="800" letter-spacing="1.2">${escapeXml(targetSlotLabel)}</text>`,
+          `<text x="${cx}" y="${cy + 14}" text-anchor="middle" fill="#8A5F22" font-family="Helvetica Neue,Arial,sans-serif" font-size="12" font-weight="700">PICK R1–R${renderedCandidates.length} →</text>`,
+        );
+        continue;
+      }
+
+      const fill = st === 'rendered' ? STUDIO_CARD_HEX : STUDIO_PLACEHOLDER_HEX;
+      baseShapes.push(
+        `<rect x="${zone.cardX}" y="${zone.cardY}" width="${zone.cardW}" height="${zone.cardH}" rx="10" fill="${fill}" stroke="${STUDIO_BORDER_HEX}" stroke-width="1.4"/>`,
+      );
+      overlayShapes.push(
+        `<text x="${zone.labelX}" y="${zone.labelY}" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="800" letter-spacing="1.4">LOCKED · ${escapeXml(slotLabels[slot])}</text>`,
+      );
+
+      if (rawComposite) {
+        rawComposites.push(rawComposite);
+      } else {
+        const cx = Math.round(zone.imgX + zone.imgW / 2);
+        const cy = Math.round(zone.imgY + zone.imgH / 2);
+        const msg = st === 'absent' ? 'NONE' : 'PHOTO UNAVAILABLE';
+        overlayShapes.push(
+          `<text x="${cx}" y="${cy}" text-anchor="middle" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="600">${msg}</text>`,
+        );
+      }
+
+      if (item && !anonymizeLabels) {
+        const brand = sanitizeLabelText(item.brand || item.subtype || '', 19);
+        const price = includePriceTags ? formatPriceTag(item) : '';
+        if (brand) {
+          overlayShapes.push(
+            `<text x="${zone.labelX}" y="${zone.footerY1}" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="12" font-weight="700">${escapeXml(brand)}</text>`,
+          );
+        }
+        if (price) {
+          overlayShapes.push(
+            `<text x="${zone.labelX}" y="${zone.footerY2}" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="600">${escapeXml(price)}</text>`,
+          );
+        }
+      }
+    }
+
+    // Right Half: up to 6 photographed replacement candidates R1..R6
+    for (let idx = 0; idx < renderedCandidates.length; idx++) {
+      const entry = renderedCandidates[idx];
+      const token = `R${idx + 1}`;
+      candidateTokens[token] = entry.item;
+
+      const row = Math.floor(idx / 3);
+      const col = idx % 3;
+      const cardX = candStartX + col * (candCardW + candGapX);
+      const cardY = candStartY + row * (candCardH + candGapY);
+      const imgX = cardX + 10;
+      const imgY = cardY + 40;
+
+      baseShapes.push(
+        `<rect x="${cardX}" y="${cardY}" width="${candCardW}" height="${candCardH}" rx="10" fill="${STUDIO_CARD_HEX}" stroke="${STUDIO_BORDER_HEX}" stroke-width="1.4"/>`,
+      );
+      rawComposites.push({
+        input: entry.decoded.raw,
+        raw: {
+          width: entry.decoded.info.width,
+          height: entry.decoded.info.height,
+          channels: entry.decoded.info.channels,
+        },
+        left: imgX,
+        top: imgY,
+      });
+
+      // Bold high-contrast candidate token badge (R1..R6)
+      overlayShapes.push(
+        `<rect x="${cardX + 10}" y="${cardY + 8}" width="50" height="26" rx="5" fill="${STUDIO_INK_HEX}"/>`,
+        `<text x="${cardX + 35}" y="${cardY + 26}" text-anchor="middle" fill="#FFFFFF" font-family="Helvetica Neue,Arial,sans-serif" font-size="15" font-weight="800" letter-spacing="0.6">${escapeXml(token)}</text>`,
+      );
+
+      if (!anonymizeLabels) {
+        const subtypeTag = sanitizeLabelText(String(entry.item?.subtype || '').replace(/[_-]+/g, ' '), 16);
+        if (subtypeTag && subtypeTag.toLowerCase() !== 'unknown') {
+          overlayShapes.push(
+            `<text x="${cardX + 68}" y="${cardY + 25}" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" font-weight="600">${escapeXml(subtypeTag.toUpperCase())}</text>`,
+          );
+        }
+        const brand = sanitizeLabelText(entry.item?.brand || entry.item?.subtype || '', 22);
+        const price = includePriceTags ? formatPriceTag(entry.item) : '';
+        if (brand) {
+          overlayShapes.push(
+            `<text x="${cardX + 10}" y="${cardY + 342}" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="13" font-weight="700">${escapeXml(brand)}</text>`,
+          );
+        }
+        if (price) {
+          overlayShapes.push(
+            `<text x="${cardX + 10}" y="${cardY + 361}" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="12" font-weight="600">${escapeXml(price)}</text>`,
+          );
+        }
+      }
+    }
+
+    const renderedCount = renderedCandidates.length;
+    const candidateTokenMap = new Map(Object.entries(candidateTokens));
+    const defaultTitle = `VISUAL SURGICAL SWAP · REPLACE ${targetSlotLabel}`;
+    const headerTitle = anonymizeLabels
+      ? escapeXml(defaultTitle)
+      : escapeXml(sanitizeLabelText(title || defaultTitle, 64).toUpperCase());
+    const headerSub = anonymizeLabels
+      ? `LEFT: LOCKED GARMENTS · RIGHT: ${renderedCount} CANDIDATE REPLACEMENTS (R1–R${renderedCount})`
+      : escapeXml(sanitizeLabelText(subtitle || `LEFT: 3 LOCKED GARMENTS · RIGHT: CHOOSE BEST ${targetSlotLabel} REPLACEMENT R1–R${renderedCount}`, 100).toUpperCase());
+
+    const baseSvg = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${SWAP_BOARD_WIDTH}" height="${SWAP_BOARD_HEIGHT}">`
+      + `<rect width="${SWAP_BOARD_WIDTH}" height="${SWAP_BOARD_HEIGHT}" fill="${STUDIO_BACKDROP_HEX}"/>`
+      + `<text x="26" y="34" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="19" font-weight="800" letter-spacing="1.6">${headerTitle}</text>`
+      + `<text x="26" y="56" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="600" letter-spacing="1.1">${headerSub}</text>`
+      + `<line x1="26" y1="68" x2="1374" y2="68" stroke="${STUDIO_BORDER_HEX}" stroke-width="1.5"/>`
+      + `<line x1="640" y1="78" x2="640" y2="876" stroke="${STUDIO_BORDER_HEX}" stroke-width="1.5"/>`
+      + `<text x="24" y="96" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="12" font-weight="800" letter-spacing="1.5">LOCKED ENSEMBLE · KEEPING 3 PIECES</text>`
+      + `<text x="657" y="96" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="12" font-weight="800" letter-spacing="1.5">CANDIDATE REPLACEMENTS · ${escapeXml(targetSlotLabel)} (R1–R${renderedCount})</text>`
+      + baseShapes.join('')
+      + `</svg>`,
+    );
+
+    overlayShapes.push(
+      `<text x="26" y="891" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="10" font-weight="600" letter-spacing="1.3">STYLIST 6 VISUAL SWAP BOARD · PROPORTION-SCALED LOCKED ENSEMBLE + REAL PHOTOGRAPHED REPLACEMENTS</text>`,
+    );
+
+    const overlaySvg = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${SWAP_BOARD_WIDTH}" height="${SWAP_BOARD_HEIGHT}">${overlayShapes.join('')}</svg>`,
+    );
+
+    const composites = [
+      ...rawComposites,
+      { input: overlaySvg, left: 0, top: 0 },
+    ];
+
+    const pipeline = sharpImpl(baseSvg).composite(composites);
+    const encoded = await encodeBoundedJpeg(pipeline, maxOutputBytes, [82, 72, 60, 48]);
+    if (!encoded.ok) {
+      return {
+        ok: false,
+        error: 'oversized',
+        jpegBuffer: null,
+        bytes: null,
+        width: SWAP_BOARD_WIDTH,
+        height: SWAP_BOARD_HEIGHT,
+        mediaType: 'image/jpeg',
+        mimeType: 'image/jpeg',
+        sha256: null,
+        candidateTokens,
+        candidateTokenMap,
+        lockedSlotStatus,
+        skippedCandidates,
+        renderedCount,
+        totalCandidatesRequested,
+        renderMs: Math.round(performance.now() - started),
+        cacheHits,
+        cacheMisses,
+        version: EDITORIAL_BOARD_RENDERER_VERSION,
+      };
+    }
+
+    const sha256 = createHash('sha256').update(encoded.buffer).digest('hex');
+    return {
+      ok: true,
+      jpegBuffer: encoded.buffer,
+      bytes: encoded.buffer,
+      width: SWAP_BOARD_WIDTH,
+      height: SWAP_BOARD_HEIGHT,
+      mediaType: 'image/jpeg',
+      mimeType: 'image/jpeg',
+      sha256,
+      candidateTokens,
+      candidateTokenMap,
+      lockedSlotStatus,
+      skippedCandidates,
+      renderedCount,
+      totalCandidatesRequested,
+      renderMs: Math.round(performance.now() - started),
+      cacheHits,
+      cacheMisses,
+      version: EDITORIAL_BOARD_RENDERER_VERSION,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: combinedSignal.aborted ? 'deadline' : (err?.code || 'photo_processing'),
+      jpegBuffer: null,
+      bytes: null,
+      width: SWAP_BOARD_WIDTH,
+      height: SWAP_BOARD_HEIGHT,
+      mediaType: 'image/jpeg',
+      mimeType: 'image/jpeg',
+      sha256: null,
+      candidateTokens,
+      candidateTokenMap: new Map(Object.entries(candidateTokens)),
+      lockedSlotStatus,
+      skippedCandidates,
+      renderedCount: Object.keys(candidateTokens).length,
+      totalCandidatesRequested,
       renderMs: Math.round(performance.now() - started),
       cacheHits,
       cacheMisses,

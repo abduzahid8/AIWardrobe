@@ -6,6 +6,7 @@ import {sourceBoundCompositionPool,groundedSkuDirections,
   sourceGroundedCreativeCommissions,
   groundedPhotoRevisionFeedback,anonymousExplicitTasteHistory,
   validateSkuCompositions,composeCatalogSkuLooks,
+  adaptVisualAtelierResultToSkuComposition,
   sourceVerifyComposedOutfits,AI_SKU_COMPOSER_VERSION,
   CROSS_LAB_REVISION_MODEL,FAST_PHOTO_REVISION_MODEL,
   DEFAULT_MAX_CONCURRENT_COMPOSER_CALLS} from './sku_composer_ai.mjs';
@@ -1820,4 +1821,111 @@ test('SKU Composer injects Master Stylist Craft directives and supports fastMode
   assert.equal(recovered.providerFamily, 'nemotron');
   assert.ok(badTokenCalls.some(c => c.url.includes('openrouter.ai')));
   assert.ok(badTokenCalls.some(c => c.url.includes('nvidia.com') && c.model === 'nvidia/nemotron-3.5-super-vl-120b-a12b'));
+});
+
+test('composeCatalogSkuLooks cleanly delegates to Visual Atelier when visualAtelierOptions is provided and falls back gracefully when unavailable', async () => {
+  const synthJpg = await sharp({ create: { width: 120, height: 160, channels: 3, background: '#5A6878' } }).jpeg().toBuffer();
+  const photoItems = items.map((row) => row.map((it) => ({ ...it, bytes: synthJpg })));
+  const photoLooks = photoItems.map((row, idx) => ({ id: 'vlook' + idx, fashion: { score: 0.94 - idx * 0.01 }, items: row }));
+  const pool = sourceBoundCompositionPool(photoLooks);
+  const plans = Array.from({ length: 3 }, (_, i) => ({
+    id: 'ai-director-' + (i + 1),
+    generatedBy: 's6-creative-director-v1',
+    name: `Visual Atelier Direction ${i + 1}`,
+    artDirection: 'Create a sharp modern luxury outfit with rich 3-value contrast, crisp drape, breathable fabric interplay, and sleek footwear.',
+    roles: { top: ['dress-shirt'], outerwear: ['blazer'], bottom: ['tailored-trouser'], shoes: ['oxford'] },
+    palette: ['white', 'navy', 'charcoal'],
+    silhouette: 'tailored',
+    layerPolicy: 'required',
+  }));
+
+  let visionCalled = 0;
+  const visualResult = await composeCatalogSkuLooks({
+    pool,
+    directions: plans,
+    layerRequired: true,
+    context: { style: 'classic', occasion: 'Work', weatherCelsius: 17 },
+    visualAtelierOptions: {
+      enabled: true,
+      providerRouter: {
+        isProviderConfigured: () => true,
+        callVisionModel: async (req) => {
+          visionCalled++;
+          assert.equal(req.images.length, 1);
+          const meta = await sharp(req.images[0].bytes).metadata();
+          assert.equal(meta.width, 1600);
+          assert.equal(meta.height, 1600);
+          return {
+            ok: true,
+            provider: 'openrouter',
+            model: 'google/gemini-2.5-flash',
+            parsedJson: {
+              outfits: [
+                { directionIndex: 0, title: 'Atelier Look 1', top: 'T1', outerwear: 'L1', bottom: 'B1', shoes: 'S1', visualHarmonyRationale: 'Balanced tones', stylingNote: 'Clean tailoring', whyItFlattersYou: 'Sharp shoulder', stylingTips: ['Tip 1'] },
+                { directionIndex: 1, title: 'Atelier Look 2', top: 'T2', outerwear: 'L2', bottom: 'B2', shoes: 'S2', visualHarmonyRationale: 'Warm drape', stylingNote: 'Refined midtones', whyItFlattersYou: 'Fluid leg', stylingTips: ['Tip 2'] },
+                { directionIndex: 2, title: 'Atelier Look 3', top: 'T3', outerwear: 'L3', bottom: 'B3', shoes: 'S3', visualHarmonyRationale: 'Crisp contrast', stylingNote: 'Modern polish', whyItFlattersYou: 'Balanced frame', stylingTips: ['Tip 3'] },
+              ],
+            },
+          };
+        },
+      },
+    },
+  });
+
+  assert.equal(visionCalled, 1);
+  assert.equal(visualResult.status, 'composed');
+  assert.equal(visualResult.visualAtelierStatus, 'applied');
+  assert.equal(visualResult.providerFamily, 'visual_atelier_v1');
+  assert.equal(visualResult.looks.length, 3);
+  assert.equal(visualResult.showroomBoard.width, 1600);
+  assert.equal(new Set(visualResult.looks.flat().map((x) => x.id)).size, 12);
+
+  // Verify sourceVerifyComposedOutfits preserves Creative Director attribution + visualAtelierCopy!
+  const verified = await sourceVerifyComposedOutfits({
+    looks: visualResult.looks,
+    creativePlans: plans,
+    request: { sourceMode: 'catalog' },
+    hardGate: async () => ({ ok: true }),
+    scorer: { rankLook: () => ({ score: 0.91 }) },
+  });
+  assert.equal(verified.length, 3);
+  assert.deepEqual(verified.map((v) => v.briefId), ['ai_director_1', 'ai_director_2', 'ai_director_3']);
+  assert.equal(verified[0].visualAtelierCopy?.title, 'Atelier Look 1');
+  assert.equal(verified[0].visualAtelierCopy?.composedVisually, true);
+
+  // Verify adaptVisualAtelierResultToSkuComposition rejects duplicate SKUs across looks
+  const duplicateRejected = adaptVisualAtelierResultToSkuComposition({
+    status: 'applied',
+    outfits: [
+      { directionIndex: 0, items: photoItems[0] },
+      { directionIndex: 1, items: [photoItems[0][0], ...photoItems[1].slice(1)] },
+      { directionIndex: 2, items: photoItems[2] },
+    ],
+  }, { layerRequired: true, minimumValid: 3 });
+  assert.equal(duplicateRejected, null, 'duplicate SKU across outfits must be rejected');
+
+  // Verify graceful fallback to text SKU composer when Visual Atelier returns fallback
+  const fallbackPicks = {
+    slotPicks: Object.fromEntries(slots.map((s) => [s, pool.filter((e) => e.slot === s).slice(0, 3).map((e) => e.token)])),
+  };
+  let textCalls = 0;
+  const fallbackResult = await composeCatalogSkuLooks({
+    pool,
+    directions: plans,
+    layerRequired: true,
+    context: { style: 'classic', occasion: 'Work' },
+    apiKey: 'nvapi-test-atelier-fallback',
+    visualAtelierOptions: {
+      enabled: true,
+      composeFn: async () => ({ status: 'fallback', outfits: [], diagnostics: { reason: 'showroom_unavailable' } }),
+    },
+    fetchImpl: async () => {
+      textCalls++;
+      return result(fallbackPicks);
+    },
+  });
+  assert.equal(textCalls, 1, 'must seamlessly fall back to standard SKU composer');
+  assert.equal(fallbackResult.status, 'composed');
+  assert.equal(fallbackResult.looks.length, 3);
+  assert.equal(fallbackResult.visualMenuStatus, 'showroom_unavailable');
 });

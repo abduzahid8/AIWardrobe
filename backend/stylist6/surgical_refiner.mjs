@@ -16,6 +16,8 @@
  * from the mobile UI.
  */
 
+import { selectVisualSlotReplacement } from './visual_atelier.mjs';
+
 export const SURGICAL_REFINER_VERSION = 's6-surgical-refiner-v1';
 export const DEFAULT_MIN_EDITORIAL_SCORE = 7.0;
 export const DEFAULT_MIN_VISUAL_QUALITY = 0.68;
@@ -751,11 +753,130 @@ async function evaluateBatchWithVisualCritic(visualCritic, entries, context, per
   return byId;
 }
 
+function isVisualSwapSelectionEnabled({ visualReplacementSelector, providerRouter, photoCache, resolvePhoto }) {
+  if (typeof visualReplacementSelector === 'function') return true;
+  if (providerRouter && typeof providerRouter.callVisionModel === 'function'
+      && (photoCache || typeof resolvePhoto === 'function')) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Pre-filter up to 6 hard-gate-valid, budget-valid replacements and ask the VLM
+ * Visual Swap Board (`selectVisualSlotReplacement`) to visually pick the ONE
+ * replacement that harmonizes best with the 3 locked garments.
+ * Promotes the visually chosen candidate to index 0 while preserving remaining
+ * valid candidates as fallback order.
+ */
+async function prefilterAndPromoteVisualPick({
+  ranked,
+  workingLook,
+  targetSlot,
+  repairDirective = '',
+  hardGateValidator,
+  context,
+  personalStyleDna,
+  styleDnaPromptBlock = '',
+  providerRouter = null,
+  visualReplacementSelector = null,
+  photoCache = null,
+  fetchImpl = null,
+  resolvePhoto = null,
+  authorizePhoto = null,
+  allowlist = null,
+  deadlineAt,
+  signal = null,
+  idPrefix = 'look_sr',
+  onGateFailed = null,
+  maxVisualPool = 6,
+}) {
+  const validEntries = [];
+  for (let idx = 0; idx < ranked.length && validEntries.length < maxVisualPool; idx++) {
+    if (signal?.aborted || Date.now() >= deadlineAt) break;
+    const candidateEntry = ranked[idx];
+    const replacement = candidateEntry.item;
+    const replacementId = String(replacement.id);
+    const candidateLookId = `${idPrefix}_${idx}`;
+    const candidateLook = buildReplacedLook(workingLook, targetSlot, replacement, candidateLookId);
+
+    const gate = await runHardGate(hardGateValidator, candidateLook, context);
+    if (!gate.ok) {
+      onGateFailed?.({ candidateEntry, replacement, replacementId, gate });
+      continue;
+    }
+    validEntries.push({
+      candidateEntry,
+      replacement,
+      replacementId,
+      candidateLook,
+      visuallySelected: false,
+      visualSwapToken: null,
+      visualSwapRationale: null,
+      visualSwapBoard: null,
+    });
+  }
+
+  if (validEntries.length === 0 || signal?.aborted || Date.now() >= deadlineAt) {
+    return { entries: validEntries, visualSwapUsed: false, visualSelection: null };
+  }
+
+  const selectorFn = typeof visualReplacementSelector === 'function'
+    ? visualReplacementSelector
+    : selectVisualSlotReplacement;
+  const remaining = Math.max(800, deadlineAt - Date.now());
+  const swapTimeoutMs = Math.min(8_000, Math.max(900, Math.floor(remaining * 0.55)));
+
+  let visualSelection = null;
+  try {
+    visualSelection = await Promise.resolve(selectorFn({
+      look: workingLook,
+      targetSlot,
+      repairDirective,
+      candidates: validEntries.map((e) => e.replacement),
+      personalStyleDna,
+      styleDnaPromptBlock: styleDnaPromptBlock || personalStyleDna?.promptBlock || '',
+      context,
+      providerRouter,
+      photoCache,
+      ...(fetchImpl ? { fetchImpl } : {}),
+      ...(resolvePhoto ? { resolvePhoto } : {}),
+      ...(authorizePhoto ? { authorizePhoto } : {}),
+      ...(allowlist ? { allowlist } : {}),
+      signal,
+      timeoutMs: swapTimeoutMs,
+    }));
+  } catch {
+    visualSelection = null;
+  }
+
+  if (visualSelection?.status === 'selected' && visualSelection.selectedItem?.id != null) {
+    const pickedId = String(visualSelection.selectedItem.id);
+    const matchIdx = validEntries.findIndex((e) => e.replacementId === pickedId);
+    if (matchIdx >= 0) {
+      const [promoted] = validEntries.splice(matchIdx, 1);
+      promoted.visuallySelected = true;
+      promoted.visualSwapToken = visualSelection.token || null;
+      promoted.visualSwapRationale = visualSelection.rationale || null;
+      promoted.visualSwapBoard = visualSelection.swapBoard || null;
+      validEntries.unshift(promoted);
+      return { entries: validEntries, visualSwapUsed: true, visualSelection };
+    }
+  }
+
+  return { entries: validEntries, visualSwapUsed: false, visualSelection };
+}
+
 /**
  * Surgically refine an imperfect 4-item look by locking its 3 strong pieces
  * and swapping ONLY `critique.weakestSlot` against the full `catalogPool`,
  * re-checking hard gates, re-rendering the studio board, and re-verifying with
  * the independent Visual Critic.
+ *
+ * When `providerRouter` (or `visualReplacementSelector`) + `photoCache` are
+ * provided, pre-filters up to 6 hard-gate-valid replacements and lets the VLM
+ * visually pick the best replacement photo against the 3 locked garments via
+ * `selectVisualSlotReplacement` BEFORE verifying the resulting 1024x1024 board.
  *
  * Commits ONLY if hard gates pass AND the composite visual score strictly
  * improves AND clears the editorial threshold (never weakens quality floors).
@@ -767,9 +888,17 @@ export async function refineLookSurgically({
   lockedSlots = [],
   context = {},
   personalStyleDna = null,
+  styleDnaPromptBlock = '',
   hardGateValidator = null,
   visualCritic = null,
   boardRenderer = null,
+  providerRouter = null,
+  visualReplacementSelector = null,
+  photoCache = null,
+  fetchImpl = null,
+  resolvePhoto = null,
+  authorizePhoto = null,
+  allowlist = null,
   maxRounds = 2,
   deadlineMs = 12_000,
   excludedItemIds = [],
@@ -877,6 +1006,12 @@ export async function refineLookSurgically({
     }
 
     roundsExecuted = round;
+    const visualSwapEnabled = isVisualSwapSelectionEnabled({
+      visualReplacementSelector,
+      providerRouter,
+      photoCache,
+      resolvePhoto,
+    });
     const ranked = rankSlotReplacementCandidates({
       look: workingLook,
       targetSlot: weakestSlot,
@@ -888,7 +1023,7 @@ export async function refineLookSurgically({
       excludedIds: triedItemIds,
       qualityMap,
       priceToBudgetCurrency,
-      limit: Math.max(topCandidatesPerRound * 2, 6),
+      limit: visualSwapEnabled ? Math.max(12, topCandidatesPerRound * 3) : Math.max(topCandidatesPerRound * 2, 6),
     });
 
     if (!ranked.length) {
@@ -912,22 +1047,34 @@ export async function refineLookSurgically({
     let evaluatedInRound = 0;
     let roundBest = null;
 
-    if (parallelCandidates === true && topCandidatesPerRound > 1 && typeof visualCritic === 'function') {
-      // Fast parallel batch mode: validate hard gates, render all candidate boards
-      // in parallel (~50ms with warm photoCache), then evaluate in ONE parallel critic wave (~2s)!
-      const gatePassed = [];
-      for (let idx = 0; idx < ranked.length && gatePassed.length < topCandidatesPerRound; idx++) {
-        if (signal?.aborted || Date.now() >= deadlineAt) break;
-        const candidateEntry = ranked[idx];
-        const replacement = candidateEntry.item;
-        const replacementId = String(replacement.id);
-        triedItemIds.add(replacementId);
-
-        const candidateLookId = `${String(look.id || 'look').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 44)}_sr${round}_${idx}`;
-        const candidateLook = buildReplacedLook(workingLook, weakestSlot, replacement, candidateLookId);
-
-        const gate = await runHardGate(hardGateValidator, candidateLook, context);
-        if (!gate.ok) {
+    // Optional Visual-First Swap Selection: pre-filter top 6 hard-gate-valid replacements
+    // and let the VLM visually pick the best replacement photo against the 3 locked pieces!
+    let prefilteredVisualEntries = null;
+    let roundVisualSwapUsed = false;
+    if (visualSwapEnabled) {
+      const idPrefix = `${String(look.id || 'look').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 44)}_sr${round}`;
+      const visualPicked = await prefilterAndPromoteVisualPick({
+        ranked,
+        workingLook,
+        targetSlot: weakestSlot,
+        repairDirective: workingCritique?.repairDirective || workingCritique?.defectCategory || '',
+        hardGateValidator,
+        context,
+        personalStyleDna,
+        styleDnaPromptBlock,
+        providerRouter,
+        visualReplacementSelector,
+        photoCache,
+        fetchImpl,
+        resolvePhoto,
+        authorizePhoto,
+        allowlist,
+        deadlineAt,
+        signal,
+        idPrefix,
+        maxVisualPool: 6,
+        onGateFailed: ({ candidateEntry, replacementId, gate }) => {
+          triedItemIds.add(replacementId);
           attempts.push({
             round,
             slot: weakestSlot,
@@ -940,9 +1087,48 @@ export async function refineLookSurgically({
             score10: null,
             committed: false,
           });
-          continue;
+        },
+      });
+      prefilteredVisualEntries = visualPicked.entries;
+      roundVisualSwapUsed = visualPicked.visualSwapUsed;
+    }
+
+    if (parallelCandidates === true && topCandidatesPerRound > 1 && typeof visualCritic === 'function') {
+      // Fast parallel batch mode: validate hard gates, render all candidate boards
+      // in parallel (~50ms with warm photoCache), then evaluate in ONE parallel critic wave (~2s)!
+      let gatePassed = [];
+      if (prefilteredVisualEntries !== null) {
+        gatePassed = prefilteredVisualEntries.slice(0, topCandidatesPerRound);
+        for (const e of gatePassed) triedItemIds.add(e.replacementId);
+      } else {
+        for (let idx = 0; idx < ranked.length && gatePassed.length < topCandidatesPerRound; idx++) {
+          if (signal?.aborted || Date.now() >= deadlineAt) break;
+          const candidateEntry = ranked[idx];
+          const replacement = candidateEntry.item;
+          const replacementId = String(replacement.id);
+          triedItemIds.add(replacementId);
+
+          const candidateLookId = `${String(look.id || 'look').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 44)}_sr${round}_${idx}`;
+          const candidateLook = buildReplacedLook(workingLook, weakestSlot, replacement, candidateLookId);
+
+          const gate = await runHardGate(hardGateValidator, candidateLook, context);
+          if (!gate.ok) {
+            attempts.push({
+              round,
+              slot: weakestSlot,
+              replacedItemId: String(slotItem.id),
+              candidateItemId: replacementId,
+              rankScore: candidateEntry.score,
+              hardGatePassed: false,
+              hardGateReason: gate.reason,
+              criticRan: false,
+              score10: null,
+              committed: false,
+            });
+            continue;
+          }
+          gatePassed.push({ candidateEntry, replacement, replacementId, candidateLook });
         }
-        gatePassed.push({ candidateEntry, replacement, replacementId, candidateLook });
       }
 
       const renderedReady = [];
@@ -1017,6 +1203,7 @@ export async function refineLookSurgically({
               criticError: 'critic_abstained',
               score10: null,
               committed: false,
+              ...(entry.visuallySelected ? { visuallySelected: true, visualSwapToken: entry.visualSwapToken } : {}),
             });
             continue;
           }
@@ -1041,6 +1228,7 @@ export async function refineLookSurgically({
             passedFloor: nextScore.passedFloor,
             rejected: nextScore.rejected,
             committed: clearedAndImproved,
+            ...(entry.visuallySelected ? { visuallySelected: true, visualSwapToken: entry.visualSwapToken } : {}),
           });
 
           if (clearedAndImproved && (!bestWinning || nextScore.score10 > bestWinning.nextScore.score10)) {
@@ -1079,56 +1267,121 @@ export async function refineLookSurgically({
             scoreDelta: Number((bestWinning.nextScore.score10 - baseline.score10).toFixed(2)),
             rounds: roundsExecuted,
             attempts,
+            ...(roundVisualSwapUsed ? {
+              visualSwapUsed: true,
+              visuallySelected: Boolean(bestWinning.entry.visuallySelected),
+              visualSwapToken: bestWinning.entry.visualSwapToken || null,
+              visualSwapRationale: bestWinning.entry.visualSwapRationale || null,
+              swapBoard: bestWinning.entry.visualSwapBoard || null,
+            } : {}),
             diagnostic: null,
             latencyMs: Date.now() - startedAt,
             version: SURGICAL_REFINER_VERSION,
           };
         }
       }
-    } else for (let idx = 0; idx < ranked.length && evaluatedInRound < topCandidatesPerRound; idx++) {
-      if (signal?.aborted || Date.now() >= deadlineAt) break;
+    } else {
+      const seqSource = prefilteredVisualEntries !== null ? prefilteredVisualEntries : ranked;
+      for (let idx = 0; idx < seqSource.length && evaluatedInRound < topCandidatesPerRound; idx++) {
+        if (signal?.aborted || Date.now() >= deadlineAt) break;
 
-      const candidateEntry = ranked[idx];
-      const replacement = candidateEntry.item;
-      const replacementId = String(replacement.id);
-      triedItemIds.add(replacementId);
+        let candidateEntry;
+        let replacement;
+        let replacementId;
+        let candidateLook;
+        let visuallySelected = false;
+        let visualSwapToken = null;
+        let visualSwapRationale = null;
+        let visualSwapBoard = null;
 
-      const candidateLookId = `${String(look.id || 'look').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 44)}_sr${round}_${idx}`;
-      const candidateLook = buildReplacedLook(workingLook, weakestSlot, replacement, candidateLookId);
+        if (prefilteredVisualEntries !== null) {
+          const pre = seqSource[idx];
+          candidateEntry = pre.candidateEntry;
+          replacement = pre.replacement;
+          replacementId = pre.replacementId;
+          candidateLook = pre.candidateLook;
+          visuallySelected = Boolean(pre.visuallySelected);
+          visualSwapToken = pre.visualSwapToken || null;
+          visualSwapRationale = pre.visualSwapRationale || null;
+          visualSwapBoard = pre.visualSwapBoard || null;
+          triedItemIds.add(replacementId);
+        } else {
+          candidateEntry = seqSource[idx];
+          replacement = candidateEntry.item;
+          replacementId = String(replacement.id);
+          triedItemIds.add(replacementId);
 
-      // 1. Server hard gates ALWAYS run before board render / VLM call
-      const gate = await runHardGate(hardGateValidator, candidateLook, context);
-      if (!gate.ok) {
-        attempts.push({
-          round,
-          slot: weakestSlot,
-          replacedItemId: String(slotItem.id),
-          candidateItemId: replacementId,
-          rankScore: candidateEntry.score,
-          hardGatePassed: false,
-          hardGateReason: gate.reason,
-          criticRan: false,
-          score10: null,
-          committed: false,
-        });
-        continue;
-      }
+          const candidateLookId = `${String(look.id || 'look').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 44)}_sr${round}_${idx}`;
+          candidateLook = buildReplacedLook(workingLook, weakestSlot, replacement, candidateLookId);
 
-      // 2. Re-render proportion-aware editorial board (3 locked items hit cache at 0ms!)
-      let board = null;
-      if (typeof boardRenderer === 'function') {
-        try {
-          board = await Promise.resolve(boardRenderer(candidateLook.items, {
-            lookToken: candidateLook.id,
-            title: candidateLook.title || 'SURGICAL REFINEMENT BOARD',
-            requireAllPhotos: true,
-            deadlineMs: Math.max(400, deadlineAt - Date.now()),
-            signal,
-          }));
-        } catch {
-          board = { ok: false, error: 'board_render_error' };
+          // 1. Server hard gates ALWAYS run before board render / VLM call
+          const gate = await runHardGate(hardGateValidator, candidateLook, context);
+          if (!gate.ok) {
+            attempts.push({
+              round,
+              slot: weakestSlot,
+              replacedItemId: String(slotItem.id),
+              candidateItemId: replacementId,
+              rankScore: candidateEntry.score,
+              hardGatePassed: false,
+              hardGateReason: gate.reason,
+              criticRan: false,
+              score10: null,
+              committed: false,
+            });
+            continue;
+          }
         }
-        if (board && board.ok === false) {
+
+        // 2. Re-render proportion-aware editorial board (3 locked items hit cache at 0ms!)
+        let board = null;
+        if (typeof boardRenderer === 'function') {
+          try {
+            board = await Promise.resolve(boardRenderer(candidateLook.items, {
+              lookToken: candidateLook.id,
+              title: candidateLook.title || 'SURGICAL REFINEMENT BOARD',
+              requireAllPhotos: true,
+              deadlineMs: Math.max(400, deadlineAt - Date.now()),
+              signal,
+            }));
+          } catch {
+            board = { ok: false, error: 'board_render_error' };
+          }
+          if (board && board.ok === false) {
+            attempts.push({
+              round,
+              slot: weakestSlot,
+              replacedItemId: String(slotItem.id),
+              candidateItemId: replacementId,
+              rankScore: candidateEntry.score,
+              hardGatePassed: true,
+              boardRendered: false,
+              boardError: board.error || 'board_failed',
+              criticRan: false,
+              score10: null,
+              committed: false,
+              ...(visuallySelected ? { visuallySelected: true, visualSwapToken } : {}),
+            });
+            continue;
+          }
+        }
+
+        // 3. Independent Visual Critic re-evaluation (strictly bounded by deadlineAt)
+        evaluatedInRound++;
+        const stepTimeoutMs = Math.max(400, deadlineAt - Date.now());
+        const stepSignal = signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(stepTimeoutMs)])
+          : AbortSignal.timeout(stepTimeoutMs);
+        let newCritique = null;
+        try {
+          newCritique = await evaluateWithVisualCritic(
+            visualCritic, candidateLook, board, context, personalStyleDna, stepSignal,
+          );
+        } catch {
+          newCritique = null;
+        }
+
+        if (!newCritique) {
           attempts.push({
             round,
             slot: weakestSlot,
@@ -1136,32 +1389,23 @@ export async function refineLookSurgically({
             candidateItemId: replacementId,
             rankScore: candidateEntry.score,
             hardGatePassed: true,
-            boardRendered: false,
-            boardError: board.error || 'board_failed',
-            criticRan: false,
+            boardRendered: Boolean(board?.jpegBuffer),
+            criticRan: true,
+            criticError: 'critic_abstained',
             score10: null,
             committed: false,
+            ...(visuallySelected ? { visuallySelected: true, visualSwapToken } : {}),
           });
           continue;
         }
-      }
 
-      // 3. Independent Visual Critic re-evaluation (strictly bounded by deadlineAt)
-      evaluatedInRound++;
-      const stepTimeoutMs = Math.max(400, deadlineAt - Date.now());
-      const stepSignal = signal
-        ? AbortSignal.any([signal, AbortSignal.timeout(stepTimeoutMs)])
-        : AbortSignal.timeout(stepTimeoutMs);
-      let newCritique = null;
-      try {
-        newCritique = await evaluateWithVisualCritic(
-          visualCritic, candidateLook, board, context, personalStyleDna, stepSignal,
-        );
-      } catch {
-        newCritique = null;
-      }
+        const nextScore = computeCritiqueCompositeScore(newCritique, { minEditorialScore, minVisualQuality });
+        const isSkuCollision = String(workingCritique?.defectCategory || '').trim().toLowerCase() === 'sku_collision';
+        const strictlyImproved = nextScore.score10 > baseline.score10
+          || (baseline.rejected && !nextScore.rejected && nextScore.score10 >= baseline.score10)
+          || (isSkuCollision && nextScore.passedFloor && !nextScore.rejected);
+        const clearedAndImproved = nextScore.passedFloor && strictlyImproved;
 
-      if (!newCritique) {
         attempts.push({
           round,
           slot: weakestSlot,
@@ -1171,77 +1415,63 @@ export async function refineLookSurgically({
           hardGatePassed: true,
           boardRendered: Boolean(board?.jpegBuffer),
           criticRan: true,
-          criticError: 'critic_abstained',
-          score10: null,
-          committed: false,
-        });
-        continue;
-      }
-
-      const nextScore = computeCritiqueCompositeScore(newCritique, { minEditorialScore, minVisualQuality });
-      const isSkuCollision = String(workingCritique?.defectCategory || '').trim().toLowerCase() === 'sku_collision';
-      const strictlyImproved = nextScore.score10 > baseline.score10
-        || (baseline.rejected && !nextScore.rejected && nextScore.score10 >= baseline.score10)
-        || (isSkuCollision && nextScore.passedFloor && !nextScore.rejected);
-      const clearedAndImproved = nextScore.passedFloor && strictlyImproved;
-
-      attempts.push({
-        round,
-        slot: weakestSlot,
-        replacedItemId: String(slotItem.id),
-        candidateItemId: replacementId,
-        rankScore: candidateEntry.score,
-        hardGatePassed: true,
-        boardRendered: Boolean(board?.jpegBuffer),
-        criticRan: true,
-        score10: nextScore.score10,
-        score01: nextScore.score01,
-        passedFloor: nextScore.passedFloor,
-        rejected: nextScore.rejected,
-        committed: clearedAndImproved,
-      });
-
-      if (clearedAndImproved) {
-        return {
-          status: 'refined_and_approved',
-          improved: true,
-          committed: true,
-          approved: true,
-          look: candidateLook,
-          critique: newCritique,
-          board,
-          swappedSlot: weakestSlot,
-          replacedItemId: String(slotItem.id),
-          selectedItemId: replacementId,
-          previousScore: baseline.score10,
-          newScore: nextScore.score10,
-          scoreDelta: Number((nextScore.score10 - baseline.score10).toFixed(2)),
-          rounds: roundsExecuted,
-          attempts,
-          diagnostic: null,
-          latencyMs: Date.now() - startedAt,
-          version: SURGICAL_REFINER_VERSION,
-        };
-      }
-
-      // Track best verified improvement (still NOT committed because threshold was not cleared!)
-      if (nextScore.score10 > workingScore.score10) {
-        const candidateRecord = {
-          look: candidateLook,
-          critique: newCritique,
-          board,
-          swappedSlot: weakestSlot,
-          replacedItemId: String(slotItem.id),
-          selectedItemId: replacementId,
           score10: nextScore.score10,
           score01: nextScore.score01,
           passedFloor: nextScore.passedFloor,
-        };
-        if (!roundBest || candidateRecord.score10 > roundBest.score10) {
-          roundBest = candidateRecord;
+          rejected: nextScore.rejected,
+          committed: clearedAndImproved,
+          ...(visuallySelected ? { visuallySelected: true, visualSwapToken } : {}),
+        });
+
+        if (clearedAndImproved) {
+          return {
+            status: 'refined_and_approved',
+            improved: true,
+            committed: true,
+            approved: true,
+            look: candidateLook,
+            critique: newCritique,
+            board,
+            swappedSlot: weakestSlot,
+            replacedItemId: String(slotItem.id),
+            selectedItemId: replacementId,
+            previousScore: baseline.score10,
+            newScore: nextScore.score10,
+            scoreDelta: Number((nextScore.score10 - baseline.score10).toFixed(2)),
+            rounds: roundsExecuted,
+            attempts,
+            ...(roundVisualSwapUsed ? {
+              visualSwapUsed: true,
+              visuallySelected,
+              visualSwapToken,
+              visualSwapRationale,
+              swapBoard: visualSwapBoard,
+            } : {}),
+            diagnostic: null,
+            latencyMs: Date.now() - startedAt,
+            version: SURGICAL_REFINER_VERSION,
+          };
         }
-        if (!bestImprovement || candidateRecord.score10 > bestImprovement.score10) {
-          bestImprovement = candidateRecord;
+
+        // Track best verified improvement (still NOT committed because threshold was not cleared!)
+        if (nextScore.score10 > workingScore.score10) {
+          const candidateRecord = {
+            look: candidateLook,
+            critique: newCritique,
+            board,
+            swappedSlot: weakestSlot,
+            replacedItemId: String(slotItem.id),
+            selectedItemId: replacementId,
+            score10: nextScore.score10,
+            score01: nextScore.score01,
+            passedFloor: nextScore.passedFloor,
+          };
+          if (!roundBest || candidateRecord.score10 > roundBest.score10) {
+            roundBest = candidateRecord;
+          }
+          if (!bestImprovement || candidateRecord.score10 > bestImprovement.score10) {
+            bestImprovement = candidateRecord;
+          }
         }
       }
     }
@@ -1291,9 +1521,17 @@ export async function swapSingleSlot({
   catalogPool = [],
   context = {},
   personalStyleDna = null,
+  styleDnaPromptBlock = '',
   hardGateValidator = null,
   visualCritic = null,
   boardRenderer = null,
+  providerRouter = null,
+  visualReplacementSelector = null,
+  photoCache = null,
+  fetchImpl = null,
+  resolvePhoto = null,
+  authorizePhoto = null,
+  allowlist = null,
   excludedItemIds = [],
   qualityMap = null,
   priceToBudgetCurrency = null,
@@ -1342,6 +1580,13 @@ export async function swapSingleSlot({
   const excludedSet = new Set(Array.from(excludedItemIds || [], String));
   excludedSet.add(String(previousItem.id));
 
+  const visualSwapEnabled = isVisualSwapSelectionEnabled({
+    visualReplacementSelector,
+    providerRouter,
+    photoCache,
+    resolvePhoto,
+  });
+
   const ranked = rankSlotReplacementCandidates({
     look,
     targetSlot: slot,
@@ -1353,7 +1598,7 @@ export async function swapSingleSlot({
     excludedIds: excludedSet,
     qualityMap,
     priceToBudgetCurrency,
-    limit: Math.max(1, Math.min(12, maxCandidates * 2)),
+    limit: visualSwapEnabled ? Math.max(12, maxCandidates * 2) : Math.max(1, Math.min(12, maxCandidates * 2)),
   });
 
   if (!ranked.length) {
@@ -1375,7 +1620,47 @@ export async function swapSingleSlot({
   const attempts = [];
   let checked = 0;
 
-  for (let i = 0; i < ranked.length && checked < maxCandidates; i++) {
+  let prefilteredVisualEntries = null;
+  let swapVisualUsed = false;
+  if (visualSwapEnabled) {
+    const idPrefix = `${String(look.id || 'look').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 44)}_swap`;
+    const visualPicked = await prefilterAndPromoteVisualPick({
+      ranked,
+      workingLook: look,
+      targetSlot: slot,
+      repairDirective: String(reason || ''),
+      hardGateValidator,
+      context,
+      personalStyleDna,
+      styleDnaPromptBlock,
+      providerRouter,
+      visualReplacementSelector,
+      photoCache,
+      fetchImpl,
+      resolvePhoto,
+      authorizePhoto,
+      allowlist,
+      deadlineAt,
+      signal,
+      idPrefix,
+      maxVisualPool: 6,
+      onGateFailed: ({ candidateEntry, replacementId, gate }) => {
+        attempts.push({
+          candidateItemId: replacementId,
+          rankScore: candidateEntry.score,
+          hardGatePassed: false,
+          hardGateReason: gate.reason,
+          visualVerified: false,
+        });
+      },
+    });
+    prefilteredVisualEntries = visualPicked.entries;
+    swapVisualUsed = visualPicked.visualSwapUsed;
+  }
+
+  const loopSource = prefilteredVisualEntries !== null ? prefilteredVisualEntries : ranked;
+
+  for (let i = 0; i < loopSource.length && checked < maxCandidates; i++) {
     if (signal?.aborted || Date.now() >= deadlineAt) {
       return {
         status: 'deadline',
@@ -1392,25 +1677,44 @@ export async function swapSingleSlot({
       };
     }
 
-    const entry = ranked[i];
-    const replacement = entry.item;
-    const candidateLook = buildReplacedLook(
-      look,
-      slot,
-      replacement,
-      `${String(look.id || 'look').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 44)}_swap_${i}`,
-    );
+    let entry;
+    let replacement;
+    let candidateLook;
+    let visuallySelected = false;
+    let visualSwapToken = null;
+    let visualSwapRationale = null;
+    let visualSwapBoard = null;
 
-    const gate = await runHardGate(hardGateValidator, candidateLook, context);
-    if (!gate.ok) {
-      attempts.push({
-        candidateItemId: String(replacement.id),
-        rankScore: entry.score,
-        hardGatePassed: false,
-        hardGateReason: gate.reason,
-        visualVerified: false,
-      });
-      continue;
+    if (prefilteredVisualEntries !== null) {
+      const pre = loopSource[i];
+      entry = pre.candidateEntry;
+      replacement = pre.replacement;
+      candidateLook = pre.candidateLook;
+      visuallySelected = Boolean(pre.visuallySelected);
+      visualSwapToken = pre.visualSwapToken || null;
+      visualSwapRationale = pre.visualSwapRationale || null;
+      visualSwapBoard = pre.visualSwapBoard || null;
+    } else {
+      entry = loopSource[i];
+      replacement = entry.item;
+      candidateLook = buildReplacedLook(
+        look,
+        slot,
+        replacement,
+        `${String(look.id || 'look').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 44)}_swap_${i}`,
+      );
+
+      const gate = await runHardGate(hardGateValidator, candidateLook, context);
+      if (!gate.ok) {
+        attempts.push({
+          candidateItemId: String(replacement.id),
+          rankScore: entry.score,
+          hardGatePassed: false,
+          hardGateReason: gate.reason,
+          visualVerified: false,
+        });
+        continue;
+      }
     }
 
     checked++;
@@ -1433,6 +1737,7 @@ export async function swapSingleSlot({
           hardGatePassed: true,
           boardRendered: false,
           visualVerified: false,
+          ...(visuallySelected ? { visuallySelected: true, visualSwapToken } : {}),
         });
         continue;
       }
@@ -1455,6 +1760,7 @@ export async function swapSingleSlot({
         visualVerified: scoreInfo.passedFloor,
         score10: scoreInfo.score10,
         rejected: scoreInfo.rejected,
+        ...(visuallySelected ? { visuallySelected: true, visualSwapToken } : {}),
       });
 
       if (scoreInfo.passedFloor) {
@@ -1469,6 +1775,13 @@ export async function swapSingleSlot({
           board,
           visualVerified: true,
           editorialScore: scoreInfo.score10,
+          ...(swapVisualUsed ? {
+            visualSwapUsed: true,
+            visuallySelected,
+            visualSwapToken,
+            visualSwapRationale,
+            swapBoard: visualSwapBoard,
+          } : {}),
           attempts,
           latencyMs: Date.now() - startedAt,
           version: SURGICAL_REFINER_VERSION,
@@ -1477,12 +1790,13 @@ export async function swapSingleSlot({
       continue;
     }
 
-    // No visualCritic supplied: return top hard-gate-verified swap with honest visualVerified: false
+    // No visualCritic supplied: return top hard-gate-verified (or visually selected) swap with honest visualVerified: false
     attempts.push({
       candidateItemId: String(replacement.id),
       rankScore: entry.score,
       hardGatePassed: true,
       visualVerified: false,
+      ...(visuallySelected ? { visuallySelected: true, visualSwapToken } : {}),
     });
     return {
       status: 'swapped',
@@ -1494,6 +1808,13 @@ export async function swapSingleSlot({
       critique: null,
       board,
       visualVerified: false,
+      ...(swapVisualUsed ? {
+        visualSwapUsed: true,
+        visuallySelected,
+        visualSwapToken,
+        visualSwapRationale,
+        swapBoard: visualSwapBoard,
+      } : {}),
       attempts,
       latencyMs: Date.now() - startedAt,
       version: SURGICAL_REFINER_VERSION,
@@ -1525,9 +1846,17 @@ export async function refineLooksSurgicallyInParallel({
   catalogPool = [],
   context = {},
   personalStyleDna = null,
+  styleDnaPromptBlock = '',
   hardGateValidator = null,
   visualCritic = null,
   boardRenderer = null,
+  providerRouter = null,
+  visualReplacementSelector = null,
+  photoCache = null,
+  fetchImpl = null,
+  resolvePhoto = null,
+  authorizePhoto = null,
+  allowlist = null,
   maxRounds = 1,
   deadlineMs = 8_000,
   excludedItemIds = [],
@@ -1577,9 +1906,17 @@ export async function refineLooksSurgicallyInParallel({
     lockedSlots: target.lockedSlots || [],
     context: target.context || context,
     personalStyleDna,
+    styleDnaPromptBlock: target.styleDnaPromptBlock || styleDnaPromptBlock,
     hardGateValidator: target.hardGateValidator || hardGateValidator,
     visualCritic,
     boardRenderer,
+    providerRouter,
+    visualReplacementSelector,
+    photoCache,
+    fetchImpl,
+    resolvePhoto,
+    authorizePhoto,
+    allowlist,
     maxRounds,
     deadlineMs,
     excludedItemIds: perTargetExcluded[idx],

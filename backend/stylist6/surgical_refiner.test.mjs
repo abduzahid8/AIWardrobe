@@ -523,3 +523,154 @@ test('sku_collision surgical rescue replaces ONLY the colliding slot with a visu
   assert.notEqual(res.selectedItemId, 'shoes-chunky-sneaker');
   assert.notEqual(res.selectedItemId, 'shoes-deck-used-loafer');
 });
+
+test('refineLookSurgically uses Visual Swap Board (selectVisualSlotReplacement) when providerRouter + photoCache are supplied, promoting VLM visual pick before 1024x1024 verification', async () => {
+  const jpg = await sharp({ create: { width: 120, height: 150, channels: 3, background: '#5E4B3C' } }).jpeg().toBuffer();
+  const photoCache = createPhotoByteCache({ maxEntries: 32 });
+  const fetchImpl = async () => new Response(jpg, { status: 200 });
+
+  // Warm photoCache for the 3 locked pieces
+  await renderEditorialLookBoard(baseLook.items.slice(0, 3), { photoCache, fetchImpl, requireAllPhotos: true });
+
+  // Text ranker prefers shoes-brown-suede-loafer (#1), then shoes-budget-derby (#2) or shoes-black-oxford (#3).
+  // Suppose the VLM sees the Swap Board photos and prefers R2 (shoes-budget-derby) visually!
+  let visionCalls = 0;
+  let capturedSwapBoardLen = 0;
+  let criticCheckedId = null;
+
+  const mockRouter = {
+    isProviderConfigured: () => true,
+    callVisionModel: async (req) => {
+      visionCalls++;
+      capturedSwapBoardLen = req.images?.[0]?.bytes?.length || 0;
+      const meta = await sharp(req.images[0].bytes).metadata();
+      assert.equal(meta.width, 1400, 'Visual Swap Board sent to VLM must be 1400x900');
+      assert.equal(meta.height, 900);
+      return {
+        ok: true,
+        provider: 'openrouter',
+        model: 'google/gemini-2.5-flash',
+        parsedJson: {
+          selectedToken: 'R2',
+          visualRationale: 'R2 burnished brown leather derby visually balances the camel coat and charcoal trouser drape cleanly.',
+          confidence: 0.93,
+        },
+      };
+    },
+  };
+
+  const result = await refineLookSurgically({
+    look: baseLook,
+    critique: {
+      candidateId: baseLook.id,
+      reject: true,
+      editorialScore: 5.3,
+      weakestSlot: 'shoes',
+      defectCategory: 'footwear_mismatch',
+      repairDirective: 'Replace chunky white sneaker with sleek dark brown leather or suede dress shoe',
+      confidence: 0.92,
+    },
+    catalogPool,
+    context: { occasion: 'Work', style: 'classic', budget: { amount: 1000, currency: 'USD' } },
+    excludedItemIds: ['shoes-deck-used-loafer'],
+    hardGateValidator: () => ({ ok: true }),
+    providerRouter: mockRouter,
+    photoCache,
+    fetchImpl,
+    topCandidatesPerRound: 1,
+    boardRenderer: (items, opts) => renderEditorialLookBoard(items, { ...opts, photoCache, fetchImpl }),
+    visualCritic: async ([cand]) => {
+      assert.ok(cand.editorialBoardJpeg?.jpegBuffer?.length > 1000, 'must still verify resulting 1024x1024 board');
+      const shoe = cand.products.find((p) => p.slot === 'shoes');
+      criticCheckedId = shoe.id;
+      return [{
+        candidateId: cand.id,
+        reject: false,
+        editorialScore: 8.9,
+        weakestSlot: null,
+        defectCategory: 'none',
+        visualCohesion: 0.91,
+        styleFit: 0.90,
+        occasionFit: 0.91,
+        formalityFit: 0.90,
+        confidence: 0.95,
+        referenceless: true,
+      }];
+    },
+  });
+
+  assert.equal(visionCalls, 1, 'Visual Swap Board VLM selector must execute once');
+  assert.ok(capturedSwapBoardLen > 1000);
+  assert.equal(result.status, 'refined_and_approved');
+  assert.equal(result.committed, true);
+  assert.equal(result.visualSwapUsed, true);
+  assert.equal(result.visuallySelected, true);
+  assert.equal(result.visualSwapToken, 'R2');
+  assert.match(result.visualSwapRationale, /burnished brown/i);
+  assert.equal(result.selectedItemId, criticCheckedId);
+  assert.notEqual(result.selectedItemId, 'shoes-brown-suede-loafer', 'VLM picked R2 over text-rank #1');
+});
+
+test('swapSingleSlot integrates visualReplacementSelector / providerRouter + photoCache and degrades cleanly on fallback', async () => {
+  const jpg = await sharp({ create: { width: 120, height: 150, channels: 3, background: '#3A4A5A' } }).jpeg().toBuffer();
+  const photoCache = createPhotoByteCache({ maxEntries: 32 });
+  const fetchImpl = async () => new Response(jpg, { status: 200 });
+
+  // 1. Injected visualReplacementSelector chooses shoes-black-oxford over text #1
+  let selectorSawCandidates = [];
+  const visualSwap = await swapSingleSlot({
+    look: baseLook,
+    targetSlot: 'shoes',
+    reason: 'wrong_shoes more polished',
+    catalogPool,
+    context: { occasion: 'Work', budget: { amount: 1000, currency: 'USD' } },
+    excludedItemIds: ['shoes-deck-used-loafer'],
+    hardGateValidator: () => ({ ok: true }),
+    photoCache,
+    fetchImpl,
+    boardRenderer: (items, opts) => renderEditorialLookBoard(items, { ...opts, photoCache, fetchImpl }),
+    visualReplacementSelector: async ({ candidates }) => {
+      selectorSawCandidates = candidates.map((c) => c.id);
+      const chosen = candidates.find((c) => c.id === 'shoes-black-oxford');
+      return {
+        status: 'selected',
+        selectedItem: chosen,
+        token: 'R3',
+        rationale: 'Crisp black leather oxford sharpens the charcoal trouser line.',
+        swapBoard: { width: 1400, height: 900, ok: true },
+      };
+    },
+    visualCritic: async ([cand]) => [{
+      candidateId: cand.id,
+      reject: false,
+      editorialScore: 8.8,
+      confidence: 0.94,
+      referenceless: true,
+    }],
+  });
+
+  assert.ok(selectorSawCandidates.includes('shoes-black-oxford'));
+  assert.ok(!selectorSawCandidates.includes('shoes-overbudget-loafer'), 'hard budget gate runs BEFORE visual selection');
+  assert.equal(visualSwap.status, 'swapped');
+  assert.equal(visualSwap.newItem.id, 'shoes-black-oxford');
+  assert.equal(visualSwap.visualVerified, true);
+  assert.equal(visualSwap.visualSwapUsed, true);
+  assert.equal(visualSwap.visuallySelected, true);
+  assert.equal(visualSwap.visualSwapToken, 'R3');
+
+  // 2. Graceful fallback when visual selector fails/abstains
+  const fallbackSwap = await swapSingleSlot({
+    look: baseLook,
+    targetSlot: 'shoes',
+    reason: 'over_budget',
+    catalogPool,
+    context: { occasion: 'Work', budget: { amount: 1000, currency: 'USD' } },
+    excludedItemIds: ['shoes-deck-used-loafer'],
+    hardGateValidator: () => ({ ok: true }),
+    visualReplacementSelector: async () => ({ status: 'fallback', selectedItem: null, reason: 'vision_unavailable' }),
+  });
+
+  assert.equal(fallbackSwap.status, 'swapped');
+  assert.equal(fallbackSwap.newItem.id, 'shoes-budget-derby');
+  assert.equal(fallbackSwap.visualVerified, false);
+});

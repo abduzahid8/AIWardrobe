@@ -1174,3 +1174,46 @@ test('6-axis Visual Critic prompt explicitly vetoes cropped close-ups, flat dark
   assert.equal(res.weakestSlot, 'top', 'must attribute cropped cuff photo defect to exact top slot');
   assert.match(res.repairDirective, /white poplin dress shirt/i);
 });
+
+test('6-axis Visual Critic prompt sharpens editorial calibration for modernity, desirability to wear, visual silhouette flow, and shade/texture harmony (8.5-9.5 vs 6.5)', async () => {
+  const photos = candidate.products.map((_, i) => asset(210 + i));
+  let capturedPrompt = '';
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia',
+    apiKey,
+    referenceMediaConfigured: false,
+    resolveReference: () => null,
+    resolveProduct: ({ slot }) => photos[candidate.products.findIndex((p) => p.slot === slot)],
+    fetchImpl: async (_url, init) => {
+      capturedPrompt = JSON.parse(init.body).messages[0].content[0].text;
+      return nvidiaResponse({
+        ...referencelessVerdict('s6_modernity_rubric_01'),
+        editorialAxes: {
+          colorAndUndertoneHarmony: 9.1,
+          silhouetteAndProportion: 9.0,
+          textureAndMaterialInterplay: 8.9,
+          footwearAndGrounding: 9.2,
+          occasionAndWeatherCredibility: 9.0,
+          editorialBeautyAndTaste: 9.2,
+        },
+        weakestSlot: 'none',
+        defectCategory: 'none',
+        repairDirective: '',
+      });
+    },
+  });
+
+  const [res] = await critic(
+    [{ ...candidate, id: 's6_modernity_rubric_01', referenceId: null }],
+    { style: 'old_money', occasion: 'Date night', weather: { temp: 18 } },
+  );
+
+  assert.match(capturedPrompt, /8\.5–9\.5\/10/);
+  assert.match(capturedPrompt, /6\.5\/10/);
+  assert.match(capturedPrompt, /modernity/i);
+  assert.match(capturedPrompt, /desirability to wear/i);
+  assert.match(capturedPrompt, /visual silhouette flow/i);
+  assert.match(capturedPrompt, /visual shade\/texture harmony/i);
+  assert.ok(res.editorialScore >= 9.0);
+  assert.equal(res.reject, false);
+});
