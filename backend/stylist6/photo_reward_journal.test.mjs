@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {compilePhotoRewardExamples,anonymousPhotoJournalAllowed,PHOTO_REWARD_JOURNAL_VERSION} from './photo_reward_journal.mjs';
+import {compilePhotoRewardExamples,anonymousPhotoJournalAllowed,photoRewardContextHash,PHOTO_REWARD_JOURNAL_VERSION} from './photo_reward_journal.mjs';
 
 const SECRET='staging-private-hmac-secret-please-never-commit-value';
 const SLOTS=['top','outerwear','bottom','shoes'];
@@ -158,4 +158,22 @@ test('independent personal color and fit contexts never share the same PHOTO tra
   assert.deepEqual(one,sameReordered,'equivalent preferences share privacy scope regardless of key order');
   assert.doesNotMatch(JSON.stringify(one),
     /navy|red|Private Merchant|PRIVATE|Brand|http|imageUrl|SKU|user_id/i);
+});
+
+test('real UI Old Money, Semi Classic and Date night aliases have canonical photo training contexts',()=>{
+  const key='private-staging-hmac-domain-test-only-0123456';
+  const prefs={fitPreference:'loose',favoriteColors:['cream'],styleGoals:['modern']};
+  assert.equal(photoRewardContextHash({
+    style:' Old Money ',occasion:'Date night',preferences:prefs,
+  },key),photoRewardContextHash({
+    style:'old_money',occasion:'date',preferences:prefs,
+  },key));
+  assert.equal(photoRewardContextHash({
+    style:'Semi Classic',occasion:'Work',preferences:prefs,
+  },key),photoRewardContextHash({
+    style:'semi_classic',occasion:'work',preferences:prefs,
+  },key));
+  assert.equal(photoRewardContextHash({
+    style:'new private style',occasion:'private wedding',preferences:prefs,
+  },key),null,'never train on uncontrolled free text or private event names');
 });

@@ -25,8 +25,8 @@ import { createHash } from 'node:crypto';
 import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { hydrateCatalogObservations } from './catalog_observation.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
-import {compilePhotoRewardExamples,anonymousPhotoJournalAllowed}
-  from './photo_reward_journal.mjs';
+import {compilePhotoRewardExamples,anonymousPhotoJournalAllowed,
+  photoRewardContextHash} from './photo_reward_journal.mjs';
 import {
   trainPhotoRewardHistory,scorePhotoRewardHistory,
   photoHistoryContextHash,photoHistoryFeatureHashes,
@@ -206,6 +206,7 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     photoHistoryStatus:[
       'untrained','unavailable','insufficient_real_photo_history',
       'uncalibrated_history','heldout_photo_validated','read_failed',
+      'personal_context_excluded','context_unsupported',
     ].includes(f.photoHistoryStatus)?f.photoHistoryStatus:'not_run',
     photoHistoryExamples:safe(f.photoHistoryExamples,240),
     photoHistoryPriorConsidered:f.photoHistoryPriorConsidered===true,
@@ -1902,11 +1903,16 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         // context, not potentially re-normalized/trimmed fashion-deck
         // context fields. The complete preferences influence only the
         // ephemeral HMAC: no raw value is included in any stored row.
+        const journalContext={style:input.style,occasion:input.occasion,
+          preferences:input.preferences};
+        const secret=env.STYLIST6_NODE_SHARED_SECRET;
+        if(!photoRewardContextHash(journalContext,secret)){
+          console.info('stylist6_photo_reward_journal',
+            {status:'context_unsupported',examples:0});
+          return;
+        }
         const rows=compilePhotoRewardExamples({
-          ...evidence,
-          context:{style:input.style,occasion:input.occasion,
-            preferences:input.preferences},
-          secret:env.STYLIST6_NODE_SHARED_SECRET,
+          ...evidence,context:journalContext,secret,
         });
         if(rows.length===0){
           console.info('stylist6_photo_reward_journal',
@@ -1925,19 +1931,24 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // The database row has NO user/photo/merchant identity. No valid
     // held-out PHOTO model means a null prior and unchanged selection.
     let photoHistory={status:'untrained',examples:0};
-    const photoHistoryEnabled=budgetMs>=70000&&
+    const privatePhotoEnabled=budgetMs>=70000&&
       env.STYLIST6_PHOTO_REWARD_JOURNAL_ENABLED==='true'&&
-      sourceMode==='catalog'&&typeof io.readPhotoRewardHistory==='function'&&
-      anonymousPhotoJournalAllowed({
-        sourceMode,requiredIds:input.requiredIds||[],
-        preferences:input.preferences,
-      });
+      sourceMode==='catalog'&&typeof io.readPhotoRewardHistory==='function';
+    const allowedPhotoContext=anonymousPhotoJournalAllowed({
+      sourceMode,requiredIds:input.requiredIds||[],
+      preferences:input.preferences,
+    });
+    if(privatePhotoEnabled&&!allowedPhotoContext)
+      photoHistory={status:'personal_context_excluded',examples:0};
+    const photoHistoryEnabled=privatePhotoEnabled&&allowedPhotoContext;
     if(photoHistoryEnabled){
       try{
         const contextHash=photoHistoryContextHash({
           style:input.style,occasion:input.occasion,
           preferences:input.preferences,
         },env.STYLIST6_NODE_SHARED_SECRET);
+        if(!contextHash)
+          photoHistory={status:'context_unsupported',examples:0};
         if(contextHash){
           const rows=await io.readPhotoRewardHistory(contextHash);
           const model=trainPhotoRewardHistory(rows,contextHash);

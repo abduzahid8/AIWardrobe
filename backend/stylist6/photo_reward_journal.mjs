@@ -44,7 +44,7 @@ const PHOTO_PREF_KNOWN=new Set([
 ]);
 const PHOTO_BUDGET_KEYS=new Set(['min','max','amount','currency']);
 const safeString=v=>{
-  if(typeof v!=='string'||v.length>80||
+  if(typeof v!=='string'||v.length>100||
     /[\x00-\x1f<>@]/.test(v)||/:\/\//.test(v))return null;
   const norm=v.trim().toLowerCase();
   return norm.length?norm:null;
@@ -65,7 +65,7 @@ function normalizedPhotoPrefs(input,fitOverride){
     if(key==='fitPreference'||key==='budgetRatesId'||
         value===undefined||value===null)continue;
     if(PHOTO_PREF_ARRAYS.has(key)){
-      if(!Array.isArray(value)||value.length>16)return null;
+      if(!Array.isArray(value)||value.length>20)return null;
       const vals=value.map(safeString);
       if(vals.some(x=>x===null))return null;
       if(vals.length)out[key]=[...new Set(vals)].sort();
@@ -100,8 +100,13 @@ function normalizedPhotoPrefs(input,fitOverride){
   return out;
 }
 const safeContext=context=>{
-  const style=safeString(context?.style);
-  const occasion=safeString(context?.occasion);
+  // Match the APP's canonical UI style/occasion codes, NOT arbitrary
+  // free-text hints. "Old Money", "old-money" and "old_money" are one
+  // scenario; "Date night" must not silently become an untrainable label.
+  const style=safeString(context?.style)?.replace(/[\s-]+/g,'_');
+  const rawOccasion=safeString(context?.occasion);
+  const occasion=['date night','date_night'].includes(rawOccasion)
+    ?'date':rawOccasion;
   const preferences=normalizedPhotoPrefs(context?.preferences,
     context?.fitPreference);
   return style&&occasion&&preferences&&
