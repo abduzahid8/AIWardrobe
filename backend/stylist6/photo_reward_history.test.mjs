@@ -194,7 +194,7 @@ test('unrepeated random photo labels cannot activate a stylist reward prior',()=
       feature_hashes:[
         ...Array.from({length:17},(_,j)=>digest('common_photo_fact_'+j)),
         digest('unrepeated_' + i),
-        digest('balanced_color_'+ (i%4)),
+        digest('balanced_color_'+ (Math.floor(i/2)%4)),
       ].sort(),
     };
   });
