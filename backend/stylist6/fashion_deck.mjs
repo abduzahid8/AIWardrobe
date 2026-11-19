@@ -2,6 +2,7 @@
 // permission and provider admission. Local styling never requires image upload.
 import { shortlistRetrievalDeck, evaluateVisualShortlist, selectVisualDeck, independentOutfitDirection, outerwearArchetype } from './prototype.mjs';
 import { sourceBoundCompositionPool, sourceVerifyComposedOutfits } from './sku_composer_ai.mjs';
+import {trainPhotoFeedbackTeacher,photoTaughtRescueOrder} from './photo_feedback_teacher.mjs';
 import { MAX_VISUAL_CANDIDATES, verifiedAvoidColors } from './visual_critic_hosted.mjs';
 import { baseProductId } from './catalog_adapter.mjs';
 import { describeGarment, prepareGarment } from '../../src/domain/garmentDescriptor.ts';
@@ -2453,6 +2454,19 @@ export async function recommendFashionDeck({
       };
       let reviewed=await evaluateVisualShortlist(
         {...retrieval,shortlist:candidates},request,visualCritic,reviewOptions);
+      // Train an EPHEMERAL, in-request photographed outfit teacher from the
+      // independently judged 4-item source looks; do not mix AI photo scores
+      // with owner thumbs or promote them to actual aesthetic approval.
+      // When the critic examples cannot predict a matched HELD-OUT photo
+      // comparison this learner ABSTAINS and selection stays unchanged.
+      const photoFeaturesOf=items=>outfitStylingFeatures(items,context.anchorId);
+      const photoTeacher=trainPhotoFeedbackTeacher({
+        looks:candidates,
+        decisions:reviewed.diagnostics.visualQualityDecisions||[],
+        critiques:primaryCritiques,featuresOf:photoFeaturesOf,
+      });
+      modelFashionSelection.photoTeacherStatus=photoTeacher.status;
+      modelFashionSelection.photoTeacherExamples=photoTeacher.examples;
       let rescueAttempted=0;
       let secondaryCritiques=[];
       // THE FASHION-LEARNING LOOP: The first set of real product photographs
@@ -2597,14 +2611,42 @@ export async function recommendFashionDeck({
             hardGate,priceToBudgetCurrency,scorer:fashionScorer,
             sourceMode:request.sourceMode,
           });
-          const extras=[];
-          for(const look of admitted){
+          // CONTRASTIVE photo-based decision, not an extra garment rule:
+          // the trained teacher may compare AI-authored new outfits against
+          // already source-feasible but NEVER PHOTOGRAPHED retrieval options.
+          // It only orders the next expensive PHOTO audition; the real critic
+          // must independently approve EVERY displayed 4-SKU outfit.
+          // Without a held-out-validated teacher preserve original author
+          // order and avoid any surprising behavior in sparse catalogs.
+          const unseen=photoTeacher.usable&&!requiredIds.length
+            ?selectable.filter(look=>eligibleCatalogFourItemPhotoCandidate(look)&&
+                !candidates.some(x=>x.id===look.id)&&
+                look.items.every(it=>!firstProductKeys.has(baseProductId(String(it.id)))))
+              .slice(0,48)
+            :[];
+          const options=photoTeacher.usable
+            ?photoTaughtRescueOrder([...admitted,...unseen],
+              photoTeacher,photoFeaturesOf)
+            :admitted;
+          const extras=[],takenProducts=new Set(firstProductKeys);
+          for(const look of options){
             if(extras.length>=3||photoRescueRemainingMs()<13500)break;
             if(candidates.some(x=>x.id===look.id))continue;
+            if(photoTeacher.usable&&!requiredIds.length&&
+                look.items.some(it=>takenProducts.has(baseProductId(String(it.id)))))
+              continue;
             if(explicitColorPreferences&&
               photographicPaletteEvidence(look,context.preferences,requiredIds).blocked)continue;
-            if(await permitted(look))extras.push(look);
+            if(await permitted(look)){
+              extras.push(look);
+              if(photoTeacher.usable)
+                for(const it of look.items)takenProducts.add(baseProductId(String(it.id)));
+            }
           }
+          modelFashionSelection.photoTeacherSelectionApplied=
+            photoTeacher.usable&&(
+              extras.some(x=>!admitted.some(y=>y.id===x.id))||
+              extras.some((x,i)=>admitted[i]?.id!==x.id));
           modelFashionSelection.photoRevisionAdmitted=extras.length;
           if(extras.length>0&&photoRescueRemainingMs()>=13500){
             const firstDiagnostics=reviewed.diagnostics;
