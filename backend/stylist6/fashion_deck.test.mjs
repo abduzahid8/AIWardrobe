@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence, eligibleCatalogFourItemPhotoCandidate } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, photoHistoryRecompositionCandidates, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence, eligibleCatalogFourItemPhotoCandidate } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -2872,4 +2872,90 @@ test('real catalog PHOTO audition admits only four distinct source merchandise r
   assert.equal(eligibleCatalogFourItemPhotoCandidate({
     items:[...complete.items.slice(0,3),{...complete.items[3],isShopItem:false}],
   }),false,'invented items cannot masquerade as a merchant catalog SKU');
+});
+
+test('calibrated PHOTO history creates source-truthful fresh FOUR-item combinations without rules or a model call',()=>{
+  const originals=Array.from({length:6},(_,i)=>({
+    id:'source-original-'+i,
+    items:['top','outerwear','bottom','shoes'].map(slot=>
+      garment('source-'+slot+'-'+i,'Merchant garment '+i,slot,slot==='shoes'?'loafer':'shirt')),
+  }));
+  const identity=items=>items.map(x=>x.id);
+  const reward=ids=>ids[0]==='source-top-0'&&ids[2]==='source-bottom-1'
+    ?.97:ids[0]==='source-top-1'&&ids[2]==='source-bottom-0'?.70:.05;
+  const remixes=photoHistoryRecompositionCandidates(
+    originals,reward,{limit:8,featuresOf:identity});
+  assert.ok(remixes.length>=1);
+  assert.equal(remixes[0].estimatedPhotoQuality,.97);
+  assert.ok(remixes[0].items.some(x=>x.id==='source-top-0'));
+  assert.ok(remixes[0].items.some(x=>x.id==='source-bottom-1'));
+  const originalsIds=new Set(originals.map(x=>x.items.map(t=>t.id).sort().join('|')));
+  const seen=new Set();
+  for(const option of remixes){
+    assert.equal(option.items.length,4);
+    assert.ok(option.items.every(x=>x.isShopItem===true));
+    assert.equal(new Set(option.items.map(x=>x.macroCategory)).size,4);
+    const key=option.items.map(x=>x.id).sort().join('|');
+    assert.equal(originalsIds.has(key),false,'not the exact model-proposed outfit');
+    assert.equal(seen.has(key),false,'do not spend two PHOTO slots on one outfit');
+    seen.add(key);
+  }
+  assert.deepEqual(photoHistoryRecompositionCandidates(originals,()=>null),[],
+    'sparse or uncalibrated PHOTO teacher cannot invent a prediction');
+  assert.deepEqual(photoHistoryRecompositionCandidates(originals.slice(0,2),reward),[],
+    'fewer than three independent AI source designs means abstention');
+});
+
+test('held-out validated real-PHOTO fashion reward changes FIRST source-bound audition slate, never PHOTO approval',async()=>{
+  const expanded=['top','outerwear','bottom','shoes'].flatMap((slot,j)=>
+    Array.from({length:10},(_,i)=>garment('reward-'+slot+'-'+i,
+      ['Cotton poplin shirt','Structured wool blazer','Tailored trousers',
+        'Leather dress shoe'][j]+' '+(i%2?'navy':'cream')+' '+i,
+      slot,['shirt','blazer','tailored-trouser','loafer'][j],
+      {color:i%2?'navy':'cream'})));
+  const request={sourceMode:'catalog',style:'classic',occasion:'Work',
+    weather:{temp:16},optionalLayer:false,preferences:{},
+    budget:{amount:2500000,currency:'UZS'},requiredIds:[]};
+  const original=new Set();
+  let inspected=[],artistCalls=0;
+  const deck=await recommendFashionDeck({
+    ...base,request,catalog:expanded,
+    selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
+    selectCatalogCompositions:async({pool,parallel,outfitCount})=>{
+      artistCalls++;
+      assert.equal(parallel,true);
+      assert.equal(outfitCount,6);
+      const looks=Array.from({length:6},(_,i)=>
+        ['top','outerwear','bottom','shoes']
+          .map(slot=>pool.filter(p=>p.slot===slot)[i].item));
+      looks.forEach(items=>original.add(items.map(it=>it.id).sort().join('|')));
+      return {status:'composed',looks,providerCalls:1};
+    },
+    photoHistory:{
+      status:'heldout_photo_validated',examples:41,holdoutWins:79,holdoutPairs:98,
+      // Simulated cross-role PHOTO preference, NOT a garment category veto.
+      // Unlike the original six same-color slates, an alternate cream top
+      // with navy trousers gets learned preference only from outfit context.
+      scoreFeatures:features=>
+        features[0]?.[2]==='cream'&&features[2]?.[2]==='navy'?0.95:0.1,
+    },
+    visualDeckReview:true,canJudgeOutfit:async()=>true,
+    visualCritic:async batch=>{
+      inspected=batch;
+      return batch.map(look=>admittedVisualVerdict(look));
+    },
+  });
+  assert.equal(artistCalls,1,'no extra provider calls for learned exploration');
+  assert.equal(deck.diagnostics.retrievalMode,'source_verified_ai_first');
+  assert.ok(deck.diagnostics.modelFashionSelection.skuCompositionReceipt
+    .photoHistoryCreativeAuditions>0,
+    'validated real photo experience must reach source-verified creative alternatives');
+  assert.ok(inspected.length<=8);
+  assert.ok(inspected.some(look=>
+    !original.has(look.items.map(it=>it.id).sort().join('|'))),
+    'one of the FIRST real-photo inspections must test a learned new four-product relationship');
+  assert.ok(inspected.every(x=>x.items.length===4&&
+    x.items.every(it=>it.isShopItem===true)));
+  assert.ok(deck.outfits.every(look=>inspected.some(x=>x.id===look.id)),
+    'the learned prior is never permission to display unjudged merchandise');
 });
