@@ -7,7 +7,9 @@ import {sourceBoundCompositionPool,groundedSkuDirections,
   groundedPhotoRevisionFeedback,anonymousExplicitTasteHistory,
   validateSkuCompositions,composeCatalogSkuLooks,
   sourceVerifyComposedOutfits,AI_SKU_COMPOSER_VERSION,
-  CROSS_LAB_REVISION_MODEL,FAST_PHOTO_REVISION_MODEL} from './sku_composer_ai.mjs';
+  CROSS_LAB_REVISION_MODEL,FAST_PHOTO_REVISION_MODEL,
+  DEFAULT_MAX_CONCURRENT_COMPOSER_CALLS} from './sku_composer_ai.mjs';
+import {buildPerDirectionCandidatePools} from './per_direction_retrieval.mjs';
 const slots=['top','outerwear','bottom','shoes'];
 const items=Array.from({length:6},(_,i)=>slots.map((slot,j)=>({
   id:'PRIVATE_SKU_'+i+'_'+j,macroCategory:slot,isShopItem:true,
@@ -1619,4 +1621,126 @@ test('120B source-SKU artist actually sees original 120B creative director propo
   assert.equal(calls,1);
   assert.equal(deck.status,'composed');
   assert.equal(deck.looks.length,3);
+});
+
+test('SKU Composer accepts perDirectionPools (>48 SKUs), dynamic presentation, and zero-PII Personal Style DNA', async () => {
+  const catalog = [];
+  const slotSubtypes = {
+    top: ['dress-shirt', 'fine-knit', 'polo'],
+    outerwear: ['blazer', 'overshirt', 'coat'],
+    bottom: ['tailored-trouser', 'chino', 'jeans'],
+    shoes: ['oxford', 'loafer', 'chelsea'],
+  };
+  const palette = ['navy', 'olive', 'camel', 'white', 'cream', 'brown', 'charcoal', 'black'];
+  for (const slot of slots) {
+    for (let i = 0; i < 24; i++) {
+      const sub = slotSubtypes[slot][i % 3];
+      catalog.push({
+        id: `PRIVATE_DIR_SKU_${slot}_${i}`,
+        macroCategory: slot,
+        fashion_slot: slot,
+        category: slot === 'bottom' ? 'bottoms' : slot === 'shoes' ? 'shoes' : 'tops',
+        subtype: sub,
+        fashion_subtype: sub,
+        name: `Tailored ${palette[i % palette.length]} ${sub} ${i}`,
+        color: palette[i % palette.length],
+        formality: i % 3 === 0 ? 'formal' : 'smart',
+        volume: i % 3 === 0 ? 'slim' : 'regular',
+        price: 80 + i * 10,
+        currency: 'USD',
+        is_active: true,
+        isShopItem: true,
+        imageUrl: `https://cdn.example.com/${slot}/${i}.jpg`,
+        image_url: `https://cdn.example.com/${slot}/${i}.jpg`,
+        shopUrl: `https://shop.example.com/products/${slot}-${i}`,
+        source_url: `https://shop.example.com/products/${slot}-${i}`,
+      });
+    }
+  }
+
+  const perDirectionPools = buildPerDirectionCandidatePools({
+    catalog,
+    context: { style: 'classic', occasion: 'Date night', weather: { temp: 16 }, presentation: 'womenswear' },
+    perSlotLimit: 6,
+  });
+  assert.equal(perDirectionPools.unifiedPool.length, 72, 'exceeds legacy 48-SKU cap via 3x6x4 dedicated pools');
+
+  const dna = {
+    presentation: 'womenswear',
+    userId: 'SECRET_UUID_777',
+    appearance: {
+      consentGranted: true,
+      skinUndertone: 'cool',
+      contrastLevel: 'high',
+      colorSeason: 'deep_winter',
+      flatteringColors: ['navy', 'white', 'charcoal'],
+    },
+    body: {
+      bodyType: 'hourglass',
+      heightCm: 166,
+      fitPreference: 'fitted',
+      directives: { silhouetteGoals: ['define waist'] },
+    },
+  };
+
+  let inspectedPayload = null;
+  const composed = await composeCatalogSkuLooks({
+    perDirectionPools,
+    personalStyleDna: dna,
+    styleDnaPromptBlock: 'Cool high-contrast deep winter palette; avoid https://leak.example test@example.com',
+    context: { style: 'classic', occasion: 'Date night', presentation: 'womenswear' },
+    layerRequired: true,
+    apiKey: 'nvapi-test-per-direction-dna',
+    fetchImpl: async (_url, init) => {
+      const prompt = JSON.parse(init.body).messages[0].content;
+      assert.match(prompt, /personal womenswear stylist/);
+      assert.doesNotMatch(prompt, /personal menswear stylist/);
+      assert.match(prompt, /PER-DIRECTION ORTHOGONAL MENUS/);
+      assert.match(prompt, /PERSONAL STYLE DNA/);
+      assert.doesNotMatch(prompt, /PRIVATE_DIR_SKU_|SECRET_UUID_777|leak\.example|test@example\.com|cdn\.example|shop\.example/);
+      inspectedPayload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
+      assert.equal(inspectedPayload.user.presentation, 'womenswear');
+      assert.equal(inspectedPayload.personalStyleDna.appearance.skinUndertone, 'cool');
+      assert.equal(inspectedPayload.perDirectionSkuMenus.length, 3);
+      assert.equal(inspectedPayload.realMerchantItemMenus.outerwear.length, 18);
+      // Pick one token from EACH direction's dedicated tailored menu!
+      const slotPicks = Object.fromEntries(slots.map(slot => [
+        slot,
+        [0, 1, 2].map(dIdx => inspectedPayload.perDirectionSkuMenus[dIdx].tailoredTokensBySlot[slot][0]),
+      ]));
+      return result({ slotPicks });
+    },
+  });
+
+  assert.equal(composed.status, 'composed');
+  assert.equal(composed.looks.length, 3);
+  assert.equal(new Set(composed.looks.flat().map(x => x.id)).size, 12);
+});
+
+test('SKU Composer scales beyond the old inflight>=2 brick wall with configurable concurrency', async () => {
+  assert.equal(DEFAULT_MAX_CONCURRENT_COMPOSER_CALLS, 24);
+  const pool = sourceBoundCompositionPool(looks);
+  const releases = [];
+  let inFlightNow = 0;
+  let peak = 0;
+
+  const jobs = Array.from({ length: 5 }, (_, i) => composeCatalogSkuLooks({
+    pool,
+    layerRequired: true,
+    context: { style: 'classic', occasion: 'Work', brief: `Concurrent compose #${i}` },
+    apiKey: 'nvapi-test-composer-concurrency',
+    fetchImpl: async () => {
+      inFlightNow++;
+      peak = Math.max(peak, inFlightNow);
+      await new Promise(resolve => releases.push(resolve));
+      inFlightNow--;
+      return result(slotAnswer(pool));
+    },
+  }));
+
+  await new Promise(r => setTimeout(r, 15));
+  assert.equal(peak, 5, 'all 5 concurrent composition calls run without old inflight>=2 load-shed');
+  for (const r of releases) r();
+  const outcomes = await Promise.all(jobs);
+  assert.ok(outcomes.every(o => o.status === 'composed' && o.looks.length === 3));
 });

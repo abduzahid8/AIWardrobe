@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CREATIVE_DIRECTOR_VERSION, directorInventory, directorVisualAtlas, directorResponseSchema,
-  validateDirectorDirections, designCreativeBriefs,designCreativeBriefsWithFallback,
+  CREATIVE_DIRECTOR_VERSION, ORTHOGONAL_DIRECTION_TYPES, DEFAULT_MAX_CONCURRENT_DIRECTOR_CALLS,
+  directorInventory, directorVisualAtlas, directorResponseSchema,
+  validateDirectorDirections, designCreativeBriefs, designCreativeBriefsWithFallback,
 } from './creative_director_ai.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
 
@@ -837,4 +838,174 @@ test('120B creative director makes grounded ARTISTIC decisions, not just same-ca
   const cheap=await testModel(false);
   assert.equal(cheap.status,'planned');
   assert.equal(provider,2,'distinct inference-model caches never leak across 50s/72s budgets');
+});
+
+test('Creative Director parameterizes presentation (womenswear/unisex), uses thermal intelligence, and injects zero-PII Personal Style DNA', async () => {
+  const richProposal = {
+    directions: [
+      {
+        ...proposal.directions[0],
+        directionType: 'signature_mastery',
+        outerwearArchetype: 'breathable_light_layer',
+        trouserArchetype: 'fluid_wide_leg',
+        footwearArchetype: 'soft_suede_loafer',
+        colorHarmonyMode: 'warm_earth_analogous',
+        textureContrast: 'crisp cotton shirt against unlined open-weave layer and soft suede',
+      },
+      {
+        ...proposal.directions[1],
+        directionType: 'silhouette_texture_shift',
+        outerwearArchetype: 'soft_draped_knit',
+        trouserArchetype: 'relaxed_chino',
+        footwearArchetype: 'refined_derby_or_monk',
+        colorHarmonyMode: 'neutral_anchor_plus_accent',
+        textureContrast: 'fine knitwear draped over clean twill trousers',
+      },
+      {
+        ...proposal.directions[2],
+        directionType: 'editorial_statement',
+        outerwearArchetype: 'longline_coat',
+        trouserArchetype: 'clean_straight_trouser',
+        footwearArchetype: 'sculptural_chelsea_boot',
+        colorHarmonyMode: 'tonal_monochrome',
+        textureContrast: 'matte textured tailoring with sleek leather footwear',
+      },
+    ],
+  };
+
+  let sentPrompt = '';
+  const dna = {
+    presentation: 'womenswear',
+    userId: 'PRIVATE_UUID_999',
+    email: 'secret@example.com',
+    appearance: {
+      consentGranted: true,
+      skinUndertone: 'warm',
+      contrastLevel: 'medium',
+      colorSeason: 'soft_autumn',
+      flatteringColors: ['olive', 'cream', 'camel'],
+      avoidColors: ['#0A1931'],
+      metalTone: 'gold',
+    },
+    body: {
+      bodyType: 'hourglass',
+      heightCm: 165,
+      fitPreference: 'balanced',
+      directives: {
+        silhouetteGoals: ['define waist cleanly'],
+        recommendedCuts: ['high-rise straight trouser'],
+        avoidCuts: ['boxy shapeless sacks'],
+      },
+    },
+    ownedWardrobeDna: {
+      dominantColors: ['cream', 'brown'],
+      dominantCategories: ['blazer', 'trouser'],
+      formalityMix: { smart: 0.7, casual: 0.3 },
+    },
+  };
+
+  const hotRequest = {
+    ...request,
+    presentation: 'womenswear',
+    sourceMode: 'catalog',
+    optionalLayer: false,
+    weather: { temp: 31 },
+    brief: 'Hot summer gallery opening with Personal Style DNA',
+  };
+
+  const res = await designCreativeBriefs({
+    catalog,
+    request: hotRequest,
+    personalStyleDna: dna,
+    styleDnaPromptBlock: 'Warm soft autumn palette; define waist; ignore https://leak.example user@test.com',
+    tasteProfile: { slotPreferences: { shoes: { subtypes: { loafer: 0.85, oxford: -0.6 } } } },
+    apiKey: 'nvapi-test-womenswear-thermal-dna',
+    fetchImpl: async (_url, init) => {
+      const body = JSON.parse(init.body);
+      sentPrompt = body.messages[0].content;
+      assert.match(sentPrompt, /world-class womenswear Creative Director/);
+      assert.doesNotMatch(sentPrompt, /professional menswear Creative Director/);
+      assert.doesNotMatch(sentPrompt, /regardless of warm weather/i);
+      assert.match(sentPrompt, /HOT WEATHER \(>=26°C\)/);
+      assert.match(sentPrompt, /signature_mastery/);
+      assert.match(sentPrompt, /silhouette_texture_shift/);
+      assert.match(sentPrompt, /editorial_statement/);
+      assert.doesNotMatch(sentPrompt, /PRIVATE_UUID_999|secret@example\.com|leak\.example|user@test\.com/);
+      const payload = JSON.parse(sentPrompt.split('\n').at(-1));
+      assert.equal(payload.currentInventory.presentation, 'womenswear');
+      assert.equal(payload.currentInventory.thermalBand, 'hot');
+      assert.equal(payload.currentInventory.personalStyleDna.appearance.skinUndertone, 'warm');
+      assert.equal(payload.currentInventory.personalStyleDna.body.bodyType, 'hourglass');
+      assert.deepEqual(payload.currentInventory.learnedSlotTaste.shoes.likedSubtypes, ['loafer']);
+      return fakeResponse(richProposal);
+    },
+  });
+
+  assert.equal(res.status, 'planned');
+  assert.equal(res.briefs.length, 3);
+  assert.deepEqual(res.briefs.map(b => b.directionType), [...ORTHOGONAL_DIRECTION_TYPES]);
+  assert.equal(res.briefs[0].outerwearArchetype, 'breathable_light_layer');
+  assert.equal(res.briefs[0].colorHarmonyMode, 'warm_earth_analogous');
+  assert.equal(res.briefs[0].thermalBand, 'hot');
+
+  // Verify hot-weather accessory grammar unlocks optional outerwear when accessory inventory exists
+  const withAccessories = [
+    ...catalog,
+    { id: 'acc-1', macroCategory: 'accessory', subtype: 'sunglasses' },
+    { id: 'acc-2', macroCategory: 'accessory', subtype: 'belt' },
+    { id: 'acc-3', macroCategory: 'accessory', subtype: 'bag' },
+  ];
+  const hotInv = directorInventory(withAccessories, hotRequest);
+  assert.equal(directorResponseSchema(hotInv).properties.directions.items.properties.roles.properties.outerwear.minItems, 0);
+});
+
+test('Creative Director scales past 3 concurrent provider calls and supports injectable distributed cacheStore', async () => {
+  assert.equal(DEFAULT_MAX_CONCURRENT_DIRECTOR_CALLS, 24);
+  const store = new Map();
+  let getCount = 0;
+  let setCount = 0;
+  const cacheStore = {
+    async get(k) { getCount++; return store.get(k) || null; },
+    async set(k, v) { setCount++; store.set(k, v); },
+  };
+
+  // Launch 6 distinct concurrent provider calls simultaneously (old hardcoded cap of 3 would load-shed half!)
+  const releases = [];
+  let inFlightNow = 0;
+  let peakInFlight = 0;
+  const promises = Array.from({ length: 6 }, (_, i) => designCreativeBriefs({
+    catalog,
+    request: { ...request, brief: `High-concurrency distinct brief #${i}` },
+    apiKey: 'nvapi-test-concurrency-24',
+    cacheStore,
+    fetchImpl: async () => {
+      inFlightNow++;
+      peakInFlight = Math.max(peakInFlight, inFlightNow);
+      await new Promise(resolve => releases.push(resolve));
+      inFlightNow--;
+      return fakeResponse(proposal);
+    },
+  }));
+
+  await new Promise(r => setTimeout(r, 15));
+  assert.equal(peakInFlight, 6, 'all 6 concurrent requests execute in parallel without hitting old 3-call brick wall');
+  for (const r of releases) r();
+  const results = await Promise.all(promises);
+  assert.ok(results.every(r => r.status === 'planned' && r.briefs.length === 3));
+  assert.equal(setCount, 6);
+
+  // Verify distributed cache hit serves cached plan with 0 provider calls even on a fresh brief lookup
+  const cachedReq = { ...request, brief: 'High-concurrency distinct brief #0' };
+  let providerCalled = 0;
+  const fromDist = await designCreativeBriefs({
+    catalog,
+    request: cachedReq,
+    apiKey: 'nvapi-test-concurrency-24',
+    cacheStore,
+    fetchImpl: async () => { providerCalled++; return fakeResponse(proposal); },
+  });
+  assert.equal(fromDist.status, 'cached');
+  assert.equal(fromDist.providerCalls, 0);
+  assert.equal(providerCalled, 0);
+  assert.ok(getCount >= 7);
 });

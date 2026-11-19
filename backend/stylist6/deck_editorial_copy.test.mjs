@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { editorialDeckCopy, DECK_COPY_VERSION, groundedNativeHeadline } from './deck_editorial_copy.mjs';
+import { editorialDeckCopy, DECK_COPY_VERSION, STYLIST_NOTES_VERSION, groundedNativeHeadline, buildStylistNotes } from './deck_editorial_copy.mjs';
 import { stylingContext } from '../../src/domain/stylingContext.ts';
 import { prepareGarment, describeGarment } from '../../src/domain/garmentDescriptor.ts';
 import { lookConcept } from '../../src/domain/outfitConcepts.ts';
@@ -298,4 +298,101 @@ test('catalog fashion cards name combinations instead of single shoes or one gen
   ]);
   assert.match(cards[1].concept.title,/Tank Top & (?:Joggers|Trousers)/i);
   assert.doesNotMatch(cards[1].concept.title,/^(?:Sport Sneakers|Tank Top)$/i);
+});
+
+test('preserves Creative Director artDirection, Visual Critic observations, and explicit PersonalStyleDna in Stylist Notes', () => {
+  assert.equal(STYLIST_NOTES_VERSION, 's6-editorial-stylist-notes-v1');
+  const enrichedLook = {
+    id: 'look-editorial-1',
+    items: first,
+    brief: {
+      artDirection: 'Anchor the tailored wool silhouette with crisp white cotton contrast under a structured navy blazer and grounded leather derbies.',
+    },
+    visualCritique: {
+      relationships: [
+        {
+          kind: 'outfit',
+          slots: ['outerwear', 'top', 'bottom'],
+          observation: 'The sharp navy blazer lapel frames the white shirt cleanly over charcoal trousers.',
+        },
+      ],
+    },
+  };
+  const dna = {
+    appearance: {
+      consentGranted: true,
+      skinUndertone: 'cool',
+      contrastLevel: 'high',
+      colorSeason: 'deep_winter',
+      flatteringColors: ['navy', 'white', 'charcoal'],
+    },
+    body: {
+      bodyType: 'rectangle',
+      fitPreference: 'fitted',
+    },
+  };
+
+  const cards = editorialDeckCopy([enrichedLook], context, [directions[0]], { personalStyleDna: dna });
+  const card = cards[0];
+  assert.match(card.stylistNote, /crisp white cotton contrast/);
+  assert.match(card.stylistNote, /sharp navy blazer lapel/);
+  assert.match(card.whyItFlattersYou, /cool undertone/i);
+  assert.match(card.whyItFlattersYou, /high-contrast/i);
+  assert.match(card.whyItFlattersYou, /shoulders/i);
+  assert.ok(Array.isArray(card.stylingTips) && card.stylingTips.length >= 2);
+  assert.match(card.colorStory, /White.*Navy.*Charcoal/i);
+  assert.match(card.silhouetteFormula, /structured blazer over dress shirt/i);
+});
+
+test('Stylist Notes reject unverified material/slot fabrications and return null whyItFlattersYou without explicit DNA', () => {
+  const unlayered = {
+    id: 'look-unlayered',
+    items: [
+      garment('t1', 'White cotton polo', 'top', 'white'),
+      garment('b1', 'Beige cotton chinos', 'bottom', 'beige'),
+      garment('s1', 'Brown leather loafers', 'shoes', 'brown'),
+    ],
+    brief: {
+      // Fabricates a cashmere cardigan that does NOT exist in the selected SKUs!
+      artDirection: 'Drape a 100% cashmere cardigan over the polo with guaranteed free shipping.',
+    },
+  };
+  const plainCtx = stylingContext({ style: 'casual', occasion: 'Casual', optionalLayer: true });
+  const notes = buildStylistNotes(unlayered, plainCtx, { id: 'signature' });
+  assert.doesNotMatch(notes.stylistNote, /cashmere|cardigan|free shipping|100%/i);
+  assert.equal(notes.whyItFlattersYou, null, 'must never invent flattery/skin/body claims when no DNA/preferences provided');
+  assert.ok(notes.stylingTips.length >= 1);
+  assert.match(notes.silhouetteFormula, /Polo \+ chinos/i);
+});
+
+test('localized ru and uz Stylist Notes remain strictly monolingual without leaking English AI prose', () => {
+  const englishBriefLook = {
+    ...looks[0],
+    brief: {
+      artDirection: 'Create an elongated clean shoulder line through tailored navy cloth and crisp shirt contrast.',
+    },
+  };
+  const dna = {
+    appearance: { consentGranted: true, skinUndertone: 'cool', flatteringColors: ['navy', 'white'] },
+    body: { bodyType: 'rectangle', fitPreference: 'balanced' },
+  };
+  for (const language of ['ru', 'uz']) {
+    const cards = editorialDeckCopy([englishBriefLook], contextFor(language), [directions[0]], { personalStyleDna: dna });
+    const c = cards[0];
+    assert.ok(monolingual(c.stylistNote), `mixed script stylistNote (${language}): ${c.stylistNote}`);
+    assert.ok(monolingual(c.whyItFlattersYou), `mixed script whyItFlattersYou (${language}): ${c.whyItFlattersYou}`);
+    assert.ok(monolingual(c.colorStory), `mixed script colorStory (${language}): ${c.colorStory}`);
+    assert.ok(monolingual(c.silhouetteFormula), `mixed script silhouetteFormula (${language}): ${c.silhouetteFormula}`);
+    assert.ok(c.stylingTips.length >= 1);
+    for (const tip of c.stylingTips) {
+      assert.ok(monolingual(tip), `mixed script stylingTip (${language}): ${tip}`);
+    }
+    if (language === 'ru') {
+      assert.ok(!LATIN.test(c.stylistNote));
+      assert.ok(CYRILLIC.test(c.stylistNote));
+    } else {
+      assert.ok(!CYRILLIC.test(c.stylistNote));
+      assert.ok(LATIN.test(c.stylistNote));
+    }
+  }
 });
