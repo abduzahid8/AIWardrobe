@@ -61,7 +61,8 @@ export function eligibleCatalogFourItemPhotoCandidate(look){
  * persisted or sent to another provider by this pure function.
  */
 export function photoHistoryRecompositionCandidates(
-  initial,scoreFeatures,{limit=8,featuresOf=items=>outfitStylingFeatures(items)}={}
+  initial,scoreFeatures,{limit=8,featuresOf=items=>outfitStylingFeatures(items),
+    sourceMenu=[]}={}
 ){
   if(!Array.isArray(initial)||initial.length<3||initial.length>8||
       typeof scoreFeatures!=='function'||typeof featuresOf!=='function'||
@@ -88,21 +89,57 @@ export function photoHistoryRecompositionCandidates(
     ['top','outerwear'],['top','bottom'],['top','shoes'],
     ['outerwear','bottom'],['outerwear','shoes'],['bottom','shoes'],
   ];
+  const consider=(items,{positivePhotoSignal=false}={})=>{
+    if(items.some(item=>!item||item.isShopItem!==true)||
+        items.some((item,i)=>items.slice(0,i).some(other=>
+          sameProduct(item,other))))return;
+    const key=items.map(item=>baseProductId(String(item.id))).sort().join('|');
+    if(original.has(key)||proposals.has(key))return;
+    const estimatedPhotoQuality=score(items);
+    // A completely UNSEEN four-SKU combination can have a neutral score
+    // because none of its features appeared in training. Don't spend a
+    // PHOTO slot pretending this zero is a learned positive hypothesis.
+    // Previously invented by the actual model source drafts remain legal.
+    if(estimatedPhotoQuality===null||
+        (positivePhotoSignal&&estimatedPhotoQuality<=0))return;
+    proposals.set(key,{items,estimatedPhotoQuality});
+  };
   for(let a=0;a<roles.length;a++)for(let b=0;b<roles.length;b++){
     if(a===b)continue;
     for(const half of halves){
       const split=new Set(half);
-      const items=slots.map(slot=>(split.has(slot)?roles[a]:roles[b])[slot]);
-      if(items.some(item=>!item||!item.isShopItem))continue;
-      // Original identities and duplicate images are still distinct
-      // source-level constraints; a model cannot invent uniqueness.
-      if(items.some((item,i)=>items.slice(0,i).some(other=>
-        sameProduct(item,other))))continue;
-      const key=items.map(item=>baseProductId(String(item.id))).sort().join('|');
-      if(original.has(key)||proposals.has(key))continue;
-      const estimatedPhotoQuality=score(items);
-      if(estimatedPhotoQuality===null)continue;
-      proposals.set(key,{items,estimatedPhotoQuality});
+      consider(slots.map(slot=>(split.has(slot)?roles[a]:roles[b])[slot]));
+    }
+  }
+  // The old learned creator could only RECOMBINE the six original AI looks,
+  // and thus could never discover a wonderful source garment the first
+  // artist skipped entirely. Search a tiny, deliberately bounded subset
+  // of the 48 ALREADY ADMITTED authentic P-token MENU (max 5 per role,
+  // 5^4=625 full looks). The trained four-way PHOTO relation — not a
+  // garment/subtype rule — selects promising whole outfits. Every candidate
+  // STILL passes the original independent stock, weather, budget, merchant
+  // and photo-permission gates AFTER this lightweight exploration.
+  //
+  // The source menu is PRIVATE and never transmitted, logged or persisted
+  // by this inference-only scorer. No rights to send original photo pixels
+  // are implied by the existing source item or image-derived features.
+  if(Array.isArray(sourceMenu)&&sourceMenu.length<=48){
+    const choices=slots.map(slot=>{
+      const pool=[...new Map(sourceMenu.filter(entry=>
+        entry?.slot===slot&&entry.item?.macroCategory===slot&&
+        entry.item?.isShopItem===true&&
+        typeof entry.item.id==='string')
+        .map(entry=>[baseProductId(String(entry.item.id)),entry.item])).values()];
+      if(pool.length<=5)return pool;
+      return [...new Set([0,Math.floor((pool.length-1)/4),
+        Math.floor((pool.length-1)/2),
+        Math.floor((pool.length-1)*3/4),pool.length-1])]
+        .map(i=>pool[i]);
+    });
+    if(choices.every(pool=>pool.length>=3)){
+      for(const top of choices[0])for(const outerwear of choices[1])
+        for(const bottom of choices[2])for(const shoes of choices[3])
+          consider([top,outerwear,bottom,shoes],{positivePhotoSignal:true});
     }
   }
   return [...proposals.values()].sort((a,b)=>
@@ -2151,6 +2188,7 @@ export async function recommendFashionDeck({
     const alternateParts=photoHistoryRecompositionCandidates(
       sourceVerifiedAiFirst,photoHistory.scoreFeatures,{
         limit:8,featuresOf:items=>outfitStylingFeatures(items,context.anchorId),
+        sourceMenu:parallelComposition?.pool||[],
       });
     const knownIds=new Set(sourceVerifiedAiFirst.map(x=>x.id));
     const space=Math.max(0,MAX_VISUAL_CANDIDATES-sourceVerifiedAiFirst.length);
