@@ -2193,6 +2193,8 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     skuCompositionParallel:false,
     skuCompositionAiFirst:false,skuCompositionRetrievalSkipped:false,
     skuCompositionHistoryCreativeAuditions:null,
+    skuCompositionPhotoAuditionCoreFeasible:false,
+    skuCompositionPhotoAuditionCoreRecovered:false,
     skuCompositionStudio:'not_run',skuCompositionPhotoFirst:'not_run',
     catalogFourItemContract:false,catalogFourItemDropped:null,
     photoTeacherStatus:'not_run',photoTeacherExamples:null,
@@ -2229,7 +2231,9 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     photoHistoryStatus:'heldout_photo_validated',
     photoHistoryExamples:42,photoHistoryHoldoutWins:4,
     photoHistoryHoldoutPairs:98,photoHistoryPriorConsidered:true,
+    photoAuditionCoreRecovered:true,
     skuCompositionReceipt:{photoHistoryCreativeAuditions:2,
+      photoAuditionCoreFeasible:true,
       privateSourceSku:'do-not-log-owner-shop-SKU'},
     ownerEmail:'private@example.com',
     weights:{'private-sku':999},
@@ -2246,6 +2250,8 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     '4-fold cross-validated real PHOTO reward data must remain observable');
   assert.equal(teacher.skuCompositionHistoryCreativeAuditions,2,
     'real source-admitted learned alternatives, not fake AI photo approvals');
+  assert.equal(teacher.skuCompositionPhotoAuditionCoreFeasible,true);
+  assert.equal(teacher.skuCompositionPhotoAuditionCoreRecovered,true);
   assert.equal(teacher.photoHistoryPriorConsidered,true);
   assert.doesNotMatch(JSON.stringify(teacher),
     /private|email|weights|do-not-log-owner-shop-SKU/);
