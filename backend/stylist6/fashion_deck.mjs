@@ -26,6 +26,12 @@ import { rejectForClimate, rejectForStyleOccasion, rejectForRequestIntent, isWor
 import { editorialDeckCopy, DECK_COPY_VERSION } from './deck_editorial_copy.mjs';
 import { editorialRegisterVeto, EDITORIAL_REGISTER_VERSION } from './editorial_register.mjs';
 import { deliberatelyRelaxedIntent } from './editorial_intent.mjs';
+import { buildPerDirectionCandidatePools } from './per_direction_retrieval.mjs';
+import { refineLookSurgically } from './surgical_refiner.mjs';
+import { scoreOutfitColorTheory } from '../../src/domain/colorTheory.ts';
+import { scoreThermalSuitability } from '../../src/domain/outfitGrammar.ts';
+import { scoreLookTasteAffinity, scoreItemTasteAffinity } from './taste_learning.mjs';
+import { recordVisualCriticOutcome } from './catalog_quality_flywheel.mjs';
 
 const slots = ['top', 'outerwear', 'bottom', 'shoes'];
 
@@ -1057,8 +1063,17 @@ export function namedCardiganBriefMismatch(items, brief, context, requiredIds = 
 
 function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
   const contextScores = new WeakMap(), personalScores = new WeakMap(), coherent = new Map();
-  const feedbackScores = new WeakMap();
-  const taste = personalTaste(context.preferences);
+  const feedbackScores = new WeakMap(), tasteAffinityItemScores = new WeakMap();
+  const dna = extras.personalStyleDna || null;
+  const tasteProfile = extras.tasteProfile?.active ? extras.tasteProfile : null;
+  const taste = personalTaste(dna ? {
+    ...(context.preferences || {}),
+    personalStyleDna: dna,
+    appearance: dna.appearance,
+    body: dna.body,
+    presentation: dna.presentation,
+    ownedWardrobe: dna.ownedWardrobeDna,
+  } : context.preferences);
   // Photo Director owns the aesthetic decision in the isolated catalog canary.
   // Keep actual owner exclusions, activity, weather, provenance and formal
   // safety. Older clients and wardrobe/mixed modes retain old behavior.
@@ -1105,6 +1120,12 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
       contextScores.set(prepared, scoreGarmentForContext(prepared, context));
       personalScores.set(prepared, personal.score);
       feedbackScores.set(prepared, feedback.score);
+      if (tasteProfile) {
+        tasteAffinityItemScores.set(
+          prepared,
+          scoreItemTasteAffinity(prepared, prepared.macroCategory, tasteProfile).score,
+        );
+      }
       return prepared;
     },
     family(item) {
@@ -1127,6 +1148,8 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
             verifiedPaletteMatch(item, brief.palette) === true ? 0.02 : 0))
         + 0.70 * (personalScores.get(item) || 0)
         + FEEDBACK_ITEM_SEED_WEIGHT * (feedbackScores.get(item) || 0)
+        + (tasteProfile && (!feedbackTaste?.active || ((tasteProfile.counts?.savedOutfits || 0) + (tasteProfile.counts?.wearLogs || 0) + (tasteProfile.counts?.brandClicks || 0)) > 0)
+          ? 0.35 * (tasteAffinityItemScores.get(item) || 0) : 0)
         + (context.sourceMode === 'catalog' && !extras.budgeted &&
           !lockedIds.has(String(item.id)) && !explicitlyRequestsLuxury(context)
           ? unbudgetedPriceSeedAdjustment(item,extras.priceProfile) : 0);
@@ -1224,17 +1247,56 @@ function makeFashionScorer(context, reference, recentSignatures, extras = {}) {
         { items, fashion: { dimensions: { ...dimensions, palette } } },
         { ...context, requiredIds:extras.requiredIds || [] }
       );
+      const slotColors = {};
+      for (let idx = 0; idx < items.length; idx++) {
+        const it = items[idx];
+        const col = it?.color && it.color !== 'unknown' ? it.color : descriptions[idx]?.color;
+        if (col && col !== 'unknown' && it?.macroCategory) slotColors[it.macroCategory] = col;
+      }
+      const colorTheory = scoreOutfitColorTheory(slotColors, dna);
+      const thermalItems = items.map((it) => scoreThermalSuitability(it, context.weather));
+      const thermalSuitability = thermalItems.length
+        ? Number((thermalItems.reduce((sum, r) => sum + (Number.isFinite(r?.score) ? r.score : 0.75), 0) / thermalItems.length).toFixed(4))
+        : null;
+      const tasteAffinity = tasteProfile
+        ? scoreLookTasteAffinity({ items, conceptId: brief?.id }, tasteProfile)
+        : null;
+      const hasImplicitOrDirectTaste = Boolean(
+        tasteProfile?.active && (
+          !feedbackTaste?.active ||
+          ((tasteProfile.counts?.savedOutfits || 0) + (tasteProfile.counts?.wearLogs || 0) + (tasteProfile.counts?.brandClicks || 0)) > 0
+        ),
+      );
+      const hasRichDna = Boolean(
+        dna && (
+          (dna.appearance?.consentGranted === true && dna.appearance?.skinUndertone && dna.appearance?.skinUndertone !== 'unknown') ||
+          dna.body?.hasExplicitBodyEvidence === true
+        ),
+      );
+      const colorTheoryDelta = hasRichDna
+        ? Math.max(-0.04, Math.min(0.04, ((colorTheory?.score ?? 0.75) - 0.72) * 0.15))
+        : 0;
+      const thermalDelta = hasRichDna && Number.isFinite(thermalSuitability)
+        ? Math.max(-0.04, Math.min(0.04, (thermalSuitability - 0.75) * 0.15))
+        : 0;
+      const tasteDelta = hasImplicitOrDirectTaste && tasteAffinity?.active
+        ? Math.max(-0.25, Math.min(0.25, tasteAffinity.score - (feedbackTaste?.active ? feedback.adjustment : 0)))
+        : 0;
       const result = {
         score: .68 * compatibility + .22 * weakLink + .10 * referenceFit +
           personal.adjustment + editorial.adjustment + feedback.adjustment + finish.adjustment +
           // This was computed and published in diagnostics but silently
           // omitted from ranking. With reference-led NVIDIA judging, the
           // shortlist must prefer garments that actually match the brief.
-          conceptFidelity.adjustment + fashionQuality.adjustment -
+          conceptFidelity.adjustment + fashionQuality.adjustment +
+          colorTheoryDelta + thermalDelta + tasteDelta -
           recentStylingPenalty(items, recentSignatures) - pricing.penalty - freshness -
           registerPenalty - basePolishPenalty - quietTeePenalty,
         dimensions: { ...dimensions, palette },
         unbudgetedPricePenalty: pricing.penalty,
+        colorTheory,
+        thermalSuitability,
+        ...(tasteAffinity ? { tasteAffinity } : {}),
         evidence: pricing.flagged || freshness > 0 || registerPenalty > 0 || basePolishPenalty > 0 || quietTeePenalty > 0
           ? [...assessment.evidence,
             ...(pricing.flagged ? ['unbudgeted_premium_selection_dampened'] : []),
@@ -1867,6 +1929,15 @@ export async function recommendFashionDeck({
   // casual/date portfolios (isolated 72s staging only). The server is the
   // sole authority for this paid inference callback and remaining deadline.
   selectCatalogRescueCompositions = null,
+  // Phase 3 Personal Style DNA, Unified Taste, Quality Flywheel, Per-Direction
+  // Retrieval & Surgical 1-Slot Visual Refinement parameters:
+  personalStyleDna = null,
+  styleDnaPromptBlock = '',
+  tasteProfile = null,
+  qualityFlywheel = null,
+  qualityMap = null,
+  boardRenderer = null,
+  perDirectionPools = null,
 }) {
   const reviewedLimit = Number.isInteger(visualCandidateLimit)
     ? Math.max(3,Math.min(MAX_VISUAL_CANDIDATES,visualCandidateLimit)) : MAX_VISUAL_CANDIDATES;
@@ -1934,7 +2005,10 @@ export async function recommendFashionDeck({
       priceProfile,budgeted:!!request.budget,
       layerOptional:context.optionalLayer===true&&!forceLayer,
       requiredIds,feedbackTaste,photoDirectorEnabled:modelLed,
+      personalStyleDna,tasteProfile,
     });
+  const resolvedQualityMap = qualityMap || (typeof qualityFlywheel?.getLookupMap === 'function' ? qualityFlywheel.getLookupMap() : null);
+  let resolvedPerDirectionPools = perDirectionPools;
   // THE AI FASHION DESIGNER STARTS BEFORE THE LEGACY LOOK RANKER.
   // No finished formula-look is a prerequisite for an independent designer
   // to select real, photographed garments. Ranker retrieval runs concurrently
@@ -1968,6 +2042,15 @@ export async function recommendFashionDeck({
       explorationSlots:4,directions:aiPlans,feedbackTaste,
       photoFirstPriorityIds,
     });
+    if(!resolvedPerDirectionPools&&visualSeed.length){
+      try{
+        resolvedPerDirectionPools=buildPerDirectionCandidatePools({
+          directions:aiPlans,catalog:visualSeed,
+          context:{...context,budget:request.budget,requiredIds,hygieneAlreadyApplied:true},
+          personalStyleDna,tasteProfile,qualityMap:resolvedQualityMap,perSlotLimit:14,
+        });
+      }catch{resolvedPerDirectionPools=null;}
+    }
     const counts=Object.fromEntries(slots.map(slot=>
       [slot,pool.filter(p=>p.slot===slot).length]));
     const enough=['top','bottom','shoes',...(forceLayer?['outerwear']:[])]
@@ -1977,6 +2060,7 @@ export async function recommendFashionDeck({
         style:context.style,occasion:context.occasion,brief:context.request,
         weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
         preferences:context.preferences,
+        ...(personalStyleDna?.presentation?{presentation:personalStyleDna.presentation}:{}),
       };
       // Invoke the bounded provider request synchronously: its first await
       // yields while the ranker computes. Never leave a dangling rejection.
@@ -1984,7 +2068,9 @@ export async function recommendFashionDeck({
       try{
         // Start provider I/O NOW, before any retrieval kernel execution.
         promise=Promise.resolve(selectCatalogCompositions({
-          pool,directions:aiPlans,outfitCount:6,feedbackTaste,context:contextPrompt,
+          pool,perDirectionPools:resolvedPerDirectionPools,
+          personalStyleDna,styleDnaPromptBlock,tasteProfile,
+          directions:aiPlans,outfitCount:6,feedbackTaste,context:contextPrompt,
           layerRequired:forceLayer||catalogFourItemIntent,
              allowLayer:!noLayer||catalogFourItemIntent,parallel:true,
         })).catch(()=>({status:'provider_unavailable',looks:[],providerCalls:1}));
@@ -2069,6 +2155,8 @@ export async function recommendFashionDeck({
   let visualQualityDecisions = null;
   let modelFashionSelection = {status:'not_enabled',candidatesSeen:0,chosen:0};
   let composerPool=null;
+  let primaryCritiques=[];
+  let secondaryCritiques=[];
   // Reference-optional review: a deck with no matching reference brief is
   // still visually judged on its product images alone (the critic marks such
   // verdicts referenceless and never claims a reference comparison). With a
@@ -2133,6 +2221,15 @@ export async function recommendFashionDeck({
           pool=sourceBoundCompositionPool(reviewable,{
             additionalItems:extra,explorationSlots:4,directions:aiPlans,feedbackTaste,
           });
+          if(!resolvedPerDirectionPools&&extra.length){
+            try{
+              resolvedPerDirectionPools=buildPerDirectionCandidatePools({
+                directions:aiPlans,catalog:extra,
+                context:{...context,budget:request.budget,requiredIds,hygieneAlreadyApplied:true},
+                personalStyleDna,tasteProfile,qualityMap:resolvedQualityMap,perSlotLimit:14,
+              });
+            }catch{resolvedPerDirectionPools=null;}
+          }
         }
         composerPool=pool;
         skuCompositionReceipt.previewProducts=pool.length;
@@ -2143,10 +2240,13 @@ export async function recommendFashionDeck({
           const composition=parallelComposition
             ?await parallelComposition.promise
             :await selectCatalogCompositions({
-              pool,directions:aiPlans,outfitCount:6,feedbackTaste,context:{
+              pool,perDirectionPools:resolvedPerDirectionPools,
+              personalStyleDna,styleDnaPromptBlock,tasteProfile,
+              directions:aiPlans,outfitCount:6,feedbackTaste,context:{
                 style:context.style,occasion:context.occasion,brief:context.request,
                 weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
                 preferences:context.preferences,
+                ...(personalStyleDna?.presentation?{presentation:personalStyleDna.presentation}:{}),
               },layerRequired:forceLayer||catalogFourItemIntent,
              allowLayer:!noLayer||catalogFourItemIntent,
             });
@@ -2415,7 +2515,7 @@ export async function recommendFashionDeck({
       candidates.push(alternate);
     }
     if (candidates.length) {
-      let primaryCritiques=[];
+      primaryCritiques=[];
       const reviewOptions={
         target:Math.min(3,candidates.length), minNovelty:0.12, requiredIds,
           requireDistinctArchitectures: true,
@@ -2454,7 +2554,203 @@ export async function recommendFashionDeck({
       let reviewed=await evaluateVisualShortlist(
         {...retrieval,shortlist:candidates},request,visualCritic,reviewOptions);
       let rescueAttempted=0;
-      let secondaryCritiques=[];
+      secondaryCritiques=[];
+      const recordCritiquesToFlywheel = async (critiqueRows, candidateList, decisionsList) => {
+        if (!qualityFlywheel || !Array.isArray(critiqueRows) || !critiqueRows.length) return;
+        const decisionById = new Map((decisionsList || []).map((d) => [d.candidateId, d]));
+        for (const c of critiqueRows) {
+          const lookObj = (candidateList || []).find((l) => l?.id === c?.candidateId);
+          if (!lookObj || !Array.isArray(lookObj.items)) continue;
+          const dec = decisionById.get(c.candidateId);
+          const isApproved = dec ? dec.reason === 'approved' : (c.reject !== true && (c.confidence ?? 0) >= 0.6);
+          try {
+            if (typeof qualityFlywheel.recordOutcome === 'function') {
+              await qualityFlywheel.recordOutcome({
+                items: lookObj.items,
+                approved: isApproved,
+                weakestSlot: c.weakestSlot || null,
+                defectCategory: c.defectCategory || (dec && dec.reason !== 'approved' ? dec.reason : null),
+                editorialScore: c.editorialScore ?? null,
+              });
+            } else {
+              await recordVisualCriticOutcome(qualityFlywheel, {
+                items: lookObj.items,
+                approved: isApproved,
+                weakestSlot: c.weakestSlot || null,
+                defectCategory: c.defectCategory || (dec && dec.reason !== 'approved' ? dec.reason : null),
+                editorialScore: c.editorialScore ?? null,
+              });
+            }
+          } catch {
+            // Non-fatal telemetry/flywheel update
+          }
+        }
+      };
+      await recordCritiquesToFlywheel(
+        primaryCritiques,
+        candidates,
+        reviewed.diagnostics?.visualQualityDecisions,
+      );
+      // SURGICAL 1-SLOT VISUAL REFINEMENT (before falling back to full-look recomposition):
+      // When a 4-SKU candidate fails or has an actionable weakestSlot + repairDirective,
+      // lock the 3 strong items and surgically swap only weakestSlot from the hygienic catalog.
+      if (
+        reviewed.outfits.length < 3 &&
+        Array.isArray(primaryCritiques) &&
+        primaryCritiques.some((c) => ['top', 'outerwear', 'bottom', 'shoes'].includes(String(c?.weakestSlot || '').toLowerCase())) &&
+        (typeof photoRescueRemainingMs !== 'function' || photoRescueRemainingMs() >= 6000)
+      ) {
+        const firstApprovedSet = new Set(
+          (reviewed.diagnostics?.visualQualityDecisions || [])
+            .filter((row) => row.reason === 'approved')
+            .map((row) => row.candidateId),
+        );
+        const approvedNow = candidates.filter((x) => firstApprovedSet.has(x.id));
+        const usedProductIds = new Set([
+          ...(Array.isArray(request.excludedIds) ? request.excludedIds.map(String) : []),
+          ...approvedNow.flatMap((x) => (x.items || []).map((it) => String(it.id))),
+        ]);
+        const critiqueByCandidate = new Map(primaryCritiques.map((c) => [c.candidateId, c]));
+        const surgicalTargets = candidates.filter((c) => {
+          if (firstApprovedSet.has(c.id)) return false;
+          const crit = critiqueByCandidate.get(c.id);
+          return crit && ['top', 'outerwear', 'bottom', 'shoes'].includes(String(crit.weakestSlot || '').toLowerCase());
+        }).sort((a, b) => {
+          const slotA = String(critiqueByCandidate.get(a.id)?.weakestSlot || '').toLowerCase();
+          const slotB = String(critiqueByCandidate.get(b.id)?.weakestSlot || '').toLowerCase();
+          const overlapA = (a.items || []).filter((it) => it.macroCategory !== slotA && usedProductIds.has(String(it.id))).length;
+          const overlapB = (b.items || []).filter((it) => it.macroCategory !== slotB && usedProductIds.has(String(it.id))).length;
+          return overlapA - overlapB;
+        }).slice(0, Math.max(1, 3 - reviewed.outfits.length));
+
+        if (surgicalTargets.length > 0) {
+          const preparedSurgicalCatalog = Array.isArray(catalog)
+            ? catalog.map((item) => fashionScorer.prepare(item)).filter(Boolean)
+            : [];
+          const surgicalNewLooks = [];
+          const surgicalNewCritiques = [];
+          let surgicalAttemptsCount = 0;
+
+          for (const targetLook of surgicalTargets) {
+            if (typeof photoRescueRemainingMs === 'function' && photoRescueRemainingMs() < 4500) break;
+            if (approvedNow.length + surgicalNewLooks.length >= 3) break;
+            const targetCritique = critiqueByCandidate.get(targetLook.id);
+            const allowedMs = typeof photoRescueRemainingMs === 'function'
+              ? Math.max(1200, Math.min(8000, Math.floor(photoRescueRemainingMs() - 2500)))
+              : 8000;
+            const refined = await refineLookSurgically({
+              look: targetLook,
+              critique: targetCritique,
+              catalogPool: preparedSurgicalCatalog,
+              lockedSlots: requiredIds
+                .map((rid) => targetLook.items.find((it) => String(it.id) === String(rid))?.macroCategory)
+                .filter(Boolean),
+              context: { ...context, budget: request.budget, requiredIds },
+              personalStyleDna,
+              hardGateValidator: async (candidateItems, candidateLookObj) => {
+                if (typeof hardGate === 'function') {
+                  const g = await hardGate(candidateItems);
+                  if (g === false || (g && typeof g === 'object' && g.ok === false)) {
+                    return { ok: false, reason: g?.reason || 'hard_gate_failed' };
+                  }
+                }
+                if (request.budget && typeof priceToBudgetCurrency === 'function') {
+                  let total = 0;
+                  for (const it of candidateItems) {
+                    if (it?.isShopItem !== false) {
+                      const conv = priceToBudgetCurrency(it, request.budget.currency);
+                      if (!Number.isFinite(conv)) return { ok: false, reason: 'currency_unconvertible' };
+                      total += conv;
+                    }
+                  }
+                  if (total > request.budget.amount) return { ok: false, reason: 'over_budget' };
+                }
+                const ranked = fashionScorer.rankLook(candidateItems, targetLook.brief);
+                if (!ranked) return { ok: false, reason: 'incoherent_look' };
+                if ( !(await permitted(candidateLookObj)) ) return { ok: false, reason: 'photo_unpermitted' };
+                return { ok: true };
+              },
+              visualCritic,
+              boardRenderer,
+              maxRounds: 1,
+              topCandidatesPerRound: 2,
+              deadlineMs: allowedMs,
+              excludedItemIds: [...usedProductIds],
+              qualityMap: resolvedQualityMap,
+              priceToBudgetCurrency,
+            });
+            surgicalAttemptsCount += Array.isArray(refined?.attempts) ? refined.attempts.filter((a) => a.criticRan).length : 0;
+            if (refined?.committed && refined?.approved && refined?.look && refined?.critique) {
+              const rankedFashion = fashionScorer.rankLook(refined.look.items, targetLook.brief) || targetLook.fashion;
+              const promotedLook = {
+                ...targetLook,
+                ...refined.look,
+                brief: targetLook.brief,
+                briefId: targetLook.briefId,
+                fashion: rankedFashion,
+                seedScore: rankedFashion?.score ?? targetLook.seedScore,
+                surgicalRefinement: {
+                  swappedSlot: refined.swappedSlot,
+                  replacedItemId: refined.replacedItemId,
+                  selectedItemId: refined.selectedItemId,
+                  previousScore: refined.previousScore,
+                  newScore: refined.newScore,
+                },
+              };
+              const promotedCritique = {
+                ...refined.critique,
+                candidateId: promotedLook.id,
+              };
+              surgicalNewLooks.push(promotedLook);
+              surgicalNewCritiques.push(promotedCritique);
+              for (const it of promotedLook.items) usedProductIds.add(String(it.id));
+              await recordCritiquesToFlywheel([promotedCritique], [promotedLook], [{ candidateId: promotedLook.id, reason: 'approved' }]);
+            }
+          }
+
+          if (surgicalNewLooks.length > 0) {
+            rescueAttempted += surgicalAttemptsCount;
+            secondaryCritiques.push(...surgicalNewCritiques);
+            const keepFirst = approvedNow.slice(0, Math.max(0, MAX_VISUAL_CANDIDATES - surgicalNewLooks.length));
+            const keepIds = new Set(keepFirst.map((x) => x.id));
+            const mergedShortlist = [...keepFirst, ...surgicalNewLooks];
+            const mergedCritiques = [
+              ...primaryCritiques.filter((row) => keepIds.has(row.candidateId)),
+              ...surgicalNewCritiques,
+            ];
+            const reselected = selectVisualDeck(
+              { ...retrieval, shortlist: mergedShortlist },
+              mergedCritiques,
+              reviewOptions,
+            );
+            const firstDiag = reviewed.diagnostics;
+            if (reselected.outfits.length >= reviewed.outfits.length) {
+              reviewed = {
+                ...reselected,
+                diagnostics: {
+                  ...reselected.diagnostics,
+                  visualAttempted: firstDiag.visualAttempted + surgicalAttemptsCount,
+                  visualValid: firstDiag.visualValid + surgicalNewCritiques.length,
+                  visualApproved: firstDiag.visualApproved + surgicalNewLooks.length,
+                  visualQualityDecisions: [
+                    ...(firstDiag.visualQualityDecisions || []),
+                    ...(reselected.diagnostics.visualQualityDecisions || []).filter((d) =>
+                      surgicalNewLooks.some((s) => s.id === d.candidateId),
+                    ),
+                  ],
+                },
+              };
+            }
+            candidates.push(...surgicalNewLooks);
+            primaryCritiques = [...primaryCritiques, ...surgicalNewCritiques];
+            modelFashionSelection.surgicalRefinement = {
+              attempted: surgicalAttemptsCount,
+              approved: surgicalNewLooks.length,
+              swappedSlots: surgicalNewLooks.map((l) => l.surgicalRefinement?.swappedSlot).filter(Boolean),
+            };
+          }
+        }
+      }
       // THE FASHION-LEARNING LOOP: The first set of real product photographs
       // sometimes leaves only one poor date look or two generic tee/jeans
       // casual looks. A professional stylist must not stop there or fabricate
@@ -3205,15 +3501,34 @@ export async function recommendFashionDeck({
     }
   }
   const directions = labelCreativeDirections(selected, creativeMetrics(deckContext));
-  const copy = editorialDeckCopy(selected, context, directions);
+  const allKnownCritiques = [
+    ...(typeof primaryCritiques !== 'undefined' && Array.isArray(primaryCritiques) ? primaryCritiques : []),
+    ...(typeof secondaryCritiques !== 'undefined' && Array.isArray(secondaryCritiques) ? secondaryCritiques : []),
+  ];
+  const critiqueByLookId = new Map(allKnownCritiques.filter(Boolean).map((c) => [c.candidateId, c]));
+  const matchedBriefs = selected.map((look, idx) =>
+    aiPlans.find((p) => canonicalBriefId(p.id) === look.briefId) || look.brief || aiPlans[idx] || null,
+  );
+  const matchedVerdicts = selected.map((look) => critiqueByLookId.get(look.id) || look.visualCritique || null);
+  const copy = editorialDeckCopy(selected, { ...context, personalStyleDna }, directions, {
+    personalStyleDna,
+    creativeBriefs: matchedBriefs,
+    visualVerdicts: matchedVerdicts,
+  });
   return {
     status: selected.length === 3 ? 'complete' : selected.length ? 'partial' : 'no_feasible_looks',
     outfits: selected.map((look, index) => {
       return {
         id: look.id, items: look.items, description: copy[index].description,
+        stylistNote: copy[index].stylistNote,
+        whyItFlattersYou: copy[index].whyItFlattersYou,
+        stylingTips: copy[index].stylingTips,
+        colorStory: copy[index].colorStory,
+        silhouetteFormula: copy[index].silhouetteFormula,
         concept: { ...copy[index].concept, referenceId: reference?.referenceId ?? null },
         direction: directions[index],
         fashion: look.fashion,
+        ...(look.surgicalRefinement ? { surgicalRefinement: look.surgicalRefinement } : {}),
         ...(look.fashionQuality || look.fashion?.fashionQuality ? {
           fashionQuality: look.fashionQuality || look.fashion?.fashionQuality,
         } : {}),

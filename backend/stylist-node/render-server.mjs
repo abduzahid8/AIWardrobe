@@ -45,7 +45,8 @@ export function createStylist6RenderServer(post=POST){
       const response=await post(new Request('http://localhost'+RENDER_STYLIST6_ROUTE,
         {method:'POST',headers,body}),{renderCanary:true});
       const data=Buffer.from(await response.arrayBuffer());
-      const outHeaders={'Content-Type':'application/json','Cache-Control':'no-store'};
+      const contentType=response.headers.get('content-type')||'application/json';
+      const outHeaders={'Content-Type':contentType,'Cache-Control':'no-store'};
       const timing=response.headers.get('server-timing');
       if(timing)outHeaders['Server-Timing']=timing;
       res.writeHead(response.status,outHeaders);res.end(data);

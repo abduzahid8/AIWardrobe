@@ -4,10 +4,18 @@
  * visual critique. The model never invents or approves purchasable SKUs.
  */
 export const FASHION_SLATE_VERSION = 's6-photo-informed-ai-fashion-selection-v1';
+export const DEFAULT_MAX_CONCURRENT_SLATE_CALLS = 24;
 const URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const MODEL = 'nvidia/nemotron-3.5-lightning-30b-a3b';
 const MAX = 28, CHOOSE = 6;
 let inFlight = 0;
+
+function resolveSlateMaxConcurrency(explicit) {
+  if (Number.isInteger(explicit) && explicit >= 1 && explicit <= 256) return explicit;
+  const envVal = Number(process.env.STYLIST6_SLATE_MAX_CONCURRENCY);
+  if (Number.isInteger(envVal) && envVal >= 1 && envVal <= 256) return envVal;
+  return DEFAULT_MAX_CONCURRENT_SLATE_CALLS;
+}
 const safe = (x,n=100) => typeof x === 'string'
   ? x.replace(/[\u0000-\u001f]/g,' ').slice(0,n) : '';
 const token = n => 'L' + String(n).padStart(2,'0');
@@ -62,19 +70,24 @@ function contextOnly(ctx) {
 }
 export async function selectFashionSlate({
   options,context,apiKey,fetchImpl=fetch,signal,timeoutMs=3200,
+  maxConcurrency,
 }={}) {
   const visible=anonymousFashionOptions(options);
   if(visible.length<CHOOSE)return {status:'insufficient_candidates',tokens:[],providerCalls:0};
   if(typeof apiKey!=='string'||!apiKey.startsWith('nvapi-'))
     return {status:'not_configured',tokens:[],providerCalls:0};
-  if(inFlight>=3)return {status:'load_shed',tokens:[],providerCalls:0};
+  if(inFlight>=resolveSlateMaxConcurrency(maxConcurrency))
+    return {status:'load_shed',tokens:[],providerCalls:0};
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),Math.max(500,Math.min(4800,timeoutMs)));
   const combined=signal?AbortSignal.any([signal,controller.signal]):controller.signal;
   inFlight++;
   try {
+    const rawPresentation=String(context?.presentation||'').trim().toLowerCase();
+    const domainLabel=rawPresentation==='womenswear'?'womenswear'
+      :rawPresentation==='unisex'?'unisex fashion':'menswear';
     const prompt=[
-      'You are a top professional menswear FASHION DIRECTOR, not a keyword filter.',
+      `You are a top professional ${domainLabel} FASHION DIRECTOR, not a keyword filter.`,
       'You must decide which SIX EXISTING complete outfits deserve independent PHOTO review.',
       'Treat entire silhouettes, footwear, construction, material relationships, elegance,',
       'personal taste, occasion and genuine diversity as one creative decision.',

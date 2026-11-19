@@ -128,6 +128,7 @@ export async function POST(request: Request, runtime?: { renderCanary?: boolean 
     SUPABASE_ANON_KEY: envOf('SUPABASE_ANON_KEY'),
     SUPABASE_SERVICE_ROLE_KEY: envOf('SUPABASE_SERVICE_ROLE_KEY'),
     NVIDIA_API_KEY: envOf('NVIDIA_API_KEY'),
+    OPENROUTER_API_KEY: envOf('OPENROUTER_API_KEY'),
     // Forward the server-owned switch: without this, Creative Director is
     // silently disabled despite being enabled in the compute environment.
     ...stylist6CreativeServerConfig(),
@@ -148,10 +149,11 @@ export async function POST(request: Request, runtime?: { renderCanary?: boolean 
   }
 
   const headers: Record<string, string> = { authorization };
-  for (const name of ['x-aiw-timestamp', 'x-aiw-nonce', 'x-aiw-signature']) {
+  for (const name of ['x-aiw-timestamp', 'x-aiw-nonce', 'x-aiw-signature', 'accept']) {
     const value = request.headers.get(name);
     if (value) headers[name] = value;
   }
+  const wantsSse = (request.headers.get('accept') || '').toLowerCase().includes('text/event-stream');
   // Include cold-start module loading AND the Stylist 6 handler in timing.
   const cpuStart = process.cpuUsage();
   const wallStart = performance.now();
@@ -171,10 +173,22 @@ export async function POST(request: Request, runtime?: { renderCanary?: boolean 
     const cpu = process.cpuUsage(cpuStart);
     const cpuMs = (cpu.user + cpu.system) / 1000;
     const wallMs = performance.now() - wallStart;
+    const serverTiming = `aiw_node_cpu;dur=${cpuMs.toFixed(1)}, aiw_node_wall;dur=${wallMs.toFixed(1)}`;
+    if (wantsSse && status === 200) {
+      const ssePayload = `event: complete\ndata: ${JSON.stringify(responseBody)}\n\n`;
+      return new Response(ssePayload, {
+        status,
+        headers: {
+          'content-type': 'text/event-stream; charset=utf-8',
+          'cache-control': 'no-store',
+          'server-timing': serverTiming,
+        },
+      });
+    }
     return Response.json(responseBody, {
       status,
       headers: {
-        'server-timing': `aiw_node_cpu;dur=${cpuMs.toFixed(1)}, aiw_node_wall;dur=${wallMs.toFixed(1)}`,
+        'server-timing': serverTiming,
       },
     });
   } catch {
