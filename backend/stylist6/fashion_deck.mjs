@@ -45,6 +45,68 @@ export function eligibleCatalogFourItemPhotoCandidate(look){
 
 
 /**
+ * Let the FIRST autonomous SKU artist see transferable lessons learned from
+ * previous real full-outfit PHOTO verdicts, while it can still freely choose
+ * any real merchandise. This is a PRIVATE, same-occasion model-predicted
+ * four-way relationship, NOT a photographed approval or a garment rule.
+ *
+ * Only model-calibrated history from independent held-out original-photo
+ * checks qualifies. Token IDs belong to THIS source-bound request menu;
+ * no persisted merchant IDs, old account data or model weights are disclosed.
+ * Do not query or transmit any new image bytes: the independent actual-photo
+ * reviewer still owns the only display approval after SKU composition.
+ */
+export function photoHistoryFirstArtistMuses(
+  pool,photoHistory,{featuresOf=outfitStylingFeatures,limit=3}={}
+){
+  if(photoHistory?.status!=='heldout_photo_validated'||
+      typeof photoHistory.scoreFeatures!=='function'||
+      !Array.isArray(pool)||pool.length>48||
+      typeof featuresOf!=='function'||
+      !Number.isInteger(limit)||limit<1||limit>3)return [];
+  const roles=slots.map(slot=>{
+    const eligible=pool.filter(e=>e?.slot===slot&&e.item?.isShopItem===true&&
+      e.item?.macroCategory===slot&&typeof e.item.id==='string'&&
+      /^P\d{3}$/.test(e.token));
+    const distinct=[...new Map(eligible.map(e=>
+      [baseProductId(String(e.item.id)),e])).values()];
+    if(distinct.length<=5)return distinct;
+    // Cover the entire previously curated real P-menu, not just the first
+    // five most-popular identical garment variants. No subtype/style bans.
+    return [...new Set([0,Math.floor((distinct.length-1)/4),
+      Math.floor((distinct.length-1)/2),
+      Math.floor((distinct.length-1)*3/4),distinct.length-1])]
+      .map(i=>distinct[i]);
+  });
+  if(roles.some(entries=>entries.length<3))return [];
+  const candidates=[];
+  for(const top of roles[0])for(const layer of roles[1])
+    for(const bottom of roles[2])for(const shoes of roles[3]){
+      const entries=[top,layer,bottom,shoes];
+      if(entries.some((a,i)=>entries.slice(i+1).some(b=>
+        sameProduct(a.item,b.item))))continue;
+      let value=null;
+      try{value=photoHistory.scoreFeatures(featuresOf(
+        entries.map(x=>x.item)));}catch{continue;}
+      if(!Number.isFinite(value)||value<=0.10||value>1)continue;
+      candidates.push({entries,value});
+    }
+  candidates.sort((a,b)=>b.value-a.value||
+    a.entries.map(x=>x.token).join('|').localeCompare(
+      b.entries.map(x=>x.token).join('|')));
+  const chosen=[];
+  for(const candidate of candidates){
+    if(chosen.every(prior=>candidate.entries.every(a=>
+      prior.every(b=>!sameProduct(a.item,b.item))))){
+      chosen.push(candidate.entries);
+      if(chosen.length>=limit)break;
+    }
+  }
+  return chosen.map(entries=>Object.fromEntries(entries.map(entry=>
+    [entry.slot,entry.token])));
+}
+
+/**
  * Learned PHOTO-history creative audition of WHOLE garment relationships.
  *
  * The primary source-bound AI already chose real TOP/LAYER/BOTTOM/SHOES sets.
@@ -2113,6 +2175,7 @@ export async function recommendFashionDeck({
   // scorer. The early AI's returned SKU selections are NEVER displayed until
   // the same independent full-look hard gate and NVIDIA PHOTO judge approve.
   let parallelComposition=null;
+  let firstComposerPhotoMuses=0;
   let sourceVerifiedAiFirst=[];
   if(modelLed&&typeof selectCatalogCompositions==='function'&&
       request.sourceMode==='catalog'&&!requiredIds.length){
@@ -2149,6 +2212,15 @@ export async function recommendFashionDeck({
         weatherCelsius:Number.isFinite(context.weather?.temp)?context.weather.temp:null,
         preferences:context.preferences,
       };
+      // The FIRST independent fashion artist gets the actual learned
+      // full-outfit PHOTO relationship suggestions, BEFORE composing six
+      // real SKU sets. This was previously confined to LATE rescue sorting;
+      // the artist could not apply cross-request visual taste to its FIRST
+      // selection. Suggestions are nonbinding and source-token only.
+      const learnedPhotoMuses=photoHistoryFirstArtistMuses(pool,photoHistory,{
+        featuresOf:items=>outfitStylingFeatures(items,context.anchorId),
+      });
+      firstComposerPhotoMuses=learnedPhotoMuses.length;
       // Invoke the bounded provider request synchronously: its first await
       // yields while the ranker computes. Never leave a dangling rejection.
       let promise;
@@ -2156,6 +2228,7 @@ export async function recommendFashionDeck({
         // Start provider I/O NOW, before any retrieval kernel execution.
         promise=Promise.resolve(selectCatalogCompositions({
           pool,directions:aiPlans,outfitCount:6,feedbackTaste,context:contextPrompt,
+          ...(learnedPhotoMuses.length?{learnedPhotoMuses}:{}),
           layerRequired:forceLayer||catalogFourItemIntent,
              allowLayer:!noLayer||catalogFourItemIntent,parallel:true,
         })).catch(()=>({status:'provider_unavailable',looks:[],providerCalls:1}));
@@ -2319,6 +2392,7 @@ export async function recommendFashionDeck({
       // from HELD-OUT validated original PHOTO critic relationships.
       // None counts as approved until the critic actually inspects photos.
       photoHistoryCreativeAuditions,
+      firstComposerPhotoMuses,
     };
     if(modelLed){
       const reviewable=[];

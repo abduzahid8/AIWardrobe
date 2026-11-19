@@ -179,6 +179,10 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     // original-photo critic. No merchant or user identities ever logged.
     skuCompositionHistoryCreativeAuditions:
       safe(f.skuCompositionReceipt?.photoHistoryCreativeAuditions,8),
+    // Calibrated original-photo relationship examples were genuinely shown
+    // to the FIRST composer, not themselves provider-verified outfits.
+    skuCompositionFirstComposerPhotoMuses:
+      safe(f.skuCompositionReceipt?.firstComposerPhotoMuses,3),
     // Actual initial PHOTO submissions (not inferred from the number of
     // created variants, and never evidence of the PHOTO judge's approval).
     skuCompositionHistoryReachedPhoto:
@@ -1846,7 +1850,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const selectCatalogCompositions=modelSlateEnabled&&budgetMs>=70000 &&
       sourceMode==='catalog' && !requiredIds.length
       ? async({pool,context,directions,layerRequired,allowLayer,outfitCount=3,
-          feedbackTaste,parallel=false})=>{
+          feedbackTaste,learnedPhotoMuses=[],parallel=false})=>{
           const left=remainingMs();
           if(left<27000)return {status:'deadline',looks:[],providerCalls:0};
           // Parallel creative call starts BEFORE the old 18-21s retrieval.
@@ -1856,7 +1860,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           if(!parallel)nextPhase('ai_direct_sku_composition');
           return composeCatalogSkuLooks({
             pool,context,directions,layerRequired,allowLayer,outfitCount,
-            feedbackTaste,parallel,
+            feedbackTaste,parallel,learnedPhotoMuses,
             // Isolated 72s cloud staging: let a SECOND independent designer
             // propose genuinely different photo-verifiable outfits BEFORE
             // the expensive final visual critic, rather than recolor the

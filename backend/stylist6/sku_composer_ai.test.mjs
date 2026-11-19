@@ -163,6 +163,34 @@ test('model independently composes three new real SKU combinations, no product i
   assert.equal(new Set(r.looks.flat().map(x=>x.id)).size,12);
 });
 
+test('first source artist sees only same-menu PHOTO-learned muse tokens and never claims they were approved photos',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const by=slot=>pool.filter(x=>x.slot===slot);
+  const good=Object.fromEntries(slots.map(slot=>[slot,by(slot)[1].token]));
+  const injected={...good,top:'P999'};
+  let calls=0;
+  const output=await composeCatalogSkuLooks({
+    pool,layerRequired:true,context:{style:'classic',occasion:'Work'},
+    learnedPhotoMuses:[good,injected],apiKey:'nvapi-test',
+    fetchImpl:async(_,init)=>{
+      calls++;
+      const prompt=JSON.parse(init.body).messages[0].content;
+      assert.match(prompt,/learnedPhotoMuses/);
+      assert.match(prompt,/PHOTO judge outcomes in THIS same context/);
+      assert.match(prompt,/NOT actual PHOTO approvals/);
+      assert.match(prompt,/choose BETTER real/);
+      assert.doesNotMatch(prompt,/P999|PRIVATE_SKU|merchantImageUrl|human has approved/);
+      const found=/"learnedPhotoMuses":(\[[^\]]*\])/.exec(prompt);
+      assert.ok(found);
+      assert.deepEqual(JSON.parse(found[1]),[good]);
+      return result(slotAnswer(pool));
+    },
+  });
+  assert.equal(calls,1);
+  assert.equal(output.status,'composed');
+  assert.equal(output.looks.length,3);
+});
+
 test('six independent AI fashion decisions reach photo audition as real unique source SKUs',async()=>{
   const pool=sourceBoundCompositionPool(looks);
   const sixOutfits=Array.from({length:6},(_,i)=>Object.fromEntries(

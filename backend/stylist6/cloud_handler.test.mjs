@@ -2193,6 +2193,7 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     skuCompositionParallel:false,
     skuCompositionAiFirst:false,skuCompositionRetrievalSkipped:false,
     skuCompositionHistoryCreativeAuditions:null,
+    skuCompositionFirstComposerPhotoMuses:null,
     skuCompositionHistoryReachedPhoto:null,
     skuCompositionPhotoAuditionCoreFeasible:false,
     skuCompositionPhotoAuditionCoreRecovered:false,
@@ -2234,6 +2235,7 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     photoHistoryHoldoutPairs:98,photoHistoryPriorConsidered:true,
     photoAuditionCoreRecovered:true,
     skuCompositionReceipt:{photoHistoryCreativeAuditions:2,
+      firstComposerPhotoMuses:3,
       photoHistoryReachedPhoto:1,
       photoAuditionCoreFeasible:true,
       privateSourceSku:'do-not-log-owner-shop-SKU'},
@@ -2254,6 +2256,8 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     'real source-admitted learned alternatives, not fake AI photo approvals');
   assert.equal(teacher.skuCompositionHistoryReachedPhoto,1,
     'actual PHOTO candidates, not merely created and discarded AI remixes');
+  assert.equal(teacher.skuCompositionFirstComposerPhotoMuses,3,
+    'the FIRST autonomous designer must receive calibrated original-PHOTO experience');
   assert.equal(teacher.skuCompositionPhotoAuditionCoreFeasible,true);
   assert.equal(teacher.skuCompositionPhotoAuditionCoreRecovered,true);
   assert.equal(teacher.photoHistoryPriorConsidered,true);
@@ -2263,12 +2267,14 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     photoTeacherStatus:'<owned-secret>',photoTeacherExamples:999,
     photoHistoryHoldoutWins:1e10,photoHistoryHoldoutPairs:1e10,
     skuCompositionReceipt:{photoHistoryCreativeAuditions:999,
+      firstComposerPhotoMuses:999,
       photoHistoryReachedPhoto:999},
   }},2,35000);
   assert.equal(invalid.photoTeacherStatus,'not_run');
   assert.equal(invalid.photoTeacherExamples,null);
   assert.equal(invalid.photoHistoryHoldoutPairs,null);
   assert.equal(invalid.skuCompositionHistoryCreativeAuditions,null);
+  assert.equal(invalid.skuCompositionFirstComposerPhotoMuses,null);
   assert.equal(invalid.skuCompositionHistoryReachedPhoto,null);
   assert.equal(stylist6SafeQualityTrace(null,5,-1).displayed,null,
     'trace cannot invent out-of-range deck counts');

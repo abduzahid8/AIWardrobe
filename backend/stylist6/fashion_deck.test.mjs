@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, photoHistoryRecompositionCandidates, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, prioritizeIndependentPhotoAuditions, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence, eligibleCatalogFourItemPhotoCandidate } from './fashion_deck.mjs';
+import { adjacentCreativeStyles, applyExclusionQualityFloor, buildPriceProfile, elevatedBasePolishPenaltyForLook, ELEVATED_BASE_POLISH_PENALTY, elevatedFootwearRegisterContext, fashionStylingContext, polishedEveningLayerRequired, footwearRegisterPenaltyForLook, FOOTWEAR_REGISTER_PENALTY, pricePenaltyForLook, unbudgetedPriceSeedAdjustment, UNBUDGETED_PRICE_PENALTY_MAX, explicitlyRequestsLuxury, priceFreshnessPenaltyForLook, PRICE_FRESHNESS_PENALTY_MAX, rankVisualChallengerPool, photoHistoryFirstArtistMuses, photoHistoryRecompositionCandidates, visualArchitectureCapacity, visualRescueTripleCount, visualProductUniqueTripleCount, visualPortfolioSingleVetoResilience, assembleFormalPhotoProbePortfolio, chooseFormalPhotoRescueCandidates, verifiedPhotoEditorialPortfolios, chooseIndependentPhotoReviewTrio, prioritizeIndependentPhotoAuditions, assembleIndependentVisualPortfolio, directorSlatePreview, workoutItemTruthReason, freezingCatalogVestReason, rejectUnrequestedOfficeRegisterPiece, recommendFashionDeck, rejectForUnsuitableDateNight, rejectUnpolishedDateNightLook, rejectQuietSmartLeisureLayer, rejectPolishedContextMismatch, singleCurrencyBonus, trainerFootwearDescriptor, refineQuietOfficeConcept, quietLuxuryHoodieReason, quietLuxuryBasicTeePenaltyForLook, namedCardiganBriefMismatch, rejectUnrequestedRivieraPiece, extremeUnrequestedCatalogPriceReason, observedPriceComparison, photographicPaletteEvidence, eligibleCatalogFourItemPhotoCandidate } from './fashion_deck.mjs';
 import { devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { shortlistRetrievalDeck } from './prototype.mjs';
 import { feedbackTasteModel } from './feedback_taste.mjs';
@@ -3133,6 +3133,48 @@ test('PHOTO reward chooses independent four-SKU fashion hypotheses, not two near
     'shared-item rescue choices remain PHOTO-eligible if no shoppable alternative exists');
 });
 
+test('first REAL SKU artist receives learned independent four-SKU PHOTO muses without a garment rule or photo approval',()=>{
+  const slots=['top','outerwear','bottom','shoes'];
+  const pool=slots.flatMap((slot,j)=>Array.from({length:6},(_,i)=>{
+    const item=garment('photo-muse-'+slot+'-'+i,
+      'Real authentic merchant '+slot+' '+i,slot,
+      ['dress-shirt','blazer','tailored-trouser','loafer'][j]);
+    return {slot,item,token:'P'+String(j*6+i).padStart(3,'0')};
+  }));
+  const teacher={status:'heldout_photo_validated',scoreFeatures:ids=>
+    ids[0].endsWith('-0')&&ids[2].endsWith('-0')?.92:
+    ids[0].endsWith('-2')&&ids[2].endsWith('-2')?.86:
+    ids[0].endsWith('-5')&&ids[2].endsWith('-5')?.79:.03};
+  const count={n:0};
+  const options={featuresOf:items=>{count.n++;return items.map(x=>x.id)}};
+  const muse=photoHistoryFirstArtistMuses(pool,teacher,options);
+  assert.equal(muse.length,3,
+    'three independent complete fashion relationships can inspire the first artist');
+  assert.ok(count.n<=625,'no new provider calls or exhaustive source-catalog search');
+  const menu=new Map(pool.map(x=>[x.token,x]));
+  const originalIds=[];
+  for(const m of muse){
+    assert.equal(Object.keys(m).length,4);
+    for(const slot of slots){
+      assert.equal(menu.get(m[slot])?.slot,slot);
+      originalIds.push(menu.get(m[slot]).item.id);
+    }
+  }
+  assert.equal(new Set(originalIds).size,12,
+    'photo-history artistic hints must offer a publishable SKU-independent THREE-look canvas');
+  assert.deepEqual(photoHistoryFirstArtistMuses(pool,{
+    ...teacher,status:'insufficient_real_photo_history'},options),[],
+  'same-context uncalibrated PHOTO history cannot masquerade as artistic evidence');
+  assert.deepEqual(photoHistoryFirstArtistMuses(pool,{
+    ...teacher,scoreFeatures:()=>0},options),[],
+  'neutral unseen PHOTO evidence is no creative validation');
+  assert.deepEqual(photoHistoryFirstArtistMuses(pool.slice(0,8),teacher,options),[],
+  'missing exact four-source inventory cannot produce muses');
+  assert.deepEqual(photoHistoryFirstArtistMuses([...pool,
+    {slot:'top',token:'P999',item:{id:'FORGED',macroCategory:'top',isShopItem:false}}],teacher,options),muse,
+  'unapproved invented merchandise has no influence on photo-grounded inspiration');
+});
+
 test('held-out validated real-PHOTO fashion reward changes FIRST source-bound audition slate, never PHOTO approval',async()=>{
   const expanded=['top','outerwear','bottom','shoes'].flatMap((slot,j)=>
     Array.from({length:10},(_,i)=>garment('reward-'+slot+'-'+i,
@@ -3148,7 +3190,13 @@ test('held-out validated real-PHOTO fashion reward changes FIRST source-bound au
   const deck=await recommendFashionDeck({
     ...base,request,catalog:expanded,
     selectDirectorFinalists:async()=>({status:'timeout',tokens:[]}),
-    selectCatalogCompositions:async({pool,parallel,outfitCount})=>{
+    selectCatalogCompositions:async({pool,parallel,outfitCount,learnedPhotoMuses})=>{
+      assert.ok(Array.isArray(learnedPhotoMuses)&&learnedPhotoMuses.length>=1,
+        'calibrated prior must reach FIRST real SKU artist, not only late rescues');
+      assert.ok(learnedPhotoMuses.every(muse=>
+        ['top','outerwear','bottom','shoes'].every(slot=>pool.some(entry=>
+          entry.token===muse[slot]&&entry.slot===slot))),
+      'muses contain ONLY current real source P-tokens, no personal IDs');
       artistCalls++;
       assert.equal(parallel,true);
       assert.equal(outfitCount,6);
@@ -3164,7 +3212,7 @@ test('held-out validated real-PHOTO fashion reward changes FIRST source-bound au
       // Unlike the original six same-color slates, an alternate cream top
       // with navy trousers gets learned preference only from outfit context.
       scoreFeatures:features=>
-        features[0]?.[2]==='cream'&&features[2]?.[2]==='navy'?0.95:0.1,
+        features[0]?.[2]==='cream'&&features[2]?.[2]==='navy'?0.95:0.45,
     },
     visualDeckReview:true,canJudgeOutfit:async()=>true,
     visualCritic:async batch=>{
@@ -3174,6 +3222,8 @@ test('held-out validated real-PHOTO fashion reward changes FIRST source-bound au
   });
   assert.equal(artistCalls,1,'no extra provider calls for learned exploration');
   assert.equal(deck.diagnostics.retrievalMode,'source_verified_ai_first');
+  assert.ok(deck.diagnostics.modelFashionSelection.skuCompositionReceipt
+    .firstComposerPhotoMuses>=1,'learned fashion influence is observable BEFORE PHOTO');
   assert.ok(deck.diagnostics.modelFashionSelection.skuCompositionReceipt
     .photoHistoryCreativeAuditions>0,
     'validated real photo experience must create source-verified creative alternatives');
