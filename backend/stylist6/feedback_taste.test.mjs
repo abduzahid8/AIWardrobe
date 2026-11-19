@@ -216,7 +216,7 @@ test('the bounded read cap keeps 60+ rows from growing the influence', () => {
 });
 
 
-test('cross-SKU fashion taste: a liked combination transfers without the same product IDs', () => {
+test('one liked outfit cannot create an invented cross-SKU garment preference', () => {
   const features = [
     ['shirt', 'regular', 'cream', 'linen', 'plain'],
     ['blazer', 'relaxed', 'brown', 'wool', 'plain'],
@@ -231,14 +231,16 @@ test('cross-SKU fashion taste: a liked combination transfers without the same pr
   }], NOW);
   const newItems = [item('new-1'), item('new-2'), item('new-3'), item('new-4')];
   const result = evaluateFeedbackLook(newItems, 'unseen-concept', model, features);
-  assert.ok(result.adjustment > 0 && result.adjustment <= 0.02);
+  assert.equal(result.adjustment, 0,
+    'one explicit thumbs up is an observation, NOT a trained fashion rule');
   assert.equal(result.likedItems, 0, 'no legacy SKU matched');
-  assert.deepEqual(result.matches, [{ type: 'feedback_style', value: 'liked' }]);
+  assert.deepEqual(result.matches, []);
+  assert.equal(model.learnedPreference.usable, false);
   assert.equal(evaluateFeedbackLook(newItems, 'unseen-concept', model).adjustment, 0,
     'old callers without semantic vector retain byte-identical behavior');
 });
 
-test('cross-SKU dislike transfers softly, cancels with a like and obeys recency', () => {
+test('single disliked outfit, conflicting labels and old examples do not generalize without learning', () => {
   const features = [
     ['shirt', 'regular', 'cream', 'linen', 'plain'],
     null,
@@ -250,11 +252,13 @@ test('cross-SKU dislike transfers softly, cancels with a like and obeys recency'
   });
   const look = [item('x'), item('y'), item('z')];
   const dislike = feedbackTasteModel([row(-1, daysAgo(0))], NOW);
-  assert.ok(evaluateFeedbackLook(look, '', dislike, features).adjustment < 0);
+  assert.equal(evaluateFeedbackLook(look, '', dislike, features).adjustment, 0,
+    'no universal garment veto from one negative rating');
   const cancelled = feedbackTasteModel([row(1, daysAgo(0)), row(-1, daysAgo(0))], NOW);
   assert.equal(evaluateFeedbackLook(look, '', cancelled, features).adjustment, 0);
   const old = feedbackTasteModel([row(1, daysAgo(30))], NOW);
-  assert.ok(Math.abs(evaluateFeedbackLook(look, '', old, features).adjustment - 0.01) < 1e-9);
+  assert.equal(evaluateFeedbackLook(look, '', old, features).adjustment, 0,
+    'one old rating cannot teach novel garments');
   assert.ok(Math.abs(evaluateFeedbackLook(look, '', dislike, features).adjustment) <= 0.02);
 });
 
@@ -289,7 +293,7 @@ test('cross-SKU evidence never follows an unrelated silhouette, invalid or spars
   }
 });
 
-test('feature-only feedback remains below the existing look quality cap', () => {
+test('repeating one feedback signature never manufactures balanced learning evidence', () => {
   const features = [
     ['shirt', 'regular', 'cream', 'linen', 'plain'],
     null,
@@ -302,6 +306,7 @@ test('feature-only feedback remains below the existing look quality cap', () => 
   const model = feedbackTasteModel(rows, NOW);
   assert.equal(model.rows, 60);
   const result = evaluateFeedbackLook([item('a'), item('b'), item('c')], '', model, features);
-  assert.equal(result.adjustment, 0.02);
+  assert.equal(result.adjustment, 0);
+  assert.equal(model.learnedPreference.usable, false);
   assert.ok(result.adjustment < FEEDBACK_TASTE_LOOK_CAP);
 });

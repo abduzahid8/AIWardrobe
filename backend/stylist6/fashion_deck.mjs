@@ -3290,6 +3290,7 @@ export async function recommendFashionDeck({
       deckCopyVersion: DECK_COPY_VERSION,
       feedbackTasteVersion: FEEDBACK_TASTE_VERSION,
       feedbackTasteActive: !!(feedbackTaste && feedbackTaste.active),
+      feedbackTasteLearnedStatus: feedbackTaste?.learnedPreference?.status || 'untrained',
       modelFashionSelection,
       ...(visualReviewCoverage ? { visualReviewCoverage } : {}),
       ...(visualQualityDecisions ? { visualQualityDecisions } : {}),

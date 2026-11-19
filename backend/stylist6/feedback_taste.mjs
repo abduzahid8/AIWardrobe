@@ -16,7 +16,10 @@
  * No I/O; no persistence; do not log taste. Capped, decayed and typed so 60
  * hostile rows cannot amplify feedback over safety/quality.
  */
-export const FEEDBACK_TASTE_VERSION = 's6-feedback-taste-v2';
+import {
+  trainOwnerOutfitPreference, learnedOutfitPreferenceScore,
+} from './learned_outfit_preference.mjs';
+export const FEEDBACK_TASTE_VERSION = 's6-feedback-taste-v3-learned-outfit-preferences';
 // Exponential recency decay: a rating loses half of its influence every 30
 // days. Rows carry only their created_at; `nowMs` is injected so the math is
 // fully deterministic for a fixed input set.
@@ -31,8 +34,6 @@ export const FEEDBACK_TASTE_LOOK_CAP = 0.06;
 const ITEM_COMPONENT_SCALE = 0.045;
 const PAIR_COMPONENT_SCALE = 0.03;
 const FEATURE_COMPONENT_SCALE = 0.02;
-const STYLE_FEATURE_WEIGHTS = [0.35, 0.2, 0.2, 0.15, 0.1];
-const MIN_STYLE_SIMILARITY = 0.72;
 // Item ids are opaque server keys: trimmed and length-bounded, never
 // case-folded (two ids differing in case are two products).
 const MAX_ITEM_ID_LENGTH = 128;
@@ -101,32 +102,9 @@ function signedFeedbackFeatures(raw) {
   return raw && typeof raw === 'object' && !Array.isArray(raw) && raw.version === 1
     ? normalizeFeatureMatrix(raw.features) : null;
 }
-// Cross-SKU transfer needs two matching garment subtypes in their own slots
-// and enough comparable whole-look evidence. One color or garment alone
-// cannot create an inferred preference or an exclusion.
-function styleSimilarity(a, b) {
-  if (!a || !b) return 0;
-  let evidence = 0, agreements = 0, sharedSlots = 0, matchingTypes = 0;
-  for (let slot = 0; slot < 4; slot++) {
-    const x = a[slot], y = b[slot];
-    if (!x || !y) continue;
-    let compared = 0;
-    for (let field = 0; field < 5; field++) {
-      if (!x[field] || !y[field]) continue;
-      const weight = STYLE_FEATURE_WEIGHTS[field];
-      evidence += weight;
-      compared++;
-      if (x[field] === y[field]) agreements += weight;
-    }
-    if (compared >= 2) sharedSlots++;
-    if (x[0] && y[0] && x[0] === y[0]) matchingTypes++;
-  }
-  if (sharedSlots < 2 || matchingTypes < 2 || evidence < 1.2) return 0;
-  const similarity = agreements / evidence;
-  return similarity >= MIN_STYLE_SIMILARITY
-    ? Math.min(1, (similarity - MIN_STYLE_SIMILARITY) / (1 - MIN_STYLE_SIMILARITY)) : 0;
-}
-
+// Cross-SKU fashion taste is learned from held-out-validated human outfit
+// comparisons. Never transfer one arbitrary outfit's silhouette into a
+// garment ban, or confuse a photographic AI verdict with a human preference.
 /**
  * Normalized, decayed model over the user's explicit feedback rows. Accepts
  * the DB projection ({rating, concept_id, item_ids, look_signature,
@@ -143,6 +121,7 @@ export function feedbackTasteModel(rows, nowMs = Date.now()) {
     itemTally: new Map(),
     pairTally: new Map(),
     featureEvidence: [],
+    learnedPreference: null,
   };
   if (!Array.isArray(rows)) return model;
   const now = typeof nowMs === 'number' && Number.isFinite(nowMs) ? nowMs : Date.now();
@@ -187,8 +166,12 @@ export function feedbackTasteModel(rows, nowMs = Date.now()) {
     const tally = clamp(sum, -1, 1);
     if (tally !== 0) model.pairTally.set(key, tally);
   }
+  model.learnedPreference=trainOwnerOutfitPreference(rows.slice(0,FEEDBACK_TASTE_MAX_ROWS),now);
+  // Single explicit outfit feedback may still be shown as a concrete
+  // HUMAN-rated example to the AI, but it is NOT extrapolated into a
+  // transferable learned fashion rule without validated comparisons.
   model.active = model.itemTally.size > 0 || model.pairTally.size > 0 ||
-    model.featureEvidence.length > 0;
+    model.featureEvidence.length > 0 || model.learnedPreference.usable;
   return model;
 }
 
@@ -238,10 +221,12 @@ export function evaluateFeedbackLook(items, conceptId, model, stylingFeatures) {
   }
   const pairComponent = clamp(pairRaw, -1, 1);
   const candidateFeatures = normalizeFeatureMatrix(stylingFeatures);
-  const featureRaw = candidateFeatures && Array.isArray(model.featureEvidence)
-    ? model.featureEvidence.reduce((sum, row) =>
-        sum + row.weight * styleSimilarity(row.features, candidateFeatures), 0) : 0;
-  const featureComponent = clamp(featureRaw, -1, 1);
+  // A cross-SKU garment *relationship* is learned from real positive and
+  // negative HUMAN-rated whole outfits and validated on withheld outfits.
+  // Below that data standard we abstain, rather than codifying somebody's
+  // single thumbs-up as a universal preference for blazers or a color.
+  const featureComponent=candidateFeatures
+    ? learnedOutfitPreferenceScore(model.learnedPreference,candidateFeatures):0;
   if (featureComponent !== 0) matches.push({
     type: 'feedback_style', value: featureComponent > 0 ? 'liked' : 'disliked',
   });

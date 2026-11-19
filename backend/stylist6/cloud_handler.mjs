@@ -2071,6 +2071,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           status: feedbackTasteStatus,
           rows: feedbackRows.length,
           active: feedbackTaste.active === true,
+          // Distinguishes an explicit single thumbs example from a
+          // statistically learned, held-out-validated whole-look preference.
+          // Status ONLY; no owner's garment details or training weights.
+          learnedStatus: feedbackTaste.learnedPreference?.status || 'untrained',
           version: FEEDBACK_TASTE_VERSION,
         },
         outfits: mappedOutfits,

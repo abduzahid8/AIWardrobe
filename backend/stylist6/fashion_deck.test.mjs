@@ -1480,7 +1480,7 @@ test('Old Money smart date does not recommend known casual-soled shoes or unrequ
 });
 
 // ---------------------------------------------------------------------------
-// Gate D: explicit feedback taste (s6-feedback-taste-v2). The adjustment is
+// Gate D: explicit feedback taste (s6-feedback-taste-v3-learned-outfit-preferences). The adjustment is
 // capped, decayed and applied after every hard gate; without it the deck is
 // byte-identical legacy ranking.
 // ---------------------------------------------------------------------------
@@ -1499,7 +1499,7 @@ test('feedback adjustment surfaces in scoring diagnostics only when explicit row
   const baseline = await run(null);
   const liked = await run(rows);
   assert.equal(baseline.diagnostics.feedbackTasteActive, false);
-  assert.equal(baseline.diagnostics.feedbackTasteVersion, 's6-feedback-taste-v2');
+  assert.equal(baseline.diagnostics.feedbackTasteVersion, 's6-feedback-taste-v3-learned-outfit-preferences');
   for (const look of baseline.outfits) {
     assert.equal(look.fashion.personalization.feedback, undefined);
   }
@@ -1507,7 +1507,7 @@ test('feedback adjustment surfaces in scoring diagnostics only when explicit row
   const diagnostics = liked.outfits.map((look) => look.fashion.personalization.feedback).filter(Boolean);
   assert.ok(diagnostics.length >= 1, 'the adjustment must be visible per look');
   for (const entry of diagnostics) {
-    assert.equal(entry.version, 's6-feedback-taste-v2');
+    assert.equal(entry.version, 's6-feedback-taste-v3-learned-outfit-preferences');
     assert.ok(Math.abs(entry.adjustment) <= 0.06);
     assert.ok(entry.matches.every((match) => match.type === 'feedback_item'));
   }
