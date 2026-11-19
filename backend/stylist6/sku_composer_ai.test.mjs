@@ -1744,3 +1744,80 @@ test('SKU Composer scales beyond the old inflight>=2 brick wall with configurabl
   const outcomes = await Promise.all(jobs);
   assert.ok(outcomes.every(o => o.status === 'composed' && o.looks.length === 3));
 });
+
+test('SKU Composer injects Master Stylist Craft directives and supports fastMode OpenRouter routing with NVIDIA fallback', async () => {
+  const pool = sourceBoundCompositionPool(looks);
+  const seen = [];
+  const fastResult = await composeCatalogSkuLooks({
+    pool,
+    layerRequired: true,
+    context: { style: 'old_money', occasion: 'Work', weatherCelsius: 15 },
+    apiKey: 'nvapi-test-composer-fast',
+    openrouterApiKey: 'sk-or-test-composer-fast-key',
+    fastMode: true,
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      seen.push({ url, model: body.model, prompt: body.messages[0].content });
+      return result(slotAnswer(pool));
+    },
+  });
+
+  assert.equal(fastResult.status, 'composed');
+  assert.equal(fastResult.looks.length, 3);
+  assert.equal(fastResult.fastModeApplied, true);
+  assert.equal(fastResult.provider, 'openrouter');
+  assert.equal(fastResult.model, 'google/gemini-2.5-flash');
+  assert.equal(seen.length, 1);
+  assert.match(String(seen[0].url), /openrouter\.ai/);
+  assert.match(seen[0].prompt, /3-Value Layering & Tonal Separation/i);
+  assert.match(seen[0].prompt, /Indoor-Layer-First Elegance/i);
+  assert.match(seen[0].prompt, /Footwear-to-Trouser Formality Integrity/i);
+
+  // Verify automatic failover from OpenRouter 503 -> NVIDIA Lightning 30B (and fallback to 120B if needed)
+  const failoverCalls = [];
+  const failoverRes = await composeCatalogSkuLooks({
+    pool,
+    layerRequired: true,
+    context: { style: 'classic', occasion: 'Date night', weatherCelsius: 16 },
+    apiKey: 'nvapi-test-composer-failover',
+    openrouterApiKey: 'sk-or-test-composer-failover',
+    fastMode: true,
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      failoverCalls.push({ url: String(url), model: body.model });
+      if (String(url).includes('openrouter.ai')) {
+        return new Response('upstream unavailable', { status: 503 });
+      }
+      return result(slotAnswer(pool));
+    },
+  });
+
+  assert.equal(failoverRes.status, 'composed');
+  assert.equal(failoverRes.looks.length, 3);
+  assert.ok(failoverCalls.some(c => c.url.includes('openrouter.ai')));
+  assert.ok(failoverCalls.some(c => c.url.includes('nvidia.com') && c.model === 'nvidia/nemotron-3.5-lightning-30b-a3b'));
+
+  // Verify hallucinated P-tokens from fast OpenRouter response are STILL rejected and recover via existing NVIDIA fallback
+  const badTokenCalls = [];
+  const recovered = await composeCatalogSkuLooks({
+    pool,
+    layerRequired: true,
+    context: { style: 'classic', occasion: 'Work', weatherCelsius: 18 },
+    apiKey: 'nvapi-test-composer-badtoken-recover',
+    openrouterApiKey: 'sk-or-test-badtoken',
+    fastMode: true,
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      badTokenCalls.push({ url: String(url), model: body.model });
+      if (String(url).includes('openrouter.ai')) {
+        return result({ slotPicks: { top: ['FAKE1', 'FAKE2', 'FAKE3'], outerwear: ['FAKE4', 'FAKE5', 'FAKE6'], bottom: ['FAKE7', 'FAKE8', 'FAKE9'], shoes: ['FAKE10', 'FAKE11', 'FAKE12'] } });
+      }
+      return result(slotAnswer(pool));
+    },
+  });
+  assert.equal(recovered.status, 'composed');
+  assert.equal(recovered.looks.length, 3);
+  assert.equal(recovered.providerFamily, 'nemotron');
+  assert.ok(badTokenCalls.some(c => c.url.includes('openrouter.ai')));
+  assert.ok(badTokenCalls.some(c => c.url.includes('nvidia.com') && c.model === 'nvidia/nemotron-3.5-super-vl-120b-a12b'));
+});

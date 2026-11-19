@@ -14,6 +14,11 @@ import {editorialFashionIntent} from './editorial_fashion_intent.mjs';
 import {editorialTextMoodboards} from './editorial_text_moodboards.mjs';
 import {baseProductId} from './catalog_adapter.mjs';
 import {currentVisual,confidentVisual} from '../../src/domain/visualFashion.ts';
+import {
+  createProviderRouter,
+  DEFAULT_OPENROUTER_VISION_MODEL,
+  DEFAULT_NVIDIA_TEXT_MODEL,
+} from './ai_provider_router.mjs';
 export const AI_SKU_COMPOSER_VERSION='s6-catalog-direct-sku-composer-v3-120b-staging-audition';
 const ENDPOINT='https://integrate.api.nvidia.com/v1/chat/completions';
 // STAGING-only quality audition: in a real paid provider probe the 120B
@@ -805,7 +810,8 @@ export async function composeCatalogSkuLooks({
   pool,perDirectionPools=null,context,directions=[],critiqueFeedback=null,outfitCount=3,
   feedbackTaste=null,personalStyleDna=null,styleDnaPromptBlock='',
   maxConcurrency=null,
-  apiKey,fetchImpl=fetch,signal,timeoutMs=2600,parallel=false,
+  apiKey,openrouterApiKey='',providerRouter=null,fastMode=false,
+  fetchImpl=fetch,signal,timeoutMs=2600,parallel=false,
   layerRequired=false,allowLayer=true,resolvePhoto,authorizePhoto,
   crossLabRevision=false,initialStudioDuel=false,
   fastPhotoRevision=false,
@@ -822,15 +828,19 @@ export async function composeCatalogSkuLooks({
   if(['top','bottom','shoes'].some(s=>bySlot.get(s).length<3)||
       (layerRequired&&bySlot.get('outerwear').length<3))
     return {status:'insufficient_inventory',looks:[],providerCalls:0};
-  if(typeof apiKey!=='string'||!apiKey.startsWith('nvapi-'))
+  const hasNvidiaKey=typeof apiKey==='string'&&apiKey.startsWith('nvapi-');
+  const hasOpenrouterKey=typeof openrouterApiKey==='string'&&openrouterApiKey.trim().length>=8;
+  const hasRouter=Boolean(providerRouter&&typeof providerRouter.callTextModel==='function');
+  const useFastRouter=fastMode===true||(!hasNvidiaKey&&(hasOpenrouterKey||hasRouter));
+  if(!hasNvidiaKey&&!hasOpenrouterKey&&!hasRouter)
     return {status:'not_configured',looks:[],providerCalls:0};
   const concurrencyLimit=resolveComposerConcurrency(maxConcurrency);
   if(inflight>=concurrencyLimit)return {status:'load_shed',looks:[],providerCalls:0};
+  const effectiveTimeoutMs=Math.min(parallel?16500:crossLabRevision&&fastPhotoRevision?9000
+    :crossLabRevision?5600:4000,
+    Math.max(500,timeoutMs));
   const abort=new AbortController();
-  const timer=setTimeout(()=>abort.abort(),
-    Math.min(parallel?16500:crossLabRevision&&fastPhotoRevision?9000
-      :crossLabRevision?5600:4000,
-      Math.max(500,timeoutMs)));
+  const timer=setTimeout(()=>abort.abort(),effectiveTimeoutMs);
   const combined=signal?AbortSignal.any([signal,abort.signal]):abort.signal;
   inflight++;
   let providerCalls=0,visualMenuStatus='not_run';
@@ -852,10 +862,15 @@ export async function composeCatalogSkuLooks({
     const sanitizedDna=sanitizeComposerStyleDna(personalStyleDna,context);
     const sanitizedDnaPrompt=safe(styleDnaPromptBlock,900);
     const preface=[
-      'You are an expert HUMAN-CALIBER personal '+stylistLabel+' stylist.',
+      'You are an expert HUMAN-CALIBER personal '+stylistLabel+' stylist (Vogue / Mr Porter editorial caliber).',
       'Shared HUMAN OCCASION and original PHOTO editor artistic objective:',
       fashionScene.creativeGoal,
       fashionScene.collectionGoal,
+      'MASTER STYLIST CRAFT (NON-NEGOTIABLE EDITORIAL STANDARDS):',
+      '- 3-Value Layering & Tonal Separation: Build intentional lightness depth (deep anchor + midtone bridge + luminous light base/accent). FORBID accidental flat dark-navy-on-dark-navy-on-dark-navy or flat black-on-black uniforms unless intentional textured tonal layering (>=20 CIELAB lightness delta OR rich tactile suede/ribbed-knit/flannel contrast with a crisp light accent).',
+      '- Indoor-Layer-First Elegance (>10°C) & Summer Breathability (>=24°C): Dress indoor Work, Office, Date Night, Dinner, Cocktail, and Smart Casual at >10°C in refined indoor layers (unstructured blazer, sport coat, suede/linen/cotton overshirt, luxury cardigan, knit jacket, chore jacket). NEVER put heavy outdoor peacoats, parkas, puffers, or commuter rain trenches as Look 1 indoor office or Date Night; reserve heavy coats for <=10°C (or at most 1 optional tailored overcoat at 10–13°C Work). At >=24°C choose ONLY breathable linen/cotton/unlined layers and summer footwear.',
+      '- Footwear-to-Trouser Formality Integrity: Formal black wholecut/cap-toe oxfords belong ONLY with tailored wool dress trousers (NEVER casual chinos, utility overshirts, or heavy peacoats); pair tailored separates and chinos with suede/calf loafers, refined derbies, or sleek chelsea boots; reserve minimal leather sneakers/drivers for relaxed summer or weekend looks.',
+      '- Personal Style DNA Fidelity: Strictly honor undertone, contrast level, color season, body proportion directives, avoided colors, and disliked patterns.',
       ...(crossLabRevision&&revision?[
         'INDEPENDENT SECOND STUDIO: another designer proposed the earlier',
         'collection, and a separate original-photo jury has identified',
@@ -1024,7 +1039,7 @@ export async function composeCatalogSkuLooks({
     // One authorized original-merchant PHOTO BOARD exposes opaque P-tokens
     // to the active NVIDIA 120B VLM before any complete outfit is invented.
     // It remains only an artistic proposal, NEVER source/quality approval.
-    if(parallel&&layerRequired&&target===6&&
+    if(hasNvidiaKey&&parallel&&layerRequired&&target===6&&
        typeof resolvePhoto==='function'&&typeof authorizePhoto==='function'&&
        !combined.aborted){
       const board=await buildVisualSkuBoard(effectivePool.slice(0,48),{
@@ -1137,6 +1152,74 @@ export async function composeCatalogSkuLooks({
     const rescue=revision!==null;
     const minimumValid=rescue?1:3;
     const crossLab=rescue&&crossLabRevision===true;
+
+    // Optional fast multi-provider path (Gemini 2.5 Flash via OpenRouter or Lightning 30B via NVIDIA)
+    // with automatic failover and clean fallback to the existing NVIDIA studio flow.
+    if(useFastRouter&&!combined.aborted){
+      const router=hasRouter
+        ?providerRouter
+        :createProviderRouter({
+            nvidiaApiKey:hasNvidiaKey?apiKey:'',
+            openrouterApiKey:hasOpenrouterKey?openrouterApiKey.trim():'',
+            fetchImpl,
+          });
+      const openrouterReady=hasOpenrouterKey||router.isProviderConfigured?.('openrouter')===true;
+      const primaryModel=openrouterReady?DEFAULT_OPENROUTER_VISION_MODEL:DEFAULT_NVIDIA_TEXT_MODEL;
+      const primaryProvider=openrouterReady?'openrouter':'nvidia';
+      const fallbacks=openrouterReady&&(hasNvidiaKey||router.isProviderConfigured?.('nvidia'))
+        ?[{model:DEFAULT_NVIDIA_TEXT_MODEL,provider:'nvidia'}]
+        :[];
+      const remainingMs=Math.max(500,effectiveTimeoutMs-(Date.now()-started));
+      const fastTimeoutMs=hasNvidiaKey
+        ?Math.max(900,Math.min(6000,Math.floor(remainingMs*0.60)))
+        :remainingMs;
+      const routed=await router.callTextModel({
+        model:primaryModel,
+        provider:primaryProvider,
+        fallbacks,
+        allowFailover:true,
+        messages:[{role:'user',content:preface}],
+        temperature:.3,
+        top_p:.93,
+        max_tokens:target===6?950:600,
+        response_format:{type:'json_schema',json_schema:{
+          name:'aiw_personal_sku_composition',strict:true,schema}},
+        timeoutMs:fastTimeoutMs,
+        signal:combined,
+        parseJson:true,
+        maxTransientRetries:0,
+      });
+      providerCalls+=Math.max(1,Array.isArray(routed?.attempts)&&routed.attempts.length?routed.attempts.length:1);
+      if(routed?.ok&&routed.parsedJson){
+        const choices=validateSkuCompositions(routed.parsedJson,effectivePool,{
+          layerRequired,allowLayer,count:target,
+          allowPartial:target===6||rescue,minimumValid,
+        });
+        if(choices.length>=minimumValid){
+          return {
+            status:'composed',
+            looks:choices,
+            providerCalls,
+            visualMenuStatus,
+            providerFamily:routed.provider==='openrouter'
+              ?'openrouter_fast_gemini'
+              :'nemotron_fast_30b',
+            provider:routed.provider,
+            model:routed.model,
+            fastModeApplied:true,
+          };
+        }
+      }
+      if(!hasNvidiaKey||combined.aborted){
+        return {
+          status:combined.aborted?'timeout':routed?.ok?'invalid_composition':'provider_unavailable',
+          looks:[],
+          providerCalls,
+          visualMenuStatus,
+        };
+      }
+    }
+
     // LIVE source-diverse iOS canary: Nemotron may emit an INVALID six-look
     // token slate. Returning to the legacy outfit ranker at that point
     // silently discards the second stylist AND the broader real catalog.
@@ -1280,8 +1363,8 @@ export async function composeCatalogSkuLooks({
                   'catalogTextClues are only tentative merchant-text hints; NEVER',
                   'pretend these are visual inspection or proven fiber/cut facts.',
                   'Preview every FOUR-garment outfit as one scene: check social',
-                  'occasion, color rhythm, silhouette, texture contrast,',
-                  'layer-to-top and trouser-to-shoe harmony BEFORE choosing tokens.',
+                  'occasion, color rhythm (3-value layering; forbid flat dark-navy-on-dark-navy blocks without light/tactile contrast), silhouette, texture contrast,',
+                  'indoor-layer-first elegance (>10°C: refined blazers/overshirts/cardigans/suede jackets over heavy peacoats/parkas), and strict trouser-to-shoe harmony BEFORE choosing tokens.',
                   'Refuse a superficially distinct but aesthetically weak combination.',
                   'Optional human-captioned fashion references describe different',
                   'WHOLE outfit relationships (not owned/licensed product photos).',

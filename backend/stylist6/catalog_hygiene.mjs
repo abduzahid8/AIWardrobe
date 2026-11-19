@@ -28,13 +28,20 @@ const UNUSABLE_IMAGE_KINDS = new Set([
   'diagram', 'promotion', 'unusable', 'logo', 'placeholder',
   'size_chart', 'size-chart', 'chart', 'banner', 'collage', 'text',
 ]);
+const DETAIL_CROP_IMAGE_KINDS = new Set([
+  'detail', 'detail_shot', 'detail-shot', 'closeup', 'close_up', 'close-up',
+  'cropped', 'partial', 'swatch', 'macro', 'zoom', 'fabric_detail', 'texture_detail',
+]);
 const UNUSABLE_IMAGE_URL_RE = /(?:\.(?:svg|ico)(?:[?#]|$)|\/(?:placeholder|no[-_]?image|default[-_]?avatar|coming[-_]?soon|missing[-_]?image)\b)/i;
+const DETAIL_CROP_IMAGE_URL_RE = /(?:[?&](?:view|shot|angle|type|crop|framing|kind|image_type)=(?:detail|details|closeup|close[-_]?up|macro|swatch|zoom|fabric|texture|cuff|hem|stitch|cropped|partial)\b|\/(?:detail|details|close[-_]?up|closeup|macro|swatch|swatches|fabric[-_]?zoom|zoom[-_]?in|cropped[-_]?view|cuff[-_]?shot|collar[-_]?shot|pocket[-_]?shot)\/|(?:[_-](?:detail|details|dtl|closeup|close[-_]?up|swatch|macro|zoom|crop|cropped|fabric[-_]?detail|collar[-_]?detail|sleeve[-_]?detail|cuff[-_]?detail|hem[-_]?detail|pocket[-_]?detail|stitch[-_]?detail|texture[-_]?detail|cuff[-_]?zoom|collar[-_]?zoom|sleeve[-_]?zoom)\d*)(?=\.[a-z0-9]{2,5}(?:[?#]|$)))/i;
+const MAX_FULL_GARMENT_ASPECT_RATIO = 2.8;
 
 // Structural swimwear / beachwear & underwear/sleepwear markers.
 const SWIMWEAR_RE = /\b(?:swim(?:wear|suits?|shorts?|trunks?|briefs?)?|swimming(?:\s+(?:shorts?|trunks?|briefs?))?|board[- ]?shorts?|beach(?:wear|side)(?:\s+(?:shorts?|trunks?|swim|tank|t-?shirt|shirt))?|beach[- ]?shorts?|bathing[- ]?(?:suits?|trunks?)|surf[- ]?trunks?|short\s+de\s+bain|maillot\s+de\s+bain|badehose|costume\s+da\s+bagno|speedo)\b|плавк|купальн/i;
 const UNDERWEAR_SLEEPWEAR_RE = /\b(?:boxer[- ]?briefs?|underwear|underpants|briefs|pyjamas?|pajamas?|bathrobes?|nightgowns?|lingerie|undershirts?)\b/i;
 const BEACH_OCCASION_RE = /\b(?:beach|pool|poolside|swim|swimming|resort|waterpark|seaside|coastal\s+swim)\b|пляж|бассейн/i;
 const EVENING_TUXEDO_SHIRT_RE = /\b(?:tuxedo|evening\s+studs?|stud[- ]?front|marcella\s+dinner|wing[- ]?collar\s+dinner|dinner\s+shirts?)\b/i;
+const EVENINGWEAR_RE = /\b(?:tuxedo(?:\s+(?:jacket|blazer|suit|pants?|trousers?|collection|shoes?|oxfords?|loafers?|shirt))?|dinner\s+(?:jackets?|suits?|shirts?)|smoking\s+jackets?|tailcoats?|morning\s+coats?|satin\s+shawl\s+lapels?|silk\s+shawl\s+lapels?|black[- ]?tie|white[- ]?tie|evening\s+(?:jackets?|blazers?|coats?|pants?|trousers?|gowns?|studs?)|galon\s+stripe|opera\s+pumps?|patent\s+(?:leather\s+)?(?:oxford|whole[- ]?cut|loafer|pump|evening|dress\s+shoe)|ball\s*gowns?|gala\s+gowns?|sequin(?:ed|ned)?\s+(?:gown|evening|blazer|jacket)|cummerbunds?)\b/i;
 const DAYTIME_OCCASION_RE = /\b(?:work|office|business|meeting|conference|casual|weekend|everyday|travel|brunch|commute)\b/i;
 const FORMAL_EVENING_OCCASION_RE = /\b(?:formal|black[- ]?tie|tuxedo|gala|evening|cocktail|wedding|opera|ball)\b/i;
 
@@ -258,6 +265,82 @@ export function isEveningTuxedoShirtItem(item) {
     pathText = '';
   }
   return EVENING_TUXEDO_SHIRT_RE.test(`${name} ${pathText} ${desc}`);
+}
+
+/**
+ * Structural eveningwear / black-tie detector across all garment slots
+ * (tuxedo jackets/trousers, shawl-lapel dinner jackets, patent tuxedo shoes,
+ * formal evening gowns, cummerbunds) so daytime Work/Office/Casual stays
+ * cleanly separated from formal black-tie eveningwear.
+ */
+export function isEveningwearItem(item) {
+  if (isEveningTuxedoShirtItem(item)) return true;
+  const name = String(item?.name || item?.title || '');
+  const desc = String(item?.description || '');
+  const shopUrl = String(item?.shopUrl || item?.source_url || '');
+  let pathText = '';
+  try {
+    if (shopUrl) pathText = decodeURIComponent(new URL(shopUrl).pathname).replace(/[-_/]+/g, ' ');
+  } catch {
+    pathText = '';
+  }
+  return EVENINGWEAR_RE.test(`${name} ${pathText} ${desc}`);
+}
+
+/**
+ * Structural cropped / detail-only product photo detector.
+ * Inspects URL query/path/filename tokens, visual_fashion imageKind/framing
+ * metadata, and extreme aspect ratios — never one-off brand blacklists.
+ */
+export function isCroppedOrDetailPhoto(item) {
+  const imageUrl = String(item?.imageUrl || item?.image_url || '').trim();
+  if (imageUrl && DETAIL_CROP_IMAGE_URL_RE.test(imageUrl)) {
+    return { detected: true, reason: 'detail_shot_url_signal' };
+  }
+
+  const vf = getVisualProfile(item);
+  if (vf) {
+    const ik = vf.imageKind;
+    const kindValue = typeof ik === 'string'
+      ? ik.trim().toLowerCase()
+      : (ik && typeof ik === 'object' && typeof ik.value === 'string' ? ik.value.trim().toLowerCase() : null);
+    const kindConf = typeof ik === 'string' ? 1 : (Number.isFinite(ik?.confidence) ? ik.confidence : 0);
+    const kindEv = typeof ik === 'object' ? String(ik?.evidence || '') : 'explicit';
+    if (kindValue && DETAIL_CROP_IMAGE_KINDS.has(kindValue) && (kindConf >= 0.75 || kindEv === 'human')) {
+      return { detected: true, reason: `detail_image_kind:${kindValue}` };
+    }
+
+    const framingAttr = vf.attributes?.framing;
+    if (
+      framingAttr &&
+      typeof framingAttr.value === 'string' &&
+      DETAIL_CROP_IMAGE_KINDS.has(framingAttr.value.trim().toLowerCase()) &&
+      (!Number.isFinite(framingAttr.confidence) || framingAttr.confidence >= 0.75)
+    ) {
+      return { detected: true, reason: `detail_framing_attribute:${framingAttr.value.trim().toLowerCase()}` };
+    }
+  }
+
+  const iq = vf?.imageQuality || item?.imageQuality || item?.image_quality;
+  if (iq && typeof iq === 'object') {
+    if (iq.isCropped === true || iq.isDetailShot === true || iq.cropped === true || iq.partialGarment === true) {
+      return { detected: true, reason: 'cropped_image_quality_flag' };
+    }
+    const framing = typeof iq.framing === 'string' ? iq.framing.trim().toLowerCase() : '';
+    if (framing && DETAIL_CROP_IMAGE_KINDS.has(framing)) {
+      return { detected: true, reason: `cropped_image_framing:${framing}` };
+    }
+  }
+
+  const dims = extractKnownImageDimensions(item);
+  if (dims && Number.isFinite(dims.width) && Number.isFinite(dims.height) && dims.width > 0 && dims.height > 0) {
+    const ratio = Math.max(dims.width / dims.height, dims.height / dims.width);
+    if (ratio > MAX_FULL_GARMENT_ASPECT_RATIO) {
+      return { detected: true, reason: 'extreme_cropped_aspect_ratio' };
+    }
+  }
+
+  return { detected: false, reason: null };
 }
 
 function isDressOrJumpsuitText(item) {
@@ -575,6 +658,12 @@ export function evaluateCatalogItemHygiene(item, qualityMap = null, context = nu
     }
   }
 
+  const cropCheck = isCroppedOrDetailPhoto(item);
+  if (cropCheck.detected) {
+    mediaValid = false;
+    reasons.push('cropped_or_detail_only_photo');
+  }
+
   // 3. Visual quality flywheel quarantine check.
   const quality = lookupQualityEntry(item, qualityMap);
   if (quality.quarantined) {
@@ -593,7 +682,7 @@ export function evaluateCatalogItemHygiene(item, qualityMap = null, context = nu
     reasons.push(slotInfo.contradiction);
   }
 
-  // 5. Swimwear / beachwear, underwear/sleepwear, and evening-shirt daytime occasion gates.
+  // 5. Swimwear / beachwear, underwear/sleepwear, and eveningwear daytime occasion gates.
   const swimwear = isSwimwearItem(item);
   const occasionText = `${context?.occasion || ''} ${context?.brief || ''} ${context?.request || ''}`;
   const isBeachOccasion = context?.allowSwimwear === true || BEACH_OCCASION_RE.test(occasionText);
@@ -606,6 +695,8 @@ export function evaluateCatalogItemHygiene(item, qualityMap = null, context = nu
   const isDaytimeNonBlackTie = DAYTIME_OCCASION_RE.test(occasionText) && !FORMAL_EVENING_OCCASION_RE.test(occasionText);
   if (resolvedSlot === 'top' && isDaytimeNonBlackTie && isEveningTuxedoShirtItem(item)) {
     reasons.push('evening_tuxedo_shirt_in_daytime_occasion');
+  } else if (isDaytimeNonBlackTie && isEveningwearItem(item)) {
+    reasons.push('eveningwear_in_daytime_occasion');
   }
 
   // 6. Optional presentation / gender alignment (only when item explicitly carries a gender).
