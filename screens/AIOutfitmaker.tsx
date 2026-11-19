@@ -3,7 +3,7 @@ import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveO
 import { submitStylistLookFeedback, canRecordLookFeedback, type FeedbackTargetSlot } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, recoverStylist6CloudResult, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, isStylist6DevVersion, stylist6CloudCompletion, stylist6CuratedPartial, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, requestStylist6SlotSwap, normalizeStylist6Preferences, deriveStylist6Presentation, summarizeOwnedWardrobeForStylist6, type DevEngine, type Stylist6SwapSlot, type Stylist6CloudRequest} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, STYLIST6_DEFAULT_VISUAL_ENABLED, defaultStylist6DevEngine, extractStylist6EditorialFields, invokeStylist6Bridge, invokeStylist6Cloud, recoverStylist6CloudResult, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, isStylist6DevVersion, stylist6CloudCompletion, stylist6CuratedPartial, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, requestStylist6SlotSwap, normalizeStylist6Preferences, deriveStylist6Presentation, summarizeOwnedWardrobeForStylist6, type DevEngine, type Stylist6SwapSlot, type Stylist6CloudRequest} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
@@ -441,6 +441,7 @@ interface OutfitSlotGridProps {
 const SlotCell = React.memo(function SlotCell({
   slotKey,
   label,
+  brand,
   name,
   price,
   priceCurrency,
@@ -463,6 +464,7 @@ const SlotCell = React.memo(function SlotCell({
 }: {
   slotKey: string;
   label: string;
+  brand?: string;
   name: string;
   price?: number;
   priceCurrency?: string;
@@ -489,6 +491,8 @@ const SlotCell = React.memo(function SlotCell({
   const displayPrice = typeof price === 'number' && price > 0 && priceCurrency
     ? formatMoney(price, priceCurrency)
     : null;
+  const cleanBrand = typeof brand === 'string' ? brand.trim() : '';
+  const eyebrowText = cleanBrand ? `${label} · ${cleanBrand}` : label;
   const handleBuy = React.useCallback(() => onBuy(buyUrl), [onBuy, buyUrl]);
   const handleSwap = React.useCallback(() => {
     if (onSwap && !isSwapping) onSwap();
@@ -502,65 +506,70 @@ const SlotCell = React.memo(function SlotCell({
   const imageUnavailable = bundledSource === null && (phase === 'unavailable' || !activeUri);
   return (
     <View key={slotKey} style={slotStyles.cell}>
-      {imageUnavailable ? (
-        <ImageUnavailablePlaceholder
-          testID={`slot-photo-unavailable-${slotKey}`}
-          label={photoUnavailableLabel}
-          style={slotStyles.image}
-        />
-      ) : (
-        <ExpoImage
-          source={bundledSource ?? productImageLoadSource(activeUri)}
-          placeholderContentFit="contain"
-          style={[slotStyles.image, { backgroundColor: '#EEF3F8' }]}
-          contentFit="contain"
-          cachePolicy="memory-disk"
-          recyclingKey={`${slotKey}-${itemId ?? ''}-${activeUri}`}
-          onError={bundledSource === null ? onImageError : undefined}
-          onLoad={bundledSource === null ? onImageLoad : undefined}
-        />
-      )}
-      {canSwap && onSwap ? (
-        <TouchableOpacity
-          testID={`slot-swap-${slotKey}`}
-          style={[slotStyles.swapBadge, isSwapping ? slotStyles.swapBadgeBusy : null]}
-          onPress={handleSwap}
-          disabled={Boolean(isSwapping)}
-          activeOpacity={0.75}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          accessibilityRole="button"
-          accessibilityLabel={`${swapLabel || 'Swap'} ${label}`}
-          accessibilityState={{ busy: Boolean(isSwapping), disabled: Boolean(isSwapping) }}
-        >
-          <Ionicons name={isSwapping ? 'sync-outline' : 'swap-horizontal-outline'} size={12} color="#0A1931" />
-          <ScaledText style={slotStyles.swapBadgeText}>
-            {isSwapping ? (swappingLabel || 'Swapping…') : (swapLabel || 'Swap')}
-          </ScaledText>
-        </TouchableOpacity>
-      ) : null}
+      <View style={slotStyles.imageFrame}>
+        {imageUnavailable ? (
+          <ImageUnavailablePlaceholder
+            testID={`slot-photo-unavailable-${slotKey}`}
+            label={photoUnavailableLabel}
+            style={slotStyles.image}
+          />
+        ) : (
+          <ExpoImage
+            source={bundledSource ?? productImageLoadSource(activeUri)}
+            placeholderContentFit="contain"
+            style={[slotStyles.image, { backgroundColor: '#F6F7F9' }]}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            recyclingKey={`${slotKey}-${itemId ?? ''}-${activeUri}`}
+            onError={bundledSource === null ? onImageError : undefined}
+            onLoad={bundledSource === null ? onImageLoad : undefined}
+          />
+        )}
+        {isSwapping ? <View pointerEvents="none" style={slotStyles.swappingOverlay} /> : null}
+        {canSwap && onSwap ? (
+          <TouchableOpacity
+            testID={`slot-swap-${slotKey}`}
+            style={[slotStyles.swapBadge, isSwapping ? slotStyles.swapBadgeBusy : null]}
+            onPress={handleSwap}
+            disabled={Boolean(isSwapping)}
+            activeOpacity={0.75}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            accessibilityRole="button"
+            accessibilityLabel={`${swapLabel || 'Swap'} ${label}`}
+            accessibilityState={{ busy: Boolean(isSwapping), disabled: Boolean(isSwapping) }}
+          >
+            <Ionicons name={isSwapping ? 'sync-outline' : 'swap-horizontal-outline'} size={12} color={isSwapping ? '#2B5CE9' : '#0A1931'} />
+            <ScaledText style={[slotStyles.swapBadgeText, isSwapping ? slotStyles.swapBadgeTextBusy : null]}>
+              {isSwapping ? (swappingLabel || 'Swapping…') : (swapLabel || 'Swap')}
+            </ScaledText>
+          </TouchableOpacity>
+        ) : null}
+      </View>
       <View style={slotStyles.labelWrap}>
-        <ScaledText style={[slotStyles.label, { color: textSecondary }]}>{label}</ScaledText>
-        <ScaledText style={[slotStyles.name, { color: textPrimary }]} numberOfLines={1}>{name}</ScaledText>
-        {typeof price === 'number' && price > 0 && priceCurrency ? (
-          <ScaledText style={slotStyles.price} numberOfLines={1}>
-            {displayPrice || '—'}
-          </ScaledText>
-        ) : null}
-        {showBuyButton && offerCaveat ? (
-          <ScaledText style={[slotStyles.offerCaveat, { color: textSecondary }]} numberOfLines={1}>
-            {offerCaveat}
-          </ScaledText>
-        ) : null}
+        <View style={slotStyles.metaStack}>
+          <ScaledText style={[slotStyles.label, { color: textSecondary }]} numberOfLines={1}>{eyebrowText}</ScaledText>
+          <ScaledText style={[slotStyles.name, { color: textPrimary }]} numberOfLines={2}>{name}</ScaledText>
+          {typeof price === 'number' && price > 0 && priceCurrency ? (
+            <ScaledText style={slotStyles.price} numberOfLines={1}>
+              {displayPrice || '—'}
+            </ScaledText>
+          ) : null}
+          {showBuyButton && offerCaveat ? (
+            <ScaledText style={[slotStyles.offerCaveat, { color: textSecondary }]} numberOfLines={1}>
+              {offerCaveat}
+            </ScaledText>
+          ) : null}
+        </View>
         {showBuyButton ? (
           <TouchableOpacity
             style={slotStyles.buyButton}
             onPress={handleBuy}
-            activeOpacity={0.75}
+            activeOpacity={0.8}
             accessibilityRole="link"
             accessibilityLabel={`${buyLabel} ${name}`}
           >
-            <Ionicons name="cart-outline" size={11} color="#FFFFFF" />
-            <ScaledText style={slotStyles.buyButtonText}>{buyLabel}</ScaledText>
+            <Ionicons name="bag-handle-outline" size={12} color="#FFFFFF" />
+            <ScaledText style={slotStyles.buyButtonText} numberOfLines={1} minScale={0.78}>{buyLabel}</ScaledText>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -635,6 +644,7 @@ function OutfitSlotGrid({
             key={slot.key}
             slotKey={slot.key}
             label={slot.label}
+            brand={slot.item?.brand || undefined}
             name={slot.item?.name || ''}
             price={quote?.price}
             priceCurrency={quote?.currency || undefined}
@@ -667,95 +677,133 @@ const slotStyles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 16,
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    rowGap: 10,
     width: '100%',
   },
   cell: {
-    width: '48%', // Use percentage to ensure 2 per row
-    aspectRatio: 0.6, // Make cards slightly taller (width/height ratio)
-    borderRadius: LiquidGlass2026Theme.radius.md,
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    width: '48.4%',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
+    borderColor: 'rgba(10,25,49,0.08)',
     overflow: 'hidden',
-    ...SpatialElevation.getShadow(SpatialElevation.levels.surface),
+    shadowColor: '#0A1931',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   cellFullWidth: {
-    width: '100%', // Full width for single item in last row
+    width: '100%',
+  },
+  imageFrame: {
+    width: '100%',
+    aspectRatio: 1.04,
+    backgroundColor: '#F6F7F9',
+    position: 'relative',
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
-    height: '70%', // Smaller height for more compact cards
+    height: '100%',
+  },
+  swappingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.52)',
   },
   labelWrap: {
-    padding: 6,
-    flex: 1,
-    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingTop: 9,
+    paddingBottom: 10,
+    flexGrow: 1,
+    justifyContent: 'space-between',
+  },
+  metaStack: {
+    gap: 2,
   },
   label: {
     ...LiquidGlass2026Theme.typography.scale.labelSmall,
-    fontWeight: '500',
+    fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    fontSize: 10,
+    fontSize: 9.5,
   },
   name: {
     ...LiquidGlass2026Theme.typography.scale.bodySmall,
     fontWeight: '600',
-    marginTop: 1,
-    fontSize: 11,
+    fontSize: 12,
+    lineHeight: 15.5,
+    minHeight: 31,
   },
   price: {
     ...LiquidGlass2026Theme.typography.scale.bodySmall,
     marginTop: 2,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#1F6FEB',
+    color: '#0A1931',
   },
   offerCaveat: {
-    fontSize: 9,
+    fontSize: 9.5,
+    lineHeight: 12,
     marginTop: 1,
-    opacity: 0.85,
+    opacity: 0.78,
   },
   buyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    marginTop: 6,
+    gap: 5,
+    marginTop: 8,
+    minHeight: 30,
     backgroundColor: '#0A1931',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: LiquidGlass2026Theme.radius.pill,
   },
   buyButtonText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+    flexShrink: 1,
   },
   swapBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: 7,
+    right: 7,
+    zIndex: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.94)',
     borderWidth: 1,
-    borderColor: 'rgba(10,25,49,0.14)',
-    paddingHorizontal: 7,
-    paddingVertical: 4,
+    borderColor: 'rgba(10,25,49,0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderRadius: 99,
+    shadowColor: '#0A1931',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   swapBadgeBusy: {
-    opacity: 0.7,
+    backgroundColor: '#EEF4FF',
+    borderColor: 'rgba(43,92,233,0.35)',
   },
   swapBadgeText: {
     color: '#0A1931',
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '700',
+  },
+  swapBadgeTextBusy: {
+    color: '#2B5CE9',
   },
 });
 
@@ -925,6 +973,13 @@ const AIOutfitGenerator = () => {
       const currentItemId = currentItem.id ? String(currentItem.id) : '';
       const excludedIds = [...new Set([...priorExcluded, ...(currentItemId ? [currentItemId] : [])])];
       const personalization = buildStylist6Personalization();
+      const swapEngine: 'stylist6' | 'stylist6cloud' =
+        isStylist6DevVersion(outfit.engineVersion) || (STYLIST6_DEV_ENABLED && devEngine === 'stylist6')
+          ? 'stylist6'
+          : 'stylist6cloud';
+      const swapSourceMode = (currentSource === 'wardrobe'
+        ? 'wardrobe'
+        : baseItemId ? 'mixed' : 'catalog') as 'wardrobe' | 'catalog' | 'mixed';
       const swapContext: Partial<Stylist6CloudRequest> = {
         style: outfit.stylingStyle || selectedStyle,
         occasion: selectedOccasion || 'Any',
@@ -933,15 +988,23 @@ const AIOutfitGenerator = () => {
           ? { temp: outfit.weather.temp, condition: outfit.weather.condition || 'clear' }
           : undefined,
         budget: resultBudget ? { amount: resultBudget.amount, currency: resultBudget.currency } : undefined,
-        sourceMode: currentSource === 'wardrobe' ? 'wardrobe' : baseItemId ? 'mixed' : 'catalog',
+        sourceMode: swapSourceMode,
+        enableVisual: nvidiaVisual === true,
         language: stylist6Language(i18n.language),
         ...personalization,
       };
+      const localWardrobeForSwap = swapEngine === 'stylist6' && swapSourceMode !== 'catalog' && wardrobeItems.length > 0
+        ? (wardrobeItems as Record<string, unknown>[])
+            .filter((item) => item?.isWardrobe !== false)
+            .slice(0, 120)
+        : undefined;
       const swapped = await requestStylist6SlotSwap({
         outfit: outfit as unknown as Record<string, unknown>,
         targetSlot,
         context: swapContext,
         excludedIds,
+        engine: swapEngine,
+        ...(localWardrobeForSwap ? { wardrobeItems: localWardrobeForSwap } : {}),
       });
       if (!isMounted.current) return;
 
@@ -949,11 +1012,13 @@ const AIOutfitGenerator = () => {
       const updatedItems = Array.isArray(updatedRaw.items)
         ? (updatedRaw.items as OutfitItem[])
         : outfit.items;
-      const updatedTipsList = Array.isArray(updatedRaw.stylingTips)
-        ? distinctStylingTips(
-            typeof updatedRaw.description === 'string' ? updatedRaw.description : outfit.description,
-            updatedRaw.stylingTips,
-          )
+      const updatedEditorial = extractStylist6EditorialFields(updatedRaw);
+      const updatedDescription =
+        typeof updatedRaw.description === 'string' && updatedRaw.description.trim().length > 0
+          ? updatedRaw.description.trim()
+          : (updatedEditorial.stylistNote || outfit.description);
+      const updatedTipsList = updatedEditorial.stylingTips && updatedEditorial.stylingTips.length > 0
+        ? distinctStylingTips(updatedDescription, updatedEditorial.stylingTips)
         : outfit.stylingTipsList;
       const updatedOutfit: GeneratedOutfit = {
         ...outfit,
@@ -961,6 +1026,11 @@ const AIOutfitGenerator = () => {
         id: outfit.id,
         generationRequestId: outfit.generationRequestId,
         engineVersion: swapped.generationVersion || outfit.engineVersion,
+        description: updatedDescription,
+        stylistNote: updatedEditorial.stylistNote ?? outfit.stylistNote,
+        whyItFlattersYou: updatedEditorial.whyItFlattersYou ?? outfit.whyItFlattersYou,
+        colorStory: updatedEditorial.colorStory ?? outfit.colorStory,
+        silhouetteFormula: updatedEditorial.silhouetteFormula ?? outfit.silhouetteFormula,
         stylingStyle: outfit.stylingStyle,
         stylingOccasion: outfit.stylingOccasion,
         stylingRequest: outfit.stylingRequest,
@@ -1175,6 +1245,18 @@ const AIOutfitGenerator = () => {
   // A partial model-approved deck is more truthful than three unreviewed
   // outfits passed off as an excellent fashion recommendation.
   const [nvidiaVisual, setNvidiaVisual] = useState(STYLIST6_CLOUD_ENABLED);
+  // In __DEV__ simulator builds with EXPO_PUBLIC_STYLIST6_DEV_BRIDGE=true,
+  // default on mount to the local V3 Visual-First dev bridge ('stylist6')
+  // with visual photography critique ON unless the developer manually switches
+  // to 'stylist6cloud' or 'stylist5'. TestFlight & production builds never
+  // enter this branch.
+  useEffect(() => {
+    if (STYLIST6_DEV_ENABLED) {
+      setDevEngine(defaultStylist6DevEngine());
+      setNvidiaVisual(STYLIST6_DEFAULT_VISUAL_ENABLED);
+    }
+  }, []);
+  const [devDiagExpanded, setDevDiagExpanded] = useState(false);
   // Actual engine that produced the visible deck (or null before/after).
   const [lastEngineVersion, setLastEngineVersion] = useState<string | null>(null);
   const [lastEngineDetail, setLastEngineDetail] = useState<string | null>(null);
@@ -2271,10 +2353,11 @@ const AIOutfitGenerator = () => {
             budget: shopBudget ? {amount: shopBudget.amount, currency: shopBudget.currency} : undefined,
             ...s6Personalization,
             recentSignatures: history.recentLookSignatures,
-            excludeItemIds,
+            excludeItemIds: stylist6CloudRecentExclusions(history, baseItemId),
             requiredIds: baseItemId ? [baseItemId] : undefined,
             sourceMode: s6SourceMode,
             enableVisual: nvidiaVisual === true,
+            generationRequestId: requestId,
             language: stylist6Language(i18n.language),
           },
           catalogRows: catalogRows as unknown as Record<string, unknown>[],
@@ -2321,13 +2404,16 @@ const AIOutfitGenerator = () => {
         throw new OutfitGenerationFailure('outfitMaker.noMatchingClothing', 'stylist6_incomplete_cloud_deck', 'stylist6_render');
       }
 
-      // Stylist 6 Cloud fetches and validates CBU FX server-side when a budget is
-      // requested. Attach the server-returned validated snapshot to shopBudget
-      // so client-side fitsCap checks match without failing cross-currency decks.
-      if (s6CloudActive && shopBudget && data?.success) {
-        shopBudget = applyStylist6CloudBudgetFx(shopBudget, data?.currencyConversion) ?? null;
+      // Stylist 6 (cloud or local V3 bridge) fetches and validates CBU FX
+      // server-side when a budget is requested. Attach the server-returned
+      // validated snapshot to shopBudget so client-side fitsCap checks match
+      // without failing cross-currency decks.
+      if ((s6CloudActive || s6Active) && shopBudget && data?.success) {
+        if (s6CloudActive || data?.currencyConversion?.active === true) {
+          shopBudget = applyStylist6CloudBudgetFx(shopBudget, data?.currencyConversion) ?? null;
+        }
       }
-      if (shopBudget?.fx && !s6CloudActive && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
+      if (shopBudget?.fx && !s6CloudActive && !s6Active && data?.success && data?.budgetReference?.id !== shopBudget.fx.snapshot.id) throw new OutfitGenerationFailure('outfitMaker.budgetRatesUnavailable');
       if (data && data.success && data.outfits && data.outfits.length > 0) {
         // Feed the rotation window BEFORE normalizing — the next tap must
         // exclude these exact ids even if the deck is edited downstream.
@@ -2342,27 +2428,26 @@ const AIOutfitGenerator = () => {
           const judgeOk = /^stylist-[56]-/.test(String(data.generationVersion || '')) || passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences);
           // Hosted confidence is not a score from this client's occasion judge.
           const baseScore = outfitCoherence(items, stylingContext({style:styleToUse, occasion:occasionToUse, request:effectivePrompt||promptText, weather:resolvedWeather})).score;
-          const serverTips = Array.isArray(outfit.stylingTips) ? outfit.stylingTips : [];
+          const editorial = extractStylist6EditorialFields(outfit);
+          const serverTips = editorial.stylingTips || [];
           // Server v205 sends no localized tips; fall back to the
           // localized, evidence-grounded tips. Restated advice is
           // suppressed below: never render the description as its own tip.
           const resolvedTipsList = distinctStylingTips(
-            description,
+            editorial.stylistNote || description,
             serverTips.length ? serverTips : copy.tips,
           );
-          const cleanEditorialStr = (val: unknown): string | undefined =>
-            typeof val === 'string' && val.trim().length > 0 ? val.trim() : undefined;
           return {
             ...outfit,
             // Truthful per-look provenance: only genuine reviewed looks get 'ai'.
             selectionSource:resolveOutfitSelectionSource(outfit, data),
-            generationRequestId:data.generationRequestId,engineVersion:data.generationVersion,
+            generationRequestId:data.generationRequestId || (s6Active ? requestId : undefined),engineVersion:data.generationVersion,
             id: outfit.id || `look_${tapNonce}_${idx}`,
             description,
-            stylistNote: cleanEditorialStr(outfit.stylistNote),
-            whyItFlattersYou: cleanEditorialStr(outfit.whyItFlattersYou),
-            colorStory: cleanEditorialStr(outfit.colorStory),
-            silhouetteFormula: cleanEditorialStr(outfit.silhouetteFormula),
+            stylistNote: editorial.stylistNote,
+            whyItFlattersYou: editorial.whyItFlattersYou,
+            colorStory: editorial.colorStory,
+            silhouetteFormula: editorial.silhouetteFormula,
             stylingTipsList: serverTips.length > 0 ? resolvedTipsList : undefined,
             stylingStyle: styleToUse,
             stylingOccasion: `${occasionToUse} ${effectivePrompt || promptText || ''}`,
@@ -2704,9 +2789,9 @@ const AIOutfitGenerator = () => {
         <View style={[styles.orbBottom, { backgroundColor: 'rgba(236,72,153,0.05)' }]} />
 
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-          <View style={styles.header}>
+          <View style={[styles.header, styles.resultsHeader]}>
             <TouchableOpacity
-              onPress={() => { setOutfits([]); setVisibleLookIndex(0); }}
+              onPress={() => { setOutfits([]); setVisibleLookIndex(0); setDevDiagExpanded(false); }}
               style={styles.backButton}
               testID="aiResultsBack"
               accessibilityLabel={t('common.back')}
@@ -2718,14 +2803,65 @@ const AIOutfitGenerator = () => {
             <View style={styles.headerRight} />
           </View>
 
-          {__DEV__ && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true' && <StylistRuntimeDiagnostic engine={lastEngineVersion || undefined} detail={lastEngineDetail || undefined} />}
-          {STYLIST6_DEV_ENABLED && lastEngineVersion ? (
-            <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
-              <ScaledText testID="stylistEngineBanner" style={{fontSize: 11, textAlign: 'center', color: '#173A65', fontWeight: '700'}}>
-                {`Engine ${lastEngineVersion} · ${outfits.length} looks${lastEngineDetail ? ` · ${lastEngineDetail}` : ''}`}
-              </ScaledText>
-            </View>
-          ) : null}
+          {__DEV__ && ((STYLIST6_DEV_ENABLED && lastEngineVersion) || process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true') ? (() => {
+            const compactEngineLabel = lastEngineVersion
+              ? (isStylist6DevVersion(lastEngineVersion)
+                ? 'S6 Local'
+                : isStylist6CloudVersion(lastEngineVersion)
+                  ? 'S6 Cloud'
+                  : lastEngineVersion)
+              : 'Dev';
+            const compactVisualTag = lastEngineDetail?.startsWith('NVIDIA_APPLIED')
+              ? 'Visual OK'
+              : lastEngineDetail?.startsWith('NVIDIA_ABSTAINED')
+                ? 'Visual Abstained'
+                : lastEngineDetail?.startsWith('NVIDIA_NOT_RUN')
+                  ? 'Text'
+                  : lastEngineDetail?.startsWith('NVIDIA_')
+                    ? 'Visual'
+                    : null;
+            return (
+              <View style={styles.devPillWrap}>
+                <TouchableOpacity
+                  testID="stylistDevPill"
+                  activeOpacity={0.75}
+                  onPress={() => setDevDiagExpanded((v) => !v)}
+                  style={styles.devPill}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: devDiagExpanded }}
+                >
+                  <View style={[
+                    styles.devPillDot,
+                    compactVisualTag === 'Visual OK' ? styles.devPillDotOk : null,
+                  ]} />
+                  <ScaledText
+                    testID="stylistEngineBanner"
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={styles.devPillText}
+                  >
+                    {`${compactEngineLabel} · ${outfits.length} looks${compactVisualTag ? ` · ${compactVisualTag}` : ''}`}
+                  </ScaledText>
+                  <Ionicons
+                    name={devDiagExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={12}
+                    color="#64748B"
+                  />
+                </TouchableOpacity>
+                {devDiagExpanded ? (
+                  <View testID="stylistDevPillDetails" style={styles.devPillDetails}>
+                    {process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true' ? (
+                      <StylistRuntimeDiagnostic engine={lastEngineVersion || undefined} detail={lastEngineDetail || undefined} />
+                    ) : (
+                      <ScaledText style={styles.devPillDetailsText}>
+                        {`Client ${clientRevision} · ${lastEngineVersion || 'unknown'}${lastEngineDetail ? ` · ${lastEngineDetail}` : ''}`}
+                      </ScaledText>
+                    )}
+                  </View>
+                ) : null}
+              </View>
+            );
+          })() : null}
           {planningDate && (
             <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
               <View style={styles.planningBanner}>
@@ -2760,7 +2896,7 @@ const AIOutfitGenerator = () => {
           )}
 
           {outfits.length > 1 ? (
-            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingBottom: 8 }}>
               {outfits.map((look, index) => (
                 <TouchableOpacity
                   key={look.id}
@@ -2770,7 +2906,7 @@ const AIOutfitGenerator = () => {
                   accessibilityLabel={`${t('outfitMaker.yourOutfits')} ${index + 1}`}
                   onPress={() => setVisibleLookIndex(index)}
                   style={{
-                    flex: 1, paddingVertical: 11, alignItems: 'center', borderRadius: 12,
+                    flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 12,
                     backgroundColor: visibleLookIndex === index ? D.accent : 'rgba(23,58,101,0.08)',
                     borderWidth: 1, borderColor: visibleLookIndex === index ? D.accent : 'rgba(23,58,101,0.12)',
                   }}
@@ -2786,13 +2922,13 @@ const AIOutfitGenerator = () => {
             key={`stylist-look-${visibleLookIndex}`}
             testID="stylistResultsScroll"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+            contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 32 }}
           >
             {!!inventoryNote && <ScaledText style={styles.outfitDesc}>{inventoryNote}</ScaledText>}
             {outfits.map((outfit, index) => index !== visibleLookIndex ? null : (
-              <Animated.View key={outfit.id} testID={`stylistResult-${index}`} style={[styles.glassCard, { marginTop: index === 0 ? 8 : 24 }]}>
+              <Animated.View key={outfit.id} testID={`stylistResult-${index}`} style={[styles.glassCard, { marginTop: 4 }]}>
                 <BlurView intensity={Platform.OS === 'ios' ? 48 : 90} tint="light" style={StyleSheet.absoluteFill} />
-                <LinearGradient colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)']} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={['rgba(255,255,255,0.52)', 'rgba(255,255,255,0.22)']} style={StyleSheet.absoluteFill} />
 
                 <View style={styles.cardHeaderRow}>
                   {outfit.weather ? (
@@ -2800,33 +2936,39 @@ const AIOutfitGenerator = () => {
                       <Ionicons name="cloud-outline" size={14} color={D.textSecondary} />
                       <ScaledText style={styles.weatherChipText}>{outfit.weather.temp}°C · {outfit.weather.condition}</ScaledText>
                     </View>
-                  ) : <View />}
+                  ) : (
+                    <View style={[styles.weatherChip, styles.weatherChipMuted]}>
+                      <Ionicons name="cloud-offline-outline" size={13} color="#64748B" />
+                      <ScaledText style={styles.weatherChipMutedText} numberOfLines={1}>
+                        {t('outfitMaker.weatherUnavailable', { defaultValue: 'Weather unavailable' })}
+                      </ScaledText>
+                    </View>
+                  )}
                   <LinearGradient colors={[D.accent, '#5B7CF9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.matchPill}>
                     <ScaledText style={styles.matchPillText}>{t(selectionBadgeKey(outfit.selectionSource))}</ScaledText>
                   </LinearGradient>
                 </View>
-                {STYLIST6_DEV_ENABLED && outfit.engineVersion ? (
-                  <ScaledText testID={`stylistEngine-${index}`} style={{fontSize: 10, color: '#526174', marginTop: 6}}>
-                    {outfit.engineVersion}
-                  </ScaledText>
-                ) : null}
 
                 {outfit.direction && ['signature','refresh','discovery','alternative'].includes(outfit.direction.id) && (
-                  <View testID={`stylistDirection-${index}`} style={{marginBottom:9}}>
-                    <View style={{flexDirection:'row',alignItems:'center',gap:6,marginBottom:3}}>
-                      <Ionicons name={outfit.direction.id==='discovery'?'compass-outline':'sparkles-outline'} size={15} color={D.accent}/>
-                      <ScaledText style={{color:D.accent,fontSize:12,fontWeight:'700'}}>
+                  <View testID={`stylistDirection-${index}`} style={styles.directionHeader}>
+                    <View style={{flexDirection:'row',alignItems:'center',gap:5}}>
+                      <Ionicons name={outfit.direction.id==='discovery'?'compass-outline':'sparkles-outline'} size={13} color={D.accent}/>
+                      <ScaledText style={styles.directionKicker}>
                         {t(`outfitMaker.direction_${outfit.direction.id}`)}
                       </ScaledText>
                     </View>
-                    <ScaledText style={[styles.outfitDesc,{fontSize:12,marginBottom:0}]} minScale={0.75}>
-                      {t(`outfitMaker.directionExplain_${outfit.direction.id}`)}
-                    </ScaledText>
+                    {!outfit.stylistNote ? (
+                      <ScaledText style={styles.directionSub} minScale={0.75} numberOfLines={2}>
+                        {t(`outfitMaker.directionExplain_${outfit.direction.id}`)}
+                      </ScaledText>
+                    ) : null}
                   </View>
                 )}
-                {outfit.concept && <ScaledText style={[styles.outfitDesc,{fontWeight:'700',fontSize:20,marginBottom:12}]}>
-                  {outfitConceptDisplayTitle(outfit.concept.id, outfit.concept.title, outfit.engineVersion)}
-                </ScaledText>}
+                {outfit.concept && (
+                  <ScaledText style={styles.lookConceptTitle} numberOfLines={2}>
+                    {outfitConceptDisplayTitle(outfit.concept.id, outfit.concept.title, outfit.engineVersion)}
+                  </ScaledText>
+                )}
                 {(() => {
                   const evidence = outfit.fashionDiagnostics?.personalization?.matches;
                   if (!Array.isArray(evidence) || !evidence.length) return null;
@@ -2841,20 +2983,76 @@ const AIOutfitGenerator = () => {
                       : entry.value.trim()))].slice(0, 3);
                   if (!details.length) return null;
                   return (
-                    <View testID={`personalStylistReason-${index}`} style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:12}}>
-                      <Ionicons name="sparkles-outline" size={15} color={D.accent} />
-                      <ScaledText style={[styles.outfitDesc,{fontSize:13,flex:1,marginBottom:0}]}>
+                    <View testID={`personalStylistReason-${index}`} style={{flexDirection:'row',alignItems:'center',gap:6,marginBottom:10}}>
+                      <Ionicons name="sparkles-outline" size={14} color={D.accent} />
+                      <ScaledText style={[styles.outfitDesc,{fontSize:12.5,flex:1,marginBottom:0}]}>
                         {t('outfitMaker.personalizedForYou')}: {details.join(' · ')}
                       </ScaledText>
                     </View>
                   );
                 })()}
-                {/* Explicit, source-attributable human taste belongs beside
-                    the actual complete-look preview, not hidden far below
-                    prices, styling tips and action buttons. Never auto-vote:
-                    only an actual thumbs tap can persist this preference.
-                    The first artist will use these user-authored ratings on
-                    FUTURE generations; model photo criticism is different. */}
+                {(() => {
+                  const isStylist6Look = isStylist6CloudVersion(outfit.engineVersion)
+                    || isStylist6DevVersion(outfit.engineVersion);
+                  const canSwapLook = isStylist6Look && (
+                    isStylist6DevVersion(outfit.engineVersion)
+                      ? STYLIST6_DEV_ENABLED
+                      : STYLIST6_CLOUD_ENABLED
+                  );
+                  const activeSwapSlot = swappingSlotKey?.startsWith(`${outfit.id}:`)
+                    ? swappingSlotKey.slice(outfit.id.length + 1)
+                    : null;
+                  const undoEntry = swapUndoMap[outfit.id];
+                  const swapError = swapErrorByLook[outfit.id];
+                  return (
+                    <>
+                      <OutfitSlotGrid
+                        items={outfit.items}
+                        weather={outfit.weather}
+                        priceCatalog={liveShopMapped}
+                        showBuyButtons={currentSource === 'shop'}
+                        canSwapItems={canSwapLook}
+                        lockedItemId={baseItemId}
+                        swappingSlot={activeSwapSlot}
+                        onSwapSlot={canSwapLook
+                          ? (slot, item) => void handleSlotSwap(outfit, index, slot, item)
+                          : undefined}
+                      />
+                      {undoEntry ? (
+                        <View testID={`stylistSwapUndoBanner-${index}`} style={styles.swapStatusBanner}>
+                          <Ionicons name="checkmark-circle-outline" size={15} color={D.accent} />
+                          <ScaledText style={styles.swapStatusText} numberOfLines={1}>
+                            {t('outfitMaker.swappedPiece', {
+                              defaultValue: 'Swapped {{slot}}',
+                              slot: undoEntry.swappedSlot,
+                            })}
+                          </ScaledText>
+                          <TouchableOpacity
+                            testID={`stylistSwapUndo-${index}`}
+                            accessibilityRole="button"
+                            onPress={() => handleUndoSlotSwap(outfit.id, index)}
+                            style={styles.swapUndoBtn}
+                          >
+                            <ScaledText style={styles.swapUndoBtnText}>
+                              {t('common.undo', { defaultValue: 'Undo' })}
+                            </ScaledText>
+                          </TouchableOpacity>
+                        </View>
+                      ) : null}
+                      {swapError ? (
+                        <View testID={`stylistSwapError-${index}`} style={styles.swapErrorBanner}>
+                          <Ionicons name="alert-circle-outline" size={14} color="#B91C1C" />
+                          <ScaledText style={styles.swapErrorText}>{swapError}</ScaledText>
+                        </View>
+                      ) : null}
+                    </>
+                  );
+                })()}
+
+                {/* Explicit, source-attributable human taste sits right below the
+                    complete 4-item outfit grid so the wearer sees every piece
+                    first, then rates and tags immediately in 1 tap. Never
+                    auto-vote: only an actual tap persists this preference. */}
                 {canRecordLookFeedback(outfit) && (() => {
                   const feedbackKey = `${outfit.generationRequestId}:${outfit.id}`;
                   const activeRating = lookRatings[feedbackKey];
@@ -2867,39 +3065,49 @@ const AIOutfitGenerator = () => {
                   return (
                     <View testID={`stylistTasteFeedback-${index}`} style={styles.feedbackCard}>
                       <View style={styles.feedbackTopRow}>
-                        <ScaledText style={{ flex: 1, fontSize: 13, color: D.textPrimary }} minScale={0.75}>
+                        <ScaledText style={styles.feedbackPromptText} minScale={0.75}>
                           {activeRating
                             ? t('outfitMaker.feedbackSaved')
                             : t('outfitMaker.feedbackPrompt')}
                         </ScaledText>
-                        {([1, -1] as const).map((rating) => (
-                          <TouchableOpacity
-                            key={rating}
-                            testID={`stylistTaste-${rating === 1 ? 'like' : 'dislike'}-${index}`}
-                            accessibilityRole="button"
-                            accessibilityLabel={t(rating === 1 ? 'outfitMaker.feedbackLike' : 'outfitMaker.feedbackDislike')}
-                            accessibilityState={{
-                              selected: activeRating === rating,
-                              disabled: feedbackPending !== null,
-                            }}
-                            disabled={feedbackPending !== null}
-                            onPress={() => void submitLookFeedback(outfit, rating)}
-                            style={{
-                              padding: 10,
-                              borderRadius: 10,
-                              opacity: feedbackPending ? 0.5 : 1,
-                              backgroundColor: activeRating === rating
-                                ? 'rgba(23,58,101,0.10)'
-                                : 'transparent',
-                            }}
-                          >
-                            <Ionicons
-                              name={rating === 1 ? 'thumbs-up-outline' : 'thumbs-down-outline'}
-                              size={22}
-                              color={activeRating === rating ? D.accent : D.textSecondary}
-                            />
-                          </TouchableOpacity>
-                        ))}
+                        <View style={styles.feedbackThumbGroup}>
+                          {([1, -1] as const).map((rating) => {
+                            const isSelected = activeRating === rating;
+                            return (
+                              <TouchableOpacity
+                                key={rating}
+                                testID={`stylistTaste-${rating === 1 ? 'like' : 'dislike'}-${index}`}
+                                accessibilityRole="button"
+                                accessibilityLabel={t(rating === 1 ? 'outfitMaker.feedbackLike' : 'outfitMaker.feedbackDislike')}
+                                accessibilityState={{
+                                  selected: isSelected,
+                                  disabled: feedbackPending !== null,
+                                }}
+                                disabled={feedbackPending !== null}
+                                onPress={() => void submitLookFeedback(outfit, rating)}
+                                style={[
+                                  styles.feedbackThumbBtn,
+                                  isSelected && (rating === 1 ? styles.feedbackThumbLikeActive : styles.feedbackThumbDislikeActive),
+                                  feedbackPending ? { opacity: 0.5 } : null,
+                                ]}
+                              >
+                                <Ionicons
+                                  name={
+                                    rating === 1
+                                      ? (isSelected ? 'thumbs-up' : 'thumbs-up-outline')
+                                      : (isSelected ? 'thumbs-down' : 'thumbs-down-outline')
+                                  }
+                                  size={19}
+                                  color={
+                                    isSelected
+                                      ? (rating === 1 ? '#059669' : '#0A1931')
+                                      : D.textSecondary
+                                  }
+                                />
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
                       </View>
                       {feedbackChips.length > 0 ? (
                         <View testID={`stylistFeedbackChips-${index}`} style={styles.feedbackChipsRow}>
@@ -2933,58 +3141,6 @@ const AIOutfitGenerator = () => {
                         </View>
                       ) : null}
                     </View>
-                  );
-                })()}
-                {(() => {
-                  const isStylist6Look = isStylist6CloudVersion(outfit.engineVersion)
-                    || isStylist6DevVersion(outfit.engineVersion);
-                  const activeSwapSlot = swappingSlotKey?.startsWith(`${outfit.id}:`)
-                    ? swappingSlotKey.slice(outfit.id.length + 1)
-                    : null;
-                  const undoEntry = swapUndoMap[outfit.id];
-                  const swapError = swapErrorByLook[outfit.id];
-                  return (
-                    <>
-                      <OutfitSlotGrid
-                        items={outfit.items}
-                        weather={outfit.weather}
-                        priceCatalog={liveShopMapped}
-                        showBuyButtons={currentSource === 'shop'}
-                        canSwapItems={isStylist6Look && STYLIST6_CLOUD_ENABLED}
-                        lockedItemId={baseItemId}
-                        swappingSlot={activeSwapSlot}
-                        onSwapSlot={isStylist6Look && STYLIST6_CLOUD_ENABLED
-                          ? (slot, item) => void handleSlotSwap(outfit, index, slot, item)
-                          : undefined}
-                      />
-                      {undoEntry ? (
-                        <View testID={`stylistSwapUndoBanner-${index}`} style={styles.swapStatusBanner}>
-                          <Ionicons name="checkmark-circle-outline" size={15} color={D.accent} />
-                          <ScaledText style={styles.swapStatusText} numberOfLines={1}>
-                            {t('outfitMaker.swappedPiece', {
-                              defaultValue: 'Swapped {{slot}}',
-                              slot: undoEntry.swappedSlot,
-                            })}
-                          </ScaledText>
-                          <TouchableOpacity
-                            testID={`stylistSwapUndo-${index}`}
-                            accessibilityRole="button"
-                            onPress={() => handleUndoSlotSwap(outfit.id, index)}
-                            style={styles.swapUndoBtn}
-                          >
-                            <ScaledText style={styles.swapUndoBtnText}>
-                              {t('common.undo', { defaultValue: 'Undo' })}
-                            </ScaledText>
-                          </TouchableOpacity>
-                        </View>
-                      ) : null}
-                      {swapError ? (
-                        <View testID={`stylistSwapError-${index}`} style={styles.swapErrorBanner}>
-                          <Ionicons name="alert-circle-outline" size={14} color="#B91C1C" />
-                          <ScaledText style={styles.swapErrorText}>{swapError}</ScaledText>
-                        </View>
-                      ) : null}
-                    </>
                   );
                 })()}
 
@@ -3033,6 +3189,7 @@ const AIOutfitGenerator = () => {
                     outfit.stylistNote
                     || outfit.whyItFlattersYou
                     || outfit.colorStory
+                    || outfit.silhouetteFormula
                     || (Array.isArray(outfit.stylingTipsList) && outfit.stylingTipsList.length > 0),
                   );
                   if (!hasRichStylistNotes) {
@@ -3053,7 +3210,7 @@ const AIOutfitGenerator = () => {
                   }
                   const leadNote = outfit.stylistNote || outfit.description;
                   const noteTips = distinctStylingTips(
-                    leadNote,
+                    `${leadNote} ${outfit.whyItFlattersYou || ''}`,
                     outfit.stylingTipsList && outfit.stylingTipsList.length > 0
                       ? outfit.stylingTipsList
                       : (outfit.stylingTips ? [outfit.stylingTips] : []),
@@ -3061,7 +3218,7 @@ const AIOutfitGenerator = () => {
                   return (
                     <View testID={`stylistNotesCard-${index}`} style={styles.stylistNotesCard}>
                       <View style={styles.stylistNotesHeader}>
-                        <Ionicons name="sparkles-outline" size={15} color={D.accent} />
+                        <Ionicons name="sparkles-outline" size={14} color={D.accent} />
                         <ScaledText style={styles.stylistNotesHeading}>
                           {t('outfitMaker.stylistNotes', { defaultValue: "Stylist's Notes" })}
                         </ScaledText>
@@ -3072,23 +3229,35 @@ const AIOutfitGenerator = () => {
                         </ScaledText>
                       )}
                       {!!outfit.whyItFlattersYou && (
-                        <View style={styles.stylistNotesCallout}>
+                        <View testID={`stylistWhyFlatters-${index}`} style={styles.stylistNotesCallout}>
                           <ScaledText style={styles.stylistNotesSubLabel}>
                             {t('outfitMaker.whyItFlattersYou', { defaultValue: 'Why it flatters you' })}
                           </ScaledText>
-                          <ScaledText style={styles.stylistNotesBody} minScale={0.75}>
+                          <ScaledText style={styles.stylistNotesCalloutBody} minScale={0.75}>
                             {outfit.whyItFlattersYou}
                           </ScaledText>
                         </View>
                       )}
-                      {!!outfit.colorStory && (
-                        <View style={styles.stylistNotesMetaRow}>
-                          <Ionicons name="color-palette-outline" size={14} color="#173A65" />
-                          <ScaledText style={styles.stylistNotesBody} minScale={0.75}>
-                            {outfit.colorStory}
-                          </ScaledText>
+                      {(outfit.colorStory || outfit.silhouetteFormula) ? (
+                        <View style={styles.stylistNotesMetaBlock}>
+                          {!!outfit.colorStory && (
+                            <View style={styles.stylistNotesMetaRow}>
+                              <Ionicons name="color-palette-outline" size={14} color="#173A65" style={{ marginTop: 2 }} />
+                              <ScaledText style={styles.stylistNotesBody} minScale={0.75}>
+                                {outfit.colorStory}
+                              </ScaledText>
+                            </View>
+                          )}
+                          {!!outfit.silhouetteFormula && (
+                            <View style={styles.stylistNotesMetaRow}>
+                              <Ionicons name="layers-outline" size={14} color="#173A65" style={{ marginTop: 2 }} />
+                              <ScaledText style={styles.stylistNotesBody} minScale={0.75}>
+                                {outfit.silhouetteFormula}
+                              </ScaledText>
+                            </View>
+                          )}
                         </View>
-                      )}
+                      ) : null}
                       {noteTips.length > 0 ? (
                         <View style={styles.stylistNotesTipsList}>
                           {noteTips.map((tip, tipIdx) => (
@@ -3736,7 +3905,7 @@ const AIOutfitGenerator = () => {
                   ))}
                 </View>
                 <ScaledText style={{color: D.textSecondary, fontSize: 12, marginTop: 6}}>
-                  {'Stylist 6 runs the local ranker over the live catalog. Failures are shown, never replaced.'}
+                  {'Defaults to local V3 Visual-First bridge (127.0.0.1:3127) in simulator dev builds. Failures are shown, never replaced.'}
                 </ScaledText>
                 <TouchableOpacity testID="stylistNvidiaToggle"
                   accessibilityRole="checkbox" accessibilityState={{checked: nvidiaVisual, disabled: devEngine !== 'stylist6' && devEngine !== 'stylist6cloud'}}
@@ -4303,32 +4472,43 @@ const styles = StyleSheet.create({
   glassCard: {
     borderRadius: LiquidGlass2026Theme.radius.card,
     overflow: 'hidden',
-    padding: 20,
+    padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
+    borderColor: 'rgba(255,255,255,0.45)',
     ...SpatialElevation.getShadow(SpatialElevation.levels.card),
   },
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 10,
   },
   weatherChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.72)',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: LiquidGlass2026Theme.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: 'rgba(10,25,49,0.08)',
+    flexShrink: 1,
+  },
+  weatherChipMuted: {
+    backgroundColor: 'rgba(100,116,139,0.08)',
+    borderColor: 'rgba(100,116,139,0.14)',
   },
   weatherChipText: {
     ...LiquidGlass2026Theme.typography.scale.labelMedium,
     color: LiquidGlass2026Theme.colors.text.secondary,
     fontWeight: '500',
+  },
+  weatherChipMutedText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#64748B',
   },
   matchPill: {
     paddingHorizontal: 12,
@@ -5283,14 +5463,89 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
   },
-  feedbackCard: {
-    marginBottom: 14,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 12,
+  resultsHeader: {
+    paddingVertical: 6,
+  },
+  devPillWrap: {
+    paddingHorizontal: 20,
+    paddingBottom: 6,
+    alignItems: 'center',
+  },
+  devPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    maxWidth: '100%',
+    paddingHorizontal: 11,
+    paddingVertical: 4,
+    borderRadius: 99,
+    backgroundColor: 'rgba(10,25,49,0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(23,58,101,0.10)',
-    backgroundColor: 'rgba(23,58,101,0.04)',
+    borderColor: 'rgba(10,25,49,0.09)',
+  },
+  devPillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#64748B',
+  },
+  devPillDotOk: {
+    backgroundColor: '#10B981',
+  },
+  devPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#334155',
+    flexShrink: 1,
+  },
+  devPillDetails: {
+    marginTop: 5,
+    width: '100%',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.84)',
+    borderWidth: 1,
+    borderColor: 'rgba(10,25,49,0.08)',
+  },
+  devPillDetailsText: {
+    fontSize: 10,
+    lineHeight: 14,
+    color: '#526174',
+    textAlign: 'center',
+  },
+  directionHeader: {
+    marginBottom: 4,
+    gap: 2,
+  },
+  directionKicker: {
+    color: '#2B5CE9',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  directionSub: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#526174',
+  },
+  lookConceptTitle: {
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    color: '#0A1931',
+    marginBottom: 10,
+  },
+  feedbackCard: {
+    marginBottom: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(10,25,49,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.72)',
   },
   feedbackTopRow: {
     flexDirection: 'row',
@@ -5298,29 +5553,58 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
+  feedbackPromptText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0A1931',
+  },
+  feedbackThumbGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  feedbackThumbBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10,25,49,0.04)',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  feedbackThumbLikeActive: {
+    backgroundColor: 'rgba(16,185,129,0.12)',
+    borderColor: 'rgba(16,185,129,0.34)',
+  },
+  feedbackThumbDislikeActive: {
+    backgroundColor: 'rgba(10,25,49,0.10)',
+    borderColor: 'rgba(10,25,49,0.22)',
+  },
   feedbackChipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: 9,
+    paddingTop: 9,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(23,58,101,0.10)',
+    borderTopColor: 'rgba(10,25,49,0.10)',
   },
   feedbackChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     borderRadius: 99,
-    backgroundColor: 'rgba(255,255,255,0.86)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(23,58,101,0.16)',
+    borderColor: 'rgba(10,25,49,0.14)',
   },
   feedbackChipSelected: {
     backgroundColor: '#0A1931',
     borderColor: '#0A1931',
   },
   feedbackChipText: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '600',
     color: '#173A65',
   },
@@ -5331,11 +5615,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: -6,
+    marginTop: 0,
     marginBottom: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 12,
     backgroundColor: 'rgba(43,92,233,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(43,92,233,0.18)',
@@ -5347,8 +5631,8 @@ const styles = StyleSheet.create({
     color: '#0A1931',
   },
   swapUndoBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
     borderRadius: 99,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -5363,11 +5647,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: -6,
+    marginTop: 0,
     marginBottom: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 12,
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: 'rgba(185,28,28,0.18)',
@@ -5378,14 +5662,19 @@ const styles = StyleSheet.create({
     color: '#991B1B',
   },
   stylistNotesCard: {
-    marginTop: 8,
+    marginTop: 10,
     marginBottom: 16,
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.88)',
     borderWidth: 1,
-    borderColor: 'rgba(23,58,101,0.10)',
-    gap: 8,
+    borderColor: 'rgba(10,25,49,0.08)',
+    gap: 10,
+    shadowColor: '#0A1931',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   stylistNotesHeader: {
     flexDirection: 'row',
@@ -5393,53 +5682,69 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   stylistNotesHeading: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.4,
+    letterSpacing: 0.9,
     textTransform: 'uppercase',
     color: '#173A65',
   },
   stylistNotesLead: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
     color: '#0A1931',
     fontWeight: '500',
   },
   stylistNotesCallout: {
-    borderLeftWidth: 2,
+    borderLeftWidth: 2.5,
     borderLeftColor: '#2B5CE9',
-    paddingLeft: 10,
-    gap: 2,
+    backgroundColor: 'rgba(43,92,233,0.05)',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    gap: 3,
   },
   stylistNotesSubLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
     color: '#2B5CE9',
+  },
+  stylistNotesCalloutBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#1E293B',
+  },
+  stylistNotesMetaBlock: {
+    gap: 6,
+    paddingTop: 2,
   },
   stylistNotesMetaRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 6,
+    gap: 7,
   },
   stylistNotesTipsList: {
-    gap: 4,
-    paddingTop: 2,
+    gap: 6,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(10,25,49,0.09)',
   },
   stylistNotesTipItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 6,
+    gap: 7,
   },
   stylistNotesBullet: {
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 19,
     color: '#2B5CE9',
     fontWeight: '700',
   },
   stylistNotesBody: {
     flex: 1,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 19,
     color: '#334155',
   },
   tryOnAction: {
