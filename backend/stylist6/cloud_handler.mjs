@@ -1865,11 +1865,15 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             crossLabRevision:true,
             fastPhotoRevision:budgetMs>=70000&&
               env.STYLIST6_FAST_PHOTO_REVISION_ENABLED==='true',
-            // Genuine independent source-SKU creative reasoning after the
-            // original PHOTO critique. Run two studios concurrently only
-            // on isolated 72s staging; S5 and regular cloud are unchanged.
+            // 19 Nov REAL Work/Date visual results: 2 model calls per
+            // revision, Kimi contributed ZERO source-valid outfits and
+            // corrections received ZERO original-photo approvals. Do NOT
+            // keep charging this slower experiment by default. Independent
+            // parallel creativity stays available only for an explicitly
+            // enabled, isolated staging experiment, never production S5.
             parallelPhotoRevision:budgetMs>=70000&&
-              env.STYLIST6_FAST_PHOTO_REVISION_ENABLED==='true',
+              env.STYLIST6_FAST_PHOTO_REVISION_ENABLED==='true'&&
+              env.STYLIST6_PARALLEL_PHOTO_REVISION_ENABLED==='true',
             apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:budgetMs>=70000&&

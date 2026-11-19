@@ -80,6 +80,7 @@ export function stylist6CreativeServerConfig() {
     // Staging-only experiment: source-grounded fast model corrects ACTUAL
     // independent original-photo critic rejection while time is available.
     STYLIST6_FAST_PHOTO_REVISION_ENABLED: envOf('STYLIST6_FAST_PHOTO_REVISION_ENABLED'),
+    STYLIST6_PARALLEL_PHOTO_REVISION_ENABLED: envOf('STYLIST6_PARALLEL_PHOTO_REVISION_ENABLED'),
     // Privacy-minimal, server-opt-in REAL original-photo learning history.
     // Without explicit forwarding of this allowlisted flag the Render
     // service has the switch but cloud_handler silently sees it as OFF.

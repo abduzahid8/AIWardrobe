@@ -81,3 +81,44 @@ look must NEVER be added to improve a count. The final release gate
 remains ≥30 identical-catalog held-out contexts with ≥3 independent
 blinded human judges and ≥70% preference for S6 vs Stylist 5, zero hard
 merchant/physical/photo violations.
+
+## Real authenticated canary — negative result, experiment disabled by default
+
+Exact SHA `19790d311cf99a447c0970e2ae6472e38e160bf5` was LIVE on Render
+staging and tested on native iOS 26.5 with the real catalog and owner
+preferences on 19 November 2026. Both clients opened result screens.
+
+| Context | NVIDIA original-photo evaluations | Approved | Displayed | New correction | Server time |
+|---|---:|---:|---:|---:|---:|
+| Classic/Work | 8 | 1 | 1 | 0 approved / 3 photographed | 66.2s |
+| Classic/Date | 6 | 2 | 2 | 0 approved / 2 photographed | 66.0s |
+
+Both recorded **two paid creative studio calls** for the PHOTO feedback
+revision, but the safe provider-family result was
+`nemotron_fast_photo_revision`, not the two-contributor enum: Kimi did
+not supply an additional source-legal selected complete look. No better
+photo-approved correction was demonstrated; on Date the final visual
+jury's image preparation reached `deadline`. The fast 30B returned
+source-valid combinations, but the unchanged independent NVIDIA photo
+critic rejected all corrections.
+
+**Decision, not a new garment rule:** turn the slower two-studio experiment
+OFF by default on staging. An explicit server-only
+`STYLIST6_PARALLEL_PHOTO_REVISION_ENABLED=true` is now additionally
+required to run the two models in parallel. The allowlisted flag goes
+through the signed Node route; no mobile/client-supplied request can turn
+it on. Retain the tested code and fixtures for future controlled trials,
+but do not keep paying for a non-contributing Kimi or reducing time
+available to the original PHOTO/editorial checks. The original fast
+photo feedback path remains the fallback, and production Stylist 5
+continues unchanged.
+
+**Next highest-leverage bottleneck is before creative selection:** source
+PHOTO first-pass remains `not_run`, as `catalog_photo_cache_v1` has
+zero licensed current rows; public merchant photographs cannot silently
+be copied or sent through unlicensed VLM inference to fill this gap.
+Live catalog has 8,554 active products and 7,556 visual profiles, but
+only 1,093 volume and 1,838 texture observations. We need a rights-safe,
+source-hash-consistent product-photo feature pipeline or an authorized
+licensed image cache so the FIRST 120B creator can reason about actual
+fabric, cut, proportion and shoes, not assume them from text.
