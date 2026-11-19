@@ -1,15 +1,15 @@
 import {validateOutfitGenerationRequest,OutfitRequestError} from '../src/domain/outfitGenerationRequest';
 import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveOutfitSelectionSource,selectionBadgeKey,offerCaveatLabel,shopCardActionMode,shopCardHasDirectListing} from '../src/services/stylingCopy';
-import { recordLookFeedback, canRecordLookFeedback } from '../src/services/stylistFeedback';
+import { submitStylistLookFeedback, canRecordLookFeedback, type FeedbackTargetSlot } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
 import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, recoverStylist6CloudResult, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, stylist6CloudCompletion, stylist6CuratedPartial, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, type DevEngine} from '../src/services/stylist6Dev';
+import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, invokeStylist6Bridge, invokeStylist6Cloud, recoverStylist6CloudResult, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, isStylist6DevVersion, stylist6CloudCompletion, stylist6CuratedPartial, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, requestStylist6SlotSwap, normalizeStylist6Preferences, deriveStylist6Presentation, summarizeOwnedWardrobeForStylist6, type DevEngine, type Stylist6SwapSlot, type Stylist6CloudRequest} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
 import {recentLookSimilarity} from '../src/domain/outfitVisualSignature';
 import {stylingCopyParts} from '../src/services/stylingCopy';
-import {stylingContext} from '../src/domain/stylingContext';
+import {stylingContext, type StylingBodyProfile, type StylingAppearanceProfile} from '../src/domain/stylingContext';
 import { BetaFeedbackButton } from '../components/BetaFeedbackButton';
 import { stylistCalendarItems } from '../features/calendar/outfitSlots';
 import {formatUzsPrice} from '../src/utils/uzsPrice';
@@ -66,6 +66,8 @@ import { reconcileStylistBriefWithChips } from '../features/outfit-generator/uti
 import { scoreItemForStyle, normalizeStyleId } from '../features/outfit-generator/utils/styleInference';
 import useWardrobeStore from '../store/wardrobeStore';
 import { useStylePreferenceStore } from '../store/stylePreferenceStore';
+import { useBodyProfileStore, selectActiveProfile } from '../store/bodyProfileStore';
+import useAvatarStore from '../store/avatarStore';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/auth';
 import { SHOP_CATALOG_ITEMS } from '../data/shopCatalogItems';
@@ -119,6 +121,14 @@ interface GeneratedOutfit {
   description: string;
   items: OutfitItem[];
   stylingTips?: string;
+  /** Structured editorial notes returned by Stylist 6. */
+  stylistNote?: string;
+  whyItFlattersYou?: string;
+  colorStory?: string;
+  silhouetteFormula?: string;
+  stylingTipsList?: string[];
+  /** Previous SKU id after a user-initiated 1-slot swap (for feedback attribution). */
+  lastSwappedFromSku?: string | null;
   /** Styling inputs captured at generation time so result copy can be
    * re-localized when the app language changes without a new request. */
   stylingStyle?: string;
@@ -128,6 +138,26 @@ interface GeneratedOutfit {
   serverTips?: boolean;
   weather?: { temp: number; condition: string; city?: string };
 }
+
+interface StructuredFeedbackChip {
+  id: string;
+  labelKey: string;
+  defaultLabel: string;
+  targetSlot?: FeedbackTargetSlot;
+}
+
+const DISLIKE_FEEDBACK_CHIPS: readonly StructuredFeedbackChip[] = [
+  { id: 'wrong_shoes', labelKey: 'outfitMaker.feedbackWrongShoes', defaultLabel: 'Wrong shoes', targetSlot: 'shoes' },
+  { id: 'wrong_color', labelKey: 'outfitMaker.feedbackWrongColor', defaultLabel: 'Wrong color' },
+  { id: 'too_formal', labelKey: 'outfitMaker.feedbackTooFormal', defaultLabel: 'Too formal' },
+  { id: 'not_my_fit', labelKey: 'outfitMaker.feedbackNotMyFit', defaultLabel: 'Not my fit' },
+  { id: 'over_budget', labelKey: 'outfitMaker.feedbackOverBudget', defaultLabel: 'Over budget' },
+];
+
+const LIKE_FEEDBACK_CHIPS: readonly StructuredFeedbackChip[] = [
+  { id: 'love_palette', labelKey: 'outfitMaker.feedbackLovePalette', defaultLabel: 'Love palette' },
+  { id: 'great_fit', labelKey: 'outfitMaker.feedbackGreatFit', defaultLabel: 'Great fit' },
+];
 
 // ── Static catalog fallback, normalized ONCE ────────────────────────────
 // candidatePool re-ran toMacro regexes over ~2k bundled items on every
@@ -394,6 +424,14 @@ interface OutfitSlotGridProps {
   priceCatalog?: any[];
   /** New-clothing results must give every displayed item a purchase action. */
   showBuyButtons?: boolean;
+  /** Enable 1-tap surgical slot replacement (Stylist 6 looks only). */
+  canSwapItems?: boolean;
+  /** Locked user anchor item ID cannot be swapped away. */
+  lockedItemId?: string;
+  /** Active slot currently being swapped (e.g. 'shoes') for inline loading state. */
+  swappingSlot?: string | null;
+  /** Invoked when the user taps Swap on an unlocked Stylist 6 tile. */
+  onSwapSlot?: (slot: Stylist6SwapSlot, item: OutfitItem) => void;
 }
 
 // Memoized slot cell with expo-image memory-disk caching. Previously each
@@ -417,6 +455,11 @@ const SlotCell = React.memo(function SlotCell({
   textSecondary,
   textPrimary,
   onBuy,
+  canSwap,
+  isSwapping,
+  swapLabel,
+  swappingLabel,
+  onSwap,
 }: {
   slotKey: string;
   label: string;
@@ -434,6 +477,11 @@ const SlotCell = React.memo(function SlotCell({
   textSecondary: string;
   textPrimary: string;
   onBuy: (url: string) => void;
+  canSwap?: boolean;
+  isSwapping?: boolean;
+  swapLabel?: string;
+  swappingLabel?: string;
+  onSwap?: () => void;
 }) {
   // Cards always show the original listing price and currency. Never convert
   // per-card prices: a converted guess would mislabel the listing, and
@@ -442,6 +490,9 @@ const SlotCell = React.memo(function SlotCell({
     ? formatMoney(price, priceCurrency)
     : null;
   const handleBuy = React.useCallback(() => onBuy(buyUrl), [onBuy, buyUrl]);
+  const handleSwap = React.useCallback(() => {
+    if (onSwap && !isSwapping) onSwap();
+  }, [onSwap, isSwapping]);
   // Image honesty: a missing URL or a failed load becomes an explicit
   // labeled 'photo unavailable' tile — never a silent grey box posing as the
   // product photo. One bounded cache-busting retry absorbs CDN hiccups.
@@ -469,6 +520,24 @@ const SlotCell = React.memo(function SlotCell({
           onLoad={bundledSource === null ? onImageLoad : undefined}
         />
       )}
+      {canSwap && onSwap ? (
+        <TouchableOpacity
+          testID={`slot-swap-${slotKey}`}
+          style={[slotStyles.swapBadge, isSwapping ? slotStyles.swapBadgeBusy : null]}
+          onPress={handleSwap}
+          disabled={Boolean(isSwapping)}
+          activeOpacity={0.75}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          accessibilityRole="button"
+          accessibilityLabel={`${swapLabel || 'Swap'} ${label}`}
+          accessibilityState={{ busy: Boolean(isSwapping), disabled: Boolean(isSwapping) }}
+        >
+          <Ionicons name={isSwapping ? 'sync-outline' : 'swap-horizontal-outline'} size={12} color="#0A1931" />
+          <ScaledText style={slotStyles.swapBadgeText}>
+            {isSwapping ? (swappingLabel || 'Swapping…') : (swapLabel || 'Swap')}
+          </ScaledText>
+        </TouchableOpacity>
+      ) : null}
       <View style={slotStyles.labelWrap}>
         <ScaledText style={[slotStyles.label, { color: textSecondary }]}>{label}</ScaledText>
         <ScaledText style={[slotStyles.name, { color: textPrimary }]} numberOfLines={1}>{name}</ScaledText>
@@ -499,17 +568,36 @@ const SlotCell = React.memo(function SlotCell({
   );
 });
 
-function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }: OutfitSlotGridProps) {
+function OutfitSlotGrid({
+  items,
+  weather,
+  priceCatalog,
+  showBuyButtons = false,
+  canSwapItems = false,
+  lockedItemId,
+  swappingSlot = null,
+  onSwapSlot,
+}: OutfitSlotGridProps) {
   const D = useDesignTokens();
   const { t } = useTranslation();
 
   // Render the validated snapshot verbatim. Never replace shorts, recolor
   // garments, or add a stock product while rendering a result.
   const slotConfig = React.useMemo(() => items.map(item => {
-    const macro = canonicalizeMacroCategory(item.macroCategory || item.type || '');
-    const labels: Record<string, string> = { top: t('calendar.top'), outerwear: t('calendar.layer'), bottom: t('calendar.bottom'), shoes: t('calendar.shoes') };
-    const keys: Record<string, string> = { top: 'second-top', outerwear: 'main-top', bottom: 'pants', shoes: 'shoes' };
-    return { key: `${keys[macro] || macro}-${item.id}`, label: labels[macro] || t('common.item'), item };
+    const rawMacro = String(item.macroCategory || item.type || '').trim().toLowerCase();
+    const macro = rawMacro === 'accessory' || rawMacro === 'dress'
+      ? rawMacro
+      : canonicalizeMacroCategory(item.macroCategory || item.type || '');
+    const labels: Record<string, string> = {
+      top: t('calendar.top'),
+      outerwear: t('calendar.layer'),
+      bottom: t('calendar.bottom'),
+      shoes: t('calendar.shoes'),
+      accessory: t('outfitMaker.slotAccessory', 'Accessory'),
+      dress: t('outfitMaker.slotDress', 'Dress'),
+    };
+    const keys: Record<string, string> = { top: 'second-top', outerwear: 'main-top', bottom: 'pants', shoes: 'shoes', accessory: 'accessory', dress: 'dress' };
+    return { key: `${keys[macro] || macro}-${item.id}`, macro, label: labels[macro] || t('common.item'), item };
   }), [items, t]);
 
   const handleBuy = useCallback(async (url: string) => {
@@ -524,6 +612,8 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
   const buyLabel = t('outfitMaker.buy', 'Buy');
   const viewStoreLabel = t('outfitMaker.viewProductAtStore', 'Check at store');
   const photoUnavailableLabel = t('common.photoUnavailable', 'Photo unavailable');
+  const swapLabel = t('outfitMaker.swapItem', 'Swap');
+  const swappingLabel = t('outfitMaker.swappingItem', 'Swapping…');
   return (
     <View style={slotStyles.grid}>
       {slotConfig.filter((slot) => !!slot.item?.id && !!slot.item?.name).map((slot) => {
@@ -535,6 +625,11 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
           shopUrl: slot.item?.shopUrl,
         });
         const offerCaveat = offerCaveatLabel(slot.item);
+        const isLocked = Boolean(lockedItemId && String(slot.item?.id) === String(lockedItemId));
+        const swappableSlot = (['top', 'outerwear', 'bottom', 'shoes', 'accessory', 'dress'].includes(slot.macro)
+          ? slot.macro
+          : null) as Stylist6SwapSlot | null;
+        const allowSwap = Boolean(canSwapItems && onSwapSlot && swappableSlot && !isLocked);
         return (
           <SlotCell
             key={slot.key}
@@ -554,6 +649,11 @@ function OutfitSlotGrid({ items, weather, priceCatalog, showBuyButtons = false }
             textSecondary={D.textSecondary}
             textPrimary={D.textPrimary}
             onBuy={handleBuy}
+            canSwap={allowSwap}
+            isSwapping={Boolean(swappableSlot && swappingSlot === swappableSlot)}
+            swapLabel={swapLabel}
+            swappingLabel={swappingLabel}
+            onSwap={allowSwap && swappableSlot && onSwapSlot ? () => onSwapSlot(swappableSlot, slot.item) : undefined}
           />
         );
       })}
@@ -635,6 +735,28 @@ const slotStyles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
   },
+  swapBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(10,25,49,0.14)',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 99,
+  },
+  swapBadgeBusy: {
+    opacity: 0.7,
+  },
+  swapBadgeText: {
+    color: '#0A1931',
+    fontSize: 10,
+    fontWeight: '700',
+  },
 });
 
 const formatPlanningDate = (date: Date): string =>
@@ -647,15 +769,318 @@ const AIOutfitGenerator = () => {
   // free.aiOutfits = 0 → consumeOrPaywall denies + navigates to Paywall.
   // Trial-active (effectiveTier premium) and paid users pass through.
   const { requireFeature, consumeOrPaywall } = useSubscriptionGate();
-  const [lookRatings,setLookRatings]=useState<Record<string,number>>({});
-  const [feedbackPending,setFeedbackPending]=useState<string|null>(null);
-  const submitLookFeedback=async(look:GeneratedOutfit,rating:-1|1)=>{
-    const key=`${look.generationRequestId}:${look.id}`;
-    if(feedbackPending)return;
+  const [lookRatings, setLookRatings] = useState<Record<string, -1 | 1>>({});
+  const [lookFeedbackTags, setLookFeedbackTags] = useState<Record<string, string[]>>({});
+  const [feedbackPending, setFeedbackPending] = useState<string | null>(null);
+  const [swappingSlotKey, setSwappingSlotKey] = useState<string | null>(null);
+  const [swapUndoMap, setSwapUndoMap] = useState<Record<string, {
+    previousOutfit: GeneratedOutfit;
+    swappedSlot: Stylist6SwapSlot;
+    previousItemName: string;
+  }>>({});
+  const [swapExcludedByLook, setSwapExcludedByLook] = useState<Record<string, string[]>>({});
+  const [swapErrorByLook, setSwapErrorByLook] = useState<Record<string, string>>({});
+  const [optInAppearanceProfile] = useState<StylingAppearanceProfile | undefined>(undefined);
+
+  const submitLookFeedback = async (look: GeneratedOutfit, rating: -1 | 1) => {
+    const key = `${look.generationRequestId}:${look.id}`;
+    if (feedbackPending) return;
     setFeedbackPending(key);
-    try {await recordLookFeedback(look,rating);setLookRatings(previous=>({...previous,[key]:rating}));}
-    catch {Alert.alert(t('common.error'),t('outfitMaker.feedbackUnavailable'));}
-    finally {setFeedbackPending(null);}
+    try {
+      const sameDirection = lookRatings[key] === rating;
+      const existingTags = sameDirection ? (lookFeedbackTags[key] || []) : [];
+      const targetSlot: FeedbackTargetSlot | null = existingTags.includes('wrong_shoes') ? 'shoes' : null;
+      await submitStylistLookFeedback(look, rating, {
+        targetSlot,
+        feedbackTags: existingTags.length ? existingTags : undefined,
+        swappedFromSku: look.lastSwappedFromSku ?? undefined,
+      });
+      setLookRatings((previous) => ({ ...previous, [key]: rating }));
+      if (!sameDirection) {
+        setLookFeedbackTags((previous) => ({ ...previous, [key]: [] }));
+      }
+    } catch {
+      Alert.alert(t('common.error'), t('outfitMaker.feedbackUnavailable'));
+    } finally {
+      setFeedbackPending(null);
+    }
+  };
+
+  const toggleLookFeedbackChip = async (
+    look: GeneratedOutfit,
+    rating: -1 | 1,
+    chip: StructuredFeedbackChip,
+  ) => {
+    const key = `${look.generationRequestId}:${look.id}`;
+    if (feedbackPending) return;
+    const currentTags = lookFeedbackTags[key] || [];
+    const nextTags = currentTags.includes(chip.id)
+      ? currentTags.filter((tag) => tag !== chip.id)
+      : [...currentTags, chip.id];
+    const targetSlot: FeedbackTargetSlot | null = nextTags.includes('wrong_shoes')
+      ? 'shoes'
+      : (chip.targetSlot && nextTags.includes(chip.id) ? chip.targetSlot : null);
+    setFeedbackPending(key);
+    try {
+      await submitStylistLookFeedback(look, rating, {
+        targetSlot,
+        feedbackTags: nextTags,
+        swappedFromSku: look.lastSwappedFromSku ?? undefined,
+      });
+      setLookRatings((previous) => ({ ...previous, [key]: rating }));
+      setLookFeedbackTags((previous) => ({ ...previous, [key]: nextTags }));
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    } catch {
+      Alert.alert(t('common.error'), t('outfitMaker.feedbackUnavailable'));
+    } finally {
+      setFeedbackPending(null);
+    }
+  };
+
+  const buildStylist6Personalization = (): Pick<
+    Stylist6CloudRequest,
+    'preferences' | 'presentation' | 'bodyProfile' | 'appearanceProfile' | 'ownedWardrobeSummary' | 'dislikedPatterns'
+  > => {
+    const rawPrefs = useStylePreferenceStore.getState().preferences;
+    const normalizedPrefs = normalizeStylist6Preferences(rawPrefs);
+    const dislikedPatterns = Array.isArray(normalizedPrefs?.dislikedPatterns)
+      ? (normalizedPrefs.dislikedPatterns as string[])
+      : undefined;
+    const fitPref = typeof normalizedPrefs?.fitPreference === 'string'
+      ? normalizedPrefs.fitPreference
+      : undefined;
+
+    const activeBody = selectActiveProfile(useBodyProfileStore.getState());
+    const avatar = useAvatarStore.getState();
+    const authUser = useAuthStore.getState().user;
+    const resolvedGender = activeBody?.gender ?? authUser?.gender ?? avatar?.gender ?? null;
+    const presentation = deriveStylist6Presentation(resolvedGender);
+
+    let bodyProfile: StylingBodyProfile | undefined;
+    if (activeBody) {
+      const numericMeasurements: Record<string, number> = {};
+      if (activeBody.measurements && typeof activeBody.measurements === 'object') {
+        for (const [zone, entry] of Object.entries(activeBody.measurements)) {
+          if (entry && typeof entry.valueCm === 'number' && Number.isFinite(entry.valueCm)) {
+            numericMeasurements[zone] = entry.valueCm;
+          }
+        }
+      }
+      bodyProfile = {
+        gender: resolvedGender,
+        heightCm: Number.isFinite(activeBody.height?.valueCm) ? activeBody.height.valueCm : null,
+        weightKg: typeof activeBody.weightKg === 'number' && Number.isFinite(activeBody.weightKg)
+          ? activeBody.weightKg
+          : null,
+        bodyType: activeBody.bodyType ?? null,
+        ...(Object.keys(numericMeasurements).length > 0 ? { measurements: numericMeasurements } : {}),
+        ...(fitPref ? { fitPreference: fitPref } : {}),
+      };
+    } else if (avatar || resolvedGender || fitPref) {
+      const parsedHeight = Number(avatar?.heightCm);
+      const parsedWeight = Number(avatar?.weightKg);
+      bodyProfile = {
+        gender: resolvedGender,
+        heightCm: Number.isFinite(parsedHeight) && parsedHeight > 0 ? parsedHeight : null,
+        weightKg: Number.isFinite(parsedWeight) && parsedWeight > 0 ? parsedWeight : null,
+        bodyType: avatar?.bodyType ?? null,
+        ...(fitPref ? { fitPreference: fitPref } : {}),
+      };
+    }
+
+    const ownedItems = useWardrobeStore.getState().items as unknown as Record<string, unknown>[];
+    const ownedWardrobeSummary = summarizeOwnedWardrobeForStylist6(ownedItems);
+    const appearanceProfile = optInAppearanceProfile?.consentGranted === true
+      ? optInAppearanceProfile
+      : undefined;
+
+    return {
+      ...(normalizedPrefs ? { preferences: normalizedPrefs } : {}),
+      ...(presentation ? { presentation } : {}),
+      ...(bodyProfile ? { bodyProfile } : {}),
+      ...(appearanceProfile ? { appearanceProfile } : {}),
+      ...(ownedWardrobeSummary ? { ownedWardrobeSummary } : {}),
+      ...(dislikedPatterns && dislikedPatterns.length > 0 ? { dislikedPatterns } : {}),
+    };
+  };
+
+  const handleSlotSwap = async (
+    outfit: GeneratedOutfit,
+    outfitIndex: number,
+    targetSlot: Stylist6SwapSlot,
+    currentItem: OutfitItem,
+  ) => {
+    if (swappingSlotKey) return;
+    const swapKey = `${outfit.id}:${targetSlot}`;
+    setSwappingSlotKey(swapKey);
+    setSwapErrorByLook((prev) => {
+      if (!prev[outfit.id]) return prev;
+      const next = { ...prev };
+      delete next[outfit.id];
+      return next;
+    });
+
+    try {
+      const priorExcluded = swapExcludedByLook[outfit.id] || [];
+      const currentItemId = currentItem.id ? String(currentItem.id) : '';
+      const excludedIds = [...new Set([...priorExcluded, ...(currentItemId ? [currentItemId] : [])])];
+      const personalization = buildStylist6Personalization();
+      const swapContext: Partial<Stylist6CloudRequest> = {
+        style: outfit.stylingStyle || selectedStyle,
+        occasion: selectedOccasion || 'Any',
+        brief: outfit.stylingRequest || '',
+        weather: outfit.weather?.temp != null
+          ? { temp: outfit.weather.temp, condition: outfit.weather.condition || 'clear' }
+          : undefined,
+        budget: resultBudget ? { amount: resultBudget.amount, currency: resultBudget.currency } : undefined,
+        sourceMode: currentSource === 'wardrobe' ? 'wardrobe' : baseItemId ? 'mixed' : 'catalog',
+        language: stylist6Language(i18n.language),
+        ...personalization,
+      };
+      const swapped = await requestStylist6SlotSwap({
+        outfit: outfit as unknown as Record<string, unknown>,
+        targetSlot,
+        context: swapContext,
+        excludedIds,
+      });
+      if (!isMounted.current) return;
+
+      const updatedRaw = swapped.outfit as Record<string, unknown>;
+      const updatedItems = Array.isArray(updatedRaw.items)
+        ? (updatedRaw.items as OutfitItem[])
+        : outfit.items;
+      const updatedTipsList = Array.isArray(updatedRaw.stylingTips)
+        ? distinctStylingTips(
+            typeof updatedRaw.description === 'string' ? updatedRaw.description : outfit.description,
+            updatedRaw.stylingTips,
+          )
+        : outfit.stylingTipsList;
+      const updatedOutfit: GeneratedOutfit = {
+        ...outfit,
+        ...(updatedRaw as Partial<GeneratedOutfit>),
+        id: outfit.id,
+        generationRequestId: outfit.generationRequestId,
+        engineVersion: swapped.generationVersion || outfit.engineVersion,
+        stylingStyle: outfit.stylingStyle,
+        stylingOccasion: outfit.stylingOccasion,
+        stylingRequest: outfit.stylingRequest,
+        weather: outfit.weather,
+        items: updatedItems,
+        mainImage: updatedItems[0]?.image || updatedItems[0]?.imageUrl || outfit.mainImage,
+        stylingTipsList: updatedTipsList,
+        stylingTips: Array.isArray(updatedTipsList) && updatedTipsList.length > 0
+          ? updatedTipsList.join(' ')
+          : outfit.stylingTips,
+        lastSwappedFromSku: swapped.previousItemId,
+      };
+
+      setSwapUndoMap((prev) => ({
+        ...prev,
+        [outfit.id]: {
+          previousOutfit: outfit,
+          swappedSlot: targetSlot,
+          previousItemName: currentItem.name || targetSlot,
+        },
+      }));
+      if (swapped.previousItemId) {
+        setSwapExcludedByLook((prev) => ({
+          ...prev,
+          [outfit.id]: [...new Set([...(prev[outfit.id] || []), swapped.previousItemId as string])],
+        }));
+      }
+      setOutfits((current) => current.map((look, i) => (i === outfitIndex ? updatedOutfit : look)));
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    } catch {
+      if (isMounted.current) {
+        setSwapErrorByLook((prev) => ({
+          ...prev,
+          [outfit.id]: t('outfitMaker.swapFailed', {
+            defaultValue: 'Could not find a verified replacement for this piece right now.',
+          }),
+        }));
+      }
+    } finally {
+      if (isMounted.current) setSwappingSlotKey(null);
+    }
+  };
+
+  const handleUndoSlotSwap = (outfitId: string, outfitIndex: number) => {
+    const undo = swapUndoMap[outfitId];
+    if (!undo) return;
+    setOutfits((current) => current.map((look, i) => (i === outfitIndex ? undo.previousOutfit : look)));
+    setSwapUndoMap((prev) => {
+      const next = { ...prev };
+      delete next[outfitId];
+      return next;
+    });
+    setSwapErrorByLook((prev) => {
+      if (!prev[outfitId]) return prev;
+      const next = { ...prev };
+      delete next[outfitId];
+      return next;
+    });
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  const resolveAvailableTryOnTargets = (): {
+    directTryOnRoute: string | null;
+    bodyProfileRoute: string | null;
+  } => {
+    const ownRoutes: string[] = Array.isArray(navigation?.getState?.()?.routeNames)
+      ? navigation.getState().routeNames
+      : [];
+    const parentRoutes: string[] = Array.isArray(navigation?.getParent?.()?.getState?.()?.routeNames)
+      ? navigation.getParent().getState().routeNames
+      : [];
+    const allRoutes = new Set([...ownRoutes, ...parentRoutes]);
+    const directTryOnRoute = ['VirtualTryOn', 'TryOn', 'MannequinTryOn'].find((name) => allRoutes.has(name)) ?? null;
+    const bodyProfileRoute = ['BodyProfile', 'CreateAvatar'].find((name) => allRoutes.has(name)) ?? null;
+    return { directTryOnRoute, bodyProfileRoute };
+  };
+
+  const handleTryOnLook = (outfit: GeneratedOutfit) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    const { directTryOnRoute, bodyProfileRoute } = resolveAvailableTryOnTargets();
+    if (directTryOnRoute) {
+      const nav = navigation as { navigate: (name: string, params?: Record<string, unknown>) => void };
+      nav.navigate(directTryOnRoute, {
+        outfitId: outfit.id,
+        items: outfit.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          imageUrl: item.imageUrl || item.image,
+          macroCategory: item.macroCategory || item.type,
+          brand: item.brand,
+          price: item.price,
+          currency: item.currency,
+        })),
+        outfit,
+      });
+      return;
+    }
+    if (bodyProfileRoute) {
+      Alert.alert(
+        t('outfitMaker.tryOnTitle', { defaultValue: 'Try On Look' }),
+        t('outfitMaker.tryOnSetupBodyProfile', {
+          defaultValue: 'Virtual try-on is not enabled in this build yet. Calibrate your Body Profile so stylists tailor proportions and fit for you.',
+        }),
+        [
+          { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+          {
+            text: t('outfitMaker.openBodyProfile', { defaultValue: 'Body Profile' }),
+            onPress: () => {
+              const nav = navigation as { navigate: (name: string) => void };
+              nav.navigate(bodyProfileRoute);
+            },
+          },
+        ],
+      );
+      return;
+    }
+    Alert.alert(
+      t('outfitMaker.tryOnTitle', { defaultValue: 'Try On Look' }),
+      t('outfitMaker.tryOnUnavailable', { defaultValue: 'Virtual try-on is not available in this build yet.' }),
+    );
   };
   const [currentSource, setCurrentSource] = useState(route.params?.source || 'wardrobe');
   // Anchor item passed from MyClosetScreen — when set, every generated outfit
@@ -1722,6 +2147,7 @@ const AIOutfitGenerator = () => {
         // compute -> server-side engine. No client inventory is sent; the
         // server fetches shop and wardrobe rows itself. Failures surface
         // intact and are never replaced with a Stylist 5 deck.
+        const s6Personalization = buildStylist6Personalization();
         const cloudBody = {
           request: {
             style: styleToUse,
@@ -1731,7 +2157,7 @@ const AIOutfitGenerator = () => {
               ? {temp: resolvedWeather.temp, condition: resolvedWeather.condition || 'clear'}
               : undefined,
             budget: shopBudget ? {amount: shopBudget.amount, currency: shopBudget.currency} : undefined,
-            preferences: useStylePreferenceStore.getState().preferences,
+            ...s6Personalization,
             recentSignatures: history.recentLookSignatures,
             // Never hard-ban the full historic cross-style catalog in S6:
             // after a few requests it exhausted all good athletic shoes.
@@ -1833,6 +2259,7 @@ const AIOutfitGenerator = () => {
                 isShopItem: false,
               }]
             : undefined;
+        const s6Personalization = buildStylist6Personalization();
         const bridgeBody = buildStylist6BridgeBody({
           request: {
             style: styleToUse,
@@ -1842,7 +2269,7 @@ const AIOutfitGenerator = () => {
               ? {temp: resolvedWeather.temp, condition: resolvedWeather.condition || 'clear'}
               : undefined,
             budget: shopBudget ? {amount: shopBudget.amount, currency: shopBudget.currency} : undefined,
-            preferences: useStylePreferenceStore.getState().preferences,
+            ...s6Personalization,
             recentSignatures: history.recentLookSignatures,
             excludeItemIds,
             requiredIds: baseItemId ? [baseItemId] : undefined,
@@ -1915,6 +2342,16 @@ const AIOutfitGenerator = () => {
           const judgeOk = /^stylist-[56]-/.test(String(data.generationVersion || '')) || passesStyleJudge(items as any[], styleToUse, `${occasionToUse} ${effectivePrompt || promptText || ''}`, resolvedWeather, baseItemId,useStylePreferenceStore.getState().preferences);
           // Hosted confidence is not a score from this client's occasion judge.
           const baseScore = outfitCoherence(items, stylingContext({style:styleToUse, occasion:occasionToUse, request:effectivePrompt||promptText, weather:resolvedWeather})).score;
+          const serverTips = Array.isArray(outfit.stylingTips) ? outfit.stylingTips : [];
+          // Server v205 sends no localized tips; fall back to the
+          // localized, evidence-grounded tips. Restated advice is
+          // suppressed below: never render the description as its own tip.
+          const resolvedTipsList = distinctStylingTips(
+            description,
+            serverTips.length ? serverTips : copy.tips,
+          );
+          const cleanEditorialStr = (val: unknown): string | undefined =>
+            typeof val === 'string' && val.trim().length > 0 ? val.trim() : undefined;
           return {
             ...outfit,
             // Truthful per-look provenance: only genuine reviewed looks get 'ai'.
@@ -1922,23 +2359,19 @@ const AIOutfitGenerator = () => {
             generationRequestId:data.generationRequestId,engineVersion:data.generationVersion,
             id: outfit.id || `look_${tapNonce}_${idx}`,
             description,
+            stylistNote: cleanEditorialStr(outfit.stylistNote),
+            whyItFlattersYou: cleanEditorialStr(outfit.whyItFlattersYou),
+            colorStory: cleanEditorialStr(outfit.colorStory),
+            silhouetteFormula: cleanEditorialStr(outfit.silhouetteFormula),
+            stylingTipsList: serverTips.length > 0 ? resolvedTipsList : undefined,
             stylingStyle: styleToUse,
             stylingOccasion: `${occasionToUse} ${effectivePrompt || promptText || ''}`,
             stylingRequest: effectivePrompt || promptText || '',
-            serverTips: Array.isArray(outfit.stylingTips) && outfit.stylingTips.length > 0,
+            serverTips: serverTips.length > 0,
             items,
             mainImage: items[0]?.image || items[0]?.imageUrl || outfit.mainImage || '',
             matchScore: judgeOk ? baseScore : Math.min(baseScore, 0.69),
-            stylingTips: (() => {
-              const serverTips = Array.isArray(outfit.stylingTips) ? outfit.stylingTips : [];
-              // Server v205 sends no localized tips; fall back to the
-              // localized, evidence-grounded tips. Restated advice is
-              // suppressed below: never render the description as its own tip.
-              const tips = serverTips.length ? serverTips : copy.tips;
-              // The screen bypasses stylingCopyParts, so restated advice is
-              // suppressed here: never render the description as its own tip.
-              return distinctStylingTips(description, tips).join(' ');
-            })(),
+            stylingTips: resolvedTipsList.join(' '),
             weather: resolvedWeather,
           };
         };
@@ -2422,42 +2855,138 @@ const AIOutfitGenerator = () => {
                     only an actual thumbs tap can persist this preference.
                     The first artist will use these user-authored ratings on
                     FUTURE generations; model photo criticism is different. */}
-                {canRecordLookFeedback(outfit) && (
-                  <View testID={`stylistTasteFeedback-${index}`} style={{
-                    flexDirection:'row',alignItems:'center',justifyContent:'space-between',
-                    gap:8,marginBottom:14,paddingVertical:8,paddingHorizontal:10,
-                    borderRadius:12,borderWidth:1,borderColor:'rgba(23,58,101,0.10)',
-                    backgroundColor:'rgba(23,58,101,0.04)',
-                  }}>
-                    <ScaledText style={{flex:1,fontSize:13,color:D.textPrimary}} minScale={0.75}>
-                      {lookRatings[`${outfit.generationRequestId}:${outfit.id}`]
-                        ? t('outfitMaker.feedbackSaved')
-                        : t('outfitMaker.feedbackPrompt')}
-                    </ScaledText>
-                    {([1,-1] as const).map(rating=>(
-                      <TouchableOpacity key={rating} testID={`stylistTaste-${rating===1?'like':'dislike'}-${index}`}
-                        accessibilityRole="button"
-                        accessibilityLabel={t(rating===1?'outfitMaker.feedbackLike':'outfitMaker.feedbackDislike')}
-                        accessibilityState={{selected:lookRatings[`${outfit.generationRequestId}:${outfit.id}`]===rating,
-                          disabled:feedbackPending!==null}}
-                        disabled={feedbackPending!==null}
-                        onPress={()=>void submitLookFeedback(outfit,rating)}
-                        style={{padding:10,borderRadius:10,
-                          opacity:feedbackPending?0.5:1,
-                          backgroundColor:lookRatings[`${outfit.generationRequestId}:${outfit.id}`]===rating
-                            ?'rgba(23,58,101,0.10)':'transparent'}}>
-                        <Ionicons name={rating===1?'thumbs-up-outline':'thumbs-down-outline'} size={22}
-                          color={lookRatings[`${outfit.generationRequestId}:${outfit.id}`]===rating?D.accent:D.textSecondary}/>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-                <OutfitSlotGrid
-                  items={outfit.items}
-                  weather={outfit.weather}
-                  priceCatalog={liveShopMapped}
-                  showBuyButtons={currentSource === 'shop'}
-                />
+                {canRecordLookFeedback(outfit) && (() => {
+                  const feedbackKey = `${outfit.generationRequestId}:${outfit.id}`;
+                  const activeRating = lookRatings[feedbackKey];
+                  const selectedTags = lookFeedbackTags[feedbackKey] || [];
+                  const feedbackChips = activeRating === -1
+                    ? DISLIKE_FEEDBACK_CHIPS
+                    : activeRating === 1
+                      ? LIKE_FEEDBACK_CHIPS
+                      : [];
+                  return (
+                    <View testID={`stylistTasteFeedback-${index}`} style={styles.feedbackCard}>
+                      <View style={styles.feedbackTopRow}>
+                        <ScaledText style={{ flex: 1, fontSize: 13, color: D.textPrimary }} minScale={0.75}>
+                          {activeRating
+                            ? t('outfitMaker.feedbackSaved')
+                            : t('outfitMaker.feedbackPrompt')}
+                        </ScaledText>
+                        {([1, -1] as const).map((rating) => (
+                          <TouchableOpacity
+                            key={rating}
+                            testID={`stylistTaste-${rating === 1 ? 'like' : 'dislike'}-${index}`}
+                            accessibilityRole="button"
+                            accessibilityLabel={t(rating === 1 ? 'outfitMaker.feedbackLike' : 'outfitMaker.feedbackDislike')}
+                            accessibilityState={{
+                              selected: activeRating === rating,
+                              disabled: feedbackPending !== null,
+                            }}
+                            disabled={feedbackPending !== null}
+                            onPress={() => void submitLookFeedback(outfit, rating)}
+                            style={{
+                              padding: 10,
+                              borderRadius: 10,
+                              opacity: feedbackPending ? 0.5 : 1,
+                              backgroundColor: activeRating === rating
+                                ? 'rgba(23,58,101,0.10)'
+                                : 'transparent',
+                            }}
+                          >
+                            <Ionicons
+                              name={rating === 1 ? 'thumbs-up-outline' : 'thumbs-down-outline'}
+                              size={22}
+                              color={activeRating === rating ? D.accent : D.textSecondary}
+                            />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      {feedbackChips.length > 0 ? (
+                        <View testID={`stylistFeedbackChips-${index}`} style={styles.feedbackChipsRow}>
+                          {feedbackChips.map((chip) => {
+                            const selected = selectedTags.includes(chip.id);
+                            return (
+                              <TouchableOpacity
+                                key={chip.id}
+                                testID={`stylistFeedbackChip-${chip.id}-${index}`}
+                                accessibilityRole="button"
+                                accessibilityState={{ selected, disabled: feedbackPending !== null }}
+                                disabled={feedbackPending !== null}
+                                activeOpacity={0.75}
+                                onPress={() => void toggleLookFeedbackChip(outfit, activeRating, chip)}
+                                style={[
+                                  styles.feedbackChip,
+                                  selected ? styles.feedbackChipSelected : null,
+                                ]}
+                              >
+                                <ScaledText
+                                  style={[
+                                    styles.feedbackChipText,
+                                    selected ? styles.feedbackChipTextSelected : null,
+                                  ]}
+                                >
+                                  {t(chip.labelKey, { defaultValue: chip.defaultLabel })}
+                                </ScaledText>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })()}
+                {(() => {
+                  const isStylist6Look = isStylist6CloudVersion(outfit.engineVersion)
+                    || isStylist6DevVersion(outfit.engineVersion);
+                  const activeSwapSlot = swappingSlotKey?.startsWith(`${outfit.id}:`)
+                    ? swappingSlotKey.slice(outfit.id.length + 1)
+                    : null;
+                  const undoEntry = swapUndoMap[outfit.id];
+                  const swapError = swapErrorByLook[outfit.id];
+                  return (
+                    <>
+                      <OutfitSlotGrid
+                        items={outfit.items}
+                        weather={outfit.weather}
+                        priceCatalog={liveShopMapped}
+                        showBuyButtons={currentSource === 'shop'}
+                        canSwapItems={isStylist6Look && STYLIST6_CLOUD_ENABLED}
+                        lockedItemId={baseItemId}
+                        swappingSlot={activeSwapSlot}
+                        onSwapSlot={isStylist6Look && STYLIST6_CLOUD_ENABLED
+                          ? (slot, item) => void handleSlotSwap(outfit, index, slot, item)
+                          : undefined}
+                      />
+                      {undoEntry ? (
+                        <View testID={`stylistSwapUndoBanner-${index}`} style={styles.swapStatusBanner}>
+                          <Ionicons name="checkmark-circle-outline" size={15} color={D.accent} />
+                          <ScaledText style={styles.swapStatusText} numberOfLines={1}>
+                            {t('outfitMaker.swappedPiece', {
+                              defaultValue: 'Swapped {{slot}}',
+                              slot: undoEntry.swappedSlot,
+                            })}
+                          </ScaledText>
+                          <TouchableOpacity
+                            testID={`stylistSwapUndo-${index}`}
+                            accessibilityRole="button"
+                            onPress={() => handleUndoSlotSwap(outfit.id, index)}
+                            style={styles.swapUndoBtn}
+                          >
+                            <ScaledText style={styles.swapUndoBtnText}>
+                              {t('common.undo', { defaultValue: 'Undo' })}
+                            </ScaledText>
+                          </TouchableOpacity>
+                        </View>
+                      ) : null}
+                      {swapError ? (
+                        <View testID={`stylistSwapError-${index}`} style={styles.swapErrorBanner}>
+                          <Ionicons name="alert-circle-outline" size={14} color="#B91C1C" />
+                          <ScaledText style={styles.swapErrorText}>{swapError}</ScaledText>
+                        </View>
+                      ) : null}
+                    </>
+                  );
+                })()}
 
                 {(() => {
                   const total = outfitTotalDisplay(outfit.items as any[], liveShopMapped, displayRates, resultBudget);
@@ -2499,15 +3028,82 @@ const AIOutfitGenerator = () => {
                   );
                 })()}
 
-                <ScaledText style={styles.outfitDesc} minScale={0.65}>{outfit.description}</ScaledText>
-
-                {!!outfit.stylingTips && <View style={styles.tipCard}>
-                  <LinearGradient colors={D.panelHighlight} style={StyleSheet.absoluteFill} />
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Ionicons name="sparkles-outline" size={16} color={D.accent} />
-                    <ScaledText style={styles.tipCardText}>{outfit.stylingTips}</ScaledText>
-                  </View>
-                </View>}
+                {(() => {
+                  const hasRichStylistNotes = Boolean(
+                    outfit.stylistNote
+                    || outfit.whyItFlattersYou
+                    || outfit.colorStory
+                    || (Array.isArray(outfit.stylingTipsList) && outfit.stylingTipsList.length > 0),
+                  );
+                  if (!hasRichStylistNotes) {
+                    return (
+                      <>
+                        <ScaledText style={styles.outfitDesc} minScale={0.65}>{outfit.description}</ScaledText>
+                        {!!outfit.stylingTips && (
+                          <View style={styles.tipCard}>
+                            <LinearGradient colors={D.panelHighlight} style={StyleSheet.absoluteFill} />
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <Ionicons name="sparkles-outline" size={16} color={D.accent} />
+                              <ScaledText style={styles.tipCardText}>{outfit.stylingTips}</ScaledText>
+                            </View>
+                          </View>
+                        )}
+                      </>
+                    );
+                  }
+                  const leadNote = outfit.stylistNote || outfit.description;
+                  const noteTips = distinctStylingTips(
+                    leadNote,
+                    outfit.stylingTipsList && outfit.stylingTipsList.length > 0
+                      ? outfit.stylingTipsList
+                      : (outfit.stylingTips ? [outfit.stylingTips] : []),
+                  ).slice(0, 3);
+                  return (
+                    <View testID={`stylistNotesCard-${index}`} style={styles.stylistNotesCard}>
+                      <View style={styles.stylistNotesHeader}>
+                        <Ionicons name="sparkles-outline" size={15} color={D.accent} />
+                        <ScaledText style={styles.stylistNotesHeading}>
+                          {t('outfitMaker.stylistNotes', { defaultValue: "Stylist's Notes" })}
+                        </ScaledText>
+                      </View>
+                      {!!leadNote && (
+                        <ScaledText style={styles.stylistNotesLead} minScale={0.75}>
+                          {leadNote}
+                        </ScaledText>
+                      )}
+                      {!!outfit.whyItFlattersYou && (
+                        <View style={styles.stylistNotesCallout}>
+                          <ScaledText style={styles.stylistNotesSubLabel}>
+                            {t('outfitMaker.whyItFlattersYou', { defaultValue: 'Why it flatters you' })}
+                          </ScaledText>
+                          <ScaledText style={styles.stylistNotesBody} minScale={0.75}>
+                            {outfit.whyItFlattersYou}
+                          </ScaledText>
+                        </View>
+                      )}
+                      {!!outfit.colorStory && (
+                        <View style={styles.stylistNotesMetaRow}>
+                          <Ionicons name="color-palette-outline" size={14} color="#173A65" />
+                          <ScaledText style={styles.stylistNotesBody} minScale={0.75}>
+                            {outfit.colorStory}
+                          </ScaledText>
+                        </View>
+                      )}
+                      {noteTips.length > 0 ? (
+                        <View style={styles.stylistNotesTipsList}>
+                          {noteTips.map((tip, tipIdx) => (
+                            <View key={`tip-${tipIdx}`} style={styles.stylistNotesTipItem}>
+                              <ScaledText style={styles.stylistNotesBullet}>•</ScaledText>
+                              <ScaledText style={styles.stylistNotesBody} minScale={0.75}>
+                                {tip}
+                              </ScaledText>
+                            </View>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })()}
 
 
                 <View style={styles.actionRow}>
@@ -2543,6 +3139,20 @@ const AIOutfitGenerator = () => {
                     </ScaledText>
                   </TouchableOpacity>
                 </View>
+
+                <TouchableOpacity
+                  testID={`stylistTryOn-${index}`}
+                  activeOpacity={0.8}
+                  style={styles.tryOnAction}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('outfitMaker.tryOnLook', { defaultValue: 'Try On Look' })}
+                  onPress={() => handleTryOnLook(outfit)}
+                >
+                  <Ionicons name="body-outline" size={17} color="#0A1931" />
+                  <ScaledText style={styles.tryOnActionText} minScale={0.7}>
+                    {t('outfitMaker.tryOnLook', { defaultValue: 'Try On Look' })}
+                  </ScaledText>
+                </TouchableOpacity>
                 <BetaFeedbackButton feature="outfit" />
               </Animated.View>
             ))}
@@ -4672,6 +5282,183 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: '#64748B',
     textAlign: 'center',
+  },
+  feedbackCard: {
+    marginBottom: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(23,58,101,0.10)',
+    backgroundColor: 'rgba(23,58,101,0.04)',
+  },
+  feedbackTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  feedbackChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(23,58,101,0.10)',
+  },
+  feedbackChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 99,
+    backgroundColor: 'rgba(255,255,255,0.86)',
+    borderWidth: 1,
+    borderColor: 'rgba(23,58,101,0.16)',
+  },
+  feedbackChipSelected: {
+    backgroundColor: '#0A1931',
+    borderColor: '#0A1931',
+  },
+  feedbackChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#173A65',
+  },
+  feedbackChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  swapStatusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: -6,
+    marginBottom: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: 'rgba(43,92,233,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(43,92,233,0.18)',
+  },
+  swapStatusText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0A1931',
+  },
+  swapUndoBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 99,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(23,58,101,0.16)',
+  },
+  swapUndoBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2B5CE9',
+  },
+  swapErrorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -6,
+    marginBottom: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: 'rgba(185,28,28,0.18)',
+  },
+  swapErrorText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#991B1B',
+  },
+  stylistNotesCard: {
+    marginTop: 8,
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(23,58,101,0.10)',
+    gap: 8,
+  },
+  stylistNotesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  stylistNotesHeading: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: '#173A65',
+  },
+  stylistNotesLead: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#0A1931',
+    fontWeight: '500',
+  },
+  stylistNotesCallout: {
+    borderLeftWidth: 2,
+    borderLeftColor: '#2B5CE9',
+    paddingLeft: 10,
+    gap: 2,
+  },
+  stylistNotesSubLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2B5CE9',
+  },
+  stylistNotesMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  stylistNotesTipsList: {
+    gap: 4,
+    paddingTop: 2,
+  },
+  stylistNotesTipItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  stylistNotesBullet: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#2B5CE9',
+    fontWeight: '700',
+  },
+  stylistNotesBody: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#334155',
+  },
+  tryOnAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderRadius: LiquidGlass2026Theme.radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(23,58,101,0.16)',
+  },
+  tryOnActionText: {
+    color: '#0A1931',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
 

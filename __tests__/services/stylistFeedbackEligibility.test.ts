@@ -7,7 +7,14 @@
  * (item_ids, look_signature) added by migration 20261113120000, bounded and
  * degraded client-side so a malformed look can never fail the upsert.
  */
-import { canRecordLookFeedback, recordLookFeedback, lookFeedbackItemIds, buildLookFeedbackSignature } from '../../src/services/stylistFeedback';
+import {
+  canRecordLookFeedback,
+  recordLookFeedback,
+  submitStylistLookFeedback,
+  resolveFeedbackReason,
+  lookFeedbackItemIds,
+  buildLookFeedbackSignature,
+} from '../../src/services/stylistFeedback';
 
 jest.mock('../../lib/supabase', () => {
   const upsert = jest.fn();
@@ -133,5 +140,104 @@ describe('look feedback write payload (gate D linking columns)', () => {
   it('surfaces storage failures as feedback_unavailable', async () => {
     upsertMock.mockResolvedValue({ error: { message: 'rls denied' } });
     await expect(recordLookFeedback(valid, 1)).rejects.toThrow('feedback_unavailable');
+  });
+});
+
+describe('slot-level and structured reason feedback', () => {
+  beforeEach(() => {
+    upsertMock.mockReset();
+    upsertMock.mockResolvedValue({ error: null });
+  });
+
+  it('maps structured thumbs-down tags to DB-compliant reasons instead of hardcoding coherence', () => {
+    expect(resolveFeedbackReason(-1, { feedbackTags: ['wrong_shoes'] })).toBe('footwear');
+    expect(resolveFeedbackReason(-1, { feedbackTags: ['wrong_color'] })).toBe('color');
+    expect(resolveFeedbackReason(-1, { feedbackTags: ['too_formal'] })).toBe('occasion');
+    expect(resolveFeedbackReason(-1, { feedbackTags: ['not_my_fit'] })).toBe('fit');
+    expect(resolveFeedbackReason(-1, { targetSlot: 'shoes' })).toBe('footwear');
+    expect(resolveFeedbackReason(-1, { feedbackTags: ['over_budget'] })).toBe('coherence');
+    expect(resolveFeedbackReason(-1)).toBe('coherence');
+    expect(resolveFeedbackReason(1, { feedbackTags: ['love_palette', 'great_fit'] })).toBe('like');
+  });
+
+  it('submits target_slot, feedback_tags, and swapped_from_sku via submitStylistLookFeedback', async () => {
+    await submitStylistLookFeedback(valid, -1, {
+      targetSlot: 'shoes',
+      feedbackTags: ['wrong_shoes', 'Wrong Color', 'wrong_shoes', 'invalid tag!'],
+      swappedFromSku: '  sku-shoe-old-42  ',
+    });
+    expect(upsertMock).toHaveBeenCalledTimes(1);
+    const [payload] = upsertMock.mock.calls[0];
+    expect(payload).toMatchObject({
+      request_id: valid.generationRequestId,
+      look_id: 'outfit_1',
+      rating: -1,
+      reason: 'footwear',
+      target_slot: 'shoes',
+      feedback_tags: ['wrong_shoes', 'wrong_color'],
+      swapped_from_sku: 'sku-shoe-old-42',
+    });
+  });
+
+  it('supports object-input signature and positive structured tags on thumbs-up', async () => {
+    await submitStylistLookFeedback({
+      look: valid,
+      rating: 1,
+      targetSlot: 'outerwear',
+      feedbackTags: ['love_palette', 'great_fit'],
+    });
+    expect(upsertMock).toHaveBeenCalledTimes(1);
+    const [payload] = upsertMock.mock.calls[0];
+    expect(payload).toMatchObject({
+      rating: 1,
+      reason: 'like',
+      target_slot: 'outerwear',
+      feedback_tags: ['love_palette', 'great_fit'],
+    });
+    expect(payload.swapped_from_sku).toBeUndefined();
+  });
+
+  it('infers shoes target_slot for wrong_shoes when targetSlot is omitted, and drops invalid slots', async () => {
+    await submitStylistLookFeedback(valid, -1, {
+      feedbackTags: ['wrong_shoes'],
+    });
+    expect(upsertMock.mock.calls[0][0]).toMatchObject({
+      reason: 'footwear',
+      target_slot: 'shoes',
+      feedback_tags: ['wrong_shoes'],
+    });
+
+    upsertMock.mockClear();
+    await submitStylistLookFeedback(valid, -1, {
+      targetSlot: 'invalid_slot' as any,
+      feedbackTags: ['too_formal'],
+    });
+    const [payload] = upsertMock.mock.calls[0];
+    expect(payload.reason).toBe('occasion');
+    expect(payload.target_slot).toBeUndefined();
+    expect(payload.feedback_tags).toEqual(['too_formal']);
+  });
+
+  it('retries cleanly without additive columns if DB schema has not migrated yet', async () => {
+    upsertMock
+      .mockResolvedValueOnce({
+        error: { code: 'PGRST204', message: "Could not find the 'target_slot' column of 'stylist_look_feedback'" },
+      })
+      .mockResolvedValueOnce({ error: null });
+
+    await submitStylistLookFeedback(valid, -1, {
+      targetSlot: 'shoes',
+      feedbackTags: ['wrong_shoes'],
+      swappedFromSku: 'sku-old',
+    });
+    expect(upsertMock).toHaveBeenCalledTimes(2);
+    expect(upsertMock.mock.calls[0][0]).toHaveProperty('target_slot', 'shoes');
+    expect(upsertMock.mock.calls[1][0]).toMatchObject({
+      rating: -1,
+      reason: 'footwear',
+    });
+    expect(upsertMock.mock.calls[1][0].target_slot).toBeUndefined();
+    expect(upsertMock.mock.calls[1][0].feedback_tags).toBeUndefined();
+    expect(upsertMock.mock.calls[1][0].swapped_from_sku).toBeUndefined();
   });
 });

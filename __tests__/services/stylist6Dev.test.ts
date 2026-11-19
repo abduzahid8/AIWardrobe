@@ -758,3 +758,407 @@ describe('photo-editor curated partial deck honesty',()=>{
       visualReceipt:{...response.visualReceipt,displayedJudged:1}},2)).toBe(false);
   });
 });
+
+describe('Stylist 6 personalization payload forwarding & sanitization', () => {
+  const mockInvoke = jest.fn();
+  beforeEach(() => {
+    mockInvoke.mockReset();
+    jest.resetModules();
+    jest.doMock('../../lib/supabase', () => ({
+      supabase: {
+        auth: { getSession: async () => ({ data: { session: { access_token: 'test-token' } } }) },
+        functions: { invoke: mockInvoke },
+        from: jest.fn(),
+      },
+    }));
+  });
+
+  test('normalizes style colors (#0A1931 -> navy, gray -> grey), presentation, and owned wardrobe summary', () => {
+    const mod = loadDevModule();
+    expect(mod.normalizeStylistColorToken('#0A1931')).toBe('navy');
+    expect(mod.normalizeStylistColorToken('gray')).toBe('grey');
+    expect(mod.normalizeStylist6Preferences({
+      favoriteColors: ['#0A1931', 'gray', 'navy'],
+      avoidColors: ['#0a1931', 'pink'],
+      dislikedPatterns: ['Animal', 'floral'],
+      fitPreference: 'fitted',
+    })).toEqual({
+      favoriteColors: ['navy', 'grey'],
+      avoidColors: ['navy', 'pink'],
+      dislikedPatterns: ['animal', 'floral'],
+      fitPreference: 'fitted',
+    });
+
+    expect(mod.deriveStylist6Presentation('male')).toBe('menswear');
+    expect(mod.deriveStylist6Presentation('female')).toBe('womenswear');
+    expect(mod.deriveStylist6Presentation('other')).toBe('unisex');
+    expect(mod.deriveStylist6Presentation('prefer_not_to_say')).toBeUndefined();
+
+    const summary = mod.summarizeOwnedWardrobeForStylist6([
+      { primaryColor: '#0A1931', category: 'outerwear', brand: 'Massimo Dutti', occasions: ['work'] },
+      { primaryColor: 'gray', category: 'bottom', brand: 'Massimo Dutti', occasions: ['work'] },
+      { primaryColor: 'white', category: 'top', brand: 'Uniqlo', occasions: ['casual'] },
+    ]);
+    expect(summary).toEqual({
+      totalItems: 3,
+      dominantColors: ['grey', 'navy', 'white'],
+      dominantCategories: ['bottom', 'outerwear', 'top'],
+      topBrands: ['Massimo Dutti', 'Uniqlo'],
+      formalityMix: { smart: 0.67, casual: 0.33 },
+    });
+    expect(mod.summarizeOwnedWardrobeForStylist6([])).toBeUndefined();
+  });
+
+  test('forwards personalization fields cleanly and omits PII, empty fields, and unconsented appearance data', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const mod = loadDevModule();
+    mockInvoke.mockResolvedValue({
+      data: { success: true, generationVersion: 'stylist-6-cloud-staging-1', outfits: [] },
+      error: null,
+    });
+
+    const validSha = 'a'.repeat(64);
+    await mod.invokeStylist6Cloud({
+      request: {
+        style: 'classic',
+        occasion: 'Work',
+        brief: 'Client presentation',
+        presentation: 'menswear',
+        bodyProfile: {
+          gender: 'male',
+          heightCm: 182,
+          weightKg: 78,
+          bodyType: 'mesomorph',
+          measurements: { chest: 102, waist: 82 },
+          fitPreference: 'fitted',
+          // Hostile PII properties must be stripped
+          ...({ userId: 'secret-user', email: 'private@example.com', photoUrl: 'https://private/selfie.jpg' } as any),
+        },
+        appearanceProfile: {
+          consentGranted: true,
+          skinUndertone: 'warm',
+          skinDepth: 'medium',
+          contrastLevel: 'medium',
+          colorSeason: 'deep_autumn',
+          flatteringColors: ['#0A1931', 'olive'],
+          avoidColors: ['neon'],
+          metalTone: 'gold',
+          photoSha256: validSha,
+          ...({ photoUrl: 'https://private/selfie.jpg' } as any),
+        },
+        ownedWardrobeSummary: {
+          totalItems: 14,
+          dominantColors: ['#0A1931', 'beige'],
+          dominantCategories: ['top', 'bottom'],
+          topBrands: ['Zara'],
+          formalityMix: { smart: 0.6, casual: 0.4 },
+        },
+        dislikedPatterns: ['Animal', 'animal', ''],
+      },
+    });
+
+    const sentRequest = mockInvoke.mock.calls[0][1].body.request;
+    expect(sentRequest.presentation).toBe('menswear');
+    expect(sentRequest.bodyProfile).toEqual({
+      gender: 'male',
+      heightCm: 182,
+      weightKg: 78,
+      bodyType: 'mesomorph',
+      measurements: { chest: 102, waist: 82 },
+      fitPreference: 'fitted',
+    });
+    expect(sentRequest.bodyProfile.userId).toBeUndefined();
+    expect(sentRequest.bodyProfile.email).toBeUndefined();
+    expect(sentRequest.bodyProfile.photoUrl).toBeUndefined();
+    expect(sentRequest.appearanceProfile).toEqual({
+      consentGranted: true,
+      skinUndertone: 'warm',
+      skinDepth: 'medium',
+      contrastLevel: 'medium',
+      colorSeason: 'deep_autumn',
+      flatteringColors: ['navy', 'olive'],
+      avoidColors: ['neon'],
+      metalTone: 'gold',
+      photoSha256: validSha,
+    });
+    expect(sentRequest.appearanceProfile.photoUrl).toBeUndefined();
+    expect(sentRequest.ownedWardrobeSummary).toEqual({
+      totalItems: 14,
+      dominantColors: ['navy', 'beige'],
+      dominantCategories: ['top', 'bottom'],
+      topBrands: ['Zara'],
+      formalityMix: { smart: 0.6, casual: 0.4 },
+    });
+    expect(sentRequest.dislikedPatterns).toEqual(['animal']);
+
+    // Without consentGranted=true, appearanceProfile is completely omitted!
+    mockInvoke.mockClear();
+    await mod.invokeStylist6Cloud({
+      request: {
+        style: 'classic',
+        occasion: 'Work',
+        brief: '',
+        appearanceProfile: {
+          consentGranted: false,
+          skinUndertone: 'cool',
+          colorSeason: 'winter',
+        },
+        dislikedPatterns: [],
+      },
+    });
+    const unconsentedReq = mockInvoke.mock.calls[0][1].body.request;
+    expect(unconsentedReq.appearanceProfile).toBeUndefined();
+    expect(unconsentedReq.dislikedPatterns).toBeUndefined();
+    expect(unconsentedReq.bodyProfile).toBeUndefined();
+    expect(unconsentedReq.ownedWardrobeSummary).toBeUndefined();
+  });
+});
+
+describe('Stylist 6 surgical slot swap & opt-in appearance analysis helpers', () => {
+  const mockInvoke = jest.fn();
+  beforeEach(() => {
+    mockInvoke.mockReset();
+    jest.resetModules();
+    jest.doMock('../../lib/supabase', () => ({
+      supabase: {
+        auth: { getSession: async () => ({ data: { session: { access_token: 'session-token' } } }) },
+        functions: { invoke: mockInvoke },
+        from: jest.fn(),
+      },
+    }));
+  });
+
+  const makeShopItem = (id: string, macroCategory: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    macroCategory,
+    name: `${macroCategory} ${id}`,
+    imageUrl: `https://merchant.example/${id}.jpg`,
+    image: `https://merchant.example/${id}.jpg`,
+    isShopItem: true,
+    isWardrobe: false,
+    price: 120,
+    currency: 'USD',
+    shopUrl: `https://merchant.example/buy/${id}`,
+    ...extra,
+  });
+
+  const baseLook = () => ({
+    id: 'outfit_1',
+    items: [
+      makeShopItem('sku-top-1', 'top'),
+      makeShopItem('sku-outer-1', 'outerwear'),
+      makeShopItem('sku-bottom-1', 'bottom'),
+      makeShopItem('sku-shoes-1', 'shoes'),
+    ],
+  });
+
+  test('requestStylist6SlotSwap calls action=swap_slot and verifies a strict 4-SKU replacement', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const mod = loadDevModule();
+    const swappedLook = {
+      id: 'outfit_1',
+      items: [
+        makeShopItem('sku-top-1', 'top'),
+        makeShopItem('sku-outer-1', 'outerwear'),
+        makeShopItem('sku-bottom-1', 'bottom'),
+        makeShopItem('sku-shoes-2', 'shoes', { price: 145 }),
+      ],
+    };
+    mockInvoke.mockResolvedValue({
+      data: {
+        success: true,
+        sourceMode: 'catalog',
+        generationVersion: 'stylist-6-cloud-staging-1',
+        outfit: swappedLook,
+      },
+      error: null,
+    });
+
+    const res = await mod.requestStylist6SlotSwap({
+      outfit: baseLook(),
+      targetSlot: 'shoes',
+      reason: 'Prefer suede loafers',
+      context: { style: 'classic', occasion: 'Work', presentation: 'menswear', sourceMode: 'catalog' },
+      excludedIds: ['sku-shoes-0'],
+      authToken: 'explicit-token',
+    });
+
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    const [, invokeOpts] = mockInvoke.mock.calls[0];
+    expect(invokeOpts.headers).toEqual({ Authorization: 'Bearer explicit-token' });
+    expect(invokeOpts.body).toMatchObject({
+      action: 'swap_slot',
+      targetSlot: 'shoes',
+      reason: 'Prefer suede loafers',
+      excludedIds: ['sku-shoes-0', 'sku-shoes-1'],
+      context: { style: 'classic', occasion: 'Work', presentation: 'menswear', sourceMode: 'catalog' },
+    });
+    expect(res.swappedSlot).toBe('shoes');
+    expect(res.previousItemId).toBe('sku-shoes-1');
+    expect(res.replacementItem.id).toBe('sku-shoes-2');
+    expect(res.outfit.items).toHaveLength(4);
+  });
+
+  test('requestStylist6SlotSwap fails closed when response drops a SKU, returns same SKU, or alters locked slots', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const mod = loadDevModule();
+
+    // 1. Only 3 items returned in catalog mode
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        success: true,
+        sourceMode: 'catalog',
+        outfit: { id: 'outfit_1', items: baseLook().items.slice(0, 3) },
+      },
+      error: null,
+    });
+    await expect(mod.requestStylist6SlotSwap({
+      outfit: baseLook(),
+      targetSlot: 'shoes',
+    })).rejects.toMatchObject({ code: 'stylist6_swap_invalid_outfit' });
+
+    // 2. Returned the exact same shoe SKU
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        success: true,
+        sourceMode: 'catalog',
+        outfit: baseLook(),
+      },
+      error: null,
+    });
+    await expect(mod.requestStylist6SlotSwap({
+      outfit: baseLook(),
+      targetSlot: 'shoes',
+    })).rejects.toMatchObject({ code: 'stylist6_swap_invalid_outfit' });
+
+    // 3. Silently changed a locked non-target slot (outerwear)
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        success: true,
+        sourceMode: 'catalog',
+        outfit: {
+          id: 'outfit_1',
+          items: [
+            makeShopItem('sku-top-1', 'top'),
+            makeShopItem('sku-outer-MUTATED', 'outerwear'),
+            makeShopItem('sku-bottom-1', 'bottom'),
+            makeShopItem('sku-shoes-2', 'shoes'),
+          ],
+        },
+      },
+      error: null,
+    });
+    await expect(mod.requestStylist6SlotSwap({
+      outfit: baseLook(),
+      targetSlot: 'shoes',
+    })).rejects.toMatchObject({ code: 'stylist6_swap_invalid_outfit' });
+  });
+
+  test('requestStylist6AppearanceAnalysis enforces opt-in consent before any network call and sanitizes output', async () => {
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const mod = loadDevModule();
+
+    const denied = await mod.requestStylist6AppearanceAnalysis({
+      photoUrl: 'https://cdn.example/selfie.jpg',
+      consentGranted: false,
+    });
+    expect(denied).toEqual({ status: 'consent_required', appearance: null });
+    expect(mockInvoke).not.toHaveBeenCalled();
+
+    await expect(mod.requestStylist6AppearanceAnalysis({
+      photoUrl: 'http://insecure.example/selfie.jpg',
+      consentGranted: true,
+    })).rejects.toMatchObject({ code: 'invalid_stylist6_request' });
+
+    const sha = 'b'.repeat(64);
+    mockInvoke.mockResolvedValueOnce({
+      data: {
+        success: true,
+        appearance: {
+          consentGranted: true,
+          skinUndertone: 'Cool',
+          colorSeason: 'True Winter',
+          flatteringColors: ['#0A1931', 'white'],
+          metalTone: 'silver',
+          photoSha256: sha,
+          rawPhotoBytes: 'MUST_BE_STRIPPED',
+        },
+      },
+      error: null,
+    });
+
+    const analyzed = await mod.requestStylist6AppearanceAnalysis({
+      photoUrl: 'https://cdn.example/selfie.jpg',
+      consentGranted: true,
+      authToken: 'tok-123',
+    });
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    expect(mockInvoke.mock.calls[0][1].body).toEqual({
+      action: 'analyze_appearance',
+      photoUrl: 'https://cdn.example/selfie.jpg',
+      consentGranted: true,
+    });
+    expect(analyzed).toEqual({
+      status: 'analyzed',
+      appearance: {
+        consentGranted: true,
+        skinUndertone: 'cool',
+        colorSeason: 'true winter',
+        flatteringColors: ['navy', 'white'],
+        metalTone: 'silver',
+        photoSha256: sha,
+      },
+    });
+  });
+
+  test('requestStylist6SlotSwap enforces release gate, surfaces timeouts, and buildStylist6BridgeBody sanitizes personalization', async () => {
+    (globalThis as any).__DEV__ = false;
+    delete process.env.EXPO_PUBLIC_STYLIST6_BETA;
+    delete process.env.EXPO_PUBLIC_APP_STAGE;
+    const disabledMod = loadDevModule();
+    await expect(disabledMod.requestStylist6SlotSwap({
+      outfit: baseLook(),
+      targetSlot: 'shoes',
+    })).rejects.toMatchObject({ code: 'stylist6_release_disabled' });
+
+    (globalThis as any).__DEV__ = true;
+    process.env.EXPO_PUBLIC_STYLIST6_DEV_BRIDGE = 'true';
+    const mod = loadDevModule();
+
+    // Timeout handling
+    mockInvoke.mockImplementationOnce((_fn: string, opts: { signal?: AbortSignal }) => new Promise((_resolve, reject) => {
+      opts?.signal?.addEventListener('abort', () => {
+        const err = new Error('Aborted');
+        err.name = 'AbortError';
+        reject(err);
+      });
+    }));
+    await expect(mod.requestStylist6SlotSwap({
+      outfit: baseLook(),
+      targetSlot: 'shoes',
+      timeoutMs: 500,
+    })).rejects.toMatchObject({ code: 'request_timeout', stage: 'stylist6_swap' });
+
+    // Local bridge also forwards sanitized personalization & omits unconsented appearance
+    const bridgeBody = mod.buildStylist6BridgeBody({
+      request: {
+        style: 'classic',
+        occasion: 'Work',
+        brief: '',
+        presentation: 'womenswear',
+        bodyProfile: { gender: 'female', heightCm: 168, fitPreference: 'balanced' },
+        appearanceProfile: { consentGranted: false, skinUndertone: 'warm' },
+        dislikedPatterns: ['Plaid', 'plaid'],
+      },
+      catalogRows: [],
+    });
+    expect(bridgeBody.request.presentation).toBe('womenswear');
+    expect(bridgeBody.request.bodyProfile).toEqual({ gender: 'female', heightCm: 168, fitPreference: 'balanced' });
+    expect(bridgeBody.request.appearanceProfile).toBeUndefined();
+    expect(bridgeBody.request.dislikedPatterns).toEqual(['plaid']);
+  });
+});
