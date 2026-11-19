@@ -174,6 +174,11 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     skuCompositionParallel:f.skuCompositionReceipt?.parallel===true,
     skuCompositionAiFirst:f.skuCompositionReceipt?.aiFirst===true,
     skuCompositionRetrievalSkipped:f.skuCompositionReceipt?.retrievalSkipped===true,
+    // A real PHOTO judgement is not implied by this count; it tracks
+    // independently source-verified relationship variants BEFORE the first
+    // original-photo critic. No merchant or user identities ever logged.
+    skuCompositionHistoryCreativeAuditions:
+      safe(f.skuCompositionReceipt?.photoHistoryCreativeAuditions,8),
     skuCompositionStudio:['nemotron','cross_lab_kimi',
       'nemotron_fallback','nemotron_plus_kimi_initial',
       'cross_lab_kimi_initial_fallback']
@@ -209,8 +214,11 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
       'personal_context_excluded','context_unsupported',
     ].includes(f.photoHistoryStatus)?f.photoHistoryStatus:'not_run',
     photoHistoryExamples:safe(f.photoHistoryExamples,240),
-    photoHistoryHoldoutWins:safe(f.photoHistoryHoldoutWins,16),
-    photoHistoryHoldoutPairs:safe(f.photoHistoryHoldoutPairs,16),
+    // Four-fold OOF PHOTO comparisons can number far more than the old
+    // two-pair holdout; a 16-pair cap hid every genuinely validated
+    // cross-request model in the live safety log as NULL.
+    photoHistoryHoldoutWins:safe(f.photoHistoryHoldoutWins,16000),
+    photoHistoryHoldoutPairs:safe(f.photoHistoryHoldoutPairs,16000),
     photoHistoryPriorConsidered:f.photoHistoryPriorConsidered===true,
     photoJournalScope:[
       'not_enabled','no_photo_evidence','personal_context_excluded','eligible',
