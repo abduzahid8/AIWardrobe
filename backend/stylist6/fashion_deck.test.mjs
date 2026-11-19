@@ -2951,11 +2951,14 @@ test('held-out validated real-PHOTO fashion reward changes FIRST source-bound au
     .photoHistoryCreativeAuditions>0,
     'validated real photo experience must reach source-verified creative alternatives');
   assert.ok(inspected.length<=8);
-  assert.ok(inspected.some(look=>
-    !original.has(look.items.map(it=>it.id).sort().join('|'))),
+  // The visual provider sees an anonymized product-photo menu, NOT the
+  // privileged source item array. Compare the server-created identity hash
+  // without expecting raw merchant SKU fields in the independent critic.
+  const originallyComposedIds=new Set([...original].map(identity=>
+    's6_ai_'+createHash('sha256').update(identity).digest('hex').slice(0,16)));
+  assert.ok(inspected.some(look=>!originallyComposedIds.has(look.id)),
     'one of the FIRST real-photo inspections must test a learned new four-product relationship');
-  assert.ok(inspected.every(x=>x.items.length===4&&
-    x.items.every(it=>it.isShopItem===true)));
+  assert.ok(inspected.every(x=>x.products.length===4));
   assert.ok(deck.outfits.every(look=>inspected.some(x=>x.id===look.id)),
     'the learned prior is never permission to display unjudged merchandise');
 });
