@@ -2453,6 +2453,36 @@ export async function recommendFashionDeck({
           modelFashionSelection.status='insufficient_admitted_selection';
       }
     }
+    // IMPORTANT: the AI-first creative PHOTO learner already made additional
+    // source-authorized, full-look proposals before legacy retrieval. The
+    // normal model branch reconstructs its original six outfit drafts from
+    // `parallelComposition.promise`; previously this SILENTLY discarded
+    // every photo-history remix despite logging that they had been created.
+    // Only source-verified alternatives which can fit the same eight-photo
+    // budget are forwarded to the *independent* original-image jury. They
+    // are not approved for display and never replace a user-pinned item.
+    let photoHistoryReachedPhoto=0;
+    if(modelLed&&modelChosen&&aiFirstFastTrack&&
+        request.sourceMode==='catalog'&&!requiredIds.length&&
+        photoHistoryCreativeAuditions>0){
+      const already=new Set(candidates.map(look=>look.id));
+      const learned=sourceVerifiedAiFirst.slice(-photoHistoryCreativeAuditions);
+      for(const look of learned){
+        if(candidates.length>=reviewedLimit)break;
+        if(!look?.id||already.has(look.id)||
+            !eligibleCatalogFourItemPhotoCandidate(look))continue;
+        if(explicitColorPreferences&&
+            photographicPaletteEvidence(look,context.preferences,requiredIds).blocked)
+          continue;
+        if(!await permitted(look))continue;
+        already.add(look.id);
+        candidates.push(look);
+        photoHistoryReachedPhoto++;
+      }
+    }
+    // Count source-admitted history remixes and those ACTUALLY promoted to
+    // the original-photo shortlist separately. Neither is a beauty verdict.
+    skuCompositionReceipt.photoHistoryReachedPhoto=photoHistoryReachedPhoto;
     if(modelLed)modelFashionSelection.skuCompositionReceipt=skuCompositionReceipt;
     if(!modelChosen)for(const look of selected) {
       if (explicitColorPreferences) {
