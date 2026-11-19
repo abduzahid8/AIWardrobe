@@ -3,6 +3,7 @@
 import { shortlistRetrievalDeck, evaluateVisualShortlist, selectVisualDeck, independentOutfitDirection, outerwearArchetype } from './prototype.mjs';
 import { sourceBoundCompositionPool, sourceVerifyComposedOutfits } from './sku_composer_ai.mjs';
 import {trainPhotoFeedbackTeacher,photoTaughtRescueOrder} from './photo_feedback_teacher.mjs';
+import {anonymousPhotoJournalAllowed} from './photo_reward_journal.mjs';
 import { MAX_VISUAL_CANDIDATES, verifiedAvoidColors } from './visual_critic_hosted.mjs';
 import { baseProductId } from './catalog_adapter.mjs';
 import { describeGarment, prepareGarment } from '../../src/domain/garmentDescriptor.ts';
@@ -3265,13 +3266,9 @@ export async function recommendFashionDeck({
       // owned wardrobe anchors and private styling contexts are excluded:
       // the derived training signal must represent general catalog PHOTO
       // qualities, never a different wearer's personal dislikes.
-      const prefs=context.preferences||{};
-      const hasPersonalConstraints=['avoidColors','favoriteColors','likedPatterns',
-        'dislikedPatterns'].some(k=>Array.isArray(prefs[k])&&prefs[k].length>0)||
-        (typeof prefs.fitPreference==='string'&&prefs.fitPreference.trim().length>0);
-      if(typeof photoRewardSink==='function'&&
-          context.sourceMode==='catalog'&&requiredIds.length===0&&
-          !hasPersonalConstraints&&primaryCritiques.length>0){
+      if(typeof photoRewardSink==='function'&&primaryCritiques.length>0&&
+          anonymousPhotoJournalAllowed({sourceMode:context.sourceMode,
+            requiredIds,preferences:context.preferences})){
         try{await photoRewardSink({
           looks:photoJournalLooks,decisions:photoJournalDecisions,
           critiques:primaryCritiques,

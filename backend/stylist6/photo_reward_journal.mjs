@@ -35,6 +35,30 @@ const validQuality=q=>Number.isFinite(q)&&q>=0&&q<=1;
 const hash=(key,type,value)=>createHmac('sha256',key)
   .update(PHOTO_REWARD_JOURNAL_VERSION+'\0'+type+'\0'+value).digest('hex');
 
+/** Privacy boundary for generalized PHOTO data, never a fashion rule.
+ * Fit 'balanced' with empty preference arrays is the actual app default;
+ * it must NOT silently prevent all real staging catalog QA examples.
+ */
+export function anonymousPhotoJournalAllowed({sourceMode,requiredIds,preferences}={}){
+  if(sourceMode!=='catalog'||!Array.isArray(requiredIds)||requiredIds.length>0)
+    return false;
+  const p=preferences&&typeof preferences==='object'&&!Array.isArray(preferences)
+    ?preferences:{};
+  const personalArrays=['avoidColors','favoriteColors','likedPatterns',
+    'dislikedPatterns','favoriteBrands','avoidBrands','primaryOccasions',
+    'styleGoals'];
+  if(personalArrays.some(k=>Array.isArray(p[k])&&p[k].length>0))return false;
+  if(['bodyType','workDressCode'].some(k=>typeof p[k]==='string'&&p[k].length>0))
+    return false;
+  if(p.prefersSustainable===true)return false;
+  if(typeof p.fitPreference==='string'&&p.fitPreference.trim()!=='balanced')
+    return false;
+  const known=new Set([...personalArrays,'bodyType','workDressCode',
+    'prefersSustainable','fitPreference','priceRange','stylePersonality']);
+  if(Object.keys(p).some(k=>!known.has(k)))return false;
+  return true;
+}
+
 /** Bounded, anonymized journal inputs ONLY from actual independent photo
  * reviews. The helper never fetches source images or connects to a DB.
  * Context hashes are deterministic *inside* the owner's server secret,

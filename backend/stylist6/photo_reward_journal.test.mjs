@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {compilePhotoRewardExamples,PHOTO_REWARD_JOURNAL_VERSION} from './photo_reward_journal.mjs';
+import {compilePhotoRewardExamples,anonymousPhotoJournalAllowed,PHOTO_REWARD_JOURNAL_VERSION} from './photo_reward_journal.mjs';
 
 const SECRET='staging-private-hmac-secret-please-never-commit-value';
 const SLOTS=['top','outerwear','bottom','shoes'];
@@ -108,4 +108,26 @@ test('personal wardrobe, missing layer, duplicate real source items and unknown 
     });
     assert.equal(rows.length,0);
   }
+});
+
+test('actual RN default balanced preferences permit only anonymous staging catalog fashion evidence',()=>{
+  const base={sourceMode:'catalog',requiredIds:[],preferences:{
+    fitPreference:'balanced',favoriteColors:[],avoidColors:[],
+    likedPatterns:[],dislikedPatterns:[],favoriteBrands:[],avoidBrands:[],
+    primaryOccasions:[],styleGoals:[],prefersSustainable:false,
+    priceRange:{min:0,max:500,currency:'USD'},
+  }};
+  assert.equal(anonymousPhotoJournalAllowed(base),true);
+  for(const altered of [
+    {...base,sourceMode:'wardrobe'},
+    {...base,sourceMode:'mixed'},
+    {...base,requiredIds:['PRIVATE_ANCHOR_ID']},
+    {...base,preferences:{...base.preferences,fitPreference:'fitted'}},
+    {...base,preferences:{...base.preferences,favoriteColors:['red']}},
+    {...base,preferences:{...base.preferences,avoidBrands:['Private Merchant']}},
+    {...base,preferences:{...base.preferences,styleGoals:['private_goal']}},
+    {...base,preferences:{...base.preferences,bodyType:'athletic'}},
+    {...base,preferences:{...base.preferences,workDressCode:'formal'}},
+    {...base,preferences:{...base.preferences,unexpectedOwnerField:'phone'}},
+  ])assert.equal(anonymousPhotoJournalAllowed(altered),false);
 });

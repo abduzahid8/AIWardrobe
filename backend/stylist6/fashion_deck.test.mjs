@@ -2212,7 +2212,10 @@ test('catalog AI SKU Composer failing a new combination reverts to original safe
 
 test('image-model rejection launches bounded SECOND AI SKU composition and real photo quality re-review, never a filler',async()=>{
   const request={sourceMode:'catalog',style:'classic',occasion:'Casual',
-    weather:{temp:22},optionalLayer:true,preferences:{},
+    weather:{temp:22},optionalLayer:true,
+    preferences:{fitPreference:'balanced',favoriteColors:[],avoidColors:[],
+      likedPatterns:[],dislikedPatterns:[],favoriteBrands:[],avoidBrands:[],
+      primaryOccasions:[],styleGoals:[],prefersSustainable:false},
     budget:{amount:2000000,currency:'UZS'},requiredIds:[]};
   let critiques=0,revisions=0,revisionIDs=[],journalCalls=0,photoJournalRows=[];
   const r=await recommendFashionDeck({...base,request,referenceBriefs:refs,
