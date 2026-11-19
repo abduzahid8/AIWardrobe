@@ -3015,6 +3015,45 @@ test('validated PHOTO reward can discover previously unseen exact source merchan
   'unverified extra menu items cannot become scored shoppable products');
 });
 
+test('PHOTO reward chooses independent four-SKU fashion hypotheses, not two near-identical hero-garment shots',()=>{
+  const slots=['top','outerwear','bottom','shoes'];
+  const original=Array.from({length:6},(_,i)=>({
+    id:'source-studio-'+i,
+    items:slots.map(slot=>garment('different-'+slot+'-'+i,
+      'Genuine '+slot+' '+i,slot,
+      slot==='shoes'?'loafer':slot==='outerwear'?'blazer':'shirt')),
+  }));
+  const sourceMenu=original.flatMap(look=>look.items.map(item=>({
+    item,slot:item.macroCategory,
+  })));
+  // This is a synthetic learned FOUR-item PHOTO preference, NOT a
+  // manually coded garment/category rule. The first original top is the
+  // strongest single-item association, but two such reviewed looks CANNOT
+  // coexist in the customer's independent three-look deck.
+  const scores=ids=>ids[0]==='different-top-0'?.99:
+    ids[0]==='different-top-2'?.84:.03;
+  const looks=photoHistoryRecompositionCandidates(original,scores,{
+    limit:2,featuresOf:items=>items.map(item=>item.id),sourceMenu,
+  });
+  assert.equal(looks.length,2);
+  assert.equal(looks[0].estimatedPhotoQuality,.99,
+    'first independent PHOTO audition must keep the best learned choice');
+  assert.ok(looks[1].estimatedPhotoQuality>=.84,
+    'second audition should be independently PHOTO-supported');
+  assert.equal(looks[1].items.find(x=>x.macroCategory==='top').id,
+    'different-top-2','the next best independent source top wins over another look sharing hero top');
+  assert.ok(looks[0].items.every(item=>looks[1].items.every(other=>item.id!==other.id)),
+    'the final display can combine those two separately PHOTO-approved looks');
+  assert.ok(looks.every(x=>x.items.length===4&&x.items.every(it=>it.isShopItem===true)));
+  const oneRoleOnly=sourceMenu.filter(x=>x.slot==='top'?
+    x.item.id==='different-top-0':true);
+  const fallback=photoHistoryRecompositionCandidates(original,scores,{
+    limit:2,featuresOf:items=>items.map(item=>item.id),sourceMenu:oneRoleOnly,
+  });
+  assert.equal(fallback.length,2,
+    'shared-item rescue choices remain PHOTO-eligible if no shoppable alternative exists');
+});
+
 test('held-out validated real-PHOTO fashion reward changes FIRST source-bound audition slate, never PHOTO approval',async()=>{
   const expanded=['top','outerwear','bottom','shoes'].flatMap((slot,j)=>
     Array.from({length:10},(_,i)=>garment('reward-'+slot+'-'+i,
