@@ -1809,3 +1809,62 @@ test('PHOTO failure maps exact four real source products to current opaque token
   assert.equal(resultCase.looks.length,3);
   assert.ok(providerPrompt);
 });
+
+test('six-look PHOTO audition can explore new combinations around strong real merchandise; final shopping deck still owns disjointness',async()=>{
+  const pool=sourceBoundCompositionPool(looks);
+  const exact=(index,slot)=>pool.find(x=>x.slot===slot&&
+    x.item===items[index][slots.indexOf(slot)])?.token;
+  const proposals=Array.from({length:6},(_,i)=>Object.fromEntries(slots.map(
+    slot=>[slot,exact(i,slot)]
+  )));
+  assert.ok(proposals.every(p=>slots.every(slot=>/^P\\d{3}$/.test(p[slot]))));
+  // First three creative directions keep 12 entirely different products.
+  // Later PHOTO auditions may deliberately retry a good shirt, layer or shoe
+  // with a different full-look architecture, without displaying a repeat.
+  proposals[3].top=proposals[0].top;
+  proposals[4].shoes=proposals[1].shoes;
+  proposals[5].outerwear=proposals[2].outerwear;
+  const answer={outfits:proposals};
+  const strict=validateSkuCompositions(answer,pool,{
+    layerRequired:true,count:6,allowPartial:true,minimumValid:1,
+  });
+  assert.equal(strict.length,3,
+    'the historical global uniqueness would silently discard all three alternate outfits');
+  const variants=validateSkuCompositions(answer,pool,{
+    layerRequired:true,count:6,allowPartial:true,minimumValid:1,
+    allowVariantProductReuse:true,
+  });
+  assert.equal(variants.length,6,
+    'all six genuine DISTINCT four-product combinations may now get original-photo feedback');
+  assert.equal(new Set(variants.slice(0,3).flat().map(x=>x.id)).size,12);
+  assert.ok(variants.every(x=>x.length===4&&
+    new Set(x.map(it=>it.id)).size===4));
+  const config={looks:variants,request:{sourceMode:'catalog'},
+    sourceMode:'catalog',hardGate:async()=>({ok:true}),
+    scorer:{rankLook:()=>({score:0.91})}};
+  const oldAdmission=await sourceVerifyComposedOutfits(config);
+  assert.equal(oldAdmission.length,3);
+  const admitted=await sourceVerifyComposedOutfits({
+    ...config,allowVariantProductReuse:true,
+  });
+  assert.equal(admitted.length,6);
+  assert.equal(new Set(admitted.map(x=>x.id)).size,6);
+  assert.ok(admitted.every(look=>look.items.length===4));
+  // The same variant cannot buy another PHOTO slot by repeating its exact
+  // four tokens. A second user response or publication is not authorized.
+  const duplicate={outfits:proposals.map(x=>({...x}))};
+  duplicate.outfits[5]={...duplicate.outfits[3]};
+  const filtered=validateSkuCompositions(duplicate,pool,{
+    layerRequired:true,count:6,allowPartial:true,minimumValid:1,
+    allowVariantProductReuse:true,
+  });
+  assert.equal(filtered.length,5);
+  const illegalPrimary={outfits:proposals.map(x=>({...x}))};
+  illegalPrimary.outfits[1].top=illegalPrimary.outfits[0].top;
+  const guarded=validateSkuCompositions(illegalPrimary,pool,{
+    layerRequired:true,count:6,allowPartial:true,minimumValid:1,
+    allowVariantProductReuse:true,
+  });
+  assert.ok(guarded.length<6,
+    'mutually disjoint first three commissioned artistic directions must still be verified');
+});
