@@ -1,7 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createHostedVisualCritic, NVIDIA_VISION_MODEL, validVisualVerdict, nvidiaVerdictResponseFormat, formalPhotoDressCodeRubric, HOSTED_VISUAL_CRITIC_VERSION } from './visual_critic_hosted.mjs';
+import sharp from 'sharp';
+import {
+  createHostedVisualCritic,
+  NVIDIA_VISION_MODEL,
+  OPENROUTER_VISION_MODEL,
+  EDITORIAL_RUBRIC_AXES,
+  DEFECT_CATEGORIES,
+  computeEditorialCompositeScore,
+  extractItemDefectSignals,
+  validVisualVerdict,
+  nvidiaVerdictResponseFormat,
+  formalPhotoDressCodeRubric,
+  HOSTED_VISUAL_CRITIC_VERSION,
+} from './visual_critic_hosted.mjs';
+import { renderEditorialLookBoard } from './editorial_board_renderer.mjs';
+import { PROVIDER_ENDPOINTS } from './ai_provider_router.mjs';
 
 const apiKey = 'test-api-key-0123456789abcdef';
 function asset(fill = 7, width = 16) {
@@ -871,4 +886,158 @@ test('second-wave photo reviewer respects server-owned rescue deadline during ac
   const output=await review;
   assert.equal(sentSignal.aborted,true);
   assert.deepEqual(output,[],'an aborted rescue cannot fabricate photographic approval');
+});
+
+test('6-axis editorial rubric, mandatory defect attribution, editorialBoardJpeg, PersonalStyleDna block, and flywheel signals', async () => {
+  const synth = await sharp({ create: { width: 120, height: 160, channels: 3, background: '#8a7a65' } }).jpeg().toBuffer();
+  const board = await renderEditorialLookBoard(
+    candidate.products.map((p) => ({ ...p, bytes: synth })),
+    { title: 'Test Studio Board', anonymizeLabels: true },
+  );
+  assert.equal(board.ok, true);
+
+  const capturedPayloads = [];
+  const emittedFlywheel = [];
+  let productResolverCalls = 0;
+
+  const richRow = {
+    ...referencelessVerdict('s6_board_6axis_01'),
+    reject: true,
+    editorialAxes: {
+      colorAndUndertoneHarmony: 8.4,
+      silhouetteAndProportion: 8.1,
+      textureAndMaterialInterplay: 7.9,
+      footwearAndGrounding: 3.8,
+      occasionAndWeatherCredibility: 6.2,
+      editorialBeautyAndTaste: 6.5,
+    },
+    weakestSlot: 'shoes',
+    defectCategory: 'footwear_mismatch',
+    repairDirective: 'Replace chunky casual sneaker with dark brown suede loafer to ground the tailored wool trousers',
+  };
+
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia',
+    apiKey,
+    referenceMediaConfigured: false,
+    boardOnlyMode: true,
+    resolveProduct: () => { productResolverCalls++; return asset(1); },
+    onDefectSignals: (signals) => emittedFlywheel.push(signals),
+    fetchImpl: async (_url, init) => {
+      capturedPayloads.push(JSON.parse(init.body));
+      return nvidiaResponse(richRow);
+    },
+  });
+
+  const boardCandidate = {
+    ...candidate,
+    id: 's6_board_6axis_01',
+    referenceId: null,
+    editorialBoardJpeg: board,
+  };
+
+  const [res1] = await critic([boardCandidate], {
+    style: 'classic',
+    occasion: 'Work',
+    personalStyleDnaPromptBlock: 'Warm autumn undertone, medium contrast; prefers tailored drape; avoid neon accents.',
+  });
+
+  assert.equal(productResolverCalls, 0, 'pre-rendered editorialBoardJpeg sends single proportion-aware board without redundant slot fetches');
+  assert.equal(capturedPayloads.length, 1);
+  const contentParts = capturedPayloads[0].messages[0].content;
+  assert.equal(contentParts.filter((p) => p.type === 'image_url').length, 1);
+  assert.match(contentParts[0].text, /Warm autumn undertone, medium contrast/);
+  assert.match(contentParts[0].text, /proportion-scaled 1024x1024 studio flat-lay board/);
+
+  // Verify strict 6-axis schema + parsed fields
+  for (const axis of EDITORIAL_RUBRIC_AXES) {
+    assert.equal(res1.editorialAxes[axis], richRow.editorialAxes[axis]);
+  }
+  assert.equal(res1.editorialScore, computeEditorialCompositeScore(richRow.editorialAxes));
+  assert.equal(res1.weakestSlot, 'shoes');
+  assert.equal(res1.defectCategory, 'footwear_mismatch');
+  assert.ok(DEFECT_CATEGORIES.includes(res1.defectCategory));
+  assert.match(res1.repairDirective, /dark brown suede loafer/);
+  assert.equal(res1.evaluatedEditorialBoard, true);
+  assert.equal(res1.editorialBoardSha256, board.sha256);
+
+  // Verify flywheel item-level defect signals
+  assert.equal(emittedFlywheel.length, 1);
+  const shoeSignal = emittedFlywheel[0].find((s) => s.slot === 'shoes');
+  const topSignal = emittedFlywheel[0].find((s) => s.slot === 'top');
+  assert.equal(shoeSignal.isWeakestSlot, true);
+  assert.equal(shoeSignal.outcome, 'rejected_weakest_slot');
+  assert.equal(shoeSignal.defectCategory, 'footwear_mismatch');
+  assert.equal(topSignal.isWeakestSlot, false);
+  assert.deepEqual(extractItemDefectSignals(res1, boardCandidate), emittedFlywheel[0]);
+
+  // Changing PersonalStyleDna prompt block must invalidate verdict cache!
+  await critic([boardCandidate], {
+    style: 'classic',
+    occasion: 'Work',
+    personalStyleDnaPromptBlock: 'Cool winter undertone, high contrast; crisp black and charcoal monochrome.',
+  });
+  assert.equal(capturedPayloads.length, 2, 'different PersonalStyleDna context must re-evaluate');
+});
+
+test('visual critic fails over from NVIDIA NIM to OpenRouter Gemini 2.5 Flash and supports injectable distributed verdict cache', async () => {
+  const photos = candidate.products.map((_, i) => asset(170 + i));
+  const externalStore = new Map();
+  let externalGets = 0;
+  let externalSets = 0;
+  const externalCache = {
+    async get(k) { externalGets++; return externalStore.get(k) || null; },
+    async set(k, v) { externalSets++; externalStore.set(k, v); },
+  };
+
+  const urlsCalled = [];
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia',
+    apiKey,
+    openrouterApiKey: 'sk-or-v1-test-key-0123456789abcdef',
+    enableFailover: true,
+    referenceMediaConfigured: false,
+    verdictCache: externalCache,
+    resolveReference: () => null,
+    resolveProduct: ({ slot }) => photos[candidate.products.findIndex((p) => p.slot === slot)],
+    fetchImpl: async (url, init) => {
+      urlsCalled.push({ url, model: JSON.parse(init.body).model });
+      if (url === PROVIDER_ENDPOINTS.nvidia) {
+        return new Response('nvidia overloaded', { status: 503 });
+      }
+      assert.equal(url, PROVIDER_ENDPOINTS.openrouter);
+      return nvidiaResponse({
+        ...referencelessVerdict('s6_failover_look'),
+        editorialAxes: {
+          colorAndUndertoneHarmony: 8.8,
+          silhouetteAndProportion: 8.5,
+          textureAndMaterialInterplay: 8.2,
+          footwearAndGrounding: 8.6,
+          occasionAndWeatherCredibility: 8.9,
+          editorialBeautyAndTaste: 8.7,
+        },
+        weakestSlot: 'none',
+        defectCategory: 'none',
+        repairDirective: '',
+      });
+    },
+  });
+
+  const look = { ...candidate, id: 's6_failover_look', referenceId: null };
+  const [first] = await critic([look], { style: 'classic', occasion: 'Date night' });
+  assert.ok(first);
+  assert.match(first.criticVersion, new RegExp(`openrouter/${OPENROUTER_VISION_MODEL}`));
+  assert.equal(first.weakestSlot, null);
+  assert.equal(first.defectCategory, 'none');
+  assert.equal(first.repairDirective, null);
+  assert.ok(first.editorialScore > 8.5);
+  assert.equal(externalSets, 1);
+  assert.ok(urlsCalled.some((u) => u.url === PROVIDER_ENDPOINTS.openrouter));
+
+  // Second call hits injectable distributed verdict cache with 0 provider calls
+  const prevCount = urlsCalled.length;
+  const [second] = await critic([look], { style: 'classic', occasion: 'Date night' });
+  assert.equal(urlsCalled.length, prevCount, 'distributed verdict cache hit skips provider dispatch');
+  assert.equal(second.editorialScore, first.editorialScore);
+  assert.ok(externalGets >= 2);
 });
