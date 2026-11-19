@@ -233,6 +233,28 @@ test('visual challenger rank prefers a genuinely unseen main garment after rescu
     'ability to make three independent outfits outranks top novelty');
 });
 
+test('held-out-trained PHOTO history chooses stronger real candidates only inside same feasible novelty tier',()=>{
+  const same=(id,score,prior)=>({
+    look:{id,fashion:{score}},
+    rescueGain:1,capacityGain:1,outerwearGain:1,unseenTop:1,
+    difference:0.4,photoHistoryScore:prior,
+  });
+  const poor=same('photo-poor-but-near-score',0.94,-0.8);
+  const supported=same('photo-history-supports-this-look',0.90,0.8);
+  const indispensable=same('unique-third-direction',0.83,-0.95);
+  indispensable.capacityGain=2;
+  assert.deepEqual(rankVisualChallengerPool([poor,supported]).map(x=>x.id),
+    [supported.look.id,poor.look.id],
+    'historical PHOTO whole-look reward can decide which accepted-source look gets expensive original-photo audition');
+  assert.equal(rankVisualChallengerPool([poor,supported,indispensable])[0].id,
+    indispensable.look.id,
+    'independent third-direction capacity must still outrank prior');
+  assert.deepEqual(rankVisualChallengerPool([
+    {...poor,photoHistoryScore:null},{...supported,photoHistoryScore:null},
+  ]).map(x=>x.id),[poor.look.id,supported.look.id],
+    'without calibrated prior, original source-rank ordering stays intact');
+});
+
 test('fourth visual challenger favors safe whole-look quality over extreme novelty', () => {
   const options=[
     {look:{id:'eccentric',fashion:{score:0.74}},difference:0.92},

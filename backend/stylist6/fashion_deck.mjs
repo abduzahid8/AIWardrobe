@@ -1668,6 +1668,11 @@ export function rankVisualChallengerPool(entries) {
       (b.capacityGain || 0) - (a.capacityGain || 0) ||
       (b.outerwearGain || 0) - (a.outerwearGain || 0) ||
       (b.unseenTop || 0) - (a.unseenTop || 0) ||
+      // A validated PHOTO reward prior can prefer the more visually
+      // promising COMPLETE garment relationship among otherwise equally
+      // feasible, equally distinct options; never overrides real PHOTO veto.
+      (Number.isFinite(b.photoHistoryScore)?b.photoHistoryScore:0) -
+        (Number.isFinite(a.photoHistoryScore)?a.photoHistoryScore:0) ||
       b.look.fashion.score - a.look.fashion.score ||
       b.difference - a.difference || String(a.look.id).localeCompare(String(b.look.id)))
     .map(({look}) => look);
@@ -1840,6 +1845,11 @@ export async function recommendFashionDeck({
   // authenticated independent original-photo examples in a privacy-scrubbed
   // server callback. No effect on ranking, any jury verdict or S5.
   photoRewardSink=null,
+  // Optional HELD-OUT calibrated PHOTO history. Only the isolated staging
+  // server can supply a pure scoreFeatures() callback. It predicts which
+  // authentic SOURCE-feasible candidate to audition with the independent
+  // PHOTO judge, never an actual approval or source product requirement.
+  photoHistory=null,
   // Passed by the trusted cloud handler only after validating the official
   // CBU snapshot; the app never provides these rates to the ranker.
   valueFxRates,
@@ -2411,6 +2421,16 @@ export async function recommendFashionDeck({
             !pinned.has(String(it.id)) && !usedTopIds.has(String(it.id))) ? 1 : 0,
           difference: Math.min(...current.map(other =>
             directionDifference(other, look, metrics.featuresOf, metrics.featureDistance).distance)),
+          // Learned statistical photo HISTORY is used only as a challenger
+          // tie-break AFTER actual physical feasibility, inventory,
+          // meaningful novelty and independent 3-direction capacity.
+          // No experience or unreliable held-out comparisons => null.
+          photoHistoryScore: typeof photoHistory?.scoreFeatures==='function'
+            ?(()=>{try{
+                const value=photoHistory.scoreFeatures(
+                  outfitStylingFeatures(look.items,context.anchorId));
+                return Number.isFinite(value)&&value>=-1&&value<=1?value:null;
+              }catch{return null}})():null,
         }))
       );
       let alternate = null;
@@ -2457,6 +2477,14 @@ export async function recommendFashionDeck({
             !requiredIds.length && !explicitlyRequestsLuxury(context),
           onCritiques:rows=>{primaryCritiques=rows;},
       };
+      // Truthful telemetry to distinguish a genuinely trained and applied
+      // early photo-history decision from a disabled/unreliable prior.
+      modelFashionSelection.photoHistoryStatus=String(
+        photoHistory?.status||'not_run').slice(0,42);
+      modelFashionSelection.photoHistoryExamples=Number.isSafeInteger(
+        photoHistory?.examples)?photoHistory.examples:0;
+      modelFashionSelection.photoHistoryPriorConsidered=
+        typeof photoHistory?.scoreFeatures==='function';
       let reviewed=await evaluateVisualShortlist(
         {...retrieval,shortlist:candidates},request,visualCritic,reviewOptions);
       // Preserve the EXACT FIRST independent photo wave before source-SKU
@@ -3266,13 +3294,18 @@ export async function recommendFashionDeck({
       // owned wardrobe anchors and private styling contexts are excluded:
       // the derived training signal must represent general catalog PHOTO
       // qualities, never a different wearer's personal dislikes.
+      const journalEligible=anonymousPhotoJournalAllowed({
+        sourceMode:context.sourceMode,requiredIds,preferences:context.preferences});
+      modelFashionSelection.photoJournalScope=typeof photoRewardSink!=='function'
+        ?'not_enabled':!primaryCritiques.length?'no_photo_evidence'
+          :!journalEligible?'personal_context_excluded':'eligible';
       if(typeof photoRewardSink==='function'&&primaryCritiques.length>0&&
-          anonymousPhotoJournalAllowed({sourceMode:context.sourceMode,
-            requiredIds,preferences:context.preferences})){
+          journalEligible){
         try{await photoRewardSink({
           looks:photoJournalLooks,decisions:photoJournalDecisions,
           critiques:primaryCritiques,
-          context:{style:context.style,occasion:context.occasion},
+          context:{style:context.style,occasion:context.occasion,
+            fitPreference:context.preferences?.fitPreference},
           featuresOf:items=>outfitStylingFeatures(items),
         });}catch{/* Nonessential training IO must NEVER fail a paid deck. */}
       }

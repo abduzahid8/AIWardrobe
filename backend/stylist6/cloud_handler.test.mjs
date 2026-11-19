@@ -2092,6 +2092,46 @@ test('regression: authenticated S6 critic callback REALLY uses concurrent photo 
 });
 
 
+test('cross-request photo history is read ONLY from private service-role by safe HMAC context',async()=>{
+  const queries=[];
+  const fakeRows=[{
+    fingerprint:'a'.repeat(64),context_hash:'b'.repeat(64),
+    feature_hashes:['c'.repeat(64)],photo_quality:.7,photo_outcome:1,
+    photo_reason:'approved',evidence_version:'s6-photo-reward-journal-v1',
+  }];
+  const io=createCloudIo({
+    url:'https://fake-supabase.example',anonKey:'PUBLIC_ANON_ONLY',
+    serviceKey:'PRIVATE_SERVICE_KEY',
+    supabaseJs:{createClient:(url,key)=>({
+      from:table=>({
+        select:columns=>({
+          eq:(field,value)=>({
+            order:(order,settings)=>({
+              limit:n=>({
+                abortSignal:async()=>{
+                  queries.push({key,table,columns,field,value,order,settings,n});
+                  return {data:fakeRows,error:null};
+                },
+              }),
+            }),
+          }),
+        }),
+      }),
+    })},
+  });
+  const hash='b'.repeat(64);
+  assert.deepEqual(await io.readPhotoRewardHistory(hash),fakeRows);
+  assert.deepEqual(queries.map(x=>({key:x.key,table:x.table,
+    field:x.field,value:x.value,n:x.n})),[{
+      key:'PRIVATE_SERVICE_KEY',table:'stylist6_photo_reward_examples',
+      field:'context_hash',value:hash,n:240,
+    }]);
+  assert.ok(!queries[0].columns.includes('user_id'));
+  assert.ok(!queries[0].columns.includes('shop_url'));
+  assert.deepEqual(await io.readPhotoRewardHistory('PRIVATE_USER_ID'),[]);
+  assert.equal(queries.length,1,'never query by arbitrary account input');
+});
+
 test('PHOTO reward evidence writes ONLY vetted anonymous rows through the service role',async()=>{
   const writes=[];
   const io=createCloudIo({
@@ -2157,6 +2197,8 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     photoTeacherStatus:'not_run',photoTeacherExamples:null,
     photoTeacherPositive:null,photoTeacherNegative:null,
     photoTeacherSelectionApplied:false,
+    photoHistoryStatus:'not_run',photoHistoryExamples:null,
+    photoHistoryPriorConsidered:false,photoJournalScope:'not_run',
     photoRevisionInventory:'not_run',
     photoRevisionStatus:'not_run',photoRevisionAttempted:null,
     photoRevisionApproved:null,photoRevisionArtist:'not_run',
@@ -2179,7 +2221,10 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
   const teacher=stylist6SafeQualityTrace({modelFashionSelection:{
     photoTeacherStatus:'graded_photo_validated',photoTeacherExamples:7,
     photoTeacherPositive:1,photoTeacherNegative:6,
-    photoTeacherSelectionApplied:true,ownerEmail:'private@example.com',
+    photoTeacherSelectionApplied:true,
+    photoHistoryStatus:'heldout_photo_validated',
+    photoHistoryExamples:42,photoHistoryPriorConsidered:true,
+    ownerEmail:'private@example.com',
     weights:{'private-sku':999},
   }},2,35000);
   assert.equal(teacher.photoTeacherStatus,'graded_photo_validated');
@@ -2187,6 +2232,9 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
   assert.equal(teacher.photoTeacherPositive,1);
   assert.equal(teacher.photoTeacherNegative,6);
   assert.equal(teacher.photoTeacherSelectionApplied,true);
+  assert.equal(teacher.photoHistoryStatus,'heldout_photo_validated');
+  assert.equal(teacher.photoHistoryExamples,42);
+  assert.equal(teacher.photoHistoryPriorConsidered,true);
   assert.doesNotMatch(JSON.stringify(teacher),/private|email|weights/);
   const invalid=stylist6SafeQualityTrace({modelFashionSelection:{
     photoTeacherStatus:'<owned-secret>',photoTeacherExamples:999,

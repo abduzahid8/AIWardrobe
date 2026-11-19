@@ -25,7 +25,12 @@ import { createHash } from 'node:crypto';
 import { adaptCatalog, devLookFeasibility, sourceHash } from './catalog_adapter.mjs';
 import { hydrateCatalogObservations } from './catalog_observation.mjs';
 import { recommendFashionDeck } from './fashion_deck.mjs';
-import {compilePhotoRewardExamples} from './photo_reward_journal.mjs';
+import {compilePhotoRewardExamples,anonymousPhotoJournalAllowed}
+  from './photo_reward_journal.mjs';
+import {
+  trainPhotoRewardHistory,scorePhotoRewardHistory,
+  photoHistoryContextHash,photoHistoryFeatureHashes,
+} from './photo_reward_history.mjs';
 import { designCreativeBriefsWithFallback, CREATIVE_DIRECTOR_VERSION } from './creative_director_ai.mjs';
 import { selectFashionSlate } from './fashion_director_slate.mjs';
 import { selectPhotoEditorialDeck } from './photo_editor_final.mjs';
@@ -196,6 +201,17 @@ export function stylist6SafeQualityTrace(diagnostics, displayed, elapsedMs) {
     photoTeacherPositive:safe(f.photoTeacherPositive,8),
     photoTeacherNegative:safe(f.photoTeacherNegative,8),
     photoTeacherSelectionApplied:f.photoTeacherSelectionApplied===true,
+    // Cross-request PHOTO quality prior: only benign learning-status
+    // enums, never database signatures, owner identifiers or HMAC weights.
+    photoHistoryStatus:[
+      'untrained','unavailable','insufficient_real_photo_history',
+      'uncalibrated_history','heldout_photo_validated','read_failed',
+    ].includes(f.photoHistoryStatus)?f.photoHistoryStatus:'not_run',
+    photoHistoryExamples:safe(f.photoHistoryExamples,240),
+    photoHistoryPriorConsidered:f.photoHistoryPriorConsidered===true,
+    photoJournalScope:[
+      'not_enabled','no_photo_evidence','personal_context_excluded','eligible',
+    ].includes(f.photoJournalScope)?f.photoJournalScope:'not_run',
     photoRevisionInventory:['unseen_source_skus','source_fallback',
       'remaining_source_skus'].includes(f.photoRevisionInventory)
       ?f.photoRevisionInventory:'not_run',
@@ -621,6 +637,23 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
     // successful paid generation (confirmed in real iOS QA). Persist
     // the EXACT already-approved deck for owner-only read-only recovery.
     // Never issue new NVIDIA calls or debit quota during a recovery read.
+    // Server-private read of prior anonymous PHOTO supervision. Never
+    // accept owner IDs or query the explicit USER feedback table here;
+    // these are separate learning sources with different provenance.
+    async readPhotoRewardHistory(contextHash) {
+      if(typeof contextHash!=='string'||!/^[0-9a-f]{64}$/.test(contextHash))
+        return [];
+      try{
+        const {data,error}=await this.adminClient()
+          .from('stylist6_photo_reward_examples')
+          .select('fingerprint,context_hash,feature_hashes,photo_quality,photo_outcome,photo_reason,evidence_version')
+          .eq('context_hash',contextHash)
+          .order('created_at',{ascending:false})
+          .limit(240)
+          .abortSignal(AbortSignal.timeout(900));
+        return !error&&Array.isArray(data)?data:[];
+      }catch{return [];}
+    },
     // Private service-role ONLY journal of anonymized original-photo fashion
     // decisions. Writer never receives owner IDs, request IDs, SKU URLs or
     // images. A failed optional write cannot fail paid generation.
@@ -1868,13 +1901,50 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         const rows=compilePhotoRewardExamples({
           ...evidence,secret:env.STYLIST6_NODE_SHARED_SECRET,
         });
-        if(rows.length===0)return;
+        if(rows.length===0){
+          console.info('stylist6_photo_reward_journal',
+            {status:'no_anonymous_source_photo_examples',examples:0});
+          return;
+        }
         const saved=await io.savePhotoRewardExamples(rows);
-        if(saved)console.info('stylist6_photo_reward_journal',{
-          status:'recorded',examples:rows.length,
+        console.info('stylist6_photo_reward_journal',{
+          status:saved?'recorded':'write_failed',examples:rows.length,
         });
       }
       :null;
+    // Reuse experience across DIFFERENT genuine visual-photo generations.
+    // This purely statistical prior is never confused with real wearer
+    // thumbs (handled independently above) and is not a photo approval.
+    // The database row has NO user/photo/merchant identity. No valid
+    // held-out PHOTO model means a null prior and unchanged selection.
+    let photoHistory={status:'untrained',examples:0};
+    const photoHistoryEnabled=budgetMs>=70000&&
+      env.STYLIST6_PHOTO_REWARD_JOURNAL_ENABLED==='true'&&
+      sourceMode==='catalog'&&typeof io.readPhotoRewardHistory==='function'&&
+      anonymousPhotoJournalAllowed({
+        sourceMode,requiredIds:input.requiredIds||[],
+        preferences:input.preferences,
+      });
+    if(photoHistoryEnabled){
+      try{
+        const contextHash=photoHistoryContextHash({
+          style:input.style,occasion:input.occasion,
+          fitPreference:input.preferences?.fitPreference,
+        },env.STYLIST6_NODE_SHARED_SECRET);
+        if(contextHash){
+          const rows=await io.readPhotoRewardHistory(contextHash);
+          const model=trainPhotoRewardHistory(rows,contextHash);
+          photoHistory={status:model.status,examples:model.examples};
+          if(model.usable){
+            photoHistory.scoreFeatures=features=>{
+              const tokens=photoHistoryFeatureHashes(features,items=>items,
+                env.STYLIST6_NODE_SHARED_SECRET);
+              return scorePhotoRewardHistory(model,tokens);
+            };
+          }
+        }
+      }catch{photoHistory={status:'read_failed',examples:0}}
+    }
     const computedDeck = await runWithinRemainingDeadline(() => recommendFashionDeck({
       request: input,
       catalog: feasible,
@@ -1890,6 +1960,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       priceToBudgetCurrency,
       feedbackTaste,
       photoRewardSink,
+      photoHistory,
       valueFxRates: sourceMode === 'catalog' && !budget ? fxSnapshot?.uzsPerUnit : null,
       // Staging-only visual-first quality pass: review every admissible card
       // in one bounded batch, not just the first selection.

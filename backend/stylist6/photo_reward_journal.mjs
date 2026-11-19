@@ -25,11 +25,15 @@ const SAFE_STYLES=new Set([
   'old_money','semi_classic','minimalist','casual','classic','business_casual',
 ]);
 const SAFE_OCCASIONS=new Set(['work','casual','date','formal','sport','travel']);
+// These are the EXACT three values from the app's typed preference schema.
+// This is a privacy context discriminator, NOT a fashion decision rule.
+const SAFE_FITS=new Set(['balanced','loose','fitted']);
 const safeContext=(context)=>{
   const style=String(context?.style||'').trim().toLowerCase();
   const occasion=String(context?.occasion||'').trim().toLowerCase();
-  return SAFE_STYLES.has(style)&&SAFE_OCCASIONS.has(occasion)
-    ?{style,occasion}:null;
+  const fit=String(context?.fitPreference||'balanced').trim().toLowerCase();
+  return SAFE_STYLES.has(style)&&SAFE_OCCASIONS.has(occasion)&&SAFE_FITS.has(fit)
+    ?{style,occasion,fit}:null;
 };
 const validQuality=q=>Number.isFinite(q)&&q>=0&&q<=1;
 const hash=(key,type,value)=>createHmac('sha256',key)
@@ -51,11 +55,15 @@ export function anonymousPhotoJournalAllowed({sourceMode,requiredIds,preferences
   if(['bodyType','workDressCode'].some(k=>typeof p[k]==='string'&&p[k].length>0))
     return false;
   if(p.prefersSustainable===true)return false;
-  if(typeof p.fitPreference==='string'&&p.fitPreference.trim()!=='balanced')
+  // Isolate the three real app fit modes in separate anonymized context
+  // hashes; do not collapse the personal loose/fitted choice into neutral.
+  if(p.fitPreference!==undefined&&p.fitPreference!==null&&
+      !SAFE_FITS.has(String(p.fitPreference).trim().toLowerCase()))
     return false;
   const known=new Set([...personalArrays,'bodyType','workDressCode',
     'prefersSustainable','fitPreference','priceRange','stylePersonality']);
-  if(Object.keys(p).some(k=>!known.has(k)))return false;
+  if(Object.entries(p).some(([k,v])=>!known.has(k)&&v!==undefined&&v!==null))
+    return false;
   return true;
 }
 
@@ -74,7 +82,7 @@ export function compilePhotoRewardExamples({
     return [];
   const safe=safeContext(context);
   const contextHash=hash(secret,'context',
-    safe.style+'\0'+safe.occasion);
+    safe.style+'\0'+safe.occasion+'\0'+safe.fit);
   const available=new Map(looks.slice(0,8).filter(look=>
     typeof look?.id==='string'&&
     Array.isArray(look.items)&&look.items.length===4&&

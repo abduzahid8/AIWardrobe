@@ -110,7 +110,7 @@ test('personal wardrobe, missing layer, duplicate real source items and unknown 
   }
 });
 
-test('actual RN default balanced preferences permit only anonymous staging catalog fashion evidence',()=>{
+test('real RN fit modes use separate anonymous PHOTO contexts, never arbitrary personal inputs',()=>{
   const base={sourceMode:'catalog',requiredIds:[],preferences:{
     fitPreference:'balanced',favoriteColors:[],avoidColors:[],
     likedPatterns:[],dislikedPatterns:[],favoriteBrands:[],avoidBrands:[],
@@ -118,11 +118,15 @@ test('actual RN default balanced preferences permit only anonymous staging catal
     priceRange:{min:0,max:500,currency:'USD'},
   }};
   assert.equal(anonymousPhotoJournalAllowed(base),true);
+  for(const fit of ['balanced','loose','fitted'])
+    assert.equal(anonymousPhotoJournalAllowed({...base,
+      preferences:{...base.preferences,fitPreference:fit}}),true,
+      'the THREE documented app fit choices must not all be dropped');
   for(const altered of [
     {...base,sourceMode:'wardrobe'},
     {...base,sourceMode:'mixed'},
     {...base,requiredIds:['PRIVATE_ANCHOR_ID']},
-    {...base,preferences:{...base.preferences,fitPreference:'fitted'}},
+    {...base,preferences:{...base.preferences,fitPreference:'PRIVATE PERSONAL FIT'}},
     {...base,preferences:{...base.preferences,favoriteColors:['red']}},
     {...base,preferences:{...base.preferences,avoidBrands:['Private Merchant']}},
     {...base,preferences:{...base.preferences,styleGoals:['private_goal']}},
