@@ -16,6 +16,7 @@
 import { filterHygienicCatalog, lookupQualityEntry } from './catalog_hygiene.mjs';
 import { baseProductId, inferCatalogColor, inferTexture } from './catalog_adapter.mjs';
 import { currentVisual, confidentVisual } from '../../src/domain/visualFashion.ts';
+import { classifyOuterwearLayerRole } from '../../src/domain/outfitGrammar.ts';
 
 export const PER_DIRECTION_RETRIEVAL_VERSION = 's6-per-direction-retrieval-v1';
 
@@ -46,13 +47,14 @@ const FORMALITY_RANK = { athletic: 0, casual: 1, smart: 2, formal: 3 };
 // Structural archetype-to-subtype/text matchers so Creative Director concepts map cleanly
 // onto real catalog garments without fragile per-product rules.
 const OUTERWEAR_ARCHETYPES = {
-  structured_tailoring: { subtypes: new Set(['blazer']), text: /\b(blazer|suit jacket|sport coat|tailored jacket|double[- ]breasted)\b/i },
-  soft_draped_knit: { subtypes: new Set(['cardigan']), text: /\b(cardigan|shawl[- ]collar|knit jacket|sweater jacket)\b/i },
-  relaxed_utility_overshirt: { subtypes: new Set(['overshirt', 'jacket']), text: /\b(overshirt|shacket|chore|field jacket|safari|utility|barn jacket|work jacket)\b/i },
+  structured_tailoring: { subtypes: new Set(['blazer', 'sport-coat']), text: /\b(blazer|suit jacket|sport[- ]?coat|tailored jacket|double[- ]breasted|unstructured jacket)\b/i },
+  soft_draped_knit: { subtypes: new Set(['cardigan', 'knit-jacket']), text: /\b(cardigan|shawl[- ]collar|knit[- ]?jacket|sweater[- ]?jacket|knitted jacket)\b/i },
+  relaxed_utility_overshirt: { subtypes: new Set(['overshirt', 'chore-jacket', 'shacket', 'jacket']), text: /\b(overshirt|shacket|chore|field jacket|safari|utility|barn jacket|work jacket|shirt[- ]?jacket)\b/i },
   longline_coat: { subtypes: new Set(['coat']), text: /\b(coat|overcoat|topcoat|trench|mac|peacoat|parka|duster)\b/i },
-  cropped_blouson_jacket: { subtypes: new Set(['bomber', 'jacket']), text: /\b(bomber|blouson|harrington|trucker|biker|leather jacket|suede jacket|varsity)\b/i },
-  leather_statement: { subtypes: new Set(['jacket', 'bomber']), text: /\b(leather|suede|shearling|biker|moto)\b/i },
-  breathable_light_layer: { subtypes: new Set(['overshirt', 'cardigan', 'blazer']), text: /\b(linen|cotton|unlined|lightweight|seersucker|open[- ]weave|chambray|gauze)\b/i },
+  cropped_blouson_jacket: { subtypes: new Set(['bomber', 'suede-jacket', 'jacket']), text: /\b(bomber|blouson|harrington|trucker|biker|leather jacket|suede jacket|varsity)\b/i },
+  leather_statement: { subtypes: new Set(['jacket', 'bomber', 'suede-jacket']), text: /\b(leather|suede|shearling|biker|moto)\b/i },
+  suede_jacket: { subtypes: new Set(['suede-jacket', 'jacket', 'bomber', 'overshirt']), text: /\b(suede\s+(?:jacket|blouson|bomber|overshirt|trucker|shirt[- ]?jacket))\b/i },
+  breathable_light_layer: { subtypes: new Set(['overshirt', 'cardigan', 'blazer']), text: /\b(linen|cotton[- ]?linen|cotton|unlined|lightweight|seersucker|open[- ]weave|chambray|gauze|lyocell)\b/i },
 };
 
 const TROUSER_ARCHETYPES = {
@@ -168,19 +170,56 @@ function resolveEnrichedItem(item, qualityMap) {
   const bulk = (photo.bulk || intel.bulk || 'unknown').toLowerCase();
   const length = (photo.length || intel.length || 'unknown').toLowerCase();
   const hemShape = (photo.hemShape || intel.hemShape || 'unknown').toLowerCase();
-  const insulated = Boolean(intel.insulated) || /\b(puffer|padded|quilted|down[- ]filled|shearling|insulated)\b/i.test(nameText);
+  const insulated = Boolean(intel.insulated) || /\b(puffer|padded|quilted|down[- ]filled|primaloft|thinsulate|shearling|insulated)\b/i.test(nameText);
   const materials = Array.isArray(intel.materials) ? intel.materials.map(m => String(m).toLowerCase()) : [];
 
   const quality = lookupQualityEntry(item, qualityMap);
+  const resolvedSubtype = photo.subtype && subtype === 'unknown' ? photo.subtype : subtype;
+  const searchText = `${item?.name || item?.title || ''} ${item?.description || ''} ${materials.join(' ')} ${resolvedSubtype} ${texture}`.toLowerCase();
+  const layerRole = classifyOuterwearLayerRole({
+    macroCategory: slot,
+    subtype: resolvedSubtype,
+    name: item?.name || item?.title || '',
+    description: item?.description || '',
+    materials,
+    insulated,
+    bulk,
+  });
+  const isPeacoat = slot === 'outerwear' && /\bpeacoats?\b/i.test(searchText);
+  const isCommuterRainOrParka = slot === 'outerwear' && (
+    insulated ||
+    /\b(parkas?|puffers?|raincoats?|anoraks?|waterproof|commuter\s+(?:trench|coat)|down\s+(?:coat|jacket|parka)|primaloft|thinsulate|ski\s+jacket|windbreaker)\b/i.test(searchText)
+  );
+  const isHeavyWarmWeatherHazard = (
+    (slot === 'outerwear' && (
+      layerRole === 'outdoor_heavy_coat' ||
+      insulated ||
+      bulk === 'heavy' ||
+      ['coat', 'pullover', 'hoodie'].includes(resolvedSubtype) ||
+      /\b(wool|cashmere|merino|alpaca|mohair|lambswool|flannel|tweed|corduroy|velvet|fleece|waxed|chunky|shawl[- ]?(?:collar|neck)|heavyweight|leather|suede|biker|moto|shearling|padded|quilted|primaloft)\b/i.test(searchText)
+    )) ||
+    (slot === 'top' && (
+      bulk === 'heavy' ||
+      /\b(turtlenecks?|mock[- ]?necks?|roll[- ]?necks?|chunky\s+knit|cable[- ]?knit|heavy\s+wool|cashmere\s+sweater|wool\s+sweater|alpaca|mohair|fleece|heavy\s+flannel|sherpa|hoodie|sweatshirt)\b/i.test(searchText)
+    )) ||
+    (slot === 'bottom' && (
+      bulk === 'heavy' ||
+      /\b(heavy\s+wool|flannel|tweed|corduroy|fleece|thermal|insulated|snow)\b/i.test(searchText)
+    )) ||
+    (slot === 'shoes' && (
+      ['boot', 'chelsea', 'dress-boot', 'hiking-boot'].includes(resolvedSubtype) ||
+      /\b(boots?|chelsea|chukka|shearling|fleece[- ]?lined|winter\s+boot|snow\s+boot)\b/i.test(searchText)
+    ))
+  );
 
   return {
     item,
     id: String(item?.id || ''),
     baseId: baseProductId(String(item?.id || '')),
     slot,
-    subtype: photo.subtype && subtype === 'unknown' ? photo.subtype : subtype,
+    subtype: resolvedSubtype,
     name: String(item?.name || item?.title || ''),
-    searchText: `${item?.name || item?.title || ''} ${item?.description || ''} ${materials.join(' ')} ${subtype} ${texture}`.toLowerCase(),
+    searchText,
     brand: String(item?.brand || '').trim().toLowerCase(),
     color,
     colorVerifiedByPhoto,
@@ -193,6 +232,10 @@ function resolveEnrichedItem(item, qualityMap) {
     hemShape,
     insulated,
     materials,
+    layerRole,
+    isPeacoat,
+    isCommuterRainOrParka,
+    isHeavyWarmWeatherHazard,
     price: Number(item?.price),
     currency: String(item?.currency || '').trim().toUpperCase(),
     imageUrl: String(item?.imageUrl || item?.image_url || ''),
@@ -203,15 +246,36 @@ function resolveEnrichedItem(item, qualityMap) {
   };
 }
 
+function resolveNumericTemp(context) {
+  const raw = context?.weather?.temp ?? context?.weatherCelsius;
+  if (raw === null || raw === undefined || raw === '') return null;
+  const temp = Number(raw);
+  return Number.isFinite(temp) ? temp : null;
+}
+
+function isIndoorEditorialOccasion(context) {
+  const text = `${context?.occasion || ''} ${context?.dressCode || ''} ${context?.brief || ''} ${context?.request || ''}`.toLowerCase();
+  if (/\b(outdoor|hike|hiking|ski|snow|storm|rainy\s+commute|winter\s+walk|camping)\b/.test(text)) return false;
+  return /\b(work|office|business|meeting|conference|date|dinner|cocktail|smart[-_ ]?casual|interview|presentation|gallery|brunch|evening)\b/.test(text);
+}
+
+function isDateOrDinnerOccasion(context) {
+  const text = `${context?.occasion || ''} ${context?.dressCode || ''}`.toLowerCase();
+  return /\b(date|dinner|cocktail|evening|anniversary|night\s+out)\b/.test(text);
+}
+
 function resolveThermalBand(direction, context) {
   const explicit = String(direction?.thermalBand || '').trim().toLowerCase();
   if (['hot', 'warm', 'mild', 'transitional', 'cool', 'cold'].includes(explicit)) {
-    return explicit === 'warm' || explicit === 'mild' ? 'transitional' : explicit;
+    if (explicit === 'mild') return 'transitional';
+    return explicit;
   }
-  const temp = Number(context?.weather?.temp ?? context?.weatherCelsius);
-  if (!Number.isFinite(temp)) return 'transitional';
+  const temp = resolveNumericTemp(context);
+  if (temp === null) return 'transitional';
   if (temp >= 26) return 'hot';
-  if (temp >= 14) return 'transitional';
+  if (temp >= 24) return 'warm';
+  if (temp > 13) return 'transitional';
+  if (temp > 10) return 'cool';
   return 'cold';
 }
 
@@ -239,11 +303,11 @@ function inferArchetypeKey(slot, direction) {
   const roleSubtypes = Array.isArray(direction?.roles?.[slot]) ? direction.roles[slot].map(s => String(s).toLowerCase()) : [];
   const art = String(direction?.artDirection || direction?.name || '').toLowerCase();
   if (slot === 'outerwear') {
-    if (roleSubtypes.includes('blazer') || /\bblazer|tailored jacket\b/.test(art)) return 'structured_tailoring';
+    if (roleSubtypes.includes('blazer') || /\bblazer|tailored jacket|sport[- ]?coat\b/.test(art)) return 'structured_tailoring';
     if (roleSubtypes.includes('coat') || /\bcoat|trench|overcoat|long\b/.test(art)) return 'longline_coat';
     if (roleSubtypes.includes('overshirt') || /\bovershirt|chore|utility|shacket\b/.test(art)) return 'relaxed_utility_overshirt';
-    if (roleSubtypes.includes('cardigan') || /\bcardigan|knit layer\b/.test(art)) return 'soft_draped_knit';
-    if (roleSubtypes.includes('bomber') || roleSubtypes.includes('jacket') || /\bbomber|leather|blouson\b/.test(art)) return 'cropped_blouson_jacket';
+    if (roleSubtypes.includes('cardigan') || /\bcardigan|knit layer|knit jacket\b/.test(art)) return 'soft_draped_knit';
+    if (roleSubtypes.includes('bomber') || roleSubtypes.includes('jacket') || /\bbomber|leather|blouson|suede\b/.test(art)) return 'cropped_blouson_jacket';
   }
   if (slot === 'bottom') {
     if (roleSubtypes.includes('tailored-trouser') || /\bpleat|tailored trouser|flannel\b/.test(art)) return 'tailored_pleated';
@@ -316,36 +380,211 @@ const SLOT_BUDGET_HEADROOM = {
   accessory: 0.35,
 };
 
-function evaluatePriceTierAndBudget(enriched, bands, context) {
+const TIGHT_SLOT_BUDGET_HEADROOM = {
+  top: 0.22,
+  outerwear: 0.38,
+  bottom: 0.28,
+  shoes: 0.44,
+  dress: 0.55,
+  accessory: 0.22,
+};
+
+const TIGHT_SLOT_IDEAL_SHARE = {
+  top: 0.17,
+  outerwear: 0.30,
+  bottom: 0.22,
+  shoes: 0.35,
+  dress: 0.45,
+  accessory: 0.16,
+};
+
+const TIGHT_BUDGET_USD_THRESHOLD = 500;
+
+function resolveVerifiedFxRates(context, extraFx = null) {
+  const candidates = [
+    extraFx?.uzsPerUnit,
+    extraFx,
+    context?.fxSnapshot?.uzsPerUnit,
+    context?.budgetFx?.snapshot?.uzsPerUnit,
+    context?.budgetFx?.uzsPerUnit,
+    context?.budget?.fxSnapshot?.uzsPerUnit,
+    context?.valueFxRates,
+  ];
+  for (const rates of candidates) {
+    if (!rates || typeof rates !== 'object') continue;
+    const cleaned = {};
+    let validCount = 0;
+    for (const [cur, val] of Object.entries(rates)) {
+      const code = String(cur || '').trim().toUpperCase();
+      const num = Number(val);
+      if (/^[A-Z]{3}$/.test(code) && Number.isFinite(num) && num > 0) {
+        cleaned[code] = num;
+        validCount++;
+      }
+    }
+    if (validCount >= 2) return cleaned;
+  }
+  return null;
+}
+
+function convertItemPriceToCurrency(enriched, targetCurrency, context, extraConverter = null, fxRates = null) {
+  const target = String(targetCurrency || '').trim().toUpperCase();
+  if (!target) return null;
+  const fn = typeof extraConverter === 'function'
+    ? extraConverter
+    : (typeof context?.priceToBudgetCurrency === 'function' ? context.priceToBudgetCurrency : null);
+  if (fn) {
+    try {
+      const val = fn(enriched.item, target, context);
+      if (Number.isFinite(val) && val > 0) return val;
+    } catch { /* fall through */ }
+  }
+  if (!Number.isFinite(enriched.price) || enriched.price <= 0 || !enriched.currency) return null;
+  if (enriched.currency === target) return enriched.price;
+  if (fxRates && Number.isFinite(fxRates[enriched.currency]) && Number.isFinite(fxRates[target])) {
+    const converted = (enriched.price * fxRates[enriched.currency]) / fxRates[target];
+    return Number.isFinite(converted) && converted > 0 ? converted : null;
+  }
+  return null;
+}
+
+function computeDynamicBudgetPlan({ bySlot, activeSlots, context, limit, directionCount, priceToBudgetCurrency = null, fxSnapshot = null }) {
   const budget = context?.budget;
   const budgetAmount = Number(budget?.amount);
   const budgetCurrency = String(budget?.currency || '').trim().toUpperCase();
-  const converter = typeof context?.priceToBudgetCurrency === 'function' ? context.priceToBudgetCurrency : null;
+  if (!Number.isFinite(budgetAmount) || budgetAmount <= 0 || !budgetCurrency) {
+    return null;
+  }
+  const fxRates = resolveVerifiedFxRates(context, fxSnapshot);
+
+  let budgetUsdEquivalent = null;
+  if (budgetCurrency === 'USD') {
+    budgetUsdEquivalent = budgetAmount;
+  } else if (fxRates && Number.isFinite(fxRates[budgetCurrency]) && Number.isFinite(fxRates.USD)) {
+    budgetUsdEquivalent = (budgetAmount * fxRates[budgetCurrency]) / fxRates.USD;
+  }
+
+  // Compute honest converted price distributions per active slot.
+  const convertedBySlot = new Map();
+  const minFloorBySlot = new Map();
+  const p25BySlot = new Map();
+  for (const slot of activeSlots) {
+    const prices = [];
+    for (const e of bySlot.get(slot) || []) {
+      const c = convertItemPriceToCurrency(e, budgetCurrency, context, priceToBudgetCurrency, fxRates);
+      if (c !== null) prices.push(c);
+    }
+    prices.sort((a, b) => a - b);
+    convertedBySlot.set(slot, prices);
+    if (prices.length > 0) {
+      // Reserve realistic multi-look floor (3rd cheapest or 5th percentile) so 3 disjoint looks stay feasible.
+      const floorIdx = Math.min(prices.length - 1, Math.min(2, Math.floor(prices.length * 0.05)));
+      minFloorBySlot.set(slot, prices[floorIdx]);
+      p25BySlot.set(slot, prices[Math.floor((prices.length - 1) * 0.25)]);
+    } else {
+      minFloorBySlot.set(slot, 0);
+      p25BySlot.set(slot, 0);
+    }
+  }
+
+  const p25FourSlotSum = activeSlots.slice(0, 4).reduce((sum, s) => sum + (p25BySlot.get(s) || 0), 0);
+  const isTight = (
+    (budgetUsdEquivalent !== null && budgetUsdEquivalent <= TIGHT_BUDGET_USD_THRESHOLD + 1e-6) ||
+    (budgetUsdEquivalent === null && p25FourSlotSum > 0 && budgetAmount <= p25FourSlotSum * 1.15)
+  );
+
+  const slotCaps = {};
+  const coreSlots = activeSlots.slice(0, 4);
+  for (const slot of activeSlots) {
+    const standardCap = budgetAmount * (SLOT_BUDGET_HEADROOM[slot] ?? 0.60);
+    const otherMinReserve = coreSlots
+      .filter(o => o !== slot)
+      .reduce((sum, o) => sum + (minFloorBySlot.get(o) || 0), 0);
+    const dynamicReserveCap = otherMinReserve > 0 && budgetAmount > otherMinReserve
+      ? budgetAmount - otherMinReserve
+      : standardCap;
+
+    if (!isTight) {
+      slotCaps[slot] = Math.min(standardCap, dynamicReserveCap > 0 ? Math.max(dynamicReserveCap, standardCap * 0.85) : standardCap);
+      continue;
+    }
+
+    const tightShareCap = budgetAmount * (TIGHT_SLOT_BUDGET_HEADROOM[slot] ?? 0.35);
+    const preferredTightCap = Math.min(
+      tightShareCap,
+      dynamicReserveCap > 0 ? dynamicReserveCap : tightShareCap,
+    );
+    const prices = convertedBySlot.get(slot) || [];
+    const neededHealthy = Math.min(limit * Math.max(1, directionCount), 18);
+    const countAtPreferred = prices.filter(p => p <= preferredTightCap + 1e-6).length;
+    const countAtShare = prices.filter(p => p <= tightShareCap + 1e-6).length;
+
+    if (countAtPreferred >= neededHealthy || countAtPreferred >= Math.min(limit, 12)) {
+      slotCaps[slot] = preferredTightCap;
+    } else if (countAtShare >= Math.min(limit, 12)) {
+      slotCaps[slot] = tightShareCap;
+    } else {
+      // Smooth fallback on tiny synthetic catalogs while still respecting dynamic 3-slot headroom.
+      const relaxed = Math.min(standardCap, Math.max(tightShareCap, dynamicReserveCap));
+      slotCaps[slot] = relaxed;
+    }
+  }
+
+  return {
+    budgetAmount,
+    budgetCurrency,
+    budgetUsdEquivalent,
+    isTight,
+    slotCaps,
+    fxRates,
+    priceToBudgetCurrency,
+  };
+}
+
+function evaluatePriceTierAndBudget(enriched, bands, context, budgetPlan = null) {
+  const budget = context?.budget;
+  const budgetAmount = budgetPlan?.budgetAmount ?? Number(budget?.amount);
+  const budgetCurrency = budgetPlan?.budgetCurrency ?? String(budget?.currency || '').trim().toUpperCase();
 
   if (Number.isFinite(budgetAmount) && budgetAmount > 0 && budgetCurrency) {
-    let converted = null;
-    if (converter) {
-      const val = converter(enriched.item, budgetCurrency, context);
-      if (Number.isFinite(val) && val > 0) converted = val;
-    } else if (enriched.currency === budgetCurrency && Number.isFinite(enriched.price) && enriched.price > 0) {
-      converted = enriched.price;
-    }
+    const converted = convertItemPriceToCurrency(
+      enriched,
+      budgetCurrency,
+      context,
+      budgetPlan?.priceToBudgetCurrency || null,
+      budgetPlan?.fxRates || null,
+    );
     if (converted !== null) {
-      const maxSlotShare = SLOT_BUDGET_HEADROOM[enriched.slot] ?? 0.60;
-      const withinHeadroom = converted <= budgetAmount * maxSlotShare + 1e-6;
+      const cap = budgetPlan?.slotCaps?.[enriched.slot] ?? (budgetAmount * (SLOT_BUDGET_HEADROOM[enriched.slot] ?? 0.60));
+      const withinHeadroom = converted <= cap + 1e-6;
       const share = converted / budgetAmount;
-      const tier = share <= 0.24 ? 'accessible' : share <= 0.40 ? 'mid' : 'elevated';
-      return { priceTier: tier, withinHeadroom, budgetShare: share, budgetChecked: true };
+      const ideal = TIGHT_SLOT_IDEAL_SHARE[enriched.slot] ?? 0.25;
+      const tier = budgetPlan?.isTight
+        ? (share <= ideal ? 'accessible' : share <= (TIGHT_SLOT_BUDGET_HEADROOM[enriched.slot] ?? 0.35) * 0.90 ? 'mid' : 'elevated')
+        : (share <= 0.24 ? 'accessible' : share <= 0.40 ? 'mid' : 'elevated');
+      return { priceTier: tier, withinHeadroom, budgetShare: share, convertedPrice: converted, budgetChecked: true };
+    }
+    // Fail closed on unconvertible shop currencies when an explicit spending cap is active
+    // (never fabricate FX or admit INR/unknown-currency SKUs into a USD/EUR/GBP/UZS budgeted pool).
+    if (enriched.item?.isShopItem !== false) {
+      return {
+        priceTier: 'elevated',
+        withinHeadroom: false,
+        budgetShare: null,
+        convertedPrice: null,
+        budgetChecked: true,
+        unconvertibleCurrency: true,
+      };
     }
   }
 
   const band = bands.get(`${enriched.slot}|${enriched.currency}`);
   if (!band || !Number.isFinite(enriched.price)) {
-    return { priceTier: 'mid', withinHeadroom: true, budgetShare: null, budgetChecked: false };
+    return { priceTier: 'mid', withinHeadroom: true, budgetShare: null, convertedPrice: null, budgetChecked: false };
   }
   const tier = enriched.price <= band.p35 ? 'accessible'
     : enriched.price <= band.p70 ? 'mid' : 'elevated';
-  return { priceTier: tier, withinHeadroom: true, budgetShare: null, budgetChecked: false };
+  return { priceTier: tier, withinHeadroom: true, budgetShare: null, convertedPrice: null, budgetChecked: false };
 }
 
 function collectExclusions(context, personalStyleDna, tasteProfile) {
@@ -447,6 +686,10 @@ export function scoreItemForDirection(enriched, direction, scoringCtx = {}) {
     personalStyleDna = null,
     tasteProfile = null,
     competingArchetypes = new Set(),
+    directionAllowsTailoredCoat = false,
+    budgetPlan = null,
+    priceInfo = null,
+    globalBrandCounts = null,
   } = scoringCtx;
 
   const slot = enriched.slot;
@@ -462,9 +705,38 @@ export function scoreItemForDirection(enriched, direction, scoringCtx = {}) {
   const targetTextures = extractTargetTextures(direction);
   const targetFormality = resolveTargetFormality(direction, context);
   const thermalBand = resolveThermalBand(direction, context);
+  const numericTemp = resolveNumericTemp(context);
+  const indoorOccasion = isIndoorEditorialOccasion(context);
+  const isWarmOrHot = thermalBand === 'hot' || thermalBand === 'warm' || (numericTemp !== null && numericTemp >= 24);
   const targetSilhouette = String(direction?.silhouette || 'balanced').toLowerCase();
+  const layerRole = enriched.layerRole || classifyOuterwearLayerRole({
+    macroCategory: slot,
+    subtype: enriched.subtype,
+    name: enriched.name || enriched.searchText || '',
+    insulated: enriched.insulated,
+    bulk: enriched.bulk,
+  });
+  const isPeacoat = enriched.isPeacoat === true || (slot === 'outerwear' && /\bpeacoats?\b/i.test(enriched.searchText || ''));
+  const isCommuterRainOrParka = enriched.isCommuterRainOrParka === true || (
+    slot === 'outerwear' && (
+      enriched.insulated === true ||
+      /\b(parkas?|puffers?|raincoats?|anoraks?|waterproof|commuter\s+(?:trench|coat)|down\s+(?:coat|jacket|parka)|primaloft|thinsulate|windbreaker)\b/i.test(enriched.searchText || '')
+    )
+  );
+  const isHeavyWarmHazard = enriched.isHeavyWarmWeatherHazard === true || (
+    (slot === 'outerwear' && (
+      layerRole === 'outdoor_heavy_coat' ||
+      enriched.insulated === true ||
+      enriched.bulk === 'heavy' ||
+      ['coat', 'pullover', 'hoodie'].includes(enriched.subtype) ||
+      /\b(wool|cashmere|merino|alpaca|mohair|lambswool|flannel|tweed|corduroy|velvet|fleece|waxed|chunky|shawl[- ]?(?:collar|neck)|heavyweight|leather|suede|biker|moto|shearling|padded|quilted|primaloft)\b/i.test(enriched.searchText || '')
+    )) ||
+    (slot === 'top' && /\b(turtlenecks?|mock[- ]?necks?|roll[- ]?necks?|chunky\s+knit|cable[- ]?knit|heavy\s+wool|cashmere\s+sweater|wool\s+sweater|alpaca|mohair|fleece|hoodie|sweatshirt)\b/i.test(enriched.searchText || '')) ||
+    (slot === 'bottom' && /\b(heavy\s+wool|flannel|tweed|corduroy|fleece|thermal|insulated|snow)\b/i.test(enriched.searchText || '')) ||
+    (slot === 'shoes' && (['boot', 'chelsea', 'dress-boot', 'hiking-boot'].includes(enriched.subtype) || /\b(boots?|chelsea|chukka|shearling|winter\s+boot|snow\s+boot)\b/i.test(enriched.searchText || '')))
+  );
 
-  // 1. Role & Archetype Alignment (0..0.30)
+  // 1. Role & Archetype Alignment (-0.05..0.30)
   let archetypeScore = 0;
   if (targetSubtypes.has(enriched.subtype)) archetypeScore += 0.22;
   if (archetypeKey && matchesArchetype(enriched, slot, archetypeKey)) {
@@ -481,7 +753,7 @@ export function scoreItemForDirection(enriched, direction, scoringCtx = {}) {
   }
   archetypeScore = Math.max(-0.05, Math.min(0.30, archetypeScore));
 
-  // 2. Palette & Undertone Alignment (0..0.20)
+  // 2. Palette & Undertone Alignment (-0.25..0.20)
   let paletteScore = 0;
   if (enriched.color !== 'unknown') {
     if (targetPalette.has(enriched.color)) {
@@ -520,7 +792,7 @@ export function scoreItemForDirection(enriched, direction, scoringCtx = {}) {
     textureScore = 0.03;
   }
 
-  // 4. Silhouette & Body Proportion Fit (0..0.12)
+  // 4. Silhouette & Body Proportion Fit (-0.04..0.12)
   let silhouetteScore = 0.03;
   if (targetSilhouette === 'tailored') {
     if (enriched.volume === 'slim' || enriched.volume === 'regular') silhouetteScore += 0.05;
@@ -554,58 +826,128 @@ export function scoreItemForDirection(enriched, direction, scoringCtx = {}) {
   }
   silhouetteScore = Math.max(-0.04, Math.min(0.12, silhouetteScore));
 
-  // 5. Formality Alignment (0..0.10)
+  // 5. Formality & Shoe-to-Trouser Integrity Alignment (-0.22..0.14)
   let formalityScore = 0.04;
   if (Object.hasOwn(FORMALITY_RANK, enriched.formality) && Object.hasOwn(FORMALITY_RANK, targetFormality)) {
     const dist = Math.abs(FORMALITY_RANK[enriched.formality] - FORMALITY_RANK[targetFormality]);
     formalityScore = dist === 0 ? 0.10 : dist === 1 ? 0.06 : dist === 2 ? -0.04 : -0.10;
   }
+  if (slot === 'shoes') {
+    const trouserArch = inferArchetypeKey('bottom', direction);
+    const outerArch = inferArchetypeKey('outerwear', direction);
+    const casualTrouserDirection =
+      trouserArch === 'relaxed_chino' ||
+      trouserArch === 'refined_dark_denim' ||
+      outerArch === 'relaxed_utility_overshirt' ||
+      targetFormality === 'casual';
+    const isHyperFormalBlackOxford =
+      (enriched.subtype === 'oxford' && (enriched.color === 'black' || /\b(whole[- ]?cut|patent|balmoral)\b/i.test(enriched.searchText))) ||
+      /\b(whole[- ]?cut\s+oxford|patent\s+oxford|black\s+patent)\b/i.test(enriched.searchText);
+    if (casualTrouserDirection && isHyperFormalBlackOxford) {
+      formalityScore -= 0.14;
+    } else if (casualTrouserDirection && ['loafer', 'driver', 'derby', 'minimal-sneaker', 'espadrille'].includes(enriched.subtype)) {
+      formalityScore += 0.04;
+    }
+    if ((targetFormality === 'formal' || /\b(work|office|business|date|dinner|cocktail|evening)\b/i.test(String(context?.occasion || ''))) &&
+        ['sport-sneaker', 'hiking-boot'].includes(enriched.subtype)) {
+      formalityScore -= 0.22;
+    }
+  }
 
-  // 6. Thermal Band Alignment (-0.18..0.12)
+  // 6. Thermal Band & Indoor-Layer-First Alignment (-0.42..0.18)
   let thermalScore = 0.04;
-  if (thermalBand === 'hot') {
-    const heavyWinter = enriched.insulated || enriched.bulk === 'heavy' ||
-      /\b(overcoat|peacoat|parka|puffer|shearling|wool|cashmere|flannel|tweed|corduroy|cord\b|fleece|velvet|turtleneck|mockneck|roll[- ]?neck|half[- ]?zip|sweater|jumper|pullover|hiking-boot|snow)\b/i.test(enriched.searchText) ||
-      (slot === 'outerwear' && ['coat', 'pullover', 'hoodie'].includes(enriched.subtype));
-    const trulyAiry = /\b(linen|seersucker|unlined|gauze|chambray|open[- ]weave|breathable|lightweight|summer|resort)\b/i.test(enriched.searchText);
-    const lightBreathable = enriched.bulk === 'light' || trulyAiry ||
-      /\b(poplin|short[- ]sleeve|polo|t-shirt|loafer|espadrille|driver|minimal-sneaker)\b/i.test(enriched.searchText);
-    if (heavyWinter) thermalScore = -0.18;
-    else if (trulyAiry) thermalScore = 0.12;
-    else if (lightBreathable) thermalScore = 0.09;
-    else if (slot === 'outerwear' && enriched.subtype === 'overshirt') thermalScore = 0.07;
-  } else if (thermalBand === 'cold') {
+  if (isWarmOrHot) {
+    const trulyAiry = /\b(linen|cotton[- ]?linen|seersucker|unlined|gauze|chambray|open[- ]weave|breathable|lightweight|lyocell|tencel|summer|resort)\b/i.test(enriched.searchText);
+    const lightSummerPiece = enriched.bulk === 'light' || trulyAiry ||
+      (slot === 'top' && /\b(poplin|short[- ]sleeve|camp[- ]?collar|polo|t-shirt|tee|cotton)\b/i.test(enriched.searchText)) ||
+      (slot === 'outerwear' && /\b(overshirt|shacket|chore|shirt[- ]?jacket|cardigan|blazer)\b/i.test(enriched.searchText) && /\b(cotton|linen|lyocell|viscose|seersucker|unlined|lightweight)\b/i.test(enriched.searchText)) ||
+      (slot === 'bottom' && /\b(linen|chino|cotton|seersucker|lyocell|lightweight)\b/i.test(enriched.searchText)) ||
+      (slot === 'shoes' && ['loafer', 'driver', 'espadrille', 'minimal-sneaker', 'sneaker'].includes(enriched.subtype));
+
+    if (isHeavyWarmHazard) {
+      thermalScore = -0.42;
+    } else if (trulyAiry) {
+      thermalScore = 0.18;
+    } else if (lightSummerPiece) {
+      thermalScore = 0.14;
+    } else if (slot === 'outerwear' && ['overshirt', 'cardigan', 'blazer'].includes(enriched.subtype)) {
+      thermalScore = 0.08;
+    }
+  } else if (thermalBand === 'cold' || (numericTemp !== null && numericTemp <= 10)) {
     const insulating = enriched.insulated || enriched.bulk === 'heavy' ||
+      layerRole === 'outdoor_heavy_coat' ||
       ['coat', 'jacket', 'cardigan', 'blazer', 'chelsea', 'boot', 'dress-boot', 'fine-knit', 'sweater'].includes(enriched.subtype) ||
       /\b(wool|cashmere|flannel|tweed|corduroy|merino|lined|shearling|leather)\b/i.test(enriched.searchText);
     const tooSummer = /\b(linen|seersucker|espadrille|sandal|shorts|tank[- ]top|sleeveless|short[- ]sleeve)\b/i.test(enriched.searchText);
     if (tooSummer) thermalScore = -0.14;
-    else if (insulating) thermalScore = 0.10;
+    else if (insulating) thermalScore = 0.11;
   } else {
-    // Transitional 14-25C: penalize extreme parkas/puffers mildly, favor midweight layers.
-    if (enriched.insulated && slot === 'outerwear') thermalScore = -0.08;
-    else if (['blazer', 'overshirt', 'cardigan', 'jacket', 'loafer', 'derby', 'minimal-sneaker', 'chino', 'tailored-trouser', 'fine-knit', 'shirt', 'polo'].includes(enriched.subtype)) {
-      thermalScore = 0.08;
+    // Cool / Mild / Transitional (>10C and <24C): Indoor-Layer-First editorial priority!
+    const above10 = numericTemp === null ? true : numericTemp > 10;
+    const above13 = numericTemp === null ? true : numericTemp > 13;
+    if (slot === 'outerwear' && above10) {
+      if (isCommuterRainOrParka) {
+        thermalScore = -0.42;
+      } else if (layerRole === 'outdoor_heavy_coat') {
+        if (indoorOccasion) {
+          if (above13 || !directionAllowsTailoredCoat) {
+            thermalScore = isPeacoat ? -0.38 : -0.34;
+          } else {
+            // Optional single tailored-coat direction at 10-13C Work: refined tailored overcoat ok, never peacoat monopoly
+            thermalScore = isPeacoat ? -0.22 : 0.04;
+          }
+        } else {
+          thermalScore = above13 ? -0.20 : 0.04;
+        }
+      } else if (layerRole === 'indoor_refined_layer') {
+        const refinedIndoorBoost = ['blazer', 'sport-coat', 'cardigan', 'overshirt', 'knit-jacket', 'chore-jacket', 'suede-jacket', 'shacket'].includes(enriched.subtype) ||
+          /\b(blazer|sport[- ]?coat|cardigan|overshirt|knit[- ]?jacket|chore[- ]?(?:jacket|coat)|suede|shacket)\b/i.test(enriched.searchText);
+        thermalScore = indoorOccasion
+          ? (refinedIndoorBoost ? 0.17 : 0.13)
+          : (refinedIndoorBoost ? 0.12 : 0.09);
+      } else {
+        thermalScore = 0.06;
+      }
+    } else if (enriched.insulated && slot === 'outerwear') {
+      thermalScore = -0.24;
+    } else if (['blazer', 'overshirt', 'cardigan', 'jacket', 'loafer', 'derby', 'minimal-sneaker', 'chino', 'tailored-trouser', 'fine-knit', 'shirt', 'dress-shirt', 'polo'].includes(enriched.subtype)) {
+      thermalScore = 0.09;
     }
   }
 
-  // 7. Personal Taste + Quality Flywheel + Verified Photo Evidence (-0.12..0.16)
+  // 7. Personal Taste + Quality Flywheel + Tight-Budget Comfort + Anti-Monopoly + Photo Evidence
   const tasteAdj = computeTasteAdjustment(enriched, tasteProfile, personalStyleDna);
   const qualityAdj = (enriched.qualityScore - 0.65) * 0.14;
   const visualEvidenceBoost = Math.min(0.03, enriched.photoFactCount * 0.005);
 
-  // Calibrated sum (max ~0.97 before clamp) so tasteProfile, qualityScore, and DNA
-  // continue differentiating strong candidates without saturating at 1.0.
+  let budgetComfortAdj = 0;
+  if (budgetPlan?.isTight && priceInfo?.budgetChecked && Number.isFinite(priceInfo.budgetShare)) {
+    const ideal = TIGHT_SLOT_IDEAL_SHARE[slot] ?? 0.25;
+    const capShare = TIGHT_SLOT_BUDGET_HEADROOM[slot] ?? 0.35;
+    if (priceInfo.budgetShare <= ideal) budgetComfortAdj = 0.07;
+    else if (priceInfo.budgetShare <= capShare * 0.92) budgetComfortAdj = 0.035;
+  }
+
+  let brandAntiMonopolyAdj = 0;
+  if (globalBrandCounts instanceof Map && enriched.brand) {
+    const priorUses = globalBrandCounts.get(enriched.brand) || 0;
+    if (priorUses >= 3) brandAntiMonopolyAdj = -Math.min(0.06, (priorUses - 2) * 0.015);
+  }
+
+  // Calibrated sum so tasteProfile, indoor-layer priority, thermal safety, and DNA
+  // decisively separate world-class matches without saturating at 1.0.
   const rawTotal = 0.08 +
     archetypeScore * 0.85 +
     paletteScore * 0.80 +
     textureScore * 0.80 +
     silhouetteScore * 0.80 +
     formalityScore * 0.80 +
-    thermalScore * 0.70 +
+    thermalScore * 0.80 +
     tasteAdj +
     qualityAdj +
-    visualEvidenceBoost;
+    visualEvidenceBoost +
+    budgetComfortAdj +
+    brandAntiMonopolyAdj;
   const score = Math.round(Math.max(0, Math.min(1, rawTotal)) * 10000) / 10000;
 
   return {
@@ -620,6 +962,7 @@ export function scoreItemForDirection(enriched, direction, scoringCtx = {}) {
       taste: Math.round(tasteAdj * 1000) / 1000,
       quality: Math.round(qualityAdj * 1000) / 1000,
       visualEvidence: Math.round(visualEvidenceBoost * 1000) / 1000,
+      budgetComfort: Math.round(budgetComfortAdj * 1000) / 1000,
     },
   };
 }
@@ -667,26 +1010,99 @@ function buildPublicEntry(token, enriched, priceTier, tasteProfile) {
 
 function defaultOrthogonalDirections(context) {
   const thermalBand = resolveThermalBand({}, context);
+  const numericTemp = resolveNumericTemp(context);
   const formality = resolveTargetFormality({}, context);
+  const indoorOccasion = isIndoorEditorialOccasion(context);
+  const dateOrDinner = isDateOrDinnerOccasion(context);
+  const isWarmOrHot = thermalBand === 'hot' || thermalBand === 'warm' || (numericTemp !== null && numericTemp >= 24);
+  const isTrulyCold = thermalBand === 'cold' || (numericTemp !== null && numericTemp <= 10);
+  const allowOptionalCoolCoatDir3 = !isWarmOrHot && !isTrulyCold && !dateOrDinner &&
+    numericTemp !== null && numericTemp > 10 && numericTemp <= 13;
+
+  if (isWarmOrHot) {
+    return [
+      {
+        id: 'ai-director-1',
+        name: 'Riviera Tailored Ease',
+        directionType: 'signature_mastery',
+        silhouette: 'tailored',
+        outerwearArchetype: 'structured_tailoring',
+        trouserArchetype: 'tailored_pleated',
+        footwearArchetype: 'soft_suede_loafer',
+        palette: ['stone', 'white', 'navy', 'tan'],
+        colorHarmonyMode: 'cool_architectural_contrast',
+        materialTexture: 'linen cotton poplin',
+        formality: formality === 'formal' ? 'smart' : formality,
+        thermalBand,
+        roles: {
+          top: ['shirt', 'dress-shirt', 'polo'],
+          outerwear: ['blazer'],
+          bottom: ['trouser', 'tailored-trouser', 'chino'],
+          shoes: ['loafer', 'driver'],
+        },
+      },
+      {
+        id: 'ai-director-2',
+        name: 'Breezy Utility Overshirt',
+        directionType: 'silhouette_texture_shift',
+        silhouette: 'relaxed',
+        outerwearArchetype: 'relaxed_utility_overshirt',
+        trouserArchetype: 'relaxed_chino',
+        footwearArchetype: 'warm_weather_driver_espadrille',
+        palette: ['olive', 'cream', 'beige', 'brown'],
+        colorHarmonyMode: 'warm_earth_analogous',
+        materialTexture: 'linen cotton twill',
+        formality: 'smart',
+        thermalBand,
+        roles: {
+          top: ['polo', 't-shirt', 'shirt'],
+          outerwear: ['overshirt', 'jacket'],
+          bottom: ['chino', 'trouser'],
+          shoes: ['driver', 'loafer', 'espadrille'],
+        },
+      },
+      {
+        id: 'ai-director-3',
+        name: 'Airy Open-Weave Knit',
+        directionType: 'editorial_statement',
+        silhouette: 'balanced',
+        outerwearArchetype: 'soft_draped_knit',
+        trouserArchetype: 'fluid_wide_leg',
+        footwearArchetype: 'clean_minimal_sneaker',
+        palette: ['cream', 'blue', 'stone', 'white'],
+        colorHarmonyMode: 'neutral_anchor_plus_accent',
+        materialTexture: 'cotton knit linen',
+        formality: 'casual',
+        thermalBand,
+        roles: {
+          top: ['t-shirt', 'polo', 'shirt'],
+          outerwear: ['cardigan'],
+          bottom: ['trouser', 'chino'],
+          shoes: ['minimal-sneaker', 'sneaker', 'loafer'],
+        },
+      },
+    ];
+  }
+
   return [
     {
       id: 'ai-director-1',
       name: 'Signature Mastery',
       directionType: 'signature_mastery',
       silhouette: 'tailored',
-      outerwearArchetype: thermalBand === 'hot' ? 'breathable_light_layer' : 'structured_tailoring',
+      outerwearArchetype: 'structured_tailoring',
       trouserArchetype: 'tailored_pleated',
-      footwearArchetype: formality === 'casual' ? 'soft_suede_loafer' : 'sleek_lace_up_dress',
-      palette: ['navy', 'white', 'charcoal', 'brown'],
+      footwearArchetype: formality === 'casual' || dateOrDinner ? 'soft_suede_loafer' : 'sleek_lace_up_dress',
+      palette: ['navy', 'white', 'grey', 'cream'],
       colorHarmonyMode: 'cool_architectural_contrast',
       materialTexture: 'wool cotton leather',
       formality,
       thermalBand,
       roles: {
-        top: ['dress-shirt', 'shirt'],
-        outerwear: thermalBand === 'hot' ? ['overshirt', 'blazer'] : ['blazer'],
+        top: ['dress-shirt', 'shirt', 'fine-knit'],
+        outerwear: ['blazer'],
         bottom: ['tailored-trouser', 'trouser'],
-        shoes: formality === 'casual' ? ['loafer', 'derby'] : ['oxford', 'derby'],
+        shoes: formality === 'casual' || dateOrDinner ? ['loafer', 'derby'] : ['derby', 'oxford', 'loafer'],
       },
     },
     {
@@ -700,33 +1116,45 @@ function defaultOrthogonalDirections(context) {
       palette: ['olive', 'cream', 'stone', 'brown'],
       colorHarmonyMode: 'warm_earth_analogous',
       materialTexture: 'suede knit cotton',
-      formality: formality === 'formal' ? 'smart' : 'smart',
+      formality: 'smart',
       thermalBand,
       roles: {
-        top: ['fine-knit', 'polo'],
+        top: ['fine-knit', 'polo', 'shirt'],
         outerwear: ['overshirt', 'jacket'],
         bottom: ['chino', 'trouser'],
-        shoes: ['loafer', 'driver'],
+        shoes: ['loafer', 'derby', 'driver'],
       },
     },
     {
       id: 'ai-director-3',
-      name: 'Editorial Statement',
+      name: isTrulyCold ? 'Editorial Coat Statement' : 'Editorial Knit & Suede Statement',
       directionType: 'editorial_statement',
       silhouette: 'balanced',
-      outerwearArchetype: thermalBand === 'hot' ? 'soft_draped_knit' : 'longline_coat',
-      trouserArchetype: formality === 'formal' ? 'clean_straight_trouser' : 'refined_dark_denim',
-      footwearArchetype: thermalBand === 'hot' ? 'clean_minimal_sneaker' : 'sculptural_chelsea_boot',
-      palette: ['charcoal', 'camel', 'black', 'cream'],
-      colorHarmonyMode: 'tonal_monochrome',
-      materialTexture: 'tweed leather wool',
+      outerwearArchetype: isTrulyCold
+        ? 'longline_coat'
+        : (dateOrDinner ? 'suede_jacket' : 'soft_draped_knit'),
+      trouserArchetype: formality === 'formal' || (indoorOccasion && !dateOrDinner)
+        ? 'clean_straight_trouser'
+        : 'refined_dark_denim',
+      footwearArchetype: isTrulyCold ? 'sculptural_chelsea_boot' : 'refined_derby_or_monk',
+      palette: ['charcoal', 'camel', 'cream', 'brown'],
+      colorHarmonyMode: 'neutral_anchor_plus_accent',
+      materialTexture: isTrulyCold ? 'wool flannel leather' : 'knit suede wool',
       formality,
       thermalBand,
       roles: {
-        top: ['polo', 't-shirt', 'fine-knit'],
-        outerwear: thermalBand === 'hot' ? ['cardigan', 'overshirt'] : ['coat', 'bomber', 'jacket'],
-        bottom: formality === 'formal' ? ['trouser', 'tailored-trouser'] : ['jeans', 'trouser'],
-        shoes: thermalBand === 'hot' ? ['minimal-sneaker', 'loafer'] : ['chelsea', 'boot', 'monk'],
+        top: ['fine-knit', 'polo', 'shirt'],
+        outerwear: isTrulyCold
+          ? ['coat', 'jacket', 'bomber']
+          : allowOptionalCoolCoatDir3
+            ? ['cardigan', 'jacket', 'coat']
+            : ['cardigan', 'bomber', 'jacket'],
+        bottom: formality === 'formal' || (indoorOccasion && !dateOrDinner)
+          ? ['trouser', 'tailored-trouser', 'chino']
+          : ['jeans', 'trouser'],
+        shoes: isTrulyCold
+          ? ['chelsea', 'boot', 'derby']
+          : ['derby', 'monk', 'chelsea', 'loafer'],
       },
     },
   ];
@@ -738,17 +1166,25 @@ function selectSlotCandidatesForDirection(scoredCandidates, {
   globallyAssignedImageUrls,
   explicitLuxury,
   requiredIds,
+  isTightBudget = false,
+  maxHeavyOutdoorCoats = Infinity,
 }) {
   const chosen = [];
   const chosenBaseIds = new Set();
   const chosenImages = new Set();
   const familyCounts = new Map();
   const subtypeCounts = new Map();
+  const brandCounts = new Map();
+  const colorCounts = new Map();
+  let heavyCoatCount = 0;
+
   const maxPerFamily = Math.max(2, Math.ceil(limit / 5));
   const maxPerSubtype = Math.max(4, Math.ceil(limit * 0.45));
+  const maxPerBrand = Math.max(3, Math.ceil(limit * 0.30));
+  const maxPerColor = Math.max(4, Math.ceil(limit * 0.50));
 
   const familyKey = c => `${c.enriched.subtype}|${c.enriched.color}|${c.enriched.texture}`;
-  const canAdd = (c, { allowShared = false, enforceDiversity = true } = {}) => {
+  const canAdd = (c, { allowShared = false, enforceDiversity = true, enforceHeavyCoatCap = true } = {}) => {
     if (chosen.length >= limit) return false;
     if (chosenBaseIds.has(c.enriched.baseId)) return false;
     if (c.enriched.imageUrl && chosenImages.has(c.enriched.imageUrl)) return false;
@@ -757,10 +1193,15 @@ function selectSlotCandidatesForDirection(scoredCandidates, {
       if (globallyAssignedBaseIds.has(c.enriched.baseId)) return false;
       if (c.enriched.imageUrl && globallyAssignedImageUrls.has(c.enriched.imageUrl)) return false;
     }
+    if (enforceHeavyCoatCap && !isPinned && c.enriched.layerRole === 'outdoor_heavy_coat') {
+      if (heavyCoatCount >= maxHeavyOutdoorCoats) return false;
+    }
     if (enforceDiversity && !isPinned) {
       const fKey = familyKey(c);
       if ((familyCounts.get(fKey) || 0) >= maxPerFamily) return false;
       if ((subtypeCounts.get(c.enriched.subtype) || 0) >= maxPerSubtype) return false;
+      if (c.enriched.brand && (brandCounts.get(c.enriched.brand) || 0) >= maxPerBrand) return false;
+      if (c.enriched.color && c.enriched.color !== 'unknown' && (colorCounts.get(c.enriched.color) || 0) >= maxPerColor) return false;
     }
     return true;
   };
@@ -768,22 +1209,31 @@ function selectSlotCandidatesForDirection(scoredCandidates, {
     chosen.push(c);
     chosenBaseIds.add(c.enriched.baseId);
     if (c.enriched.imageUrl) chosenImages.add(c.enriched.imageUrl);
+    if (c.enriched.layerRole === 'outdoor_heavy_coat') heavyCoatCount++;
     const fKey = familyKey(c);
     familyCounts.set(fKey, (familyCounts.get(fKey) || 0) + 1);
     subtypeCounts.set(c.enriched.subtype, (subtypeCounts.get(c.enriched.subtype) || 0) + 1);
+    if (c.enriched.brand) brandCounts.set(c.enriched.brand, (brandCounts.get(c.enriched.brand) || 0) + 1);
+    if (c.enriched.color && c.enriched.color !== 'unknown') {
+      colorCounts.set(c.enriched.color, (colorCounts.get(c.enriched.color) || 0) + 1);
+    }
   };
 
   // Pass 0: Always admit pinned required anchors first if they belong to this slot.
   for (const c of scoredCandidates) {
-    if (requiredIds.has(c.enriched.id) && canAdd(c, { allowShared: true, enforceDiversity: false })) {
+    if (requiredIds.has(c.enriched.id) && canAdd(c, { allowShared: true, enforceDiversity: false, enforceHeavyCoatCap: false })) {
       take(c);
     }
   }
 
-  // Pass 1: Price-tier balanced disjoint selection (accessible + mid reserves when not explicit luxury).
+  // Pass 1: Price-tier balanced disjoint selection (stronger accessible quota under tight budgets).
   if (!explicitLuxury && limit >= 6) {
-    const accessibleQuota = Math.max(2, Math.floor(limit * 0.32));
-    const midQuota = Math.max(2, Math.floor(limit * 0.35));
+    const accessibleQuota = isTightBudget
+      ? Math.max(3, Math.floor(limit * 0.50))
+      : Math.max(2, Math.floor(limit * 0.32));
+    const midQuota = isTightBudget
+      ? Math.max(2, Math.floor(limit * 0.35))
+      : Math.max(2, Math.floor(limit * 0.35));
     let accTaken = 0;
     let midTaken = 0;
 
@@ -803,16 +1253,22 @@ function selectSlotCandidatesForDirection(scoredCandidates, {
     }
   }
 
-  // Pass 2: Best disjoint & subtype/family-diverse candidates across all tiers.
+  // Pass 2: Best disjoint & subtype/brand/color/family-diverse candidates across all tiers.
   for (const c of scoredCandidates) {
     if (chosen.length >= limit) break;
     if (canAdd(c, { allowShared: false, enforceDiversity: true })) take(c);
   }
 
-  // Pass 3: Relax intra-pool subtype diversity cap while staying disjoint across directions.
+  // Pass 3: Relax intra-pool diversity caps while staying disjoint across directions and honoring coat cap.
   for (const c of scoredCandidates) {
     if (chosen.length >= limit) break;
-    if (canAdd(c, { allowShared: false, enforceDiversity: false })) take(c);
+    if (canAdd(c, { allowShared: false, enforceDiversity: false, enforceHeavyCoatCap: true })) take(c);
+  }
+
+  // Pass 3b: Only if non-coat candidates were exhausted on a tiny catalog, relax heavy-coat cap while staying disjoint.
+  for (const c of scoredCandidates) {
+    if (chosen.length >= limit) break;
+    if (canAdd(c, { allowShared: false, enforceDiversity: false, enforceHeavyCoatCap: false })) take(c);
   }
 
   // Pass 4: Only on small catalogs where disjoint items are exhausted, allow sharing across directions.
@@ -822,7 +1278,7 @@ function selectSlotCandidatesForDirection(scoredCandidates, {
   }
   for (const c of scoredCandidates) {
     if (chosen.length >= limit) break;
-    if (canAdd(c, { allowShared: true, enforceDiversity: false })) take(c);
+    if (canAdd(c, { allowShared: true, enforceDiversity: false, enforceHeavyCoatCap: false })) take(c);
   }
 
   // Re-order final balanced pool so pinned anchors lead, followed by highest direction-fit score.
@@ -842,11 +1298,13 @@ function selectSlotCandidatesForDirection(scoredCandidates, {
  * @param {object} params
  * @param {Array<object>} params.directions - Up to 3 Creative Director blueprints.
  * @param {Array<object>} params.catalog - Full shop/wardrobe catalog (raw DB rows or adapted items).
- * @param {object} [params.context={}] - Request context (`occasion`, `style`, `weather`, `budget`, `preferences`, `requiredIds`, `presentation`).
+ * @param {object} [params.context={}] - Request context (`occasion`, `style`, `weather`, `budget`, `preferences`, `requiredIds`, `presentation`, `fxSnapshot`, `priceToBudgetCurrency`).
  * @param {object|null} [params.personalStyleDna=null] - Normalized Personal Style DNA.
  * @param {object|null} [params.tasteProfile=null] - Learned taste / feedback model.
  * @param {Map|Record<string,object>|null} [params.qualityMap=null] - Per-SKU `catalog_visual_quality` map.
  * @param {number} [params.perSlotLimit=14] - Target candidates per slot per direction (4..24).
+ * @param {Function|null} [params.priceToBudgetCurrency=null] - Optional verified price converter.
+ * @param {object|null} [params.fxSnapshot=null] - Optional verified CBU FX snapshot.
  */
 export function buildPerDirectionCandidatePools({
   directions = [],
@@ -856,6 +1314,8 @@ export function buildPerDirectionCandidatePools({
   tasteProfile = null,
   qualityMap = null,
   perSlotLimit = 14,
+  priceToBudgetCurrency = null,
+  fxSnapshot = null,
 } = {}) {
   const limit = Math.max(3, Math.min(24, Math.floor(Number(perSlotLimit) || 14)));
   const activeDirections = (Array.isArray(directions) && directions.length > 0
@@ -924,19 +1384,59 @@ export function buildPerDirectionCandidatePools({
     }
   }
 
+  // 4b. Compute dynamic budget-headroom plan BEFORE sorting & slicing each direction.
+  const budgetPlan = computeDynamicBudgetPlan({
+    bySlot,
+    activeSlots,
+    context,
+    limit,
+    directionCount: activeDirections.length,
+    priceToBudgetCurrency,
+    fxSnapshot,
+  });
+
   // Precompute all directions' archetypes per slot for cross-direction contrast scoring.
   const archetypesBySlot = new Map(activeSlots.map(slot => [
     slot,
     activeDirections.map(d => inferArchetypeKey(slot, d)),
   ]));
 
-  // 5. Select per-direction candidate pools with cross-direction overlap minimization.
-  const globallyAssignedBaseIds = new Map(activeSlots.map(slot => [slot, new Set()]));
-  const globallyAssignedImageUrls = new Map(activeSlots.map(slot => [slot, new Set()]));
+  const numericTemp = resolveNumericTemp(context);
+  const indoorOccasion = isIndoorEditorialOccasion(context);
+  const dateOrDinner = isDateOrDinnerOccasion(context);
+
+  // 5. Select per-direction candidate pools with cross-direction & cross-slot overlap minimization,
+  //    indoor-layer-first discipline (>10C), warm-weather breathability (>=24C), and anti-monopoly diversity.
+  const globallyAssignedBaseIds = new Set();
+  const globallyAssignedImageUrls = new Set();
+  const globalBrandCountsBySlot = new Map(activeSlots.map(slot => [slot, new Map()]));
+  let tailoredCoatDirectionsUsed = 0;
   const rawDirectionSelections = [];
 
   for (let dIdx = 0; dIdx < activeDirections.length; dIdx++) {
     const direction = activeDirections[dIdx];
+    const dirThermal = resolveThermalBand(direction, context);
+    const isWarmOrHotDir = dirThermal === 'hot' || dirThermal === 'warm' || (numericTemp !== null && numericTemp >= 24);
+    const outerArch = inferArchetypeKey('outerwear', direction);
+    const dirAsksForCoat = outerArch === 'longline_coat' ||
+      (Array.isArray(direction?.roles?.outerwear) && direction.roles.outerwear.includes('coat'));
+
+    // Indoor >10C discipline: NEVER allow heavy outdoor coats in Direction 1 indoor office,
+    // NEVER in Date Night / Dinner / Cocktail (>10C), NEVER at >13C indoor, and at most ONE
+    // optional tailored coat direction at 10-13C Work.
+    const indoorTempGuard = numericTemp !== null && numericTemp > 10 && indoorOccasion;
+    const directionAllowsTailoredCoat = !isWarmOrHotDir && (
+      !indoorTempGuard ||
+      (numericTemp <= 13 && !dateOrDinner && dIdx > 0 && tailoredCoatDirectionsUsed < 1 && dirAsksForCoat)
+    );
+    const maxHeavyOutdoorCoats = isWarmOrHotDir
+      ? 0
+      : !indoorTempGuard
+        ? Infinity
+        : directionAllowsTailoredCoat
+          ? Math.min(3, Math.max(1, Math.floor(limit * 0.25)))
+          : 0;
+
     const slotSelections = {};
 
     for (const slot of activeSlots) {
@@ -946,34 +1446,76 @@ export function buildPerDirectionCandidatePools({
       );
       const scored = [];
       for (const enriched of slotItems) {
-        const priceInfo = evaluatePriceTierAndBudget(enriched, priceBands, context);
+        const priceInfo = evaluatePriceTierAndBudget(enriched, priceBands, context, budgetPlan);
         if (!priceInfo.withinHeadroom && !requiredIds.has(enriched.id)) continue;
         const { score, breakdown } = scoreItemForDirection(enriched, direction, {
           context,
           personalStyleDna,
           tasteProfile,
           competingArchetypes: competing,
+          directionAllowsTailoredCoat,
+          budgetPlan,
+          priceInfo,
+          globalBrandCounts: globalBrandCountsBySlot.get(slot),
         });
         scored.push({ enriched, score, breakdown, priceInfo });
       }
+
+      // Warm/Hot (>=24C) breathability gate: exclude heavy winter/waxed/leather/wool hazards
+      // whenever enough unassigned breathable candidates exist for this direction's slot.
+      let effectiveScored = scored;
+      const countUnassigned = list => list.filter(c => !globallyAssignedBaseIds.has(c.enriched.baseId)).length;
+      if (isWarmOrHotDir) {
+        const breathableOnly = effectiveScored.filter(c => !c.enriched.isHeavyWarmWeatherHazard || requiredIds.has(c.enriched.id));
+        if (countUnassigned(breathableOnly) >= limit) {
+          effectiveScored = breathableOnly;
+        }
+      }
+
+      // Indoor (>10C) outerwear gate: exclude peacoats, parkas, puffers, commuter rain trenches,
+      // and heavy outdoor coats whenever enough unassigned indoor layers exist.
+      if (slot === 'outerwear' && indoorTempGuard) {
+        const noCommuterOrPeacoat = effectiveScored.filter(c =>
+          (!c.enriched.isCommuterRainOrParka && !c.enriched.isPeacoat) || requiredIds.has(c.enriched.id),
+        );
+        if (countUnassigned(noCommuterOrPeacoat) >= limit) {
+          effectiveScored = noCommuterOrPeacoat;
+        }
+        if (maxHeavyOutdoorCoats === 0) {
+          const indoorOnly = effectiveScored.filter(c =>
+            c.enriched.layerRole !== 'outdoor_heavy_coat' || requiredIds.has(c.enriched.id),
+          );
+          if (countUnassigned(indoorOnly) >= limit) {
+            effectiveScored = indoorOnly;
+          }
+        }
+      }
+
       // Deterministic sort: highest score, then higher qualityScore, then stable ID tie-breaker.
-      scored.sort((a, b) =>
+      effectiveScored.sort((a, b) =>
         (b.score - a.score) ||
         (b.enriched.qualityScore - a.enriched.qualityScore) ||
         a.enriched.id.localeCompare(b.enriched.id),
       );
 
-      const picked = selectSlotCandidatesForDirection(scored, {
+      const picked = selectSlotCandidatesForDirection(effectiveScored, {
         limit,
-        globallyAssignedBaseIds: globallyAssignedBaseIds.get(slot),
-        globallyAssignedImageUrls: globallyAssignedImageUrls.get(slot),
+        globallyAssignedBaseIds,
+        globallyAssignedImageUrls,
         explicitLuxury,
         requiredIds,
+        isTightBudget: budgetPlan?.isTight === true,
+        maxHeavyOutdoorCoats: slot === 'outerwear' ? maxHeavyOutdoorCoats : Infinity,
       });
 
+      const slotBrandMap = globalBrandCountsBySlot.get(slot);
       for (const c of picked) {
-        globallyAssignedBaseIds.get(slot).add(c.enriched.baseId);
-        if (c.enriched.imageUrl) globallyAssignedImageUrls.get(slot).add(c.enriched.imageUrl);
+        globallyAssignedBaseIds.add(c.enriched.baseId);
+        if (c.enriched.imageUrl) globallyAssignedImageUrls.add(c.enriched.imageUrl);
+        if (c.enriched.brand) slotBrandMap.set(c.enriched.brand, (slotBrandMap.get(c.enriched.brand) || 0) + 1);
+      }
+      if (slot === 'outerwear' && picked.some(c => c.enriched.layerRole === 'outdoor_heavy_coat')) {
+        tailoredCoatDirectionsUsed++;
       }
       slotSelections[slot] = picked;
     }
@@ -1084,6 +1626,9 @@ export function buildPerDirectionCandidatePools({
       outerwearSubtypeBreadth: outerwearSubtypes.size,
       footwearSubtypeBreadth: footwearSubtypes.size,
       priceTierDistribution,
+      tightBudgetApplied: budgetPlan?.isTight === true,
+      ...(budgetPlan ? { slotBudgetCaps: budgetPlan.slotCaps } : {}),
+      tailoredCoatDirectionsUsed,
     },
   };
 }

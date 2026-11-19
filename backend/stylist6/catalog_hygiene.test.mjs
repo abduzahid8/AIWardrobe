@@ -5,6 +5,8 @@ import {
   isValidProductPdpUrl,
   extractKnownImageDimensions,
   isSwimwearItem,
+  isCroppedOrDetailPhoto,
+  isEveningwearItem,
   classifyGarmentSlot,
   hasVisualSlotContradiction,
   evaluateCatalogItemHygiene,
@@ -343,5 +345,99 @@ test('evening/black-tie tuxedo and dinner stud shirts are excluded from daytime 
         `${eveningItem.id} must stay eligible for ${formalOccasion}`,
       );
     }
+  }
+});
+
+test('cropped and detail-only product photos are rejected structurally via URL/metadata without false-flagging garment feature words', () => {
+  const detailUrlItems = [
+    validItem({ id: 'crop-1', image_url: 'https://cdn.example.com/images/shirt_cuff_detail.jpg', visual_fashion: null }),
+    validItem({ id: 'crop-2', image_url: 'https://cdn.example.com/images/blazer-closeup.jpg', visual_fashion: null }),
+    validItem({ id: 'crop-3', image_url: 'https://cdn.example.com/images/wool-suit.jpg?view=detail', visual_fashion: null }),
+    validItem({ id: 'crop-4', image_url: 'https://cdn.example.com/swatch/fabric-navy.jpg', visual_fashion: null }),
+    validItem({ id: 'crop-5', image_url: 'https://cdn.example.com/images/trouser_macro1.webp', visual_fashion: null }),
+  ];
+  for (const item of detailUrlItems) {
+    assert.equal(isCroppedOrDetailPhoto(item).detected, true, `${item.id} should be detected as cropped/detail`);
+    const v = evaluateCatalogItemHygiene(item);
+    assert.equal(v.eligible, false);
+    assert.equal(v.mediaValid, false);
+    assert.ok(v.reasons.includes('cropped_or_detail_only_photo'));
+  }
+
+  const metaCropped = validItem({
+    id: 'crop-meta-1',
+    visual_fashion: {
+      ...validItem().visual_fashion,
+      imageQuality: { width: 900, height: 1200, isCropped: true, framing: 'closeup' },
+    },
+  });
+  assert.equal(evaluateCatalogItemHygiene(metaCropped).eligible, false);
+  assert.ok(evaluateCatalogItemHygiene(metaCropped).reasons.includes('cropped_or_detail_only_photo'));
+
+  const extremeStrip = validItem({
+    id: 'crop-aspect-1',
+    visual_fashion: {
+      ...validItem().visual_fashion,
+      imageQuality: { width: 1600, height: 480 },
+    },
+  });
+  assert.equal(evaluateCatalogItemHygiene(extremeStrip).eligible, false);
+  assert.ok(evaluateCatalogItemHygiene(extremeStrip).reasons.includes('cropped_or_detail_only_photo'));
+
+  // Garment feature names like "big_collar" or "double_cuff" in normal product photo filenames must NOT false-trigger
+  const normalCollarShirt = validItem({
+    id: 'ok-collar-1',
+    image_url: 'https://cdn.example.com/files/big_collar_poplin_shirt_double_cuff_navy1.jpg',
+    visual_fashion: null,
+  });
+  assert.equal(isCroppedOrDetailPhoto(normalCollarShirt).detected, false);
+  assert.equal(evaluateCatalogItemHygiene(normalCollarShirt).eligible, true);
+});
+
+test('non-shirt eveningwear (tuxedo jackets, tuxedo trousers, patent tuxedo shoes) stays out of daytime work but eligible for black-tie', () => {
+  const dinnerJacket = validItem({
+    id: 'ev-jacket',
+    name: 'Shawl Collar Dinner Jacket Cream',
+    fashion_slot: 'outerwear',
+    fashion_subtype: 'blazer',
+    source_url: 'https://store.example.com/p/shawl-collar-dinner-jacket-cream',
+  });
+  const tuxedoPants = validItem({
+    id: 'ev-pants',
+    name: 'Regular-Fit Wool-Blend Tuxedo Pants',
+    category: 'bottoms',
+    garment_type: 'lower_body',
+    fashion_slot: 'bottom',
+    fashion_subtype: 'tailored-trouser',
+    source_url: 'https://store.example.com/p/wool-tuxedo-pants',
+    visual_fashion: {
+      ...validItem().visual_fashion,
+      attributes: { slot: { value: 'bottom', confidence: 0.96, margin: 0.9, evidence: 'image-model' } },
+    },
+  });
+  const patentTuxShoes = validItem({
+    id: 'ev-shoes',
+    name: 'Whole-cut Oxford - Black Patent | Tuxedo Collection',
+    category: 'shoes',
+    garment_type: 'shoes',
+    fashion_slot: 'shoes',
+    fashion_subtype: 'oxford',
+    source_url: 'https://store.example.com/p/patent-tuxedo-oxford',
+    visual_fashion: {
+      ...validItem().visual_fashion,
+      attributes: { slot: { value: 'shoes', confidence: 0.96, margin: 0.9, evidence: 'image-model' } },
+    },
+  });
+
+  for (const item of [dinnerJacket, tuxedoPants, patentTuxShoes]) {
+    assert.equal(isEveningwearItem(item), true);
+    const workVerdict = evaluateCatalogItemHygiene(item, null, { occasion: 'Work' });
+    assert.equal(workVerdict.eligible, false, `${item.id} must be excluded from daytime Work`);
+    assert.ok(workVerdict.reasons.includes('eveningwear_in_daytime_occasion'));
+    assert.equal(
+      evaluateCatalogItemHygiene(item, null, { occasion: 'Black Tie Gala' }).eligible,
+      true,
+      `${item.id} must remain eligible for Black Tie Gala`,
+    );
   }
 });

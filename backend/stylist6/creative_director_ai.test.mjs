@@ -1009,3 +1009,67 @@ test('Creative Director scales past 3 concurrent provider calls and supports inj
   assert.equal(providerCalled, 0);
   assert.ok(getCount >= 7);
 });
+
+test('Creative Director embeds Master Stylist Craft directives and supports fastMode OpenRouter routing with NVIDIA fallback', async () => {
+  const seenRequests = [];
+  const res = await designCreativeBriefs({
+    catalog,
+    request: {
+      style: 'old_money',
+      occasion: 'Work',
+      weather: { temp: 15 },
+      brief: 'Fast-mode editorial craft test',
+      sourceMode: 'catalog',
+      optionalLayer: false,
+    },
+    apiKey: 'nvapi-test-fast-director',
+    openrouterApiKey: 'sk-or-test-fast-director-key',
+    fastMode: true,
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      seenRequests.push({ url, model: body.model, prompt: body.messages[0].content });
+      return fakeResponse(proposal);
+    },
+  });
+
+  assert.equal(res.status, 'planned');
+  assert.equal(res.briefs.length, 3);
+  assert.equal(res.fastModeApplied, true);
+  assert.equal(res.provider, 'openrouter');
+  assert.equal(res.model, 'google/gemini-2.5-flash');
+  assert.equal(seenRequests.length, 1);
+  assert.match(seenRequests[0].url, /openrouter\.ai/);
+  assert.match(seenRequests[0].prompt, /3-Value Layering & Tonal Separation/i);
+  assert.match(seenRequests[0].prompt, /Indoor-Layer-First Elegance/i);
+  assert.match(seenRequests[0].prompt, /Footwear-to-Trouser Formality Integrity/i);
+
+  // Verify automatic failover from OpenRouter failure -> NVIDIA Lightning 30B
+  const failoverCalls = [];
+  const failoverRes = await designCreativeBriefs({
+    catalog,
+    request: {
+      style: 'classic',
+      occasion: 'Date night',
+      weather: { temp: 16 },
+      brief: 'Fast-mode failover test',
+      sourceMode: 'catalog',
+      optionalLayer: false,
+    },
+    apiKey: 'nvapi-test-fast-failover',
+    openrouterApiKey: 'sk-or-test-failover-key',
+    fastMode: true,
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      failoverCalls.push({ url, model: body.model });
+      if (String(url).includes('openrouter.ai')) {
+        return new Response('rate limited', { status: 429 });
+      }
+      return fakeResponse(proposal);
+    },
+  });
+
+  assert.equal(failoverRes.status, 'planned');
+  assert.equal(failoverRes.briefs.length, 3);
+  assert.ok(failoverCalls.some(c => String(c.url).includes('openrouter.ai')));
+  assert.ok(failoverCalls.some(c => String(c.url).includes('nvidia.com') && c.model === 'nvidia/nemotron-3.5-lightning-30b-a3b'));
+});

@@ -98,10 +98,22 @@ export interface ThermalGarmentInput {
   layering?: string | null;
 }
 
+export type OuterwearLayerRole =
+  | 'indoor_refined_layer'
+  | 'outdoor_heavy_coat'
+  | 'midweight_jacket'
+  | 'not_outerwear';
+
+export interface ThermalSuitabilityOptions {
+  occasion?: string | null;
+  indoorContext?: boolean | null;
+}
+
 export interface ThermalSuitabilityResult {
   score: number;
   band: ThermalBand;
   suitable: boolean;
+  layerRole: OuterwearLayerRole;
   reasons: string[];
 }
 
@@ -173,9 +185,9 @@ function buildThermalConstraints(band: ThermalBand, grammarId: OutfitGrammarId):
       maxOuterwearWeight: 'light_transitional',
       requireBreathableLayer: true,
       requireInsulatingOuterwear: false,
-      preferredLayerSubtypes: ['linen-blazer', 'overshirt', 'light-cardigan', 'cotton-chore-jacket', 'unlined-blazer'],
-      forbiddenOuterwearTypes: ['puffer', 'parka', 'down', 'shearling', 'heavy-wool-coat'],
-      note: 'Warm weather (23–25°C): keep outer layer lightweight, unlined, and breathable.',
+      preferredLayerSubtypes: ['linen-blazer', 'overshirt', 'light-cardigan', 'cotton-chore-jacket', 'unlined-blazer', 'open-weave-cardigan'],
+      forbiddenOuterwearTypes: ['puffer', 'parka', 'down', 'shearling', 'heavy-wool-coat', 'peacoat', 'overcoat', 'topcoat', 'turtleneck'],
+      note: 'Warm weather (23–25°C): keep outer layer lightweight, unlined, and breathable; penalize heavy wool peacoats, parkas, and turtlenecks at >=24°C.',
     };
   }
   if (band === 'cold' || band === 'freezing') {
@@ -201,9 +213,9 @@ function buildThermalConstraints(band: ThermalBand, grammarId: OutfitGrammarId):
       maxOuterwearWeight: 'midweight',
       requireBreathableLayer: false,
       requireInsulatingOuterwear: false,
-      preferredLayerSubtypes: ['blazer', 'trench', 'wool-cardigan', 'leather-jacket', 'suede-jacket', 'overshirt', 'bomber'],
-      forbiddenOuterwearTypes: ['heavy-arctic-parka'],
-      note: 'Cool transitional weather (11–17°C): tailored midweight layers, trenches, blazers, and fine knitwear excel.',
+      preferredLayerSubtypes: ['blazer', 'sport-coat', 'cardigan', 'overshirt', 'knit-jacket', 'chore-jacket', 'suede-jacket', 'shacket'],
+      forbiddenOuterwearTypes: ['heavy-arctic-parka', 'puffer'],
+      note: 'Cool weather (11–17°C): lead with refined indoor layers (blazers, sport coats, cardigans, overshirts, chore/knit/suede jackets); reserve heavy outdoor coats for <=10°C or at most one optional 11–13°C look.',
     };
   }
   return {
@@ -211,9 +223,9 @@ function buildThermalConstraints(band: ThermalBand, grammarId: OutfitGrammarId):
     maxOuterwearWeight: 'midweight',
     requireBreathableLayer: false,
     requireInsulatingOuterwear: false,
-    preferredLayerSubtypes: ['blazer', 'overshirt', 'cardigan', 'trench', 'light-jacket'],
-    forbiddenOuterwearTypes: [],
-    note: 'Mild or unspecified temperature: versatile balanced layering.',
+    preferredLayerSubtypes: ['blazer', 'sport-coat', 'overshirt', 'cardigan', 'knit-jacket', 'chore-jacket', 'light-jacket'],
+    forbiddenOuterwearTypes: ['puffer', 'parka', 'peacoat', 'overcoat'],
+    note: 'Mild or unspecified temperature: refined indoor layering takes priority over heavy outdoor coats.',
   };
 }
 
@@ -344,12 +356,20 @@ export function resolveOutfitGrammar(
   };
 }
 
-const HEAVY_INSULATING_RE = /\b(puffers?|parkas?|down[ -]filled|goose[ -]down|duck[ -]down|down\s+(?:jacket|coat|parka)|shearling|quilted|padded|insulated|fur[ -]lined|fleece[ -]lined|thermal|snow\s+boots?|winter\s+boots?|winter\s+coat)\b|пухов|утепл|ст[её]ган|зимн/i;
-const HEAVY_WOOL_RE = /\b(heavy\s+wool|boiled\s+wool|thick\s+wool|overcoats?|topcoats?|peacoats?|trench\s+coat|cashmere\s+coat|wool\s+coat|tweed|heavy\s+flannel|chunky\s+knit|cable[ -]knit|turtleneck|corduroy|velvet|melton)\b|пальто|шерст/i;
+const HEAVY_INSULATING_RE = /\b(puffers?|parkas?|down[ -]filled|goose[ -]down|duck[ -]down|down\s+(?:jacket|coat|parka)|primaloft|thinsulate|shearling|quilted|padded|insulated|fur[ -]lined|fleece[ -]lined|thermal|raincoat|anorak|ski\s+jacket|snow\s+boots?|winter\s+boots?|winter\s+coat)\b|пухов|утепл|ст[её]ган|зимн/i;
+const HEAVY_WOOL_RE = /\b(heavy\s+wool|boiled\s+wool|thick\s+wool|overcoats?|topcoats?|peacoats?|trench(?:es|\s+coat)?|cashmere\s+(?:coat|sweater|jumper)|wool\s+(?:coat|blend\s+coat|sweater|jumper)|tweed|heavy\s+flannel|chunky\s+(?:knit|cardigan|sweater|merino)|shawl[- ]?(?:collar|neck)\s+(?:cardigan|knit)|cable[ -]knit|turtlenecks?|mock[- ]?necks?|roll[- ]?necks?|alpaca|mohair|lambswool|corduroy|velvet|melton|fleece)\b|пальто|шерст/i;
+const HEAVY_OUTDOOR_COAT_RE = /\b(peacoats?|overcoats?|topcoats?|trench(?:es|\s+coat)?|mackintosh|mac\s+coat|parkas?|puffers?|down\s+(?:coat|jacket|parka)|duffle\s+coat|ulster|greatcoat|raincoats?|anoraks?|shearling\s+coat|winter\s+coat|car\s+coat|balmacaan|chesterfield|ski\s+jacket|padded\s+coat|quilted\s+coat|primaloft|thinsulate|waterproof\s+coat|commuter\s+coat)\b/i;
+const INDOOR_REFINED_LAYER_RE = /\b(blazers?|sport[- ]?coats?|suit\s+jackets?|tailored\s+jackets?|cardigans?|overshirts?|shackets?|shirt[- ]?jackets?|knit[- ]?jackets?|sweater[- ]?jackets?|chore[- ]?(?:jackets?|coats?)|suede[- ]?jackets?|linen[- ]?jackets?|unlined[- ]?jackets?|safari[- ]?jackets?|harrington|blousons?|bombers?|leather[- ]?jackets?)\b/i;
+const INDOOR_LAYER_SUBTYPES = new Set([
+  'blazer', 'sport-coat', 'cardigan', 'overshirt', 'knit-jacket',
+  'chore-jacket', 'suede-jacket', 'shacket', 'bomber',
+]);
+const HEAVY_LEATHER_WAXED_OUTER_RE = /\b(waxed|leather\s+(?:jacket|bomber|coat|biker|trucker|blouson|peacoat)|suede\s+(?:jacket|overshirt|bomber|trucker|blouson|coat)|biker\s+jacket|moto\s+jacket|faux[- ]?(?:leather|suede)\s+(?:jacket|overshirt|coat))\b/i;
 const BREATHABLE_SUMMER_RE = /\b(linen|seersucker|poplin|chambray|unlined|open[ -]weave|tropical\s+wool|lightweight|sheer|mesh|ramie|lyocell|tencel|viscose|silk|cotton[ -]linen|breathable|short[ -]sleeve|sleeveless|camp[ -]collar|resort|espadrilles?|sandals?|slides?|driving\s+shoes?|unlined\s+loafers?)\b|лён|лен|льнян|легк/i;
 const MIDWEIGHT_COTTON_RE = /\b(cotton|overshirt|shacket|cardigan|fine[ -]gauge|merino|twill|gabardine|chino|denim|jersey|polo|shirt[ -]jacket|blazer|suede|loafer|derby|oxford|sneaker|chelsea)\b/i;
 const BOOT_RE = /\b(boots?|chelsea|chukka|lace[ -]up\s+boot|combat\s+boot|dress\s+boot)\b|ботинк|сапог/i;
 const OPEN_SUMMER_SHOE_RE = /\b(sandals?|slides?|flip[ -]flops?|espadrilles?|mules?)\b|сандал|шлепан/i;
+const INDOOR_OCCASION_RE = /\b(work|office|business|meeting|conference|date|dinner|cocktail|smart[-_ ]?casual|interview|presentation|gallery|brunch|evening)\b/i;
 
 function itemTextBlob(item: ThermalGarmentInput): string {
   const mat =
@@ -368,32 +388,71 @@ function itemTextBlob(item: ThermalGarmentInput): string {
 }
 
 /**
+ * Cleanly distinguish refined indoor editorial layers (blazers, sport coats,
+ * cardigans, overshirts, chore/knit/suede jackets, shackets) from heavy outdoor
+ * coats (peacoats, overcoats, trenches, parkas, puffers, raincoats).
+ */
+export function classifyOuterwearLayerRole(
+  item: ThermalGarmentInput | null | undefined,
+): OuterwearLayerRole {
+  if (!item || typeof item !== 'object') return 'not_outerwear';
+  const slot = String(item.macroCategory || item.slot || item.category || '').trim().toLowerCase();
+  const subtype = String(item.subtype || item.type || '').trim().toLowerCase().replace(/_/g, '-');
+  if (slot && slot !== 'outerwear') return 'not_outerwear';
+  const text = itemTextBlob(item);
+
+  // Sport coats, chore coats, and shirt-jackets are indoor layers even though they contain "coat".
+  const explicitIndoorCoat = /\b(sport[- ]?coats?|chore[- ]?coats?|shirt[- ]?jackets?|shackets?|overshirts?)\b/i.test(text);
+  const isHeavyOutdoor =
+    item.insulated === true ||
+    HEAVY_OUTDOOR_COAT_RE.test(text) ||
+    HEAVY_INSULATING_RE.test(text) ||
+    (!explicitIndoorCoat && subtype === 'coat');
+
+  if (isHeavyOutdoor) return 'outdoor_heavy_coat';
+  if (explicitIndoorCoat || INDOOR_LAYER_SUBTYPES.has(subtype) || INDOOR_REFINED_LAYER_RE.test(text)) {
+    return 'indoor_refined_layer';
+  }
+  return slot === 'outerwear' ? 'midweight_jacket' : 'not_outerwear';
+}
+
+/**
  * Score how thermally appropriate an individual garment is for the target weather.
- *  - Warm/hot weather (>=26°C) strongly prefers breathable linen/cotton/unlined
- *    lightweight open layers and penalizes heavy wool/puffer/insulated coats.
+ *  - Warm/hot weather (>=24°C) strongly prefers breathable linen/cotton/unlined
+ *    lightweight open layers and penalizes heavy wool peacoats/turtlenecks/parkas.
+ *  - Cool/mild weather (11–22°C) cleanly distinguishes refined indoor layers
+ *    (blazers, sport coats, cardigans, overshirts, chore/knit/suede jackets)
+ *    from heavy outdoor coats (peacoats, overcoats, trenches, parkas, puffers).
  *  - Cold/freezing weather (<=10°C) rewards real insulating outerwear and boots
  *    while penalizing unlined linen summer layers and open summer footwear.
  */
 export function scoreThermalSuitability(
   item: ThermalGarmentInput | null | undefined,
   weather?: GrammarWeatherInput | null,
+  options?: ThermalSuitabilityOptions | null,
 ): ThermalSuitabilityResult {
   const band = resolveThermalBand(weather);
+  const layerRole = classifyOuterwearLayerRole(item);
   if (!item || typeof item !== 'object') {
-    return { score: 0.5, band, suitable: true, reasons: ['missing_item'] };
+    return { score: 0.5, band, suitable: true, layerRole, reasons: ['missing_item'] };
   }
   if (band === 'unknown') {
-    return { score: 0.65, band: 'unknown', suitable: true, reasons: ['weather_unknown'] };
+    return { score: 0.65, band: 'unknown', suitable: true, layerRole, reasons: ['weather_unknown'] };
   }
 
+  const temp = typeof weather?.temp === 'number' && Number.isFinite(weather.temp) ? weather.temp : null;
   const slot = String(item.macroCategory || item.slot || item.category || 'unknown').toLowerCase();
   const text = itemTextBlob(item);
   const isInsulated = item.insulated === true || HEAVY_INSULATING_RE.test(text);
   const isHeavyWool = HEAVY_WOOL_RE.test(text) || item.bulk === 'heavy';
+  const isHeavyLeatherOrWaxed = slot === 'outerwear' && HEAVY_LEATHER_WAXED_OUTER_RE.test(text);
   const isBreathable = BREATHABLE_SUMMER_RE.test(text) || item.bulk === 'light';
   const isMidweight = MIDWEIGHT_COTTON_RE.test(text);
   const isBoot = BOOT_RE.test(text);
   const isOpenSummerShoe = OPEN_SUMMER_SHOE_RE.test(text);
+  const indoorOccasion =
+    options?.indoorContext === true ||
+    INDOOR_OCCASION_RE.test(String(options?.occasion || ''));
 
   const reasons: string[] = [];
   let score = 0.65;
@@ -404,10 +463,14 @@ export function scoreThermalSuitability(
       score = 0.06;
       suitable = false;
       reasons.push('heavy_insulation_unsuitable_for_hot_weather');
-    } else if (isHeavyWool) {
-      score = slot === 'outerwear' ? 0.16 : 0.24;
+    } else if (isHeavyWool || layerRole === 'outdoor_heavy_coat') {
+      score = slot === 'outerwear' ? 0.12 : 0.20;
       suitable = false;
       reasons.push('heavy_winter_fabric_unsuitable_for_hot_weather');
+    } else if (isHeavyLeatherOrWaxed) {
+      score = 0.24;
+      suitable = false;
+      reasons.push('heavy_leather_or_waxed_outerwear_too_hot');
     } else if (slot === 'shoes' && isBoot) {
       score = 0.25;
       suitable = false;
@@ -419,25 +482,41 @@ export function scoreThermalSuitability(
           ? 'breathable_lightweight_open_layer_ideal_for_hot_weather'
           : 'breathable_lightweight_fabric_ideal_for_hot_weather',
       );
-    } else if (slot === 'outerwear' && /\b(overshirt|shirt[ -]jacket|cardigan)\b/.test(text) && /\bcotton\b/.test(text)) {
-      score = 0.86;
+    } else if (slot === 'outerwear' && /\b(overshirt|shirt[ -]jacket|cardigan|chore|blazer)\b/.test(text) && /\bcotton\b/.test(text)) {
+      score = 0.88;
       reasons.push('light_cotton_layer_suitable_for_hot_weather');
     } else if (isMidweight) {
-      score = slot === 'outerwear' ? 0.56 : 0.72;
+      score = slot === 'outerwear' ? 0.56 : 0.74;
       reasons.push('midweight_acceptable_in_warm_weather');
     }
   } else if (band === 'warm') {
+    const is24Plus = temp == null || temp >= 24;
     if (isInsulated) {
-      score = 0.12;
+      score = is24Plus ? 0.08 : 0.12;
       suitable = false;
       reasons.push('insulated_outerwear_too_heavy_for_warm_weather');
-    } else if (isHeavyWool) {
-      score = slot === 'outerwear' ? 0.30 : 0.42;
-      suitable = slot !== 'outerwear';
-      reasons.push('heavy_wool_too_warm_for_warm_weather');
+    } else if (isHeavyWool || layerRole === 'outdoor_heavy_coat') {
+      score = slot === 'outerwear' ? (is24Plus ? 0.16 : 0.28) : (is24Plus ? 0.24 : 0.40);
+      suitable = !is24Plus && slot !== 'outerwear';
+      reasons.push(
+        is24Plus
+          ? 'heavy_winter_garment_unsuitable_at_24c_plus'
+          : 'heavy_wool_too_warm_for_warm_weather',
+      );
+    } else if (isHeavyLeatherOrWaxed) {
+      score = is24Plus ? 0.34 : 0.48;
+      suitable = !is24Plus;
+      reasons.push('heavy_leather_or_waxed_outerwear_too_warm');
+    } else if (slot === 'shoes' && isBoot && is24Plus) {
+      score = 0.36;
+      suitable = false;
+      reasons.push('heavy_boots_too_warm_at_24c_plus');
     } else if (isBreathable) {
-      score = 0.92;
+      score = 0.93;
       reasons.push('breathable_fabric_ideal_for_warm_weather');
+    } else if (slot === 'outerwear' && /\b(overshirt|shirt[ -]jacket|cardigan|chore|blazer)\b/.test(text) && /\bcotton\b/.test(text)) {
+      score = 0.88;
+      reasons.push('light_cotton_layer_well_suited_for_warm_weather');
     } else if (isMidweight) {
       score = 0.78;
       reasons.push('light_to_midweight_well_suited_for_warm_weather');
@@ -448,14 +527,14 @@ export function scoreThermalSuitability(
       if (isInsulated) {
         score = 0.96;
         reasons.push('insulating_outerwear_ideal_for_cold_weather');
-      } else if (isHeavyWool) {
+      } else if (isHeavyWool || layerRole === 'outdoor_heavy_coat') {
         score = freezing ? 0.86 : 0.92;
         reasons.push('wool_tailored_outerwear_well_suited_for_cold_weather');
       } else if (isBreathable) {
         score = freezing ? 0.08 : 0.16;
         suitable = false;
         reasons.push('breathable_summer_layer_insufficient_for_cold_weather');
-      } else if (/\b(blazer|cardigan|overshirt|denim\s+jacket)\b/.test(text)) {
+      } else if (layerRole === 'indoor_refined_layer' || /\b(blazer|cardigan|overshirt|denim\s+jacket)\b/.test(text)) {
         score = freezing ? 0.28 : 0.52;
         suitable = !freezing;
         reasons.push(
@@ -489,15 +568,31 @@ export function scoreThermalSuitability(
       }
     }
   } else if (band === 'cool') {
-    if (isInsulated && /\b(arctic|heavy\s+parka|snow\s+boot)\b/.test(text)) {
-      score = 0.48;
-      reasons.push('heavy_freezing_gear_slightly_warm_for_cool_weather');
-    } else if (slot === 'shoes' && isOpenSummerShoe) {
+    if (slot === 'shoes' && isOpenSummerShoe) {
       score = 0.22;
       suitable = false;
       reasons.push('open_summer_footwear_too_cold_for_cool_weather');
+    } else if (slot === 'outerwear' && layerRole === 'outdoor_heavy_coat') {
+      if (isInsulated) {
+        score = indoorOccasion ? 0.24 : 0.36;
+        suitable = !indoorOccasion;
+        reasons.push('heavy_insulated_outerwear_excessive_above_10c');
+      } else if (temp != null && temp > 13) {
+        score = indoorOccasion ? 0.42 : 0.58;
+        suitable = !indoorOccasion;
+        reasons.push('outdoor_heavy_coat_secondary_to_indoor_layer_above_13c');
+      } else {
+        score = indoorOccasion ? 0.62 : 0.74;
+        reasons.push('tailored_outdoor_coat_optional_at_11_13c');
+      }
+    } else if (slot === 'outerwear' && layerRole === 'indoor_refined_layer') {
+      score = indoorOccasion ? 0.94 : 0.90;
+      reasons.push('indoor_refined_layer_preferred_above_10c');
+    } else if (isInsulated && /\b(arctic|heavy\s+parka|snow\s+boot)\b/.test(text)) {
+      score = 0.38;
+      reasons.push('heavy_freezing_gear_slightly_warm_for_cool_weather');
     } else if (isHeavyWool || isMidweight || isBoot) {
-      score = 0.88;
+      score = 0.86;
       reasons.push('transitional_construction_ideal_for_cool_weather');
     } else if (isBreathable) {
       score = slot === 'outerwear' ? 0.45 : 0.60;
@@ -505,11 +600,18 @@ export function scoreThermalSuitability(
     }
   } else if (band === 'mild') {
     if (isInsulated) {
-      score = 0.22;
+      score = 0.18;
       suitable = false;
       reasons.push('heavy_winter_insulation_too_warm_for_mild_weather');
+    } else if (slot === 'outerwear' && layerRole === 'outdoor_heavy_coat') {
+      score = indoorOccasion ? 0.26 : 0.36;
+      suitable = false;
+      reasons.push('outdoor_heavy_coat_too_warm_for_mild_weather');
+    } else if (slot === 'outerwear' && layerRole === 'indoor_refined_layer') {
+      score = 0.92;
+      reasons.push('indoor_refined_layer_ideal_for_mild_weather');
     } else if (isHeavyWool && slot === 'outerwear') {
-      score = 0.42;
+      score = 0.38;
       reasons.push('heavy_overcoat_warm_for_mild_weather');
     } else if (isMidweight || isBreathable) {
       score = 0.86;
@@ -521,6 +623,7 @@ export function scoreThermalSuitability(
     score: round3(clamp01(score)),
     band,
     suitable,
+    layerRole,
     reasons: [...new Set(reasons)],
   };
 }

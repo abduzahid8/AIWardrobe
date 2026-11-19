@@ -299,3 +299,158 @@ test('respects Personal Style DNA exclusions, qualityMap quarantines, tasteProfi
   );
   assert.ok(boostedScore.score > baseScore.score, 'positive tasteProfile and high qualityScore increase direction score');
 });
+
+test('indoor layer priority (>10C) eliminates peacoat/parka monopoly in Work & Date Night while allowing at most 1 tailored coat dir at 10-13C', () => {
+  const catalog = buildDiverseSyntheticCatalog();
+  // Inject heavy outdoor coats (peacoat, commuter rain trench, parka, wool overcoat)
+  const heavyCoats = [
+    makeSku({ id: 'PEACOAT_1', slot: 'outerwear', subtype: 'coat', name: 'Dock Peacoat in Wool Blend with PrimaLoft', color: 'navy', texture: 'wool', formality: 'smart', price: 398, brand: 'JCrew' }),
+    makeSku({ id: 'TRENCH_COMMUTER', slot: 'outerwear', subtype: 'coat', name: 'Waterproof Commuter Rain Trench Coat', color: 'beige', texture: 'technical', formality: 'smart', price: 320, brand: 'RainHouse' }),
+    makeSku({ id: 'PARKA_1', slot: 'outerwear', subtype: 'coat', name: 'Heavy Hooded Winter Parka', color: 'olive', texture: 'technical', formality: 'casual', price: 290, brand: 'NorthGear' }),
+    makeSku({ id: 'OVERCOAT_1', slot: 'outerwear', subtype: 'coat', name: 'Camel Tailored Cashmere Overcoat', color: 'camel', texture: 'wool', formality: 'formal', price: 650, brand: 'TailorHouse' }),
+  ];
+  const fullCatalog = [...catalog, ...heavyCoats];
+
+  // 1) Date Night 15C: ZERO heavy outdoor coats (no peacoat, trench, parka, or overcoat) in ANY direction
+  const date15 = buildPerDirectionCandidatePools({
+    catalog: fullCatalog,
+    context: { style: 'classic', occasion: 'Date night', weather: { temp: 15 } },
+    perSlotLimit: 10,
+  });
+  assert.equal(date15.directions.length, 3);
+  assert.equal(date15.metrics.crossDirectionOverlapRate, 0);
+  const dateOuterIds = date15.unifiedPool.filter(e => e.slot === 'outerwear').map(e => e.item.id);
+  assert.equal(dateOuterIds.includes('PEACOAT_1'), false, 'peacoat must not appear in 15C Date Night');
+  assert.equal(dateOuterIds.includes('TRENCH_COMMUTER'), false, 'commuter trench must not appear in 15C Date Night');
+  assert.equal(dateOuterIds.includes('PARKA_1'), false, 'parka must not appear in 15C Date Night');
+  assert.equal(date15.metrics.tailoredCoatDirectionsUsed, 0);
+
+  // 2) Old Money Work 13C with custom coat direction in Dir 3:
+  //    Direction 1 NEVER has heavy outdoor coats, peacoat/parka/commuter trench excluded, at most 1 tailored coat dir!
+  const work13 = buildPerDirectionCandidatePools({
+    directions: threeOrthogonalDirections,
+    catalog: fullCatalog,
+    context: { style: 'old_money', occasion: 'Work', weather: { temp: 13 } },
+    perSlotLimit: 10,
+  });
+  const dir1Outer = work13.directions[0].slots.outerwear;
+  assert.ok(dir1Outer.every(e => e.public.subtype !== 'coat'), 'Direction 1 indoor Work (13C) must never feature a heavy coat');
+  const allWork13OuterIds = work13.unifiedPool.filter(e => e.slot === 'outerwear').map(e => e.item.id);
+  assert.equal(allWork13OuterIds.includes('PEACOAT_1'), false, 'PrimaLoft peacoat excluded from 13C indoor Work');
+  assert.equal(allWork13OuterIds.includes('PARKA_1'), false, 'parka excluded from 13C indoor Work');
+  assert.ok(work13.metrics.tailoredCoatDirectionsUsed <= 1, 'at most 1 direction may feature a tailored coat at 10-13C');
+
+  // 3) Work 16C (default directions): ZERO peacoats or heavy outdoor coats across all 3 pools
+  const work16 = buildPerDirectionCandidatePools({
+    catalog: fullCatalog,
+    context: { style: 'classic', occasion: 'Work', weather: { temp: 16 } },
+    perSlotLimit: 10,
+  });
+  assert.equal(work16.metrics.tailoredCoatDirectionsUsed, 0);
+  assert.ok(work16.unifiedPool.filter(e => e.slot === 'outerwear').every(e => !/peacoat|parka|trench/i.test(e.item.name)));
+});
+
+test('tight-budget ($350 Work) dynamic headroom caps + fxSnapshot guarantee 3 disjoint affordable pools and fail closed on unconvertible currency', () => {
+  const items = [];
+  const brands = ['HouseA', 'HouseB', 'HouseC', 'HouseD', 'HouseE', 'HouseF'];
+  const colors = ['navy', 'white', 'grey', 'stone', 'cream', 'olive', 'brown', 'charcoal', 'blue', 'tan'];
+  // Build rich multi-currency catalog with BOTH expensive ($200-$600) and affordable items
+  for (let i = 0; i < 60; i++) {
+    const brand = brands[i % brands.length];
+    const color = colors[i % colors.length];
+    const isCheap = i < 48;
+    const currency = i % 3 === 0 ? 'EUR' : 'USD';
+    const fxScale = currency === 'EUR' ? 1 / 1.08 : 1;
+    items.push(makeSku({ id: `T_${i}`, slot: 'top', subtype: i % 2 === 0 ? 'dress-shirt' : 'polo', name: `${color} Cotton Top ${i}`, color, texture: 'cotton', price: Math.round((isCheap ? 35 + (i % 35) : 180 + i) * fxScale), currency, brand }));
+    items.push(makeSku({ id: `O_${i}`, slot: 'outerwear', subtype: ['blazer', 'overshirt', 'cardigan'][i % 3], name: `${color} Tailored Layer ${i}`, color, texture: 'cotton', price: Math.round((isCheap ? 65 + (i % 55) : 340 + i) * fxScale), currency, brand }));
+    items.push(makeSku({ id: `B_${i}`, slot: 'bottom', subtype: i % 2 === 0 ? 'tailored-trouser' : 'chino', name: `${color} Smart Trouser ${i}`, color, texture: 'cotton', price: Math.round((isCheap ? 45 + (i % 45) : 220 + i) * fxScale), currency, brand }));
+    items.push(makeSku({ id: `S_${i}`, slot: 'shoes', subtype: ['loafer', 'derby', 'oxford', 'minimal-sneaker'][i % 4], name: `${color} Leather Shoe ${i}`, color, texture: 'leather', price: Math.round((isCheap ? 75 + (i % 70) : 320 + i) * fxScale), currency, brand }));
+  }
+  // Add unconvertible INR shoes that must NEVER sneak into a USD-budgeted pool
+  for (let i = 0; i < 10; i++) {
+    items.push(makeSku({ id: `S_INR_${i}`, slot: 'shoes', subtype: 'loafer', name: `Hand Welted Loafer INR ${i}`, color: 'brown', texture: 'leather', price: 12800, currency: 'INR', brand: 'ForeignCraft' }));
+  }
+
+  const fxSnapshot = {
+    id: 'CBU:2026-11-19:12800:13824:16256',
+    source: 'CBU',
+    asOf: '2026-11-19',
+    fetchedAt: new Date().toISOString(),
+    uzsPerUnit: { USD: 12800, EUR: 13824, GBP: 16256, UZS: 1 },
+  };
+  const toUsd = (it) => (it.price * fxSnapshot.uzsPerUnit[it.currency]) / fxSnapshot.uzsPerUnit.USD;
+
+  const result = buildPerDirectionCandidatePools({
+    catalog: items,
+    context: {
+      style: 'classic',
+      occasion: 'Work',
+      weather: { temp: 18 },
+      budget: { amount: 350, currency: 'USD' },
+      fxSnapshot,
+    },
+    perSlotLimit: 14,
+  });
+
+  assert.equal(result.metrics.tightBudgetApplied, true);
+  assert.equal(result.metrics.crossDirectionOverlapRate, 0, 'zero overlap across all 3 tight-budget pools');
+  assert.equal(result.metrics.uniqueSkusExposed, 168, '14 SKUs * 4 slots * 3 directions = 168 unique affordable SKUs');
+  assert.ok(result.unifiedPool.every(e => e.item.currency !== 'INR'), 'unconvertible INR SKUs must fail closed under USD budget');
+
+  // Verify tight per-slot caps (shoes <= 44% = $154, outerwear <= 38% = $133, bottom <= 28% = $98, top <= 22% = $77)
+  for (const d of result.directions) {
+    assert.equal(d.slots.top.length, 14);
+    assert.equal(d.slots.outerwear.length, 14);
+    assert.equal(d.slots.bottom.length, 14);
+    assert.equal(d.slots.shoes.length, 14);
+    assert.ok(d.slots.top.every(e => toUsd(e.item) <= 77.01), 'tops <= 22% of $350');
+    assert.ok(d.slots.outerwear.every(e => toUsd(e.item) <= 133.01), 'outerwear <= 38% of $350');
+    assert.ok(d.slots.bottom.every(e => toUsd(e.item) <= 98.01), 'bottoms <= 28% of $350');
+    assert.ok(d.slots.shoes.every(e => toUsd(e.item) <= 154.01), 'shoes <= 44% of $350');
+    const cheapestCombo = ['top', 'outerwear', 'bottom', 'shoes'].reduce(
+      (sum, slot) => sum + Math.min(...d.slots[slot].map(e => toUsd(e.item))),
+      0,
+    );
+    assert.ok(cheapestCombo <= 350, `direction ${d.directionIndex + 1} must support complete <=$350 outfits (got $${cheapestCombo})`);
+  }
+});
+
+test('warm/hot weather (>=24C / 31C Summer) expands breathable pools across all 3 orthogonal directions and excludes heavy winter hazards', () => {
+  const items = [];
+  const brands = ['RivieraA', 'RivieraB', 'RivieraC', 'RivieraD', 'RivieraE'];
+  const colors = ['stone', 'cream', 'white', 'olive', 'navy', 'beige', 'blue', 'tan'];
+  for (let i = 0; i < 45; i++) {
+    const brand = brands[i % brands.length];
+    const color = colors[i % colors.length];
+    items.push(makeSku({ id: `SUM_T_${i}`, slot: 'top', subtype: ['polo', 't-shirt', 'shirt'][i % 3], name: `${color} Lightweight Linen Cotton Top ${i}`, color, texture: 'linen', formality: 'smart', price: 65 + (i % 40), brand }));
+    items.push(makeSku({ id: `SUM_O_${i}`, slot: 'outerwear', subtype: ['blazer', 'overshirt', 'cardigan'][i % 3], name: `${color} Unlined Breathable Linen Cotton Layer ${i}`, color, texture: 'linen', formality: 'smart', price: 110 + (i % 60), brand }));
+    items.push(makeSku({ id: `SUM_B_${i}`, slot: 'bottom', subtype: ['chino', 'trouser'][i % 2], name: `${color} Breathable Linen Chino ${i}`, color, texture: 'linen', formality: 'smart', price: 85 + (i % 40), brand }));
+    items.push(makeSku({ id: `SUM_S_${i}`, slot: 'shoes', subtype: ['loafer', 'driver', 'minimal-sneaker'][i % 3], name: `${color} Summer Unlined Shoe ${i}`, color, texture: 'suede', formality: 'smart', price: 140 + (i % 60), brand }));
+  }
+  // Inject winter hazards that must be purged at >=24C
+  items.push(
+    makeSku({ id: 'HAZARD_PEACOAT', slot: 'outerwear', subtype: 'coat', name: 'Heavy Wool Dock Peacoat', color: 'navy', texture: 'wool', price: 320, brand: 'WinterCo' }),
+    makeSku({ id: 'HAZARD_WAXED', slot: 'outerwear', subtype: 'jacket', name: 'Waxed Cotton Field Jacket', color: 'olive', texture: 'cotton', price: 220, brand: 'WinterCo' }),
+    makeSku({ id: 'HAZARD_CHUNKY_MERINO', slot: 'outerwear', subtype: 'cardigan', name: 'Chunky Pure Merino Shawl Neck Cardigan', color: 'navy', texture: 'wool', price: 229, brand: 'WinterCo' }),
+    makeSku({ id: 'HAZARD_TURTLENECK', slot: 'top', subtype: 'fine-knit', name: 'Heavy Wool Turtleneck Sweater', color: 'charcoal', texture: 'wool', price: 160, brand: 'WinterCo' }),
+    makeSku({ id: 'HAZARD_BOOT', slot: 'shoes', subtype: 'chelsea', name: 'Winter Leather Chelsea Boot', color: 'black', texture: 'leather', price: 250, brand: 'WinterCo' }),
+  );
+
+  for (const temp of [24, 31]) {
+    const res = buildPerDirectionCandidatePools({
+      catalog: items,
+      context: { style: 'smart_casual', occasion: 'Casual', weather: { temp }, budget: { amount: 750, currency: 'USD' } },
+      perSlotLimit: 12,
+    });
+    assert.equal(res.directions.length, 3);
+    assert.equal(res.metrics.crossDirectionOverlapRate, 0, `zero overlap at ${temp}C`);
+    assert.equal(res.metrics.uniqueSkusExposed, 144, `3 full orthogonal pools at ${temp}C`);
+    const ids = new Set(res.unifiedPool.map(e => e.item.id));
+    for (const hazardId of ['HAZARD_PEACOAT', 'HAZARD_WAXED', 'HAZARD_CHUNKY_MERINO', 'HAZARD_TURTLENECK', 'HAZARD_BOOT']) {
+      assert.equal(ids.has(hazardId), false, `${hazardId} must be excluded at ${temp}C`);
+    }
+    assert.equal(res.directions[0].slots.outerwear[0].public.subtype, 'blazer');
+    assert.equal(res.directions[1].slots.outerwear[0].public.subtype, 'overshirt');
+    assert.equal(res.directions[2].slots.outerwear[0].public.subtype, 'cardigan');
+  }
+});

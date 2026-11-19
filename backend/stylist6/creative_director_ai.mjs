@@ -16,6 +16,11 @@ import { editorialTextMoodboards } from './editorial_text_moodboards.mjs';
 import { editorialFashionIntent } from './editorial_fashion_intent.mjs';
 import { currentVisual, confidentVisual } from '../../src/domain/visualFashion.ts';
 import { anonymousExplicitTasteHistory } from './sku_composer_ai.mjs';
+import {
+  createProviderRouter,
+  DEFAULT_OPENROUTER_VISION_MODEL,
+  DEFAULT_NVIDIA_TEXT_MODEL,
+} from './ai_provider_router.mjs';
 
 export const CREATIVE_DIRECTOR_VERSION = 's6-creative-director-v1';
 export const ORTHOGONAL_DIRECTION_TYPES = Object.freeze([
@@ -643,49 +648,58 @@ async function boundedProviderText(response) {
 
 function buildThermalLayeringLines(inventory) {
   const band = inventory.thermalBand;
+  const temp = inventory.weatherCelsius;
+  const isWarm24Plus = band === 'hot' || (Number.isFinite(temp) && temp >= 24);
+  const isIndoorAbove10 = !isWarm24Plus && Number.isFinite(temp) && temp > 10;
+  const isTrulyCold = Number.isFinite(temp) ? temp <= 10 : band === 'cold';
   const hasHotAccessoryAlt = band === 'hot' &&
     Number(inventory?.optionalGrammarCapacity?.accessory || 0) >= 3;
 
   if (inventory.catalogFourItemIntent) {
-    if (band === 'hot') {
+    if (isWarm24Plus) {
+      const header = band === 'hot' ? 'HOT WEATHER (>=26°C)' : 'WARM WEATHER (>=24°C)';
       if (hasHotAccessoryAlt) {
         return [
-          'HOT WEATHER (>=26°C): Do NOT force heavy coats, wool blazers, or winter knits.',
-          'Prefer warm-weather accessory grammar (top + bottom + shoes + real accessory) or an ultra-breathable linen/open-weave overshirt rather than adding a random jacket.',
+          `${header}: Do NOT force heavy wool coats, peacoats, turtlenecks, parkas, or winter knits.`,
+          'Prefer warm-weather accessory grammar (top + bottom + shoes + real accessory) or an ultra-breathable linen/cotton overshirt rather than adding a random jacket.',
         ];
       }
       return [
         'The wearer expects FOUR shoppable genuine products per complete look:',
         'base TOP, meaningful chosen LAYER, BOTTOM and SHOES.',
-        'HOT WEATHER (>=26°C) thermal intelligence: NEVER force heavy wool coats, padded jackets, or thick winter knits.',
-        'Choose ONLY breathable, airy warm-weather layers from REAL inventory (linen or open-weave overshirt, unlined lightweight shirt-jacket, or featherweight open-knit layer), expressing airy drape rather than adding a random jacket as a fourth item.',
+        `${header} thermal intelligence: NEVER propose heavy wool coats, peacoats, overcoats, parkas, padded jackets, turtlenecks, waxed/leather coats, or winter boots.`,
+        'Choose ONLY breathable, airy warm-weather layers from REAL inventory across 3 distinct silhouettes (unlined linen/cotton blazer, breathable linen/cotton overshirt, open-weave summer cardigan) paired with polos/crisp tees, linen/cotton trousers/chinos, and loafers/drivers/minimal sneakers rather than adding a random jacket as a fourth item.',
       ];
     }
-    if (band === 'cold') {
+    if (isTrulyCold) {
       return [
         'The wearer expects FOUR shoppable genuine products per complete look:',
         'base TOP, meaningful chosen LAYER, BOTTOM and SHOES.',
-        'COLD WEATHER (<14°C) thermal intelligence: Choose genuinely insulating outer layers from REAL inventory (wool coat, overcoat, lined jacket, structured wool blazer, or substantial knit cardigan) that provide real warmth and silhouette authority rather than adding a random jacket.',
+        'COLD WEATHER (<=10°C) thermal intelligence: Choose genuinely insulating outer layers from REAL inventory (tailored wool overcoat, peacoat, lined jacket, structured wool blazer, or substantial knit cardigan) that provide real warmth and silhouette authority rather than adding a random jacket.',
       ];
     }
     return [
       'The wearer expects FOUR shoppable genuine products per complete look:',
       'base TOP, meaningful chosen LAYER, BOTTOM and SHOES.',
-      'TRANSITIONAL WEATHER (14-25°C) thermal intelligence: Select a versatile midweight layer from REAL inventory and express its role in proportion, cut and material rhythm rather than adding a random jacket as a fourth item.',
+      isIndoorAbove10
+        ? 'INDOOR-LAYER-FIRST ELEGANCE (>10°C): For indoor Work, Office, Date Night, Smart Casual, Dinner, or Cocktail above 10°C, dress the wearer in refined indoor editorial layers (unstructured blazer, tailored sport coat, suede/cotton/linen overshirt, luxury cardigan, knit jacket, chore jacket) rather than adding a random jacket. NEVER put heavy outdoor peacoats, commuter rain trenches, parkas, or puffers in Direction 1 or Date Night; reserve heavy outdoor coats for <=10°C (or at most ONE optional tailored overcoat direction at 10–13°C Work, never Look 1).'
+        : 'TRANSITIONAL WEATHER thermal intelligence: Select refined indoor-appropriate layers (unstructured blazer, sport coat, overshirt, luxury cardigan, chore/suede jacket) and express proportion, cut and material rhythm rather than adding a random jacket as a fourth item.',
     ];
   }
 
-  if (band === 'hot') {
+  if (isWarm24Plus) {
+    const header = band === 'hot' ? 'HOT WEATHER (>=26°C)' : 'WARM WEATHER (>=24°C)';
     return [
-      'HOT WEATHER (>=26°C): Outerwear is OPTIONAL — omit heavy layers or propose only ultra-breathable linen/open-weave overshirts when thermally sensible.',
+      `${header}: Outerwear is OPTIONAL — forbid heavy wool coats, peacoats, parkas, and turtlenecks; propose only ultra-breathable linen/cotton overshirts, unlined summer blazers, or open-weave summer knits when thermally sensible.`,
     ];
   }
-  if (band === 'cold') {
+  if (isTrulyCold) {
     return [
-      'COLD WEATHER (<14°C): Include a genuinely insulating outer layer (overcoat, wool coat, lined jacket, blazer, or heavy knit) in every direction.',
+      'COLD WEATHER (<=10°C): Include a genuinely insulating outer layer (overcoat, wool coat, lined jacket, blazer, or heavy knit) in every direction.',
     ];
   }
   return [
+    'INDOOR-LAYER-FIRST ELEGANCE (>10°C): Prefer refined indoor layers (blazer, sport coat, cardigan, overshirt, knit/chore/suede jacket) over heavy outdoor peacoats/overcoats/parkas for indoor Work and Date Night.',
     'Use up to 3 subtypes for each role, or zero outerwear subtypes when appropriate for warm weather.',
   ];
 }
@@ -706,11 +720,17 @@ export async function designCreativeBriefs({
   highTaste = false, feedbackTaste = null, tasteProfile = null,
   personalStyleDna = null, styleDnaPromptBlock = '',
   maxConcurrency = null, cacheStore = null,
+  providerRouter = null, openrouterApiKey = '', fastMode = false,
   // Server-only partial creative plan from the FIRST already source-validated
   // director. The independent artist may complete it, never overwrite it.
   existingDirectionBriefs = null,
 } = {}) {
   const model = highTaste === true ? ART_DIRECTOR_MODEL : MODEL;
+  const hasNvidiaKey = typeof apiKey === 'string' && apiKey.startsWith('nvapi-');
+  const hasOpenrouterKey = typeof openrouterApiKey === 'string' && openrouterApiKey.trim().length >= 8;
+  const hasRouter = Boolean(providerRouter && typeof providerRouter.callTextModel === 'function');
+  const useFastRouter = fastMode === true || (!hasNvidiaKey && (hasOpenrouterKey || hasRouter));
+
   const inventory = directorInventory(catalog, request, {
     feedbackTaste,
     tasteProfile,
@@ -754,12 +774,15 @@ export async function designCreativeBriefs({
   if (directorResponseSchema(inventory).properties.directions.items.properties.palette.items.enum.length < 2) {
     return { status: 'insufficient_palette', briefs: [], providerCalls: 0, ...evidenceReceipt };
   }
-  if (typeof apiKey !== 'string' || !apiKey.startsWith('nvapi-')) {
+  if (!hasNvidiaKey && !hasOpenrouterKey && !hasRouter) {
     return { status: 'not_configured', briefs: [], providerCalls: 0, ...evidenceReceipt };
   }
 
+  const cacheModelTag = useFastRouter
+    ? `fast:${hasOpenrouterKey || (hasRouter && providerRouter.isProviderConfigured?.('openrouter')) ? DEFAULT_OPENROUTER_VISION_MODEL : DEFAULT_NVIDIA_TEXT_MODEL}`
+    : model;
   const key = createHash('sha256').update(
-    model + '|' + JSON.stringify(inventory) +
+    cacheModelTag + '|' + JSON.stringify(inventory) +
     (sanitizedPromptBlock ? '|dnaBlock|' + sanitizedPromptBlock : '') +
     (alreadyAccepted.length ? '|complement|' + JSON.stringify(alreadyAccepted) : ''),
   ).digest('hex');
@@ -798,22 +821,28 @@ export async function designCreativeBriefs({
   }
   activeProviderCalls++;
   const task = (async () => {
+    const effectiveTimeoutMs = Math.min(9500,
+      Math.max(1000, Number.isFinite(timeoutMs) ? timeoutMs : 7500));
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), Math.min(9500,
-      Math.max(1000, Number.isFinite(timeoutMs) ? timeoutMs : 7500)));
+    const timer = setTimeout(() => controller.abort(), effectiveTimeoutMs);
     const combinedSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
-    let called = false;
+    let totalCalls = 0;
     try {
       const fashionScene = editorialFashionIntent(inventory);
       const roleLabel = presentationPromptLabel(inventory.presentation);
       const prompt = [
-        `You are a world-class ${roleLabel} Creative Director. Design exactly THREE`,
+        `You are a world-class ${roleLabel} Creative Director (Vogue / Mr Porter editorial caliber). Design exactly THREE`,
         'structurally ORTHOGONAL, tasteful, wearable complete-outfit DIRECTIONS for the supplied',
         'explicit user style, Personal Style DNA, and occasion. These are concepts, NOT products.',
         'This is the single human-centered CREATIVE SCENE shared by all the',
         'independent designers and original-photo editors, not a product rule:',
         fashionScene.creativeGoal,
         fashionScene.collectionGoal,
+        'MASTER STYLIST CRAFT (NON-NEGOTIABLE EDITORIAL STANDARDS):',
+        '- 3-Value Layering & Tonal Separation: Build intentional value depth (deep anchor + midtone bridge + luminous light base/accent). FORBID flat dark-navy-on-dark-navy-on-dark-navy or flat black-on-black blocks unless intentional textured tonal monochrome (>=20 CIELAB lightness separation OR distinct tactile contrast like suede + ribbed knit + brushed flannel plus a crisp light accent).',
+        '- Indoor-Layer-First Elegance (>10°C): For Work, Office, Date Night, Dinner, Cocktail, and Smart Casual at >10°C, dress in refined indoor layers (unstructured blazer, tailored sport coat, suede/linen/cotton overshirt, luxury cardigan, knit jacket, chore jacket). NEVER place a heavy outdoor peacoat, commuter rain trench, parka, or puffer in Direction 1 indoor office or Date Night; reserve heavy coats for <=10°C (or at most 1 optional tailored overcoat look at 10–13°C Work).',
+        '- Footwear-to-Trouser Formality Integrity: Pair formal black wholecut/cap-toe oxfords strictly with tailored wool trousers/suiting (NEVER casual chinos, utility overshirts, or heavy peacoats); pair smart-casual separates and chinos with suede/calf loafers, refined derbies, or sleek chelsea boots; reserve clean minimal leather sneakers/drivers for relaxed summer or weekend looks.',
+        '- Personal Style DNA Fidelity: Strictly honor undertone, contrast level, color season, body proportions, owned wardrobe DNA, avoided colors, and disliked patterns.',
         'MANDATORY 3-DIRECTION ORTHOGONAL ARCHITECTURE:',
         '1) directionType="signature_mastery": the sharpest, most flattering realization of the wearer\'s core style and Personal Style DNA.',
         '2) directionType="silhouette_texture_shift": a genuinely DIFFERENT outerwearArchetype, trouserArchetype, footwearArchetype, and textureContrast — never a recolor of Direction 1.',
@@ -885,7 +914,91 @@ export async function designCreativeBriefs({
           } : {}),
         }),
       ].join('\n');
-      called = true;
+
+      const responseFormat = {
+        type: 'json_schema',
+        json_schema: {
+          name: 'stylist6_creative_directions',
+          strict: true,
+          schema: directorResponseSchema(inventory),
+        },
+      };
+
+      const saveAndReturn = async (briefs, providerMeta = {}) => {
+        const cacheEntry = { briefs, at: Date.now() };
+        cache.set(key, cacheEntry);
+        while (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value);
+        if (cacheStore && typeof cacheStore.set === 'function') {
+          try {
+            await cacheStore.set(key, cacheEntry, { ttlMs: TTL_MS });
+          } catch { /* Non-fatal distributed cache write failure */ }
+        }
+        return {
+          status: briefs.length === 3 ? 'planned' : 'planned_partial',
+          briefs,
+          providerCalls: totalCalls,
+          ...providerMeta,
+          ...evidenceReceipt,
+        };
+      };
+
+      // Optional fast multi-provider path (Gemini 2.5 Flash via OpenRouter or Lightning 30B via NVIDIA)
+      // with automatic failover and clean fallback to existing NVIDIA flow.
+      let fastAttemptedInvalid = false;
+      if (useFastRouter && !combinedSignal.aborted) {
+        const router = hasRouter
+          ? providerRouter
+          : createProviderRouter({
+              nvidiaApiKey: hasNvidiaKey ? apiKey : '',
+              openrouterApiKey: hasOpenrouterKey ? openrouterApiKey.trim() : '',
+              fetchImpl,
+            });
+        const openrouterReady = hasOpenrouterKey || router.isProviderConfigured?.('openrouter') === true;
+        const primaryModel = openrouterReady ? DEFAULT_OPENROUTER_VISION_MODEL : DEFAULT_NVIDIA_TEXT_MODEL;
+        const primaryProvider = openrouterReady ? 'openrouter' : 'nvidia';
+        const fallbacks = openrouterReady && (hasNvidiaKey || router.isProviderConfigured?.('nvidia'))
+          ? [{ model: DEFAULT_NVIDIA_TEXT_MODEL, provider: 'nvidia' }]
+          : [];
+        const routerTimeoutMs = hasNvidiaKey
+          ? Math.max(1000, Math.min(4800, Math.floor(effectiveTimeoutMs * 0.65)))
+          : effectiveTimeoutMs;
+        const routed = await router.callTextModel({
+          model: primaryModel,
+          provider: primaryProvider,
+          fallbacks,
+          allowFailover: true,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.45,
+          top_p: 0.9,
+          max_tokens: 1550,
+          response_format: responseFormat,
+          timeoutMs: routerTimeoutMs,
+          signal: combinedSignal,
+          parseJson: true,
+          maxTransientRetries: 0,
+        });
+        totalCalls += Math.max(1, Array.isArray(routed?.attempts) && routed.attempts.length ? routed.attempts.length : 1);
+        if (routed?.ok && routed.parsedJson) {
+          const briefs = validateDirectorDirections(routed.parsedJson, inventory);
+          if (briefs.length) {
+            return await saveAndReturn(briefs, {
+              provider: routed.provider,
+              model: routed.model,
+              fastModeApplied: true,
+            });
+          }
+          fastAttemptedInvalid = true;
+        }
+        if (!hasNvidiaKey || combinedSignal.aborted) {
+          const failStatus = combinedSignal.aborted
+            ? 'timeout'
+            : fastAttemptedInvalid ? 'invalid_plan' : 'provider_unavailable';
+          return { status: failStatus, briefs: [], providerCalls: totalCalls, ...evidenceReceipt };
+        }
+      }
+
+      // Existing proven NVIDIA NIM direct path (100% preserved for backwards compatibility & fallback).
+      totalCalls++;
       const response = await fetchImpl(ENDPOINT, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
@@ -895,11 +1008,7 @@ export async function designCreativeBriefs({
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.45, top_p: 0.9, max_tokens: 1550,
           stream: false,
-          response_format: {
-            type: 'json_schema', json_schema: {
-              name: 'stylist6_creative_directions', strict: true, schema: directorResponseSchema(inventory),
-            },
-          },
+          response_format: responseFormat,
           chat_template_kwargs: { enable_thinking: false },
         }),
       });
@@ -910,19 +1019,11 @@ export async function designCreativeBriefs({
         throw new Error('provider_incomplete');
       const proposed = JSON.parse(choice.message.content);
       const briefs = validateDirectorDirections(proposed, inventory);
-      if (!briefs.length) return { status: 'invalid_plan', briefs: [], providerCalls: 1, ...evidenceReceipt };
-      const cacheEntry = { briefs, at: Date.now() };
-      cache.set(key, cacheEntry);
-      while (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value);
-      if (cacheStore && typeof cacheStore.set === 'function') {
-        try {
-          await cacheStore.set(key, cacheEntry, { ttlMs: TTL_MS });
-        } catch { /* Non-fatal distributed cache write failure */ }
-      }
-      return { status: briefs.length === 3 ? 'planned' : 'planned_partial', briefs, providerCalls: 1, ...evidenceReceipt };
+      if (!briefs.length) return { status: 'invalid_plan', briefs: [], providerCalls: totalCalls, ...evidenceReceipt };
+      return await saveAndReturn(briefs);
     } catch {
       const reason = combinedSignal.aborted ? 'timeout' : 'provider_unavailable';
-      return { status: reason, briefs: [], providerCalls: Number(called), ...evidenceReceipt };
+      return { status: reason, briefs: [], providerCalls: totalCalls, ...evidenceReceipt };
     } finally {
       clearTimeout(timer);
     }
@@ -940,12 +1041,13 @@ export async function designCreativeBriefs({
  * Parallel / sequential 120B + independent 30B source-grounded Creative Director fallback.
  */
 export async function designCreativeBriefsWithFallback(options = {}) {
-  const parallel = options.parallelIndependentFallback === true &&
+  const parallel = options.fastMode !== true &&
+    options.parallelIndependentFallback === true &&
     options.highTaste === true && options.allowIndependentFallback === true &&
     !options.signal?.aborted;
   const abortSecondary = parallel ? new AbortController() : null;
   const parallelBackup = parallel ? designCreativeBriefs({
-    ...options, highTaste: false, allowIndependentFallback: false,
+    ...options, highTaste: false, fastMode: false, allowIndependentFallback: false,
     existingDirectionBriefs: null,
     signal: options.signal
       ? AbortSignal.any([options.signal, abortSecondary.signal])
@@ -964,7 +1066,7 @@ export async function designCreativeBriefsWithFallback(options = {}) {
     return first;
   }
   const backup = parallelBackup ? await parallelBackup : await designCreativeBriefs({
-    ...options, highTaste: false, allowIndependentFallback: false,
+    ...options, highTaste: false, fastMode: false, allowIndependentFallback: false,
     existingDirectionBriefs: first.briefs.length ? first.briefs : null,
     timeoutMs: Math.max(650, Math.min(3600,
       Number.isFinite(options.backupTimeoutMs) ? options.backupTimeoutMs : 2500)),
