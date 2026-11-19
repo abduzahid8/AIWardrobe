@@ -2917,3 +2917,210 @@ test('warm-weather sparse outerwear still invokes AI SKU composer via per-direct
   assert.equal(composerCalled, 1, 'composer quorum passes with 4 warm-weather outerwear items via unifiedPool >=3/slot');
   assert.ok(result.outfits.length >= 1);
 });
+
+test('fastVisualMode pre-renders 1024x1024 boards in parallel, rescues a cropped-photo defect via surgical 1-slot swap to 3/3, and skips slow legacy recomposition', async () => {
+  const slots = ['top', 'outerwear', 'bottom', 'shoes'];
+  const catalog = [
+    garment('cuff-cropped-shirt', 'White Poplin Dress Shirt', 'top', 'dress-shirt', { color: 'white' }),
+    garment('clean-white-shirt', 'Crisp White Cotton Dress Shirt', 'top', 'dress-shirt', { color: 'white' }),
+    garment('top-sky', 'Sky Blue Oxford Shirt', 'top', 'shirt', { color: 'blue' }),
+    garment('top-cream', 'Cream Merino Knit Polo', 'top', 'polo', { color: 'cream' }),
+    garment('top-ivory', 'Ivory Fine Knit Sweater', 'top', 'fine-knit', { color: 'ivory' }),
+    garment('outer-navy', 'Navy Structured Wool Blazer', 'outerwear', 'blazer', { color: 'navy' }),
+    garment('outer-olive', 'Olive Merino Cardigan', 'outerwear', 'cardigan', { color: 'olive' }),
+    garment('outer-camel', 'Camel Wool Overcoat', 'outerwear', 'coat', { color: 'camel' }),
+    garment('outer-taupe', 'Taupe Suede Overshirt', 'outerwear', 'overshirt', { color: 'beige' }),
+    garment('bottom-charcoal', 'Charcoal Pleated Wool Trousers', 'bottom', 'tailored-trouser', { color: 'charcoal' }),
+    garment('bottom-sand', 'Sand Cotton Chinos', 'bottom', 'chino', { color: 'beige' }),
+    garment('bottom-navy', 'Navy Worsted Dress Trousers', 'bottom', 'trouser', { color: 'navy' }),
+    garment('bottom-olive', 'Olive Tailored Chinos', 'bottom', 'chino', { color: 'olive' }),
+    garment('shoes-oxford', 'Dark Brown Leather Oxfords', 'shoes', 'oxford', { color: 'brown' }),
+    garment('shoes-loafer', 'Cognac Suede Loafers', 'shoes', 'loafer', { color: 'brown' }),
+    garment('shoes-derby', 'Black Leather Derbies', 'shoes', 'derby', { color: 'black' }),
+    garment('shoes-monk', 'Burgundy Leather Monk Straps', 'shoes', 'monk', { color: 'burgundy' }),
+  ];
+
+  const photoByteCache = new Map();
+  let prewarmCalls = 0;
+  let boardRenderCalls = 0;
+  let activeBoardRenders = 0;
+  let peakBoardRenders = 0;
+  let boardsSeenByCritic = 0;
+  let legacyRescueCalls = 0;
+
+  const result = await recommendFashionDeck({
+    ...base,
+    request: {
+      sourceMode: 'catalog',
+      style: 'classic',
+      occasion: 'Work',
+      weather: { temp: 15 },
+      optionalLayer: false,
+      preferences: {},
+      requiredIds: [],
+      budget: { amount: 3000000, currency: 'UZS' },
+    },
+    catalog,
+    referenceBriefs: [],
+    fastVisualMode: true,
+    photoByteCache,
+    prewarmPhotos: async (urls) => {
+      prewarmCalls += 1;
+      for (const u of urls) photoByteCache.set(u, Buffer.from(`img:${u}`));
+    },
+    boardRenderer: async (items) => {
+      boardRenderCalls += 1;
+      activeBoardRenders += 1;
+      peakBoardRenders = Math.max(peakBoardRenders, activeBoardRenders);
+      await new Promise((r) => setTimeout(r, 15));
+      activeBoardRenders -= 1;
+      return {
+        ok: true,
+        jpegBuffer: Buffer.from(`board:${items.map((x) => x.id).join('+')}`),
+        width: 1024,
+        height: 1024,
+      };
+    },
+    visualDeckReview: true,
+    canJudgeOutfit: async () => true,
+    selectDirectorFinalists: async () => ({ status: 'timeout', tokens: [] }),
+    selectCatalogCompositions: async ({ pool }) => {
+      const byId = (id) => pool.find((p) => String(p.item?.id) === id)?.item;
+      return {
+        status: 'composed',
+        looks: [
+          [byId('top-sky'), byId('outer-navy'), byId('bottom-charcoal'), byId('shoes-oxford')],
+          [byId('top-cream'), byId('outer-camel'), byId('bottom-sand'), byId('shoes-loafer')],
+          [byId('cuff-cropped-shirt'), byId('outer-olive'), byId('bottom-navy'), byId('shoes-derby')],
+        ],
+        providerCalls: 1,
+      };
+    },
+    selectCatalogRescueCompositions: async () => {
+      legacyRescueCalls += 1;
+      return { status: 'composed', looks: [], providerCalls: 1 };
+    },
+    visualCritic: async (batch, _critiqueReq, criticOpts) => {
+      const attached = batch.filter((c) => Boolean(c?.editorialBoardJpeg)).length;
+      if (attached > 0 || criticOpts?.editorialBoards?.size > 0) {
+        boardsSeenByCritic += Math.max(attached, criticOpts?.editorialBoards?.size || 0);
+      }
+      return batch.map((cand) => {
+        const items = cand.products || cand.items || [];
+        const hasCropped = items.some((x) => String(x.id) === 'cuff-cropped-shirt');
+        if (hasCropped) {
+          return admittedVisualVerdict(cand, {
+            referenceless: true,
+            visualCohesion: 0.45,
+            styleFit: 0.6,
+            occasionFit: 0.7,
+            formalityFit: 0.65,
+            reject: true,
+            weakestSlot: 'top',
+            defectCategory: 'photo_quality_defect',
+            repairDirective: 'Replace cropped shirt cuff zoom photo with a full clean white dress shirt',
+            editorialScore: 4.9,
+          });
+        }
+        return admittedVisualVerdict(cand, {
+          referenceless: true,
+          editorialScore: 8.8,
+          weakestSlot: null,
+        });
+      });
+    },
+  });
+
+  assert.equal(result.status, 'complete');
+  assert.equal(result.outfits.length, 3, 'surgical 1-slot rescue lifts 2-look deck to 3/3 verified');
+  assert.ok(prewarmCalls >= 1, 'prewarmPhotos populated shared photoByteCache');
+  assert.ok(boardRenderCalls >= 3, '1024x1024 boards rendered for wave candidates');
+  assert.ok(peakBoardRenders >= 2, `boards should render in parallel (peak=${peakBoardRenders})`);
+  assert.ok(boardsSeenByCritic >= 3, 'visualCritic received pre-rendered editorialBoards');
+  assert.ok(result.outfits.every((o) => o.items.every((it) => it.id !== 'cuff-cropped-shirt')),
+    'cropped cuff SKU must be replaced out of final deck');
+  assert.ok(result.diagnostics.modelFashionSelection?.surgicalRefinement?.approved >= 1);
+  assert.equal(legacyRescueCalls, 0, 'fastVisualMode skips slow redundant legacy recomposition once 3 distinct looks are verified');
+});
+
+test('hot-path surgical editorial polish upgrades a low-scoring (<7.5) approved look in place while preserving 3/3 disjointness', async () => {
+  const catalog = [
+    garment('polish-top-1', 'White Poplin Dress Shirt', 'top', 'dress-shirt', { color: 'white' }),
+    garment('polish-top-2', 'Sky Blue Oxford Shirt', 'top', 'shirt', { color: 'blue' }),
+    garment('polish-top-3', 'Cream Merino Polo', 'top', 'polo', { color: 'cream' }),
+    garment('polish-outer-1', 'Navy Wool Blazer', 'outerwear', 'blazer', { color: 'navy' }),
+    garment('polish-outer-2', 'Olive Merino Cardigan', 'outerwear', 'cardigan', { color: 'olive' }),
+    garment('polish-outer-3', 'Camel Wool Coat', 'outerwear', 'coat', { color: 'camel' }),
+    garment('polish-bottom-1', 'Charcoal Tailored Trousers', 'bottom', 'tailored-trouser', { color: 'charcoal' }),
+    garment('polish-bottom-2', 'Sand Cotton Chinos', 'bottom', 'chino', { color: 'beige' }),
+    garment('polish-bottom-3', 'Navy Dress Trousers', 'bottom', 'trouser', { color: 'navy' }),
+    garment('polish-shoes-1', 'Dark Brown Leather Oxfords', 'shoes', 'oxford', { color: 'brown' }),
+    garment('polish-shoes-2', 'Cognac Suede Loafers', 'shoes', 'loafer', { color: 'brown' }),
+    garment('polish-shoes-weak', 'Chunky Matte Grey Derbies', 'shoes', 'derby', { color: 'grey' }),
+    garment('polish-shoes-polished', 'Espresso Polished Calfskin Monk Straps', 'shoes', 'monk', { color: 'brown' }),
+  ];
+
+  const result = await recommendFashionDeck({
+    ...base,
+    request: {
+      sourceMode: 'catalog',
+      style: 'classic',
+      occasion: 'Work',
+      weather: { temp: 16 },
+      optionalLayer: false,
+      preferences: {},
+      requiredIds: [],
+      budget: { amount: 3000000, currency: 'UZS' },
+    },
+    catalog,
+    referenceBriefs: [],
+    fastVisualMode: true,
+    visualDeckReview: true,
+    canJudgeOutfit: async () => true,
+    selectDirectorFinalists: async () => ({ status: 'timeout', tokens: [] }),
+    selectCatalogCompositions: async ({ pool }) => {
+      const byId = (id) => pool.find((p) => String(p.item?.id) === id)?.item;
+      return {
+        status: 'composed',
+        looks: [
+          [byId('polish-top-1'), byId('polish-outer-1'), byId('polish-bottom-1'), byId('polish-shoes-1')],
+          [byId('polish-top-2'), byId('polish-outer-2'), byId('polish-bottom-2'), byId('polish-shoes-2')],
+          [byId('polish-top-3'), byId('polish-outer-3'), byId('polish-bottom-3'), byId('polish-shoes-weak')],
+        ],
+        providerCalls: 1,
+      };
+    },
+    visualCritic: async (batch) => batch.map((cand) => {
+      const items = cand.products || cand.items || [];
+      const hasWeakShoe = items.some((x) => String(x.id) === 'polish-shoes-weak');
+      if (hasWeakShoe) {
+        return admittedVisualVerdict(cand, {
+          referenceless: true,
+          visualCohesion: 0.78,
+          styleFit: 0.78,
+          occasionFit: 0.82,
+          formalityFit: 0.76,
+          reject: false,
+          editorialScore: 7.1,
+          weakestSlot: 'shoes',
+          defectCategory: 'footwear_mismatch',
+          repairDirective: 'Replace chunky grey derbies with espresso leather monk straps or loafers',
+        });
+      }
+      return admittedVisualVerdict(cand, {
+        referenceless: true,
+        editorialScore: 8.9,
+        weakestSlot: null,
+      });
+    }),
+  });
+
+  assert.equal(result.status, 'complete');
+  assert.equal(result.outfits.length, 3);
+  assert.ok(result.diagnostics.modelFashionSelection?.surgicalRefinement?.polished >= 1,
+    'editorial polish should upgrade the 7.1 look');
+  assert.ok(result.outfits.every((o) => o.items.every((it) => it.id !== 'polish-shoes-weak')),
+    'weak 7.1 shoe should be replaced by polished footwear');
+  const allSkus = result.outfits.flatMap((o) => o.items.map((it) => it.id));
+  assert.equal(new Set(allSkus).size, 12, 'all 3 polished looks remain 100% SKU-disjoint');
+});

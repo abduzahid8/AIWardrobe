@@ -6,6 +6,7 @@ import {
   createHostedVisualCritic,
   NVIDIA_VISION_MODEL,
   OPENROUTER_VISION_MODEL,
+  VISUAL_CONCURRENCY,
   EDITORIAL_RUBRIC_AXES,
   DEFECT_CATEGORIES,
   computeEditorialCompositeScore,
@@ -395,7 +396,7 @@ test('a 5xx that fails twice abstains with the retry recorded', async () => {
 test('429 stops further dispatch and never exceeds two in flight', async () => {
   let calls = 0, inflight = 0, peak = 0, references = 0;
   const critic = createHostedVisualCritic({
-    provider: 'nvidia', apiKey, resolveReference: () => { references++; return asset(); }, resolveProduct: () => asset(),
+    provider: 'nvidia', apiKey, concurrency: 2, resolveReference: () => { references++; return asset(); }, resolveProduct: () => asset(),
     fetchImpl: async () => {
       calls++;
       peak = Math.max(peak, ++inflight);
@@ -417,7 +418,7 @@ test('the shared deadline aborts in-flight requests and prevents later dispatch'
   const events = [];
   let calls = 0;
   const critic = createHostedVisualCritic({
-    provider: 'nvidia', apiKey, timeoutMs: 20, resolveReference: () => asset(), resolveProduct: () => asset(),
+    provider: 'nvidia', apiKey, concurrency: 2, timeoutMs: 20, resolveReference: () => asset(), resolveProduct: () => asset(),
     fetchImpl: async (url, { signal }) => {
       calls++;
       await new Promise((resolve) => setTimeout(resolve, 30));
@@ -450,7 +451,7 @@ test('payment-required responses block any remaining dispatches without retry', 
   const events = [];
   let calls = 0;
   const critic = createHostedVisualCritic({
-    provider: 'nvidia', apiKey, resolveReference: () => asset(), resolveProduct: () => asset(),
+    provider: 'nvidia', apiKey, concurrency: 2, resolveReference: () => asset(), resolveProduct: () => asset(),
     fetchImpl: async () => { calls++; return new Response(null, { status: 402 }); },
     onEvent: (event) => events.push(event),
   });
@@ -539,7 +540,7 @@ test('caller cancellation labels queued candidates and aborts active calls', asy
   const controller = new AbortController(), events = [];
   let calls = 0;
   const critic = createHostedVisualCritic({
-    provider: 'nvidia', apiKey, signal: controller.signal,
+    provider: 'nvidia', apiKey, concurrency: 2, signal: controller.signal,
     resolveReference: () => asset(19),
     resolveProduct: ({ id }) => asset(20 + Number(id.split('-')[1])),
     fetchImpl: async () => {
@@ -630,7 +631,7 @@ test('access denial stops later scheduling while recording every candidate', asy
     const events = [];
     let calls = 0;
     const critic = createHostedVisualCritic({
-      provider: 'nvidia', apiKey, resolveReference: () => asset(refFill), resolveProduct: () => asset(photoFill),
+      provider: 'nvidia', apiKey, concurrency: 2, resolveReference: () => asset(refFill), resolveProduct: () => asset(photoFill),
       fetchImpl: async () => { calls++; return new Response(null, { status }); },
       onEvent: (event) => events.push(event),
     });
@@ -1040,4 +1041,134 @@ test('visual critic fails over from NVIDIA NIM to OpenRouter Gemini 2.5 Flash an
   assert.equal(urlsCalled.length, prevCount, 'distributed verdict cache hit skips provider dispatch');
   assert.equal(second.editorialScore, first.editorialScore);
   assert.ok(externalGets >= 2);
+});
+
+test('default VISUAL_CONCURRENCY=6 audits 6 studio boards concurrently via fast cross-lab OpenRouter Gemini 2.5 Flash with automatic NVIDIA failover', async () => {
+  assert.equal(VISUAL_CONCURRENCY, 6, 'default VISUAL_CONCURRENCY must be 6');
+  const synth = await sharp({ create: { width: 120, height: 150, channels: 3, background: '#7c6e5d' } }).jpeg().toBuffer();
+  const boards = await Promise.all(
+    Array.from({ length: 6 }, (_, i) => renderEditorialLookBoard(
+      candidate.products.map((p) => ({ ...p, bytes: synth })),
+      { lookToken: `s6_fast_par_${i}`, anonymizeLabels: true },
+    )),
+  );
+  const batch = boards.map((board, i) => ({
+    ...candidate,
+    id: `s6_fast_par_${i}`,
+    referenceId: null,
+    editorialBoardJpeg: board,
+  }));
+
+  let active = 0;
+  let peak = 0;
+  const endpointsHit = [];
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia',
+    apiKey,
+    openrouterApiKey: 'sk-or-v1-fast-crosslab-key-0123456789',
+    preferCrossLabFastVision: true,
+    fastVisualMode: true,
+    referenceMediaConfigured: false,
+    boardOnlyMode: true,
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      const id = body.response_format.json_schema.schema.properties.candidateId.enum[0];
+      endpointsHit.push({ url: String(url), model: body.model, id });
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((r) => setTimeout(r, 25));
+      active--;
+      // Fail OpenRouter on board #5 to prove automatic cross-lab failover to NVIDIA 120B VL!
+      if (url === PROVIDER_ENDPOINTS.openrouter && id === 's6_fast_par_5') {
+        return new Response('openrouter transient 503', { status: 503 });
+      }
+      return nvidiaResponse({
+        ...referencelessVerdict(id),
+        editorialAxes: {
+          colorAndUndertoneHarmony: 8.6,
+          silhouetteAndProportion: 8.5,
+          textureAndMaterialInterplay: 8.4,
+          footwearAndGrounding: 8.7,
+          occasionAndWeatherCredibility: 8.8,
+          editorialBeautyAndTaste: 8.6,
+        },
+        weakestSlot: 'none',
+        defectCategory: 'none',
+        repairDirective: '',
+      });
+    },
+  });
+
+  assert.equal(critic.activeModel, OPENROUTER_VISION_MODEL);
+  assert.equal(critic.activeProvider, 'openrouter');
+  assert.equal(critic.concurrency, 6);
+
+  const results = await critic(batch, { style: 'classic', occasion: 'Work', weather: { temp: 18 } });
+  assert.equal(results.length, 6);
+  assert.equal(peak, 6, 'all 6 look boards must be audited concurrently in a single parallel wave');
+  assert.ok(
+    results.slice(0, 5).every((r) => r.criticVersion.includes(`openrouter/${OPENROUTER_VISION_MODEL}`)),
+    'healthy fast cross-lab boards evaluated by OpenRouter Gemini 2.5 Flash',
+  );
+  assert.ok(
+    results[5].criticVersion.includes(`nvidia/${NVIDIA_VISION_MODEL}`),
+    'failed OpenRouter board automatically fails over to NVIDIA 120B VL',
+  );
+  assert.ok(endpointsHit.some((e) => e.url === PROVIDER_ENDPOINTS.openrouter && e.model === OPENROUTER_VISION_MODEL));
+  assert.ok(endpointsHit.some((e) => e.url === PROVIDER_ENDPOINTS.nvidia && e.model === NVIDIA_VISION_MODEL));
+});
+
+test('6-axis Visual Critic prompt explicitly vetoes cropped close-ups, flat dark blocks, heavy indoor/summer coats, and shoe formality clashes, and infers weakestSlot cleanly', async () => {
+  const photos = candidate.products.map((_, i) => asset(190 + i));
+  let capturedPrompt = '';
+  const critic = createHostedVisualCritic({
+    provider: 'nvidia',
+    apiKey,
+    referenceMediaConfigured: false,
+    resolveReference: () => null,
+    resolveProduct: ({ slot }) => photos[candidate.products.findIndex((p) => p.slot === slot)],
+    fetchImpl: async (_url, init) => {
+      const body = JSON.parse(init.body);
+      capturedPrompt = body.messages[0].content[0].text;
+      return nvidiaResponse({
+        ...referencelessVerdict('s6_cropped_cuff_defect'),
+        reject: true,
+        slotObservations: {
+          top: 'Cropped close-up zoom of a white shirt cuff only, missing full torso garment',
+          outerwear: 'Navy wool tailored blazer',
+          bottom: 'Charcoal wool trousers',
+          shoes: 'Black leather oxfords',
+        },
+        editorialAxes: {
+          colorAndUndertoneHarmony: 8.2,
+          silhouetteAndProportion: 7.4,
+          textureAndMaterialInterplay: 7.8,
+          footwearAndGrounding: 8.4,
+          occasionAndWeatherCredibility: 8.0,
+          editorialBeautyAndTaste: 3.5,
+        },
+        weakestSlot: 'none', // Even if model forgets weakestSlot, parser infers 'top' from photo_quality_defect!
+        defectCategory: 'photo_quality_defect',
+        repairDirective: 'Replace cropped shirt cuff photo with full-garment crisp white poplin dress shirt',
+      });
+    },
+  });
+
+  const [res] = await critic(
+    [{ ...candidate, id: 's6_cropped_cuff_defect', referenceId: null }],
+    { style: 'classic', occasion: 'Work', weather: { temp: 19 } },
+  );
+  assert.match(capturedPrompt, /CROPPED \/ PARTIAL-GARMENT OR BROKEN PHOTO VETO/);
+  assert.match(capturedPrompt, /shirt cuff\/sleeve zoom/i);
+  assert.match(capturedPrompt, /FLAT MONOTONOUS DARK-BLOCK VETO/);
+  assert.match(capturedPrompt, /HEAVY OUTERWEAR & THERMAL CREDIBILITY VETO/);
+  assert.match(capturedPrompt, /weatherCelsius > 10/);
+  assert.match(capturedPrompt, /weatherCelsius >= 24/);
+  assert.match(capturedPrompt, /MISMATCHED SHOE FORMALITY VETO/);
+  assert.match(capturedPrompt, /"weatherCelsius":19/);
+
+  assert.equal(res.reject, true);
+  assert.equal(res.defectCategory, 'photo_quality_defect');
+  assert.equal(res.weakestSlot, 'top', 'must attribute cropped cuff photo defect to exact top slot');
+  assert.match(res.repairDirective, /white poplin dress shirt/i);
 });

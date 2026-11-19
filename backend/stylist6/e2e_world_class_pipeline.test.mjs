@@ -697,3 +697,183 @@ test('(f) quality flywheel automatically quarantines a SKU after 3 photo defects
   const allReturnedIds = new Set(res.body.outfits.flatMap((o) => o.items.map((it) => it.id)));
   assert.equal(allReturnedIds.has('shoes-oxford-brown'), false, 'quarantined SKU must be excluded by filterHygienicCatalog');
 });
+
+test('(g) fastVisualMode E2E: OpenRouter Gemini 2.5 Flash audits 1024x1024 boards, rejects cropped shirt-cuff defect, rescues via 1-slot swap to 3/3, and preserves verified triple', async () => {
+  const croppedShirtRow = makeCatalogRow({
+    id: 'top-cuff-zoom-defect',
+    slot: 'top',
+    subtype: 'dress-shirt',
+    name: 'White Poplin Cuff-Zoom Defect Shirt',
+    color: 'white',
+    price: 340000,
+    imageUrl: `${SB_IMG_BASE}/top-cuff-zoom-defect.jpg`,
+  });
+  const e2eCatalog = [
+    croppedShirtRow,
+    ...FULL_HYGIENIC_AND_DEFECTIVE_CATALOG.filter((r) => !r.id.startsWith('bad-')),
+  ];
+  const harness = createTestHarness({ shopRows: e2eCatalog });
+
+  // Deterministic colored JPEG generator per URL
+  const jpegCache = new Map();
+  async function getJpeg(url) {
+    if (jpegCache.has(url)) return jpegCache.get(url);
+    const seed = [...url].reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) & 0xff, 17);
+    const buf = await sharp({
+      create: { width: 256, height: 320, channels: 3, background: { r: (seed * 3) % 220 + 20, g: (seed * 5) % 220 + 20, b: (seed * 7) % 220 + 20 } },
+    }).jpeg({ quality: 82 }).toBuffer();
+    jpegCache.set(url, buf);
+    return buf;
+  }
+
+  let openrouterVisionCalls = 0;
+  let compositeBoardsAudited = 0;
+  let croppedDefectRejected = 0;
+  let photoEditorCalls = 0;
+  let activeVisionCalls = 0;
+  let peakVisionConcurrency = 0;
+
+  const stubFetch = async (url, options = {}) => {
+    const parsed = new URL(String(url));
+    if (parsed.hostname === 'openrouter.ai' || parsed.hostname === 'integrate.api.nvidia.com') {
+      const body = JSON.parse(options.body);
+      const messages = body.messages || [];
+      const firstContent = messages[0]?.content;
+      const promptText = Array.isArray(firstContent)
+        ? firstContent.filter((p) => p.type === 'text').map((p) => p.text).join('\n')
+        : String(firstContent || '');
+
+      // Photo editorial portfolio selector call (1800x1000 sheet)
+      if (promptText.includes('portfolio') && /"portfolio"\s*:\s*"P/.test(promptText)) {
+        photoEditorCalls += 1;
+        // Even if the model tries to pick a 2-look pair, photo_editor_final must preserve a verified distinct 3-look triple!
+        const pairMatch = promptText.match(/"(P\d+)"[^}]*"size"\s*:\s*2/);
+        const chosen = pairMatch ? pairMatch[1] : 'P1';
+        return Response.json({
+          choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ portfolio: chosen, reason: 'clean editorial review' }) } }],
+          usage: { prompt_tokens: 600, completion_tokens: 40, total_tokens: 640 },
+        });
+      }
+
+      // Per-candidate 1024x1024 Visual Critic call
+      if (promptText.includes('candidateId must be exactly')) {
+        if (parsed.hostname === 'openrouter.ai') openrouterVisionCalls += 1;
+        const imageParts = Array.isArray(firstContent) ? firstContent.filter((p) => p.type === 'image_url') : [];
+        if (promptText.includes('1024x1024 studio flat-lay board') && imageParts.length === 1) compositeBoardsAudited += 1;
+        activeVisionCalls += 1;
+        peakVisionConcurrency = Math.max(peakVisionConcurrency, activeVisionCalls);
+        await new Promise((r) => setTimeout(r, 20));
+        activeVisionCalls -= 1;
+
+        const id = promptText.match(/candidateId must be exactly "([^"]+)"/)[1];
+        const ctxLine = promptText.split('\n').find((l) => l.startsWith('{"style"'));
+        const { imageSlots, merchantGarmentEvidence } = JSON.parse(ctxLine);
+        const isCropped = Array.isArray(merchantGarmentEvidence)
+          && merchantGarmentEvidence.some((g) => String(g?.title || '').includes('Cuff-Zoom Defect'));
+        if (isCropped) {
+          croppedDefectRejected += 1;
+          return Response.json({
+            choices: [{
+              finish_reason: 'stop',
+              message: {
+                content: JSON.stringify({
+                  candidateId: id,
+                  slotObservations: Object.fromEntries(imageSlots.map((s) => [s, s === 'top' ? 'cropped shirt cuff close-up only' : `full ${s} garment`])),
+                  visualCohesion: 0.48,
+                  styleFit: 0.62,
+                  occasionFit: 0.72,
+                  formalityFit: 0.68,
+                  confidence: 0.94,
+                  reject: true,
+                  weakestSlot: 'top',
+                  defectCategory: 'photo_quality_defect',
+                  repairDirective: 'Replace cropped shirt cuff close-up with a clean full-garment white or sky blue dress shirt',
+                  editorialScore: 4.5,
+                  relationships: [
+                    { kind: 'outfit', slots: ['outerwear', 'bottom'], observation: 'blazer and trouser line is clean' },
+                    { kind: 'outfit', slots: ['bottom', 'shoes'], observation: 'trouser hem meets dress shoe cleanly' },
+                    { kind: 'outfit', slots: ['top', 'outerwear'], observation: 'top photo is only a zoomed shirt cuff, not a full garment' },
+                  ],
+                }),
+              },
+            }],
+            usage: { prompt_tokens: 720, completion_tokens: 80, total_tokens: 800 },
+          });
+        }
+        return Response.json({
+          choices: [{
+            finish_reason: 'stop',
+            message: {
+              content: JSON.stringify({
+                candidateId: id,
+                slotObservations: Object.fromEntries(imageSlots.map((s) => [s, `full studio ${s} garment`])),
+                visualCohesion: 0.91,
+                styleFit: 0.9,
+                occasionFit: 0.92,
+                formalityFit: 0.9,
+                confidence: 0.95,
+                reject: false,
+                weakestSlot: null,
+                defectCategory: null,
+                repairDirective: null,
+                editorialScore: 9.0,
+                relationships: [
+                  { kind: 'outfit', slots: ['top', 'outerwear'], observation: 'shirt collar frames blazer lapel cleanly' },
+                  { kind: 'outfit', slots: ['outerwear', 'bottom'], observation: 'jacket drape balances trouser silhouette' },
+                  { kind: 'outfit', slots: ['bottom', 'shoes'], observation: 'tailored hem meets leather footwear cleanly' },
+                ],
+              }),
+            },
+          }],
+          usage: { prompt_tokens: 720, completion_tokens: 70, total_tokens: 790 },
+        });
+      }
+
+      // Text-based director/composer calls: return unavailable so deterministic shortlist feeds our visual pipeline cleanly
+      return new Response('unavailable', { status: 503 });
+    }
+
+    // Merchant/Supabase product photo fetch
+    const buf = await getJpeg(String(url));
+    return new Response(buf, { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+  };
+
+  const res = await signedPost(
+    {
+      request: {
+        style: 'classic',
+        occasion: 'Work',
+        brief: 'Executive tailoring',
+        sourceMode: 'catalog',
+        enableVisual: true,
+        weather: { temp: 15, condition: 'clear' },
+        budget: { amount: 4500000, currency: 'UZS' },
+        generationRequestId: 'e2e-fast-vision-board-rescue-1',
+      },
+    },
+    harness,
+    {
+      OPENROUTER_API_KEY: 'sk-or-v1-e2e-test-key-0123456789abcdef',
+      NVIDIA_API_KEY: 'nvapi-e2e-test-key-0123456789abcdef',
+      STYLIST6_FAST_VISUAL_MODE: '1',
+      STYLIST6_CREATIVE_DIRECTOR_ENABLED: '0',
+    },
+    stubFetch,
+    72000,
+  );
+
+  assert.equal(res.status, 200);
+  assert.equal(res.body.success, true);
+  assert.equal(res.body.outfits.length, 3, 'verified 3-look triple preserved end-to-end');
+  assert.equal(res.body.visualReceipt.fastVisualMode, true);
+  assert.equal(res.body.visualReceipt.model, 'google/gemini-2.5-flash');
+  assert.ok(openrouterVisionCalls >= 3, `OpenRouter Gemini 2.5 Flash audited look boards (calls=${openrouterVisionCalls})`);
+  assert.ok(compositeBoardsAudited >= 3, `1024x1024 composite boards sent to critic (count=${compositeBoardsAudited})`);
+  assert.ok(peakVisionConcurrency >= 2, `parallel visual critique concurrency >= 2 (peak=${peakVisionConcurrency})`);
+  for (const look of res.body.outfits) {
+    assert.equal(look.items.length, 4);
+    assert.ok(look.items.every((it) => it.id !== 'top-cuff-zoom-defect'),
+      'cropped shirt-cuff defect must never survive into the final 3-look deck');
+    assert.equal(look.fashionDiagnostics.visualVerdict, 'JUDGED');
+  }
+});

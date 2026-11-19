@@ -40,7 +40,9 @@ import { normalizeStylistLanguage } from '../../src/domain/stylingContext.ts';
 import {
   createHostedVisualCritic,
   NVIDIA_VISION_MODEL,
+  OPENROUTER_VISION_MODEL,
   MAX_VISUAL_CANDIDATES,
+  VISUAL_CONCURRENCY,
   VISUAL_PROVIDER_TIMEOUT_MS,
   VISUAL_TIMEOUT_MS,
 } from './visual_critic_hosted.mjs';
@@ -297,12 +299,15 @@ export function catalogStylingDiscoveryHints({style,occasion,brief='',weather=nu
   const work=/\b(work|office|business|meeting|conference)\b/.test(event);
   const date=/\b(date|dinner|romantic|cocktail|evening)\b/.test(event);
   const casual=deliberatelyRelaxedIntent(intent);
+  const cold=Number.isFinite(weather?.temp) && weather.temp<=5;
+  const warm=Number.isFinite(weather?.temp) && weather.temp>=24;
   const quiet=['classic','semi_classic','old_money','business_casual','minimalist'].includes(s);
+  const smartCasualWarm = warm && ['smart_casual','casual','streetwear'].includes(s);
   const athletic=/\b(workout|gym|training|fitness|sport)\b/.test(event);
   if(athletic)return {};// dedicated activity-specific source discovery is already active
-  if(!quiet)return {};
+  if(!quiet && !smartCasualWarm)return {};
   const formal=/\b(formal|black[ -]?tie|wedding)\b/.test(event) && !casual;
-  const dressCode=formal?'formal':casual?'casual':'smart';
+  const dressCode=formal?'formal':(casual||smartCasualWarm)?'casual':'smart';
   const workRole=['dress-shirt','shirt','blazer','coat','tailored-trouser',
     'trouser','oxford','derby','loafer','chelsea','monk'];
   // Formal is not ordinary office-smart: allocating the same 100-shoe
@@ -320,16 +325,270 @@ export function catalogStylingDiscoveryHints({style,occasion,brief='',weather=nu
     'blazer','coat','chino','tailored-trouser','trouser','loafer','derby','chelsea','boot'];
   const casualRole=['shirt','polo','fine-knit','cardigan','overshirt',
     'chino','trouser','jeans','loafer','driver','minimal-sneaker','chelsea'];
-  const roles=formal?formalRole:casual?casualRole:work?workRole:date?dateRole:weekendRole;
-  // At <=5°C prefer coats and actual boots within the existing bounded
-  // inventory rather than extra uninsulated polos or summer slippers.
-  const cold=Number.isFinite(weather?.temp) && weather.temp<=5;
-  const warm=Number.isFinite(weather?.temp) && weather.temp>=24;
+  const roles=formal?formalRole:(casual||smartCasualWarm)?casualRole:work?workRole:date?dateRole:weekendRole;
+  // At <=5°C prefer coats and actual boots; at >=24°C prefer breathable warm-weather
+  // layers, tops, bottoms, and unlined shoes BEFORE any 100-row slot cap.
   return {dressCode,preferredSubtypes:[...new Set([
     ...(cold?['coat','boot','chelsea']:[]),
-    ...(warm?['overshirt','cardigan','shirt','polo','t-shirt','chino','trouser','minimal-sneaker','loafer','driver']:[]),
+    ...(warm?['overshirt','cardigan','blazer','shirt','polo','t-shirt','chino','trouser','minimal-sneaker','loafer','driver']:[]),
     ...roles,
   ])]};
+}
+
+const TIGHT_BUDGET_USD_THRESHOLD = 500;
+const AFFORDABLE_SHOE_USD_CEILING = 150;
+
+/**
+ * Determine whether a budget is tight (<= $500 USD equivalent) using verified FX
+ * rates when available, or direct currency thresholds without ever inventing FX
+ * conversions for price hard gates.
+ */
+export function isTightBudgetRequest(budget, fxSnapshot = null) {
+  const amount = Number(budget?.amount ?? budget?.budget);
+  const currency = String(budget?.currency || '').trim().toUpperCase();
+  if (!Number.isFinite(amount) || amount <= 0 || !currency) return false;
+  if (currency === 'USD') return amount <= TIGHT_BUDGET_USD_THRESHOLD;
+  const rates = fxSnapshot?.uzsPerUnit || budget?.rates || null;
+  if (rates && Number.isFinite(rates[currency]) && Number.isFinite(rates.USD) && rates.USD > 0) {
+    const usdEq = (amount * rates[currency]) / rates.USD;
+    return Number.isFinite(usdEq) && usdEq <= TIGHT_BUDGET_USD_THRESHOLD;
+  }
+  if (currency === 'EUR') return amount <= 460;
+  if (currency === 'GBP') return amount <= 400;
+  return false;
+}
+
+export function isHotWeatherRequest(weather) {
+  const temp = Number(weather?.temp ?? weather?.temperature);
+  return Number.isFinite(temp) && temp >= 24;
+}
+
+function itemBudgetPriceValue(item, budgetCurrency, priceToBudgetCurrency, rates) {
+  if (item?.isShopItem === false) return 0;
+  if (typeof priceToBudgetCurrency === 'function') {
+    const converted = Number(priceToBudgetCurrency(item, budgetCurrency));
+    if (Number.isFinite(converted) && converted > 0) return converted;
+  }
+  const price = Number(item?.price);
+  const currency = String(item?.currency || '').trim().toUpperCase();
+  if (!Number.isFinite(price) || price <= 0) return null;
+  if (!budgetCurrency || currency === budgetCurrency) return price;
+  if (rates && Number.isFinite(rates[currency]) && Number.isFinite(rates[budgetCurrency]) && rates[budgetCurrency] > 0) {
+    const converted = (price * rates[currency]) / rates[budgetCurrency];
+    return Number.isFinite(converted) && converted > 0 ? converted : null;
+  }
+  return null;
+}
+
+function warmWeatherBreathabilityScore(item, slot) {
+  const sub = String(
+    item?.subtype || item?.fashion_subtype || item?.fashion_intelligence?.descriptor?.subtype || '',
+  ).trim().toLowerCase().replace(/_/g, '-');
+  const text = `${String(item?.name || '')} ${sub} ${String(item?.texture || '')}`.toLowerCase();
+  if (slot === 'outerwear') {
+    if (/\b(?:overcoat|peacoat|parka|puffer|down|shearling|quilted|heavy wool|winter coat|thermal)\b/.test(text) || sub === 'overcoat') {
+      return -4;
+    }
+    if (/\b(?:linen|cotton|seersucker|unlined|lightweight|chambray|summer|overshirt|shacket|chore|safari)\b/.test(text) || sub === 'overshirt') {
+      return 4;
+    }
+    if (sub === 'cardigan' || (/\b(?:cardigan|fine[ -]?knit|merino)\b/.test(text) && !/\b(?:chunky|heavy|cable)\b/.test(text))) {
+      return 3;
+    }
+    if (sub === 'blazer' && !/\b(?:heavy|flannel|tweed|thick)\b/.test(text)) {
+      return 2;
+    }
+    if (sub === 'coat' || /\b(?:trench|wool coat)\b/.test(text)) return -2;
+    return 0;
+  }
+  if (slot === 'top') {
+    if (/\b(?:turtleneck|heavy knit|chunky|fleece|thermal|flannel|cashmere sweater)\b/.test(text) || sub === 'turtleneck') return -3;
+    if (/\b(?:linen|polo|poplin|chambray|cotton|short[ -]?sleeve|t-shirt|tee|breathable)\b/.test(text) || ['polo', 'shirt', 't-shirt'].includes(sub)) return 3;
+    return 1;
+  }
+  if (slot === 'bottom') {
+    if (/\b(?:flannel|corduroy|tweed|heavy wool|thermal|fleece)\b/.test(text)) return -3;
+    if (/\b(?:linen|chino|cotton|lightweight|seersucker|summer|pleated)\b/.test(text) || ['chino', 'trouser', 'tailored-trouser'].includes(sub)) return 3;
+    return 1;
+  }
+  if (slot === 'shoes') {
+    if (/\b(?:winter boot|snow boot|shearling|lug boot|chelsea|chukka|boot)\b/.test(text) || ['boot', 'chelsea'].includes(sub)) return -4;
+    if (/\b(?:loafer|driver|espadrille|minimal[ -]?sneaker|suede loafer|unlined)\b/.test(text) || ['loafer', 'driver', 'minimal-sneaker', 'espadrille'].includes(sub)) return 4;
+    if (['derby', 'oxford'].includes(sub)) return 2;
+    return 0;
+  }
+  return 0;
+}
+
+/**
+ * Budget-headroom & hot-weather catalog prioritization BEFORE slicing or passing
+ * into `fashion_deck.mjs`. Eliminates 1-look starvation on tight budgets (<= $500
+ * USD equivalent, pulling affordable <=$150 shoes & affordable layers forward) and
+ * hot weather (>= 24°C, pulling breathable overshirts/cardigans/linen/loafers
+ * forward) while preserving subtype diversity across all 4 slots and NEVER
+ * relaxing any price/FX/provenance hard gate.
+ */
+export function prioritizeCatalogForBudgetAndClimate(items, {
+  budget = null,
+  priceToBudgetCurrency = null,
+  weather = null,
+  fxSnapshot = null,
+  requiredIds = [],
+} = {}) {
+  if (!Array.isArray(items) || items.length === 0) return Array.isArray(items) ? items : [];
+  const tightBudget = isTightBudgetRequest(budget, fxSnapshot);
+  const hotWeather = isHotWeatherRequest(weather);
+  if (!tightBudget && !hotWeather) return items;
+
+  const pinnedSet = new Set(Array.from(requiredIds || [], String));
+  const budgetAmount = tightBudget ? Number(budget?.amount ?? budget?.budget) : null;
+  const budgetCurrency = tightBudget ? String(budget?.currency || '').trim().toUpperCase() : null;
+  const rates = fxSnapshot?.uzsPerUnit || budget?.rates || null;
+  const usd150InBudgetCurrency = (() => {
+    if (!tightBudget || !budgetCurrency) return null;
+    if (budgetCurrency === 'USD') return AFFORDABLE_SHOE_USD_CEILING;
+    if (rates && Number.isFinite(rates.USD) && Number.isFinite(rates[budgetCurrency]) && rates[budgetCurrency] > 0) {
+      return (AFFORDABLE_SHOE_USD_CEILING * rates.USD) / rates[budgetCurrency];
+    }
+    return budgetAmount * 0.43;
+  })();
+
+  const slotOf = (item) => String(item?.macroCategory || item?.fashion_slot || item?.slot || '').trim().toLowerCase();
+  const subtypeOf = (item) => String(
+    item?.subtype || item?.fashion_subtype || item?.fashion_intelligence?.descriptor?.subtype || 'unknown',
+  ).trim().toLowerCase().replace(/_/g, '-');
+
+  const pinned = [];
+  const bySlot = { top: [], outerwear: [], bottom: [], shoes: [] };
+  const other = [];
+  const priceCache = new Map();
+
+  for (const item of items) {
+    if (!item || item.id == null) continue;
+    const id = String(item.id);
+    if (pinnedSet.has(id)) {
+      pinned.push(item);
+      continue;
+    }
+    const slot = slotOf(item);
+    if (tightBudget) {
+      const p = itemBudgetPriceValue(item, budgetCurrency, priceToBudgetCurrency, rates);
+      priceCache.set(id, p);
+    }
+    if (bySlot[slot]) bySlot[slot].push(item);
+    else other.push(item);
+  }
+
+  // Compute true per-slot minimum price so we know exact mathematical budget headroom per slot
+  const minSlotPrice = {};
+  if (tightBudget) {
+    for (const slot of CATALOG_SLOTS) {
+      let minVal = Infinity;
+      for (const item of bySlot[slot]) {
+        const p = priceCache.get(String(item.id));
+        if (Number.isFinite(p) && p >= 0 && p < minVal) minVal = p;
+      }
+      minSlotPrice[slot] = Number.isFinite(minVal) ? minVal : 0;
+    }
+  }
+
+  const targetCeiling = tightBudget ? {
+    shoes: Math.min(budgetAmount * 0.43, usd150InBudgetCurrency ?? budgetAmount * 0.43),
+    outerwear: budgetAmount * 0.38,
+    bottom: budgetAmount * 0.28,
+    top: budgetAmount * 0.24,
+  } : null;
+
+  const prioritizedBySlot = {};
+  for (const slot of CATALOG_SLOTS) {
+    const slotList = bySlot[slot];
+    const otherSlotsMinSum = tightBudget
+      ? CATALOG_SLOTS.filter((s) => s !== slot).reduce((sum, s) => sum + (minSlotPrice[s] || 0), 0)
+      : 0;
+    const maxCombinable = tightBudget ? Math.max(0, budgetAmount - otherSlotsMinSum) : Infinity;
+
+    const scored = slotList.map((item, idx) => {
+      const id = String(item.id);
+      const p = tightBudget ? priceCache.get(id) : null;
+      let budgetTier = 0;
+      let normalizedPrice = 0;
+      if (tightBudget) {
+        if (p === null || !Number.isFinite(p)) {
+          budgetTier = 3;
+          normalizedPrice = Infinity;
+        } else if (p <= targetCeiling[slot]) {
+          budgetTier = 0; // Prime affordable headroom (e.g. shoes <= $150, affordable layers!)
+          normalizedPrice = p;
+        } else if (p <= maxCombinable) {
+          budgetTier = 1; // Still mathematically combinable with cheapest 3 other slots
+          normalizedPrice = p;
+        } else {
+          budgetTier = 2; // Exceeds remaining headroom for any 4-item look
+          normalizedPrice = p;
+        }
+      }
+      const warmScore = hotWeather ? warmWeatherBreathabilityScore(item, slot) : 0;
+      const warmTier = hotWeather ? (warmScore >= 2 ? 0 : warmScore >= 0 ? 1 : 2) : 0;
+      return { item, idx, subtype: subtypeOf(item), budgetTier, warmTier, warmScore, normalizedPrice };
+    });
+
+    // Sort within each tier by warm suitability DESC, then ascending price (more headroom first)
+    scored.sort((a, b) =>
+      a.budgetTier - b.budgetTier
+      || a.warmTier - b.warmTier
+      || b.warmScore - a.warmScore
+      || a.normalizedPrice - b.normalizedPrice
+      || a.idx - b.idx,
+    );
+
+    // Round-robin across distinct subtypes inside the prime feasible tier so 3+
+    // architecturally distinct affordable/breathable directions appear up front!
+    const prime = scored.filter((s) => s.budgetTier <= 1 && s.warmTier <= 1);
+    const tail = scored.filter((s) => !(s.budgetTier <= 1 && s.warmTier <= 1));
+    const groups = new Map();
+    for (const entry of prime) {
+      const k = entry.subtype || 'unknown';
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(entry.item);
+    }
+    const orderedKeys = [...groups.keys()].filter((k) => k !== 'unknown');
+    if (groups.has('unknown')) orderedKeys.push('unknown');
+    const diversePrime = [];
+    let progress = true;
+    while (progress) {
+      progress = false;
+      for (const k of orderedKeys) {
+        const g = groups.get(k);
+        if (g && g.length > 0) {
+          diversePrime.push(g.shift());
+          progress = true;
+        }
+      }
+    }
+    prioritizedBySlot[slot] = [...diversePrime, ...tail.map((t) => t.item)];
+  }
+
+  // Round-robin interleave across the 4 slots so any downstream slice sees balanced
+  // budget-headroom and climate-appropriate breadth across ALL 4 slots!
+  const result = [...pinned];
+  const seen = new Set(pinned.map((it) => String(it.id)));
+  const maxLen = Math.max(...CATALOG_SLOTS.map((s) => prioritizedBySlot[s].length), 0);
+  for (let i = 0; i < maxLen; i++) {
+    for (const slot of CATALOG_SLOTS) {
+      const it = prioritizedBySlot[slot][i];
+      if (it && !seen.has(String(it.id))) {
+        seen.add(String(it.id));
+        result.push(it);
+      }
+    }
+  }
+  for (const it of other) {
+    if (!seen.has(String(it.id))) {
+      seen.add(String(it.id));
+      result.push(it);
+    }
+  }
+  return result;
 }
 
 
@@ -678,6 +937,13 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
       // media/price hydration budget and merchant truth gates DO NOT change.
       const workout = discoveryIntent === 'workout';
       const cold = discoveryIntent === 'cold';
+      const warm = discoveryIntent === 'warm' || discoveryIntent === 'warm_tight_budget';
+      const tightBudgetIntent = discoveryIntent === 'tight_budget' || discoveryIntent === 'warm_tight_budget';
+      const tightBudgetFromContext = Boolean(context && isTightBudgetRequest({
+        amount: context.budget,
+        currency: context.currency,
+        rates: context.rates,
+      }));
       const localContext = workout ? { ...(context || {}), dressCode: 'athletic' } : context;
       const hasContext = Boolean(localContext && typeof localContext === 'object' && !Array.isArray(localContext) && Object.keys(localContext).length > 0);
       const workouts = workout ? [
@@ -694,10 +960,22 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         { slot: 'outerwear', search: 'coat', limit: 32 },
         { slot: 'shoes', search: 'boot', limit: 25 },
       ] : [];
+      // Hot summer (>=24°C) needs breathable overshirts, linen/cotton layers,
+      // fine cardigans, and loafers BEFORE the 100-per-slot cap so heavy coats
+      // never crowd out warm-weather looks.
+      const warmWeather = warm ? [
+        { slot: 'outerwear', search: 'overshirt', limit: 35 },
+        { slot: 'outerwear', search: 'linen', limit: 30 },
+        { slot: 'outerwear', search: 'cardigan', limit: 25 },
+        { slot: 'top', search: 'linen', limit: 25 },
+        { slot: 'shoes', search: 'loafer', limit: 25 },
+      ] : [];
+      const shoePages = tightBudgetIntent ? SHOE_DISCOVERY_PAGES + 1 : SHOE_DISCOVERY_PAGES;
+      const garmentPages = (tightBudgetIntent || warm) ? GARMENT_DISCOVERY_PAGES + 1 : GARMENT_DISCOVERY_PAGES;
       const queries = [
-        ...workouts, ...coldWeather,
+        ...workouts, ...coldWeather, ...warmWeather,
         ...CATALOG_SLOTS.flatMap(slot=>Array.from({
-          length:slot==='shoes'?SHOE_DISCOVERY_PAGES:GARMENT_DISCOVERY_PAGES,
+          length:slot==='shoes'?shoePages:garmentPages,
         },(_,page)=>({
           slot,search:'',limit:CATALOG_PER_SLOT,offset:page*CATALOG_PER_SLOT,
         }))),
@@ -720,19 +998,35 @@ export function createCloudIo({ url, anonKey, serviceKey, supabaseJs }) {
         });
         return { slot: query.slot, search:query.search, data: await check(response, 'stylist6_catalog_unavailable') };
       }));
-      // Keep context-specific verified workout / freezing-source results
-      // FIRST, then choose a broader CONSTRUCTION-BALANCED catalog window
-      // from page 0 and page 1 (shoes retain their proven brand-balanced
-      // three-page discovery). Identical 100/slot => 400 hydrated/returned
-      // products; no extra photo-media fanout, catalog bypass or schema.
+      // Keep context-specific verified workout / freezing / warm-weather results
+      // FIRST, then sort & balance by budget headroom / climate breathability
+      // BEFORE slicing to the identical 100/slot => 400 hydration cap!
+      const sortBudgetHeadroomOrWarm = (rawRows, slot) => {
+        if (!tightBudgetIntent && !tightBudgetFromContext && !warm) return rawRows;
+        return prioritizeCatalogForBudgetAndClimate(
+          rawRows.map((r) => (r ? { ...r, fashion_slot: r.fashion_slot || slot } : r)),
+          {
+            budget: (tightBudgetIntent || tightBudgetFromContext)
+              ? { amount: context?.budget, currency: context?.currency, rates: context?.rates }
+              : null,
+            weather: warm ? { temp: 30 } : null,
+          },
+        );
+      };
       const admittedBatches=CATALOG_SLOTS.map(slot=>{
         const focused=slotBatches.filter(b=>b.slot===slot&&b.search)
           .flatMap(b=>Array.isArray(b.data)?b.data:[]);
-        const generic=slotBatches.filter(b=>b.slot===slot&&!b.search)
-          .flatMap(b=>Array.isArray(b.data)?b.data:[]);
-        return {slot,data:[...focused,...(slot==='shoes'
-          ?balancedShoeCatalogWindow(generic,CATALOG_PER_SLOT)
-          :balancedGarmentCatalogWindow(generic,CATALOG_PER_SLOT))]};
+        const generic=sortBudgetHeadroomOrWarm(
+          slotBatches.filter(b=>b.slot===slot&&!b.search)
+            .flatMap(b=>Array.isArray(b.data)?b.data:[]),
+          slot,
+        );
+        const windowed = (tightBudgetIntent || tightBudgetFromContext || warm)
+          ? generic.slice(0, CATALOG_PER_SLOT)
+          : (slot==='shoes'
+            ? balancedShoeCatalogWindow(generic,CATALOG_PER_SLOT)
+            : balancedGarmentCatalogWindow(generic,CATALOG_PER_SLOT));
+        return {slot,data:[...sortBudgetHeadroomOrWarm(focused, slot),...windowed]};
       });
       const bySlot = Object.fromEntries(CATALOG_SLOTS.map(slot => [slot, 0]));
       for (const { slot, data } of admittedBatches) {
@@ -1229,6 +1523,7 @@ export function normalizeStylist6CloudPayload(payload, env = {}) {
     ...(payload.generationRequestId !== undefined ? { generationRequestId: payload.generationRequestId } : {}),
     ...(payload.language !== undefined ? { language: payload.language } : {}),
     ...(enableVisual ? { enableVisual: true } : {}),
+    ...(payload.fastVisualMode !== undefined ? { fastVisualMode: Boolean(payload.fastVisualMode) } : {}),
   };
 }
 
@@ -1703,9 +1998,21 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       userId,body,{stableCohort:stableSourceCohort,style,occasion,sourceMode,
         weather:request.weather,budget});
     nextPhase('catalog_discovery');
+    const tightBudgetDiscovery = isTightBudgetRequest(budget, fxSnapshot);
+    const hotWeatherDiscovery = isHotWeatherRequest(request.weather);
+    const discoveryIntent = isWorkoutOccasion(request.occasion)
+      ? 'workout'
+      : Number(request.weather?.temp) < 5
+        ? 'cold'
+        : (hotWeatherDiscovery && tightBudgetDiscovery)
+          ? 'warm_tight_budget'
+          : hotWeatherDiscovery
+            ? 'warm'
+            : tightBudgetDiscovery
+              ? 'tight_budget'
+              : null;
     const [shopRows, wardrobeRows] = await Promise.all([
-      sourceMode === 'wardrobe' ? [] : io.fetchShopRows(discoverySeed, discoveryContext,
-        isWorkoutOccasion(request.occasion) ? 'workout' : Number(request.weather?.temp) < 5 ? 'cold' : null),
+      sourceMode === 'wardrobe' ? [] : io.fetchShopRows(discoverySeed, discoveryContext, discoveryIntent),
       sourceMode === 'catalog' ? [] : io.fetchWardrobeRows(userId),
     ]);
     deadline();
@@ -1855,9 +2162,18 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           return Number.isFinite(converted) ? converted : NaN;
         }
       : (item, currency = budget?.currency) => (currency && item.currency === currency ? item.price : NaN);
-    const feasible = budget
+    const rawFeasible = budget
       ? pool.filter((item) => item.isShopItem !== true || Number.isFinite(priceToBudgetCurrency(item, budget.currency)))
       : pool;
+    const feasible = (sourceMode !== 'wardrobe' && (tightBudgetDiscovery || hotWeatherDiscovery))
+      ? prioritizeCatalogForBudgetAndClimate(rawFeasible, {
+          budget,
+          priceToBudgetCurrency,
+          weather: request.weather,
+          fxSnapshot,
+          requiredIds: resolvedRequiredIds,
+        })
+      : rawFeasible;
     if (!feasible.length) {
       // Terminal outcome of an already-claimed (and debited) request: record
       // it like the empty-deck path below so a redelivery replays 409 with
@@ -2046,6 +2362,17 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // style preferences are sent; no user ID, merchant link or garment photo.
     // A failed AI plan never bypasses a constraint or blocks the existing
     // house-formula fallback. Enable ONLY on the isolated S6 compute preview.
+    const nvidiaKey = String(env.NVIDIA_API_KEY || '').trim();
+    const openrouterKey = String(env.OPENROUTER_API_KEY || '').trim();
+    const hasNvidiaKey = nvidiaKey.startsWith('nvapi-');
+    const hasOpenrouterKey = openrouterKey.length >= 16;
+    const fastVisualDisabled = /^(0|false)$/i.test(String(env.STYLIST6_FAST_VISUAL_MODE || '').trim());
+    const fastVisualExplicit = /^(1|true)$/i.test(String(env.STYLIST6_FAST_VISUAL_MODE || '').trim());
+    const fastVisualMode = !fastVisualDisabled && (
+      fastVisualExplicit
+      || hasOpenrouterKey
+      || request.fastVisualMode === true
+    );
     const creativeDirectorEnabled =
       /^(1|true)$/i.test(String(env.STYLIST6_CREATIVE_DIRECTOR_ENABLED || '').trim()) &&
       !isWorkoutOccasion(occasion) && remainingMs() >= 12000;
@@ -2063,7 +2390,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           // This preserves the 72s deadline and gives real 30B creativity
           // ~6.5s instead of a near-guaranteed 3s sequential timeout.
           backupTimeoutMs:budgetMs>=70000?6500:3000,
-          apiKey: env.NVIDIA_API_KEY || '',
+          apiKey: nvidiaKey,
+          ...(openrouterKey ? { openrouterApiKey: openrouterKey } : {}),
+          ...(fastVisualMode ? { fastMode: true } : {}),
           ...(fetchImpl ? { fetchImpl } : {}),
           signal: deadlineController.signal,
           timeoutMs: Math.min(7500, Math.max(1000, remainingMs() - 7000)),
@@ -2093,18 +2422,25 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       : explicitVisualFlag
         ? (visualAsked ? 'explicit_client' : 'default_off')
         : (/^(1|true)$/i.test(String(env.STYLIST6_DEFAULT_VISUAL_EVAL || '').trim()) ? 'server_default' : 'default_off');
-    const nvidiaKey = env.NVIDIA_API_KEY || '';
-    const openrouterKey = String(env.OPENROUTER_API_KEY || '').trim();
     const photoCache = new Map();
+    const photoByteCache = createPhotoByteCache({ maxEntries: 128, maxBytes: 32 * 1024 * 1024 });
     const verifiedPhotoTasks=new Map();
-    // Exact image bytes are shared with the independent photo-critic cache.
+    // Exact image bytes are shared with the independent photo-critic cache and
+    // proportion-aware studio look boards / portfolio sheets.
     let photoPortfolioResolver=null;
     let photoComposerCachedOnlyResolver=null;
-    if (visualAsked && !visualDisabled && nvidiaKey.startsWith('nvapi-')) {
+    let studioBoardRenderer=null;
+    let prewarmCandidatePhotos=null;
+    let visualCriticActiveModel = NVIDIA_VISION_MODEL;
+    if (visualAsked && !visualDisabled && (hasNvidiaKey || hasOpenrouterKey)) {
       const resolveProduct=(product)=>{
         const url=product.imageUrl||product.image_url;
         const originalResolver=()=>resolveProductAsset(url,photoCache,
-          fetchImpl?(prodUrl,options)=>fetchImpl(prodUrl,options):undefined);
+          fetchImpl?(prodUrl,options)=>fetchImpl(prodUrl,options):undefined)
+          .then((asset)=>{
+            if(asset?.bytes&&url)photoByteCache.set(url,asset.bytes);
+            return asset;
+          });
         const record=verifiedPhotoRows.get(String(product?.id||''));
         if(!record||record.source_image_url!==url)return originalResolver();
         const taskKey=String(product.id)+'|'+url;
@@ -2113,12 +2449,34 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             item:product,record,supabaseOrigin:env.SUPABASE_URL,
             fetchImpl:fetchImpl||fetch,decodeImage:prepareCloudVisualMedia,
             originalResolver,
+          }).then((asset)=>{
+            if(asset?.bytes&&url)photoByteCache.set(url,asset.bytes);
+            return asset;
           });
           verifiedPhotoTasks.set(taskKey,task);
         }
         return verifiedPhotoTasks.get(taskKey);
       };
       photoPortfolioResolver=resolveProduct;
+      studioBoardRenderer=(items, opts = {})=>renderEditorialLookBoard(items, {
+        resolvePhoto: resolveProduct,
+        authorizePhoto: isInferenceAuthorized,
+        photoCache: photoByteCache,
+        anonymizeLabels: true,
+        ...opts,
+      });
+      prewarmCandidatePhotos=async (candidateLooks)=>{
+        const urls=[...new Set(
+          (Array.isArray(candidateLooks)?candidateLooks:[]).flatMap((look)=>
+            (look?.items||look?.products||[])
+              .map((item)=>item?.imageUrl||item?.image_url)
+              .filter((imageUrl)=>isInferenceAuthorized(imageUrl)),
+          ),
+        )];
+        await prewarmProductPhotos(urls, resolveProduct, {
+          remainingMs, signal: deadlineController.signal,
+        });
+      };
       // Creative composer NEVER triggers a live merchant-CDN wave:
       // it uses ONLY source-verified licensed FIRST-PARTY assets. Missing,
       // expired or corrupted cached assets abstain; the original text AI
@@ -2145,9 +2503,14 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         return checked.every(item=>item.status==='fulfilled' && item.value?.bytes?.length>0);
       };
       const rawVisualCritic = createHostedVisualCritic({
-        provider: 'nvidia',
-        apiKey: nvidiaKey,
-        model: NVIDIA_VISION_MODEL,
+        provider: hasNvidiaKey ? 'nvidia' : 'openrouter',
+        apiKey: hasNvidiaKey ? nvidiaKey : openrouterKey,
+        openrouterApiKey: openrouterKey,
+        model: hasNvidiaKey ? NVIDIA_VISION_MODEL : OPENROUTER_VISION_MODEL,
+        enableFailover: hasOpenrouterKey || fastVisualMode,
+        preferCrossLabFastVision: fastVisualMode && hasOpenrouterKey,
+        fastVisualMode,
+        boardRenderer: fastVisualMode ? studioBoardRenderer : null,
         // Referenceless visual critique is allowed only when the entire
         // reference bucket was never configured. If an explicitly configured
         // bucket cannot serve the selected reference, the critic abstains.
@@ -2155,13 +2518,13 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           explicitLookbookPhotoRequested(request,reference)),
         referenceBlueprints: buildReferenceBlueprints(referenceIndex),
         timeoutMs: Math.min(VISUAL_TIMEOUT_MS, Math.max(1000, remainingMs() - 1000)),
-        providerTimeoutMs: VISUAL_PROVIDER_TIMEOUT_MS,
-        // All eight admissible alternatives must be judged in a SINGLE
-        // bounded wave. At concurrency six, the seventh and eighth were
-        // queued behind slow 120B calls, causing late 504/partial decks.
-        // The existing 38s provider batch and 50s request deadlines still
-        // apply; no unreviewed look is ever labeled approved.
-        concurrency: 8,
+        providerTimeoutMs: (fastVisualMode && hasOpenrouterKey)
+          ? Math.min(VISUAL_PROVIDER_TIMEOUT_MS, 14_000)
+          : VISUAL_PROVIDER_TIMEOUT_MS,
+        // All admissible look boards audited concurrently in ONE parallel wave
+        // (default VISUAL_CONCURRENCY=6+, up to MAX_VISUAL_CANDIDATES=8, bounded
+        // by ai_provider_router's adaptive semaphore).
+        concurrency: Math.min(MAX_VISUAL_CANDIDATES, Math.max(VISUAL_CONCURRENCY, 8)),
         ...(fetchImpl ? { fetchImpl } : {}),
         resolveReference: (id, signal) => resolveReferenceAsset(env, env.SUPABASE_URL, id,
           fetchImpl ? (refUrl, refOptions) => fetchImpl(refUrl, { ...refOptions, signal }) : undefined),
@@ -2176,12 +2539,16 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             httpStatus: event.httpStatus ?? null,
             latencyMs: Math.round(event.latencyMs || event.providerMs || 0),
             ...(Number.isSafeInteger(event.images) ? { images: event.images } : {}),
+            ...(event.evaluatedEditorialBoard === true ? { evaluatedEditorialBoard: true } : {}),
+            ...(event.routedModel ? { routedModel: event.routedModel } : {}),
+            ...(event.routedProvider ? { routedProvider: event.routedProvider } : {}),
             ...(event.cacheHit === true ? { cacheHit: true } : {}),
             ...(event.retried === true ? { retried: true } : {}),
             ...(event.usage && typeof event.usage === 'object' ? { usage: event.usage } : {}),
           });
         },
       });
+      visualCriticActiveModel = rawVisualCritic.activeModel || NVIDIA_VISION_MODEL;
       // Bounded concurrent media pre-warm before Wave 1 hits the strict NIM
       // deadline so merchant CDN fetches never wait behind each other inside
       // provider evaluation. Only touches URLs already permitted for inference.
@@ -2212,6 +2579,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           candidates,
           {
             ...critiqueRequest,
+            ...(Number.isFinite(weather?.temp) ? { weather } : {}),
             ...(styleDnaPromptBlock ? { personalStyleDnaPromptBlock: styleDnaPromptBlock } : {}),
           },
           { ...criticOptions, signal: combinedSignal },
@@ -2298,7 +2666,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             resolvePhoto:parallel&&photoFirstCatalogReady
               ?photoComposerCachedOnlyResolver:null,
             authorizePhoto:parallel&&photoFirstCatalogReady?isInferenceAuthorized:null,
-            apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
+            apiKey:nvidiaKey,
+            ...(openrouterKey ? { openrouterApiKey: openrouterKey } : {}),
+            ...(fastVisualMode ? { fastMode: true } : {}),
+            ...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:parallel
               ?Math.min(16000,Math.max(2000,left-24500))
@@ -2321,7 +2692,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             crossLabRevision:true,
             fastPhotoRevision:budgetMs>=70000&&
               env.STYLIST6_FAST_PHOTO_REVISION_ENABLED==='true',
-            apiKey:nvidiaKey,...(fetchImpl?{fetchImpl}:{}),
+            apiKey:nvidiaKey,
+            ...(openrouterKey ? { openrouterApiKey: openrouterKey } : {}),
+            ...(fastVisualMode ? { fastMode: true } : {}),
+            ...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
             timeoutMs:budgetMs>=70000&&
               env.STYLIST6_FAST_PHOTO_REVISION_ENABLED==='true'
@@ -2332,13 +2706,16 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     const selectPhotoApprovedPortfolio=modelSlateEnabled&&budgetMs>=70000
       ? async({looks,critiques,portfolios,context,creativePlans})=>{
           const left=remainingMs();
-          if(left<6500)return {status:'deadline',tokens:[],providerCalls:0};
+          if(left<(fastVisualMode?4000:6500))return {status:'deadline',tokens:[],providerCalls:0};
           nextPhase('final_photo_portfolio_editor');
           return selectPhotoEditorialDeck({
             looks,critiques,portfolios,context,creativePlans,
             apiKey:nvidiaKey,
             openrouterApiKey:openrouterKey,
             enableCrossLabFailover:true,
+            fastVisualMode,
+            preserveDistinctVerifiedTriple:true,
+            photoCache:photoByteCache,
             // The optional visual jury sees ONLY source photos independently
             // authorized and photo-judged earlier in this same request.
             // A slow/unavailable visual model retains the original text editor.
@@ -2353,7 +2730,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
             crossLabTieBreak:budgetMs>=70000,
             ...(fetchImpl?{fetchImpl}:{}),
             signal:deadlineController.signal,
-            timeoutMs:Math.min(9600,Math.max(500,left-3300)),
+            timeoutMs:fastVisualMode
+              ?Math.min(6000,Math.max(1200,left-2000))
+              :Math.min(9600,Math.max(500,left-3300)),
           });
         } : null;
     const computedDeck = await runWithinRemainingDeadline(() => recommendFashionDeck({
@@ -2369,12 +2748,17 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       ...(selectCatalogRescueCompositions?{selectCatalogRescueCompositions}:{}),
       hardGate: async (items) => devLookFeasibility(items),
       priceToBudgetCurrency,
+      ...(fxSnapshot ? { fxSnapshot } : {}),
       feedbackTaste,
       personalStyleDna,
       styleDnaPromptBlock,
       tasteProfile,
       qualityFlywheel,
       qualityMap,
+      fastVisualMode,
+      ...(studioBoardRenderer ? { boardRenderer: studioBoardRenderer } : {}),
+      photoByteCache,
+      ...(prewarmCandidatePhotos ? { prewarmPhotos: prewarmCandidatePhotos } : {}),
       valueFxRates: sourceMode === 'catalog' && !budget ? fxSnapshot?.uzsPerUnit : null,
       // Staging-only visual-first quality pass: review every admissible card
       // in one bounded batch, not just the first selection.
@@ -2574,7 +2958,8 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         visualReceipt: {
           // Cost metering is tokens-based only: no per-call pricing table
           // exists in this codebase, so no currency estimate is invented.
-          model: visualCritic ? NVIDIA_VISION_MODEL : null,
+          model: visualCritic ? visualCriticActiveModel : null,
+          ...(fastVisualMode ? { fastVisualMode: true } : {}),
           policy: visualPolicy,
           requested: visualAsked,
           serverDisabled: visualAsked && visualDisabled,
