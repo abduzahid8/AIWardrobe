@@ -142,10 +142,36 @@ export function photoHistoryRecompositionCandidates(
           consider([top,outerwear,bottom,shoes],{positivePhotoSignal:true});
     }
   }
-  return [...proposals.values()].sort((a,b)=>
+  const ranked=[...proposals.values()].sort((a,b)=>
     b.estimatedPhotoQuality-a.estimatedPhotoQuality||
-    a.items.map(x=>x.id).join('|').localeCompare(b.items.map(x=>x.id).join('|')))
-    .slice(0,limit);
+    a.items.map(x=>x.id).join('|').localeCompare(b.items.map(x=>x.id).join('|')));
+  // The PHOTO teacher predicts WHOLE-LOOK quality, but our actual product
+  // promises require a beautiful three-LOOK portfolio. Purely selecting
+  // individual top-N scores can spend both remaining PHOTO slots on tiny
+  // variations of ONE strong top/coat, which can never coexist in the final
+  // independently shoppable deck. The first hypothesis retains the model's
+  // full artistic freedom and maximum predicted quality. For subsequent
+  // hypotheses, use the best positively PHOTO-supported real look which is
+  // product-independent from the alternatives already selected, when one
+  // exists. This is a set-level selection objective, not a rule against
+  // colors, silhouettes, garment categories or any original source SKU.
+  //
+  // If the permitted inventory has no such option, the next highest scored
+  // overlap remains available as a legitimate replacement PHOTO audition.
+  const selected=[],remaining=[...ranked];
+  while(selected.length<limit&&remaining.length){
+    let index=0;
+    if(selected.length){
+      const independent=remaining.findIndex(candidate=>
+        candidate.estimatedPhotoQuality>0&&
+        selected.every(previous=>
+          candidate.items.every(item=>
+            previous.items.every(other=>!sameProduct(item,other)))));
+      if(independent>=0)index=independent;
+    }
+    selected.push(remaining.splice(index,1)[0]);
+  }
+  return selected;
 }
 
 /** Guard against calling fashion-casual products workout equipment. A source
