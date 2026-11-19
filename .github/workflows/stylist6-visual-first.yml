@@ -152,7 +152,7 @@ jobs:
       - name: Verify signed Node transport and staging proxy admission (offline)
         run: node --test backend/stylist-node/test/transport.test.mjs backend/stylist-node/test/transport-health.test.mjs backend/stylist-node/test/handler.test.mjs backend/stylist-node/test/health.test.mjs backend/stylist-node/test/proxy.test.mjs backend/stylist-node/test/staging.test.mjs backend/stylist-node/test/stylist6-route.test.mjs
       - name: Verify client budget and original-currency formatting
-        run: npx jest __tests__/utils/outfitBudget.test.ts __tests__/utils/uzsPrice.test.ts __tests__/platform/budgets.test.ts __tests__/services/stylist6Dev.test.ts __tests__/services/stylist6OfferTruth.test.ts
+        run: npx jest __tests__/utils/outfitBudget.test.ts __tests__/utils/uzsPrice.test.ts __tests__/platform/budgets.test.ts __tests__/services/stylist6Dev.test.ts __tests__/lib/readOnlySettledRecovery.test.ts __tests__/services/stylist6OfferTruth.test.ts
       - name: Verify real iOS merchant-image format negotiation and honest four-slot photos
         run: npx jest __tests__/features/slotImageHonesty.test.js __tests__/features/outfitPriceDisplay.test.js --ci --runInBand
       - name: Verify the isolated Stylist 6 Supabase proxy pins validated compute (zero paid calls)
