@@ -44,6 +44,73 @@ export function eligibleCatalogFourItemPhotoCandidate(look){
 }
 
 
+/**
+ * Learned PHOTO-history creative audition of WHOLE garment relationships.
+ *
+ * The primary source-bound AI already chose real TOP/LAYER/BOTTOM/SHOES sets.
+ * When (and ONLY when) its cross-request, same-scene PHOTO outcome teacher
+ * generalizes on independent held-out examples, consider NEW source-product
+ * pairings from those four verified item pools. The proposals are NOT
+ * product recommendations: source/budget/weather/merchant feasibility,
+ * image-usage authorization and the independent whole-outfit PHOTO critic
+ * must all separately approve them. No rule about which garment goes with
+ * another is encoded here; the prior learns the relationship.
+ *
+ * All photographed input is already in the existing trusted item catalog;
+ * nothing (image URL, pixel, merchant identifier, model weight) is uploaded,
+ * persisted or sent to another provider by this pure function.
+ */
+export function photoHistoryRecompositionCandidates(
+  initial,scoreFeatures,{limit=8,featuresOf=items=>outfitStylingFeatures(items)}={}
+){
+  if(!Array.isArray(initial)||initial.length<3||initial.length>8||
+      typeof scoreFeatures!=='function'||typeof featuresOf!=='function'||
+      !Number.isInteger(limit)||limit<1||limit>16)return [];
+  const authorized=initial.filter(eligibleCatalogFourItemPhotoCandidate);
+  if(authorized.length<3)return [];
+  const original=new Set(authorized.map(look=>
+    look.items.map(item=>baseProductId(String(item.id))).sort().join('|')));
+  const proposals=new Map();
+  const roleOf=look=>Object.fromEntries(
+    slots.map(slot=>[slot,look.items.find(item=>item.macroCategory===slot)]));
+  const roles=authorized.map(roleOf);
+  const score=items=>{
+    try{
+      const value=scoreFeatures(featuresOf(items));
+      return Number.isFinite(value)&&value>=-1&&value<=1?value:null;
+    }catch{return null}
+  };
+  // A complete outfit inherits two coherent actual SKU relationships
+  // from each independent artist direction, then the learned full-outfit
+  // reward decides whether the NEW four-way combination looks promising.
+  // This is bounded pairing search, not a fixed costume template.
+  const halves=[
+    ['top','outerwear'],['top','bottom'],['top','shoes'],
+    ['outerwear','bottom'],['outerwear','shoes'],['bottom','shoes'],
+  ];
+  for(let a=0;a<roles.length;a++)for(let b=0;b<roles.length;b++){
+    if(a===b)continue;
+    for(const half of halves){
+      const split=new Set(half);
+      const items=slots.map(slot=>(split.has(slot)?roles[a]:roles[b])[slot]);
+      if(items.some(item=>!item||!item.isShopItem))continue;
+      // Original identities and duplicate images are still distinct
+      // source-level constraints; a model cannot invent uniqueness.
+      if(items.some((item,i)=>items.slice(0,i).some(other=>
+        sameProduct(item,other))))continue;
+      const key=items.map(item=>baseProductId(String(item.id))).sort().join('|');
+      if(original.has(key)||proposals.has(key))continue;
+      const estimatedPhotoQuality=score(items);
+      if(estimatedPhotoQuality===null)continue;
+      proposals.set(key,{items,estimatedPhotoQuality});
+    }
+  }
+  return [...proposals.values()].sort((a,b)=>
+    b.estimatedPhotoQuality-a.estimatedPhotoQuality||
+    a.items.map(x=>x.id).join('|').localeCompare(b.items.map(x=>x.id).join('|')))
+    .slice(0,limit);
+}
+
 /** Guard against calling fashion-casual products workout equipment. A source
  * description or generic 'athletic fit' tag is not enough: the PRODUCT NAME
  * must support the intended physical activity, and hard contradictions win.
@@ -2044,6 +2111,47 @@ export async function recommendFashionDeck({
     }
   }
   const aiFirstFastTrack=sourceVerifiedAiFirst.length>=3;
+  // The photo teacher formerly controlled only a late tie-break on
+  // ranker-prebuilt challengers, while AI-first skipped retrieval ENTIRELY.
+  // Consequently historical real PHOTO taste did not help design the FIRST
+  // round's extra candidate relationships. Learn from verified whole-outfit
+  // photo outcomes and construct a FEW fresh alternatives directly from the
+  // AI's already source-admitted garment decisions, without 20s of ranker
+  // CPU or a new model call. A separately verified full-image critic still
+  // has ABSOLUTE publication veto over every proposed combination.
+  let photoHistoryCreativeAuditions=0;
+  if(aiFirstFastTrack&&request.sourceMode==='catalog'&&!requiredIds.length&&
+      photoHistory?.status==='heldout_photo_validated'&&
+      typeof photoHistory.scoreFeatures==='function'){
+    const alternateParts=photoHistoryRecompositionCandidates(
+      sourceVerifiedAiFirst,photoHistory.scoreFeatures,{
+        limit:8,featuresOf:items=>outfitStylingFeatures(items,context.anchorId),
+      });
+    const knownIds=new Set(sourceVerifiedAiFirst.map(x=>x.id));
+    const space=Math.max(0,MAX_VISUAL_CANDIDATES-sourceVerifiedAiFirst.length);
+    for(const proposal of alternateParts){
+      if(photoHistoryCreativeAuditions>=space)break;
+      const admitted=await sourceVerifyComposedOutfits({
+        looks:[proposal.items],request:{...request,requiredIds},requiredIds,
+        hardGate,priceToBudgetCurrency,scorer:fashionScorer,
+        sourceMode:request.sourceMode,
+      });
+      const candidate=admitted[0];
+      if(!candidate||knownIds.has(candidate.id)||
+        (catalogFourItemIntent&&!eligibleCatalogFourItemPhotoCandidate(candidate)))
+        continue;
+      if(verifiedAvoidColors(context.preferences?.avoidColors).length&&
+        photographicPaletteEvidence(candidate,context.preferences,requiredIds).blocked)
+        continue;
+      try{
+        if(await canJudgeOutfit(candidate,reference?.referenceId??null)!==true)
+          continue;
+      }catch{continue}
+      knownIds.add(candidate.id);
+      sourceVerifiedAiFirst.push(candidate);
+      photoHistoryCreativeAuditions++;
+    }
+  }
   // The proven legacy retrieval is only a FALLBACK if the independent AI
   // did not construct at least three complete, source-admitted looks.
   // It must never slow a successful AI fashion design or consume the CPU
@@ -2118,6 +2226,10 @@ export async function recommendFashionDeck({
       exploratoryProducts:0,parallel:!!parallelComposition,
       visualMenuStatus:'not_run',aiFirst:!!parallelComposition,
       retrievalSkipped:aiFirstFastTrack,
+      // Number of freshly SOURCE-VERIFIED in-memory creative pairings
+      // from HELD-OUT validated original PHOTO critic relationships.
+      // None counts as approved until the critic actually inspects photos.
+      photoHistoryCreativeAuditions,
     };
     if(modelLed){
       const reviewable=[];
