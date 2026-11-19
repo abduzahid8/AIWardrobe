@@ -2192,6 +2192,7 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     skuCompositionAdmitted:null,skuCompositionExploration:null,
     skuCompositionParallel:false,
     skuCompositionAiFirst:false,skuCompositionRetrievalSkipped:false,
+    skuCompositionHistoryCreativeAuditions:null,
     skuCompositionStudio:'not_run',skuCompositionPhotoFirst:'not_run',
     catalogFourItemContract:false,catalogFourItemDropped:null,
     photoTeacherStatus:'not_run',photoTeacherExamples:null,
@@ -2227,7 +2228,9 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
     photoTeacherSelectionApplied:true,
     photoHistoryStatus:'heldout_photo_validated',
     photoHistoryExamples:42,photoHistoryHoldoutWins:4,
-    photoHistoryHoldoutPairs:4,photoHistoryPriorConsidered:true,
+    photoHistoryHoldoutPairs:98,photoHistoryPriorConsidered:true,
+    skuCompositionReceipt:{photoHistoryCreativeAuditions:2,
+      privateSourceSku:'do-not-log-owner-shop-SKU'},
     ownerEmail:'private@example.com',
     weights:{'private-sku':999},
   }},2,35000);
@@ -2239,14 +2242,22 @@ test('safe Stage 6 quality trace includes only bounded status counters and reaso
   assert.equal(teacher.photoHistoryStatus,'heldout_photo_validated');
   assert.equal(teacher.photoHistoryExamples,42);
   assert.equal(teacher.photoHistoryHoldoutWins,4);
-  assert.equal(teacher.photoHistoryHoldoutPairs,4);
+  assert.equal(teacher.photoHistoryHoldoutPairs,98,
+    '4-fold cross-validated real PHOTO reward data must remain observable');
+  assert.equal(teacher.skuCompositionHistoryCreativeAuditions,2,
+    'real source-admitted learned alternatives, not fake AI photo approvals');
   assert.equal(teacher.photoHistoryPriorConsidered,true);
-  assert.doesNotMatch(JSON.stringify(teacher),/private|email|weights/);
+  assert.doesNotMatch(JSON.stringify(teacher),
+    /private|email|weights|do-not-log-owner-shop-SKU/);
   const invalid=stylist6SafeQualityTrace({modelFashionSelection:{
     photoTeacherStatus:'<owned-secret>',photoTeacherExamples:999,
+    photoHistoryHoldoutWins:1e10,photoHistoryHoldoutPairs:1e10,
+    skuCompositionReceipt:{photoHistoryCreativeAuditions:999},
   }},2,35000);
   assert.equal(invalid.photoTeacherStatus,'not_run');
   assert.equal(invalid.photoTeacherExamples,null);
+  assert.equal(invalid.photoHistoryHoldoutPairs,null);
+  assert.equal(invalid.skuCompositionHistoryCreativeAuditions,null);
   assert.equal(stylist6SafeQualityTrace(null,5,-1).displayed,null,
     'trace cannot invent out-of-range deck counts');
 });
