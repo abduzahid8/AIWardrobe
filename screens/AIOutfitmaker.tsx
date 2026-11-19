@@ -33,6 +33,7 @@ import Reanimated, { FadeIn, FadeInUp, FadeOut, FadeOutUp } from 'react-native-r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { withRequestDeadline } from '../src/lib/requestDeadline';
+import { pollSettledReadOnlyResult } from '../src/lib/readOnlySettledRecovery';
 import { RequestTimeoutError } from '../src/lib/requestDeadline';
 import { OutfitGenerationFailure, outfitGenerationFailure } from '../src/services/outfitGenerationFailure';
 import { useShopCatalog } from '../hooks/useShopCatalog';
@@ -1787,9 +1788,14 @@ const AIOutfitGenerator = () => {
                code==='stylist6_ranking_failed'));
           if(transportFailure && !cancelSignal?.aborted && isCurrentGeneration()){
             try{
-              const saved=await withRequestDeadline(
+              // Real Date-night iOS: the paid/photo-verified result was
+              // persisted ~15 seconds AFTER the proxy dropped the original
+              // reply. A single immediate SELECT returned nothing, and the
+              // screen incorrectly showed an error for a charged request.
+              // Poll the SAME ID (RLS owner-only), never POST another call.
+              const saved=await pollSettledReadOnlyResult(
                 signal=>recoverStylist6CloudResult(requestId,{signal}),
-                6500,cancelSignal);
+                {signal:cancelSignal,maxWaitMs:20000});
               if(saved){
                 data=saved;
                 invokeError=null;
