@@ -2603,6 +2603,13 @@ export async function recommendFashionDeck({
           modelFashionSelection.photoAuditionCoreRecovered=true;
         }
       }
+      if(modelLed&&modelChosen&&request.sourceMode==='catalog'){
+        // This is the exact FIRST wave passed to the independent PHOTO
+        // critic, not a count of already approved or displayed looks.
+        skuCompositionReceipt.photoAuditionCoreFeasible=
+          visualProductUniqueTripleCount(
+            candidates.slice(0,3),requiredIds)>0;
+      }
       let primaryCritiques=[];
       const reviewOptions={
         target:Math.min(3,candidates.length), minNovelty:0.12, requiredIds,
