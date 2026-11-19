@@ -2949,6 +2949,72 @@ test('calibrated PHOTO history creates source-truthful fresh FOUR-item combinati
     'fewer than three independent AI source designs means abstention');
 });
 
+test('validated PHOTO reward can discover previously unseen exact source merchandise, not only remix six failed designs',()=>{
+  const slots=['top','outerwear','bottom','shoes'];
+  const original=Array.from({length:6},(_,i)=>({
+    id:'artist-vision-'+i,
+    items:slots.map(slot=>garment('artist-'+slot+'-'+i,
+      'Original real merchant '+slot+' '+i,slot,
+      slot==='shoes'?'loafer':slot==='outerwear'?'coat':'shirt')),
+  }));
+  const newTop=garment('never-used-real-hero-knit',
+    'Fine Knit Hero Top','top','fine-knit');
+  const newShoes=garment('never-used-real-suede-boots',
+    'Suede Chelsea Boots','shoes','chelsea');
+  const sourceMenu=[
+    ...original.flatMap(look=>look.items.map(item=>({
+      slot:item.macroCategory,item,token:'P001',
+    }))),
+    {slot:'top',item:newTop,token:'P044'},
+    {slot:'shoes',item:newShoes,token:'P045'},
+  ];
+  // Source item IDs are never part of the real reward model: the
+  // integration test uses the same pure full-outfit scoring interface to
+  // mark the unseen *relationship* as predicted high-quality, not approved.
+  let learnedCalls=0;
+  const trained=ids=>{
+    learnedCalls++;
+    return ids[0]==='never-used-real-hero-knit'&&
+      ids[3]==='never-used-real-suede-boots'?0.98:0.07;
+  };
+  const of=items=>items.map(x=>x.id);
+  const old=photoHistoryRecompositionCandidates(original,trained,{
+    featuresOf:of,limit:8,
+  });
+  assert.ok(old.length>0);
+  assert.ok(old.every(x=>x.items.every(item=>
+    !['never-used-real-hero-knit','never-used-real-suede-boots']
+      .includes(item.id))),
+  'the old remix cannot access a good authentic source item absent from the first AI six');
+  const candidates=photoHistoryRecompositionCandidates(original,trained,{
+    featuresOf:of,sourceMenu,limit:8,
+  });
+  assert.equal(candidates[0]?.estimatedPhotoQuality,0.98);
+  assert.ok(candidates[0].items.some(x=>x.id===newTop.id));
+  assert.ok(candidates[0].items.some(x=>x.id===newShoes.id));
+  assert.ok(learnedCalls<=1000,
+    'bounded complete-outfit hypothesis count must fit the existing staging deadline');
+  const admittedSource=new Set(sourceMenu.map(x=>x.item.id));
+  const originalWhole=new Set(original.map(x=>x.items.map(i=>i.id).sort().join('|')));
+  for(const c of candidates){
+    assert.equal(c.items.length,4);
+    assert.equal(new Set(c.items.map(it=>it.macroCategory)).size,4);
+    assert.ok(c.items.every(it=>it.isShopItem===true&&admittedSource.has(it.id)));
+    assert.equal(originalWhole.has(c.items.map(x=>x.id).sort().join('|')),false);
+    assert.ok(c.estimatedPhotoQuality>0,
+      'best source-menu hypotheses must be supported by positive learned photo relation');
+  }
+  assert.deepEqual(photoHistoryRecompositionCandidates(original,()=>0,{
+    featuresOf:of,sourceMenu:[...sourceMenu.slice(0,24),...sourceMenu.slice(24)],
+  }).filter(x=>x.items.some(it=>it.id===newTop.id||it.id===newShoes.id)),[],
+  'unknown zero-weight PHOTO evidence must abstain for unseen items');
+  assert.deepEqual(photoHistoryRecompositionCandidates(original,trained,{
+    featuresOf:of,sourceMenu:[...sourceMenu,
+      {slot:'shoes',item:{id:'invented',macroCategory:'shoes',isShopItem:false}}].slice(0,27),
+  }).flatMap(x=>x.items.filter(it=>it.id==='invented')),[],
+  'unverified extra menu items cannot become scored shoppable products');
+});
+
 test('held-out validated real-PHOTO fashion reward changes FIRST source-bound audition slate, never PHOTO approval',async()=>{
   const expanded=['top','outerwear','bottom','shoes'].flatMap((slot,j)=>
     Array.from({length:10},(_,i)=>garment('reward-'+slot+'-'+i,
