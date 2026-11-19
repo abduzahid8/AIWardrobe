@@ -454,3 +454,39 @@ test('warm/hot weather (>=24C / 31C Summer) expands breathable pools across all 
     assert.equal(res.directions[2].slots.outerwear[0].public.subtype, 'cardigan');
   }
 });
+
+test('minimalist & quiet_luxury penalize loud argyle/paisley/camo patterns and >10C indoor Work keeps 0 heavy outdoor coats', () => {
+  const items = [];
+  const brands = ['RowA', 'RowB', 'RowC', 'RowD', 'RowE'];
+  const colors = ['navy', 'cream', 'olive', 'charcoal', 'stone', 'brown'];
+  for (let i = 0; i < 42; i++) {
+    const brand = brands[i % brands.length];
+    const color = colors[i % colors.length];
+    items.push(makeSku({ id: `MIN_T_${i}`, slot: 'top', subtype: ['shirt', 'polo', 'fine-knit'][i % 3], name: `${color} Clean Merino Crewneck ${i}`, color, texture: 'knit', formality: 'smart', price: 95, brand }));
+    items.push(makeSku({ id: `MIN_O_${i}`, slot: 'outerwear', subtype: ['blazer', 'overshirt', 'cardigan'][i % 3], name: `${color} Tailored Indoor Layer ${i}`, color, texture: 'wool', formality: 'smart', price: 210, brand }));
+    items.push(makeSku({ id: `MIN_B_${i}`, slot: 'bottom', subtype: ['tailored-trouser', 'chino'][i % 2], name: `${color} Clean Straight Trouser ${i}`, color, texture: 'wool', formality: 'smart', price: 120, brand }));
+    items.push(makeSku({ id: `MIN_S_${i}`, slot: 'shoes', subtype: ['loafer', 'derby', 'minimal-sneaker'][i % 3], name: `${color} Minimalist Shoe ${i}`, color, texture: 'suede', formality: 'smart', price: 180, brand }));
+  }
+  const argyle = makeSku({ id: 'LOUD_ARGYLE', slot: 'top', subtype: 'fine-knit', name: 'Retro Purple Mustard Argyle Diamond Sweater', color: 'brown', texture: 'knit', formality: 'smart', price: 95, brand: 'RowA' });
+  const solid = makeSku({ id: 'CLEAN_SOLID', slot: 'top', subtype: 'fine-knit', name: 'Solid Brown Fine Merino Sweater', color: 'brown', texture: 'knit', formality: 'smart', price: 95, brand: 'RowA' });
+  const overcoat = makeSku({ id: 'HEAVY_OVERCOAT_13C', slot: 'outerwear', subtype: 'coat', name: 'Double-Breasted Wool Overcoat', color: 'camel', texture: 'wool', formality: 'smart', price: 320, brand: 'RowB' });
+
+  const minRes = buildPerDirectionCandidatePools({
+    catalog: [...items, argyle, solid, overcoat],
+    context: { style: 'minimalist', occasion: 'Work', weather: { temp: 13 }, budget: { amount: 1500, currency: 'USD' } },
+    perSlotLimit: 10,
+  });
+  assert.equal(minRes.unifiedPool.some(e => e.item.id === 'HEAVY_OVERCOAT_13C'), false, '13C indoor Work must keep 0 heavy outdoor coats when indoor layers exist');
+  const weekendRes = buildPerDirectionCandidatePools({
+    catalog: [argyle, solid, ...items.slice(0, 20)],
+    context: { style: 'minimalist', occasion: 'Weekend', weather: { temp: 20 }, budget: { amount: 900, currency: 'USD' } },
+    perSlotLimit: 10,
+  });
+  const topEntries = weekendRes.unifiedPool.filter(e => e.slot === 'top');
+  const solidEntry = topEntries.find(e => e.item.id === 'CLEAN_SOLID');
+  const argyleEntry = topEntries.find(e => e.item.id === 'LOUD_ARGYLE');
+  assert.ok(solidEntry, 'clean solid knit must enter minimalist top pool');
+  if (argyleEntry) {
+    assert.ok(solidEntry.strength > argyleEntry.strength, `solid knit (${solidEntry.strength}) must outscore argyle (${argyleEntry.strength}) in minimalist style`);
+  }
+});

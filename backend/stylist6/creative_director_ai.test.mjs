@@ -1072,4 +1072,34 @@ test('Creative Director embeds Master Stylist Craft directives and supports fast
   assert.equal(failoverRes.briefs.length, 3);
   assert.ok(failoverCalls.some(c => String(c.url).includes('openrouter.ai')));
   assert.ok(failoverCalls.some(c => String(c.url).includes('nvidia.com') && c.model === 'nvidia/nemotron-3.5-lightning-30b-a3b'));
+
+  // Verify highTaste + fastMode fails over directly from OpenRouter -> NVIDIA 120B (never detouring via Kimi!)
+  const htCalls = [];
+  const htRes = await designCreativeBriefs({
+    catalog,
+    request: {
+      style: 'quiet_luxury',
+      occasion: 'Smart Evening',
+      weather: { temp: 17 },
+      brief: 'High-taste fast failover test',
+      sourceMode: 'catalog',
+      optionalLayer: false,
+    },
+    apiKey: 'nvapi-test-ht-failover',
+    openrouterApiKey: 'sk-or-test-ht-failover-key',
+    fastMode: true,
+    highTaste: true,
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      htCalls.push({ url: String(url), model: body.model });
+      if (String(url).includes('openrouter.ai')) {
+        return new Response('payment required', { status: 402 });
+      }
+      return fakeResponse(proposal);
+    },
+  });
+  assert.equal(htRes.status, 'planned');
+  assert.equal(htRes.briefs.length, 3);
+  assert.ok(htCalls.some(c => c.model === 'nvidia/nemotron-3.5-super-vl-120b-a12b'), 'highTaste fast failover must target 120B ART_DIRECTOR_MODEL');
+  assert.ok(!htCalls.some(c => c.model.includes('kimi')), 'strict-schema director failover must never detour through Kimi');
 });

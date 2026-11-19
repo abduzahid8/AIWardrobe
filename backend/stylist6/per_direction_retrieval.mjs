@@ -853,6 +853,12 @@ export function scoreItemForDirection(enriched, direction, scoringCtx = {}) {
       formalityScore -= 0.22;
     }
   }
+  // Minimalist / Quiet Luxury restraint: penalize loud retro/busy patterns (argyle, fair isle, paisley, camo)
+  const styleKeyLower = String(context?.style || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if ((styleKeyLower === 'minimalist' || styleKeyLower === 'quiet_luxury') &&
+      /\b(argyle|fair[- ]?isle|paisley|camouflage|camo|tie[- ]?dye|hawaiian|floral|tartan|checkerboard|color[- ]?block)\b/i.test(enriched.searchText || '')) {
+    formalityScore -= 0.28;
+  }
 
   // 6. Thermal Band & Indoor-Layer-First Alignment (-0.42..0.18)
   let thermalScore = 0.04;
@@ -1421,14 +1427,10 @@ export function buildPerDirectionCandidatePools({
     const dirAsksForCoat = outerArch === 'longline_coat' ||
       (Array.isArray(direction?.roles?.outerwear) && direction.roles.outerwear.includes('coat'));
 
-    // Indoor >10C discipline: NEVER allow heavy outdoor coats in Direction 1 indoor office,
-    // NEVER in Date Night / Dinner / Cocktail (>10C), NEVER at >13C indoor, and at most ONE
-    // optional tailored coat direction at 10-13C Work.
+    // Indoor >10C discipline: NEVER inject heavy outdoor coats/overcoats/peacoats into indoor
+    // Work, Date Night, Evening, or Smart Casual pools at >10C; reserve outdoor heavy coats for <=10C.
     const indoorTempGuard = numericTemp !== null && numericTemp > 10 && indoorOccasion;
-    const directionAllowsTailoredCoat = !isWarmOrHotDir && (
-      !indoorTempGuard ||
-      (numericTemp <= 13 && !dateOrDinner && dIdx > 0 && tailoredCoatDirectionsUsed < 1 && dirAsksForCoat)
-    );
+    const directionAllowsTailoredCoat = !isWarmOrHotDir && !indoorTempGuard;
     const maxHeavyOutdoorCoats = isWarmOrHotDir
       ? 0
       : !indoorTempGuard

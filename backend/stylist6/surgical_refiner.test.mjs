@@ -483,3 +483,43 @@ test('refineLooksSurgicallyInParallel executes concurrent surgical rescues with 
     'parallel rescues targeting the same slot must receive disjoint replacement SKUs',
   );
 });
+
+test('sku_collision surgical rescue replaces ONLY the colliding slot with a visually verified passing unused SKU', async () => {
+  const res = await refineLookSurgically({
+    look: { ...baseLook, id: 'sku_collision_look' },
+    critique: {
+      candidateId: 'sku_collision_look',
+      reject: false,
+      editorialScore: 7.8,
+      weakestSlot: 'shoes',
+      defectCategory: 'sku_collision',
+      repairDirective: 'Replace duplicate shoes SKU with a harmonious unused catalog shoes so all 3 looks are 100% SKU-disjoint.',
+      confidence: 0.92,
+    },
+    catalogPool,
+    context: { occasion: 'Work', budget: { amount: 1100, currency: 'USD' } },
+    excludedItemIds: ['shoes-deck-used-loafer'],
+    hardGateValidator: () => ({ ok: true }),
+    maxRounds: 1,
+    topCandidatesPerRound: 2,
+    parallelCandidates: true,
+    visualCritic: async (batch) => batch.map((cand) => ({
+      candidateId: cand.id,
+      reject: false,
+      editorialScore: 7.7, // Already passes quality floor cleanly despite 0.1 delta vs 7.8 baseline!
+      weakestSlot: null,
+      defectCategory: 'none',
+      visualCohesion: 0.84,
+      styleFit: 0.82,
+      occasionFit: 0.85,
+      formalityFit: 0.84,
+      confidence: 0.92,
+      referenceless: true,
+    })),
+  });
+  assert.equal(res.committed, true, 'sku_collision swap passing the visual floor must commit');
+  assert.equal(res.approved, true);
+  assert.equal(res.swappedSlot, 'shoes');
+  assert.notEqual(res.selectedItemId, 'shoes-chunky-sneaker');
+  assert.notEqual(res.selectedItemId, 'shoes-deck-used-loafer');
+});

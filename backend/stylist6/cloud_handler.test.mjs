@@ -2629,3 +2629,93 @@ test('cloud handler forwards OPENROUTER_API_KEY and fastVisualMode to cross-lab 
   assert.equal(result.body.visualReceipt.model, 'google/gemini-2.5-flash');
   assert.ok(result.body.visualReceipt.validVerdicts >= 1);
 });
+
+test('action analyze_appearance default provider routes env keys & fetchImpl through createProviderRouter with snake_case schema and caches SHA-256 hits', async () => {
+  const portraitBytes = await smokeJpeg(175);
+  let vlmCalls = 0;
+  let sawSnakeSchema = false;
+  let sawMaxTokens = false;
+  const appearanceCache = new Map();
+  const cacheStore = {
+    async get(k) { return appearanceCache.get(k) || null; },
+    async set(k, v) { appearanceCache.set(k, v); },
+  };
+  const fetchStub = async (url, options = {}) => {
+    const u = new URL(String(url));
+    if (u.hostname === 'studio.aiwardrobe.test') {
+      return new Response(portraitBytes, { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+    }
+    if (u.hostname === 'openrouter.ai') {
+      vlmCalls++;
+      const payload = JSON.parse(options.body);
+      if (payload.response_format?.type === 'json_schema') sawSnakeSchema = true;
+      if (payload.max_tokens === 500) sawMaxTokens = true;
+      return new Response(JSON.stringify({
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            content: JSON.stringify({
+              skinUndertone: 'warm',
+              skinDepth: 'medium',
+              contrastLevel: 'medium',
+              colorSeason: 'warm_autumn',
+              flatteringColors: ['camel', 'olive', 'cream'],
+              powerNeutrals: ['brown', 'camel'],
+              avoidColors: ['pink', 'neon'],
+              metalTone: 'gold',
+              lightingQuality: 'good',
+              confidence: 0.91,
+            }),
+          },
+        }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    throw new Error(`unexpected fetch url: ${url}`);
+  };
+
+  const makeReq = async (consentGranted) => {
+    const bodyText = JSON.stringify({
+      action: 'analyze_appearance',
+      consentGranted,
+      photoUrl: 'https://studio.aiwardrobe.test/portrait.jpg',
+    });
+    const authorization = 'Bearer appearance-default-provider-jwt';
+    const sig = await signStylistTransport({ secret: SECRET, body: bodyText, authorization });
+    return handleStylist6CloudGenerate({
+      method: 'POST',
+      headers: { authorization, ...sig },
+      bodyText,
+      env: {
+        STYLIST6_NODE_SHARED_SECRET: SECRET,
+        OPENROUTER_API_KEY: 'sk-or-v1-appearance-test-key-0123456789',
+      },
+      io: {
+        appearanceCache: cacheStore,
+        verifyUser: async () => 'user-appearance-test',
+        checkRate: async () => {},
+        dnsLookupFn: async () => [{ address: '93.184.216.34', family: 4 }],
+      },
+      fetchImpl: fetchStub,
+    });
+  };
+
+  const denied = await makeReq(false);
+  assert.equal(denied.status, 200);
+  assert.equal(denied.body.status, 'consent_required');
+  assert.equal(vlmCalls, 0);
+
+  const first = await makeReq(true);
+  assert.equal(first.status, 200);
+  assert.equal(first.body.status, 'analyzed');
+  assert.equal(first.body.cached, false);
+  assert.equal(first.body.appearance.colorSeason, 'warm_autumn');
+  assert.equal(sawSnakeSchema, true, 'must pass snake_case response_format to ai_provider_router');
+  assert.equal(sawMaxTokens, true, 'must pass snake_case max_tokens to ai_provider_router');
+  assert.equal(vlmCalls, 1);
+
+  const second = await makeReq(true);
+  assert.equal(second.status, 200);
+  assert.equal(second.body.status, 'analyzed');
+  assert.equal(second.body.cached, true);
+  assert.equal(vlmCalls, 1, 'second identical photo must hit SHA-256 cache with 0 VLM calls');
+});

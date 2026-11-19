@@ -1158,8 +1158,10 @@ test('6-axis Visual Critic prompt explicitly vetoes cropped close-ups, flat dark
     [{ ...candidate, id: 's6_cropped_cuff_defect', referenceId: null }],
     { style: 'classic', occasion: 'Work', weather: { temp: 19 } },
   );
-  assert.match(capturedPrompt, /CROPPED \/ PARTIAL-GARMENT OR BROKEN PHOTO VETO/);
+  assert.match(capturedPrompt, /CROPPED \/ INFOGRAPHIC \/ BACK-VIEW OR BROKEN PHOTO VETO/);
   assert.match(capturedPrompt, /shirt cuff\/sleeve zoom/i);
+  assert.match(capturedPrompt, /infographic\/spec-sheet\/callout-arrow diagram/i);
+  assert.match(capturedPrompt, /back-of-garment-only/i);
   assert.match(capturedPrompt, /FLAT MONOTONOUS DARK-BLOCK VETO/);
   assert.match(capturedPrompt, /HEAVY OUTERWEAR & THERMAL CREDIBILITY VETO/);
   assert.match(capturedPrompt, /weatherCelsius > 10/);

@@ -60,7 +60,7 @@ import { createStylistCache } from './distributed_cache.mjs';
 import { swapSingleSlot } from './surgical_refiner.mjs';
 import { analyzeUserAppearance } from './user_appearance_analyzer.mjs';
 import { buildStylistNotes } from './deck_editorial_copy.mjs';
-import { callVisionModel } from './ai_provider_router.mjs';
+import { createProviderRouter } from './ai_provider_router.mjs';
 import { renderEditorialLookBoard, createPhotoByteCache } from './editorial_board_renderer.mjs';
 import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46.json' with { type: 'json' };
 
@@ -1531,11 +1531,18 @@ function createDefaultAppearanceProvider(env = {}, fetchImpl = fetch) {
   const nvidiaKey = String(env.NVIDIA_API_KEY || '').trim();
   const openrouterKey = String(env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || '').trim();
   if (!nvidiaKey && !openrouterKey) return null;
+  const router = createProviderRouter({
+    nvidiaApiKey: nvidiaKey,
+    openrouterApiKey: openrouterKey,
+    fetchImpl,
+  });
   return async ({ mimeType, imageBase64, prompt, responseFormat }) => {
-    const res = await callVisionModel({
-      nvidiaApiKey: nvidiaKey,
-      openrouterApiKey: openrouterKey,
-      fetchImpl,
+    const res = await router.callVisionModel({
+      preferCrossLabFastVision: Boolean(openrouterKey),
+      allowFailover: true,
+      parseJson: true,
+      timeoutMs: 18_000,
+      primaryTimeoutMs: 10_000,
       messages: [
         {
           role: 'user',
@@ -1545,12 +1552,14 @@ function createDefaultAppearanceProvider(env = {}, fetchImpl = fetch) {
           ],
         },
       ],
-      responseFormat,
-      maxTokens: 500,
+      response_format: responseFormat,
+      max_tokens: 500,
       temperature: 0.1,
     });
     if (!res?.ok) throw new Error(res?.error || 'provider_call_failed');
-    return res.parsedJson || (res.rawText ? JSON.parse(res.rawText) : res.content);
+    if (res.parsedJson && typeof res.parsedJson === 'object') return res.parsedJson;
+    if (typeof res.content === 'string') return JSON.parse(res.content);
+    throw new Error('appearance_invalid_json');
   };
 }
 
@@ -2395,7 +2404,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           ...(fastVisualMode ? { fastMode: true } : {}),
           ...(fetchImpl ? { fetchImpl } : {}),
           signal: deadlineController.signal,
-          timeoutMs: Math.min(7500, Math.max(1000, remainingMs() - 7000)),
+          timeoutMs: Math.min(9500, Math.max(1000, remainingMs() - 7000)),
           // Only 72s isolated staging: professional 120B creative director.
           // 50s preview and untouched production S5 keep original behavior.
           highTaste: budgetMs>=70000,

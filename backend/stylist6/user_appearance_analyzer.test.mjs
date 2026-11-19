@@ -230,4 +230,16 @@ test('strict JSON schema validation strips forbidden protected traits/body measu
   });
   assert.equal(badBytes.status, 'invalid_photo');
   assert.equal(badBytes.reason, 'unsupported_image_format');
+
+  // 6. Contradictory canonical colors in avoidColors vs flatteringColors/powerNeutrals are stripped cleanly
+  const deduped = validateAppearanceAnalysisPayload(makeValidVlmPayload({
+    flatteringColors: ['emerald green', 'royal blue'],
+    powerNeutrals: ['navy', 'white'],
+    avoidColors: ['olive green', 'orange', 'navy'],
+  }));
+  assert.equal(deduped.ok, true);
+  assert.ok(deduped.appearance.flatteringColors.includes('green'));
+  assert.ok(!deduped.appearance.avoidColors.includes('green'), 'avoidColors must not contradict flatteringColors');
+  assert.ok(!deduped.appearance.avoidColors.includes('navy'), 'avoidColors must not contradict powerNeutrals');
+  assert.ok(deduped.appearance.avoidColors.includes('orange'));
 });

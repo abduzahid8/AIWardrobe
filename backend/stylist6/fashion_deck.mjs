@@ -2709,21 +2709,42 @@ export async function recommendFashionDeck({
             && crit.editorialScore < 7.5;
         });
       const needsRescueCount = Math.max(0, 3 - reviewed.outfits.length);
+      const selectedOriginalsPre = reviewed.outfits
+        .map((o) => candidates.find((c) => c.id === o.id))
+        .filter(Boolean);
+      const pinnedSetPre = new Set(requiredIds.map(String));
+      const collidingSlotsFor = (cand) => {
+        if (!cand || !Array.isArray(cand.items)) return [];
+        const cols = [];
+        for (const it of cand.items) {
+          if (!it || pinnedSetPre.has(String(it.id))) continue;
+          const slotName = String(it.macroCategory || '').toLowerCase();
+          if (!['top', 'outerwear', 'bottom', 'shoes'].includes(slotName)) continue;
+          const collides = selectedOriginalsPre.some((peer) =>
+            (peer.items || []).some((other) => !pinnedSetPre.has(String(other.id)) && sameProduct(it, other)),
+          );
+          if (collides) cols.push(slotName);
+        }
+        return cols;
+      };
+      const firstApprovedSet = new Set(
+        (reviewed.diagnostics?.visualQualityDecisions || [])
+          .filter((row) => row.reason === 'approved')
+          .map((row) => row.candidateId),
+      );
+      const hasRescuableCollision = fastVisualMode && needsRescueCount > 0 && candidates.some((c) => {
+        if (selectedLookIds.has(c.id) || !firstApprovedSet.has(c.id)) return false;
+        const cols = collidingSlotsFor(c);
+        return cols.length === 1;
+      });
       if (
         (needsRescueCount > 0 || polishCandidates.length > 0) &&
         Array.isArray(primaryCritiques) &&
-        primaryCritiques.some(actionableWeakestSlot) &&
+        (primaryCritiques.some(actionableWeakestSlot) || hasRescuableCollision) &&
         (typeof photoRescueRemainingMs !== 'function' || photoRescueRemainingMs() >= 4000)
       ) {
-        const firstApprovedSet = new Set(
-          (reviewed.diagnostics?.visualQualityDecisions || [])
-            .filter((row) => row.reason === 'approved')
-            .map((row) => row.candidateId),
-        );
         const approvedNow = candidates.filter((x) => firstApprovedSet.has(x.id));
-        const selectedOriginals = reviewed.outfits
-          .map((o) => candidates.find((c) => c.id === o.id))
-          .filter(Boolean);
+        const selectedOriginals = selectedOriginalsPre;
         const selectedUsedProductIds = new Set([
           ...(Array.isArray(request.excludedIds) ? request.excludedIds.map(String) : []),
           ...selectedOriginals.flatMap((x) => (x.items || []).map((it) => String(it.id))),
@@ -2732,17 +2753,21 @@ export async function recommendFashionDeck({
         const rescueTargets = needsRescueCount > 0
           ? candidates.filter((c) => {
               if (selectedLookIds.has(c.id)) return false;
+              const cols = collidingSlotsFor(c);
+              if (cols.length > 1) return false; // 2+ SKU collisions cannot be fixed by a single 1-slot swap
+              if (fastVisualMode && firstApprovedSet.has(c.id) && cols.length === 1) return true; // Approved look with 1 SKU collision
               const crit = critiqueByCandidate.get(c.id);
               return actionableWeakestSlot(crit);
             }).sort((a, b) => {
+              const colsA = collidingSlotsFor(a);
+              const colsB = collidingSlotsFor(b);
+              const approvedColA = (firstApprovedSet.has(a.id) && colsA.length === 1) ? 1 : 0;
+              const approvedColB = (firstApprovedSet.has(b.id) && colsB.length === 1) ? 1 : 0;
+              // Prioritize ALREADY photo-approved looks with exactly 1 SKU collision — swapping that
+              // single colliding slot yields a verified, 100% SKU-disjoint 3rd look with highest fidelity!
+              if (approvedColB !== approvedColA) return approvedColB - approvedColA;
               const critA = critiqueByCandidate.get(a.id);
               const critB = critiqueByCandidate.get(b.id);
-              const slotA = String(critA?.weakestSlot || '').toLowerCase();
-              const slotB = String(critB?.weakestSlot || '').toLowerCase();
-              const overlapA = (a.items || []).filter((it) => it.macroCategory !== slotA && selectedUsedProductIds.has(String(it.id))).length;
-              const overlapB = (b.items || []).filter((it) => it.macroCategory !== slotB && selectedUsedProductIds.has(String(it.id))).length;
-              if (overlapA !== overlapB) return overlapA - overlapB;
-              // Prioritize photo_quality_defect rescues (fast clean 1-slot swap) & highest near-miss editorialScore
               const photoFixA = critA?.defectCategory === 'photo_quality_defect' ? 1 : 0;
               const photoFixB = critB?.defectCategory === 'photo_quality_defect' ? 1 : 0;
               if (photoFixB !== photoFixA) return photoFixB - photoFixA;
@@ -2768,10 +2793,19 @@ export async function recommendFashionDeck({
           const allowedMs = typeof photoRescueRemainingMs === 'function'
             ? Math.max(1200, Math.min(8000, Math.floor(photoRescueRemainingMs() - 2000)))
             : 8000;
-          const pinnedSet = new Set(requiredIds.map(String));
+          const pinnedSet = pinnedSetPre;
 
           const parallelTargets = allSurgicalSpecs.map(({ look: targetLook, mode }) => {
-            const targetCritique = critiqueByCandidate.get(targetLook.id);
+            const rawCritique = critiqueByCandidate.get(targetLook.id);
+            const colliding = mode === 'rescue' ? collidingSlotsFor(targetLook) : [];
+            const targetCritique = colliding.length === 1
+              ? {
+                  ...(rawCritique || { approved: true, editorialScore: 7.4 }),
+                  weakestSlot: colliding[0],
+                  defectCategory: 'sku_collision',
+                  repairDirective: `Replace duplicate ${colliding[0]} SKU with a harmonious unused catalog ${colliding[0]} so all 3 looks are 100% SKU-disjoint.`,
+                }
+              : rawCritique;
             const peerSelected = mode === 'polish'
               ? selectedOriginals.filter((s) => s.id !== targetLook.id)
               : selectedOriginals;
@@ -2877,7 +2911,7 @@ export async function recommendFashionDeck({
                 selectedItemId: refined.selectedItemId,
                 previousScore: refined.previousScore,
                 newScore: refined.newScore,
-                defectCategory: critiqueByCandidate.get(targetLook.id)?.defectCategory || null,
+                defectCategory: parallelTargets[i]?.critique?.defectCategory || null,
               },
             };
             const promotedCritique = {
@@ -2892,8 +2926,9 @@ export async function recommendFashionDeck({
             } else {
               rescuedCount++;
             }
-            if (critiqueByCandidate.get(targetLook.id)?.defectCategory) {
-              defectsRepaired.push(critiqueByCandidate.get(targetLook.id).defectCategory);
+            const repairedDefect = parallelTargets[i]?.critique?.defectCategory;
+            if (repairedDefect) {
+              defectsRepaired.push(repairedDefect);
             }
             for (const it of promotedLook.items) committedProductIds.add(String(it.id));
             await recordCritiquesToFlywheel([promotedCritique], [promotedLook], [{ candidateId: promotedLook.id, reason: 'approved' }]);
@@ -2935,6 +2970,8 @@ export async function recommendFashionDeck({
               };
             }
             candidates.push(...surgicalNewLooks);
+          }
+          if (surgicalAttemptsCount > 0 || surgicalNewLooks.length > 0) {
             modelFashionSelection.surgicalRefinement = {
               attempted: surgicalAttemptsCount,
               approved: surgicalNewLooks.length,
@@ -2961,7 +2998,7 @@ export async function recommendFashionDeck({
           Array.isArray(composerPool)&&composerPool.length>=12&&
           typeof photoRescueRemainingMs==='function'&&
           reviewed.outfits.length<3&&
-          reviewed.diagnostics.visualValid>=3&&
+          reviewed.diagnostics.visualValid>=2&&
           photoRescueRemainingMs()>=19000){
         const firstApprovedIds=new Set(
           (reviewed.diagnostics.visualQualityDecisions||[])

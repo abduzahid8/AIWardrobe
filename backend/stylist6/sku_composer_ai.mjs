@@ -1167,24 +1167,28 @@ export async function composeCatalogSkuLooks({
       const primaryModel=openrouterReady?DEFAULT_OPENROUTER_VISION_MODEL:DEFAULT_NVIDIA_TEXT_MODEL;
       const primaryProvider=openrouterReady?'openrouter':'nvidia';
       const fallbacks=openrouterReady&&(hasNvidiaKey||router.isProviderConfigured?.('nvidia'))
-        ?[{model:DEFAULT_NVIDIA_TEXT_MODEL,provider:'nvidia'}]
+        ?[{model:DEFAULT_NVIDIA_TEXT_MODEL,provider:'nvidia'},{model:MODEL,provider:'nvidia'}]
         :[];
       const remainingMs=Math.max(500,effectiveTimeoutMs-(Date.now()-started));
       const fastTimeoutMs=hasNvidiaKey
-        ?Math.max(900,Math.min(6000,Math.floor(remainingMs*0.60)))
+        ?Math.max(1500,Math.min(10500,Math.floor(remainingMs*0.75)))
         :remainingMs;
+      const fastPrimaryTimeoutMs=fallbacks.length>0
+        ?Math.max(1000,Math.min(3500,Math.floor(fastTimeoutMs*0.40)))
+        :fastTimeoutMs;
       const routed=await router.callTextModel({
         model:primaryModel,
         provider:primaryProvider,
         fallbacks,
-        allowFailover:true,
+        allowFailover:false,
         messages:[{role:'user',content:preface}],
         temperature:.3,
         top_p:.93,
-        max_tokens:target===6?950:600,
+        max_tokens:target===6?620:480,
         response_format:{type:'json_schema',json_schema:{
           name:'aiw_personal_sku_composition',strict:true,schema}},
         timeoutMs:fastTimeoutMs,
+        primaryTimeoutMs:fastPrimaryTimeoutMs,
         signal:combined,
         parseJson:true,
         maxTransientRetries:0,

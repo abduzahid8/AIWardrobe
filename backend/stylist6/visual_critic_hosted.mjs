@@ -380,7 +380,7 @@ function buildPrompt(candidate, request, { shared, referenceOnly, referenceless 
     ] : []),
     'Score 6 professional fashion editorialAxes from 0 to 10: colorAndUndertoneHarmony, silhouetteAndProportion, textureAndMaterialInterplay, footwearAndGrounding, occasionAndWeatherCredibility, editorialBeautyAndTaste.',
     'STRICT PHOTOGRAPHIC & STYLING DEFECT VETOES (always set reject=true, exact weakestSlot, exact defectCategory, and concrete repairDirective):',
-    '- CROPPED / PARTIAL-GARMENT OR BROKEN PHOTO VETO: Immediately reject (defectCategory="photo_quality_defect", editorialBeautyAndTaste<=4.5) if ANY garment tile shows only a cropped detail or partial-garment close-up (e.g., a shirt cuff/sleeve zoom, collar-only macro, fabric swatch, extreme crop missing the full garment silhouette) OR is blurry, corrupted, or broken. Set weakestSlot to that exact slot and direct a clean full-garment studio product photograph replacement.',
+    '- CROPPED / INFOGRAPHIC / BACK-VIEW OR BROKEN PHOTO VETO: Immediately reject (defectCategory="photo_quality_defect", editorialBeautyAndTaste<=4.5) if ANY garment tile shows (a) a cropped detail or partial-garment close-up (shirt cuff/sleeve zoom, collar-only macro, fabric swatch), (b) a marketing infographic/spec-sheet/callout-arrow diagram with overlaid text labels (e.g., "The Details", feature callouts, size charts), (c) a back-of-garment-only view hiding the front neckline/placket, OR (d) a blurry, corrupted, or broken photo. Set weakestSlot to that exact slot and direct a clean front-view full-garment studio photograph replacement.',
     '- FLAT MONOTONOUS DARK-BLOCK VETO: Reject (defectCategory="color_clash" or "editorial_mediocrity") outfits that collapse into a flat, lifeless dark-on-dark monochrome block with zero tonal separation, texture contrast, or visual depth; set weakestSlot to the garment that should introduce crisp tonal or textural contrast.',
     '- HEAVY OUTERWEAR & THERMAL CREDIBILITY VETO: Reject (weakestSlot="outerwear", defectCategory="weather_mismatch") heavy outdoor winter overcoats, thick wool/down peacoats, or insulated parkas for indoor work/date settings when weatherCelsius > 10, AND veto ANY heavy wool/insulated/leather outerwear in warm summer weather (weatherCelsius >= 24); direct a lighter, breathable, climate-appropriate layer (unlined blazer, fine-knit cardigan, or linen/cotton overshirt).',
     '- MISMATCHED SHOE FORMALITY VETO: Reject (weakestSlot="shoes", defectCategory="footwear_mismatch" or "formality_mismatch") chunky, athletic, lug-sole, or overly casual shoes paired with tailored trousers/blazers (or stiff formal dress shoes with relaxed casual wear); direct an exact replacement shoe subtype, color, and leather/suede finish.',
@@ -590,7 +590,7 @@ function parseEditorialRubricFields(row, actualSlots) {
   if (!weakestSlot && defectCategory === 'photo_quality_defect' && row?.slotObservations && typeof row.slotObservations === 'object') {
     for (const slot of actualSlots) {
       const obs = String(row.slotObservations[slot] || '');
-      if (/\b(crop(?:ped)?|close[ -]?up|cuff|sleeve zoom|partial|blurry|broken|swatch|low[ -]?res)\b/i.test(obs)) {
+      if (/\b(crop(?:ped)?|close[ -]?up|cuff|sleeve zoom|partial|blurry|broken|swatch|low[ -]?res|infographic|diagram|callout|spec[ -]?sheet|text overlay|back[- ]?view)\b/i.test(obs)) {
         weakestSlot = slot;
         break;
       }

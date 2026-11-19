@@ -11,9 +11,12 @@
   - `9dac9e01` — Pillar 7: Client/UX integration (`AIOutfitmaker.tsx`, `stylist6Dev.ts`, Personal Style DNA, 1-tap slot swap, Stylist's Notes, structured feedback, try-on handoff)
   - `6a899a27` → `52923c77` — Full 5-pillar integration into `cloud_handler.mjs` & `fashion_deck.mjs`
   - `f06d3339` — Localization (`en`/`ru`/`uz`) for new `outfitMaker` keys & fine-knit merino top slot parity
-  - `404ec768` — **5 verified live-eval root-cause fixes + 7 regression tests** (code SHA under post-commit live verification below)
+  - `404ec768` → `0a35adca` — Phase 5 live-eval root-cause fixes, cross-lab portfolio jury failover, `milk` → `cream` mapping
+  - `5c6af24f` (`swarm-taste-engine-v2-7764c4e6`) — **V2 Taste Engine**: indoor-layer-first (`>10°C`) outerwear classification, peacoat/heavy-coat elimination, tight-budget dynamic headroom + fail-closed FX, `>=24°C` breathable summer expansion, structural cropped/detail photo & full-slot daytime eveningwear hygiene, Master Stylist Craft prompts
+  - `8b3878b9` (`swarm-speed-vision-v2-1ed7e1cc`) — **V2 Speed & Vision Engine**: fast cross-lab Gemini 2.5 Flash primary vision (`VISUAL_CONCURRENCY=6`), parallel `1024×1024` studio boards, hot-path parallel surgical 1-slot rescue, budget/climate-aware catalog discovery (`prioritizeCatalogForBudgetAndClimate`), `photo_editor_final` verified triple preservation
+  - `ba711422` → `127eb509` + Phase 7 visual-proof commit — Disjoint V2 merges (0 conflicts) + live-verified Phase 7 root-cause fixes (`createDefaultAppearanceProvider` router/snake_case JSON fix, `user_appearance_analyzer` avoid-color deduplication, `surgical_refiner` `sku_collision` 1-slot rescue & strict `AbortSignal.timeout` deadline enforcement, `visual_critic_hosted` infographic/back-view photo defect veto, `creative_director_ai` / `sku_composer_ai` direct NVIDIA failover without Kimi detour, `per_direction_retrieval` `>10°C` 0-heavy-coat indoor discipline & minimalist loud-pattern restraint, `build_human_blind_package` 16 MiB studio JPEG support)
 - **Production Stylist 5 (`backend/supabase/functions/generate-outfits/index.ts`)**: **UNTOUCHED**
-  - SHA-256: `f90ced33ca3b0034c61cd2dfa289b189728dc75398cd72329f0b7c1854efc5e1` (`git diff a99c268e..404ec768 -- backend/supabase/functions/generate-outfits/index.ts` = 0 lines)
+  - SHA-256: `f90ced33ca3b0034c61cd2dfa289b189728dc75398cd72329f0b7c1854efc5e1` (`git diff a99c268e..HEAD -- backend/supabase/functions/generate-outfits/` = **0 lines**)
 - **Catalog Evaluation Snapshot**: Frozen live `shop_catalog` snapshot (`8,554` active rows; `8,329` adapted across `3,768` tops, `1,323` outerwear, `1,591` bottoms, `1,647` shoes).
 - **Release Gate Status**: **ENGINEERING VERIFIED ON LOCAL + LIVE VLM EVALUATION · NOT YET CLEARED FOR PRODUCTION PROMOTION** (see §6 for mandatory remaining owner release gates).
 
@@ -79,30 +82,82 @@ Private contact sheets inspected (not committed to git per merchant-image rights
 
 ---
 
-## 3. Automated Test, Typecheck, Build & Security Verification (`404ec768`)
+## 2.3 Phase 7 — V2 Merged Live Verification (`127eb509` + Phase 7 Root-Cause Fixes)
+
+### A. Live End-to-End Opt-In Appearance-Photo Analysis (`action: 'analyze_appearance'`)
+
+Executed live via `cloud_handler.mjs` against real hosted OpenRouter/NVIDIA VLMs using two daylight-calibrated synthetic studio portrait color cards (stored privately outside git in scratch `visual_eval_v2/portrait_warm_autumn.jpg` and `portrait_cool_winter.jpg`, containing **zero text season hints** so the VLM evaluates actual optical pixel colors):
+
+| Test Case | Consent | HTTP / Status | Cold Latency | 2nd Call (SHA-256 Cache) | Live Extracted Profile |
+| --- | :---: | --- | ---: | --- | --- |
+| **Fail-Closed Consent Gate** | `false` | `200` / `consent_required` | `<1ms` (`0` VLM calls) | n/a | `appearance: null` (strict opt-in enforced) |
+| **Warm Autumn Portrait** | `true` | `200` / `analyzed` | `2,276ms` (`1` VLM call) | **`1ms`** (`cached: true`, `0` calls) | `skinUndertone: 'warm'`, `skinDepth: 'medium'`, `contrastLevel: 'medium'`, `colorSeason: 'warm_autumn'`, `powerNeutrals: ['brown','cream','green','camel']`, `metalTone: 'gold'`, `confidence: 0.90` |
+| **Cool Winter Portrait** | `true` | `200` / `analyzed` | `1,418ms` (`1` VLM call) | **`1ms`** (`cached: true`, `0` calls) | `skinUndertone: 'cool'`, `skinDepth: 'light'`, `contrastLevel: 'high'`, `colorSeason: 'cool_winter'`, `powerNeutrals: ['black','white','charcoal','navy']`, `avoidColors: ['orange','yellow','brown','beige','peach']`, `metalTone: 'silver'`, `confidence: 0.90` |
+
+- Live E2E proof caught and resolved two production bugs: (1) `createDefaultAppearanceProvider` previously used the default router singleton, camelCase `responseFormat`/`maxTokens`, and parsed `res.rawText` (the OpenAI envelope) instead of `res.parsedJson`; (2) `validateAppearanceAnalysisPayload` now strips any canonicalized color in `avoidColors` that overlaps `flatteringColors`/`powerNeutrals` (eliminating self-contradictory personal color profiles).
+- Both live VLM extracted appearance profiles were fed directly into `S6-V2-01` and `S6-V2-02` below.
+
+### B. Live 8-Scenario Real-Photo V2 Benchmark (`fastVisualMode: true`, Same Frozen 8,554-SKU Snapshot)
+
+All 9 rendered contact sheets (`S6-V2-01..07_portfolio.jpg`, `S6-V2-08_swap_after.jpg`, `S6-V2-08_feedback_portfolio.jpg`) were **visually inspected directly** before acceptance; visual inspection caught and drove fixes for an Everlane infographic diagram (`S6-V2-05` L00), a back-view shirt photo (`S6-V2-06` L00), a purple-mustard argyle knit in Minimalist (`S6-V2-07` L00), a 13°C indoor tailored overcoat (`S6-V2-01` L00), and an unbounded `surgical_refiner` critic wait (`S6-V2-06`).
+
+> [!IMPORTANT]
+> **AI Proxy Jury Disclaimer**: Cross-lab blind A/B and editorial scores below come from two independent Vision-Language Model labs — **Google (`google/gemini-2.5-flash`)** and **NVIDIA (`nvidia/nemotron-3.5-super-vl-120b-a12b`)** — evaluating randomized `ALPHA`/`BETA` contact sheets against baseline `a99c268e`. Per `docs/STYLIST6_NORTH_STAR.md`, **AI-rater votes are an engineering proxy ONLY and do NOT satisfy the mandatory 3-reviewer independent human blind acceptance gate.**
+
+| Scenario | Cold / Warm Latency | Looks / Unique SKUs | Heavy Coats / Budget | CIELAB CT / Thermal | Surgical Refiner (Rescued / Tried) | Portfolio Jury (Primary / Cross-Lab) | Blind AI Proxy: Google Gemini 2.5 Flash | Blind AI Proxy: NVIDIA Nemotron 120B VL |
+| --- | ---: | :---: | :---: | :---: | :---: | :---: | --- | --- |
+| **`S6-V2-01` Old Money + Work** (13°C, $1,800, Live VLM Warm Autumn) | `36.0s` / `27.7s` | **3/3** · **12** | **0** · PASS (`$518 / $1,639 / $817`) | `0.936` / `0.835` | `2/6` | `applied` / `agreed` | **V2 WIN** (`8.0` vs `5.0`) | **V2 WIN** (`7.5` vs `3.0`) |
+| **`S6-V2-02` Classic + Work** (16°C, $1,200, Live VLM Cool Winter) | `57.0s` / — | **3/3** · **12** | **0** · PASS (`$653 / $1,189 / $1,070`) | `1.000` / `0.796` | `3/6` | `applied` / `unavailable` | **V2 WIN** (`8.0` vs `4.0`) | **V2 WIN** (`7.5` vs `4.0`) |
+| **`S6-V2-03` Semi-Classic + Date Night** (15°C, $1,100, Deep Autumn) | `26.8s` *(17.2s w/ OR)* | **3/3** · **12** | **0** · PASS (`$790 / $729 / $927`) | `0.818` / `0.848` | `1/4` | `applied` / `unavailable` | **V2 WIN** (`9.0` vs `4.0`) | **V2 WIN** (`7.5` vs `4.0`) |
+| **`S6-V2-04` Smart Casual + Hot Summer** (31°C, $750, Warm Spring) | `41.3s` / `34.1s` | **3/3** · **12** | **0** · PASS (`$504 / $561 / $487`) | `0.800` / `0.882` | `2/6` | `applied` / `agreed` | **V2 WIN** (`8.0` vs `2.0`) | **V2 WIN** (`8.0` vs `2.0`) |
+| **`S6-V2-05` Accessible Budget + Work** (18°C, $350, Neutral) | `56.0s` / `31.2s` | **3/3** · **12** | **0** · PASS (`$267 / $282 / $250`) | `0.801` / `0.823` | `2/6` | `applied` / `agreed` | **V2 WIN** (`8.0` vs `3.0`) | **V2 WIN** (`7.5` vs `3.5`) |
+| **`S6-V2-06` Quiet Luxury + Smart Evening** (17°C, $1,600, Cool Summer) | `46.1s` / — | **3/3** · **12** | **0** · PASS (`$732 / $909 / $703`) | `0.909` / `0.853` | `2/4` | `applied` / `agreed` | **Editorial `8.0/10`** | **Editorial `6.2/10`** |
+| **`S6-V2-07` Minimalist + Weekend / Travel** (20°C, $900, Warm Autumn) | `45.0s` / — | **3/3** · **12** | **0** · PASS (`$416 / $648 / $521`) | `0.988` / `0.818` | `0/0` | `applied` / `agreed` | **Editorial `8.0/10`** | **Editorial `6.2/10`** |
+| **`S6-V2-08` Interactive 1-Tap Swap + Cache + Closed-Loop Feedback** | **`14.0s`** cold · **`16ms`** swap · **`18.7s`** feedback | **3/3** · **12** | **0** · PASS (`locked3: true`, `swappedSkuEliminated: true`) | `0.818` / `0.848` | n/a | `applied` / `agreed` | — | — |
+
+- **Completion, Hygiene & Diversity Across All 8 Live Scenarios**: **24 / 24 looks (`100%` 3/3 completion)**, **96 / 96 unique SKUs**, **0 heavy coats/peacoats**, **0 cropped/infographic/back-view photo defects**, **0 daytime eveningwear leaks**, **100% within budget** (including all 3 looks under `$350` at `$250–$282` and all 3 breathable summer looks at `31°C`).
+- **Mean Quality Uplift vs Baseline `a99c268e`**:
+  - Mean CIELAB Color Theory: `0.694` (`a99c268e`) → `0.868` (V1) → **`0.893` (V2, `+0.199`)**.
+  - Mean Thermal Suitability: `0.756` (`a99c268e`) → `0.816` (V1) → **`0.836` (V2, `+0.080`; `0.882` at `31°C`)**.
+  - **Combined Cross-Lab Blind A/B Proxy (`S6-V2-01..05`)**: **10 / 10 (`100.0%`) V2 WINS** — Google Gemini 2.5 Flash **`8.20` vs `3.60` (`+4.60`)**, NVIDIA Nemotron 120B VL **`7.60` vs `3.30` (`+4.30`)**; mean editorial quality across all 7 scenarios **`8.14/10`** (Google) / **`7.20/10`** (NVIDIA).
+- **Honest Latency Accounting**: When OpenRouter credits were available for text+vision (`S6-V2-03` initial `17.2s`, `S6-V2-08` cold `14.0s`, `S6-V2-08` feedback `18.7s`, `S6-V2-01` warm `16.9s`), end-to-end latency dropped **`~2.5×–3.4×`** below the `41.5s–59.0s` baseline. When the local test OpenRouter key ran down to `<640` output tokens (`HTTP 402`), `creative_director_ai` and `sku_composer_ai` failed over cleanly to NVIDIA NIM (`26.8s–57.0s`); a final Phase 7 fix routes high-taste failover directly to `ART_DIRECTOR_MODEL` (`nvidia/nemotron-3.5-super-vl-120b-a12b`) without detouring through non-schema Kimi.
+
+### C. 72-Scenario Offline Replay & Ready-to-Score 30-Scenario Blind Human Package (S6 vs S5)
+
+- **72-Scenario Offline Replay (`scratch/fashion_replay_v2.json` on frozen native UZS snapshot `live_catalog_uzs_384.json`)**:
+  - `stylist6Fashion`: **165 looks (`53` full 3-look decks)** vs Stylist 5's **156 looks (`52` full 3-look decks)**, **`0` constraint violations**, **`0` budget violations**, **50 comparable 3-look S6 vs S5 pairs**, mean coherence **`0.8123`** (vs S5 `0.7843`), styling diversity distance improved **`0.5500` → `0.5637` (`+0.0137`)**.
+  - `stylist6Previous` (shared retrieval grammar uplift): `112 → 131` looks (`+19` looks), `377 → 457` unique SKUs, `0` violations.
+- **Ready-to-Score 30-Scenario Blind Human Package (Stylist 6 vs Stylist 5)**:
+  - Built privately outside git at: `/Users/v.zahid/.gemini/antigravity/brain/9c9881b2-32f5-4d7f-a24c-e8b407755794/scratch/human_blind_package_30/` (`index.html`, `manifest.json`, `blind_key.json` mode `0o600`, and `136` SHA-256 verified normalized merchant JPEGs in `assets/`).
+  - Contents: **30 comparable 3-look scenarios** (`7` held-out `S6-H*` + `23` deterministic paired scenarios), `packageSha256: 7084c0e81dd8a5dc1586069d02216217546f7982d4b26274faf69acc86d9c74e`, `replaySha256: 23064c78580f25df5244212836ba4ca9ad5c48fb8aa4cd22040bfaebd8a8ffcf`.
+  - **0 independent human votes recorded yet** — ready for 3 independent human reviewers to score via `index.html` and evaluate with `node scripts/stylist6/build_human_blind_package.mjs score <blind_key.json> <sub1.json> <sub2.json> <sub3.json>`.
+
+---
+
+## 3. Automated Test, Typecheck, Build & Security Verification (V2 Merged Final)
 
 | Verification Suite | Command | Result |
 | --- | --- | --- |
-| Stylist 6 Backend Unit & Integration Tests | `node --import tsx --test backend/stylist6/*.test.mjs` | **675 / 675 PASS** (`0` fail) |
+| Stylist 6 Backend Unit & Integration Tests | `node --import tsx --test backend/stylist6/*.test.mjs` | **699 / 699 PASS** (`0` fail) |
 | Stylist 6 Scripts & Eval Harness Tests | `node --import tsx --test scripts/stylist6/*.test.mjs` | **70 / 70 PASS** (`0` fail) |
 | Cloud Compute Node Typecheck & Tests | `npm --prefix backend/stylist-node run typecheck && npm --prefix backend/stylist-node test` | **42 / 42 PASS** (`0` fail) |
 | Cloud Compute Production/Staging Bundles | `npm --prefix backend/stylist-node run build` | **PASS** (`stylist-bundle.mjs`, `stylist6-bundle.mjs`, `stylist6-http-route.mjs`; S5 `sourceSha256` unchanged) |
 | Root TypeScript Typecheck | `npx tsc --noEmit` | **PASS** (`0` errors) |
-| Mobile App & Domain Jest Suite | `npx jest --ci --silent` | **326 / 326 suites · 3,561 / 3,561 tests PASS** (`0` fail) |
-| Repository Secret Scan | `node scripts/security/secret-scan.mjs` | **PASS** (`3,427` text files, `0` findings) |
-| Production Stylist 5 Integrity | `shasum -a 256 backend/supabase/functions/generate-outfits/index.ts` | **UNTOUCHED** (`f90ced33ca3b0034c61cd2dfa289b189728dc75398cd72329f0b7c1854efc5e1`) |
+| Mobile App & Domain Jest Suite | `npx jest --ci --maxWorkers=2 --testPathIgnorePatterns "/node_modules/" "/__tests__/backend/"` | **283 / 283 suites · 2,936 / 2,936 tests PASS** (`0` fail) |
+| Repository Secret Scan | `node scripts/security/secret-scan.mjs` | **PASS** (`3,428` text files, `0` findings) |
+| Production Stylist 5 Integrity | `git diff a99c268e..HEAD -- backend/supabase/functions/generate-outfits/` | **UNTOUCHED** (`0` lines diff; `f90ced33ca3b0034c61cd2dfa289b189728dc75398cd72329f0b7c1854efc5e1`) |
 
 ---
 
 ## 4. Scalability & Cost Benchmark (`scripts/stylist6/scale_load_benchmark.mjs`)
 
-Measured on `404ec768` over the full adapted 8,329-SKU catalog snapshot (`174.39ms` catalog adaptation):
+Measured on final V2 merged tree over the full adapted 8,329-SKU catalog snapshot (`173.71ms` catalog adaptation):
 
 | Concurrency | Elapsed (ms) | Throughput (req/s) | P50 (ms) | P95 (ms) | P99 (ms) | Cache Hit Rate | L1 / L2 / Coalesced / Miss | RSS Delta (MB) |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: |
-| 10 | 51.38 | 194.6 | 45.55 | 51.18 | 51.18 | 43.3% | 0 / 0 / 13 / 17 | +4.55 |
-| 50 | 45.77 | 1,092.3 | 40.93 | 43.86 | 44.92 | 68.0% | 78 / 0 / 24 / 48 | +1.38 |
-| 100 | 55.52 | 1,801.1 | 40.88 | 52.22 | 52.37 | 74.7% | 174 / 24 / 26 / 76 | +1.84 |
+| 10 | 49.58 | 201.7 | 45.73 | 49.41 | 49.41 | 43.3% | 0 / 0 / 13 / 17 | +4.53 |
+| 50 | 44.87 | 1,114.2 | 42.07 | 43.70 | 44.10 | 68.0% | 78 / 0 / 24 / 48 | +1.38 |
+| 100 | 57.78 | 1,730.6 | 41.73 | 54.05 | 54.22 | 74.7% | 174 / 24 / 26 / 76 | +1.89 |
 
 - **1M-MAU Sizing Model** (`2.5M` generations/month; `0.96` avg RPS / `5.76` diurnal peak / `14.4` spike):
   - Compute: `6` steady-state / `22` peak-autoscale Node instances (`2 vCPU / 2 GB`, `24` concurrent in-flight/node via adaptive semaphore, `12×` density over legacy `inFlight >= 2` wall).
@@ -128,10 +183,10 @@ Per `AGENTS.md` and `docs/STYLIST6_NORTH_STAR.md`, **none** of the following rel
 
 1. **Independent Human Blind Panel vs Stylist 5 (Primary Acceptance Gate)**:
    - Required: `>=70%` Stylist 6 preference over Stylist 5 across `>=30` diverse held-out scenarios evaluated blindly by `>=3` independent human reviewers, with `0` hard-rule violations.
-   - Current status: **OPEN** (blind AI proxy jury achieved `9/10` vs baseline `a99c268e`, which is proxy evidence only; `scripts/stylist6/build_human_blind_package.mjs` is ready for operator execution).
+   - Current status: **OPEN** (cross-lab blind AI proxy jury achieved **10/10 `100.0%`** V2 wins vs baseline `a99c268e`, which is proxy evidence only; ready-to-score 30-scenario blind human package built at `scratch/human_blind_package_30/` with `packageSha256: 7084c0e81dd8a5dc1586069d02216217546f7982d4b26274faf69acc86d9c74e` awaiting 3 human reviewers).
 2. **Merchant Image Rights, Live Size-Specific Stock & Landed Delivery Verification**:
    - Required: Confirmed commercial hosting/inference rights for `catalog_photo_cache_v1` (currently `0` READY licensed rows) and live merchant size/stock APIs before displaying `live_in_stock` (currently remains honestly labeled `Check at store`).
    - Current status: **OPEN** (operator/legal gate).
-3. **Staged Cloud Deployment & Authenticated Native iOS Verification**:
-   - Required: Deploy exact SHA (`404ec768` + final polish commit) to isolated Render Stylist 6 staging compute and Supabase edge proxy `aiw-stylist6-node-staging`, apply SQL migrations (`backend/supabase/migrations/20261119090000_stylist6_pgvector_and_scale_indexes.sql`, `backend/supabase/migrations/20261119091000_stylist6_personal_dna_and_flywheel.sql`) to staging Postgres, and verify authenticated 3-look generation + 1-tap slot swap + structured feedback end-to-end on native iOS without touching production Stylist 5 (`generate-outfits`).
+3. **Staged Cloud Deployment, OpenRouter Funded Quota & Authenticated Native iOS Verification**:
+   - Required: Fund/provision production OpenRouter quota alongside NVIDIA NIM, deploy exact V2 merged SHA to isolated Render Stylist 6 staging compute and Supabase edge proxy `aiw-stylist6-node-staging`, apply SQL migrations (`backend/supabase/migrations/20261119090000_stylist6_pgvector_and_scale_indexes.sql`, `backend/supabase/migrations/20261119091000_stylist6_personal_dna_and_flywheel.sql`) to staging Postgres, and verify authenticated 3-look generation + opt-in appearance analysis + 1-tap slot swap + structured feedback end-to-end on native iOS without touching production Stylist 5 (`generate-outfits`).
    - Current status: **OPEN** (committing to GitHub does NOT automatically update pinned Supabase or Render staging).

@@ -954,25 +954,32 @@ export async function designCreativeBriefs({
               fetchImpl,
             });
         const openrouterReady = hasOpenrouterKey || router.isProviderConfigured?.('openrouter') === true;
-        const primaryModel = openrouterReady ? DEFAULT_OPENROUTER_VISION_MODEL : DEFAULT_NVIDIA_TEXT_MODEL;
+        const primaryModel = openrouterReady ? DEFAULT_OPENROUTER_VISION_MODEL : (highTaste ? ART_DIRECTOR_MODEL : DEFAULT_NVIDIA_TEXT_MODEL);
         const primaryProvider = openrouterReady ? 'openrouter' : 'nvidia';
         const fallbacks = openrouterReady && (hasNvidiaKey || router.isProviderConfigured?.('nvidia'))
-          ? [{ model: DEFAULT_NVIDIA_TEXT_MODEL, provider: 'nvidia' }]
+          ? [
+              { model: highTaste ? ART_DIRECTOR_MODEL : DEFAULT_NVIDIA_TEXT_MODEL, provider: 'nvidia' },
+              ...(highTaste ? [{ model: DEFAULT_NVIDIA_TEXT_MODEL, provider: 'nvidia' }] : []),
+            ]
           : [];
         const routerTimeoutMs = hasNvidiaKey
-          ? Math.max(1000, Math.min(4800, Math.floor(effectiveTimeoutMs * 0.65)))
+          ? Math.max(1500, effectiveTimeoutMs - 300)
           : effectiveTimeoutMs;
+        const primaryTimeoutMs = fallbacks.length > 0
+          ? Math.max(1200, Math.min(3500, Math.floor(routerTimeoutMs * 0.40)))
+          : routerTimeoutMs;
         const routed = await router.callTextModel({
           model: primaryModel,
           provider: primaryProvider,
           fallbacks,
-          allowFailover: true,
+          allowFailover: false,
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.45,
           top_p: 0.9,
-          max_tokens: 1550,
+          max_tokens: 1150,
           response_format: responseFormat,
           timeoutMs: routerTimeoutMs,
+          primaryTimeoutMs,
           signal: combinedSignal,
           parseJson: true,
           maxTransientRetries: 0,

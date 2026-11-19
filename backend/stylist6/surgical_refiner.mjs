@@ -574,17 +574,18 @@ export function rankSlotReplacementCandidates({
       reasons.push('verified_full_studio_photo');
     }
 
-    // 7b. Climate & lightweight layer suitability (hot >=24C or weather_mismatch rescue)
+    // 7b. Climate & lightweight layer suitability (hot >=24C, indoor mild >10C, or weather_mismatch rescue)
     const itemNameLower = String(item.name || '').toLowerCase();
-    if (slot === 'outerwear' && (isWarmWeather || parsed.lighterLayer)) {
-      const isHeavyOuter = /\b(?:overcoat|peacoat|parka|puffer|down|shearling|quilted|heavy wool|winter coat)\b/.test(itemNameLower)
+    const isIndoorEditorial = /\b(work|office|business|meeting|date|dinner|evening|cocktail|smart|gallery|weekend|travel|casual)\b/.test(occasion);
+    if (slot === 'outerwear' && (isWarmWeather || parsed.lighterLayer || (isIndoorMildWeather && isIndoorEditorial))) {
+      const isHeavyOuter = /\b(?:overcoat|topcoat|greatcoat|peacoat|pea coat|parka|puffer|down|shearling|quilted|heavy wool|winter coat|double[- ]breasted coat|trench coat)\b/.test(itemNameLower)
         || ['overcoat', 'coat'].includes(subtype);
       const isBreathableOuter = /\b(?:linen|cotton|seersucker|unlined|lightweight|chambray|summer|overshirt|shacket|chore|fine[ -]?knit)\b/.test(itemNameLower)
         || ['overshirt', 'cardigan'].includes(subtype);
       if (isHeavyOuter && (isWarmWeather || isIndoorMildWeather || parsed.lighterLayer)) {
-        score -= 0.35;
+        score -= 0.42;
         reasons.push('heavy_outerwear_climate_mismatch');
-      } else if (isBreathableOuter) {
+      } else if (isBreathableOuter && (isWarmWeather || parsed.lighterLayer)) {
         score += 0.22;
         reasons.push('breathable_layer_match');
       }
@@ -599,8 +600,9 @@ export function rankSlotReplacementCandidates({
     }
 
     // 8. Anti-clone penalty vs the rejected/replaced item (skipped when replacing a cropped/broken photo
-    // so a clean full-garment studio photo in the same color/subtype can directly rescue the look!)
-    if (currentItem && !parsed.isPhotoDefect) {
+    // or resolving a deck SKU collision so a clean harmonious unused SKU can directly rescue the look!)
+    const isSkuCollision = String(defectCategory || '').trim().toLowerCase() === 'sku_collision';
+    if (currentItem && !parsed.isPhotoDefect && !isSkuCollision) {
       const sameSub = currentSubtype && subtype === currentSubtype;
       const sameCol = currentColor && color === currentColor;
       const sameTex = currentTexture && texture === currentTexture;
@@ -986,10 +988,14 @@ export async function refineLookSurgically({
 
       if (renderedReady.length > 0 && !signal?.aborted && Date.now() < deadlineAt) {
         evaluatedInRound += renderedReady.length;
+        const batchTimeoutMs = Math.max(400, deadlineAt - Date.now());
+        const batchSignal = signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(batchTimeoutMs)])
+          : AbortSignal.timeout(batchTimeoutMs);
         let verdictById = new Map();
         try {
           verdictById = await evaluateBatchWithVisualCritic(
-            visualCritic, renderedReady, context, personalStyleDna, signal,
+            visualCritic, renderedReady, context, personalStyleDna, batchSignal,
           );
         } catch {
           verdictById = new Map();
@@ -1015,8 +1021,10 @@ export async function refineLookSurgically({
             continue;
           }
           const nextScore = computeCritiqueCompositeScore(newCritique, { minEditorialScore, minVisualQuality });
+          const isSkuCollision = String(workingCritique?.defectCategory || '').trim().toLowerCase() === 'sku_collision';
           const strictlyImproved = nextScore.score10 > baseline.score10
-            || (baseline.rejected && !nextScore.rejected && nextScore.score10 >= baseline.score10);
+            || (baseline.rejected && !nextScore.rejected && nextScore.score10 >= baseline.score10)
+            || (isSkuCollision && nextScore.passedFloor && !nextScore.rejected);
           const clearedAndImproved = nextScore.passedFloor && strictlyImproved;
 
           attempts.push({
@@ -1138,12 +1146,16 @@ export async function refineLookSurgically({
         }
       }
 
-      // 3. Independent Visual Critic re-evaluation
+      // 3. Independent Visual Critic re-evaluation (strictly bounded by deadlineAt)
       evaluatedInRound++;
+      const stepTimeoutMs = Math.max(400, deadlineAt - Date.now());
+      const stepSignal = signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(stepTimeoutMs)])
+        : AbortSignal.timeout(stepTimeoutMs);
       let newCritique = null;
       try {
         newCritique = await evaluateWithVisualCritic(
-          visualCritic, candidateLook, board, context, personalStyleDna, signal,
+          visualCritic, candidateLook, board, context, personalStyleDna, stepSignal,
         );
       } catch {
         newCritique = null;
@@ -1167,8 +1179,10 @@ export async function refineLookSurgically({
       }
 
       const nextScore = computeCritiqueCompositeScore(newCritique, { minEditorialScore, minVisualQuality });
+      const isSkuCollision = String(workingCritique?.defectCategory || '').trim().toLowerCase() === 'sku_collision';
       const strictlyImproved = nextScore.score10 > baseline.score10
-        || (baseline.rejected && !nextScore.rejected && nextScore.score10 >= baseline.score10);
+        || (baseline.rejected && !nextScore.rejected && nextScore.score10 >= baseline.score10)
+        || (isSkuCollision && nextScore.passedFloor && !nextScore.rejected);
       const clearedAndImproved = nextScore.passedFloor && strictlyImproved;
 
       attempts.push({

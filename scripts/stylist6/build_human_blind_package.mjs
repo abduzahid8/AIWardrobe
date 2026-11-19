@@ -109,10 +109,10 @@ async function resolveProductPhoto(sku, product, { cacheDir, fetchImpl }) {
     throw new Error(`photo_fetch_failed:${sku}:${response?.status || 'err'}`);
   }
   const raw = Buffer.from(await response.arrayBuffer());
-  if (raw.length === 0 || raw.length > 4 * 1024 * 1024) {
+  if (raw.length === 0 || raw.length > 16 * 1024 * 1024) {
     throw new Error(`photo_size_invalid:${sku}`);
   }
-  const normalized = await sharp(raw)
+  const normalized = await sharp(raw, { limitInputPixels: 64 * 1024 * 1024 })
     .rotate()
     .flatten({ background: { r: 245, g: 247, b: 250 } })
     .resize(720, 720, { fit: 'inside', withoutEnlargement: true })

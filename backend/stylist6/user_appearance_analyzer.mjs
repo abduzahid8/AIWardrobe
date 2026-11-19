@@ -378,10 +378,12 @@ export function validateAppearanceAnalysisPayload(rawOutput, options = {}) {
 
   const flatteringColors = normalizeColorArray(payload.flatteringColors, 10);
   const powerNeutrals = normalizeColorArray(payload.powerNeutrals, 6);
-  const avoidColors = normalizeColorArray(payload.avoidColors, 8);
-  if (!flatteringColors || !powerNeutrals || !avoidColors) {
+  const rawAvoidColors = normalizeColorArray(payload.avoidColors, 8);
+  if (!flatteringColors || !powerNeutrals || !rawAvoidColors) {
     return { ok: false, reason: 'color_arrays_required', appearance: null };
   }
+  const positiveSet = new Set([...flatteringColors, ...powerNeutrals]);
+  const avoidColors = rawAvoidColors.filter((c) => !positiveSet.has(c));
 
   const roundedConfidence = Math.round(confidence * 1000) / 1000;
 
