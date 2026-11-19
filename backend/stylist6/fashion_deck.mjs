@@ -1445,6 +1445,31 @@ export function chooseIndependentPhotoReviewTrio(looks, modelChoices = [], requi
 }
 
 /**
+ * Give the FIRST expensive original-photo evaluations a viable three-look
+ * product-independent opportunity, rather than sampling three seductive
+ * variations of one original outfit and learning too late that even three
+ * approvals cannot form three different shopping cards.
+ *
+ * Only reorders fully SOURCE/price/weather admitted model creations and
+ * approved-to-be-photographed alternatives; no extra item, category ban,
+ * photo approval, score threshold, or provider invocation is introduced.
+ * A single AI direction never becomes a forced anchor. If the existing
+ * first three are already independent, retain the designer's exact order.
+ * If no independent trio exists, retain the truthfully partial audition.
+ */
+export function prioritizeIndependentPhotoAuditions(looks,requiredIds=[],metrics){
+  if(!Array.isArray(looks)||looks.length<3||
+      looks.length>MAX_VISUAL_CANDIDATES)return looks;
+  if(visualProductUniqueTripleCount(looks.slice(0,3),requiredIds)>0)return looks;
+  const core=chooseIndependentPhotoReviewTrio(
+    looks,looks.slice(0,3),requiredIds,metrics);
+  if(core.length!==3||visualProductUniqueTripleCount(core,requiredIds)===0)
+    return looks;
+  const selected=new Set(core.map(look=>look.id));
+  return [...core,...looks.filter(look=>!selected.has(look.id))];
+}
+
+/**
  * Build a PHOTO-REVIEW PORTFOLIO, not six stylistically identical model
  * favorites. When three independent whole looks exist, keep them as
  * foundation; then spend remaining scarce NVIDIA slots on strong,
@@ -2559,6 +2584,25 @@ export async function recommendFashionDeck({
       candidates.push(alternate);
     }
     if (candidates.length) {
+      // The autonomous model owns the aesthetics and SKU choices, yet its
+      // first three photographed drafts may share clothes or be structural
+      // twins. Rearrange ONLY already-source-admitted options so early PHOTO
+      // assessments can actually yield three independent approved cards.
+      // Shared-SKU learned remixes remain valuable as rejected-look rescue
+      // options, but cannot crowd out a feasible full independent trio.
+      const auditionCoreBefore=visualProductUniqueTripleCount(
+        candidates.slice(0,3),requiredIds);
+      if(modelChosen&&modelLed&&request.sourceMode==='catalog'&&
+          candidates.length>=3&&auditionCoreBefore===0){
+        const arranged=prioritizeIndependentPhotoAuditions(
+          candidates,requiredIds,metrics);
+        const changed=arranged.slice(0,3).some((look,i)=>
+          look?.id!==candidates[i]?.id);
+        if(changed){
+          candidates.splice(0,candidates.length,...arranged);
+          modelFashionSelection.photoAuditionCoreRecovered=true;
+        }
+      }
       let primaryCritiques=[];
       const reviewOptions={
         target:Math.min(3,candidates.length), minNovelty:0.12, requiredIds,
