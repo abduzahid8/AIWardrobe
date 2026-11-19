@@ -17,6 +17,9 @@ import {
   serverFashionSlateEnabled,
   stylist6CatalogDiscoverySeed,shouldFreezeStylist6CatalogCohort,
   canonicalRequestFingerprint,
+  isTightBudgetRequest,
+  isHotWeatherRequest,
+  prioritizeCatalogForBudgetAndClimate,
 } from './cloud_handler.mjs';
 import { HOST_ALLOWLIST, INFERENCE_ALLOWLIST, isInferenceAuthorized } from '../../scripts/stylist6/image_access.mjs';
 import { adaptCatalog, projectCatalogItem, sourceHash } from './catalog_adapter.mjs';
@@ -2387,4 +2390,242 @@ test('warm-weather discovery hints (>=24C), mapDeckItem subtype/color, budgeted 
   if (secondShoe && secondShoe.id !== oldShoe.id) {
     assert.equal(allReturnedIds.includes(secondShoe.id), false, 'explicit slot-targeted negative-rated SKU must be excluded');
   }
+});
+
+test('$350 tight-budget discovery pulls affordable shoes <=$150 & layers first and prevents 1-look starvation', async () => {
+  const todayUz = new Date(Date.now() + 5 * 3600 * 1000).toISOString().slice(0, 10);
+  const fxSnap = {
+    id: `CBU:${todayUz}:12800:13600:16100`,
+    source: 'CBU',
+    asOf: todayUz,
+    fetchedAt: new Date().toISOString(),
+    uzsPerUnit: { UZS: 1, USD: 12800, EUR: 13600, GBP: 16100 },
+  };
+  assert.equal(isTightBudgetRequest({ amount: 350, currency: 'USD' }, fxSnap), true);
+  assert.equal(isTightBudgetRequest({ amount: 500, currency: 'USD' }, fxSnap), true);
+  assert.equal(isTightBudgetRequest({ amount: 1200, currency: 'USD' }, fxSnap), false);
+  assert.equal(isTightBudgetRequest({ amount: 4500000, currency: 'UZS' }, fxSnap), true);
+
+  // Build a realistic luxury-skewed shop where 30 expensive items precede affordable shoes & layers
+  const luxuryFront = [
+    ...Array.from({ length: 10 }, (_, i) => ({
+      ...shopRow(`lux-shoe-${i}`, 'shoes', 480 + i * 20, 'USD'),
+      name: `Luxury Calfskin Oxford ${i}`, fashion_slot: 'shoes', fashion_subtype: 'oxford',
+    })),
+    ...Array.from({ length: 10 }, (_, i) => ({
+      ...shopRow(`lux-outer-${i}`, 'outerwear', 650 + i * 30, 'USD'),
+      name: `Luxury Cashmere Blazer ${i}`, fashion_slot: 'outerwear', fashion_subtype: 'blazer',
+    })),
+    ...Array.from({ length: 5 }, (_, i) => ({
+      ...shopRow(`lux-top-${i}`, 'top', 260 + i * 10, 'USD'),
+      name: `Luxury Silk Shirt ${i}`, fashion_slot: 'top', fashion_subtype: 'dress-shirt',
+    })),
+    ...Array.from({ length: 5 }, (_, i) => ({
+      ...shopRow(`lux-bot-${i}`, 'bottom', 320 + i * 15, 'USD'),
+      name: `Luxury Wool Trouser ${i}`, fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser',
+    })),
+  ];
+  const affordableTail = [
+    { ...shopRow('aff-top-1', 'top', 55, 'USD'), name: 'White Poplin Dress Shirt', fashion_slot: 'top', fashion_subtype: 'dress-shirt', color: 'white' },
+    { ...shopRow('aff-top-2', 'top', 50, 'USD'), name: 'Sky Blue Cotton Oxford Shirt', fashion_slot: 'top', fashion_subtype: 'shirt', color: 'blue' },
+    { ...shopRow('aff-top-3', 'top', 48, 'USD'), name: 'Cream Fine Knit Polo', fashion_slot: 'top', fashion_subtype: 'polo', color: 'cream' },
+    { ...shopRow('aff-outer-1', 'outerwear', 115, 'USD'), name: 'Navy Tailored Wool Blazer', fashion_slot: 'outerwear', fashion_subtype: 'blazer', color: 'navy' },
+    { ...shopRow('aff-outer-2', 'outerwear', 95, 'USD'), name: 'Charcoal Merino Cardigan', fashion_slot: 'outerwear', fashion_subtype: 'cardigan', color: 'charcoal' },
+    { ...shopRow('aff-outer-3', 'outerwear', 105, 'USD'), name: 'Olive Twill Overshirt', fashion_slot: 'outerwear', fashion_subtype: 'overshirt', color: 'olive' },
+    { ...shopRow('aff-bot-1', 'bottom', 72, 'USD'), name: 'Charcoal Tailored Trousers', fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser', color: 'charcoal' },
+    { ...shopRow('aff-bot-2', 'bottom', 65, 'USD'), name: 'Sand Cotton Chinos', fashion_slot: 'bottom', fashion_subtype: 'chino', color: 'beige' },
+    { ...shopRow('aff-bot-3', 'bottom', 70, 'USD'), name: 'Navy Pleated Dress Trousers', fashion_slot: 'bottom', fashion_subtype: 'trouser', color: 'navy' },
+    { ...shopRow('aff-shoe-1', 'shoes', 92, 'USD'), name: 'Black Leather Cap-Toe Oxfords', fashion_slot: 'shoes', fashion_subtype: 'oxford', color: 'black' },
+    { ...shopRow('aff-shoe-2', 'shoes', 88, 'USD'), name: 'Dark Brown Suede Loafers', fashion_slot: 'shoes', fashion_subtype: 'loafer', color: 'brown' },
+    { ...shopRow('aff-shoe-3', 'shoes', 95, 'USD'), name: 'Espresso Leather Plain-Toe Derbies', fashion_slot: 'shoes', fashion_subtype: 'derby', color: 'brown' },
+  ];
+  const combined = [...luxuryFront, ...affordableTail];
+  const adapted = adaptCatalog(combined).items;
+  const prioritized = prioritizeCatalogForBudgetAndClimate(adapted, {
+    budget: { amount: 350, currency: 'USD' },
+    weather: { temp: 16 },
+    fxSnapshot: fxSnap,
+  });
+  const top12Ids = new Set(prioritized.slice(0, 12).map((i) => i.id));
+  assert.ok(top12Ids.has('aff-shoe-1') && top12Ids.has('aff-shoe-2') && top12Ids.has('aff-shoe-3'),
+    'all affordable shoes <=$150 must rise to the front under a $350 budget');
+  assert.ok(top12Ids.has('aff-outer-1') && top12Ids.has('aff-outer-2') && top12Ids.has('aff-outer-3'),
+    'all affordable layers must rise to the front under a $350 budget');
+
+  // Verify createCloudIo.fetchShopRows tight_budget discoveryIntent widens budget-aware search pages
+  const origFetch = globalThis.fetch;
+  const rpcCalls = [];
+  try {
+    globalThis.fetch = async (url, options = {}) => {
+      const u = new URL(String(url));
+      if (u.pathname.includes('catalog_discovery_candidates')) {
+        rpcCalls.push(JSON.parse(options.body));
+        return Response.json([]);
+      }
+      return Response.json([]);
+    };
+    const io = createCloudIo({
+      url: 'https://fake-supabase.example',
+      anonKey: 'anon-test',
+      serviceKey: 'service-test',
+      supabaseJs: {},
+    });
+    await io.fetchShopRows('0123456789abcdef', {
+      budget: 350,
+      currency: 'USD',
+      rates: fxSnap.uzsPerUnit,
+    }, 'tight_budget');
+    assert.ok(rpcCalls.length > 9, `tight_budget discovery should widen RPC pages beyond default 9 (got ${rpcCalls.length})`);
+    assert.ok(rpcCalls.filter((b) => b.p_slot === 'shoes').length >= 4, 'tight_budget widens shoe discovery pages');
+    assert.ok(rpcCalls.some((b) => b.p_context?.budget === 350 && b.p_context?.currency === 'USD'), 'tight_budget forwards budget context to discovery RPC');
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+
+  // End-to-end $350 Work request produces 3/3 distinct 4-item outfits all strictly <= $350 USD
+  const res = await signedCall({
+    request: {
+      ...baseRequest,
+      style: 'classic',
+      occasion: 'Work',
+      weather: { temp: 16 },
+      budget: { amount: 350, currency: 'USD' },
+      generationRequestId: 'qa-tight-budget-350-work',
+    },
+  }, {}, {
+    shopRows: combined,
+    fetchBudgetFxSnapshot: async () => fxSnap,
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.outfits.length, 3, '$350 tight-budget Work must yield 3 full looks, not 1-look starvation');
+  for (const look of res.body.outfits) {
+    assert.equal(look.items.length, 4);
+    const totalUsd = look.items.reduce((sum, it) => sum + Number(it.price || 0), 0);
+    assert.ok(totalUsd <= 350, `outfit total $${totalUsd} must stay within $350 budget`);
+  }
+});
+
+test('31C hot-weather discovery prioritizes breathable layers/shoes for smart_casual and yields 3/3 summer looks', async () => {
+  assert.equal(isHotWeatherRequest({ temp: 31 }), true);
+  assert.equal(isHotWeatherRequest({ temp: 24 }), true);
+  assert.equal(isHotWeatherRequest({ temp: 19 }), false);
+
+  // smart_casual at 31C MUST emit warm breathable discovery hints (previously returned {})
+  const smartWarmHints = catalogStylingDiscoveryHints({
+    style: 'smart_casual',
+    occasion: 'Weekend',
+    weather: { temp: 31 },
+  });
+  assert.ok(Array.isArray(smartWarmHints.preferredSubtypes) && smartWarmHints.preferredSubtypes.includes('overshirt'));
+  assert.ok(smartWarmHints.preferredSubtypes.includes('loafer'));
+  assert.ok(smartWarmHints.preferredSubtypes.includes('cardigan'));
+
+  const winterHeavy = [
+    ...Array.from({ length: 8 }, (_, i) => ({
+      ...shopRow(`winter-coat-${i}`, 'outerwear', 900000, 'UZS'),
+      name: `Heavy Puffer Down Parka ${i}`, fashion_slot: 'outerwear', fashion_subtype: 'parka',
+    })),
+    ...Array.from({ length: 6 }, (_, i) => ({
+      ...shopRow(`winter-boot-${i}`, 'shoes', 700000, 'UZS'),
+      name: `Heavy Shearling Chelsea Boots ${i}`, fashion_slot: 'shoes', fashion_subtype: 'boot',
+    })),
+  ];
+  const breathableSummer = [
+    { ...shopRow('sum-top-1', 'top', 240000, 'UZS'), name: 'White Breathable Linen Polo', fashion_slot: 'top', fashion_subtype: 'polo', color: 'white' },
+    { ...shopRow('sum-top-2', 'top', 230000, 'UZS'), name: 'Sky Cotton Poplin Short-Sleeve Shirt', fashion_slot: 'top', fashion_subtype: 'shirt', color: 'blue' },
+    { ...shopRow('sum-top-3', 'top', 220000, 'UZS'), name: 'Cream Fine Cotton Knit Tee', fashion_slot: 'top', fashion_subtype: 'fine-knit', color: 'cream' },
+    { ...shopRow('sum-outer-1', 'outerwear', 410000, 'UZS'), name: 'Beige Unlined Linen Overshirt', fashion_slot: 'outerwear', fashion_subtype: 'overshirt', color: 'beige' },
+    { ...shopRow('sum-outer-2', 'outerwear', 430000, 'UZS'), name: 'Olive Lightweight Cotton Overshirt', fashion_slot: 'outerwear', fashion_subtype: 'overshirt', color: 'olive' },
+    { ...shopRow('sum-outer-3', 'outerwear', 420000, 'UZS'), name: 'Navy Fine Cotton Lightweight Cardigan', fashion_slot: 'outerwear', fashion_subtype: 'cardigan', color: 'navy' },
+    { ...shopRow('sum-bot-1', 'bottom', 320000, 'UZS'), name: 'Sand Lightweight Cotton Chinos', fashion_slot: 'bottom', fashion_subtype: 'chino', color: 'beige' },
+    { ...shopRow('sum-bot-2', 'bottom', 340000, 'UZS'), name: 'Stone Breathable Linen Tailored Trousers', fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser', color: 'grey' },
+    { ...shopRow('sum-bot-3', 'bottom', 330000, 'UZS'), name: 'Navy Lightweight Cotton Chinos', fashion_slot: 'bottom', fashion_subtype: 'chino', color: 'navy' },
+    { ...shopRow('sum-shoe-1', 'shoes', 450000, 'UZS'), name: 'Cognac Unlined Suede Penny Loafers', fashion_slot: 'shoes', fashion_subtype: 'loafer', color: 'brown' },
+    { ...shopRow('sum-shoe-2', 'shoes', 430000, 'UZS'), name: 'Sand Suede Driving Loafers', fashion_slot: 'shoes', fashion_subtype: 'driver', color: 'beige' },
+    { ...shopRow('sum-shoe-3', 'shoes', 410000, 'UZS'), name: 'Clean White Low-Top Leather Sneakers', fashion_slot: 'shoes', fashion_subtype: 'minimal-sneaker', color: 'white' },
+  ];
+  const mixedCatalog = [...winterHeavy, ...breathableSummer];
+  const prioritized = prioritizeCatalogForBudgetAndClimate(adaptCatalog(mixedCatalog).items, {
+    weather: { temp: 31 },
+  });
+  const first12 = prioritized.slice(0, 12).map((i) => i.id);
+  assert.ok(first12.includes('sum-outer-1') && first12.includes('sum-outer-2') && first12.includes('sum-outer-3'),
+    'breathable summer layers must sort ahead of heavy parkas at 31C');
+  assert.ok(!first12.some((id) => id.startsWith('winter-coat-')),
+    'heavy winter parkas must be demoted behind breathable summer layers at 31C');
+
+  const res = await signedCall({
+    request: {
+      ...baseRequest,
+      style: 'smart_casual',
+      occasion: 'Weekend',
+      weather: { temp: 31, condition: 'sunny' },
+      budget: { amount: 4000000, currency: 'UZS' },
+      generationRequestId: 'qa-hot-summer-31c',
+    },
+  }, {}, { shopRows: mixedCatalog });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.outfits.length, 3, '31C hot weather should produce 3 breathable outfits without starvation');
+  for (const look of res.body.outfits) {
+    assert.ok(look.items.every((it) => !it.id.startsWith('winter-coat-') && !it.id.startsWith('winter-boot-')),
+      'no winter parkas or heavy shearling boots at 31C');
+  }
+});
+
+test('cloud handler forwards OPENROUTER_API_KEY and fastVisualMode to cross-lab Gemini 2.5 Flash primary vision with NVIDIA failover', async () => {
+  const seenHosts = [];
+  const seenModels = [];
+  let sawBoardPrompt = false;
+  const salt = 'fast-crosslab-or';
+  const fetchStub = async (url, options = {}) => {
+    const parsed = new URL(String(url));
+    seenHosts.push(parsed.hostname);
+    if (parsed.hostname === 'openrouter.ai') {
+      const payload = JSON.parse(options.body);
+      seenModels.push(payload.model);
+      const content = payload.messages[0].content;
+      const prompt = content[0].text;
+      const imageParts = content.filter((p) => p.type === 'image_url');
+      if (prompt.includes('1024x1024 studio flat-lay board') && imageParts.length === 1) sawBoardPrompt = true;
+      const id = prompt.match(/candidateId must be exactly "([^"]+)"/)[1];
+      return new Response(JSON.stringify({
+        choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(verdictForPrompt(prompt, id)) } }],
+        usage: { prompt_tokens: 750, completion_tokens: 55, total_tokens: 805 },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (parsed.hostname === 'integrate.api.nvidia.com') {
+      const payload = JSON.parse(options.body);
+      seenModels.push(payload.model);
+      const content = payload.messages[0].content;
+      const prompt = content[0].text;
+      const id = prompt.match(/candidateId must be exactly "([^"]+)"/)[1];
+      return new Response(JSON.stringify({
+        choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(verdictForPrompt(prompt, id)) } }],
+        usage: { prompt_tokens: 900, completion_tokens: 60, total_tokens: 960 },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    const fill = createHash('sha256').update(`${salt}:${String(url)}`).digest()[0] % 200 + 20;
+    const bytes = await smokeJpeg(fill);
+    return new Response(bytes, { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+  };
+
+  const result = await cloudVisualCall(
+    { ...baseRequest, enableVisual: true, generationRequestId: 'fast-crosslab-or-1' },
+    {
+      salt,
+      env: {
+        OPENROUTER_API_KEY: 'sk-or-v1-test-key-0123456789abcdef',
+        STYLIST6_FAST_VISUAL_MODE: '1',
+      },
+      fetchStub,
+    },
+  );
+  assert.equal(result.status, 200);
+  assert.ok(['NVIDIA_APPLIED', 'NVIDIA_EVALUATED_NO_CHANGE'].includes(result.body.visualStatus));
+  assert.ok(seenHosts.includes('openrouter.ai'), 'fastVisualMode with OPENROUTER_API_KEY must route primary vision to openrouter.ai');
+  assert.ok(seenModels.includes('google/gemini-2.5-flash'), 'fastVisualMode primary vision model must be google/gemini-2.5-flash');
+  assert.equal(sawBoardPrompt, true, 'cloud handler must render 1024x1024 composite studio look boards for fastVisualMode');
+  assert.equal(result.body.visualReceipt.fastVisualMode, true);
+  assert.equal(result.body.visualReceipt.model, 'google/gemini-2.5-flash');
+  assert.ok(result.body.visualReceipt.validVerdicts >= 1);
 });

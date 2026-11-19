@@ -268,3 +268,78 @@ test('router rejects oversized response bodies and honors abort signal cleanly',
   assert.equal(aborted.error, 'aborted');
   resetDefaultProviderRouter();
 });
+
+test('preferCrossLabFastVision routes primary vision to OpenRouter Gemini 2.5 Flash and fails over cleanly to NVIDIA VL / Gemma with circuit breaker', async () => {
+  const seen = [];
+  let openrouterDown = false;
+  const router = createProviderRouter({
+    nvidiaApiKey: NVIDIA_KEY,
+    openrouterApiKey: OPENROUTER_KEY,
+    circuitFailureThreshold: 2,
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      seen.push({ url, model: body.model });
+      if (url === PROVIDER_ENDPOINTS.openrouter) {
+        if (openrouterDown) return new Response('overloaded', { status: 503 });
+        return okJson({ verdict: 'fast_openrouter_ok' });
+      }
+      assert.equal(url, PROVIDER_ENDPOINTS.nvidia);
+      return okJson({ verdict: 'nvidia_failover_ok', model: body.model });
+    },
+  });
+
+  // 1. Healthy OpenRouter -> Gemini 2.5 Flash wins immediately as primary
+  const fast = await router.callVisionModel({
+    model: DEFAULT_NVIDIA_VISION_MODEL,
+    preferCrossLabFastVision: true,
+    prompt: 'Inspect 1024x1024 studio board',
+    parseJson: true,
+    maxTransientRetries: 0,
+  });
+  assert.equal(fast.ok, true);
+  assert.equal(fast.provider, 'openrouter');
+  assert.equal(fast.model, DEFAULT_OPENROUTER_VISION_MODEL);
+  assert.equal(fast.failedOver, false);
+
+  // 2. OpenRouter fails -> automatic failover to NVIDIA 120B VL; 2 failures trip OpenRouter circuit
+  openrouterDown = true;
+  const fo1 = await router.callVisionModel({
+    model: DEFAULT_NVIDIA_VISION_MODEL,
+    preferCrossLabFastVision: true,
+    prompt: 'Inspect board 2',
+    parseJson: true,
+    maxTransientRetries: 0,
+  });
+  assert.equal(fo1.ok, true);
+  assert.equal(fo1.failedOver, true);
+  assert.equal(fo1.provider, 'nvidia');
+  assert.equal(fo1.model, DEFAULT_NVIDIA_VISION_MODEL);
+
+  const fo2 = await router.callVisionModel({
+    model: DEFAULT_NVIDIA_VISION_MODEL,
+    preferCrossLabFastVision: true,
+    prompt: 'Inspect board 3',
+    parseJson: true,
+    maxTransientRetries: 0,
+  });
+  assert.equal(fo2.ok, true);
+  assert.equal(router.getProviderHealth().providers.openrouter.state, 'open');
+
+  // 3. With OpenRouter circuit open, third call skips OpenRouter HTTP completely (0ms short-circuit!)
+  const openrouterCallsBefore = seen.filter((s) => s.url === PROVIDER_ENDPOINTS.openrouter).length;
+  const fo3 = await router.callVisionModel({
+    model: DEFAULT_NVIDIA_VISION_MODEL,
+    preferCrossLabFastVision: true,
+    prompt: 'Inspect board 4',
+    parseJson: true,
+    maxTransientRetries: 0,
+  });
+  assert.equal(fo3.ok, true);
+  assert.equal(fo3.provider, 'nvidia');
+  assert.equal(fo3.attempts[0].error, 'circuit_open');
+  assert.equal(
+    seen.filter((s) => s.url === PROVIDER_ENDPOINTS.openrouter).length,
+    openrouterCallsBefore,
+    'open circuit must not hit OpenRouter HTTP endpoint',
+  );
+});

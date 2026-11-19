@@ -5,7 +5,7 @@ import {
   PHOTO_EDITOR_FINAL_VERSION,PHOTO_PORTFOLIO_VISION_MODEL,OPENROUTER_JURY_MODEL,GEMMA_JURY_MODEL,
   anonymousPhotoEditorialOptions,
   anonymousPhotoEditorialPortfolios,validatePhotoEditorialPortfolioChoice,selectPhotoEditorialDeck,
-  safePhotoEditorialCreativeGap,
+  safePhotoEditorialCreativeGap,isArchitecturallyDistinctApprovedTriple,
 } from './photo_editor_final.mjs';
 import { PROVIDER_ENDPOINTS } from './ai_provider_router.mjs';
 import { createPhotoByteCache } from './editorial_board_renderer.mjs';
@@ -847,4 +847,87 @@ test('secondary independent portfolio jury fails over cleanly from Kimi timeout 
   assert.equal(selection.independentJuryModel, OPENROUTER_JURY_MODEL);
   assert.ok(attempted.some((a) => a.model === 'moonshotai/kimi-k3.1-pro'));
   assert.ok(attempted.some((a) => a.model === OPENROUTER_JURY_MODEL));
+});
+
+test('fastVisualMode uses fast OpenRouter Gemini primary (<=6s) with NVIDIA failover and NEVER drops an architecturally distinct verified 3-look triple down to 2 looks', async () => {
+  const jpeg = await sharp({ create: { width: 120, height: 150, channels: 3, background: '#6a727a' } }).jpeg().toBuffer();
+  const distinctLooks = [
+    {
+      id: 'distinct-blazer-0',
+      items: [
+        { id: 'd-top-0', macroCategory: 'top', subtype: 'dress-shirt', color: 'white', imageUrl: 'https://static.zara.net/t0.jpg' },
+        { id: 'd-outer-0', macroCategory: 'outerwear', subtype: 'blazer', color: 'navy', imageUrl: 'https://static.zara.net/o0.jpg' },
+        { id: 'd-bot-0', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'charcoal', imageUrl: 'https://static.zara.net/b0.jpg' },
+        { id: 'd-shoe-0', macroCategory: 'shoes', subtype: 'oxford', color: 'black', imageUrl: 'https://static.zara.net/s0.jpg' },
+      ],
+    },
+    {
+      id: 'distinct-coat-1',
+      items: [
+        { id: 'd-top-1', macroCategory: 'top', subtype: 'fine-knit', color: 'cream', imageUrl: 'https://static.zara.net/t1.jpg' },
+        { id: 'd-outer-1', macroCategory: 'outerwear', subtype: 'coat', color: 'camel', imageUrl: 'https://static.zara.net/o1.jpg' },
+        { id: 'd-bot-1', macroCategory: 'bottom', subtype: 'pleated-trouser', color: 'beige', imageUrl: 'https://static.zara.net/b1.jpg' },
+        { id: 'd-shoe-1', macroCategory: 'shoes', subtype: 'loafer', color: 'brown', imageUrl: 'https://static.zara.net/s1.jpg' },
+      ],
+    },
+    {
+      id: 'distinct-cardigan-2',
+      items: [
+        { id: 'd-top-2', macroCategory: 'top', subtype: 'polo', color: 'navy', imageUrl: 'https://static.zara.net/t2.jpg' },
+        { id: 'd-outer-2', macroCategory: 'outerwear', subtype: 'cardigan', color: 'olive', imageUrl: 'https://static.zara.net/o2.jpg' },
+        { id: 'd-bot-2', macroCategory: 'bottom', subtype: 'chino', color: 'stone', imageUrl: 'https://static.zara.net/b2.jpg' },
+        { id: 'd-shoe-2', macroCategory: 'shoes', subtype: 'derby', color: 'brown', imageUrl: 'https://static.zara.net/s2.jpg' },
+      ],
+    },
+  ];
+  const distinctCritiques = distinctLooks.map((l) => ({
+    candidateId: l.id,
+    reject: false,
+    slotColors: { top: 'white', outerwear: 'navy', bottom: 'grey', shoes: 'brown' },
+    slotObservations: { top: 'Clean top', outerwear: 'Distinct outer layer', bottom: 'Tailored drape', shoes: 'Polished leather shoe' },
+    relationships: [{ kind: 'outfit', observation: 'Balanced proportion and palette' }],
+    visualCohesion: 0.9,
+    styleFit: 0.88,
+    occasionFit: 0.9,
+    formalityFit: 0.88,
+    confidence: 0.94,
+    editorialScore: 8.8,
+  }));
+  const distinctMenu = [
+    { portfolioToken: 'F00', orderedLooks: ['L00', 'L01', 'L02'] },
+    { portfolioToken: 'F01', orderedLooks: ['L00', 'L01'] },
+  ];
+
+  assert.equal(isArchitecturallyDistinctApprovedTriple(distinctLooks, distinctCritiques, ['L00', 'L01', 'L02']), true);
+  assert.equal(isArchitecturallyDistinctApprovedTriple(looks, reviews, ['L00', 'L01', 'L02']), false, 'cloned blazer uniforms are NOT architecturally distinct');
+
+  const modelsCalled = [];
+  const res = await selectPhotoEditorialDeck({
+    looks: distinctLooks,
+    critiques: distinctCritiques,
+    portfolios: distinctMenu,
+    context: { style: 'classic', occasion: 'Work' },
+    apiKey: 'nvapi-test-distinct-triple-preserve',
+    openrouterApiKey: 'sk-or-v1-test-fast-editor-key-012345678',
+    fastVisualMode: true,
+    independentVisionJury: true,
+    timeoutMs: 5500,
+    authorizePhoto: () => true,
+    resolvePhoto: async () => ({ bytes: jpeg }),
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      modelsCalled.push({ url: String(url), model: body.model });
+      // Both primary OpenRouter AND secondary NVIDIA attempt to drop to 2-look F01 —
+      // portfolio editor MUST preserve verified architecturally distinct 3-look F00!
+      return result('F01');
+    },
+  });
+
+  assert.equal(res.status, 'selected');
+  assert.equal(res.visualJury, 'applied');
+  assert.equal(res.primaryVisionModel, OPENROUTER_JURY_MODEL, 'fastVisualMode uses OpenRouter Gemini 2.5 Flash as primary');
+  assert.deepEqual(res.tokens, ['L00', 'L01', 'L02'], 'NEVER drops verified architecturally distinct 3-look triple down to 2');
+  assert.equal(res.portfolioToken, 'F00');
+  assert.equal(res.preservedDistinctTriple, true);
+  assert.ok(modelsCalled.some((m) => m.model === OPENROUTER_JURY_MODEL && /openrouter\.ai/.test(m.url)));
 });

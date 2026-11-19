@@ -14,6 +14,8 @@
 import { buildPhotoEditorialContactSheet } from './photo_editor_contact_sheet.mjs';
 import { renderPortfolioComparisonSheet } from './editorial_board_renderer.mjs';
 import { editorialFashionIntent } from './editorial_fashion_intent.mjs';
+import { independentOutfitDirection } from './prototype.mjs';
+import { baseProductId } from './catalog_adapter.mjs';
 import {
   createProviderRouter,
   DEFAULT_MAX_CONCURRENCY,
@@ -142,6 +144,55 @@ export function validatePhotoEditorialPortfolioChoice(answer, menu) {
   return menu.find((x) => x.token === answer?.portfolio) || null;
 }
 
+/**
+ * Verify that a 3-look portfolio consists of three individually visually approved,
+ * pairwise SKU-disjoint, and genuinely architecturally distinct outfits (not cloned
+ * blazer/shirt/trouser uniforms). Used to ensure the portfolio editor NEVER drops
+ * a verified architecturally distinct 3-look triple down to 2 looks.
+ */
+export function isArchitecturallyDistinctApprovedTriple(looks, critiques, lookTokens) {
+  if (!Array.isArray(looks) || !Array.isArray(critiques) || !Array.isArray(lookTokens)) return false;
+  if (lookTokens.length !== 3 || new Set(lookTokens).size !== 3) return false;
+  const resolved = lookTokens.map((tok) => (/^L[0-9]{2}$/.test(String(tok || '')) ? looks[Number(String(tok).slice(1))] : null));
+  if (resolved.some((l) => !l || !Array.isArray(l.items) || l.items.length < 3)) return false;
+
+  const critiqueById = new Map(
+    critiques.filter((c) => c && typeof c.candidateId === 'string').map((c) => [c.candidateId, c]),
+  );
+  for (const look of resolved) {
+    const c = critiqueById.get(look.id);
+    if (!c || c.reject === true) return false;
+    if (typeof c.confidence === 'number' && c.confidence < 0.6) return false;
+  }
+
+  // Pairwise SKU-disjoint + genuine architectural distinction across all 3 pairs
+  for (let i = 0; i < 3; i++) {
+    const a = resolved[i];
+    for (let j = i + 1; j < 3; j++) {
+      const b = resolved[j];
+      const sharesSku = a.items.some((ia) => b.items.some((ib) =>
+        baseProductId(String(ia.id || '')) === baseProductId(String(ib.id || ''))
+        && String(ia.id || '').length > 0));
+      if (sharesSku) return false;
+      if (!independentOutfitDirection(a, b)) return false;
+    }
+  }
+  return true;
+}
+
+function preserveDistinctTripleSelection(chosen, menu, looks, critiques, enabled = true) {
+  if (!enabled || !chosen || !Array.isArray(menu)) return { chosen, preserved: false };
+  if (Array.isArray(chosen.looks) && chosen.looks.length === 3) return { chosen, preserved: false };
+  const distinctTriples = menu.filter((entry) =>
+    Array.isArray(entry.looks) && entry.looks.length === 3
+    && isArchitecturallyDistinctApprovedTriple(looks, critiques, entry.looks),
+  );
+  if (!distinctTriples.length) return { chosen, preserved: false };
+  const chosenSet = new Set(chosen.looks || []);
+  const superset = distinctTriples.find((t) => [...chosenSet].every((tok) => t.looks.includes(tok)));
+  return { chosen: superset || distinctTriples[0], preserved: true };
+}
+
 function parsePortfolioChoiceFromRouterResult(routerResult, menu) {
   if (!routerResult?.ok || typeof routerResult.content !== 'string') return null;
   try {
@@ -164,6 +215,8 @@ export async function selectPhotoEditorialDeck({
   router: injectedRouter = null,
   enableCrossLabFailover = false,
   crossLabFallbackModels = null,
+  fastVisualMode = false,
+  preserveDistinctVerifiedTriple = true,
   fetchImpl = fetch,
   signal,
   timeoutMs = 3200,
@@ -217,7 +270,10 @@ export async function selectPhotoEditorialDeck({
   let independentJury = 'not_run';
   let independentJuryModel = null;
   let independentJuryProvider = null;
+  let primaryVisionModelUsed = null;
+  let primaryVisionProviderUsed = null;
   let boardDimensions = null;
+  const minVisualTimeoutThreshold = fastVisualMode ? 3500 : 5800;
 
   try {
     const fashionScene = editorialFashionIntent(context);
@@ -293,9 +349,9 @@ export async function selectPhotoEditorialDeck({
     };
 
     if (typeof resolvePhoto === 'function' && typeof authorizePhoto === 'function'
-        && timeoutMs >= 5800 && !combined.aborted) {
+        && timeoutMs >= minVisualTimeoutThreshold && !combined.aborted) {
       const photoStart = Date.now();
-      const boardDeadline = Math.min(3800, Math.max(750, Math.floor(timeoutMs * 0.45)));
+      const boardDeadline = Math.min(fastVisualMode ? 2400 : 3800, Math.max(750, Math.floor(timeoutMs * 0.45)));
       let sheet = null;
 
       if (typeof boardRenderer === 'function') {
@@ -360,7 +416,9 @@ export async function selectPhotoEditorialDeck({
       }
 
       if (sheet && !combined.aborted) {
-        const visionRemaining = Math.min(7800, Math.max(600, timeoutMs - (Date.now() - photoStart) - 1200));
+        const visionCapMs = (fastVisualMode || allowCrossLabFailover) ? 6000 : 7800;
+        const visionMarginMs = fastVisualMode ? 450 : 1200;
+        const visionRemaining = Math.min(visionCapMs, Math.max(600, timeoutMs - (Date.now() - photoStart) - visionMarginMs));
         const visionController = new AbortController();
         const visionTimer = setTimeout(() => visionController.abort(), visionRemaining);
         const visionSignal = AbortSignal.any([combined, visionController.signal]);
@@ -378,17 +436,22 @@ export async function selectPhotoEditorialDeck({
           } catch { /* abandon unavailable optional jury */ }
           finally { clearTimeout(waitTimer); }
           if (!alternate || combined.aborted) return null;
+          const preservedStandalone = preserveDistinctTripleSelection(
+            alternate, menu, looks, critiques, preserveDistinctVerifiedTriple,
+          );
+          const finalStandalone = preservedStandalone.chosen;
           return {
             status: 'selected',
-            tokens: alternate.looks,
-            portfolioToken: alternate.token,
-            creativeGap: alternate.looks.length < 3
+            tokens: finalStandalone.looks,
+            portfolioToken: finalStandalone.token,
+            creativeGap: finalStandalone.looks.length < 3
               ? safePhotoEditorialCreativeGap(alternate.answer?.missingFashionDirection)
               : null,
             providerCalls,
             visualJury: 'applied',
             visualMediaStatus: 'ready',
             independentJury: 'standalone',
+            ...(preservedStandalone.preserved ? { preservedDistinctTriple: true } : {}),
             ...(independentJuryModel ? { independentJuryModel, independentJuryProvider } : {}),
             ...(boardDimensions ? { boardDimensions } : {}),
           };
@@ -448,6 +511,8 @@ export async function selectPhotoEditorialDeck({
 
           const sheetDataUrl = 'data:image/jpeg;base64,' + sheet.bytes.toString('base64');
 
+          const useFastOpenrouterPrimary = Boolean(fastVisualMode && hasOpenrouterKey);
+
           // Cross-lab independent portfolio jury via ai_provider_router.mjs:
           // Kimi K3.1 Pro (Moonshot) -> OpenRouter Gemini 2.5 Flash (Google) -> Gemma 4 31B (Google)
           if (independentVisionJury === true && menu.some((p) => p.looks.length >= 2) && !visionSignal.aborted) {
@@ -486,19 +551,27 @@ export async function selectPhotoEditorialDeck({
             const crossLabFallbacks = allowCrossLabFailover
               ? (Array.isArray(crossLabFallbackModels)
                 ? crossLabFallbackModels
-                : [
-                    { model: OPENROUTER_JURY_MODEL, provider: 'openrouter' },
-                    { model: GEMMA_JURY_MODEL, provider: 'nvidia' },
-                  ])
+                : (useFastOpenrouterPrimary
+                  ? [
+                      { model: GEMMA_JURY_MODEL, provider: 'nvidia' },
+                      { model: PHOTO_PORTFOLIO_VISION_MODEL, provider: 'nvidia' },
+                    ]
+                  : [
+                      { model: OPENROUTER_JURY_MODEL, provider: 'openrouter' },
+                      { model: GEMMA_JURY_MODEL, provider: 'nvidia' },
+                    ]))
               : [];
 
             const primaryCrossLabModel = hasNvidiaKey
-              ? INDEPENDENT_FASHION_JURY_MODEL
+              ? (useFastOpenrouterPrimary ? PHOTO_PORTFOLIO_VISION_MODEL : INDEPENDENT_FASHION_JURY_MODEL)
               : (providerRouter.selectCrossLabModel(PHOTO_PORTFOLIO_VISION_MODEL, { capability: 'vision' })?.model
                 || OPENROUTER_JURY_MODEL);
             const primaryCrossLabProvider = primaryCrossLabModel === OPENROUTER_JURY_MODEL ? 'openrouter' : 'nvidia';
 
-            const outerRemaining = Math.max(1000, boundedTimeoutMs - (Date.now() - startedAt));
+            const outerRemaining = Math.max(
+              1000,
+              Math.min(fastVisualMode ? 5500 : boundedTimeoutMs, boundedTimeoutMs - (Date.now() - startedAt)),
+            );
             independentPromise = Promise.resolve().then(() => providerRouter.callVisionModel({
               model: primaryCrossLabModel,
               provider: primaryCrossLabProvider,
@@ -538,8 +611,20 @@ export async function selectPhotoEditorialDeck({
             });
           }
 
-          const primaryModel = hasNvidiaKey ? PHOTO_PORTFOLIO_VISION_MODEL : OPENROUTER_JURY_MODEL;
-          const primaryProvider = hasNvidiaKey ? 'nvidia' : 'openrouter';
+          const primaryModel = useFastOpenrouterPrimary
+            ? OPENROUTER_JURY_MODEL
+            : (hasNvidiaKey ? PHOTO_PORTFOLIO_VISION_MODEL : OPENROUTER_JURY_MODEL);
+          const primaryProvider = useFastOpenrouterPrimary
+            ? 'openrouter'
+            : (hasNvidiaKey ? 'nvidia' : 'openrouter');
+          const primaryFallbacks = useFastOpenrouterPrimary
+            ? [
+                { model: PHOTO_PORTFOLIO_VISION_MODEL, provider: 'nvidia' },
+                { model: GEMMA_JURY_MODEL, provider: 'nvidia' },
+              ]
+            : (fastVisualMode && hasOpenrouterKey
+              ? [{ model: OPENROUTER_JURY_MODEL, provider: 'openrouter' }]
+              : []);
           const primaryRes = await providerRouter.callVisionModel({
             model: primaryModel,
             provider: primaryProvider,
@@ -560,14 +645,22 @@ export async function selectPhotoEditorialDeck({
             chat_template_kwargs: { enable_thinking: false },
             timeoutMs: visionRemaining,
             providerTimeoutMs: visionRemaining,
+            ...(primaryFallbacks.length ? { primaryTimeoutMs: Math.max(1200, Math.min(4200, Math.floor(visionRemaining * 0.68))) } : {}),
             signal: visionSignal,
             maxResponseBytes: 15_000,
             maxTransientRetries: 0,
-            allowFailover: false, // Preserve exact primary vs independent-standalone vs text fallback semantics
-            preserveRequestShape: primaryProvider === 'nvidia',
+            // Preserve exact primary vs independent-standalone vs text fallback semantics
+            // in standard mode; in fastVisualMode allow fast OpenRouter <-> NVIDIA failover!
+            allowFailover: primaryFallbacks.length > 0,
+            fallbacks: primaryFallbacks,
+            preserveRequestShape: primaryProvider === 'nvidia' && primaryFallbacks.length === 0,
             parseJson: false,
           });
           providerCalls += Math.max(1, primaryRes.attempts?.length || 1);
+          if (primaryRes.ok) {
+            primaryVisionModelUsed = primaryRes.model || primaryModel;
+            primaryVisionProviderUsed = primaryRes.provider || primaryProvider;
+          }
 
           if (primaryRes.ok) {
             const visionSelected = parsePortfolioChoiceFromRouterResult(primaryRes, menu);
@@ -575,18 +668,41 @@ export async function selectPhotoEditorialDeck({
               let chosen = visionSelected;
               let gapAnswer = visionSelected.answer;
               let secondSize = null;
+              let preservedDistinctTriple = false;
 
               if (independentPromise) {
-                const second = await independentPromise;
+                let second = null;
+                if (fastVisualMode) {
+                  let secondTimer;
+                  try {
+                    const secondWaitMs = Math.max(400, Math.min(2500, boundedTimeoutMs - (Date.now() - startedAt) - 250));
+                    second = await Promise.race([
+                      independentPromise,
+                      new Promise((resolve) => { secondTimer = setTimeout(() => resolve(null), secondWaitMs); }),
+                    ]);
+                  } finally {
+                    clearTimeout(secondTimer);
+                  }
+                } else {
+                  second = await independentPromise;
+                }
                 if (!second) {
                   independentJury = 'unavailable';
                 } else {
                   secondSize = second.looks.length;
                   if (second.looks.length < chosen.looks.length
                       && second.looks.every((tok) => chosen.looks.includes(tok))) {
-                    chosen = second;
-                    gapAnswer = second.answer;
-                    independentJury = 'narrowed';
+                    // NEVER drop a verified architecturally distinct 3-look triple down to 2 looks!
+                    if (preserveDistinctVerifiedTriple
+                        && chosen.looks.length === 3
+                        && isArchitecturallyDistinctApprovedTriple(looks, critiques, chosen.looks)) {
+                      independentJury = 'disagreed';
+                      preservedDistinctTriple = true;
+                    } else {
+                      chosen = second;
+                      gapAnswer = second.answer;
+                      independentJury = 'narrowed';
+                    }
                   } else if (second.token === chosen.token) {
                     independentJury = 'agreed';
                   } else {
@@ -675,6 +791,14 @@ export async function selectPhotoEditorialDeck({
                 }
               }
 
+              const finalPreserved = preserveDistinctTripleSelection(
+                chosen, menu, looks, critiques, preserveDistinctVerifiedTriple,
+              );
+              if (finalPreserved.preserved) {
+                chosen = finalPreserved.chosen;
+                preservedDistinctTriple = true;
+              }
+
               return {
                 status: 'selected',
                 tokens: chosen.looks,
@@ -687,6 +811,8 @@ export async function selectPhotoEditorialDeck({
                 visualMediaStatus,
                 independentJury,
                 independentVoteSize: secondSize,
+                ...(preservedDistinctTriple ? { preservedDistinctTriple: true } : {}),
+                ...(primaryVisionModelUsed ? { primaryVisionModel: primaryVisionModelUsed, primaryVisionProvider: primaryVisionProviderUsed } : {}),
                 ...(independentJuryModel ? { independentJuryModel, independentJuryProvider } : {}),
                 ...(boardDimensions ? { boardDimensions } : {}),
               };
@@ -750,16 +876,22 @@ export async function selectPhotoEditorialDeck({
     }
 
     const selected = parsePortfolioChoiceFromRouterResult(textRes, menu);
-    return selected
-      ? {
-          status: 'selected',
-          tokens: selected.looks,
-          portfolioToken: selected.token,
-          providerCalls,
-          visualJury,
-          visualMediaStatus,
-        }
-      : { status: 'invalid_selection', tokens: [], providerCalls, visualJury, visualMediaStatus };
+    if (!selected) {
+      return { status: 'invalid_selection', tokens: [], providerCalls, visualJury, visualMediaStatus };
+    }
+    const textPreserved = preserveDistinctTripleSelection(
+      selected, menu, looks, critiques, preserveDistinctVerifiedTriple,
+    );
+    const finalTextChoice = textPreserved.chosen;
+    return {
+      status: 'selected',
+      tokens: finalTextChoice.looks,
+      portfolioToken: finalTextChoice.token,
+      providerCalls,
+      visualJury,
+      visualMediaStatus,
+      ...(textPreserved.preserved ? { preservedDistinctTriple: true } : {}),
+    };
   } catch {
     return {
       status: combined.aborted ? 'timeout' : 'provider_unavailable',

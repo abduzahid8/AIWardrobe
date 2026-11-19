@@ -252,6 +252,23 @@ export function parseRepairDirective(directive = '', defectCategory = '') {
       ? 'relaxed'
       : null;
 
+  const isPhotoDefect = String(defectCategory || '').trim().toLowerCase() === 'photo_quality_defect'
+    || /\b(?:crop(?:ped)?|close[ -]?up|cuff|sleeve zoom|collar[ -]?only|partial[ -]?garment|blurry|broken|low[ -]?res|swatch|full[ -]?garment)\b/.test(rawText);
+
+  const lighterLayer = String(defectCategory || '').trim().toLowerCase() === 'weather_mismatch'
+    || /\b(?:lighter|breathable|unlined|summer|warm[ -]?weather|too heavy|heavy coat|overcoat|peacoat|parka|indoor)\b/.test(rawText);
+
+  if (lighterLayer) {
+    for (const heavy of ['overcoat', 'coat', 'peacoat', 'parka', 'puffer']) {
+      if (!targetSubtypes.has(heavy)) avoidSubtypes.add(heavy);
+    }
+    if (targetSubtypes.size === 0) {
+      targetSubtypes.add('overshirt');
+      targetSubtypes.add('cardigan');
+      targetSubtypes.add('blazer');
+    }
+  }
+
   return {
     targetColors: [...targetColors],
     avoidColors: [...avoidColors],
@@ -262,6 +279,8 @@ export function parseRepairDirective(directive = '', defectCategory = '') {
     formalityShift,
     budgetDirection,
     fitShift,
+    isPhotoDefect,
+    lighterLayer,
   };
 }
 
@@ -428,7 +447,11 @@ export function rankSlotReplacementCandidates({
   const currentColor = itemColorOf(currentItem);
   const currentSubtype = itemSubtypeOf(currentItem);
   const currentTexture = itemTextureOf(currentItem);
+  const currentImageUrl = String(currentItem?.imageUrl || currentItem?.image_url || '').trim();
   const currentPrice = Number(currentItem?.price);
+  const weatherTemp = Number(context?.weather?.temp ?? context?.weather?.temperature);
+  const isWarmWeather = Number.isFinite(weatherTemp) && weatherTemp >= 24;
+  const isIndoorMildWeather = Number.isFinite(weatherTemp) && weatherTemp > 10;
 
   const occasion = String(context?.occasion || '').toLowerCase();
   const occasionTargetFormality = /\b(formal|wedding|gala|black[ -]?tie)\b/.test(occasion)
@@ -453,6 +476,8 @@ export function rankSlotReplacementCandidates({
     const id = String(item.id);
     if (blockedIds.has(id)) continue;
     if (itemSlotOf(item) !== slot) continue;
+    const candidateImageUrl = String(item.imageUrl || item.image_url || '').trim();
+    if (currentImageUrl && candidateImageUrl && candidateImageUrl === currentImageUrl) continue;
 
     // Quality flywheel quarantine gate
     const qRow = qualityMap instanceof Map ? qualityMap.get(id) : (qualityMap && typeof qualityMap === 'object' ? qualityMap[id] : null);
@@ -537,16 +562,45 @@ export function rankSlotReplacementCandidates({
       reasons.push(`dna_brand:${brand}`);
     }
 
-    // 7. Catalog quality flywheel score
+    // 7. Catalog quality flywheel score & verified photo bonus for photo_quality_defect rescue
     const qScore = Number.isFinite(Number(qRow?.qualityScore))
       ? Number(qRow.qualityScore)
       : Number.isFinite(Number(item.qualityScore))
         ? Number(item.qualityScore)
         : 0.65;
-    score += (Math.max(0, Math.min(1, qScore)) - 0.5) * 0.20;
+    score += (Math.max(0, Math.min(1, qScore)) - 0.5) * (parsed.isPhotoDefect ? 0.30 : 0.20);
+    if (parsed.isPhotoDefect && item.visualEvidenceVerified === true) {
+      score += 0.12;
+      reasons.push('verified_full_studio_photo');
+    }
 
-    // 8. Anti-clone penalty vs the rejected/replaced item
-    if (currentItem) {
+    // 7b. Climate & lightweight layer suitability (hot >=24C or weather_mismatch rescue)
+    const itemNameLower = String(item.name || '').toLowerCase();
+    if (slot === 'outerwear' && (isWarmWeather || parsed.lighterLayer)) {
+      const isHeavyOuter = /\b(?:overcoat|peacoat|parka|puffer|down|shearling|quilted|heavy wool|winter coat)\b/.test(itemNameLower)
+        || ['overcoat', 'coat'].includes(subtype);
+      const isBreathableOuter = /\b(?:linen|cotton|seersucker|unlined|lightweight|chambray|summer|overshirt|shacket|chore|fine[ -]?knit)\b/.test(itemNameLower)
+        || ['overshirt', 'cardigan'].includes(subtype);
+      if (isHeavyOuter && (isWarmWeather || isIndoorMildWeather || parsed.lighterLayer)) {
+        score -= 0.35;
+        reasons.push('heavy_outerwear_climate_mismatch');
+      } else if (isBreathableOuter) {
+        score += 0.22;
+        reasons.push('breathable_layer_match');
+      }
+    } else if (slot === 'shoes' && isWarmWeather) {
+      if (['boot', 'chelsea'].includes(subtype) || /\b(?:winter boot|snow boot|shearling|lug boot)\b/.test(itemNameLower)) {
+        score -= 0.28;
+        reasons.push('heavy_boot_hot_weather');
+      } else if (['loafer', 'driver', 'minimal-sneaker', 'espadrille'].includes(subtype)) {
+        score += 0.16;
+        reasons.push('warm_weather_footwear');
+      }
+    }
+
+    // 8. Anti-clone penalty vs the rejected/replaced item (skipped when replacing a cropped/broken photo
+    // so a clean full-garment studio photo in the same color/subtype can directly rescue the look!)
+    if (currentItem && !parsed.isPhotoDefect) {
       const sameSub = currentSubtype && subtype === currentSubtype;
       const sameCol = currentColor && color === currentColor;
       const sameTex = currentTexture && texture === currentTexture;
@@ -656,6 +710,45 @@ async function evaluateWithVisualCritic(visualCritic, candidateLook, board, cont
   return raw && typeof raw === 'object' ? raw : null;
 }
 
+async function evaluateBatchWithVisualCritic(visualCritic, entries, context, personalStyleDna, signal) {
+  if (typeof visualCritic !== 'function' || !Array.isArray(entries) || entries.length === 0) return new Map();
+  const payloads = [];
+  const editorialBoards = new Map();
+  for (const entry of entries) {
+    const { candidateLook, board } = entry;
+    payloads.push({
+      id: candidateLook.id,
+      referenceId: candidateLook.referenceId || null,
+      products: candidateLook.items.map((item) => ({
+        id: String(item.id),
+        slot: itemSlotOf(item),
+        imageUrl: item.imageUrl || item.image_url || '',
+        name: item.name || '',
+        subtype: item.subtype || '',
+      })),
+      ...(board?.jpegBuffer ? { editorialBoardJpeg: board } : {}),
+    });
+    if (board?.jpegBuffer) editorialBoards.set(candidateLook.id, board);
+  }
+  const criticReq = {
+    ...(context || {}),
+    ...(personalStyleDna?.promptBlock ? { personalStyleDnaPromptBlock: personalStyleDna.promptBlock } : {}),
+  };
+  const raw = await Promise.resolve(visualCritic(payloads, criticReq, {
+    signal,
+    ...(editorialBoards.size ? { editorialBoards } : {}),
+  }));
+  const byId = new Map();
+  if (Array.isArray(raw)) {
+    for (const v of raw) {
+      if (v && typeof v.candidateId === 'string') byId.set(v.candidateId, v);
+    }
+  } else if (raw && typeof raw === 'object' && typeof raw.candidateId === 'string') {
+    byId.set(raw.candidateId, raw);
+  }
+  return byId;
+}
+
 /**
  * Surgically refine an imperfect 4-item look by locking its 3 strong pieces
  * and swapping ONLY `critique.weakestSlot` against the full `catalogPool`,
@@ -683,6 +776,7 @@ export async function refineLookSurgically({
   minEditorialScore = DEFAULT_MIN_EDITORIAL_SCORE,
   minVisualQuality = DEFAULT_MIN_VISUAL_QUALITY,
   topCandidatesPerRound = 3,
+  parallelCandidates = false,
   signal = null,
 } = {}) {
   const startedAt = Date.now();
@@ -816,7 +910,174 @@ export async function refineLookSurgically({
     let evaluatedInRound = 0;
     let roundBest = null;
 
-    for (let idx = 0; idx < ranked.length && evaluatedInRound < topCandidatesPerRound; idx++) {
+    if (parallelCandidates === true && topCandidatesPerRound > 1 && typeof visualCritic === 'function') {
+      // Fast parallel batch mode: validate hard gates, render all candidate boards
+      // in parallel (~50ms with warm photoCache), then evaluate in ONE parallel critic wave (~2s)!
+      const gatePassed = [];
+      for (let idx = 0; idx < ranked.length && gatePassed.length < topCandidatesPerRound; idx++) {
+        if (signal?.aborted || Date.now() >= deadlineAt) break;
+        const candidateEntry = ranked[idx];
+        const replacement = candidateEntry.item;
+        const replacementId = String(replacement.id);
+        triedItemIds.add(replacementId);
+
+        const candidateLookId = `${String(look.id || 'look').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 44)}_sr${round}_${idx}`;
+        const candidateLook = buildReplacedLook(workingLook, weakestSlot, replacement, candidateLookId);
+
+        const gate = await runHardGate(hardGateValidator, candidateLook, context);
+        if (!gate.ok) {
+          attempts.push({
+            round,
+            slot: weakestSlot,
+            replacedItemId: String(slotItem.id),
+            candidateItemId: replacementId,
+            rankScore: candidateEntry.score,
+            hardGatePassed: false,
+            hardGateReason: gate.reason,
+            criticRan: false,
+            score10: null,
+            committed: false,
+          });
+          continue;
+        }
+        gatePassed.push({ candidateEntry, replacement, replacementId, candidateLook });
+      }
+
+      const renderedReady = [];
+      if (gatePassed.length > 0 && !signal?.aborted && Date.now() < deadlineAt) {
+        const rendered = await Promise.all(gatePassed.map(async (entry) => {
+          if (typeof boardRenderer !== 'function') return { ...entry, board: null };
+          let board = null;
+          try {
+            board = await Promise.resolve(boardRenderer(entry.candidateLook.items, {
+              lookToken: entry.candidateLook.id,
+              title: entry.candidateLook.title || 'SURGICAL REFINEMENT BOARD',
+              anonymizeLabels: true,
+              requireAllPhotos: true,
+              deadlineMs: Math.max(400, deadlineAt - Date.now()),
+              signal,
+            }));
+          } catch {
+            board = { ok: false, error: 'board_render_error' };
+          }
+          return { ...entry, board };
+        }));
+
+        for (const entry of rendered) {
+          if (entry.board && entry.board.ok === false) {
+            attempts.push({
+              round,
+              slot: weakestSlot,
+              replacedItemId: String(slotItem.id),
+              candidateItemId: entry.replacementId,
+              rankScore: entry.candidateEntry.score,
+              hardGatePassed: true,
+              boardRendered: false,
+              boardError: entry.board.error || 'board_failed',
+              criticRan: false,
+              score10: null,
+              committed: false,
+            });
+            continue;
+          }
+          renderedReady.push(entry);
+        }
+      }
+
+      if (renderedReady.length > 0 && !signal?.aborted && Date.now() < deadlineAt) {
+        evaluatedInRound += renderedReady.length;
+        let verdictById = new Map();
+        try {
+          verdictById = await evaluateBatchWithVisualCritic(
+            visualCritic, renderedReady, context, personalStyleDna, signal,
+          );
+        } catch {
+          verdictById = new Map();
+        }
+
+        let bestWinning = null;
+        for (const entry of renderedReady) {
+          const newCritique = verdictById.get(entry.candidateLook.id) || null;
+          if (!newCritique) {
+            attempts.push({
+              round,
+              slot: weakestSlot,
+              replacedItemId: String(slotItem.id),
+              candidateItemId: entry.replacementId,
+              rankScore: entry.candidateEntry.score,
+              hardGatePassed: true,
+              boardRendered: Boolean(entry.board?.jpegBuffer),
+              criticRan: true,
+              criticError: 'critic_abstained',
+              score10: null,
+              committed: false,
+            });
+            continue;
+          }
+          const nextScore = computeCritiqueCompositeScore(newCritique, { minEditorialScore, minVisualQuality });
+          const strictlyImproved = nextScore.score10 > baseline.score10
+            || (baseline.rejected && !nextScore.rejected && nextScore.score10 >= baseline.score10);
+          const clearedAndImproved = nextScore.passedFloor && strictlyImproved;
+
+          attempts.push({
+            round,
+            slot: weakestSlot,
+            replacedItemId: String(slotItem.id),
+            candidateItemId: entry.replacementId,
+            rankScore: entry.candidateEntry.score,
+            hardGatePassed: true,
+            boardRendered: Boolean(entry.board?.jpegBuffer),
+            criticRan: true,
+            score10: nextScore.score10,
+            score01: nextScore.score01,
+            passedFloor: nextScore.passedFloor,
+            rejected: nextScore.rejected,
+            committed: clearedAndImproved,
+          });
+
+          if (clearedAndImproved && (!bestWinning || nextScore.score10 > bestWinning.nextScore.score10)) {
+            bestWinning = { entry, newCritique, nextScore };
+          } else if (nextScore.score10 > workingScore.score10) {
+            const candidateRecord = {
+              look: entry.candidateLook,
+              critique: newCritique,
+              board: entry.board,
+              swappedSlot: weakestSlot,
+              replacedItemId: String(slotItem.id),
+              selectedItemId: entry.replacementId,
+              score10: nextScore.score10,
+              score01: nextScore.score01,
+              passedFloor: nextScore.passedFloor,
+            };
+            if (!roundBest || candidateRecord.score10 > roundBest.score10) roundBest = candidateRecord;
+            if (!bestImprovement || candidateRecord.score10 > bestImprovement.score10) bestImprovement = candidateRecord;
+          }
+        }
+
+        if (bestWinning) {
+          return {
+            status: 'refined_and_approved',
+            improved: true,
+            committed: true,
+            approved: true,
+            look: bestWinning.entry.candidateLook,
+            critique: bestWinning.newCritique,
+            board: bestWinning.entry.board,
+            swappedSlot: weakestSlot,
+            replacedItemId: String(slotItem.id),
+            selectedItemId: bestWinning.entry.replacementId,
+            previousScore: baseline.score10,
+            newScore: bestWinning.nextScore.score10,
+            scoreDelta: Number((bestWinning.nextScore.score10 - baseline.score10).toFixed(2)),
+            rounds: roundsExecuted,
+            attempts,
+            diagnostic: null,
+            latencyMs: Date.now() - startedAt,
+            version: SURGICAL_REFINER_VERSION,
+          };
+        }
+      }
+    } else for (let idx = 0; idx < ranked.length && evaluatedInRound < topCandidatesPerRound; idx++) {
       if (signal?.aborted || Date.now() >= deadlineAt) break;
 
       const candidateEntry = ranked[idx];
@@ -1238,4 +1499,82 @@ export async function swapSingleSlot({
     latencyMs: Date.now() - startedAt,
     version: SURGICAL_REFINER_VERSION,
   };
+}
+
+/**
+ * Execute multiple surgical 1-slot rescues IN PARALLEL (`Promise.all`) while
+ * pre-partitioning replacement SKU exclusions per target so concurrent rescues
+ * targeting the same slot never collide on the same replacement SKU.
+ */
+export async function refineLooksSurgicallyInParallel({
+  targets = [],
+  catalogPool = [],
+  context = {},
+  personalStyleDna = null,
+  hardGateValidator = null,
+  visualCritic = null,
+  boardRenderer = null,
+  maxRounds = 1,
+  deadlineMs = 8_000,
+  excludedItemIds = [],
+  qualityMap = null,
+  priceToBudgetCurrency = null,
+  minEditorialScore = DEFAULT_MIN_EDITORIAL_SCORE,
+  minVisualQuality = DEFAULT_MIN_VISUAL_QUALITY,
+  topCandidatesPerRound = 2,
+  parallelCandidates = true,
+  signal = null,
+} = {}) {
+  if (!Array.isArray(targets) || targets.length === 0) return [];
+  const boundedTargets = targets.slice(0, 4);
+  const baseExcluded = new Set(Array.from(excludedItemIds || [], String));
+  // Pre-reserve disjoint top replacement SKUs per target when targets share a weakestSlot
+  const reservedAcrossTargets = new Set(baseExcluded);
+  const perTargetExcluded = [];
+
+  for (const target of boundedTargets) {
+    const targetExcluded = new Set(reservedAcrossTargets);
+    const slot = String(target?.critique?.weakestSlot || '').trim().toLowerCase();
+    if (CANONICAL_SLOTS.includes(slot)) {
+      const topPicks = rankSlotReplacementCandidates({
+        look: target.look,
+        targetSlot: slot,
+        directive: target?.critique?.repairDirective || '',
+        defectCategory: target?.critique?.defectCategory || '',
+        catalogPool,
+        context: target.context || context,
+        personalStyleDna,
+        excludedIds: targetExcluded,
+        qualityMap,
+        priceToBudgetCurrency,
+        limit: Math.max(2, topCandidatesPerRound),
+      });
+      for (const pick of topPicks) {
+        if (pick?.item?.id != null) reservedAcrossTargets.add(String(pick.item.id));
+      }
+    }
+    perTargetExcluded.push([...targetExcluded]);
+  }
+
+  return Promise.all(boundedTargets.map((target, idx) => refineLookSurgically({
+    look: target.look,
+    critique: target.critique,
+    catalogPool,
+    lockedSlots: target.lockedSlots || [],
+    context: target.context || context,
+    personalStyleDna,
+    hardGateValidator: target.hardGateValidator || hardGateValidator,
+    visualCritic,
+    boardRenderer,
+    maxRounds,
+    deadlineMs,
+    excludedItemIds: perTargetExcluded[idx],
+    qualityMap,
+    priceToBudgetCurrency,
+    minEditorialScore,
+    minVisualQuality,
+    topCandidatesPerRound,
+    parallelCandidates,
+    signal,
+  })));
 }

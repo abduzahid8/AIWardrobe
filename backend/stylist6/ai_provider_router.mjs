@@ -118,7 +118,7 @@ export const MODEL_REGISTRY = Object.freeze({
     fixedTopP: false,
     costPer1kPromptUsd: 0.00015,
     costPer1kCompletionUsd: 0.0006,
-    defaultTimeoutMs: 10_000,
+    defaultTimeoutMs: 8_000,
     crossLabRank: 10,
   }),
 });
@@ -808,7 +808,18 @@ export function createProviderRouter(config = {}) {
       chain.push(spec);
     };
 
-    if (req.excludeFamily && !req.model) {
+    const preferFastCrossLabVision = capability === 'vision'
+      && (req.preferCrossLabFastVision === true || req.fastVisualMode === true)
+      && isProviderConfigured('openrouter');
+
+    if (preferFastCrossLabVision) {
+      // Fast cross-lab primary vision (~1.8–2.5s on OpenRouter Gemini 2.5 Flash)
+      // with automatic circuit-breaker failover to NVIDIA VL / Gemma 4 / Kimi.
+      pushTarget(openrouterVisionModel, 'openrouter');
+      if (req.model && req.model !== openrouterVisionModel) {
+        pushTarget(req.model, req.provider || null);
+      }
+    } else if (req.excludeFamily && !req.model) {
       const cross = selectCrossLabModel(req.excludeFamily, {
         capability,
         preferProvider: req.preferProvider || null,
@@ -1258,6 +1269,11 @@ export function createProviderRouter(config = {}) {
         };
       }
       const spec = chain[i];
+      const attemptProviderTimeoutMs = (
+        i === 0 && chain.length > 1 && Number.isFinite(req.primaryTimeoutMs) && req.primaryTimeoutMs > 0
+      )
+        ? Math.min(req.providerTimeoutMs || req.primaryTimeoutMs, req.primaryTimeoutMs)
+        : (req.providerTimeoutMs || null);
       const result = await executeSingleTarget(spec, req, {
         deadlineAt,
         callerSignal: req.signal || null,
@@ -1265,7 +1281,7 @@ export function createProviderRouter(config = {}) {
         preserveRequestShape: req.preserveRequestShape === true && i === 0,
         parseJson: req.parseJson === true,
         maxResponseBytes: req.maxResponseBytes || DEFAULT_MAX_RESPONSE_BYTES,
-        providerTimeoutMs: req.providerTimeoutMs || null,
+        providerTimeoutMs: attemptProviderTimeoutMs,
       });
 
       attempts.push({

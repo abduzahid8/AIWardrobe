@@ -27,7 +27,7 @@ import { editorialDeckCopy, DECK_COPY_VERSION } from './deck_editorial_copy.mjs'
 import { editorialRegisterVeto, EDITORIAL_REGISTER_VERSION } from './editorial_register.mjs';
 import { deliberatelyRelaxedIntent } from './editorial_intent.mjs';
 import { buildPerDirectionCandidatePools } from './per_direction_retrieval.mjs';
-import { refineLookSurgically } from './surgical_refiner.mjs';
+import { refineLookSurgically, refineLooksSurgicallyInParallel } from './surgical_refiner.mjs';
 import { scoreOutfitColorTheory } from '../../src/domain/colorTheory.ts';
 import { scoreThermalSuitability } from '../../src/domain/outfitGrammar.ts';
 import { scoreLookTasteAffinity, scoreItemTasteAffinity } from './taste_learning.mjs';
@@ -1937,6 +1937,10 @@ export async function recommendFashionDeck({
   qualityFlywheel = null,
   qualityMap = null,
   boardRenderer = null,
+  photoByteCache = null,
+  fastVisualMode = false,
+  prewarmPhotos = null,
+  fxSnapshot = null,
   perDirectionPools = null,
 }) {
   const reviewedLimit = Number.isInteger(visualCandidateLimit)
@@ -2022,9 +2026,31 @@ export async function recommendFashionDeck({
     const excludedBases=new Set(
       (Array.isArray(request.excludedIds)?request.excludedIds:[])
         .map(id=>baseProductId(String(id))));
-    const prepared=Array.isArray(catalog)?catalog.slice(0,650)
+    // Keep balanced per-slot representation when large catalogs (>650 items)
+    // arrive grouped by slot so affordable shoes and warm layers are never truncated.
+    const composerWindow=(Array.isArray(catalog)&&catalog.length>650)?(()=>{
+      const bySlot=Object.fromEntries(slots.map(s=>[s,[]]));
+      const other=[];
+      for(const it of catalog){
+        if(!it||excludedBases.has(baseProductId(String(it.id))))continue;
+        if(bySlot[it.macroCategory])bySlot[it.macroCategory].push(it);
+        else other.push(it);
+      }
+      const out=[];
+      const maxPerSlot=170;
+      for(let i=0;i<maxPerSlot&&out.length<650;i++){
+        let added=false;
+        for(const s of slots){
+          if(i<bySlot[s].length&&out.length<650){out.push(bySlot[s][i]);added=true;}
+        }
+        if(!added)break;
+      }
+      for(const it of other){if(out.length>=650)break;out.push(it);}
+      return out;
+    })():(Array.isArray(catalog)?catalog.slice(0,650):[]);
+    const prepared=composerWindow
       .filter(item=>!excludedBases.has(baseProductId(String(item.id))))
-      .map(item=>fashionScorer.prepare(item)).filter(Boolean):[];
+      .map(item=>fashionScorer.prepare(item)).filter(Boolean);
     // When the first visual artist is legally enabled, ensure that even
     // source-authorized items OUTSIDE the 650-item ranker window reach the
     // actual artist's limited 48-P-token menu. All original SKU feasibility
@@ -2046,7 +2072,9 @@ export async function recommendFashionDeck({
       try{
         resolvedPerDirectionPools=buildPerDirectionCandidatePools({
           directions:aiPlans,catalog:visualSeed,
-          context:{...context,budget:request.budget,requiredIds,hygieneAlreadyApplied:true},
+          context:{...context,budget:request.budget,requiredIds,hygieneAlreadyApplied:true,priceToBudgetCurrency,...(fxSnapshot?{fxSnapshot}:{})},
+          priceToBudgetCurrency,
+          ...(fxSnapshot?{fxSnapshot}:{}),
           personalStyleDna,tasteProfile,qualityMap:resolvedQualityMap,perSlotLimit:14,
         });
       }catch{resolvedPerDirectionPools=null;}
@@ -2231,7 +2259,9 @@ export async function recommendFashionDeck({
             try{
               resolvedPerDirectionPools=buildPerDirectionCandidatePools({
                 directions:aiPlans,catalog:extra,
-                context:{...context,budget:request.budget,requiredIds,hygieneAlreadyApplied:true},
+                context:{...context,budget:request.budget,requiredIds,hygieneAlreadyApplied:true,priceToBudgetCurrency,...(fxSnapshot?{fxSnapshot}:{})},
+                priceToBudgetCurrency,
+                ...(fxSnapshot?{fxSnapshot}:{}),
                 personalStyleDna,tasteProfile,qualityMap:resolvedQualityMap,perSlotLimit:14,
               });
             }catch{resolvedPerDirectionPools=null;}
@@ -2557,8 +2587,68 @@ export async function recommendFashionDeck({
             !requiredIds.length && !explicitlyRequestsLuxury(context),
           onCritiques:rows=>{primaryCritiques=rows;},
       };
+      // Pre-fetch candidate photos in parallel into photoByteCache and pre-render
+      // 1024x1024 proportion-aware studio look boards in parallel before Wave 1 critique.
+      const waveBoardCache = new Map();
+      const boundBoardRenderer = typeof boardRenderer === 'function'
+        ? (items, opts = {}) => boardRenderer(items, {
+            ...(photoByteCache ? { photoCache: photoByteCache } : {}),
+            ...opts,
+          })
+        : null;
+      const prepareVisualWave = async (waveCandidates) => {
+        if (!Array.isArray(waveCandidates) || !waveCandidates.length) return;
+        if (typeof prewarmPhotos === 'function') {
+          try { await prewarmPhotos(waveCandidates); } catch { /* non-fatal warmup */ }
+        }
+        if (boundBoardRenderer && (fastVisualMode || waveCandidates.some((c) => c?.editorialBoardJpeg))) {
+          await Promise.all(waveCandidates.map(async (cand) => {
+            if (!cand?.id) return;
+            if (cand.editorialBoardJpeg) {
+              waveBoardCache.set(cand.id, cand.editorialBoardJpeg);
+              return;
+            }
+            if (waveBoardCache.has(cand.id)) return;
+            try {
+              const rendered = await Promise.resolve(boundBoardRenderer(cand.items, {
+                lookToken: cand.id,
+                title: cand.brief?.name || 'STUDIO LOOK BOARD',
+                anonymizeLabels: true,
+                requireAllPhotos: true,
+                deadlineMs: 4500,
+              }));
+              if (Buffer.isBuffer(rendered) || (rendered?.ok !== false && Buffer.isBuffer(rendered?.jpegBuffer || rendered?.bytes))) {
+                waveBoardCache.set(cand.id, rendered);
+              }
+            } catch {
+              // Fall back safely to verified individual slot photos
+            }
+          }));
+        }
+      };
+      const waveAwareVisualCritic = async (payload, critiqueReq, criticOpts) => {
+        const enrichedPayload = waveBoardCache.size > 0
+          ? payload.map((item) => {
+              const b = item.editorialBoardJpeg || waveBoardCache.get(item.id);
+              return b ? { ...item, editorialBoardJpeg: b } : item;
+            })
+          : payload;
+        const shouldEnrichReq = Boolean(fastVisualMode || waveBoardCache.size > 0 || styleDnaPromptBlock);
+        const enrichedReq = shouldEnrichReq
+          ? {
+              ...critiqueReq,
+              ...(Number.isFinite(context?.weather?.temp) ? { weather: context.weather } : {}),
+              ...(styleDnaPromptBlock ? { personalStyleDnaPromptBlock: styleDnaPromptBlock } : {}),
+            }
+          : critiqueReq;
+        const enrichedOpts = waveBoardCache.size > 0
+          ? { ...(criticOpts || {}), editorialBoards: waveBoardCache }
+          : criticOpts;
+        return visualCritic(enrichedPayload, enrichedReq, enrichedOpts);
+      };
+      await prepareVisualWave(candidates);
       let reviewed=await evaluateVisualShortlist(
-        {...retrieval,shortlist:candidates},request,visualCritic,reviewOptions);
+        {...retrieval,shortlist:candidates},request,waveAwareVisualCritic,reviewOptions);
       let rescueAttempted=0;
       secondaryCritiques=[];
       const recordCritiquesToFlywheel = async (critiqueRows, candidateList, decisionsList) => {
@@ -2597,14 +2687,33 @@ export async function recommendFashionDeck({
         candidates,
         reviewed.diagnostics?.visualQualityDecisions,
       );
-      // SURGICAL 1-SLOT VISUAL REFINEMENT (before falling back to full-look recomposition):
-      // When a 4-SKU candidate fails or has an actionable weakestSlot + repairDirective,
-      // lock the 3 strong items and surgically swap only weakestSlot from the hygienic catalog.
+      // TRUE HOT-PATH PARALLEL SURGICAL 1-SLOT RESCUE & POLISH:
+      // Trigger when:
+      //   (a) fewer than 3 architecturally distinct SKU-disjoint looks passed, OR
+      //   (b) any selected look has editorialScore < 7.5 with an actionable weakestSlot.
+      // Lock the 3 strong items, swap ONLY weakestSlot from the full hygienic
+      // budget/climate-feasible catalog pool, re-render 1024x1024 studio boards
+      // from cached bytes (~50ms), and verify visually IN PARALLEL (~2s)!
+      const critiqueByCandidate = new Map(primaryCritiques.map((c) => [c.candidateId, c]));
+      const selectedLookIds = new Set(reviewed.outfits.map((o) => o.id));
+      const actionableWeakestSlot = (crit) =>
+        Boolean(crit && ['top', 'outerwear', 'bottom', 'shoes'].includes(String(crit.weakestSlot || '').toLowerCase()));
+      const polishCandidates = reviewed.outfits
+        .map((o) => candidates.find((c) => c.id === o.id))
+        .filter((c) => {
+          if (!c) return false;
+          const crit = critiqueByCandidate.get(c.id);
+          return actionableWeakestSlot(crit)
+            && typeof crit.editorialScore === 'number'
+            && Number.isFinite(crit.editorialScore)
+            && crit.editorialScore < 7.5;
+        });
+      const needsRescueCount = Math.max(0, 3 - reviewed.outfits.length);
       if (
-        reviewed.outfits.length < 3 &&
+        (needsRescueCount > 0 || polishCandidates.length > 0) &&
         Array.isArray(primaryCritiques) &&
-        primaryCritiques.some((c) => ['top', 'outerwear', 'bottom', 'shoes'].includes(String(c?.weakestSlot || '').toLowerCase())) &&
-        (typeof photoRescueRemainingMs !== 'function' || photoRescueRemainingMs() >= 6000)
+        primaryCritiques.some(actionableWeakestSlot) &&
+        (typeof photoRescueRemainingMs !== 'function' || photoRescueRemainingMs() >= 4000)
       ) {
         const firstApprovedSet = new Set(
           (reviewed.diagnostics?.visualQualityDecisions || [])
@@ -2612,48 +2721,71 @@ export async function recommendFashionDeck({
             .map((row) => row.candidateId),
         );
         const approvedNow = candidates.filter((x) => firstApprovedSet.has(x.id));
-        const usedProductIds = new Set([
+        const selectedOriginals = reviewed.outfits
+          .map((o) => candidates.find((c) => c.id === o.id))
+          .filter(Boolean);
+        const selectedUsedProductIds = new Set([
           ...(Array.isArray(request.excludedIds) ? request.excludedIds.map(String) : []),
-          ...approvedNow.flatMap((x) => (x.items || []).map((it) => String(it.id))),
+          ...selectedOriginals.flatMap((x) => (x.items || []).map((it) => String(it.id))),
         ]);
-        const critiqueByCandidate = new Map(primaryCritiques.map((c) => [c.candidateId, c]));
-        const surgicalTargets = candidates.filter((c) => {
-          if (firstApprovedSet.has(c.id)) return false;
-          const crit = critiqueByCandidate.get(c.id);
-          return crit && ['top', 'outerwear', 'bottom', 'shoes'].includes(String(crit.weakestSlot || '').toLowerCase());
-        }).sort((a, b) => {
-          const slotA = String(critiqueByCandidate.get(a.id)?.weakestSlot || '').toLowerCase();
-          const slotB = String(critiqueByCandidate.get(b.id)?.weakestSlot || '').toLowerCase();
-          const overlapA = (a.items || []).filter((it) => it.macroCategory !== slotA && usedProductIds.has(String(it.id))).length;
-          const overlapB = (b.items || []).filter((it) => it.macroCategory !== slotB && usedProductIds.has(String(it.id))).length;
-          return overlapA - overlapB;
-        }).slice(0, Math.max(1, 3 - reviewed.outfits.length));
 
-        if (surgicalTargets.length > 0) {
+        const rescueTargets = needsRescueCount > 0
+          ? candidates.filter((c) => {
+              if (selectedLookIds.has(c.id)) return false;
+              const crit = critiqueByCandidate.get(c.id);
+              return actionableWeakestSlot(crit);
+            }).sort((a, b) => {
+              const critA = critiqueByCandidate.get(a.id);
+              const critB = critiqueByCandidate.get(b.id);
+              const slotA = String(critA?.weakestSlot || '').toLowerCase();
+              const slotB = String(critB?.weakestSlot || '').toLowerCase();
+              const overlapA = (a.items || []).filter((it) => it.macroCategory !== slotA && selectedUsedProductIds.has(String(it.id))).length;
+              const overlapB = (b.items || []).filter((it) => it.macroCategory !== slotB && selectedUsedProductIds.has(String(it.id))).length;
+              if (overlapA !== overlapB) return overlapA - overlapB;
+              // Prioritize photo_quality_defect rescues (fast clean 1-slot swap) & highest near-miss editorialScore
+              const photoFixA = critA?.defectCategory === 'photo_quality_defect' ? 1 : 0;
+              const photoFixB = critB?.defectCategory === 'photo_quality_defect' ? 1 : 0;
+              if (photoFixB !== photoFixA) return photoFixB - photoFixA;
+              const scoreA = Number.isFinite(critA?.editorialScore) ? critA.editorialScore : 0;
+              const scoreB = Number.isFinite(critB?.editorialScore) ? critB.editorialScore : 0;
+              return scoreB - scoreA;
+            }).slice(0, Math.min(3, needsRescueCount + 1))
+          : [];
+
+        const polishTargets = polishCandidates
+          .filter((c) => !rescueTargets.some((r) => r.id === c.id))
+          .slice(0, Math.max(0, 3 - rescueTargets.length));
+
+        const allSurgicalSpecs = [
+          ...rescueTargets.map((look) => ({ look, mode: 'rescue' })),
+          ...polishTargets.map((look) => ({ look, mode: 'polish' })),
+        ];
+
+        if (allSurgicalSpecs.length > 0) {
           const preparedSurgicalCatalog = Array.isArray(catalog)
             ? catalog.map((item) => fashionScorer.prepare(item)).filter(Boolean)
             : [];
-          const surgicalNewLooks = [];
-          const surgicalNewCritiques = [];
-          let surgicalAttemptsCount = 0;
+          const allowedMs = typeof photoRescueRemainingMs === 'function'
+            ? Math.max(1200, Math.min(8000, Math.floor(photoRescueRemainingMs() - 2000)))
+            : 8000;
+          const pinnedSet = new Set(requiredIds.map(String));
 
-          for (const targetLook of surgicalTargets) {
-            if (typeof photoRescueRemainingMs === 'function' && photoRescueRemainingMs() < 4500) break;
-            if (approvedNow.length + surgicalNewLooks.length >= 3) break;
+          const parallelTargets = allSurgicalSpecs.map(({ look: targetLook, mode }) => {
             const targetCritique = critiqueByCandidate.get(targetLook.id);
-            const allowedMs = typeof photoRescueRemainingMs === 'function'
-              ? Math.max(1200, Math.min(8000, Math.floor(photoRescueRemainingMs() - 2500)))
-              : 8000;
-            const refined = await refineLookSurgically({
+            const peerSelected = mode === 'polish'
+              ? selectedOriginals.filter((s) => s.id !== targetLook.id)
+              : selectedOriginals;
+            return {
               look: targetLook,
               critique: targetCritique,
-              catalogPool: preparedSurgicalCatalog,
               lockedSlots: requiredIds
                 .map((rid) => targetLook.items.find((it) => String(it.id) === String(rid))?.macroCategory)
                 .filter(Boolean),
               context: { ...context, budget: request.budget, requiredIds },
-              personalStyleDna,
               hardGateValidator: async (candidateItems, candidateLookObj) => {
+                if (catalogFourItemIntent && !eligibleCatalogFourItemPhotoCandidate(candidateLookObj)) {
+                  return { ok: false, reason: 'catalog_four_item_contract' };
+                }
                 if (typeof hardGate === 'function') {
                   const g = await hardGate(candidateItems);
                   if (g === false || (g && typeof g === 'object' && g.ok === false)) {
@@ -2671,55 +2803,110 @@ export async function recommendFashionDeck({
                   }
                   if (total > request.budget.amount) return { ok: false, reason: 'over_budget' };
                 }
+                if (request.sourceMode === 'catalog') {
+                  const sharesWithPeer = peerSelected.some((peer) =>
+                    candidateItems.some((it) => !pinnedSet.has(String(it.id))
+                      && (peer.items || []).some((other) => !pinnedSet.has(String(other.id)) && sameProduct(it, other))),
+                  );
+                  if (sharesWithPeer) return { ok: false, reason: 'duplicate_sku_in_deck' };
+                }
+                if (context.dressCode !== 'formal' && peerSelected.length > 0) {
+                  const distinctFromPeers = peerSelected.every((peer) =>
+                    independentOutfitDirection(candidateLookObj, peer, requiredIds),
+                  );
+                  if (!distinctFromPeers) return { ok: false, reason: 'non_distinct_architecture' };
+                }
                 const ranked = fashionScorer.rankLook(candidateItems, targetLook.brief);
                 if (!ranked) return { ok: false, reason: 'incoherent_look' };
-                if ( !(await permitted(candidateLookObj)) ) return { ok: false, reason: 'photo_unpermitted' };
+                if (!(await permitted(candidateLookObj))) return { ok: false, reason: 'photo_unpermitted' };
                 return { ok: true };
               },
-              visualCritic,
-              boardRenderer,
-              maxRounds: 1,
-              topCandidatesPerRound: 2,
-              deadlineMs: allowedMs,
-              excludedItemIds: [...usedProductIds],
-              qualityMap: resolvedQualityMap,
-              priceToBudgetCurrency,
-            });
-            surgicalAttemptsCount += Array.isArray(refined?.attempts) ? refined.attempts.filter((a) => a.criticRan).length : 0;
-            if (refined?.committed && refined?.approved && refined?.look && refined?.critique) {
-              const rankedFashion = fashionScorer.rankLook(refined.look.items, targetLook.brief) || targetLook.fashion;
-              const promotedLook = {
-                ...targetLook,
-                ...refined.look,
-                brief: targetLook.brief,
-                briefId: targetLook.briefId,
-                fashion: rankedFashion,
-                seedScore: rankedFashion?.score ?? targetLook.seedScore,
-                surgicalRefinement: {
-                  swappedSlot: refined.swappedSlot,
-                  replacedItemId: refined.replacedItemId,
-                  selectedItemId: refined.selectedItemId,
-                  previousScore: refined.previousScore,
-                  newScore: refined.newScore,
-                },
-              };
-              const promotedCritique = {
-                ...refined.critique,
-                candidateId: promotedLook.id,
-              };
-              surgicalNewLooks.push(promotedLook);
-              surgicalNewCritiques.push(promotedCritique);
-              for (const it of promotedLook.items) usedProductIds.add(String(it.id));
-              await recordCritiquesToFlywheel([promotedCritique], [promotedLook], [{ candidateId: promotedLook.id, reason: 'approved' }]);
+            };
+          });
+
+          const refinedResults = await refineLooksSurgicallyInParallel({
+            targets: parallelTargets,
+            catalogPool: preparedSurgicalCatalog,
+            context: { ...context, budget: request.budget, requiredIds },
+            personalStyleDna,
+            visualCritic: waveAwareVisualCritic,
+            boardRenderer: boundBoardRenderer,
+            maxRounds: 1,
+            topCandidatesPerRound: 2,
+            parallelCandidates: fastVisualMode,
+            deadlineMs: allowedMs,
+            excludedItemIds: [...selectedUsedProductIds],
+            qualityMap: resolvedQualityMap,
+            priceToBudgetCurrency,
+          });
+
+          const surgicalNewLooks = [];
+          const surgicalNewCritiques = [];
+          const polishedReplacementMap = new Map();
+          const committedProductIds = new Set(selectedUsedProductIds);
+          let surgicalAttemptsCount = 0;
+          let rescuedCount = 0;
+          let polishedCount = 0;
+          const defectsRepaired = [];
+
+          for (let i = 0; i < refinedResults.length; i++) {
+            const refined = refinedResults[i];
+            const { look: targetLook, mode } = allSurgicalSpecs[i];
+            surgicalAttemptsCount += Array.isArray(refined?.attempts)
+              ? refined.attempts.filter((a) => a.criticRan).length
+              : 0;
+            if (!refined?.committed || !refined?.approved || !refined?.look || !refined?.critique) continue;
+
+            // Enforce strict SKU disjointness across concurrent parallel rescues
+            const newItemId = refined.selectedItemId ? String(refined.selectedItemId) : null;
+            if (request.sourceMode === 'catalog' && newItemId && !pinnedSet.has(newItemId) && committedProductIds.has(newItemId)) {
+              continue;
             }
+            const rankedFashion = fashionScorer.rankLook(refined.look.items, targetLook.brief) || targetLook.fashion;
+            const promotedLook = {
+              ...targetLook,
+              ...refined.look,
+              brief: targetLook.brief,
+              briefId: targetLook.briefId,
+              fashion: rankedFashion,
+              seedScore: rankedFashion?.score ?? targetLook.seedScore,
+              surgicalRefinement: {
+                mode,
+                swappedSlot: refined.swappedSlot,
+                replacedItemId: refined.replacedItemId,
+                selectedItemId: refined.selectedItemId,
+                previousScore: refined.previousScore,
+                newScore: refined.newScore,
+                defectCategory: critiqueByCandidate.get(targetLook.id)?.defectCategory || null,
+              },
+            };
+            const promotedCritique = {
+              ...refined.critique,
+              candidateId: promotedLook.id,
+            };
+            surgicalNewLooks.push(promotedLook);
+            surgicalNewCritiques.push(promotedCritique);
+            if (mode === 'polish') {
+              polishedReplacementMap.set(targetLook.id, promotedLook);
+              polishedCount++;
+            } else {
+              rescuedCount++;
+            }
+            if (critiqueByCandidate.get(targetLook.id)?.defectCategory) {
+              defectsRepaired.push(critiqueByCandidate.get(targetLook.id).defectCategory);
+            }
+            for (const it of promotedLook.items) committedProductIds.add(String(it.id));
+            await recordCritiquesToFlywheel([promotedCritique], [promotedLook], [{ candidateId: promotedLook.id, reason: 'approved' }]);
           }
 
           if (surgicalNewLooks.length > 0) {
             rescueAttempted += surgicalAttemptsCount;
             secondaryCritiques.push(...surgicalNewCritiques);
-            const keepFirst = approvedNow.slice(0, Math.max(0, MAX_VISUAL_CANDIDATES - surgicalNewLooks.length));
-            const keepIds = new Set(keepFirst.map((x) => x.id));
-            const mergedShortlist = [...keepFirst, ...surgicalNewLooks];
+            const survivingBase = approvedNow
+              .filter((x) => !polishedReplacementMap.has(x.id))
+              .slice(0, Math.max(0, MAX_VISUAL_CANDIDATES - surgicalNewLooks.length));
+            const keepIds = new Set(survivingBase.map((x) => x.id));
+            const mergedShortlist = [...survivingBase, ...surgicalNewLooks].slice(0, MAX_VISUAL_CANDIDATES);
             const mergedCritiques = [
               ...primaryCritiques.filter((row) => keepIds.has(row.candidateId)),
               ...surgicalNewCritiques,
@@ -2748,11 +2935,14 @@ export async function recommendFashionDeck({
               };
             }
             candidates.push(...surgicalNewLooks);
-            primaryCritiques = [...primaryCritiques, ...surgicalNewCritiques];
             modelFashionSelection.surgicalRefinement = {
               attempted: surgicalAttemptsCount,
               approved: surgicalNewLooks.length,
+              rescued: rescuedCount,
+              polished: polishedCount,
+              parallel: true,
               swappedSlots: surgicalNewLooks.map((l) => l.surgicalRefinement?.swappedSlot).filter(Boolean),
+              ...(defectsRepaired.length ? { defectsRepaired } : {}),
             };
           }
         }
@@ -2888,14 +3078,15 @@ export async function recommendFashionDeck({
             const allowedMs=Math.max(1000,Math.min(11500,
               Math.floor(photoRescueRemainingMs()-3500)));
             let revisionCritiques=[];
+            await prepareVisualWave(extras);
             const revision=await evaluateVisualShortlist(
-              {...retrieval,shortlist:extras},request,visualCritic,{
+              {...retrieval,shortlist:extras},request,waveAwareVisualCritic,{
                 ...reviewOptions,target:Math.min(3,extras.length),
                 criticSignal:AbortSignal.timeout(allowedMs),
                 onCritiques:rows=>{revisionCritiques=rows;},
               });
-            rescueAttempted=revision.diagnostics.visualAttempted;
-            secondaryCritiques=revisionCritiques;
+            rescueAttempted+=revision.diagnostics.visualAttempted;
+            secondaryCritiques.push(...revisionCritiques);
             const keepFirst=approvedFirst.slice(
               0,Math.max(0,MAX_VISUAL_CANDIDATES-extras.length));
             const keepIds=new Set(keepFirst.map(x=>x.id));
@@ -2976,14 +3167,15 @@ export async function recommendFashionDeck({
             Math.floor(photoRescueRemainingMs()-3500)));
           let rescueCritiques=[];
           const firstDiagnostics=reviewed.diagnostics;
+          await prepareVisualWave(extra);
           const rescue=await evaluateVisualShortlist(
-            {...retrieval,shortlist:extra},request,visualCritic,{
+            {...retrieval,shortlist:extra},request,waveAwareVisualCritic,{
               ...reviewOptions,target:Math.min(3,extra.length),
               criticSignal:AbortSignal.timeout(allowedMs),
               onCritiques:rows=>{rescueCritiques=rows;},
             });
-          rescueAttempted=rescue.diagnostics.visualAttempted;
-          secondaryCritiques=rescueCritiques;
+          rescueAttempted+=rescue.diagnostics.visualAttempted;
+          secondaryCritiques.push(...rescueCritiques);
           const orderedApproved=[...reviewed.outfits.map(x=>
             candidates.find(c=>c.id===x.id)).filter(Boolean),
             ...approvedFirst].filter((x,i,arr)=>arr.findIndex(y=>y.id===x.id)===i)
@@ -3041,11 +3233,22 @@ export async function recommendFashionDeck({
       // If unavailable, keep the original independently approved deck.
       if(modelLed&&typeof selectPhotoApprovedPortfolio==='function'&&
           reviewed.diagnostics.visualValid>=3){
-        const allCritiques=[...primaryCritiques,...secondaryCritiques];
+        // Deduplicate by candidateId so surgical rescues never double-enter selectVisualDeck
+        const allCritiques=[...new Map(
+          [...primaryCritiques,...secondaryCritiques]
+            .filter(c=>c&&typeof c.candidateId==='string')
+            .map(c=>[c.candidateId,c])
+        ).values()];
         const approvedIds=new Set(
           (reviewed.diagnostics.visualQualityDecisions||[])
             .filter(row=>row.reason==='approved').map(row=>row.candidateId));
-        const approvedLooks=candidates.filter(c=>approvedIds.has(c.id))
+        // Always include currently selected outfits first so rescued/polished looks
+        // stay within the 8-candidate editorial window.
+        const selectedPriority=reviewed.outfits
+          .map(o=>candidates.find(c=>c.id===o.id)).filter(Boolean);
+        const otherApproved=candidates.filter(c=>
+          approvedIds.has(c.id)&&!selectedPriority.some(s=>s.id===c.id));
+        const approvedLooks=[...selectedPriority,...otherApproved]
           .slice(0,MAX_VISUAL_CANDIDATES);
         // A REAL iPhone Classic/Work paid run at 84ba6a8 had 2/9 PHOTO
         // approvals and ~40 seconds of engine budget left. The independent
@@ -3139,7 +3342,15 @@ export async function recommendFashionDeck({
           const actualPhotoEditorialDecision=
             decision?.visualJury==='applied'&&
             decision?.visualMediaStatus==='ready';
-          if(editorial.status==='applied'&&editorial.chosen<3&&
+          // In fastVisualMode, skip slow redundant legacy Stage 3B recomposition when
+          // 3 architecturally distinct, visually verified high-scoring looks are ALREADY secured!
+          const skipRedundantRecomposition = Boolean(
+            fastVisualMode
+            && editorial.eligibleTriples > 0
+            && !explicitEditorialGap
+            && reviewed.outfits.length >= 2,
+          );
+          if(!skipRedundantRecomposition&&editorial.status==='applied'&&editorial.chosen<3&&
               (explicitEditorialGap||actualPhotoEditorialDecision)&&
               request.sourceMode==='catalog'&&
               Array.isArray(composerPool)&&
@@ -3388,7 +3599,7 @@ export async function recommendFashionDeck({
             }else editorial.feedbackRevision='insufficient_safe_capacity';
           }
           if(reviewed.outfits.length<3&&editorial.eligibleTriples>0&&
-              (editorial.visualJury!=='not_run'||editorial.independentJury==='narrowed'||editorial.status!=='applied')){
+              (editorial.visualJury!=='not_run'||editorial.independentJury==='narrowed'||editorial.status!=='applied'||fastVisualMode)){
             const chosenIds=new Set(reviewed.outfits.map(x=>x?.id).filter(Boolean));
             const triples=verifiedPortfolios.filter(p=>p.size===3);
             const bestTriple=triples.find(p=>
