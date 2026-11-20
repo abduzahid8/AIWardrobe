@@ -44,7 +44,7 @@ const client = createClient(origin.origin, ANON_KEY, { auth: { persistSession: f
 const accountPath = '.private/s6-probe-account.json';
 const password = process.env.AIW_S6_PROBE_PASSWORD || (existsSync(accountPath) ? JSON.parse(readFileSync(accountPath, 'utf8')).password : undefined);
 assert.ok(password && password.length >= 16, 'Provide AIW_S6_PROBE_PASSWORD (>=16 chars) or reuse the stored probe account');
-const email = 'aiw-s6-probe-bot@aiwardrobe.test';
+const email = process.env.AIW_S6_PROBE_EMAIL || 'aiw-s6-probe-bot@aiwardrobe.test';
 
 let token;
 let userId;

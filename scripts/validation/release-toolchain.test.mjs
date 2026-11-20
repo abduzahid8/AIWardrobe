@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -52,4 +53,20 @@ test('EAS resolves the Appium XCUITest driver from the npm registry, not Git',()
   const lock = JSON.parse(readFileSync(new URL('../../package-lock.json', import.meta.url), 'utf8'));
   assert.equal(packageJson.devDependencies['appium-xcuitest-driver'], '12.18.1');
   assert.match(lock.packages['node_modules/appium-xcuitest-driver'].resolved, /^https:\/\/registry\.npmjs\.org\//);
+});
+
+test('metro.config.js resolves revision from EAS_BUILD_GIT_COMMIT_HASH without .git', () => {
+  const env = {
+    ...process.env,
+    GIT_DIR: '/nonexistent-git-dir',
+    GIT_WORK_TREE: '/nonexistent-git-dir',
+    EAS_BUILD_GIT_COMMIT_HASH: 'abcdef1234567890',
+  };
+  delete env.EXPO_PUBLIC_CLIENT_REVISION;
+  const actual = execFileSync(
+    process.execPath,
+    ['-e', "require('./metro.config.js'); process.stdout.write(process.env.EXPO_PUBLIC_CLIENT_REVISION || '');"],
+    { cwd: new URL('../../', import.meta.url), env, encoding: 'utf8' },
+  );
+  assert.equal(actual, 'abcdef123456');
 });

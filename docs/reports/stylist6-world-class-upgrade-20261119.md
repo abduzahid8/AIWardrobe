@@ -318,6 +318,23 @@ Follow-up end-to-end Simulator inspection (`V5`–`V8`) and live cloud parity te
 - **Remaining Owner Cutover Command Before Live Smoke & EAS Build**:
   - Run `npx supabase@3.2.0 functions deploy aiw-stylist6-node-staging --workdir backend --remote=fyqpifmrsftsfqibhwhy --use-api --yes` in a macOS Keychain-unlocked terminal to point `aiw-stylist6-node-staging` to `9gwqkmv1c`, then run `scripts/stylist6/staging_authenticated_probe.mjs` and prepare the EAS TestFlight / App Store build (`ascAppId: 6761912806`).
 
+### 6.9 Live Authenticated Staging Cloud Smoke & EAS Bundle Fix
+
+- **Live Supabase Edge Deploy & Authenticated Admission-Chain Smoke (`fyqpifmrsftsfqibhwhy` -> `9gwqkmv1c`)**:
+  - Deployed `aiw-stylist6-node-staging` to `fyqpifmrsftsfqibhwhy` (`verify_jwt=true`, `4` bundled files including `stylist-proxy/stylist6-staging.ts` pinned to `9gwqkmv1c`).
+  - Unauthenticated `GET`/`POST` to `https://fyqpifmrsftsfqibhwhy.supabase.co/functions/v1/aiw-stylist6-node-staging` returned `HTTP=401` (`UNAUTHORIZED_NO_AUTH_HEADER`).
+  - Ran live authenticated probe via `scripts/stylist6/staging_authenticated_probe.mjs` (added optional `AIW_S6_PROBE_EMAIL` override; credentials kept in `.private/` mode `600`, excluded by `.gitignore`, `.easignore`, and `secret-scan.mjs`). Observed `.private/s6-probe-result.json` (`2026-11-20T11:40:05.441Z`–`11:41:17.944Z`):
+    - `anonymous_rejected_401` (`quotaDelta: 0`)
+    - `oversize_rejected_closed` (`status: timeout`, `graceful: false`, `quotaDelta: 0`)
+    - `unknown_anchor_rejected_pre_debit`: `status: 422`, `engine: "stylist-6-cloud-staging-1"`, `code: "anchor_not_found"`, `quotaDelta: 0` (end-to-end proof of Supabase JWT + Edge proxy + Vercel Protection Bypass + HMAC + Fluid Compute `9gwqkmv1c` + Supabase service role)
+    - `metered_generation_honestly_refused`: `status: 403`, `code: "feature_limit_reached"`, `quotaDelta: 0`
+- **Root-Caused & Fixed Failed `stylist6-testflight` EAS Build (`f880458a`, Build 69)**:
+  - Inspected `f880458a-acec-49db-b041-9b655f70d384` `EAGER_BUNDLE` log: `metro.config.js` crashed with `Error: Command failed: git rev-parse --short=12 HEAD` because `.easignore` excludes `.git` from EAS build archives.
+  - Updated `metro.config.js` with `resolveClientRevision()`, falling back safely to `EAS_BUILD_GIT_COMMIT_HASH` (or `'unstamped'`) when `.git` is unavailable, and added a `.git`-less regression test in `scripts/validation/release-toolchain.test.mjs`.
+  - Simulated EAS `EAGER_BUNDLE` under `GIT_DIR=/nonexistent-git-dir` and `EXPO_PUBLIC_STYLIST6_BETA=true` / `EXPO_PUBLIC_APP_STAGE=testflight`: `expo export --platform ios` succeeded cleanly (`1962 modules`, `9090ms`, `13MB` `.hbc`).
+- **Verification Counts**:
+  - `npm run test:release-toolchain`: `9/9` pass (`0` fail); `npm run typecheck:edge`: `0` errors across all 20 Edge Functions; `npm run typecheck`: `0` errors; `npm run lint`: `0` errors (`1594` existing warnings); `backend/stylist-node` `npm test`: `43/43` pass (`0` fail); `cloud_handler.test.mjs` + `autonomous_stylist.test.mjs`: `94/94` pass (`0` fail); `4` stylist Jest suites: `40/40` pass (`0` fail); `test:vercel-topology` (`3/3`), `test:dependency-security` (`21/21`), `test:native-links` (`2/2`), `test:asset-formats` (`1/1`), `test:navigation-links` (`11/11`); `scripts/security/secret-scan.mjs`: PASS (`3,432` files, `0` findings); Stylist 5 diff (`a99c268e..HEAD`): `0` lines.
+
 ---
 
 ## 7. Mandatory Owner Release Gates Still Open (Required Before Production Promotion)
