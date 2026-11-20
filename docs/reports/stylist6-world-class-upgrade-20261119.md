@@ -299,6 +299,25 @@ Follow-up end-to-end Simulator inspection (`V5`–`V8`) and live cloud parity te
   - **Vercel Shared Secrets**: Scope write-only secrets `STYLIST6_NODE_SHARED_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` (and `STYLIST_NODE_SHARED_SECRET` for `/api/health` readiness) on `aiwardrobe-stylist-compute` to branch `ai_fashion_stylist` (currently scoped to `codex/stylist6-visual-first-20261110`; local `.env` `SUPABASE_SERVICE_KEY` is `EMPTY`).
   - **Supabase Auth & Apply**: `supabase_mcp` OAuth failed upstream with `{"message": "Unrecognized client_id"}` and `supabase` CLI is `NOT_INSTALLED`. Authenticate Supabase CLI or apply SQL migrations `20261119090000_stylist6_pgvector_and_scale_indexes.sql` and `20261119091000_stylist6_personal_dna_and_flywheel.sql` plus deploy `aiw-stylist6-node-staging` on project `fyqpifmrsftsfqibhwhy`.
 
+### 6.8 Live SQL Migrations Applied, Vercel Secrets Scoped & Fluid Compute Configured
+
+- **SQL Migrations Applied (`fyqpifmrsftsfqibhwhy`)**:
+  - Authenticated Supabase CLI (`3.2.0`) applied both additive SQL migrations (`backend/supabase/migrations/20261119090000_stylist6_pgvector_and_scale_indexes.sql` and `backend/supabase/migrations/20261119091000_stylist6_personal_dna_and_flywheel.sql`) cleanly via `npx supabase@3.2.0 db query --remote=fyqpifmrsftsfqibhwhy --yes --file ...`.
+- **Vercel Preview Secret Scoping (`prj_7MuxZyEJ6ClwvMqai0RxZgSizwgp`)**:
+  - Patched 3 existing write-only Preview secrets to All Preview Branches (`target: ["preview"]`, `gitBranch: null`) without reading/decrypting secret values or removing any `codex/...` variables: `L1MHGcCW9ySqjZgw` (`STYLIST6_NODE_SHARED_SECRET`), `0qM73xk7UPpXkaB9` (`SUPABASE_SERVICE_ROLE_KEY`), and `Ai3gvyQGrsQbrr0c` (`STYLIST_NODE_SHARED_SECRET`).
+- **Configured Fluid Compute Redeploy (`dpl_Csnzst8PsgKbG9N1JTfyU6ERBYA5`)**:
+  - Commit `7155977a` preview `dpl_BtR5kvjWvZxNxgN8AgCyUJYyvYjw` (`p47usom7c`, `● Ready`, `22s`) was redeployed cleanly on Preview as `dpl_Csnzst8PsgKbG9N1JTfyU6ERBYA5` (`https://aiwardrobe-stylist-compute-9gwqkmv1c-abduzahid8s-projects.vercel.app`, `● Ready`).
+- **Live Endpoint Probes on `9gwqkmv1c` (`vercel curl`)**:
+  - `GET /api/health` -> `HTTP=200` (`{"status":"ok","computeConfigured":true}`).
+  - `GET /api/stylist6-generate-outfits` -> `HTTP=405` (`{"success":false,"outfits":[],"code":"method_not_allowed","error":"method_not_allowed","generationVersion":"stylist-6-cloud-staging-1"}`).
+  - Unsigned `POST /api/stylist6-generate-outfits` (`-d '{}'`) -> `HTTP=401` (`{"success":false,"outfits":[],"code":"unauthorized","error":"unauthorized","generationVersion":"stylist-6-cloud-staging-1"}`).
+  - Unsigned `POST /api/transport-health` (`-d '{"probe":"aiw-stylist-transport-v1"}'`) -> `HTTP=401` (`{"ok":false,"code":"unauthorized"}`); `-d '{}'` -> `HTTP=400` (`{"ok":false,"code":"invalid_request"}`).
+- **Staging Proxy Repinned & Verified**:
+  - Updated `backend/stylist-proxy/stylist6-staging.ts` (`DEFAULT_NODE_ORIGIN`) and `backend/stylist-node/test/stylist6-staging.test.mjs` to pin `https://aiwardrobe-stylist-compute-9gwqkmv1c-abduzahid8s-projects.vercel.app`.
+  - Code-edit verification counts: `backend/stylist-node` (`tsc --noEmit` + `43/43` pass, `0` fail); `backend/stylist6/cloud_handler.test.mjs` + `autonomous_stylist.test.mjs`: `94/94` pass (`0` fail); `__tests__/features/stylist6CloudPublication.test.js`: `10/10` pass (`0` fail); Stylist 5 diff (`a99c268e..HEAD`): `0` lines.
+- **Remaining Owner Cutover Command Before Live Smoke & EAS Build**:
+  - Run `npx supabase@3.2.0 functions deploy aiw-stylist6-node-staging --workdir backend --remote=fyqpifmrsftsfqibhwhy --use-api --yes` in a macOS Keychain-unlocked terminal to point `aiw-stylist6-node-staging` to `9gwqkmv1c`, then run `scripts/stylist6/staging_authenticated_probe.mjs` and prepare the EAS TestFlight / App Store build (`ascAppId: 6761912806`).
+
 ---
 
 ## 7. Mandatory Owner Release Gates Still Open (Required Before Production Promotion)

@@ -21,15 +21,15 @@
 import { signStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 
 // Pinned Stylist 6 Fluid Compute staging deployment (branch ai_fashion_stylist).
-// Active READY Compute Preview 5c925fhk2 (dpl_7zEUvoW2bh4HSmW98c5EWjEDJeii; commit 822fd095; maxDuration: 300).
-// Previous rollback targets: gibkm7rl5 (commit 3b2779d2), Render canary (stylist6-render-staging.ts).
+// Active READY Compute Preview 9gwqkmv1c (dpl_Csnzst8PsgKbG9N1JTfyU6ERBYA5; commit 7155977a; maxDuration: 300; computeConfigured: true).
+// Previous rollback targets: 5c925fhk2 (commit 822fd095), gibkm7rl5 (commit 3b2779d2), Render canary (stylist6-render-staging.ts).
 // Runs Phase 11-13 Autonomous Visual Stylist (Act 1 Showroom + Act 2 Portfolio Editor +
 // Parallel Visual Swaps) with 75s default compute budget and zero Render sleep cold starts.
 // Production Stylist 5 remains untouched.
 // Keep the JWT + HMAC transport and quotas unchanged; no production routing.
 // Fail-closed idempotency + RLS migration included.
 // Repoint ONLY to another verified Stylist 6 staging Preview, never to production.
-const DEFAULT_NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-5c925fhk2-abduzahid8s-projects.vercel.app';
+const DEFAULT_NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-9gwqkmv1c-abduzahid8s-projects.vercel.app';
 const NODE_ROUTE = '/api/stylist6-generate-outfits';
 const MAX_COMPUTE_RESPONSE_BYTES = 2 * 1024 * 1024;
 const CORS = {
