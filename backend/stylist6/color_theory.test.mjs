@@ -229,4 +229,19 @@ test('scoreOutfitColorTheory catches near-miss dark clashes, cognac-vs-icy-black
   // 5. Insufficient evidence degrades honestly
   const unknown = scoreOutfitColorTheory({ top: 'unknown', bottom: '' }, null);
   assert.equal(unknown.harmonyMode, 'insufficient_evidence');
+
+  // 6. Phase 10 Defect D: Stark black formal shoes clash with warm caramel/orange/brown trousers
+  const blackShoesWarmTrousers = scoreOutfitColorTheory(
+    { top: 'grey', outerwear: 'brown', bottom: 'orange', shoes: 'black' },
+    null,
+  );
+  assert.ok(blackShoesWarmTrousers.flaws.includes('stark_black_shoes_clash_with_warm_earth_trousers'));
+  assert.equal(blackShoesWarmTrousers.harmonyMode, 'discordant');
+
+  const brownShoesWarmTrousers = scoreOutfitColorTheory(
+    { top: 'cream', outerwear: 'brown', bottom: 'camel', shoes: 'espresso' },
+    null,
+  );
+  assert.ok(!brownShoesWarmTrousers.flaws.includes('stark_black_shoes_clash_with_warm_earth_trousers'));
+  assert.ok(brownShoesWarmTrousers.score > blackShoesWarmTrousers.score + 0.15);
 });

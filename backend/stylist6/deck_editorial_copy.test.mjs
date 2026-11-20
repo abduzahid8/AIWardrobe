@@ -396,3 +396,55 @@ test('localized ru and uz Stylist Notes remain strictly monolingual without leak
     }
   }
 });
+
+test('Phase 10 Defects C & D: Date Night never emits "office" headlines and mixed orange/black palettes never claim "warm earth harmony"', () => {
+  const dateLook = {
+    id: 'look-date-1',
+    items: [
+      { id: 't1', macroCategory: 'top', subtype: 'dress-shirt', color: 'white', name: 'White Poplin Dress Shirt' },
+      { id: 'o1', macroCategory: 'outerwear', subtype: 'blazer', color: 'navy', name: 'Navy Wool Blazer' },
+      { id: 'b1', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'charcoal', name: 'Charcoal Suit Trousers' },
+      { id: 's1', macroCategory: 'shoes', subtype: 'loafer', color: 'black', name: 'Black Calf Loafers' },
+    ],
+  };
+
+  for (const language of ['en', 'ru', 'uz']) {
+    const cards = editorialDeckCopy(
+      [dateLook],
+      { style: 'classic', occasion: 'Date Night', dressCode: 'smart', language },
+      [{ id: 'signature', qualified: true }],
+    );
+    assert.ok(!/\boffice\b|офис|ofis/i.test(cards[0].concept.title),
+      `Date Night must never emit an office headline (${language}): ${cards[0].concept.title}`);
+  }
+  assert.equal(groundedNativeHeadline('Precise office tailoring', {}, 'en', 'Date Night'), 'Evening tailoring');
+  assert.equal(groundedNativeHeadline('Precise office tailoring', {}, 'en', 'Casual'), 'Refined tailoring');
+  assert.equal(groundedNativeHeadline('Precise office tailoring', {}, 'en', 'Work'), 'Precise office tailoring');
+
+  // Defect D: Grey + Brown + Orange + Black must NEVER claim "warm earth harmony"
+  const mixedLook = {
+    id: 'look-mixed-1',
+    items: [
+      { id: 't2', macroCategory: 'top', subtype: 'fine-knit', color: 'grey', name: 'Grey Knit Polo' },
+      { id: 'o2', macroCategory: 'outerwear', subtype: 'blazer', color: 'brown', name: 'Brown Linen Blazer' },
+      { id: 'b2', macroCategory: 'bottom', subtype: 'chino', color: 'orange', name: 'Caramel Orange Moleskin Trousers' },
+      { id: 's2', macroCategory: 'shoes', subtype: 'oxford', color: 'black', name: 'Executive Cap-Toe Oxford Black' },
+    ],
+  };
+  const notes = buildStylistNotes(mixedLook, { style: 'old_money', occasion: 'Work', language: 'en' }, { id: 'signature' });
+  assert.ok(!/warm earth harmony/i.test(notes.colorStory),
+    `Grey/Brown/Orange/Black must not be labeled warm earth harmony: ${notes.colorStory}`);
+
+  // True earth palette (Cream + Brown + Camel + Brown) SHOULD still earn warm earth harmony
+  const trueEarthLook = {
+    id: 'look-earth-1',
+    items: [
+      { id: 't3', macroCategory: 'top', subtype: 'fine-knit', color: 'cream', name: 'Cream Merino Crewneck' },
+      { id: 'o3', macroCategory: 'outerwear', subtype: 'blazer', color: 'brown', name: 'Espresso Wool Blazer' },
+      { id: 'b3', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'camel', name: 'Camel Flannel Trousers' },
+      { id: 's3', macroCategory: 'shoes', subtype: 'loafer', color: 'brown', name: 'Dark Brown Suede Loafers' },
+    ],
+  };
+  const earthNotes = buildStylistNotes(trueEarthLook, { style: 'old_money', occasion: 'Work', language: 'en' }, { id: 'signature' });
+  assert.match(earthNotes.colorStory, /warm earth harmony|crisp light-dark contrast/i);
+});

@@ -472,3 +472,40 @@ test('renderVisualSwapBoard renders a 1400x900 board with 3 locked garments on l
   assert.equal(meta.width, 1400);
   assert.equal(meta.height, 900);
 });
+
+test('Phase 10 Defect B: renderVisualShowroomBoard Wave-2 backfills failed downloads from deeper queue to reach 32/32 rendered photos', async () => {
+  const validJpg = await syntheticPhoto('jpeg', '#2B3A4E', 180, 240);
+  const fetchImpl = async (url) => {
+    if (url.includes('/fail-')) return new Response('not found', { status: 404 });
+    return new Response(validJpg, { status: 200 });
+  };
+
+  const makeQueuedRack = (slot) => Array.from({ length: 14 }, (_, idx) => ({
+    id: `${slot}-${idx + 1}`,
+    macroCategory: slot,
+    brand: 'Atelier',
+    price: 200,
+    currency: 'USD',
+    // Simulate 3 failed fetches inside the first 8 items of every rack!
+    imageUrl: idx < 3
+      ? `https://static.zara.net/fail-${slot}-${idx + 1}.jpg`
+      : `https://static.zara.net/ok-${slot}-${idx + 1}.jpg`,
+  }));
+
+  const board = await renderVisualShowroomBoard(
+    {
+      top: makeQueuedRack('top'),
+      outerwear: makeQueuedRack('outerwear'),
+      bottom: makeQueuedRack('bottom'),
+      shoes: makeQueuedRack('shoes'),
+    },
+    { maxPerSlot: 8, maxQueuePerSlot: 16, fetchImpl },
+  );
+
+  assert.equal(board.ok, true);
+  assert.equal(board.renderedCount, 32, 'Wave-2 backfill must populate all 32/32 showroom tiles');
+  assert.deepEqual(board.slotCounts, { top: 8, outerwear: 8, bottom: 8, shoes: 8 });
+  assert.equal(board.tokensBySlot.top.length, 8);
+  assert.equal(board.tokensBySlot.shoes.length, 8);
+  assert.equal(board.skipped.length, 12, '12 failed primary URLs recorded honestly in skipped');
+});

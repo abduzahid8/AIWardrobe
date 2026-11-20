@@ -1209,12 +1209,13 @@ export async function renderVisualShowroomBoard(slotPools, options = {}) {
     title = 'PRIVATE VISUAL SHOWROOM',
     subtitle = 'REAL GARMENT PHOTOGRAPHS · CHOOSE EXACT TOKENS (T / L / B / S)',
     maxPerSlot = 8,
+    maxQueuePerSlot = null,
     minPerSlot = 0,
     requireMinPerSlot = false,
     anonymizeLabels = false,
     includePriceTags = true,
     maxOutputBytes = DEFAULT_SHOWROOM_MAX_BYTES,
-    deadlineMs = 9000,
+    deadlineMs = 9500,
     signal = null,
     photoCache = null,
     resolvePhoto = null,
@@ -1225,6 +1226,10 @@ export async function renderVisualShowroomBoard(slotPools, options = {}) {
   } = options;
 
   const perSlotCap = Math.max(1, Math.min(8, Math.floor(Number(maxPerSlot) || 8)));
+  const queueCap = Math.max(
+    perSlotCap,
+    Math.min(24, Math.floor(Number(maxQueuePerSlot) || perSlotCap * 2)),
+  );
   const poolsObj = slotPools && typeof slotPools === 'object' ? slotPools : {};
 
   const controller = new AbortController();
@@ -1260,12 +1265,17 @@ export async function renderVisualShowroomBoard(slotPools, options = {}) {
       if (dedupeKey && seenIds.has(dedupeKey)) continue;
       if (dedupeKey) seenIds.add(dedupeKey);
       items.push(item);
-      if (items.length >= perSlotCap) break;
+      if (items.length >= queueCap) break;
     }
-    return { rack, items };
+    return {
+      rack,
+      items,
+      primaryItems: items.slice(0, perSlotCap),
+      backfillItems: items.slice(perSlotCap, queueCap),
+    };
   });
 
-  const totalRequested = requestedByRack.reduce((sum, r) => sum + r.items.length, 0);
+  let totalRequested = requestedByRack.reduce((sum, r) => sum + r.primaryItems.length, 0);
   const tokens = {};
   const tokensBySlot = { top: [], outerwear: [], bottom: [], shoes: [] };
   const slotCounts = { top: 0, outerwear: 0, bottom: 0, shoes: 0 };
@@ -1300,42 +1310,123 @@ export async function renderVisualShowroomBoard(slotPools, options = {}) {
     };
   }
 
-  try {
-    const rackResults = await Promise.all(
-      requestedByRack.map(async ({ rack, items }, rackIdx) => {
-        const fetchedEntries = await Promise.all(
-          items.map(async (item, itemIdx) => {
-            const fetched = await resolveItemRawBytes(item, {
-              resolvePhoto,
-              authorizePhoto,
-              allowlist,
-              fetchImpl,
-              photoCache,
-              signal: combinedSignal,
-              fetchTimeoutMs: Math.min(DEFAULT_FETCH_TIMEOUT_MS, deadlineMs),
-            });
-            if (fetched.cacheHit) cacheHits++;
-            else cacheMisses++;
+  const fetchAndDecodeItem = async (item, itemIdx) => {
+    const fetched = await resolveItemRawBytes(item, {
+      resolvePhoto,
+      authorizePhoto,
+      allowlist,
+      fetchImpl,
+      photoCache,
+      signal: combinedSignal,
+      fetchTimeoutMs: Math.min(DEFAULT_FETCH_TIMEOUT_MS, deadlineMs),
+    });
+    if (fetched.cacheHit) cacheHits++;
+    else cacheMisses++;
 
-            if (!fetched.ok) {
-              return { ok: false, item, itemIdx, status: fetched.status };
-            }
-            try {
-              const decoded = await decodeNormalizedPhotoBytes(fetched.bytes, {
-                width: imgW,
-                height: imgH,
-                background: STUDIO_CARD_HEX,
-                sharpImpl,
-              });
-              return { ok: true, item, itemIdx, decoded };
-            } catch (err) {
-              return { ok: false, item, itemIdx, status: err?.code || 'decode_failed' };
-            }
-          }),
-        );
-        return { rack, rackIdx, fetchedEntries };
+    if (!fetched.ok) {
+      return { ok: false, item, itemIdx, status: fetched.status };
+    }
+    try {
+      const decoded = await decodeNormalizedPhotoBytes(fetched.bytes, {
+        width: imgW,
+        height: imgH,
+        background: STUDIO_CARD_HEX,
+        sharpImpl,
+      });
+      return { ok: true, item, itemIdx, decoded };
+    } catch (err) {
+      return { ok: false, item, itemIdx, status: err?.code || 'decode_failed' };
+    }
+  };
+
+  const runBounded = async (tasks, concurrency = 16) => {
+    const results = new Array(tasks.length);
+    let cursor = 0;
+    const workerCount = Math.min(Math.max(1, concurrency), tasks.length);
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        while (cursor < tasks.length) {
+          const i = cursor++;
+          results[i] = await tasks[i]();
+        }
       }),
     );
+    return results;
+  };
+
+  try {
+    // Wave 1: Fetch the primary top-ranked items (up to perSlotCap per rack) with bounded concurrency
+    const wave1Tasks = [];
+    const wave1Buckets = requestedByRack.map(() => []);
+    requestedByRack.forEach(({ primaryItems }, rackIdx) => {
+      primaryItems.forEach((item, itemIdx) => {
+        wave1Tasks.push(async () => {
+          const res = await fetchAndDecodeItem(item, itemIdx);
+          wave1Buckets[rackIdx][itemIdx] = res;
+        });
+      });
+    });
+    await runBounded(wave1Tasks, 16);
+
+    // Wave 2: Automatic backfill for any rack with failed/skipped primary downloads
+    // so every showroom shelf reaches up to perSlotCap (8/8 = 32/32) clean studio photos!
+    if (!combinedSignal.aborted) {
+      const backfillTasks = [];
+      const backfillBuckets = requestedByRack.map(() => []);
+      requestedByRack.forEach(({ primaryItems, backfillItems }, rackIdx) => {
+        const okCount = wave1Buckets[rackIdx].filter((e) => e?.ok).length;
+        const deficit = perSlotCap - okCount;
+        if (deficit <= 0 || backfillItems.length === 0) return;
+        // Fetch enough backfill candidates (deficit + small cushion) in parallel
+        const slice = backfillItems.slice(0, Math.min(backfillItems.length, deficit + 3));
+        totalRequested += slice.length;
+        slice.forEach((item, bIdx) => {
+          backfillTasks.push(async () => {
+            const res = await fetchAndDecodeItem(item, primaryItems.length + bIdx);
+            backfillBuckets[rackIdx][bIdx] = res;
+          });
+        });
+      });
+      if (backfillTasks.length > 0) {
+        await runBounded(backfillTasks, 16);
+      }
+      // Second quick backfill pass if any rack STILL has a deficit and queued items remain
+      if (!combinedSignal.aborted) {
+        const wave3Tasks = [];
+        const wave3Buckets = requestedByRack.map(() => []);
+        requestedByRack.forEach(({ primaryItems, backfillItems }, rackIdx) => {
+          const okCount = wave1Buckets[rackIdx].filter((e) => e?.ok).length
+            + backfillBuckets[rackIdx].filter((e) => e?.ok).length;
+          const alreadyTried = backfillBuckets[rackIdx].length;
+          const deficit = perSlotCap - okCount;
+          if (deficit <= 0 || alreadyTried >= backfillItems.length) return;
+          const rest = backfillItems.slice(alreadyTried);
+          totalRequested += rest.length;
+          rest.forEach((item, rIdx) => {
+            wave3Tasks.push(async () => {
+              const res = await fetchAndDecodeItem(item, primaryItems.length + alreadyTried + rIdx);
+              wave3Buckets[rackIdx][rIdx] = res;
+            });
+          });
+        });
+        if (wave3Tasks.length > 0) {
+          await runBounded(wave3Tasks, 16);
+          wave3Buckets.forEach((entries, rackIdx) => {
+            backfillBuckets[rackIdx].push(...entries);
+          });
+        }
+      }
+      backfillBuckets.forEach((entries, rackIdx) => {
+        wave1Buckets[rackIdx].push(...entries);
+      });
+    }
+
+    const rackResults = requestedByRack.map(({ rack, items }, rackIdx) => ({
+      rack,
+      rackIdx,
+      targetRackSlots: Math.min(perSlotCap, items.length),
+      fetchedEntries: wave1Buckets[rackIdx].filter(Boolean),
+    }));
 
     if (combinedSignal.aborted) {
       return {
@@ -1367,7 +1458,7 @@ export async function renderVisualShowroomBoard(slotPools, options = {}) {
     const rawComposites = [];
     let renderedCount = 0;
 
-    for (const { rack, rackIdx, fetchedEntries } of rackResults) {
+    for (const { rack, rackIdx, targetRackSlots, fetchedEntries } of rackResults) {
       const rackY = rackStartY + rackIdx * (rackH + rackGapY);
       const cardY = rackY + 26;
       const renderedInRack = [];
@@ -1381,7 +1472,9 @@ export async function renderVisualShowroomBoard(slotPools, options = {}) {
           });
           continue;
         }
-        renderedInRack.push(entry);
+        if (renderedInRack.length < perSlotCap) {
+          renderedInRack.push(entry);
+        }
       }
 
       const rackCount = renderedInRack.length;
@@ -1396,7 +1489,7 @@ export async function renderVisualShowroomBoard(slotPools, options = {}) {
         `<text x="28" y="${rackY + 18}" fill="${STUDIO_INK_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="13" font-weight="800" letter-spacing="1.6">${escapeXml(rack.label)} · ${escapeXml(rangeText)}</text>`,
       );
       overlayShapes.push(
-        `<text x="1572" y="${rackY + 18}" text-anchor="end" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="600" letter-spacing="1.0">${rackCount} OF ${fetchedEntries.length} PHOTOGRAPHED</text>`,
+        `<text x="1572" y="${rackY + 18}" text-anchor="end" fill="${STUDIO_MUTED_HEX}" font-family="Helvetica Neue,Arial,sans-serif" font-size="11" font-weight="600" letter-spacing="1.0">${rackCount} OF ${targetRackSlots} PHOTOGRAPHED</text>`,
       );
 
       for (let col = 0; col < renderedInRack.length; col++) {

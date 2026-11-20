@@ -457,3 +457,36 @@ test('selectVisualSlotReplacement renders 1400x900 Swap Board (reusing photoCach
   assert.equal(badRes.selectedItem, null);
   assert.equal(badRes.reason, 'invalid_selected_token');
 });
+
+test('Phase 10 Defect B: selectShowroomSlotPools excludes logo sweatshirts, sweatpants, jersey Henleys, and non-black-tie tuxedo jackets while building deeper backfill queue', () => {
+  const catalog = [
+    { id: 'ck-logo-sweat', macroCategory: 'top', subtype: 'sweatshirt', color: 'white', brand: 'Calvin Klein', name: 'CK Logo Crewneck Sweatshirt', price: 140, currency: 'USD', imageUrl: 'https://static.zara.net/ck.jpg' },
+    { id: 'rl-jersey-henley', macroCategory: 'top', subtype: 'shirt', color: 'grey', brand: 'Ralph Lauren', name: 'Cotton Jersey Waffle Henley', price: 95, currency: 'USD', imageUrl: 'https://static.zara.net/henley.jpg' },
+    { id: 'clean-merino', macroCategory: 'top', subtype: 'fine-knit', color: 'cream', brand: 'Canali', name: 'Fine Merino Crewneck Sweater', price: 240, currency: 'USD', imageUrl: 'https://static.zara.net/merino.jpg' },
+    { id: 'blocked-host-shirt', macroCategory: 'top', subtype: 'dress-shirt', color: 'white', brand: 'Barbour', name: 'White Poplin Shirt', price: 130, currency: 'USD', imageUrl: 'https://www.barbour.com/shirt.jpg' },
+    { id: 'tux-jacket', macroCategory: 'outerwear', subtype: 'blazer', color: 'black', brand: 'J.Crew', name: 'Ludlow Satin Shawl Tuxedo Dinner Jacket', price: 698, currency: 'USD', imageUrl: 'https://static.zara.net/tux.jpg' },
+    { id: 'navy-blazer', macroCategory: 'outerwear', subtype: 'blazer', color: 'navy', brand: 'Aurélien', name: 'Navy Tailored Wool Blazer', price: 495, currency: 'USD', imageUrl: 'https://static.zara.net/blazer.jpg' },
+    { id: 'allsaints-sweatpant', macroCategory: 'bottom', subtype: 'athletic-trouser', color: 'navy', brand: 'AllSaints', name: 'Elastic Drawstring Lounge Pants', price: 189, currency: 'USD', imageUrl: 'https://static.zara.net/sweatpant.jpg' },
+    { id: 'wool-trouser', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'charcoal', brand: 'J.Crew', name: 'Tailored Fit Wool Suit Trousers', price: 220, currency: 'USD', imageUrl: 'https://static.zara.net/trouser.jpg' },
+    { id: 'espresso-loafer', macroCategory: 'shoes', subtype: 'loafer', color: 'brown', brand: 'Beckett Simonon', name: 'Espresso Calf Loafer', price: 249, currency: 'USD', imageUrl: 'https://static.zara.net/loafer.jpg' },
+  ];
+
+  const { slotPools } = selectShowroomSlotPools({
+    catalog,
+    context: { style: 'Old Money', occasion: 'Work' },
+    authorizePhoto: (url) => url.startsWith('https://static.zara.net/'),
+    maxPerSlot: 8,
+    queuePerSlot: 16,
+  });
+
+  const allIds = Object.values(slotPools).flat().map((it) => it.id);
+  assert.ok(!allIds.includes('ck-logo-sweat'), 'CK logo sweatshirt excluded from Old Money Work');
+  assert.ok(!allIds.includes('rl-jersey-henley'), 'casual jersey Henley excluded from Old Money Work');
+  assert.ok(!allIds.includes('blocked-host-shirt'), 'non-allowlisted host excluded before showroom fetch');
+  assert.ok(!allIds.includes('tux-jacket'), 'satin shawl tuxedo dinner jacket excluded from Work');
+  assert.ok(!allIds.includes('allsaints-sweatpant'), 'drawstring sweatpants excluded from Work');
+  assert.ok(allIds.includes('clean-merino'));
+  assert.ok(allIds.includes('navy-blazer'));
+  assert.ok(allIds.includes('wool-trouser'));
+  assert.ok(allIds.includes('espresso-loafer'));
+});

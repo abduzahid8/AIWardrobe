@@ -2258,6 +2258,20 @@ export async function recommendFashionDeck({
               const fromPool=effectivePoolForCount.filter(e=>e?.slot===slot).map(e=>e?.item).filter(Boolean);
               return [...fromDirShowroom,...fromDirRest,...fromPool];
             };
+            const backupSceneText=`${request?.occasion||''} ${request?.style||''}`;
+            const backupElevated=/\b(?:work|office|business|formal|date|dinner|old[_ -]?money|classic)\b/i.test(backupSceneText);
+            const backupBlackTie=/\b(?:black[- ]?tie|gala|tuxedo|opera|white[- ]?tie)\b/i.test(`${backupSceneText} ${request?.brief||''}`);
+            const backupItemAllowed=(it,slot)=>{
+              const titleLower=String(it?.name||'').toLowerCase();
+              const subLower=String(it?.subtype||'').toLowerCase();
+              if(!backupBlackTie&&/\b(?:tuxedo|dinner\s+jackets?|smoking\s+jackets?|satin\s+shawl|silk\s+shawl|black[- ]?tie)\b/i.test(titleLower))return false;
+              if(backupElevated){
+                if(/\b(?:sweatshirts?|hoodies?|joggers?|sweat\s*pants?|track\s*pants?|tracksuits?|fleece\s*pants?|lounge\s*pants?|varsity|collegiate|graphic\s+t(?:ee|-?shirt)?|ck\s+logo|logo\s+sweat|monogram\s+sweat)\b/i.test(titleLower))return false;
+                if(['athletic-trouser','sweatshirt','hoodie','shorts','sport-sneaker'].includes(subLower))return false;
+                if(slot==='bottom'&&/\b(?:drawstring|elastic(?:ated)?\s+waist|fleece|lounge)\b/i.test(titleLower)&&!/\b(?:tailored|suit|pleated|dress\s+trouser|wool\s+trouser)\b/i.test(titleLower))return false;
+              }
+              return true;
+            };
             for(let bIdx=0;bIdx<4&&rawBackupCombos.length<4;bIdx++){
               const dirIdx=bIdx%Math.max(1,dirBuckets.length||3);
               const combo=[];
@@ -2266,6 +2280,7 @@ export async function recommendFashionDeck({
                 const candidate=slotSource(dirIdx,slot).find(it=>{
                   const key=baseProductId(String(it?.id||''));
                   if(!key||usedBases.has(key)||localBases.has(key))return false;
+                  if(!backupItemAllowed(it,slot))return false;
                   if(request?.budget&&typeof priceToBudgetCurrency==='function'){
                     const conv=priceToBudgetCurrency(it,request.budget.currency,request);
                     if(!Number.isFinite(conv)||conv<=0||conv>request.budget.amount*0.42)return false;
@@ -3095,8 +3110,8 @@ export async function recommendFashionDeck({
             ? catalog.map((item) => fashionScorer.prepare(item)).filter(Boolean)
             : [];
           const allowedMs = typeof photoRescueRemainingMs === 'function'
-            ? Math.max(1200, Math.min(8000, Math.floor(photoRescueRemainingMs() - 2000)))
-            : 8000;
+            ? Math.max(1200, Math.min(15000, Math.floor(photoRescueRemainingMs() - 2000)))
+            : 15000;
           const pinnedSet = pinnedSetPre;
 
           const parallelTargets = allSurgicalSpecs.map(({ look: targetLook, mode }) => {

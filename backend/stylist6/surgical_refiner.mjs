@@ -260,6 +260,9 @@ export function parseRepairDirective(directive = '', defectCategory = '') {
   const lighterLayer = String(defectCategory || '').trim().toLowerCase() === 'weather_mismatch'
     || /\b(?:lighter|breathable|unlined|summer|warm[ -]?weather|too heavy|heavy coat|overcoat|peacoat|parka|indoor)\b/.test(rawText);
 
+  const wantDifferentTone = /\b(?:different|another|other|alternate|alternative|change|new|varied|warmer|richer|lighter|darker|softer)\s+(?:[a-z]+\s+){0,3}(?:tone|color|colour|shade|hue|finish|leather)\b|\bwrong[ _-]?color\b|\btry\s+a\s+different\b/.test(rawText);
+  const wantDifferentStyle = /\b(?:different|another|other|alternative)\s+(?:[a-z]+\s+){0,2}(?:style|silhouette|cut|type|shape|layer|shoe)\b/.test(rawText);
+
   if (lighterLayer) {
     for (const heavy of ['overcoat', 'coat', 'peacoat', 'parka', 'puffer']) {
       if (!targetSubtypes.has(heavy)) avoidSubtypes.add(heavy);
@@ -283,6 +286,8 @@ export function parseRepairDirective(directive = '', defectCategory = '') {
     fitShift,
     isPhotoDefect,
     lighterLayer,
+    wantDifferentTone,
+    wantDifferentStyle,
   };
 }
 
@@ -611,6 +616,25 @@ export function rankSlotReplacementCandidates({
       if (sameSub && sameCol) {
         score -= sameTex ? 0.24 : 0.16;
         reasons.push('near_clone_of_replaced');
+      } else if (parsed.wantDifferentTone && sameCol) {
+        score -= 0.16;
+        reasons.push('same_color_when_different_tone_requested');
+      }
+    }
+
+    // 8b. Shoe-to-trouser temperature harmony (timeless menswear color-temperature rule):
+    // Stark black formal oxfords/derbies clash with warm earth trousers (caramel, camel, rust, orange, brown, olive);
+    // pair warm earth trousers with espresso/brown, burgundy/oxblood, or tan/cognac leather/suede instead.
+    if (slot === 'shoes') {
+      const lockedBottom = lockedItems.find((it) => itemSlotOf(it) === 'bottom');
+      const bottomColor = lockedBottom ? itemColorOf(lockedBottom) : '';
+      const warmEarthBottom = ['camel', 'tan', 'caramel', 'brown', 'orange', 'rust', 'terracotta', 'olive', 'khaki', 'beige', 'stone', 'cognac'].includes(bottomColor);
+      if (warmEarthBottom && color === 'black') {
+        score -= ['oxford', 'derby', 'monk'].includes(subtype) ? 0.24 : 0.14;
+        reasons.push('black_shoe_clashes_warm_earth_trouser');
+      } else if (warmEarthBottom && ['brown', 'burgundy', 'tan', 'camel'].includes(color)) {
+        score += 0.12;
+        reasons.push('warm_shoe_harmonizes_earth_trouser');
       }
     }
 
@@ -632,11 +656,133 @@ export function rankSlotReplacementCandidates({
       score: Number(score.toFixed(4)),
       reasons,
       budgetPrice: candidateBudgetPrice,
+      _brand: brand,
+      _color: color || 'unknown',
+      _subtype: subtype || 'unknown',
     });
   }
 
   scored.sort((a, b) => b.score - a.score || String(a.item.id).localeCompare(String(b.item.id)));
-  return scored.slice(0, Math.max(1, limit));
+  const maxOut = Math.max(1, limit);
+  const diverseRack = selectDiverseReplacementRack(scored, {
+    limit: maxOut,
+    currentColor,
+    wantDifferentTone: parsed.wantDifferentTone,
+  });
+  return diverseRack.map(({ _brand, _color, _subtype, ...rest }) => rest);
+}
+
+/**
+ * Enforce visual rack diversity across replacement candidates (especially the top
+ * 6 visual swap board slots R1..R6): max 1 per (brand, color), spread across at
+ * least 3–4 distinct color tones and distinct silhouettes/subtypes, and cap the
+ * original item's color at <=1 slot when the user/critic asked for a different tone.
+ */
+function selectDiverseReplacementRack(scored, {
+  limit = 6,
+  currentColor = '',
+  wantDifferentTone = false,
+} = {}) {
+  if (!Array.isArray(scored) || scored.length <= 1) return scored || [];
+  const visualTarget = Math.min(limit, 6);
+  const picked = [];
+  const pickedIds = new Set();
+  const brandCounts = new Map();
+  const brandColorSeen = new Set();
+  const colorCounts = new Map();
+  const subtypeColorSeen = new Set();
+
+  const tryPick = (entry, {
+    maxPerBrand = 1,
+    maxPerBrandColor = 1,
+    maxPerColor = 1,
+    maxOriginalColor = 0,
+    requireDistinctSubtypeColor = true,
+  }) => {
+    const id = String(entry.item.id);
+    if (pickedIds.has(id)) return false;
+    const brand = entry._brand || '';
+    const color = entry._color || 'unknown';
+    const subtype = entry._subtype || 'unknown';
+    const bcKey = brand && color !== 'unknown' ? `${brand}|${color}` : '';
+    const scKey = subtype !== 'unknown' && color !== 'unknown' ? `${subtype}|${color}` : '';
+
+    if (bcKey && maxPerBrandColor <= 1 && brandColorSeen.has(bcKey)) return false;
+    if (brand && (brandCounts.get(brand) || 0) >= maxPerBrand) return false;
+    if (wantDifferentTone && currentColor && color === currentColor) {
+      if ((colorCounts.get(color) || 0) >= maxOriginalColor) return false;
+    }
+    if (color !== 'unknown' && (colorCounts.get(color) || 0) >= maxPerColor) return false;
+    if (requireDistinctSubtypeColor && scKey && subtypeColorSeen.has(scKey)) return false;
+
+    pickedIds.add(id);
+    if (brand) brandCounts.set(brand, (brandCounts.get(brand) || 0) + 1);
+    if (bcKey) brandColorSeen.add(bcKey);
+    if (color !== 'unknown') colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+    if (scKey) subtypeColorSeen.add(scKey);
+    picked.push(entry);
+    return true;
+  };
+
+  // Pass 1a: Strictly distinct brand, distinct color tone, distinct (subtype, color);
+  // skip original color completely when user/critic asked for a different tone.
+  for (const entry of scored) {
+    if (picked.length >= visualTarget) break;
+    tryPick(entry, {
+      maxPerBrand: 1,
+      maxPerBrandColor: 1,
+      maxPerColor: 1,
+      maxOriginalColor: wantDifferentTone ? 0 : 1,
+      requireDistinctSubtypeColor: true,
+    });
+  }
+
+  // Pass 1b: Allow up to 2 per brand / 2 per color (still max 1 per (brand, color),
+  // distinct subtype+color, and max 1 of original color if different tone requested).
+  for (const entry of scored) {
+    if (picked.length >= visualTarget) break;
+    tryPick(entry, {
+      maxPerBrand: 2,
+      maxPerBrandColor: 1,
+      maxPerColor: 2,
+      maxOriginalColor: wantDifferentTone ? 1 : 2,
+      requireDistinctSubtypeColor: true,
+    });
+  }
+
+  // Pass 1c: Allow any subtype/brand while still enforcing max 1 per (brand, color)
+  // and capping original color at <=1 when a different tone was requested.
+  for (const entry of scored) {
+    if (picked.length >= visualTarget) break;
+    tryPick(entry, {
+      maxPerBrand: 3,
+      maxPerBrandColor: 1,
+      maxPerColor: 2,
+      maxOriginalColor: wantDifferentTone ? 1 : 3,
+      requireDistinctSubtypeColor: false,
+    });
+  }
+
+  // Pass 2: Backfill remaining entries up to `limit` (preferring distinct (brand, color) first,
+  // then pure score order so sparse pools never starve).
+  for (const entry of scored) {
+    if (picked.length >= limit) break;
+    tryPick(entry, {
+      maxPerBrand: 4,
+      maxPerBrandColor: 1,
+      maxPerColor: 4,
+      maxOriginalColor: wantDifferentTone ? 2 : 4,
+      requireDistinctSubtypeColor: false,
+    });
+  }
+  for (const entry of scored) {
+    if (picked.length >= limit) break;
+    const id = String(entry.item.id);
+    if (pickedIds.has(id)) continue;
+    pickedIds.add(id);
+    picked.push(entry);
+  }
+  return picked;
 }
 
 function buildReplacedLook(look, targetSlot, replacementItem, newLookId) {
@@ -791,7 +937,16 @@ async function prefilterAndPromoteVisualPick({
   onGateFailed = null,
   maxVisualPool = 6,
 }) {
+  const parsedDirective = parseRepairDirective(repairDirective, '');
+  const currentSlotItem = (Array.isArray(workingLook?.items) ? workingLook.items : [])
+    .find((it) => itemSlotOf(it) === String(targetSlot || '').toLowerCase()) || null;
+  const originalColor = currentSlotItem ? itemColorOf(currentSlotItem) : '';
   const validEntries = [];
+  const deferredValid = [];
+  const seenBrandColor = new Set();
+  const brandCounts = new Map();
+  const colorCounts = new Map();
+
   for (let idx = 0; idx < ranked.length && validEntries.length < maxVisualPool; idx++) {
     if (signal?.aborted || Date.now() >= deadlineAt) break;
     const candidateEntry = ranked[idx];
@@ -805,7 +960,7 @@ async function prefilterAndPromoteVisualPick({
       onGateFailed?.({ candidateEntry, replacement, replacementId, gate });
       continue;
     }
-    validEntries.push({
+    const entryObj = {
       candidateEntry,
       replacement,
       replacementId,
@@ -814,7 +969,29 @@ async function prefilterAndPromoteVisualPick({
       visualSwapToken: null,
       visualSwapRationale: null,
       visualSwapBoard: null,
-    });
+    };
+    const brand = String(replacement?.brand || '').trim().toLowerCase();
+    const color = itemColorOf(replacement) || 'unknown';
+    const bcKey = brand && color !== 'unknown' ? `${brand}|${color}` : '';
+    const exceedsBrandColor = Boolean(bcKey && seenBrandColor.has(bcKey));
+    const exceedsBrand = Boolean(brand && (brandCounts.get(brand) || 0) >= 2);
+    const exceedsOriginalColor = Boolean(
+      parsedDirective.wantDifferentTone && originalColor && color === originalColor
+      && (colorCounts.get(color) || 0) >= 1,
+    );
+    const exceedsSameColor = Boolean(color !== 'unknown' && (colorCounts.get(color) || 0) >= 2);
+
+    if (exceedsBrandColor || exceedsBrand || exceedsOriginalColor || exceedsSameColor) {
+      deferredValid.push(entryObj);
+      continue;
+    }
+    if (bcKey) seenBrandColor.add(bcKey);
+    if (brand) brandCounts.set(brand, (brandCounts.get(brand) || 0) + 1);
+    if (color !== 'unknown') colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+    validEntries.push(entryObj);
+  }
+  while (validEntries.length < maxVisualPool && deferredValid.length > 0) {
+    validEntries.push(deferredValid.shift());
   }
 
   if (validEntries.length === 0 || signal?.aborted || Date.now() >= deadlineAt) {
@@ -1598,7 +1775,7 @@ export async function swapSingleSlot({
     excludedIds: excludedSet,
     qualityMap,
     priceToBudgetCurrency,
-    limit: visualSwapEnabled ? Math.max(12, maxCandidates * 2) : Math.max(1, Math.min(12, maxCandidates * 2)),
+    limit: visualSwapEnabled ? Math.max(24, maxCandidates * 4) : Math.max(1, Math.min(12, maxCandidates * 2)),
   });
 
   if (!ranked.length) {

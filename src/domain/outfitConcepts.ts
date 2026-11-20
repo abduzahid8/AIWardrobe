@@ -240,6 +240,19 @@ function baseConcepts(context: StylingContext): readonly OutfitConcept[] {
       },
     ];
   if (context.style === 'old_money') return [ivy, textured, smartLayer];
+  if (context.style === 'classic' && /date|dinner|evening|свидан/i.test(context.occasion))
+    return [
+      evening,
+      softDate,
+      {
+        ...textured,
+        id: 'classic-evening-tailoring',
+        title: 'Classic evening tailoring',
+        palette: ['navy', 'charcoal', 'black', 'burgundy', 'white'],
+      },
+    ];
+  if (context.style === 'classic' && /casual|weekend|travel|trip|повседнев|путеш/i.test(context.occasion))
+    return [separates, smartLayer, textured];
   if (context.style === 'classic')
     return [
       office,
@@ -249,10 +262,12 @@ function baseConcepts(context: StylingContext): readonly OutfitConcept[] {
         slots: [textured.slots[0], ['coat', 'blazer'], textured.slots[2], textured.slots[3]],
       },
     ];
-  if (context.style === 'semi_classic' && /date|свидан/.test(context.occasion))
+  if (context.style === 'semi_classic' && /date|dinner|evening|свидан/i.test(context.occasion))
     return [evening, softDate, { ...modern, layerPurpose: 'light-shell' }];
   if (context.style === 'semi_classic' || context.style === 'business_casual')
-    return [separates, smartLayer, office];
+    return /work|office|business|работ|офис/i.test(context.occasion)
+      ? [separates, smartLayer, office]
+      : [separates, smartLayer, textured];
   if (context.style === 'smart_casual')
     return [
       {

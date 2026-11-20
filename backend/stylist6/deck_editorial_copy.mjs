@@ -169,6 +169,9 @@ const RU = {
     'Textured tailoring':'Фактурный костюм',
     'Smart knit layering':'Трикотажная многослойность',
     'Precise office tailoring':'Точный офисный костюм',
+    'Classic evening tailoring':'Классический вечерний костюм',
+    'Evening tailoring':'Вечерний костюм',
+    'Refined tailoring':'Выверенный костюм',
     'Classic separates':'Классический комплект',
     'Tonal evening':'Тональный вечер',
     'Soft evening texture':'Мягкая вечерняя фактура',
@@ -276,6 +279,9 @@ const UZ = {
     'Textured tailoring':'Fakturali kostyum',
     'Smart knit layering':"Aqlli trikotaj qatlamlari",
     'Precise office tailoring':"Aniq ofis kostyumi",
+    'Classic evening tailoring':"Klassik kechki kostyum",
+    'Evening tailoring':"Kechki kostyum",
+    'Refined tailoring':"Nafis kostyum",
     'Classic separates':"Klassik to'plam",
     'Tonal evening':'Tonli kech',
     'Soft evening texture':"Yumshoq kech fakturasi",
@@ -485,10 +491,25 @@ function localizedPrefix(lang, context, direction) {
   return template(style, occasion);
 }
 
+function sanitizeOccasionHeadline(title, occasion) {
+  const clean = String(title || '');
+  const occ = String(occasion || '').trim().toLowerCase();
+  if (!occ || /\b(?:work|office|business|meeting|conference|interview)\b/.test(occ)) {
+    return clean;
+  }
+  if (/\boffice\b/i.test(clean)) {
+    if (/\b(?:date|dinner|evening|cocktail|night|romance)\b/.test(occ)) {
+      return 'Evening tailoring';
+    }
+    return 'Refined tailoring';
+  }
+  return clean;
+}
+
 /** Localized evidence-led native headline (null = keep the English title). */
-function localizedNativeHeadline(lang, nativeTitle, part) {
+function localizedNativeHeadline(lang, nativeTitle, part, occasion = '') {
   const L = COPY_LOCALES[lang];
-  const title = String(nativeTitle || '');
+  const title = sanitizeOccasionHeadline(nativeTitle, occasion);
   if(/^(?:shirt|polo|knitwear|blazer|sport sneakers|shoes|tee)$/i.test(title)){
     const top=roleFor(lang,part?.top),bottom=roleFor(lang,part?.bottom);
     const layer=roleFor(lang,part?.outerwear);
@@ -546,7 +567,7 @@ function localizedHeadlineCandidates(lang, part, direction) {
 function localizedCard(lang, seen, index, look, basePart, context, direction, native) {
   const L = COPY_LOCALES[lang];
   const part = details(look.items);
-  const truthful = localizedNativeHeadline(lang, native.title, part);
+  const truthful = localizedNativeHeadline(lang, native.title, part, context?.occasion);
   const options = index === 0
     ? [truthful]
     : [...localizedHeadlineCandidates(lang, part, direction), truthful];
@@ -632,10 +653,10 @@ function focusDescription(basePart, part, direction) {
  * final three-slot outfit contains only a polo or sweater. Do not display
  * "layering" unless there is actually an outer layer in the selected SKUs.
  */
-export function groundedNativeHeadline(nativeTitle, part, language) {
-  const title = String(nativeTitle || '');
+export function groundedNativeHeadline(nativeTitle, part, language, occasion = '') {
+  const title = sanitizeOccasionHeadline(nativeTitle, occasion);
   if (language && language !== 'en') {
-    return localizedNativeHeadline(language, title, part) ?? title;
+    return localizedNativeHeadline(language, title, part, occasion) ?? title;
   }
   if(/^(?:shirt|polo|knitwear|blazer|sport sneakers|shoes|tee)$/i.test(title)){
     const top=enRole(part?.top),bottom=enRole(part?.bottom),layer=enRole(part?.outerwear);
@@ -905,14 +926,21 @@ function buildColorStory(lang, part, items) {
   }
   const hasLight = verifiedColors.some(c => LIGHT_TONES.has(c));
   const hasDark = verifiedColors.some(c => DARK_TONES.has(c));
+  const EARTH_HARMONY_TONES = new Set(['cream', 'beige', 'camel', 'tan', 'brown', 'olive', 'khaki', 'rust', 'burgundy', 'stone']);
+  const earthCount = verifiedColors.filter(c => EARTH_HARMONY_TONES.has(c)).length;
   const warmCount = verifiedColors.filter(c => WARM_TONES.has(c)).length;
   const coolCount = verifiedColors.filter(c => COOL_TONES.has(c)).length;
+  const nonNavyCoolCount = verifiedColors.filter(c => COOL_TONES.has(c) && c !== 'navy').length;
+  const hasBlackOrVividOrange = verifiedColors.includes('black') || verifiedColors.includes('orange');
   const isTonal = verifiedColors.length <= 2 && !(hasLight && hasDark);
+  const isTrueWarmEarth = earthCount >= 2 && nonNavyCoolCount === 0 && !hasBlackOrVividOrange;
+  const isMixedTemp = warmCount >= 1 && (verifiedColors.includes('black') || nonNavyCoolCount >= 2);
 
   const toneMode = isTonal ? 'tonal'
-    : (hasLight && hasDark) ? 'contrast'
-      : (warmCount >= coolCount && warmCount >= 2) ? 'warm'
-        : (coolCount >= 2) ? 'cool' : 'balanced';
+    : (hasLight && hasDark && !isMixedTemp) ? 'contrast'
+      : isTrueWarmEarth ? 'warm'
+        : (coolCount >= 2 && warmCount === 0) ? 'cool'
+          : isMixedTemp ? 'mixed' : 'balanced';
 
   if (lang === 'ru') {
     const names = verifiedColors.map(c => colorFor('ru', c, 'm')).filter(Boolean);
@@ -920,7 +948,8 @@ function buildColorStory(lang, part, items) {
     const mood = toneMode === 'contrast' ? 'выразительный чистый контраст'
       : toneMode === 'tonal' ? 'спокойная тональная гармония'
         : toneMode === 'warm' ? 'тёплая природная палитра'
-          : toneMode === 'cool' ? 'собранная прохладная палитра' : 'сбалансированная палитра';
+          : toneMode === 'cool' ? 'собранная прохладная палитра'
+            : toneMode === 'mixed' ? 'контрастное сочетание тёплых и холодных оттенков' : 'сбалансированная палитра';
     return `${cap(names.join(', '))} — ${mood}.`;
   }
   if (lang === 'uz') {
@@ -929,7 +958,8 @@ function buildColorStory(lang, part, items) {
     const mood = toneMode === 'contrast' ? 'aniq va toza kontrast'
       : toneMode === 'tonal' ? "sokin tonli uyg'unlik"
         : toneMode === 'warm' ? 'iliq tabiiy palitra'
-          : toneMode === 'cool' ? 'saranjom sovuq palitra' : "muvozanatli palitra";
+          : toneMode === 'cool' ? 'saranjom sovuq palitra'
+            : toneMode === 'mixed' ? 'iliq va sovuq tuslar kontrasti' : "muvozanatli palitra";
     return `${cap(names.join(', '))} — ${mood}.`;
   }
   const names = verifiedColors.map(c => titleCase(c));
@@ -939,7 +969,8 @@ function buildColorStory(lang, part, items) {
   const mood = toneMode === 'contrast' ? 'crisp light-dark contrast'
     : toneMode === 'tonal' ? 'cohesive tonal depth'
       : toneMode === 'warm' ? 'warm earth harmony'
-        : toneMode === 'cool' ? 'cool tailored balance' : 'grounded neutral balance';
+        : toneMode === 'cool' ? 'cool tailored balance'
+          : toneMode === 'mixed' ? 'high-contrast warm-and-cool interplay' : 'grounded neutral balance';
   return `${listStr} create ${mood}.`;
 }
 
@@ -1219,7 +1250,7 @@ export function editorialDeckCopy(looks, context, directions, options = {}) {
       };
     }
     const part = details(look.items);
-    const truthfulNative = groundedNativeHeadline(native.title, part);
+    const truthfulNative = groundedNativeHeadline(native.title, part, 'en', context?.occasion);
     const headlineOpts = index === 0
       ? [truthfulNative]
       : [...headlineCandidates(part, direction), truthfulNative];

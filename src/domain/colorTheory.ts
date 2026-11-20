@@ -947,6 +947,11 @@ const WARM_LEATHER_SHOE_HUES = new Set([
   'cognac', 'tan', 'caramel', 'saddle', 'honey', 'ochre', 'amber', 'orange', 'burnt_orange', 'rust', 'cinnamon', 'copper',
 ]);
 
+const WARM_EARTH_TROUSER_HUES = new Set([
+  'camel', 'tan', 'caramel', 'cognac', 'saddle', 'chestnut', 'cinnamon', 'terracotta',
+  'rust', 'burnt_orange', 'orange', 'ochre', 'honey', 'tobacco', 'brown', 'olive', 'dark_olive', 'khaki',
+]);
+
 const STARK_COOL_ANCHORS = new Set([
   'black', 'jet_black', 'obsidian', 'cool_grey', 'silver', 'ice_blue', 'slate', 'crisp_white', 'anthracite', 'graphite',
 ]);
@@ -1072,8 +1077,10 @@ export function scoreOutfitColorTheory(
 
   let tempCoherence = 0.85;
   let warmCognacVsIcyClash = false;
+  let starkBlackShoesOnWarmEarthClash = false;
 
   const shoeItem = items.find((it) => it.slot === 'shoes');
+  const bottomItem = items.find((it) => it.slot === 'bottom');
   if (
     shoeItem &&
     WARM_LEATHER_SHOE_HUES.has(shoeItem.metrics.canonical) &&
@@ -1084,6 +1091,22 @@ export function scoreOutfitColorTheory(
     warmCognacVsIcyClash = true;
     tempCoherence -= 0.42;
     flaws.push('warm_cognac_leather_clashes_with_icy_cool_palette');
+  }
+
+  // Symmetric menswear footwear temperature rule: stark jet-black shoes clash with warm
+  // caramel/camel/rust/orange/brown/olive trousers unless intentionally anchored by an all-black upper.
+  const upperItems = items.filter((it) => it.slot === 'top' || it.slot === 'outerwear');
+  const allUpperBlack = upperItems.length > 0 && upperItems.every((it) => DARK_BLACK_FAMILY.has(it.metrics.canonical));
+  if (
+    shoeItem &&
+    bottomItem &&
+    DARK_BLACK_FAMILY.has(shoeItem.metrics.canonical) &&
+    WARM_EARTH_TROUSER_HUES.has(bottomItem.metrics.canonical) &&
+    !allUpperBlack
+  ) {
+    starkBlackShoesOnWarmEarthClash = true;
+    tempCoherence -= 0.34;
+    flaws.push('stark_black_shoes_clash_with_warm_earth_trousers');
   }
 
   // Check harsh unbridged warm chromatic vs icy cool chromatic clash
@@ -1223,6 +1246,7 @@ export function scoreOutfitColorTheory(
 
   const hasSevereClash =
     warmCognacVsIcyClash ||
+    starkBlackShoesOnWarmEarthClash ||
     accentPenalty >= 0.22 ||
     nearMissPenalty >= 0.18 ||
     avoidedCount >= 2 ||

@@ -663,7 +663,7 @@ async function resolveProductAsset(product, fetchImpl = fetch, photoByteCache = 
     return cached;
   }
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 3800);
+  const timer = setTimeout(() => controller.abort(), 5000);
   const combinedSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   try {
     const response = await fetchImpl(url, {

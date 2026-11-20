@@ -674,3 +674,56 @@ test('swapSingleSlot integrates visualReplacementSelector / providerRouter + pho
   assert.equal(fallbackSwap.newItem.id, 'shoes-budget-derby');
   assert.equal(fallbackSwap.visualVerified, false);
 });
+
+test('Phase 10 Defect A: rankSlotReplacementCandidates enforces brand/color/silhouette diversity across R1..R6 and caps original color on different-tone directive', () => {
+  const look = {
+    id: 'look-work-navy',
+    items: [
+      { id: 't1', macroCategory: 'top', subtype: 'dress-shirt', color: 'white', brand: 'Jack & Jones', name: 'White Poplin Shirt', price: 70, currency: 'USD' },
+      { id: 'o1', macroCategory: 'outerwear', subtype: 'blazer', color: 'navy', brand: 'Armani Exchange', name: 'Navy Tailored Blazer', price: 320, currency: 'USD' },
+      { id: 'b1', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'navy', brand: 'Giorgio Armani', name: 'Navy Wool Trousers', price: 420, currency: 'USD' },
+      { id: 's0', macroCategory: 'shoes', subtype: 'derby', color: 'black', brand: 'Grant Stone', name: 'Black Plain Toe Derby', price: 380, currency: 'USD' },
+    ],
+  };
+
+  // Flood the pool with 6 nearly identical black ECCO derbies + diverse tones/brands/subtypes
+  const catalogPool = [
+    ...Array.from({ length: 6 }, (_, i) => ({
+      id: `ecco-black-derby-${i + 1}`,
+      macroCategory: 'shoes',
+      subtype: 'derby',
+      color: 'black',
+      brand: 'ECCO',
+      name: `ECCO Metropole Black Leather Derby #${i + 1}`,
+      price: 180 + i * 5,
+      currency: 'USD',
+      imageUrl: `https://static.zara.net/ecco-black-${i + 1}.jpg`,
+      qualityScore: 0.95,
+    })),
+    { id: 'bs-burgundy-loafer', macroCategory: 'shoes', subtype: 'loafer', color: 'burgundy', brand: 'Beckett Simonon', name: 'Eriksen Bordeaux Loafer', price: 249, currency: 'USD', imageUrl: 'https://static.zara.net/bs-burg.jpg', qualityScore: 0.9 },
+    { id: 'je-brown-oxford', macroCategory: 'shoes', subtype: 'oxford', color: 'brown', brand: 'Jack Erwin', name: 'Joe Espresso Cap-Toe Oxford', price: 228, currency: 'USD', imageUrl: 'https://static.zara.net/je-brown.jpg', qualityScore: 0.9 },
+    { id: 'cu-navy-loafer', macroCategory: 'shoes', subtype: 'loafer', color: 'navy', brand: 'Cobbler Union', name: 'Navy Suede Penny Loafer', price: 320, currency: 'USD', imageUrl: 'https://static.zara.net/cu-navy.jpg', qualityScore: 0.88 },
+    { id: 'tb-tan-chelsea', macroCategory: 'shoes', subtype: 'chelsea', color: 'tan', brand: 'Thursday Boot Co.', name: 'Cavalier Tan Chelsea Boot', price: 199, currency: 'USD', imageUrl: 'https://static.zara.net/tb-tan.jpg', qualityScore: 0.87 },
+    { id: 'bk-espresso-monk', macroCategory: 'shoes', subtype: 'monk', color: 'brown', brand: 'Barker', name: 'Dark Brown Single Monk Strap', price: 295, currency: 'USD', imageUrl: 'https://static.zara.net/bk-monk.jpg', qualityScore: 0.86 },
+    { id: 'bs-black-oxford', macroCategory: 'shoes', subtype: 'oxford', color: 'black', brand: 'Beckett Simonon', name: 'Dean Black Cap-Toe Oxford', price: 239, currency: 'USD', imageUrl: 'https://static.zara.net/bs-blk.jpg', qualityScore: 0.92 },
+  ];
+
+  const top6 = rankSlotReplacementCandidates({
+    look,
+    targetSlot: 'shoes',
+    directive: 'try a different leather dress shoe tone while keeping the tailored silhouette',
+    catalogPool,
+    context: { occasion: 'Work', style: 'Old Money' },
+    limit: 6,
+  });
+
+  assert.equal(top6.length, 6);
+  const brandColors = top6.map((e) => `${String(e.item.brand).toLowerCase()}|${String(e.item.color).toLowerCase()}`);
+  assert.equal(new Set(brandColors).size, 6, `max 1 per (brand, color), got: ${brandColors.join(', ')}`);
+  const colors = top6.map((e) => String(e.item.color).toLowerCase());
+  assert.ok(new Set(colors).size >= 4, `expected >=4 distinct color tones across R1..R6, got: ${colors.join(', ')}`);
+  const blackCount = colors.filter((c) => c === 'black').length;
+  assert.ok(blackCount <= 1, `original black color capped at <=1 slot when different tone requested, got ${blackCount}`);
+  const eccoCount = top6.filter((e) => e.item.brand === 'ECCO').length;
+  assert.ok(eccoCount <= 1, `ECCO must not flood R1..R6, got ${eccoCount}`);
+});
