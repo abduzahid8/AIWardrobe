@@ -43,11 +43,20 @@ name: aiw_s6_stable_three_shop_no_vendor_dependency
 - extendedWaitUntil:
     visible: "Your Outfits"
     timeout: 70000
-- assertVisible: ".*3 looks.*"
 - assertVisible:
-    id: stylistLookTab-0
+    id: stylistResult-0
+- scrollUntilVisible:
+    element:
+      id: stylistResult-1
+    direction: DOWN
+    timeout: 15000
 - assertVisible:
-    id: stylistLookTab-1
+    id: stylistResult-1
+- scrollUntilVisible:
+    element:
+      id: stylistResult-2
+    direction: DOWN
+    timeout: 15000
 - assertVisible:
-    id: stylistLookTab-2
+    id: stylistResult-2
 - takeScreenshot: .private/aiw-s6-stable-three-ios-proof

@@ -33,23 +33,22 @@ name: aiw_s6_three_tabs_from_generator
 - extendedWaitUntil:
     visible: "Your Outfits"
     timeout: 90000
-- assertVisible: ".*3 looks.*"
-- assertVisible:
-    id: stylistLookTab-0
-- assertVisible:
-    id: stylistLookTab-1
-- assertVisible:
-    id: stylistLookTab-2
 - assertVisible:
     id: stylistResult-0
 - takeScreenshot: .private/qa-s6-tab-look-01
-- tapOn:
-    id: stylistLookTab-1
+- scrollUntilVisible:
+    element:
+      id: stylistResult-1
+    direction: DOWN
+    timeout: 15000
 - assertVisible:
     id: stylistResult-1
 - takeScreenshot: .private/qa-s6-tab-look-02
-- tapOn:
-    id: stylistLookTab-2
+- scrollUntilVisible:
+    element:
+      id: stylistResult-2
+    direction: DOWN
+    timeout: 15000
 - assertVisible:
     id: stylistResult-2
 - takeScreenshot: .private/qa-s6-tab-look-03

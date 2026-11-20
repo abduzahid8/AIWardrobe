@@ -1,16 +1,15 @@
 import {validateOutfitGenerationRequest,OutfitRequestError} from '../src/domain/outfitGenerationRequest';
-import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveOutfitSelectionSource,selectionBadgeKey,offerCaveatLabel,shopCardActionMode,shopCardHasDirectListing} from '../src/services/stylingCopy';
+import {outfitDescription,outfitConceptDisplayTitle,distinctStylingTips,resolveOutfitSelectionSource,shopCardActionMode,shopCardHasDirectListing} from '../src/services/stylingCopy';
 import { submitStylistLookFeedback, canRecordLookFeedback, type FeedbackTargetSlot } from '../src/services/stylistFeedback';
 import { prepareStylistResponse } from '../features/outfit-generator/utils/stylistResponse';
-import {StylistRuntimeDiagnostic, clientRevision} from '../src/components/StylistRuntimeDiagnostic';
-import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, STYLIST6_DEFAULT_VISUAL_ENABLED, defaultStylist6DevEngine, extractStylist6EditorialFields, invokeStylist6Bridge, invokeStylist6Cloud, recoverStylist6CloudResult, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, isStylist6DevVersion, stylist6CloudCompletion, stylist6CuratedPartial, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, requestStylist6SlotSwap, normalizeStylist6Preferences, deriveStylist6Presentation, summarizeOwnedWardrobeForStylist6, type DevEngine, type Stylist6SwapSlot, type Stylist6CloudRequest} from '../src/services/stylist6Dev';
+import {StylistRuntimeDiagnostic} from '../src/components/StylistRuntimeDiagnostic';
+import {STYLIST6_DEV_ENABLED, STYLIST6_CLOUD_ENABLED, STYLIST6_DEFAULT_VISUAL_ENABLED, defaultStylist6DevEngine, extractStylist6EditorialFields, invokeStylist6Bridge, invokeStylist6Cloud, recoverStylist6CloudResult, buildStylist6BridgeBody, acceptStylist6DevDeck, acceptStylist6CloudDeck, applyStylist6CloudBudgetFx, isStylist6CloudVersion, isStylist6DevVersion, stylist6CloudCompletion, stylist6Language, stylist6VisualDiagnostic, stylist6CloudRecentExclusions, requestStylist6SlotSwap, normalizeStylist6Preferences, deriveStylist6Presentation, summarizeOwnedWardrobeForStylist6, type DevEngine, type Stylist6SwapSlot, type Stylist6CloudRequest} from '../src/services/stylist6Dev';
 import {loadStylistCatalogInventory} from '../src/services/stylistCatalogInventory';
 import {displayedRotation} from '../src/domain/outfitRotation';
 import {outfitCoherence} from '../src/domain/outfitCoherence';
 import {recentLookSimilarity} from '../src/domain/outfitVisualSignature';
 import {stylingCopyParts} from '../src/services/stylingCopy';
 import {stylingContext, type StylingBodyProfile, type StylingAppearanceProfile} from '../src/domain/stylingContext';
-import { BetaFeedbackButton } from '../components/BetaFeedbackButton';
 import { stylistCalendarItems } from '../features/calendar/outfitSlots';
 import {formatUzsPrice} from '../src/utils/uzsPrice';
 import { useUzsDisplayRates } from '../hooks/useUzsPrice';
@@ -20,7 +19,7 @@ import { budgetFxContext, fitsBudgetAmount, type BudgetFxSnapshot } from '../src
 import { parseBudgetControl, strictestOutfitBudget } from '../src/domain/outfitBudgetSelection';
 import readinessLogger from '../src/utils/logger';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Animated, Platform, Modal, TextInput, Alert, Linking, KeyboardAvoidingView } from 'react-native';
+import { View, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Platform, Modal, TextInput, Alert, Linking, KeyboardAvoidingView } from 'react-native';
 import { ScaledText } from '../components/ui/ScaledText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -445,7 +444,6 @@ const SlotCell = React.memo(function SlotCell({
   name,
   price,
   priceCurrency,
-  offerCaveat,
   imageSource,
   imageUri,
   itemId,
@@ -468,7 +466,6 @@ const SlotCell = React.memo(function SlotCell({
   name: string;
   price?: number;
   priceCurrency?: string;
-  offerCaveat?: string | null;
   imageSource: number | { uri: string };
   imageUri?: string;
   itemId?: string;
@@ -493,6 +490,15 @@ const SlotCell = React.memo(function SlotCell({
     : null;
   const cleanBrand = typeof brand === 'string' ? brand.trim() : '';
   const eyebrowText = cleanBrand ? `${label} · ${cleanBrand}` : label;
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+  const displayName =
+    trimmedName.length > 4 &&
+    trimmedName === trimmedName.toUpperCase() &&
+    /[A-Z]/.test(trimmedName)
+      ? trimmedName
+          .toLowerCase()
+          .replace(/(^|[\s-/])([a-z])/g, (_, sep: string, ch: string) => `${sep}${ch.toUpperCase()}`)
+      : trimmedName;
   const handleBuy = React.useCallback(() => onBuy(buyUrl), [onBuy, buyUrl]);
   const handleSwap = React.useCallback(() => {
     if (onSwap && !isSwapping) onSwap();
@@ -517,7 +523,7 @@ const SlotCell = React.memo(function SlotCell({
           <ExpoImage
             source={bundledSource ?? productImageLoadSource(activeUri)}
             placeholderContentFit="contain"
-            style={[slotStyles.image, { backgroundColor: '#F6F7F9' }]}
+            style={slotStyles.image}
             contentFit="contain"
             cachePolicy="memory-disk"
             recyclingKey={`${slotKey}-${itemId ?? ''}-${activeUri}`}
@@ -533,30 +539,22 @@ const SlotCell = React.memo(function SlotCell({
             onPress={handleSwap}
             disabled={Boolean(isSwapping)}
             activeOpacity={0.75}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
-            accessibilityLabel={`${swapLabel || 'Swap'} ${label}`}
+            accessibilityLabel={isSwapping ? (swappingLabel || 'Swapping…') : `${swapLabel || 'Swap'} ${label}`}
             accessibilityState={{ busy: Boolean(isSwapping), disabled: Boolean(isSwapping) }}
           >
-            <Ionicons name={isSwapping ? 'sync-outline' : 'swap-horizontal-outline'} size={12} color={isSwapping ? '#2B5CE9' : '#0A1931'} />
-            <ScaledText style={[slotStyles.swapBadgeText, isSwapping ? slotStyles.swapBadgeTextBusy : null]}>
-              {isSwapping ? (swappingLabel || 'Swapping…') : (swapLabel || 'Swap')}
-            </ScaledText>
+            <Ionicons name={isSwapping ? 'sync-outline' : 'swap-horizontal-outline'} size={15} color={isSwapping ? '#2B5CE9' : '#0A1931'} />
           </TouchableOpacity>
         ) : null}
       </View>
       <View style={slotStyles.labelWrap}>
         <View style={slotStyles.metaStack}>
           <ScaledText style={[slotStyles.label, { color: textSecondary }]} numberOfLines={1}>{eyebrowText}</ScaledText>
-          <ScaledText style={[slotStyles.name, { color: textPrimary }]} numberOfLines={2}>{name}</ScaledText>
+          <ScaledText style={[slotStyles.name, { color: textPrimary }]} numberOfLines={2}>{displayName}</ScaledText>
           {typeof price === 'number' && price > 0 && priceCurrency ? (
             <ScaledText style={slotStyles.price} numberOfLines={1}>
               {displayPrice || '—'}
-            </ScaledText>
-          ) : null}
-          {showBuyButton && offerCaveat ? (
-            <ScaledText style={[slotStyles.offerCaveat, { color: textSecondary }]} numberOfLines={1}>
-              {offerCaveat}
             </ScaledText>
           ) : null}
         </View>
@@ -566,7 +564,7 @@ const SlotCell = React.memo(function SlotCell({
             onPress={handleBuy}
             activeOpacity={0.8}
             accessibilityRole="link"
-            accessibilityLabel={`${buyLabel} ${name}`}
+            accessibilityLabel={`${buyLabel} ${displayName}`}
           >
             <Ionicons name="bag-handle-outline" size={12} color="#FFFFFF" />
             <ScaledText style={slotStyles.buyButtonText} numberOfLines={1} minScale={0.78}>{buyLabel}</ScaledText>
@@ -633,7 +631,6 @@ function OutfitSlotGrid({
           name: slot.item?.name,
           shopUrl: slot.item?.shopUrl,
         });
-        const offerCaveat = offerCaveatLabel(slot.item);
         const isLocked = Boolean(lockedItemId && String(slot.item?.id) === String(lockedItemId));
         const swappableSlot = (['top', 'outerwear', 'bottom', 'shoes', 'accessory', 'dress'].includes(slot.macro)
           ? slot.macro
@@ -648,7 +645,6 @@ function OutfitSlotGrid({
             name={slot.item?.name || ''}
             price={quote?.price}
             priceCurrency={quote?.currency || undefined}
-            offerCaveat={offerCaveat}
             imageSource={src}
             imageUri={typeof src === 'object' ? src.uri : undefined}
             itemId={slot.item?.id ? String(slot.item.id) : undefined}
@@ -679,35 +675,39 @@ const slotStyles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 14,
-    rowGap: 10,
+    rowGap: 12,
     width: '100%',
   },
   cell: {
-    width: '48.4%',
-    borderRadius: 16,
+    width: '48.2%',
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(10,25,49,0.08)',
+    borderColor: 'rgba(15,23,42,0.07)',
     overflow: 'hidden',
     shadowColor: '#0A1931',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   cellFullWidth: {
     width: '100%',
   },
   imageFrame: {
     width: '100%',
-    aspectRatio: 1.04,
-    backgroundColor: '#F6F7F9',
+    aspectRatio: 0.96,
+    backgroundColor: '#F5F6F8',
+    padding: 6,
     position: 'relative',
     overflow: 'hidden',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(15,23,42,0.05)',
   },
   image: {
     width: '100%',
     height: '100%',
+    borderRadius: 10,
   },
   swappingOverlay: {
     position: 'absolute',
@@ -718,9 +718,9 @@ const slotStyles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.52)',
   },
   labelWrap: {
-    paddingHorizontal: 10,
-    paddingTop: 9,
-    paddingBottom: 10,
+    paddingHorizontal: 11,
+    paddingTop: 10,
+    paddingBottom: 11,
     flexGrow: 1,
     justifyContent: 'space-between',
   },
@@ -729,64 +729,58 @@ const slotStyles = StyleSheet.create({
   },
   label: {
     ...LiquidGlass2026Theme.typography.scale.labelSmall,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.45,
     fontSize: 9.5,
   },
   name: {
     ...LiquidGlass2026Theme.typography.scale.bodySmall,
     fontWeight: '600',
-    fontSize: 12,
-    lineHeight: 15.5,
-    minHeight: 31,
+    fontSize: 12.5,
+    lineHeight: 16.5,
+    minHeight: 33,
+    letterSpacing: -0.1,
   },
   price: {
     ...LiquidGlass2026Theme.typography.scale.bodySmall,
-    marginTop: 2,
-    fontSize: 13,
+    marginTop: 3,
+    fontSize: 13.5,
     fontWeight: '700',
     color: '#0A1931',
-  },
-  offerCaveat: {
-    fontSize: 9.5,
-    lineHeight: 12,
-    marginTop: 1,
-    opacity: 0.78,
+    letterSpacing: -0.2,
   },
   buyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    marginTop: 8,
-    minHeight: 30,
-    backgroundColor: '#0A1931',
+    marginTop: 9,
+    height: 32,
+    backgroundColor: '#0F1E36',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
+    borderRadius: 10,
   },
   buyButtonText: {
     color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontSize: 11.5,
+    fontWeight: '600',
+    letterSpacing: 0.1,
     flexShrink: 1,
   },
   swapBadge: {
     position: 'absolute',
-    top: 7,
-    right: 7,
+    top: 8,
+    right: 8,
     zIndex: 2,
-    flexDirection: 'row',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.94)',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(10,25,49,0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 99,
+    borderColor: 'rgba(15,23,42,0.10)',
     shadowColor: '#0A1931',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -796,14 +790,6 @@ const slotStyles = StyleSheet.create({
   swapBadgeBusy: {
     backgroundColor: '#EEF4FF',
     borderColor: 'rgba(43,92,233,0.35)',
-  },
-  swapBadgeText: {
-    color: '#0A1931',
-    fontSize: 10.5,
-    fontWeight: '700',
-  },
-  swapBadgeTextBusy: {
-    color: '#2B5CE9',
   },
 });
 
@@ -1092,66 +1078,6 @@ const AIOutfitGenerator = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
-  const resolveAvailableTryOnTargets = (): {
-    directTryOnRoute: string | null;
-    bodyProfileRoute: string | null;
-  } => {
-    const ownRoutes: string[] = Array.isArray(navigation?.getState?.()?.routeNames)
-      ? navigation.getState().routeNames
-      : [];
-    const parentRoutes: string[] = Array.isArray(navigation?.getParent?.()?.getState?.()?.routeNames)
-      ? navigation.getParent().getState().routeNames
-      : [];
-    const allRoutes = new Set([...ownRoutes, ...parentRoutes]);
-    const directTryOnRoute = ['VirtualTryOn', 'TryOn', 'MannequinTryOn'].find((name) => allRoutes.has(name)) ?? null;
-    const bodyProfileRoute = ['BodyProfile', 'CreateAvatar'].find((name) => allRoutes.has(name)) ?? null;
-    return { directTryOnRoute, bodyProfileRoute };
-  };
-
-  const handleTryOnLook = (outfit: GeneratedOutfit) => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    const { directTryOnRoute, bodyProfileRoute } = resolveAvailableTryOnTargets();
-    if (directTryOnRoute) {
-      const nav = navigation as { navigate: (name: string, params?: Record<string, unknown>) => void };
-      nav.navigate(directTryOnRoute, {
-        outfitId: outfit.id,
-        items: outfit.items.map((item) => ({
-          id: item.id,
-          name: item.name,
-          imageUrl: item.imageUrl || item.image,
-          macroCategory: item.macroCategory || item.type,
-          brand: item.brand,
-          price: item.price,
-          currency: item.currency,
-        })),
-        outfit,
-      });
-      return;
-    }
-    if (bodyProfileRoute) {
-      Alert.alert(
-        t('outfitMaker.tryOnTitle', { defaultValue: 'Try On Look' }),
-        t('outfitMaker.tryOnSetupBodyProfile', {
-          defaultValue: 'Virtual try-on is not enabled in this build yet. Calibrate your Body Profile so stylists tailor proportions and fit for you.',
-        }),
-        [
-          { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-          {
-            text: t('outfitMaker.openBodyProfile', { defaultValue: 'Body Profile' }),
-            onPress: () => {
-              const nav = navigation as { navigate: (name: string) => void };
-              nav.navigate(bodyProfileRoute);
-            },
-          },
-        ],
-      );
-      return;
-    }
-    Alert.alert(
-      t('outfitMaker.tryOnTitle', { defaultValue: 'Try On Look' }),
-      t('outfitMaker.tryOnUnavailable', { defaultValue: 'Virtual try-on is not available in this build yet.' }),
-    );
-  };
   const [currentSource, setCurrentSource] = useState(route.params?.source || 'wardrobe');
   // Anchor item passed from MyClosetScreen — when set, every generated outfit
   // must include this item locked into its slot.
@@ -1198,10 +1124,6 @@ const AIOutfitGenerator = () => {
   }, [quizStyleDefault]);
   const [loading, setLoading] = useState(false);
   const [outfits, setOutfits] = useState<GeneratedOutfit[]>([]);
-  // Three server-ranked looks are independently navigable. A tall OutfitSlotGrid
-  // on iOS can consume all practical scroll space; users must never be left
-  // stranded on look #1 despite receiving a complete three-look deck.
-  const [visibleLookIndex, setVisibleLookIndex] = useState(0);
   // Switching languages re-renders static labels via t(), but stored result
   // copy (descriptions, tips) was localized at generation time. Re-derive it
   // from the stored garments so the result screen refreshes without a new
@@ -1232,7 +1154,6 @@ const AIOutfitGenerator = () => {
     });
   }, [resultLanguage]);
   const [resultBudget, setResultBudget] = useState<ReturnType<typeof parseBudgetFromText>>(null);
-  const [inventoryNote, setInventoryNote] = useState('');
   const [error, setError] = useState('');
   // Public App Store builds stay on Stylist 5. Explicitly configured
   // TestFlight builds use the authenticated Stylist 6 cloud endpoint while
@@ -1884,7 +1805,6 @@ const AIOutfitGenerator = () => {
     generationNonce.current += 1;
     setLoading(false);
     setOutfits([]);
-    setVisibleLookIndex(0);
     setError('');
   };
 
@@ -1983,7 +1903,6 @@ const AIOutfitGenerator = () => {
     setLoading(true);
     setError('');
     setOutfits([]);
-    setVisibleLookIndex(0);
     setLastEngineVersion(null);
     setLastEngineDetail(null);
     setLastFailureCode(null);
@@ -2711,21 +2630,6 @@ const AIOutfitGenerator = () => {
           // aiOutfits counter. Keep the session/nonce guard for every engine.
           if ((!s6CloudActive && !(await consumeOrPaywall('aiOutfits', {cancelSignal}))) || !isCurrentGeneration()) return;
           setResultBudget(shopBudget);
-          const checkedVisualCount = Number.isInteger(data?.visualReceipt?.displayedJudged)
-            ? Math.max(0, Math.min(shownOutfits.length, data.visualReceipt.displayedJudged)) : 0;
-          const incompleteVisualReview = s6CloudActive && data?.visualReceipt?.requested === true &&
-            checkedVisualCount < shownOutfits.length;
-          setInventoryNote(s6VerifiedPartial
-            ? t(stylist6CuratedPartial(data,shownOutfits.length)
-                ? 'outfitMaker.aiCuratedPartial'
-                : 'outfitMaker.visualApprovedPartial',
-              { count: shownOutfits.length })
-            : incompleteVisualReview
-              ? checkedVisualCount > 0
-                ? t('outfitMaker.visualReviewMixed', { count: checkedVisualCount, total: shownOutfits.length })
-                : t('outfitMaker.visualReviewUnavailable')
-              : data.inventoryReason==='distinct_editorial_inventory_limited'
-                ? t('outfitMaker.distinctInventoryLimited') : '');
           // Record the ACTUAL engine that produced this deck for dev display.
           setLastEngineVersion(String(data.generationVersion || 'unknown'));
           setLastEngineDetail(stylist6VisualDiagnostic(data) || (data?.diagnostics?.visualVerdict ? `visual ${String(data.diagnostics.visualVerdict)}` : (s6Active ? 'local bridge' : null)));
@@ -2791,7 +2695,7 @@ const AIOutfitGenerator = () => {
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           <View style={[styles.header, styles.resultsHeader]}>
             <TouchableOpacity
-              onPress={() => { setOutfits([]); setVisibleLookIndex(0); setDevDiagExpanded(false); }}
+              onPress={() => { setOutfits([]); setDevDiagExpanded(false); }}
               style={styles.backButton}
               testID="aiResultsBack"
               accessibilityLabel={t('common.back')}
@@ -2803,67 +2707,8 @@ const AIOutfitGenerator = () => {
             <View style={styles.headerRight} />
           </View>
 
-          {__DEV__ && ((STYLIST6_DEV_ENABLED && lastEngineVersion) || process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true') ? (() => {
-            const compactEngineLabel = lastEngineVersion
-              ? (isStylist6DevVersion(lastEngineVersion)
-                ? 'S6 Local'
-                : isStylist6CloudVersion(lastEngineVersion)
-                  ? 'S6 Cloud'
-                  : lastEngineVersion)
-              : 'Dev';
-            const compactVisualTag = lastEngineDetail?.startsWith('NVIDIA_APPLIED')
-              ? 'Visual OK'
-              : lastEngineDetail?.startsWith('NVIDIA_ABSTAINED')
-                ? 'Visual Abstained'
-                : lastEngineDetail?.startsWith('NVIDIA_NOT_RUN')
-                  ? 'Text'
-                  : lastEngineDetail?.startsWith('NVIDIA_')
-                    ? 'Visual'
-                    : null;
-            return (
-              <View style={styles.devPillWrap}>
-                <TouchableOpacity
-                  testID="stylistDevPill"
-                  activeOpacity={0.75}
-                  onPress={() => setDevDiagExpanded((v) => !v)}
-                  style={styles.devPill}
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: devDiagExpanded }}
-                >
-                  <View style={[
-                    styles.devPillDot,
-                    compactVisualTag === 'Visual OK' ? styles.devPillDotOk : null,
-                  ]} />
-                  <ScaledText
-                    testID="stylistEngineBanner"
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    style={styles.devPillText}
-                  >
-                    {`${compactEngineLabel} · ${outfits.length} looks${compactVisualTag ? ` · ${compactVisualTag}` : ''}`}
-                  </ScaledText>
-                  <Ionicons
-                    name={devDiagExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={12}
-                    color="#64748B"
-                  />
-                </TouchableOpacity>
-                {devDiagExpanded ? (
-                  <View testID="stylistDevPillDetails" style={styles.devPillDetails}>
-                    {process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true' ? (
-                      <StylistRuntimeDiagnostic engine={lastEngineVersion || undefined} detail={lastEngineDetail || undefined} />
-                    ) : (
-                      <ScaledText style={styles.devPillDetailsText}>
-                        {`Client ${clientRevision} · ${lastEngineVersion || 'unknown'}${lastEngineDetail ? ` · ${lastEngineDetail}` : ''}`}
-                      </ScaledText>
-                    )}
-                  </View>
-                ) : null}
-              </View>
-            );
-          })() : null}
           {planningDate && (
-            <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 6 }}>
               <View style={styles.planningBanner}>
                 <View style={styles.planningIconWrap}>
                   <Ionicons name="calendar-outline" size={20} color="#173A65" />
@@ -2885,112 +2730,55 @@ const AIOutfitGenerator = () => {
             </View>
           )}
           {resultBudget && (
-            <View testID="activeBudgetStatus" style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
-              <ScaledText style={styles.outfitDesc} minScale={0.65}>
-                {t('outfitMaker.activeBudget', {
+            <View testID="activeBudgetStatus" style={styles.budgetPillWrap}>
+              <View
+                style={styles.budgetPill}
+                accessibilityLabel={t('outfitMaker.activeBudget', {
                   defaultValue: 'Active budget: {{amount}}. Every shown look is checked against this cap.',
                   amount: formatMoney(resultBudget.amount, resultBudget.currency),
                 })}
-              </ScaledText>
+              >
+                <Ionicons name="wallet-outline" size={13} color={D.accent} />
+                <ScaledText style={styles.budgetPillText} numberOfLines={1}>
+                  {formatMoney(resultBudget.amount, resultBudget.currency)}
+                </ScaledText>
+              </View>
             </View>
           )}
 
-          {outfits.length > 1 ? (
-            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingBottom: 8 }}>
-              {outfits.map((look, index) => (
-                <TouchableOpacity
-                  key={look.id}
-                  testID={`stylistLookTab-${index}`}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: visibleLookIndex === index }}
-                  accessibilityLabel={`${t('outfitMaker.yourOutfits')} ${index + 1}`}
-                  onPress={() => setVisibleLookIndex(index)}
-                  style={{
-                    flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 12,
-                    backgroundColor: visibleLookIndex === index ? D.accent : 'rgba(23,58,101,0.08)',
-                    borderWidth: 1, borderColor: visibleLookIndex === index ? D.accent : 'rgba(23,58,101,0.12)',
-                  }}
-                >
-                  <ScaledText style={{ fontSize: 14, fontWeight: '700', color: visibleLookIndex === index ? '#FFFFFF' : D.textPrimary }}>
-                    {String(index + 1).padStart(2, '0')}
-                  </ScaledText>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : null}
           <ScrollView
-            key={`stylist-look-${visibleLookIndex}`}
             testID="stylistResultsScroll"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 32 }}
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              paddingTop: 6,
+              paddingBottom: Math.max(insets.bottom + 28, 40),
+              gap: 18,
+            }}
           >
-            {!!inventoryNote && <ScaledText style={styles.outfitDesc}>{inventoryNote}</ScaledText>}
-            {outfits.map((outfit, index) => index !== visibleLookIndex ? null : (
-              <Animated.View key={outfit.id} testID={`stylistResult-${index}`} style={[styles.glassCard, { marginTop: 4 }]}>
-                <BlurView intensity={Platform.OS === 'ios' ? 48 : 90} tint="light" style={StyleSheet.absoluteFill} />
-                <LinearGradient colors={['rgba(255,255,255,0.52)', 'rgba(255,255,255,0.22)']} style={StyleSheet.absoluteFill} />
-
-                <View style={styles.cardHeaderRow}>
+            {outfits.map((outfit, index) => (
+              <View key={outfit.id} testID={`stylistResult-${index}`} style={styles.lookCard}>
+                <View style={styles.lookCardHeader}>
+                  <View style={styles.lookTitleGroup}>
+                    <View style={styles.lookIndexBadge}>
+                      <ScaledText style={styles.lookIndexBadgeText}>
+                        {String(index + 1).padStart(2, '0')}
+                      </ScaledText>
+                    </View>
+                    <ScaledText style={styles.lookConceptTitle} numberOfLines={2}>
+                      {outfit.concept
+                        ? outfitConceptDisplayTitle(outfit.concept.id, outfit.concept.title, outfit.engineVersion)
+                        : t('outfitMaker.lookNumber', { number: index + 1, defaultValue: 'Look {{number}}' })}
+                    </ScaledText>
+                  </View>
                   {outfit.weather ? (
                     <View style={styles.weatherChip}>
-                      <Ionicons name="cloud-outline" size={14} color={D.textSecondary} />
-                      <ScaledText style={styles.weatherChipText}>{outfit.weather.temp}°C · {outfit.weather.condition}</ScaledText>
+                      <Ionicons name="cloud-outline" size={13} color={D.textSecondary} />
+                      <ScaledText style={styles.weatherChipText}>{outfit.weather.temp}°C</ScaledText>
                     </View>
-                  ) : (
-                    <View style={[styles.weatherChip, styles.weatherChipMuted]}>
-                      <Ionicons name="cloud-offline-outline" size={13} color="#64748B" />
-                      <ScaledText style={styles.weatherChipMutedText} numberOfLines={1}>
-                        {t('outfitMaker.weatherUnavailable', { defaultValue: 'Weather unavailable' })}
-                      </ScaledText>
-                    </View>
-                  )}
-                  <LinearGradient colors={[D.accent, '#5B7CF9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.matchPill}>
-                    <ScaledText style={styles.matchPillText}>{t(selectionBadgeKey(outfit.selectionSource))}</ScaledText>
-                  </LinearGradient>
+                  ) : null}
                 </View>
 
-                {outfit.direction && ['signature','refresh','discovery','alternative'].includes(outfit.direction.id) && (
-                  <View testID={`stylistDirection-${index}`} style={styles.directionHeader}>
-                    <View style={{flexDirection:'row',alignItems:'center',gap:5}}>
-                      <Ionicons name={outfit.direction.id==='discovery'?'compass-outline':'sparkles-outline'} size={13} color={D.accent}/>
-                      <ScaledText style={styles.directionKicker}>
-                        {t(`outfitMaker.direction_${outfit.direction.id}`)}
-                      </ScaledText>
-                    </View>
-                    {!outfit.stylistNote ? (
-                      <ScaledText style={styles.directionSub} minScale={0.75} numberOfLines={2}>
-                        {t(`outfitMaker.directionExplain_${outfit.direction.id}`)}
-                      </ScaledText>
-                    ) : null}
-                  </View>
-                )}
-                {outfit.concept && (
-                  <ScaledText style={styles.lookConceptTitle} numberOfLines={2}>
-                    {outfitConceptDisplayTitle(outfit.concept.id, outfit.concept.title, outfit.engineVersion)}
-                  </ScaledText>
-                )}
-                {(() => {
-                  const evidence = outfit.fashionDiagnostics?.personalization?.matches;
-                  if (!Array.isArray(evidence) || !evidence.length) return null;
-                  const selectedIds = new Set(outfit.items.map((item) => String(item.id)));
-                  const acceptedTypes = new Set(['favorite_color','favorite_brand','liked_pattern','preferred_fit']);
-                  const details = [...new Set(evidence
-                    .filter((entry) => entry && acceptedTypes.has(entry.type) &&
-                      selectedIds.has(String(entry.productId)) &&
-                      typeof entry.value === 'string' && entry.value.trim().length > 0)
-                    .map((entry) => entry.type === 'preferred_fit'
-                      ? t(entry.value === 'wide' ? 'outfitMaker.personalizedFitWide' : 'outfitMaker.personalizedFitSlim')
-                      : entry.value.trim()))].slice(0, 3);
-                  if (!details.length) return null;
-                  return (
-                    <View testID={`personalStylistReason-${index}`} style={{flexDirection:'row',alignItems:'center',gap:6,marginBottom:10}}>
-                      <Ionicons name="sparkles-outline" size={14} color={D.accent} />
-                      <ScaledText style={[styles.outfitDesc,{fontSize:12.5,flex:1,marginBottom:0}]}>
-                        {t('outfitMaker.personalizedForYou')}: {details.join(' · ')}
-                      </ScaledText>
-                    </View>
-                  );
-                })()}
                 {(() => {
                   const isStylist6Look = isStylist6CloudVersion(outfit.engineVersion)
                     || isStylist6DevVersion(outfit.engineVersion);
@@ -3049,11 +2837,19 @@ const AIOutfitGenerator = () => {
                   );
                 })()}
 
-                {/* Explicit, source-attributable human taste sits right below the
-                    complete 4-item outfit grid so the wearer sees every piece
-                    first, then rates and tags immediately in 1 tap. Never
-                    auto-vote: only an actual tap persists this preference. */}
-                {canRecordLookFeedback(outfit) && (() => {
+                {(() => {
+                  const total = outfitTotalDisplay(outfit.items as any[], liveShopMapped, displayRates, resultBudget);
+                  const mixedSubtotals = !total && mixedCurrencyPriced(outfit.items as any[], liveShopMapped)
+                    ? outfitCurrencySubtotals(outfit.items as any[], liveShopMapped)
+                    : [];
+                  const priceText = total
+                    ? total.label
+                    : mixedSubtotals.length >= 2
+                      ? mixedSubtotals.map(({ currency, price }) => formatMoney(price, currency)).join(' + ')
+                      : null;
+                  const showFeedback = canRecordLookFeedback(outfit);
+                  if (!priceText && !showFeedback) return null;
+
                   const feedbackKey = `${outfit.generationRequestId}:${outfit.id}`;
                   const activeRating = lookRatings[feedbackKey];
                   const selectedTags = lookFeedbackTags[feedbackKey] || [];
@@ -3062,54 +2858,62 @@ const AIOutfitGenerator = () => {
                     : activeRating === 1
                       ? LIKE_FEEDBACK_CHIPS
                       : [];
+
                   return (
-                    <View testID={`stylistTasteFeedback-${index}`} style={styles.feedbackCard}>
-                      <View style={styles.feedbackTopRow}>
-                        <ScaledText style={styles.feedbackPromptText} minScale={0.75}>
-                          {activeRating
-                            ? t('outfitMaker.feedbackSaved')
-                            : t('outfitMaker.feedbackPrompt')}
-                        </ScaledText>
-                        <View style={styles.feedbackThumbGroup}>
-                          {([1, -1] as const).map((rating) => {
-                            const isSelected = activeRating === rating;
-                            return (
-                              <TouchableOpacity
-                                key={rating}
-                                testID={`stylistTaste-${rating === 1 ? 'like' : 'dislike'}-${index}`}
-                                accessibilityRole="button"
-                                accessibilityLabel={t(rating === 1 ? 'outfitMaker.feedbackLike' : 'outfitMaker.feedbackDislike')}
-                                accessibilityState={{
-                                  selected: isSelected,
-                                  disabled: feedbackPending !== null,
-                                }}
-                                disabled={feedbackPending !== null}
-                                onPress={() => void submitLookFeedback(outfit, rating)}
-                                style={[
-                                  styles.feedbackThumbBtn,
-                                  isSelected && (rating === 1 ? styles.feedbackThumbLikeActive : styles.feedbackThumbDislikeActive),
-                                  feedbackPending ? { opacity: 0.5 } : null,
-                                ]}
-                              >
-                                <Ionicons
-                                  name={
-                                    rating === 1
-                                      ? (isSelected ? 'thumbs-up' : 'thumbs-up-outline')
-                                      : (isSelected ? 'thumbs-down' : 'thumbs-down-outline')
-                                  }
-                                  size={19}
-                                  color={
-                                    isSelected
-                                      ? (rating === 1 ? '#059669' : '#0A1931')
-                                      : D.textSecondary
-                                  }
-                                />
-                              </TouchableOpacity>
-                            );
-                          })}
+                    <View style={styles.cardMetaSection}>
+                      <View style={styles.cardMetaRow}>
+                        <View style={styles.cardTotalCol}>
+                          {priceText ? (
+                            <>
+                              <ScaledText style={styles.priceRowLabel}>{t('outfitMaker.outfitTotal')}</ScaledText>
+                              <ScaledText style={styles.priceRowValue} minScale={0.75} numberOfLines={1}>
+                                {priceText}
+                              </ScaledText>
+                            </>
+                          ) : null}
                         </View>
+                        {showFeedback ? (
+                          <View testID={`stylistTasteFeedback-${index}`} style={styles.feedbackThumbGroup}>
+                            {([1, -1] as const).map((rating) => {
+                              const isSelected = activeRating === rating;
+                              return (
+                                <TouchableOpacity
+                                  key={rating}
+                                  testID={`stylistTaste-${rating === 1 ? 'like' : 'dislike'}-${index}`}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={t(rating === 1 ? 'outfitMaker.feedbackLike' : 'outfitMaker.feedbackDislike')}
+                                  accessibilityState={{
+                                    selected: isSelected,
+                                    disabled: feedbackPending !== null,
+                                  }}
+                                  disabled={feedbackPending !== null}
+                                  onPress={() => void submitLookFeedback(outfit, rating)}
+                                  style={[
+                                    styles.feedbackThumbBtn,
+                                    isSelected && (rating === 1 ? styles.feedbackThumbLikeActive : styles.feedbackThumbDislikeActive),
+                                    feedbackPending ? { opacity: 0.5 } : null,
+                                  ]}
+                                >
+                                  <Ionicons
+                                    name={
+                                      rating === 1
+                                        ? (isSelected ? 'thumbs-up' : 'thumbs-up-outline')
+                                        : (isSelected ? 'thumbs-down' : 'thumbs-down-outline')
+                                    }
+                                    size={18}
+                                    color={
+                                      isSelected
+                                        ? (rating === 1 ? '#059669' : '#0A1931')
+                                        : D.textSecondary
+                                    }
+                                  />
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        ) : null}
                       </View>
-                      {feedbackChips.length > 0 ? (
+                      {showFeedback && feedbackChips.length > 0 ? (
                         <View testID={`stylistFeedbackChips-${index}`} style={styles.feedbackChipsRow}>
                           {feedbackChips.map((chip) => {
                             const selected = selectedTags.includes(chip.id);
@@ -3144,145 +2948,14 @@ const AIOutfitGenerator = () => {
                   );
                 })()}
 
-                {(() => {
-                  const total = outfitTotalDisplay(outfit.items as any[], liveShopMapped, displayRates, resultBudget);
-                  if (total) {
-                    return (
-                    <View style={styles.priceRow}>
-                      <ScaledText style={styles.priceRowLabel}>{t('outfitMaker.outfitTotal')}</ScaledText>
-                      <View style={{alignItems:'flex-end', flex:1}}>
-                        <ScaledText style={styles.priceRowValue} minScale={0.7}>{total.label}</ScaledText>
-                        {total.converted && total.referenceDate && <ScaledText style={styles.priceRowLabel}>
-                          {t('outfitMaker.referenceRate', {date: total.referenceDate})}
-                        </ScaledText>}
-                        {mixedCurrencyPriced(outfit.items as any[], liveShopMapped) && (
-                          <ScaledText style={styles.priceRowLabel}>
-                            {outfitCurrencySubtotals(outfit.items as any[], liveShopMapped)
-                              .map(({currency,price})=>formatMoney(price,currency)).join(' + ')}
-                          </ScaledText>
-                        )}
-                      </View>
-                    </View>
-                    );
-                  }
-                  // Mixed listed currencies cannot be summed or converted
-                  // without a verified reference rate. Preserve an honest
-                  // purchasing breakdown rather than hide every subtotal.
-                  if (!mixedCurrencyPriced(outfit.items as any[], liveShopMapped)) return null;
-                  const subtotals = outfitCurrencySubtotals(outfit.items as any[], liveShopMapped);
-                  return (
-                    <View style={[styles.priceRow, {flexDirection:'column',alignItems:'stretch',gap:6}]}>
-                      <ScaledText style={styles.priceRowLabel}>
-                        {t('outfitMaker.outfitTotalUnavailable', {defaultValue: 'Total unavailable — items are listed in different currencies'})}
-                      </ScaledText>
-                      {subtotals.length >= 2 && (
-                        <ScaledText style={[styles.priceRowValue, {textAlign:'left'}]} minScale={0.75}>
-                          {subtotals.map(({currency,price})=>formatMoney(price,currency)).join(' + ')}
-                        </ScaledText>
-                      )}
-                    </View>
-                  );
-                })()}
-
-                {(() => {
-                  const hasRichStylistNotes = Boolean(
-                    outfit.stylistNote
-                    || outfit.whyItFlattersYou
-                    || outfit.colorStory
-                    || outfit.silhouetteFormula
-                    || (Array.isArray(outfit.stylingTipsList) && outfit.stylingTipsList.length > 0),
-                  );
-                  if (!hasRichStylistNotes) {
-                    return (
-                      <>
-                        <ScaledText style={styles.outfitDesc} minScale={0.65}>{outfit.description}</ScaledText>
-                        {!!outfit.stylingTips && (
-                          <View style={styles.tipCard}>
-                            <LinearGradient colors={D.panelHighlight} style={StyleSheet.absoluteFill} />
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                              <Ionicons name="sparkles-outline" size={16} color={D.accent} />
-                              <ScaledText style={styles.tipCardText}>{outfit.stylingTips}</ScaledText>
-                            </View>
-                          </View>
-                        )}
-                      </>
-                    );
-                  }
-                  const leadNote = outfit.stylistNote || outfit.description;
-                  const noteTips = distinctStylingTips(
-                    `${leadNote} ${outfit.whyItFlattersYou || ''}`,
-                    outfit.stylingTipsList && outfit.stylingTipsList.length > 0
-                      ? outfit.stylingTipsList
-                      : (outfit.stylingTips ? [outfit.stylingTips] : []),
-                  ).slice(0, 3);
-                  return (
-                    <View testID={`stylistNotesCard-${index}`} style={styles.stylistNotesCard}>
-                      <View style={styles.stylistNotesHeader}>
-                        <Ionicons name="sparkles-outline" size={14} color={D.accent} />
-                        <ScaledText style={styles.stylistNotesHeading}>
-                          {t('outfitMaker.stylistNotes', { defaultValue: "Stylist's Notes" })}
-                        </ScaledText>
-                      </View>
-                      {!!leadNote && (
-                        <ScaledText style={styles.stylistNotesLead} minScale={0.75}>
-                          {leadNote}
-                        </ScaledText>
-                      )}
-                      {!!outfit.whyItFlattersYou && (
-                        <View testID={`stylistWhyFlatters-${index}`} style={styles.stylistNotesCallout}>
-                          <ScaledText style={styles.stylistNotesSubLabel}>
-                            {t('outfitMaker.whyItFlattersYou', { defaultValue: 'Why it flatters you' })}
-                          </ScaledText>
-                          <ScaledText style={styles.stylistNotesCalloutBody} minScale={0.75}>
-                            {outfit.whyItFlattersYou}
-                          </ScaledText>
-                        </View>
-                      )}
-                      {(outfit.colorStory || outfit.silhouetteFormula) ? (
-                        <View style={styles.stylistNotesMetaBlock}>
-                          {!!outfit.colorStory && (
-                            <View style={styles.stylistNotesMetaRow}>
-                              <Ionicons name="color-palette-outline" size={14} color="#173A65" style={{ marginTop: 2 }} />
-                              <ScaledText style={styles.stylistNotesBody} minScale={0.75}>
-                                {outfit.colorStory}
-                              </ScaledText>
-                            </View>
-                          )}
-                          {!!outfit.silhouetteFormula && (
-                            <View style={styles.stylistNotesMetaRow}>
-                              <Ionicons name="layers-outline" size={14} color="#173A65" style={{ marginTop: 2 }} />
-                              <ScaledText style={styles.stylistNotesBody} minScale={0.75}>
-                                {outfit.silhouetteFormula}
-                              </ScaledText>
-                            </View>
-                          )}
-                        </View>
-                      ) : null}
-                      {noteTips.length > 0 ? (
-                        <View style={styles.stylistNotesTipsList}>
-                          {noteTips.map((tip, tipIdx) => (
-                            <View key={`tip-${tipIdx}`} style={styles.stylistNotesTipItem}>
-                              <ScaledText style={styles.stylistNotesBullet}>•</ScaledText>
-                              <ScaledText style={styles.stylistNotesBody} minScale={0.75}>
-                                {tip}
-                              </ScaledText>
-                            </View>
-                          ))}
-                        </View>
-                      ) : null}
-                    </View>
-                  );
-                })()}
-
-
                 <View style={styles.actionRow}>
                   <TouchableOpacity
                     activeOpacity={0.85}
                     style={styles.primaryAction}
                     onPress={() => openCalendarForOutfit(outfit)}
                   >
-                    <LinearGradient colors={[D.accent, '#5B7CF9']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-                    <Ionicons name="calendar-outline" size={18} color="#fff" />
+                    <LinearGradient colors={[D.accent, '#4F6FF7']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+                    <Ionicons name="calendar-outline" size={17} color="#FFFFFF" />
                     <ScaledText style={styles.primaryActionText} minScale={0.65}>
                       {planningDate
                         ? t('outfitMaker.planForDate', {
@@ -3298,7 +2971,7 @@ const AIOutfitGenerator = () => {
                     style={styles.secondaryAction}
                     onPress={() => handleSaveOutfitPress(outfit)}
                   >
-                    <Ionicons name="checkmark-circle-outline" size={18} color={D.textPrimary} />
+                    <Ionicons name="bookmark-outline" size={17} color="#0A1931" />
                     <ScaledText style={styles.secondaryActionText} minScale={0.65}>
                       {planningDate
                         ? t('outfitMaker.saveAndConnectTrip', {
@@ -3308,23 +2981,61 @@ const AIOutfitGenerator = () => {
                     </ScaledText>
                   </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity
-                  testID={`stylistTryOn-${index}`}
-                  activeOpacity={0.8}
-                  style={styles.tryOnAction}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('outfitMaker.tryOnLook', { defaultValue: 'Try On Look' })}
-                  onPress={() => handleTryOnLook(outfit)}
-                >
-                  <Ionicons name="body-outline" size={17} color="#0A1931" />
-                  <ScaledText style={styles.tryOnActionText} minScale={0.7}>
-                    {t('outfitMaker.tryOnLook', { defaultValue: 'Try On Look' })}
-                  </ScaledText>
-                </TouchableOpacity>
-                <BetaFeedbackButton feature="outfit" />
-              </Animated.View>
+              </View>
             ))}
+            {__DEV__ && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS === 'true' ? (() => {
+              const compactEngineLabel = lastEngineVersion
+                ? (isStylist6DevVersion(lastEngineVersion)
+                  ? 'S6 Local'
+                  : isStylist6CloudVersion(lastEngineVersion)
+                    ? 'S6 Cloud'
+                    : lastEngineVersion)
+                : 'Dev';
+              const compactVisualTag = lastEngineDetail?.startsWith('NVIDIA_APPLIED')
+                ? 'Visual OK'
+                : lastEngineDetail?.startsWith('NVIDIA_ABSTAINED')
+                  ? 'Visual Abstained'
+                  : lastEngineDetail?.startsWith('NVIDIA_NOT_RUN')
+                    ? 'Text'
+                    : lastEngineDetail?.startsWith('NVIDIA_')
+                      ? 'Visual'
+                      : null;
+              return (
+                <View style={styles.devPillWrap}>
+                  <TouchableOpacity
+                    testID="stylistDevPill"
+                    activeOpacity={0.75}
+                    onPress={() => setDevDiagExpanded((v) => !v)}
+                    style={styles.devPill}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: devDiagExpanded }}
+                  >
+                    <View style={[
+                      styles.devPillDot,
+                      compactVisualTag === 'Visual OK' ? styles.devPillDotOk : null,
+                    ]} />
+                    <ScaledText
+                      testID="stylistEngineBanner"
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                      style={styles.devPillText}
+                    >
+                      {`${compactEngineLabel} · ${outfits.length} looks${compactVisualTag ? ` · ${compactVisualTag}` : ''}`}
+                    </ScaledText>
+                    <Ionicons
+                      name={devDiagExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={12}
+                      color="#64748B"
+                    />
+                  </TouchableOpacity>
+                  {devDiagExpanded ? (
+                    <View testID="stylistDevPillDetails" style={styles.devPillDetails}>
+                      <StylistRuntimeDiagnostic engine={lastEngineVersion || undefined} detail={lastEngineDetail || undefined} />
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })() : null}
           </ScrollView>
         </SafeAreaView>
 
@@ -3517,8 +3228,7 @@ const AIOutfitGenerator = () => {
             {selectedOccasion
               ? getOccasionLabel(selectedOccasion, t)
               : t('outfitMaker.pickOccasion', { defaultValue: 'Pick an occasion' })}
-            {' · '}
-            {weather ? `${weather.temp}°C` : t('outfitMaker.weatherUnavailable', { defaultValue: 'Weather unavailable' })}
+            {weather ? ` · ${weather.temp}°C` : ''}
           </ScaledText>
         </View>
 
@@ -4469,159 +4179,147 @@ const styles = StyleSheet.create({
     right: -80,
     bottom: 100,
   },
-  glassCard: {
-    borderRadius: LiquidGlass2026Theme.radius.card,
-    overflow: 'hidden',
+  lookCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.45)',
-    ...SpatialElevation.getShadow(SpatialElevation.levels.card),
+    borderColor: 'rgba(15,23,42,0.06)',
+    shadowColor: '#0A1931',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 4,
   },
-  cardHeaderRow: {
+  lookCardHeader: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 12,
+  },
+  lookTitleGroup: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
+    gap: 9,
+  },
+  lookIndexBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#EEF3FF',
+    flexShrink: 0,
+  },
+  lookIndexBadgeText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#2B5CE9',
+    letterSpacing: 0.4,
+  },
+  budgetPillWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+    alignItems: 'center',
+  },
+  budgetPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 99,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(43,92,233,0.16)',
+  },
+  budgetPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0A1931',
   },
   weatherChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    paddingHorizontal: 10,
+    gap: 4,
+    backgroundColor: '#F4F7FB',
+    paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: LiquidGlass2026Theme.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(10,25,49,0.08)',
-    flexShrink: 1,
-  },
-  weatherChipMuted: {
-    backgroundColor: 'rgba(100,116,139,0.08)',
-    borderColor: 'rgba(100,116,139,0.14)',
+    borderColor: 'rgba(15,23,42,0.07)',
+    flexShrink: 0,
   },
   weatherChipText: {
-    ...LiquidGlass2026Theme.typography.scale.labelMedium,
+    fontSize: 11.5,
     color: LiquidGlass2026Theme.colors.text.secondary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  weatherChipMutedText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#64748B',
+  cardMetaSection: {
+    marginTop: 2,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(15,23,42,0.08)',
   },
-  matchPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-  },
-  matchPillText: {
-    color: '#FFFFFF',
-    ...LiquidGlass2026Theme.typography.scale.labelMedium,
-    fontWeight: '700',
-  },
-  priceRow: {
+  cardMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 10,
-    marginBottom: 4,
+    gap: 12,
+  },
+  cardTotalCol: {
+    flex: 1,
+    gap: 2,
   },
   priceRowLabel: {
-    ...LiquidGlass2026Theme.typography.scale.labelMedium,
+    fontSize: 11,
+    fontWeight: '600',
     color: LiquidGlass2026Theme.colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   priceRowValue: {
-    ...LiquidGlass2026Theme.typography.scale.titleSmall,
-    color: LiquidGlass2026Theme.colors.text.primary,
+    fontSize: 16,
+    color: '#0A1931',
     fontWeight: '700',
-  },
-  slotGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  slotCell: {
-    width: (width - 72) / 2,
-    marginBottom: 12,
-    borderRadius: LiquidGlass2026Theme.radius.md,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    overflow: 'hidden',
-    ...SpatialElevation.getShadow(SpatialElevation.levels.surface),
-  },
-  slotImage: {
-    width: '100%',
-    height: (width - 72) / 2,
-  },
-  slotLabelWrap: {
-    padding: 10,
-  },
-  slotLabel: {
-    ...LiquidGlass2026Theme.typography.scale.labelSmall,
-    color: LiquidGlass2026Theme.colors.text.secondary,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  slotName: {
-    ...LiquidGlass2026Theme.typography.scale.bodyMedium,
-    color: LiquidGlass2026Theme.colors.text.primary,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  tipCard: {
-    borderRadius: LiquidGlass2026Theme.radius.md,
-    overflow: 'hidden',
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-  },
-  tipCardText: {
-    ...LiquidGlass2026Theme.typography.scale.bodySmall,
-    color: LiquidGlass2026Theme.colors.text.secondary,
-    flex: 1,
+    letterSpacing: -0.2,
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
+    marginTop: 14,
   },
   primaryAction: {
     flex: 1,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
+    gap: 7,
+    paddingHorizontal: 14,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   primaryActionText: {
     color: '#FFFFFF',
-    ...LiquidGlass2026Theme.typography.scale.labelLarge,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 13.5,
   },
   secondaryAction: {
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-    ...SpatialElevation.getShadow(SpatialElevation.levels.surface),
+    borderColor: 'rgba(15,23,42,0.12)',
   },
   secondaryActionText: {
-    color: LiquidGlass2026Theme.colors.text.primary,
-    ...LiquidGlass2026Theme.typography.scale.labelLarge,
-    fontSize: 13,
+    color: '#0A1931',
+    fontSize: 13.5,
     fontWeight: '600',
   },
 
@@ -5508,55 +5206,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(10,25,49,0.08)',
   },
-  devPillDetailsText: {
-    fontSize: 10,
-    lineHeight: 14,
-    color: '#526174',
-    textAlign: 'center',
-  },
-  directionHeader: {
-    marginBottom: 4,
-    gap: 2,
-  },
-  directionKicker: {
-    color: '#2B5CE9',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  directionSub: {
-    fontSize: 12,
-    lineHeight: 16,
-    color: '#526174',
-  },
   lookConceptTitle: {
-    fontSize: 19,
-    lineHeight: 24,
+    flex: 1,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: '700',
     letterSpacing: -0.3,
-    color: '#0A1931',
-    marginBottom: 10,
-  },
-  feedbackCard: {
-    marginBottom: 12,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(10,25,49,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.72)',
-  },
-  feedbackTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  feedbackPromptText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
     color: '#0A1931',
   },
   feedbackThumbGroup: {
@@ -5660,110 +5315,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: '#991B1B',
-  },
-  stylistNotesCard: {
-    marginTop: 10,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.88)',
-    borderWidth: 1,
-    borderColor: 'rgba(10,25,49,0.08)',
-    gap: 10,
-    shadowColor: '#0A1931',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  stylistNotesHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  stylistNotesHeading: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.9,
-    textTransform: 'uppercase',
-    color: '#173A65',
-  },
-  stylistNotesLead: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#0A1931',
-    fontWeight: '500',
-  },
-  stylistNotesCallout: {
-    borderLeftWidth: 2.5,
-    borderLeftColor: '#2B5CE9',
-    backgroundColor: 'rgba(43,92,233,0.05)',
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    gap: 3,
-  },
-  stylistNotesSubLabel: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    color: '#2B5CE9',
-  },
-  stylistNotesCalloutBody: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#1E293B',
-  },
-  stylistNotesMetaBlock: {
-    gap: 6,
-    paddingTop: 2,
-  },
-  stylistNotesMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 7,
-  },
-  stylistNotesTipsList: {
-    gap: 6,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(10,25,49,0.09)',
-  },
-  stylistNotesTipItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 7,
-  },
-  stylistNotesBullet: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#2B5CE9',
-    fontWeight: '700',
-  },
-  stylistNotesBody: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#334155',
-  },
-  tryOnAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 10,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderRadius: LiquidGlass2026Theme.radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    borderWidth: 1,
-    borderColor: 'rgba(23,58,101,0.16)',
-  },
-  tryOnActionText: {
-    color: '#0A1931',
-    fontSize: 13,
-    fontWeight: '700',
   },
 });
 

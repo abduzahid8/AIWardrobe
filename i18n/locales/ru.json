@@ -768,6 +768,7 @@
     "subscriptionRequired": "Оформите подписку для создания новых образов",
     "buy": "Купить",
     "yourOutfits": "Ваши образы",
+    "lookNumber": "Образ {{number}}",
     "saveToCalendar": "Сохранить в календарь",
     "pickDate": "Выберите дату для этого образа",
     "addToCalendar": "Добавить в календарь",

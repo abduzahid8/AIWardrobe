@@ -753,6 +753,7 @@
     "subscriptionRequired": "Subscribe to create new looks",
     "buy": "Buy",
     "yourOutfits": "Your Outfits",
+    "lookNumber": "Look {{number}}",
     "saveToCalendar": "Save to Calendar",
     "pickDate": "Pick a date for this outfit",
     "addToCalendar": "Add to Calendar",

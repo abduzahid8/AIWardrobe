@@ -118,13 +118,12 @@ test('actual displayed look count stays visible in both simulator diagnostic con
   expect(source).not.toContain("STYLIST6_DEV_ENABLED && lastEngineVersion && process.env.EXPO_PUBLIC_STYLIST_DIAGNOSTICS !== 'true'");
 });
 
-test('every returned look has a directly selectable tab and retains its exact card identity', () => {
-  expect(source).toContain('testID={`stylistLookTab-${index}`}');
-  expect(source).toContain('accessibilityState={{ selected: visibleLookIndex === index }}');
-  expect(source).toContain('onPress={() => setVisibleLookIndex(index)}');
-  expect(source).toContain('key={`stylist-look-${visibleLookIndex}`}');
-  expect(source).toContain('index !== visibleLookIndex ? null : (');
+test('every returned look renders one-by-one in the vertical results feed with its exact card identity', () => {
+  expect(source).toContain('testID="stylistResultsScroll"');
   expect(source).toContain('testID={`stylistResult-${index}`}');
+  expect(source).not.toContain('stylistLookTab-');
+  expect(source).not.toContain('index !== visibleLookIndex ? null :');
+  expect(source).not.toContain('stylistTryOn-');
 });
 
 test('cloud rendering failures retain a classified code rather than hiding rejection reasons', () => {
