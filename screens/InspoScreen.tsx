@@ -8,7 +8,7 @@ import { authEvents } from '../store/authEvents';
 import React, { useState, useCallback, useMemo, useEffect, useRef, useDeferredValue } from 'react';
 import { View, TouchableOpacity, StyleSheet, Dimensions, ScrollView, FlatList, StatusBar, TextInput, ActivityIndicator, Linking, Platform, Modal,  } from 'react-native'
 import { ScaledText } from '../components/ui/ScaledText';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import { useAppNavigation } from '../hooks/useAppNavigation';
@@ -472,6 +472,7 @@ type SegmentType = 'guide' | 'shop';
 const InspoScreen = () => {
     const { t } = useTranslation();
     const navigation = useAppNavigation();
+    const insets = useSafeAreaInsets();
 
     const [searchQuery, setSearchQuery] = useState('');
     const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -1196,7 +1197,12 @@ const InspoScreen = () => {
                 )}
             </SafeAreaView>
             <Modal visible={!!selectedLook} animationType="slide" onRequestClose={() => setSelectedLook(null)}>
-                <SafeAreaView style={styles.lookDetailPage}>
+                <View
+                    style={[
+                        styles.lookDetailPage,
+                        Platform.OS === 'ios' && { paddingTop: insets.top, paddingBottom: insets.bottom },
+                    ]}
+                >
                     <View style={styles.lookDetailHeader}>
                         <TouchableOpacity
                             style={styles.lookDetailBackButton}
@@ -1241,7 +1247,7 @@ const InspoScreen = () => {
                             <ScaledText style={styles.lookDetailLinkText}>View the brand collection</ScaledText><Ionicons name="arrow-forward" size={18} color="#FFF" />
                         </TouchableOpacity>
                     </ScrollView>}
-                </SafeAreaView>
+                </View>
             </Modal>
             {saveToast && (
                 <View style={styles.saveToast} pointerEvents="box-none" accessibilityLiveRegion="polite">
