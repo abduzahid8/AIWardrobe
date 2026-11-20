@@ -20,20 +20,18 @@
  */
 import { signStylistTransport, STYLIST_TRANSPORT_MAX_BODY_BYTES } from '../stylist-node/transport/signature.mjs';
 
-// Pinned Stylist 6 staging deployment (branch codex/stylist6-visual-first-20261110).
-// Active READY Compute Preview gibkm7rl5 (dpl_3BAPA1y37MDBsnCo1DJzs6WpsuLM; commit 3b2779d2).
-// Previous rollback targets: v28 -> hso7a8xwd, v27 -> 877e6enfz, v26 -> m5yjrunbb.
-// Full-deck NVIDIA decision is authoritative, honest verified partial decks,
-// individual reviewed-look provenance and bounded diverse challenger.
-// Fixes high-res catalog JPEG decoding (36MP), garment/register rules for
-// animal/novelty prints & comfort/suede shoes with formal tailoring, and
-// localized Uzbek deck headlines/descriptions/caveats.
+// Pinned Stylist 6 Fluid Compute staging deployment (branch ai_fashion_stylist).
+// Active READY Compute Preview 5c925fhk2 (dpl_7zEUvoW2bh4HSmW98c5EWjEDJeii; commit 822fd095; maxDuration: 300).
+// Previous rollback targets: gibkm7rl5 (commit 3b2779d2), Render canary (stylist6-render-staging.ts).
+// Runs Phase 11-13 Autonomous Visual Stylist (Act 1 Showroom + Act 2 Portfolio Editor +
+// Parallel Visual Swaps) with 75s default compute budget and zero Render sleep cold starts.
 // Production Stylist 5 remains untouched.
 // Keep the JWT + HMAC transport and quotas unchanged; no production routing.
 // Fail-closed idempotency + RLS migration included.
 // Repoint ONLY to another verified Stylist 6 staging Preview, never to production.
-const NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-gibkm7rl5-abduzahid8s-projects.vercel.app';
+const DEFAULT_NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-5c925fhk2-abduzahid8s-projects.vercel.app';
 const NODE_ROUTE = '/api/stylist6-generate-outfits';
+const MAX_COMPUTE_RESPONSE_BYTES = 2 * 1024 * 1024;
 const CORS = {
   'Access-Control-Allow-Origin':'*',
   'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
@@ -44,6 +42,19 @@ const CORS = {
 const fail = (code:string,status:number) =>
   Response.json({success:false,outfits:[],code,error:code},{status,headers:CORS});
 
+function resolveNodeOrigin(): string | null {
+  const raw = (Deno.env.get('STYLIST6_NODE_ORIGIN')?.trim() || DEFAULT_NODE_ORIGIN).replace(/\/+$/, '');
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'https:') return null;
+    if (!u.hostname.toLowerCase().endsWith('.vercel.app')) return null;
+    if (u.pathname && u.pathname !== '/') return null;
+    return u.origin;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async(request:Request):Promise<Response>=>{
   if(request.method==='OPTIONS') return new Response('ok',{headers:CORS});
 
@@ -53,6 +64,8 @@ Deno.serve(async(request:Request):Promise<Response>=>{
   const secret = Deno.env.get('STYLIST6_NODE_SHARED_SECRET');
   if (!secret || secret.length < 32) return fail('staging_transport_unconfigured',503);
 
+  const nodeOrigin = resolveNodeOrigin();
+  if (!nodeOrigin) return fail('staging_transport_unconfigured',503);
 
   const authorization = request.headers.get('authorization')||'';
   if(!/^Bearer\s+\S+$/i.test(authorization))return fail('unauthorized',401);
@@ -61,15 +74,15 @@ Deno.serve(async(request:Request):Promise<Response>=>{
   const body=await request.text();
   if(new TextEncoder().encode(body).byteLength>STYLIST_TRANSPORT_MAX_BODY_BYTES)
     return fail('invalid_generation_request',413);
+  const computeDeadline = AbortSignal.timeout(85000);
   try{
     // Optional Vercel deployment protection bypass is independent of the
     // HMAC transport and original user JWT; never forward to another host.
     const bypass = Deno.env.get('STYLIST_VERCEL_BYPASS_SECRET')?.trim();
-    if (bypass && (!/^[a-zA-Z0-9_-]{32,128}$/.test(bypass) ||
-        !new URL(NODE_ORIGIN).hostname.toLowerCase().endsWith('.vercel.app')))
+    if (bypass && !/^[a-zA-Z0-9_-]{32,128}$/.test(bypass))
       return fail('staging_transport_unconfigured',503);
     const signature=await signStylistTransport({secret,body,authorization});
-    const response=await fetch(NODE_ORIGIN+NODE_ROUTE,{
+    const response=await fetch(nodeOrigin+NODE_ROUTE,{
       method:'POST',redirect:'error',
       headers:{
         ...signature,authorization,
@@ -77,16 +90,28 @@ Deno.serve(async(request:Request):Promise<Response>=>{
         'content-type':'application/json',
         ...(bypass ? {'x-vercel-protection-bypass':bypass} : {}),
       },
-      body,signal:AbortSignal.timeout(55000),
+      body,signal:computeDeadline,
     });
     if(!response.headers.get('content-type')?.includes('application/json'))
       return fail('staging_compute_unavailable',502);
+    const announcedSize = Number(response.headers.get('content-length') || 0);
+    if (announcedSize > MAX_COMPUTE_RESPONSE_BYTES) return fail('staging_response_too_large', 502);
+    const payload = await response.text();
+    if (new TextEncoder().encode(payload).byteLength > MAX_COMPUTE_RESPONSE_BYTES)
+      return fail('staging_response_too_large', 502);
+    let parsed: unknown;
+    try { parsed = JSON.parse(payload); } catch { return fail('staging_invalid_json', 502); }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+      return fail('staging_invalid_json', 502);
     const headers=new Headers(CORS);
     const timing=response.headers.get('server-timing');
     if(timing && /^aiw_node_cpu;dur=\d+(?:\.\d+)?, aiw_node_wall;dur=\d+(?:\.\d+)?$/.test(timing))
       headers.set('server-timing',timing);
-    return new Response(response.body,{status:response.status,headers});
-  }catch{
-    return fail('staging_compute_unavailable',503);
+    return new Response(payload,{status:response.status,headers});
+  }catch(error){
+    const name = error instanceof Error ? error.name : '';
+    return computeDeadline.aborted || name === 'AbortError' || name === 'TimeoutError'
+      ? fail('staging_compute_timeout', 504)
+      : fail('staging_compute_unavailable', 503);
   }
 });

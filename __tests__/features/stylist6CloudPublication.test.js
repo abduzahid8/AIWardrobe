@@ -141,24 +141,26 @@ test('S6 cloud repeats whole new looks without exhausting finite catalog SKUs; S
 });
 
 
-test('default Stylist 6 iOS staging gateway reaches the real AI SKU composer runtime, not the 50s Vercel fallback', () => {
+test('default Stylist 6 iOS staging gateway reaches the 75s Fluid Compute autonomous visual runtime without touching Stylist 5', () => {
   const fs = require('fs');
   const defaultGateway = fs.readFileSync('backend/supabase/functions/aiw-stylist6-node-staging/index.ts', 'utf8');
-  const renderGateway = fs.readFileSync('backend/stylist-proxy/stylist6-render-staging.ts', 'utf8');
+  const renderRollbackGateway = fs.readFileSync('backend/supabase/functions/aiw-stylist6-node-render-staging/index.ts', 'utf8');
+  const vercelGateway = fs.readFileSync('backend/stylist-proxy/stylist6-staging.ts', 'utf8');
+  const vercelJson = fs.readFileSync('backend/stylist-node/vercel.json', 'utf8');
   const nodeRoute = fs.readFileSync('backend/stylist-node/api/stylist6-generate-outfits.ts', 'utf8');
   const cloudHandler = fs.readFileSync('backend/stylist6/cloud_handler.mjs', 'utf8');
 
-  // A 50-second fallback silently disables both real-SKU composition and final
-  // portfolio editing. Keep the normal QA route on the already-authenticated
-  // 72-second Render canary, without touching production Stylist 5.
-  expect(defaultGateway).toContain('stylist6-render-staging.ts');
-  expect(defaultGateway).not.toMatch(/^import .*stylist6-staging\.ts/m);
-  expect(renderGateway).toContain("STYLIST6_RENDER_NODE_SHARED_SECRET");
-  expect(renderGateway).toContain('AbortSignal.timeout(85000)');
-  expect(renderGateway).toContain('signStylistTransport');
-  expect(nodeRoute).toContain('STYLIST6_RENDER_CANARY_BUDGET_MS = 72_000');
+  expect(defaultGateway).toContain('stylist6-staging.ts');
+  expect(defaultGateway).not.toMatch(/^import .*stylist6-render-staging\.ts/m);
+  expect(renderRollbackGateway).toContain('stylist6-render-staging.ts');
+  expect(vercelGateway).toContain('STYLIST6_NODE_SHARED_SECRET');
+  expect(vercelGateway).toContain('AbortSignal.timeout(85000)');
+  expect(vercelGateway).toContain('signStylistTransport');
+  expect(vercelGateway).toContain("NODE_ROUTE = '/api/stylist6-generate-outfits'");
+  expect(vercelJson).toContain('"maxDuration": 300');
+  expect(nodeRoute).toContain('STYLIST6_DEFAULT_MAX_DURATION_MS = 75_000');
   expect(cloudHandler).toContain('budgetMs>=70000');
+  expect(cloudHandler).toContain('runAutonomousVisualStylist');
   expect(cloudHandler).toContain('composeCatalogSkuLooks(');
   expect(cloudHandler).toContain('selectPhotoEditorialDeck(');
-  expect(renderGateway).toContain("RENDER_PATH='/api/stylist6-generate-outfits'");
 });

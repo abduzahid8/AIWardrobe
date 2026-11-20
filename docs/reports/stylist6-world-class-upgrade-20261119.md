@@ -278,6 +278,27 @@ Follow-up end-to-end Simulator inspection (`V5`–`V8`) and live cloud parity te
   - **`Minimalist · Casual` V9** (`scratch/visual_eval_v9/sim_v9_casual_tab01..03.png`, `sim_v9_casual_notes.png`): `3/3` distinct casual looks (`"Tonal modern separates"`, `"Navy Merino Evening"`, `"Navy Resort Knit Polo Ensemble"`), `latencyMs: 35,671`, `surgicalSwaps: 2`, `providerCalls: 6`, 12 completely unique SKUs, clean visual diversity across overshirt + knit polo, soft unstructured suit + mockneck, and reversible resort blouson + wine suede low-tops.
 - **Verification Counts (Post-Final-Edit)**: `backend/stylist6/*.test.mjs` (`node --import tsx --test`): `729/729` pass (`0` fail); `scripts/stylist6/*.test.mjs` (`node --import tsx --test`): `74/74` pass (`0` fail); `backend/stylist-node`: build + typecheck + `42/42` pass (`0` fail); root `npx tsc --noEmit`: 0 errors; targeted Jest suites (`4` suites): `79/79` pass; `node scripts/security/secret-scan.mjs`: PASS (`3,432` text files, `0` findings); Stylist 5 diff (`backend/supabase/functions/generate-outfits/`, `backend/stylist-node/api/generate-outfits.ts`): `0` lines.
 
+### 6.7 Live Vercel Fluid Compute Deployment & Supabase Cutover Prep
+
+- **Vercel Preview Environment & Deployment (`ai_fashion_stylist`)**:
+  - Set 6 branch-scoped `Preview (ai_fashion_stylist)` environment variables on `aiwardrobe-stylist-compute` (`prj_7MuxZyEJ6ClwvMqai0RxZgSizwgp`) without touching `codex/...` branch variables: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `NVIDIA_API_KEY` (secret), `STYLIST6_AUTONOMOUS_VISUAL_ENABLED=true`, `STYLIST6_CREATIVE_DIRECTOR_ENABLED=1`, and `STYLIST6_FAST_VISUAL_MODE=false`.
+  - Pushed commit `822fd095` (`822fd09596b50cd66a20712e913f8a6437afdea8`) to `origin/ai_fashion_stylist`.
+  - Vercel built immutable `READY` Fluid Compute deployment `dpl_7zEUvoW2bh4HSmW98c5EWjEDJeii` (`19s` build, `maxDuration: 300`, `75_000ms` default budget, `λ api/stylist6-generate-outfits` `17.37MB`) at `https://aiwardrobe-stylist-compute-5c925fhk2-abduzahid8s-projects.vercel.app` (branch alias `https://aiwardrobe-stylist-compute-git-aifa-d44e19-abduzahid8s-projects.vercel.app`).
+- **Live Endpoint Probes (Fail-Closed Prior to Secret Scoping)**:
+  - `GET /api/health` -> `HTTP=200` (`{"status":"ok","computeConfigured":false}`).
+  - `GET /api/stylist6-generate-outfits` -> `HTTP=405` (`{"code":"method_not_allowed"}`).
+  - Unsigned `POST /api/stylist6-generate-outfits` -> `HTTP=503` (`{"code":"stylist_compute_unconfigured"}`).
+  - `POST /api/transport-health` -> `HTTP=503` (`{"code":"compute_unconfigured"}`).
+- **Hardened Staging Proxy Cutover (`85s` Fluid Compute Target)**:
+  - Switched `backend/stylist-proxy/stylist6-staging.ts` to pin `DEFAULT_NODE_ORIGIN = 'https://aiwardrobe-stylist-compute-5c925fhk2-abduzahid8s-projects.vercel.app'`, added validated optional `STYLIST6_NODE_ORIGIN` (`https://` + `.vercel.app` only), raised `AbortSignal.timeout(85000)`, and added bounded `2MB` payload guard + JSON parse check + `504 staging_compute_timeout` / `502` / `503` handling.
+  - Wired `backend/supabase/functions/aiw-stylist6-node-staging/index.ts` to `../../../stylist-proxy/stylist6-staging.ts`, preserving Render canary (`aiw-stylist6-node-render-staging`) and Production Stylist 5 (`generate-outfits`) untouched.
+- **Post-Edit Verification Counts**:
+  - `backend/stylist-node`: build + `43/43` pass (`0` fail); `cloud_handler.test.mjs` + `autonomous_stylist.test.mjs`: `94/94` pass; targeted Jest suites (`4/4` suites): `79/79` pass; root `npx tsc --noEmit`: `0` errors; `node scripts/security/secret-scan.mjs`: PASS (`3,432` files, `0` findings); Stylist 5 diff (`backend/supabase/functions/generate-outfits/`, `backend/stylist-node/api/generate-outfits.ts`): `0` lines.
+  - Local validation scripts: `test:vercel-topology` (`3/3`), `test:release-toolchain` (`8/8`), `test:dependency-security` (`21/21`), `test:native-links` (`2/2`), `test:asset-formats` (`1/1`), and `test:navigation-links` (`11/11`).
+- **Open Owner Blockers Before Live Cloud Smoke & EAS Build**:
+  - **Vercel Shared Secrets**: Scope write-only secrets `STYLIST6_NODE_SHARED_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` (and `STYLIST_NODE_SHARED_SECRET` for `/api/health` readiness) on `aiwardrobe-stylist-compute` to branch `ai_fashion_stylist` (currently scoped to `codex/stylist6-visual-first-20261110`; local `.env` `SUPABASE_SERVICE_KEY` is `EMPTY`).
+  - **Supabase Auth & Apply**: `supabase_mcp` OAuth failed upstream with `{"message": "Unrecognized client_id"}` and `supabase` CLI is `NOT_INSTALLED`. Authenticate Supabase CLI or apply SQL migrations `20261119090000_stylist6_pgvector_and_scale_indexes.sql` and `20261119091000_stylist6_personal_dna_and_flywheel.sql` plus deploy `aiw-stylist6-node-staging` on project `fyqpifmrsftsfqibhwhy`.
+
 ---
 
 ## 7. Mandatory Owner Release Gates Still Open (Required Before Production Promotion)
