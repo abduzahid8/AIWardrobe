@@ -16,6 +16,8 @@
  *   - Never fabricates provider outcomes; returns honest error diagnostics.
  */
 
+import crypto from 'node:crypto';
+
 export const AI_PROVIDER_ROUTER_VERSION = 's6-ai-provider-router-v1';
 
 export const PROVIDER_ENDPOINTS = Object.freeze({
@@ -679,6 +681,38 @@ export function createProviderRouter(config = {}) {
   };
 
   let totalFailovers = 0;
+  const modelCooldownMs = Number.isFinite(config.modelCooldownMs) && config.modelCooldownMs >= 0
+    ? config.modelCooldownMs
+    : 120_000;
+  const modelCooldowns = new Map();
+
+  function isModelCooledDown(spec) {
+    if (modelCooldownMs <= 0) return false;
+    const key = `${spec.provider}:${spec.model}`;
+    const entry = modelCooldowns.get(key);
+    if (!entry || entry.untilMs <= 0) return false;
+    if (entry.untilMs <= nowFn()) {
+      modelCooldowns.delete(key);
+      return false;
+    }
+    return true;
+  }
+
+  function recordModelTimeout(spec, isFastPrimaryProbe) {
+    if (modelCooldownMs <= 0) return;
+    const key = `${spec.provider}:${spec.model}`;
+    const prev = modelCooldowns.get(key);
+    const consecutiveTimeouts = (prev?.consecutiveTimeouts || 0) + 1;
+    const shouldCooldown = isFastPrimaryProbe || consecutiveTimeouts >= 2;
+    modelCooldowns.set(key, {
+      consecutiveTimeouts,
+      untilMs: shouldCooldown ? nowFn() + modelCooldownMs : (prev?.untilMs || 0),
+    });
+  }
+
+  function clearModelCooldown(spec) {
+    modelCooldowns.delete(`${spec.provider}:${spec.model}`);
+  }
 
   function isProviderConfigured(providerName) {
     const p = providers[providerName];
@@ -744,8 +778,9 @@ export function createProviderRouter(config = {}) {
     const scoreCandidate = (spec) => {
       const snap = providers[spec.provider].breaker.snapshot();
       const healthScore = snap.state === 'closed' ? 0 : snap.state === 'half_open' ? 100 : 1000;
+      const cooldownPenalty = isModelCooledDown(spec) ? 50 : 0;
       const providerBias = preferProvider && spec.provider === preferProvider ? -5 : 0;
-      return healthScore + providerBias + (spec.crossLabRank ?? 25);
+      return healthScore + cooldownPenalty + providerBias + (spec.crossLabRank ?? 25);
     };
 
     const crossLab = candidates.filter((spec) =>
@@ -758,14 +793,25 @@ export function createProviderRouter(config = {}) {
     const orderedCrossLab = healthyCrossLab.length > 0 ? healthyCrossLab : crossLab;
 
     if (orderedCrossLab.length > 0) {
-      const [primary, ...fallbacks] = orderedCrossLab;
+      const [primary, ...crossFallbacks] = orderedCrossLab;
+      let tailFallbacks = crossFallbacks;
+      if (allowSameLabFallback) {
+        const seenKeys = new Set([
+          `${primary.provider}:${primary.model}`,
+          ...crossFallbacks.map((f) => `${f.provider}:${f.model}`),
+        ]);
+        const sameLabTail = candidates
+          .filter((spec) => !seenKeys.has(`${spec.provider}:${spec.model}`))
+          .sort((a, b) => scoreCandidate(a) - scoreCandidate(b));
+        tailFallbacks = [...crossFallbacks, ...sameLabTail];
+      }
       return {
         model: primary.model,
         provider: primary.provider,
         family: primary.family,
         lab: primary.lab,
         crossLab: true,
-        fallbacks: fallbacks.map((f) => ({
+        fallbacks: tailFallbacks.map((f) => ({
           model: f.model,
           provider: f.provider,
           family: f.family,
@@ -866,6 +912,18 @@ export function createProviderRouter(config = {}) {
       for (const spec of ordered) pushTarget(spec.model, spec.provider);
     }
 
+    if (chain.length > 1) {
+      const active = [];
+      const cooled = [];
+      for (const spec of chain) {
+        if (isModelCooledDown(spec)) cooled.push(spec);
+        else active.push(spec);
+      }
+      if (active.length > 0 && cooled.length > 0) {
+        return [...active, ...cooled];
+      }
+    }
+
     return chain;
   }
 
@@ -877,6 +935,7 @@ export function createProviderRouter(config = {}) {
     parseJson,
     maxResponseBytes,
     providerTimeoutMs,
+    isFastPrimaryProbe = false,
   }) {
     const providerState = providers[spec.provider];
     const metrics = providerState.metrics;
@@ -1008,7 +1067,9 @@ export function createProviderRouter(config = {}) {
           }
           if (callController.signal.aborted) {
             lastError = 'provider_deadline';
-            providerState.breaker.recordFailure('provider_deadline');
+            recordModelTimeout(spec, isFastPrimaryProbe);
+            if (isFastPrimaryProbe) providerState.breaker.releaseProbe();
+            else providerState.breaker.recordFailure('provider_deadline');
             break;
           }
           lastError = 'provider_transport';
@@ -1077,8 +1138,13 @@ export function createProviderRouter(config = {}) {
           lastError = callerSignal?.aborted ? 'aborted'
             : callController.signal.aborted ? 'provider_deadline'
               : err?.code || 'provider_body_read_failed';
-          if (lastError === 'provider_deadline') providerState.breaker.recordFailure(lastError);
-          else providerState.breaker.releaseProbe();
+          if (lastError === 'provider_deadline') {
+            recordModelTimeout(spec, isFastPrimaryProbe);
+            if (isFastPrimaryProbe) providerState.breaker.releaseProbe();
+            else providerState.breaker.recordFailure(lastError);
+          } else {
+            providerState.breaker.releaseProbe();
+          }
           break;
         }
         clearTimeout(callTimer);
@@ -1171,6 +1237,7 @@ export function createProviderRouter(config = {}) {
         }
 
         metrics.totalSuccesses++;
+        clearModelCooldown(spec);
         providerState.breaker.recordSuccess();
         semaphore.onSuccess();
         return {
@@ -1269,11 +1336,13 @@ export function createProviderRouter(config = {}) {
         };
       }
       const spec = chain[i];
-      const attemptProviderTimeoutMs = (
-        i === 0 && chain.length > 1 && Number.isFinite(req.primaryTimeoutMs) && req.primaryTimeoutMs > 0
-      )
+      const hasFastPrimaryProbe = i === 0 && chain.length > 1 && Number.isFinite(req.primaryTimeoutMs) && req.primaryTimeoutMs > 0;
+      const attemptProviderTimeoutMs = hasFastPrimaryProbe
         ? Math.min(req.providerTimeoutMs || req.primaryTimeoutMs, req.primaryTimeoutMs)
         : (req.providerTimeoutMs || null);
+      const isFastPrimaryProbe = Boolean(
+        hasFastPrimaryProbe && Number.isFinite(attemptProviderTimeoutMs) && attemptProviderTimeoutMs < (spec.defaultTimeoutMs || 15_000),
+      );
       const result = await executeSingleTarget(spec, req, {
         deadlineAt,
         callerSignal: req.signal || null,
@@ -1282,6 +1351,7 @@ export function createProviderRouter(config = {}) {
         parseJson: req.parseJson === true,
         maxResponseBytes: req.maxResponseBytes || DEFAULT_MAX_RESPONSE_BYTES,
         providerTimeoutMs: attemptProviderTimeoutMs,
+        isFastPrimaryProbe,
       });
 
       attempts.push({
@@ -1388,6 +1458,7 @@ export function createProviderRouter(config = {}) {
 
   function reset() {
     totalFailovers = 0;
+    modelCooldowns.clear();
     for (const p of Object.values(providers)) {
       p.breaker.reset();
       p.metrics.totalCalls = 0;
@@ -1414,6 +1485,53 @@ export function createProviderRouter(config = {}) {
 }
 
 let defaultRouter = null;
+const SHARED_ROUTER_CACHE = new Map();
+const MAX_SHARED_ROUTERS = 8;
+
+/**
+ * Reuse a warm per-credential router across requests in persistent processes
+ * (Vercel Fluid Compute, local dev bridge), preserving circuit breaker and
+ * per-model timeout cooldown state. Returns a fresh isolated instance whenever
+ * tests or callers inject custom transport/clock/breaker overrides.
+ */
+export function getSharedProviderRouter(options = {}) {
+  const env = options.env || process.env;
+  if (
+    options.cache === false ||
+    typeof options.fetchImpl === 'function' ||
+    typeof options.nowFn === 'function' ||
+    options.circuitFailureThreshold !== undefined ||
+    options.circuitCooldownMs !== undefined ||
+    options.modelCooldownMs !== undefined ||
+    options.maxConcurrency !== undefined ||
+    options.nvidiaEndpoint !== undefined ||
+    options.openrouterEndpoint !== undefined ||
+    options.providers !== undefined
+  ) {
+    return createProviderRouter(options);
+  }
+  const nvidiaKey = String(options.nvidiaApiKey ?? env?.NVIDIA_API_KEY ?? '').trim();
+  const openrouterKey = String(options.openrouterApiKey ?? env?.OPENROUTER_API_KEY ?? '').trim();
+  const keyMaterial = [
+    nvidiaKey,
+    openrouterKey,
+    String(options.openrouterVisionModel ?? ''),
+  ].join('|');
+  const cacheKey = crypto.createHash('sha256').update(keyMaterial).digest('hex');
+  if (SHARED_ROUTER_CACHE.has(cacheKey)) {
+    const existing = SHARED_ROUTER_CACHE.get(cacheKey);
+    SHARED_ROUTER_CACHE.delete(cacheKey);
+    SHARED_ROUTER_CACHE.set(cacheKey, existing);
+    return existing;
+  }
+  const created = createProviderRouter(options);
+  if (SHARED_ROUTER_CACHE.size >= MAX_SHARED_ROUTERS) {
+    const oldest = SHARED_ROUTER_CACHE.keys().next().value;
+    if (oldest) SHARED_ROUTER_CACHE.delete(oldest);
+  }
+  SHARED_ROUTER_CACHE.set(cacheKey, created);
+  return created;
+}
 
 function getDefaultRouter() {
   if (!defaultRouter) defaultRouter = createProviderRouter();
@@ -1422,6 +1540,7 @@ function getDefaultRouter() {
 
 export function resetDefaultProviderRouter() {
   defaultRouter = null;
+  SHARED_ROUTER_CACHE.clear();
 }
 
 export function callVisionModel(req = {}) {

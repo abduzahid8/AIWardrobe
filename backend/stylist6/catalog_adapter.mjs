@@ -80,7 +80,7 @@ const SHOE_TABLE = [
   [/\bloafers?\b|\bpenny\b|\btassels?\b|\bhorsebits?\b|\bslippers?\b|\bmoccasins?\b|\bboat\b|\bdeck\b/, 'loafer'],
   [/\bchelsea\b/, 'chelsea'],
   [/\bchukkas?\b|\bboots?\b|\bankle\b/, 'boot'],
-  [/\boxfords?\b|\brichelieus?\b|\bbalmorals?\b/, 'oxford'],
+  [/\boxfords?\b|\brichelieus?\b|\bbalmorals?\b|\bwholecuts?\b/, 'oxford'],
   [/\bderb(?:y|ies)\b|\bbluchers?\b/, 'derby'],
   [/\bmonks?(?:[ -]?straps?)?\b/, 'monk'],
   [/\bespadrilles?\b/, 'espadrille'],

@@ -180,6 +180,7 @@ test('fallback shoe titles do not confuse closed lacing, open lacing and brogue 
   }));
   assert.equal(shoe('Dark Brown Oxford Shoes').subtype, 'oxford');
   assert.equal(shoe('Black Richelieu Leather Shoe').subtype, 'oxford');
+  assert.equal(shoe('Rio Wholecut W - Black').subtype, 'oxford');
   assert.equal(shoe('Brown Derby Shoes').subtype, 'derby');
   assert.equal(shoe('Cognac Blucher Shoes').subtype, 'derby');
   assert.equal(shoe('Black Double Monk Strap Shoes').subtype, 'monk');

@@ -523,4 +523,192 @@ test('Phase 11 editorial voice: preserves bespoke VLM titles & warm notes, strip
     { id: 'signature' },
   );
   assert.equal(unconsentedNotes.whyItFlattersYou, null, 'must never allow unconsented undertone claims');
+
+  // 5. Rejects impossible "top button" advice on buttonless pullovers, while keeping blazer unbuttoning tips
+  const crewneckItems = [
+    { id: 't3', macroCategory: 'top', subtype: 'fine-knit', color: 'burgundy', name: 'Regular-Fit Rib-Knit Cotton Sweater' },
+    { id: 'o3', macroCategory: 'outerwear', subtype: 'blazer', color: 'burgundy', name: 'Tailored Fit Velvet Single-Breasted Blazer' },
+    { id: 'b3', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'charcoal', name: 'Charcoal Flannel Trousers' },
+    { id: 's3', macroCategory: 'shoes', subtype: 'oxford', color: 'navy', name: 'Vincent Navy Wholecut Oxford' },
+  ];
+  const crewneckNotes = buildStylistNotes(
+    {
+      items: crewneckItems,
+      autonomousMeta: {
+        title: 'Burgundy Velvet Evening',
+        stylistNote: 'The deep burgundy blazer frames crisp tailoring with subtle textural depth.',
+        stylingTips: [
+          'Keep the top button of the fine knit undone for a relaxed neckline.',
+          'Wear the blazer unbuttoned for an easy evening drape.',
+          'Polish the navy oxfords before heading out.',
+        ],
+      },
+    },
+    { style: 'classic', occasion: 'Date night', language: 'en' },
+    { id: 'signature' },
+  );
+  assert.equal(
+    crewneckNotes.stylingTips.some((t) => /top button/i.test(t)),
+    false,
+    'must reject button advice on buttonless crewneck sweater',
+  );
+  assert.equal(
+    crewneckNotes.stylingTips.some((t) => /blazer unbuttoned/i.test(t)),
+    true,
+    'must preserve valid blazer unbuttoning tip',
+  );
+
+  // 6. Rejects mismatched title color ("Charcoal" on all-navy) and "Evening" on daytime Work
+  const allNavyCardiganItems = [
+    { id: 't4', macroCategory: 'top', subtype: 'dress-shirt', color: 'navy', name: 'Navy Poplin Shirt' },
+    { id: 'o4', macroCategory: 'outerwear', subtype: 'cardigan', color: 'navy', name: 'Macardomon Cardigan Navy' },
+    { id: 'b4', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'navy', name: 'Cold wool suit trousers' },
+    { id: 's4', macroCategory: 'shoes', subtype: 'loafer', color: 'brown', name: 'Velasca Brown Loafers' },
+  ];
+  const beigeCoatItems = [
+    { id: 't5', macroCategory: 'top', subtype: 'dress-shirt', color: 'beige', name: 'Slim-Fit Stretch Shirt' },
+    { id: 'o5', macroCategory: 'outerwear', subtype: 'coat', color: 'beige', name: 'Light Beige Overcoat' },
+    { id: 'b5', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'beige', name: 'Machino Trousers' },
+    { id: 's5', macroCategory: 'shoes', subtype: 'oxford', color: 'black', name: 'TLB Black Oxford' },
+  ];
+  const workCards = editorialDeckCopy(
+    [
+      { items: allNavyCardiganItems, autonomousMeta: { title: 'Charcoal Knit Afternoon', stylistNote: 'Cohesive navy layers tailored for quiet daytime confidence.' } },
+      { items: beigeCoatItems, autonomousMeta: { title: 'Beige Coat Evening', stylistNote: 'Warm tonal overcoat and beige tailoring anchored by sleek black oxfords.' } },
+    ],
+    { style: 'old_money', occasion: 'Work', language: 'en' },
+    [{ id: 'signature', qualified: true }, { id: 'refresh', qualified: true }],
+  );
+  assert.doesNotMatch(workCards[0].concept.title, /\bCharcoal\b/i, 'must not keep "Charcoal" title when no item is charcoal');
+  assert.doesNotMatch(workCards[1].concept.title, /\bEvening\b/i, 'must not keep "Evening" in a daytime Work title');
+
+  // 7. Phase 12b: dedupes repeated title words, never truncates mid-brand on "J.Crew", and rejects prompt-echo tips
+  const jcrewItems = [
+    { id: 't6', macroCategory: 'top', subtype: 'dress-shirt', color: 'white', name: 'White Oxford Shirt' },
+    { id: 'o6', macroCategory: 'outerwear', subtype: 'blazer', color: 'burgundy', name: 'Tailored Fit Velvet Single-Breasted Blazer' },
+    { id: 'b6', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'navy', name: 'Kenmare Relaxed suit pant in Italian wool' },
+    { id: 's6', macroCategory: 'shoes', subtype: 'oxford', color: 'black', name: 'Black Leather Wholecut Oxford' },
+  ];
+  const jcrewNote = 'A crisp white Oxford shirt layered cleanly beneath a structured velvet evening blazer, worn with rich dark trousers and dark brown footwear anchored comfortably by J.Crew navy Italian wool tailoring and black oxfords for a sharp work silhouette.';
+  const sanitizedJcrew = sanitizeStylistProse(jcrewNote, jcrewItems, { maxLen: 215 });
+  assert.doesNotMatch(sanitizedJcrew, /\bJ\.$/, `must never cut off mid-brand after "J.": ${sanitizedJcrew}`);
+
+  const phase12bCards = editorialDeckCopy(
+    [{
+      items: jcrewItems,
+      autonomousMeta: {
+        title: 'Burgundy Velvet Velvet Hour',
+        stylistNote: 'The velvet evening blazer pairs cleanly with crisp white shirting, avoiding any double-knit bulk.',
+        stylingTips: [
+          'The tailored trouser waistband stays clean for evening, unlike drawstring joggers.',
+          'Wear the navy knit as photographed; do not unbutton a crewneck.',
+          'Keep the velvet blazer unbuttoned so the crisp collar leads.',
+        ],
+      },
+    }],
+    { style: 'classic', occasion: 'Date night', language: 'en' },
+    [{ id: 'signature', qualified: true }],
+  );
+  assert.equal(phase12bCards[0].concept.title, 'Burgundy Velvet Hour');
+  assert.doesNotMatch(phase12bCards[0].stylistNote, /double-knit bulk/i);
+  assert.equal(phase12bCards[0].stylingTips.some((t) => /do not unbutton|as photographed|unlike drawstring/i.test(t)), false);
+  assert.equal(phase12bCards[0].stylingTips.some((t) => /Keep the velvet blazer unbuttoned/i.test(t)), true);
+
+  // 8. Phase 12c: fixes "navy cool wool blazer" + "structured navy silhouette" against black blazer,
+  // strips internal "locked <garment>" swap echo, and catches "Buttonless Polo" for top-button tips.
+  const buttonlessPoloItems = [
+    { id: 't7', macroCategory: 'top', subtype: 'polo', color: 'light-grey', name: 'Extrafine Merino Buttonless Polo Classic' },
+    { id: 'o7', macroCategory: 'outerwear', subtype: 'blazer', color: 'black', name: '100% cool wool suit blazer' },
+    { id: 'b7', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'charcoal', name: 'Milan slim-fit suit trousers' },
+    { id: 's7', macroCategory: 'shoes', subtype: 'oxford', color: 'brown', name: '514150 - BROWN SUPERBUCK - E' },
+  ];
+  const buttonlessCards = editorialDeckCopy(
+    [{
+      items: buttonlessPoloItems,
+      autonomousMeta: {
+        title: 'Blazer & Tailored Trousers',
+        stylistNote: 'This navy cool wool blazer instantly elevates your work wardrobe.',
+        whyItFlattersYou: 'The structured navy silhouette sharpens your frame while harmonizing with the locked grey trousers and brown shoes.',
+        stylingTips: [
+          'Wear it open over the locked light-gray polo for a refined work look.',
+          'Pair with the locked brown leather shoes to complete the aesthetic.',
+          'Keep the top button undone for a modern, effortless silhouette.',
+        ],
+      },
+    }],
+    { style: 'old_money', occasion: 'Work', language: 'en' },
+    [{ id: 'signature', qualified: true }],
+    { personalStyleDna: { body: { bodyType: 'rectangle', hasExplicitBodyEvidence: true } } },
+  );
+  assert.match(buttonlessCards[0].stylistNote, /\bblack cool wool blazer\b/i);
+  assert.match(buttonlessCards[0].whyItFlattersYou, /\bstructured black silhouette\b/i);
+  assert.doesNotMatch(`${buttonlessCards[0].whyItFlattersYou} ${buttonlessCards[0].stylingTips.join(' ')}`, /\blocked\b/i);
+  assert.equal(buttonlessCards[0].stylingTips.some((t) => /top button/i.test(t)), false);
+
+  // 9. Phase 13 taxonomy & grounding fixes: overcoat vs stale overshirt, cardigan fine-knit note preservation,
+  // wholecut shoe fallback, bare single-item title rejection, and Workwear -> Workday / work tailoring.
+  const overcoatStaleItems = [
+    { id: 't8', macroCategory: 'top', subtype: 'shirt', color: 'cream', name: 'Ivory Corduroy Shirt' },
+    { id: 'o8', macroCategory: 'outerwear', subtype: 'overshirt', color: 'beige', name: 'Light Beige Overcoat' },
+    { id: 'b8', macroCategory: 'bottom', subtype: 'chino', color: 'tan', name: 'The Performance Chino | Uniform | Toasted Tan' },
+    { id: 's8', macroCategory: 'shoes', subtype: 'unknown', color: 'black', name: 'Rio Wholecut W - Black' },
+  ];
+  const overcoatCards = editorialDeckCopy(
+    [
+      {
+        items: overcoatStaleItems,
+        autonomousMeta: {
+          title: 'White Cotton Dress Shirt',
+          stylistNote: 'The light beige overcoat drapes cleanly over the ivory corduroy shirt and sleek black wholecuts for refined workwear.',
+        },
+      },
+      {
+        items: [
+          { id: 't9', macroCategory: 'top', subtype: 'dress-shirt', color: 'white', name: 'Relaxed Pima Cotton-Poplin Shirt - White' },
+          { id: 'o9', macroCategory: 'outerwear', subtype: 'cardigan', color: 'navy', name: 'Nuvola navy blue seamless merino wool cardigan' },
+          { id: 'b9', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'navy', name: 'Regular-Fit Suit Pants' },
+          { id: 's9', macroCategory: 'shoes', subtype: 'oxford', color: 'brown', name: 'Caffettee' },
+        ],
+        autonomousMeta: {
+          title: 'White Cotton Poplin Workwear',
+          stylistNote: 'A fine-knit merino wool cardigan layered over crisp white shirting creates quiet Ivy poise.',
+        },
+      },
+    ],
+    { style: 'old_money', occasion: 'Work', language: 'en' },
+    [{ id: 'signature', qualified: true }, { id: 'refresh', qualified: true }],
+  );
+  assert.doesNotMatch(overcoatCards[0].concept.title, /^White Cotton Dress Shirt$/i);
+  assert.match(overcoatCards[0].silhouetteFormula, /\bCoat over\b/i);
+  assert.doesNotMatch(overcoatCards[0].silhouetteFormula, /\bOvershirt\b/i);
+  assert.match(overcoatCards[0].silhouetteFormula, /\bsleek oxfords\b/i);
+  assert.match(overcoatCards[0].stylistNote, /\blight beige overcoat\b/i);
+  assert.match(overcoatCards[0].stylistNote, /\bwork tailoring\b/i);
+  assert.equal(overcoatCards[1].concept.title, 'White Cotton Poplin Workday');
+  assert.match(overcoatCards[1].stylistNote, /\bfine-knit merino wool cardigan\b/i);
+
+  // Rejects "sweater unbuttoned at the collar" on buttonless mockneck & 8-word inventory-list titles
+  const mockneckCards = editorialDeckCopy(
+    [{
+      items: [
+        { id: 't10', macroCategory: 'top', subtype: 'fine-knit', color: 'burgundy', name: 'Extrafine Merino Mockneck Burgundy' },
+        { id: 'o10', macroCategory: 'outerwear', subtype: 'blazer', color: 'burgundy', name: 'Tailored Fit Velvet Single-Breasted Blazer' },
+        { id: 'b10', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'charcoal', name: 'Italian wool flannel slim-fit suit trousers' },
+        { id: 's10', macroCategory: 'shoes', subtype: 'loafer', color: 'black', name: 'Black Shell Cordovan Penny Loafer' },
+      ],
+      autonomousMeta: {
+        title: 'Burgundy Blazer Burgundy Knit Charcoal Trousers Loafers',
+        stylistNote: 'Deep tonal velvet and merino layering refined for evening.',
+        stylingTips: [
+          'Keep the burgundy sweater unbuttoned at the collar for a relaxed feel.',
+          'Leave the velvet blazer unfastened for easy drape.',
+        ],
+      },
+    }],
+    { style: 'classic', occasion: 'Date night', language: 'en' },
+    [{ id: 'signature', qualified: true }],
+  );
+  assert.doesNotMatch(mockneckCards[0].concept.title, /Charcoal Trousers Loafers/i);
+  assert.equal(mockneckCards[0].stylingTips.some((t) => /unbuttoned/i.test(t)), false);
+  assert.equal(mockneckCards[0].stylingTips.some((t) => /velvet blazer unfastened/i.test(t)), true);
 });

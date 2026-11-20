@@ -58,11 +58,37 @@ function details(items) {
         return {...d,subtype:/\bchinos?\b/i.test(item.name)?'chino':/\btailored|suit|dress|pleated\b/i.test(item.name)?'tailored-trouser':'trouser',structured:/\btailored|suit|dress|pleated\b/i.test(item.name)};
       }
     }
+    if(d.slot==='outerwear'&&typeof item?.name==='string'){
+      if(/\b(?:overcoats?|topcoats?|trench(?:\s+coats?)?|pea\s*coats?|car\s+coats?|mac\s+coats?|long\s+coats?)\b/i.test(item.name)){
+        return {...d,subtype:'coat'};
+      }
+      if(/\bblazers?\b|\bsuit\s+jackets?\b|\bsport\s+coats?\b/i.test(item.name)){
+        return {...d,subtype:'blazer'};
+      }
+      if(/\bcardigans?\b/i.test(item.name)){
+        return {...d,subtype:'cardigan'};
+      }
+      if(/\bovershirts?\b|\bshackets?\b/i.test(item.name)){
+        return {...d,subtype:'overshirt'};
+      }
+    }
+    if(d.slot==='shoes'&&d.subtype==='unknown'&&typeof item?.name==='string'){
+      if(/\bwholecuts?\b|\boxfords?\b/i.test(item.name)) return {...d,subtype:'oxford'};
+      if(/\bloafers?\b|\bpenny\b|\bhorsebits?\b/i.test(item.name)) return {...d,subtype:'loafer'};
+      if(/\bderb(?:y|ies)\b/i.test(item.name)) return {...d,subtype:'derby'};
+      if(/\bchelsea\b/i.test(item.name)) return {...d,subtype:'chelsea'};
+      if(/\bchukkas?\b|\bboots?\b/i.test(item.name)) return {...d,subtype:'boot'};
+    }
     if(d.slot!=='top'||typeof item?.name!=='string')return d;
     if(/\b(?:tank(?:[ -]?top)?|sleeveless[ -]?(?:top|shirt|vest))\b/i.test(item.name))
       return {...d,subtype:'tank-top'};
     if(/\bt[ -]?shirts?\b/i.test(item.name) && d.subtype!=='t-shirt')
       return {...d,subtype:'t-shirt'};
+    if(d.subtype==='unknown'){
+      if(/\b(?:mocknecks?|turtlenecks?|roll[\s-]?necks?|crewnecks?|sweaters?|pullovers?|jumpers?|merino|cashmere)\b/i.test(item.name)&&!/\b(?:polo|shirt|cardigan)\b/i.test(item.name)){
+        return {...d,subtype:'fine-knit'};
+      }
+    }
     return d;
   });
   return Object.fromEntries(slotOrder.map(slot => [slot,
@@ -394,7 +420,11 @@ function localizedRelationship(lang, part) {
   }
   if (part.outerwear && part.top) {
     // The generic layer + base structural line, stated in the display language.
-    return lang === 'en' ? 'The outer layer and base form the upper-body combination.' : L.relationship.generic();
+    return lang === 'en'
+      ? (enRole(part.outerwear) && enRole(part.top)
+          ? `The ${enRole(part.outerwear)} frames the ${enRole(part.top)} cleanly.`
+          : 'The layered silhouette balances structure and ease.')
+      : L.relationship.generic();
   }
   // No relationship evidence: an empty tail is legitimate in every language
   // (missing evidence is not a missing template, so no English fallback).
@@ -612,7 +642,9 @@ function actualRelationship(part) {
     return `A ${part.top.color} ${top} with ${part.bottom.color} ${bottom} defines the palette.`;
   }
   if (part.outerwear && part.top)
-    return 'The outer layer and base form the upper-body combination.';
+    return enRole(part.outerwear) && enRole(part.top)
+      ? `The ${enRole(part.outerwear)} frames the ${enRole(part.top)} cleanly.`
+      : 'The layered silhouette balances structure and ease.';
   return ''; // Unverified occasion-fit praise would add no garment evidence.
 }
 
@@ -726,6 +758,9 @@ const DARK_TONES = new Set(['black', 'navy', 'charcoal', 'brown', 'burgundy', 'd
 
 const PROMPT_JARGON_CLAUSE_RE = /(?:,\s*|\s+)\b(?:per|according\s+to|following)(?:\s+the)?\s+[^.,;]{1,55}?\b(?:rules?|guidelines?|heuristics?|rubrics?|constraints?|protocols?|directives?|tiers?|criteria)\b/gi;
 const PROMPT_JARGON_PHRASE_RE = /\b(?:shoe[- ]to[- ]palette\s+temperature\s+rules?|under[- ]layer\s+formality\s+(?:coherence|rules?)|visual\s+atelier|showroom\s+board|swap\s+board|portfolio\s+sheet|micro[- ]?scorers?|heuristics?|SKUs?|rubrics?|tier\s*\d+|slot\s+(?:top|outerwear|bottom|shoes|assignment|constraint)|token\s+[TLBSR]\d+)\b/gi;
+const PROMPT_ECHO_CLAUSE_RE = /(?:,\s*|\s+)\b(?:avoiding|preventing)\s+any\s+double[- ]knit\s+bulk\b|(?:,\s*|\s+)\bunlike\s+drawstring\s+(?:joggers?|trousers?|pants?)\b/gi;
+const PROMPT_ECHO_TIP_RE = /\b(?:unlike\s+drawstring|do\s+not\s+unbutton|never\s+daytime\s+work|as\s+photographed|double[- ]knit\s+bulk|only\s+other\s+chromatic\s+piece)\b/i;
+const LOCKED_SLOT_PREFIX_RE = /\b(?:locked|swapped|kept)\s+(?=(?:[a-z0-9'-]+\s+){0,4}(?:shirts?|polos?|sweaters?|knits?|tees?|t-shirts?|tops?|blazers?|jackets?|coats?|overcoats?|cardigans?|overshirts?|trousers?|pants?|chinos?|jeans|loafers?|oxfords?|derb(?:y|ies)|boots?|shoes?|footwear)\b)/gi;
 const BOARD_TOKEN_PAREN_RE = /\s*\(\s*[TLBSR]\d{1,2}\s*\)/g;
 const BOARD_TOKEN_BARE_RE = /\b[TLBSR][1-8]\b/g;
 
@@ -777,7 +812,12 @@ const SLOT_GARMENT_NOUN_RES = [
   },
   {
     slot: 'outerwear',
-    re: new RegExp(`\\b(${MENTIONED_COLOR_ALT})\\b((?:\\s+(?:wool|cashmere|merino|suede|leather|linen|cotton|twill|flannel|knitted|knit|tailored|unstructured|structured|double-breasted|single-breasted|cropped|relaxed|soft)){0,2}\\s+(?:blazers?|jackets?|overcoats?|trench\\s+coats?|coats?|cardigans?|overshirts?|bombers?|blousons?))\\b`, 'gi'),
+    re: new RegExp(`\\b(${MENTIONED_COLOR_ALT})\\b((?:\\s+(?:cool|fine|suit|summer|wool|cashmere|merino|suede|leather|linen|cotton|twill|flannel|knitted|knit|tailored|unstructured|structured|sharp|clean|double-breasted|single-breasted|two-button|cropped|relaxed|soft)){0,3}\\s+(?:blazers?|jackets?|overcoats?|trench\\s+coats?|coats?|cardigans?|overshirts?|bombers?|blousons?))\\b`, 'gi'),
+  },
+  {
+    slot: 'outerwear',
+    hasPrefix: true,
+    re: new RegExp(`\\b((?:structured|tailored|unstructured|sharp|clean|cropped)\\s+)(${MENTIONED_COLOR_ALT})(\\s+silhouettes?)\\b`, 'gi'),
   },
   {
     slot: 'top',
@@ -846,7 +886,9 @@ export function sanitizeStylistProse(raw, items = [], { maxLen = 340, observedSl
     .replace(/[<>{}\u0000-\u001f]/g, ' ')
     .replace(BOARD_TOKEN_PAREN_RE, '')
     .replace(PROMPT_JARGON_CLAUSE_RE, '')
+    .replace(PROMPT_ECHO_CLAUSE_RE, '')
     .replace(PROMPT_JARGON_PHRASE_RE, '')
+    .replace(LOCKED_SLOT_PREFIX_RE, '')
     .replace(BOARD_TOKEN_BARE_RE, '')
     .replace(/\s+,/g, ',')
     .replace(/,\s*\./g, '.')
@@ -858,17 +900,20 @@ export function sanitizeStylistProse(raw, items = [], { maxLen = 340, observedSl
 
   if (Array.isArray(items) && items.length > 0) {
     const slotColors = extractVerifiedSlotColors(items, observedSlotColors);
-    for (const { slot, re } of SLOT_GARMENT_NOUN_RES) {
+    for (const { slot, re, hasPrefix } of SLOT_GARMENT_NOUN_RES) {
       const verified = slotColors[slot];
       if (!verified) continue;
       re.lastIndex = 0;
-      text = text.replace(re, (full, mentionedColor, tail) => {
+      text = text.replace(re, (full, g1, g2, g3) => {
+        const prefix = hasPrefix ? g1 : '';
+        const mentionedColor = hasPrefix ? g2 : g1;
+        const tail = hasPrefix ? g3 : g2;
         const normMention = String(mentionedColor || '').trim().toLowerCase().replace(/\s+/g, '-');
         const canonMention = canonicalNoteColor(normMention) || normMention;
         if (verified.accepted.has(normMention) || verified.accepted.has(canonMention)) {
           return full;
         }
-        return `${preserveCaseColor(mentionedColor, verified.primary)}${tail}`;
+        return `${prefix}${preserveCaseColor(mentionedColor, verified.primary)}${tail}`;
       });
     }
   }
@@ -895,9 +940,14 @@ function cleanEditorialText(raw, max = 260) {
     .trim();
   if (cleaned.length <= max) return cleaned;
   const slice = cleaned.slice(0, max);
-  const lastPeriod = slice.lastIndexOf('.');
-  if (lastPeriod >= Math.min(48, Math.floor(max * 0.4))) {
-    return slice.slice(0, lastPeriod + 1).trim();
+  const minPeriod = Math.min(48, Math.floor(max * 0.4));
+  for (let idx = slice.length - 1; idx >= minPeriod; idx--) {
+    if (slice[idx] !== '.') continue;
+    const nextChar = idx + 1 < cleaned.length ? cleaned[idx + 1] : ' ';
+    if (!/\s/.test(nextChar) && idx + 1 < cleaned.length) continue;
+    const prev = slice.slice(0, idx);
+    if (/(?:^|\s)[A-Za-z]$/.test(prev)) continue;
+    return slice.slice(0, idx + 1).trim();
   }
   const lastSpace = slice.lastIndexOf(' ');
   return (lastSpace > 24 ? slice.slice(0, lastSpace) : slice).replace(/[,;:\s-]+$/, '').trim();
@@ -991,7 +1041,10 @@ function isGroundedAgainstLook(sentence, part, verifiedMaterials) {
   // Never misname the actual top subtype (e.g., calling a dress shirt a turtleneck or sweater).
   if (part?.top?.subtype) {
     const actualTop = part.top.subtype;
-    if (['dress-shirt', 'shirt'].includes(actualTop) && /\b(?:turtlenecks?|fine[- ]knit|sweaters?|hoodies?|t-shirts?|tees?)\b/.test(lower)) {
+    const outerIsKnit = ['cardigan', 'pullover'].includes(part?.outerwear?.subtype);
+    if (['dress-shirt', 'shirt'].includes(actualTop) &&
+        (/\b(?:turtlenecks?|hoodies?|t-shirts?|tees?)\b/.test(lower) ||
+         (!outerIsKnit && /\b(?:fine[- ]knit|sweaters?)\b/.test(lower)))) {
       return false;
     }
     if (['fine-knit', 'sweater'].includes(actualTop) && /\b(?:dress[- ]shirts?|poplin\s+shirts?|oxford\s+shirts?)\b/.test(lower)) {
@@ -1339,9 +1392,51 @@ function buildStylingTips(lang, part, context) {
 const GENERIC_ROBOTIC_TITLE_RE = /^(?:clean\s+separates|editorial\s+direction\s*\d*|direction\s*\d+|option\s*\d+|outfit\s*\d+|look\s*\d+)$/i;
 const UNCONSENTED_APPEARANCE_CLAIM_RE = /\b(?:skin\s+(?:tone|undertone)|your\s+(?:warm|cool|neutral|olive)\s+undertone|complexion|color\s+season|eye\s+color|hair\s+color)\b/i;
 const UNPROVIDED_BODY_CLAIM_RE = /\b(?:your\s+(?:height|shoulders|waist|torso|legs|hips|build|frame))\b/i;
+const TITLE_LITERAL_COLOR_RE = /\b(charcoal|burgundy|oxblood|bordeaux|navy|beige|camel|black|olive|emerald|green|espresso|chocolate|brown|ivory|cream|ecru|white|grey|gray|rust|terracotta|cobalt|tan|stone)\b/gi;
+const WORK_OCCASION_ONLY_RE = /\b(?:work|office|business|meeting|conference|interview)\b/i;
+const EVENING_OR_FORMAL_OCCASION_RE = /\b(?:date|dinner|evening|cocktail|night|romance|formal|gala|opera)\b/i;
 
 function bespokeMetaOf(look) {
   return look?.autonomousMeta || look?.visualAtelierMeta || look?.visualAtelierCopy || null;
+}
+
+function isButtonlessPulloverTop(items, part) {
+  const topItem = (items || []).find(it => String(it?.macroCategory || '').toLowerCase() === 'top');
+  const name = String(topItem?.name || '');
+  if (/\bbuttonless\b/i.test(name)) return true;
+  const partSub = part?.top?.subtype && part.top.subtype !== 'unknown' ? part.top.subtype : '';
+  const topSub = partSub || String(topItem?.subtype || '').toLowerCase();
+  const inferredPullover = /\b(?:mocknecks?|turtlenecks?|roll[\s-]?necks?|crewnecks?|sweaters?|pullovers?|jumpers?)\b/i.test(name);
+  if (!['fine-knit', 'sweater', 't-shirt', 'tank-top'].includes(topSub) && !inferredPullover) return false;
+  if (/\b(?:polo|henley|button|cardigan|shirt|zip|quarter[- ]zip|half[- ]zip|placket)\b/i.test(name)) return false;
+  return true;
+}
+
+function isClosureGrounded(sentence, items, part) {
+  if (!isButtonlessPulloverTop(items, part)) return true;
+  const lower = String(sentence || '').toLowerCase();
+  if (/\b(?:top\s+button|collar\s+(?:slightly\s+)?(?:open|undone|unbuttoned))\b/i.test(lower)) return false;
+  if (/\bunbutton(?:ed|ing)?(?:\s+the)?\s+(?:top(?:\s+button)?|knit|sweater|crewneck|mockneck|turtleneck|pullover|tee|shirt)\b/i.test(lower)) return false;
+  if (/\b(?:sweater|knit|mockneck|turtleneck|crewneck|pullover|polo|tee)\b[^.]{0,24}\bunbutton(?:ed|ing)?\b/i.test(lower)) return false;
+  if (/\bunbutton(?:ed|ing)?\s+(?:at\s+the\s+)?(?:collar|neck|neckline)\b/i.test(lower)) return false;
+  if (/\bkeep\s+the\s+top\s+(?:\w+\s+){0,2}button\s+undone\b/i.test(lower)) return false;
+  return true;
+}
+
+const BARE_TITLE_EDITORIAL_SIGNAL_RE = /[&+/]|\b(?:work|workday|evening|night|date|dinner|meeting|afternoon|morning|weekend|hour|edit|look|tailoring|contrast|depth|ease|harmony|polish|quiet|refined|minimal|classic|heritage|ivy|club|lounge|bistro|city|daylight|nightfall|palette|layers|drape|line|silhouette|soft|crisp|pairing|ensemble)\b/i;
+const BARE_SINGLE_ITEM_TITLE_RE = /^(?:[a-z0-9'-]+\s+){0,4}(?:dress\s+shirt|oxford\s+shirt|poplin\s+shirt|polo\s+shirt|knit\s+polo|shirt|sweater|turtleneck|blazer|jacket|overcoat|coat|cardigan|trousers?|pants?|chinos?|jeans|loafers?|oxfords?|derb(?:y|ies)|boots?|sneakers?)$/i;
+const TITLE_GARMENT_NOUN_RE = /\b(?:shirt|sweater|knit|polo|turtleneck|mockneck|blazer|jacket|coat|overcoat|cardigan|overshirt|trousers?|pants?|chinos?|jeans|loafers?|oxfords?|derb(?:y|ies)|boots?|sneakers?)\b/gi;
+
+function isBareSingleItemTitle(title) {
+  if (!title || BARE_TITLE_EDITORIAL_SIGNAL_RE.test(title)) return false;
+  return BARE_SINGLE_ITEM_TITLE_RE.test(title.trim());
+}
+
+function isInventoryListTitle(title) {
+  const words = String(title || '').trim().split(/\s+/).filter(Boolean);
+  if (words.length < 6) return false;
+  const matches = title.match(TITLE_GARMENT_NOUN_RE);
+  return Array.isArray(matches) && matches.length >= 3;
 }
 
 function extractBespokeTitle(look, context, part, lang) {
@@ -1351,15 +1446,40 @@ function extractBespokeTitle(look, context, part, lang) {
   const items = Array.isArray(look?.items) ? look.items : [];
   const observedSlotColors = meta?.observedSlotColors || null;
   let title = sanitizeStylistProse(rawTitle, items, { maxLen: 54, observedSlotColors });
-  title = title.replace(/[.!?:;]+$/, '').trim();
+  title = title.replace(/\b([a-z]{2,})(?:\s+\1)+\b/gi, '$1').replace(/[.!?:;]+$/, '').replace(/\s+/g, ' ').trim();
   if (!title || title.length < 3 || title.length > 54) return '';
   if (GENERIC_ROBOTIC_TITLE_RE.test(title) || UNSAFE_CLAIMS_RE.test(title)) return '';
+  if (isBareSingleItemTitle(title) || isInventoryListTitle(title)) return '';
   title = sanitizeOccasionHeadline(title, context?.occasion);
+  const occ = String(context?.occasion || '').trim();
+  if (WORK_OCCASION_ONLY_RE.test(occ) && !EVENING_OR_FORMAL_OCCASION_RE.test(occ)) {
+    if (/\bevening\b/i.test(title)) return '';
+    if (!/workwear|street|utility|heritage[- ]?work/i.test(String(context?.style || ''))) {
+      title = title.replace(/\bworkwear\b/gi, (m) => (m[0] === 'W' ? 'Workday' : 'workday'));
+    }
+  }
   if (!part?.outerwear && /\blayer(?:s|ing)?\b/i.test(title)) return '';
   if (part?.outerwear?.subtype) {
     const actualOuter = part.outerwear.subtype;
     if (actualOuter !== 'cardigan' && /\bcardigans?\b/i.test(title)) return '';
     if (actualOuter !== 'blazer' && /\bblazers?\b/i.test(title)) return '';
+  }
+  const slotColorMap = extractVerifiedSlotColors(items, observedSlotColors);
+  const verifiedSlots = Object.values(slotColorMap);
+  if (verifiedSlots.length >= 2) {
+    const allAccepted = new Set();
+    for (const entry of verifiedSlots) {
+      for (const c of entry.accepted) allAccepted.add(c);
+    }
+    TITLE_LITERAL_COLOR_RE.lastIndex = 0;
+    for (const m of title.matchAll(TITLE_LITERAL_COLOR_RE)) {
+      const colRaw = String(m[1] || '').toLowerCase();
+      const canon = canonicalNoteColor(colRaw) || colRaw;
+      const blackAsDarkGrey = ['charcoal', 'graphite'].includes(colRaw) && allAccepted.has('black');
+      if (!allAccepted.has(colRaw) && !allAccepted.has(canon) && !blackAsDarkGrey) {
+        return '';
+      }
+    }
   }
   if (lang === 'ru' && /[A-Za-z]/.test(title)) return '';
   if (lang === 'uz' && /[А-Яа-яёЁ]/.test(title)) return '';
@@ -1402,7 +1522,9 @@ function resolveBespokeStylingTips(meta, items, part, verifiedMaterials, observe
   for (const rawTip of meta.stylingTips.slice(0, 4)) {
     const cleaned = sanitizeStylistProse(String(rawTip || ''), items, { maxLen: 150, observedSlotColors });
     if (cleaned && cleaned.length >= 14 && !UNSAFE_CLAIMS_RE.test(cleaned) &&
-        isGroundedAgainstLook(cleaned, part, verifiedMaterials)) {
+        !PROMPT_ECHO_TIP_RE.test(cleaned) &&
+        isGroundedAgainstLook(cleaned, part, verifiedMaterials) &&
+        isClosureGrounded(cleaned, items, part)) {
       out.push(cleaned.endsWith('.') ? cleaned : `${cleaned}.`);
     }
   }
@@ -1466,6 +1588,12 @@ export function buildStylistNotes(look, context, direction, options = {}) {
       stylistNote = rel ? `${formula}. ${rel}` : `${formula}.`;
     } else {
       stylistNote = parts.join(' ');
+    }
+    if (WORK_OCCASION_ONLY_RE.test(String(context?.occasion || '')) &&
+        !/workwear|street|utility|heritage[- ]?work/i.test(String(context?.style || ''))) {
+      stylistNote = stylistNote
+        .replace(/\byour\s+workwear\b/gi, 'your work wardrobe')
+        .replace(/\bworkwear\b/gi, 'work tailoring');
     }
   } else {
     const formula = buildSilhouetteFormula(lang, part, items);

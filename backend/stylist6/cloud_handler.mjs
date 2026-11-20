@@ -60,7 +60,7 @@ import { createStylistCache } from './distributed_cache.mjs';
 import { swapSingleSlot } from './surgical_refiner.mjs';
 import { analyzeUserAppearance } from './user_appearance_analyzer.mjs';
 import { buildStylistNotes } from './deck_editorial_copy.mjs';
-import { createProviderRouter } from './ai_provider_router.mjs';
+import { createProviderRouter, getSharedProviderRouter } from './ai_provider_router.mjs';
 import { renderEditorialLookBoard, createPhotoByteCache } from './editorial_board_renderer.mjs';
 import { runAutonomousVisualStylist, AUTONOMOUS_STYLIST_VERSION } from './autonomous_stylist.mjs';
 import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46.json' with { type: 'json' };
@@ -1808,7 +1808,7 @@ async function handleSwapSlotAction({ payload, userId, env, io, fetchImpl, timeo
     : null;
   let swapProviderRouter = null;
   if (!swapAutonomousDisabled && !swapVisualDisabled && hasSwapVisionKeys) {
-    swapProviderRouter = createProviderRouter({
+    swapProviderRouter = getSharedProviderRouter({
       nvidiaApiKey: swapNvidiaKey.startsWith('nvapi-') ? swapNvidiaKey : '',
       openrouterApiKey: swapOpenrouterKey.length >= 16 ? swapOpenrouterKey : '',
       ...(fetchImpl ? { fetchImpl } : {}),
@@ -2558,7 +2558,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       const autonomousRunner = typeof io?.autonomousStylist === 'function'
         ? io.autonomousStylist
         : runAutonomousVisualStylist;
-      const autonomousRouter = createProviderRouter({
+      const autonomousRouter = getSharedProviderRouter({
         nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
         openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
         ...(fetchImpl ? { fetchImpl } : {}),
@@ -2581,7 +2581,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           authorizePhoto: isInferenceAuthorized,
           ...(fetchImpl ? { fetchImpl } : {}),
           signal: deadlineController.signal,
-          timeoutMs: Math.min(48_000, Math.max(12_000, remainingMs() - 4_000)),
+          timeoutMs: budgetMs >= 70_000
+            ? Math.min(62_000, Math.max(12_000, remainingMs() - 10_000))
+            : Math.min(48_000, Math.max(12_000, remainingMs() - 4_000)),
           hygieneAlreadyApplied: true,
           qualityMap,
           photoProvenance: cloudPhotoProvenance,

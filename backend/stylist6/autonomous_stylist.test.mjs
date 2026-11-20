@@ -5,6 +5,8 @@ import {
   AUTONOMOUS_STYLIST_VERSION,
   filterAutonomousHardGates,
   curateShowroomSelection,
+  detectLayeringOrOccasionDefect,
+  buildAct2EditorPrompt,
   verifyAutonomousOutfits,
   runAutonomousVisualStylist,
 } from './autonomous_stylist.mjs';
@@ -377,4 +379,343 @@ test('verifyAutonomousOutfits enforces server CBU FX budget hard gate & rejects 
   });
   assert.equal(noKeys.status, 'fallback');
   assert.equal(noKeys.reason, 'not_configured');
+});
+
+test('Phase 12 showroom curation deprioritizes daytime work velvet and elevated-occasion leisure trousers, and rescues sweater-under-cardigan via Visual Swap', async () => {
+  const velvetBlazer = makeCatalogItem('outer-velvet-burgundy', 'outerwear', 'blazer', 'Tailored Fit Velvet Single-Breasted Blazer', { color: 'burgundy', brand: 'Reiss', price: 498 });
+  const beigeLeisure = makeCatalogItem('bot-leisure-jogger', 'bottom', 'trouser', 'Light Beige Leisure Trousers', { color: 'beige', brand: 'Aurelien', price: 355 });
+  const extendedCatalog = [...makeRichCatalog(), velvetBlazer, beigeLeisure];
+
+  const workPools = curateShowroomSelection(extendedCatalog, {
+    context: { style: 'old_money', occasion: 'Work', weather: { temp: 16 } },
+    maxPerSlot: 6,
+  }).slotPools;
+  const workTop3Ids = workPools.outerwear.slice(0, 3).map((x) => x.id);
+  assert.equal(workTop3Ids.includes('outer-velvet-burgundy'), false, 'evening velvet blazer must not lead daytime Work showroom rack');
+
+  const datePools = curateShowroomSelection(extendedCatalog, {
+    context: { style: 'classic', occasion: 'Date night', weather: { temp: 16 } },
+    maxPerSlot: 8,
+  }).slotPools;
+  assert.equal(datePools.outerwear.some((x) => x.id === 'outer-velvet-burgundy'), true, 'velvet blazer must remain eligible for evening Date night');
+  assert.notEqual(datePools.bottom[0]?.id, 'bot-leisure-jogger', 'leisure/drawstring trousers must be deprioritized on Date night rack');
+  assert.equal(datePools.bottom.slice(0, 4).some((x) => x.id === 'bot-leisure-jogger'), false);
+
+  // Physical layering defect detector catches sweater-under-cardigan, daytime velvet, and leisure joggers
+  const cardiganSweepDefect = detectLayeringOrOccasionDefect([
+    makeCatalogItem('t-knit', 'top', 'fine-knit', 'AUR1 Sweater Navy'),
+    makeCatalogItem('l-card', 'outerwear', 'cardigan', 'Macardomon Cardigan'),
+    makeCatalogItem('b-trou', 'bottom', 'tailored-trouser', 'Cold wool suit trousers'),
+    makeCatalogItem('s-loaf', 'shoes', 'loafer', 'Luteer', { color: 'brown' }),
+  ], { occasion: 'Work' });
+  assert.equal(cardiganSweepDefect?.code, 'sweater_under_cardigan');
+  assert.equal(cardiganSweepDefect?.weakestSlot, 'top');
+
+  // Even if Act 2 Editor rubber-stamps sweater-under-cardigan & leisure joggers at Date night, Act 2b swaps them out cleanly!
+  const jpegBytes = await makeTestJpeg(54, 62, 74);
+  let callIdx = 0;
+  let swapCandidatesSent = [];
+  const fetchImpl = async (url, init = {}) => {
+    const u = new URL(String(url));
+    if (u.hostname === 'media.frgroup.uz') {
+      return new Response(jpegBytes, { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+    }
+    callIdx += 1;
+    const payload = JSON.parse(init.body);
+    const promptText = payload.messages[0].content[0].text;
+    const jsonLine = promptText.split('\n').reverse().find((l) => l.trim().startsWith('{'));
+    const data = jsonLine ? JSON.parse(jsonLine) : {};
+
+    if (callIdx === 1) {
+      const findTok = (slot, matchFn) => data.showroomRacks[slot].find((x) => matchFn(x))?.token || data.showroomRacks[slot][0].token;
+      const tSweater = findTok('top', (x) => /crewneck/i.test(x.pieceName || ''));
+      const tOther1 = data.showroomRacks.top.find((x) => x.token !== tSweater && /shirt/i.test(x.pieceName || ''))?.token || data.showroomRacks.top[1].token;
+      const tOther2 = data.showroomRacks.top.find((x) => x.token !== tSweater && x.token !== tOther1)?.token || data.showroomRacks.top[2].token;
+      const lCard = findTok('outerwear', (x) => x.garmentType === 'cardigan');
+      const lOther1 = data.showroomRacks.outerwear.find((x) => x.token !== lCard)?.token;
+      const lOther2 = data.showroomRacks.outerwear.find((x) => x.token !== lCard && x.token !== lOther1)?.token;
+      const bLeisure = data.showroomRacks.bottom.find((x) => /leisure/i.test(x.pieceName || ''))?.token || data.showroomRacks.bottom[2].token;
+      const bRest = data.showroomRacks.bottom.filter((x) => x.token !== bLeisure).map((x) => x.token);
+      const s = data.showroomRacks.shoes.map((x) => x.token);
+      return new Response(JSON.stringify({
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            content: JSON.stringify({
+              outfits: [
+                { title: 'Navy Tailored Date', top: tOther1, outerwear: lOther1, bottom: bRest[0], shoes: s[0], stylistNote: 'Refined evening tailoring.', whyItFlattersYou: '', stylingTips: ['Keep collar crisp.'] },
+                { title: 'Double Knit Flaw', top: tSweater, outerwear: lCard, bottom: bRest[1], shoes: s[1], stylistNote: 'Layered knitwear.', whyItFlattersYou: '', stylingTips: ['Wear open.'] },
+                { title: 'Leisure Date Look', top: tOther2, outerwear: lOther2, bottom: bLeisure, shoes: s[2], stylistNote: 'Relaxed suede look.', whyItFlattersYou: '', stylingTips: ['Minimal break.'] },
+              ],
+            }),
+          },
+        }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (callIdx === 2) {
+      // Lenient rubber-stamp score 8.5 even though Look 2 has sweater-under-cardigan and Look 3 has leisure joggers
+      return new Response(JSON.stringify({
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            content: JSON.stringify({
+              reviews: [
+                { lookToken: 'L00', score: 9.0, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'white', outerwear: 'navy', bottom: 'charcoal', shoes: 'brown' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Clean tailoring.' },
+                { lookToken: 'L01', score: 8.5, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'charcoal', outerwear: 'charcoal', bottom: 'navy', shoes: 'black' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Looks warm.' },
+                { lookToken: 'L02', score: 8.5, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'cream', outerwear: 'brown', bottom: 'beige', shoes: 'navy' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Soft beige bottom.' },
+              ],
+              portfolioNote: 'Portfolio check.',
+            }),
+          },
+        }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (promptText.includes('1400x900')) {
+      swapCandidatesSent.push(data.candidates || []);
+      return new Response(JSON.stringify({
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            content: JSON.stringify({
+              selectedToken: data.candidates[0].token,
+              updatedTitle: 'Clean Refined Look',
+              updatedStylistNote: 'Clean tailored proportion with refined textures for evening plans.',
+              updatedWhyItFlattersYou: 'Open framing elongates the torso.',
+              updatedStylingTips: ['Keep outer layer unbuttoned for clean lines.'],
+              swapRationale: 'Fixes physical/occasion pairing.',
+            }),
+          },
+        }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({
+      choices: [{
+        finish_reason: 'stop',
+        message: {
+          content: JSON.stringify({
+            reviews: [
+              { lookToken: 'L00', score: 9.2, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'blue', outerwear: 'charcoal', bottom: 'navy', shoes: 'black' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Refined.' },
+            ],
+            portfolioNote: 'Solid.',
+          }),
+        },
+      }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  // Fixture where beige leisure trousers enter Date night pool (< 8 bottoms total in test fixture)
+  const rescueRes = await runAutonomousVisualStylist({
+    request: { style: 'classic', occasion: 'Date night', weather: { temp: 16 } },
+    catalog: [...makeRichCatalog(), beigeLeisure],
+    openrouterApiKey: 'sk-or-v1-test-rescue-0123456789',
+    nvidiaApiKey: 'nvapi-test-rescue-0123456789abcdef',
+    fetchImpl,
+  });
+
+  assert.equal(rescueRes.status, 'applied');
+  assert.equal(rescueRes.diagnostics.surgicalSwapsAttempted, 2, 'both physical sweater-under-cardigan & leisure-trouser defects must trigger Visual Swap even if editor rubber-stamped');
+  assert.equal(rescueRes.diagnostics.surgicalSwapsAccepted, 2);
+  // Look 2 top candidates offered for cardigan must prioritize shirts/polos over turtleneck/sweater!
+  assert.ok(swapCandidatesSent[0].length >= 1);
+  assert.notEqual(swapCandidatesSent[0][0].garmentType, 'fine-knit', 'swap rack under cardigan must not rank another fine-knit sweater #1');
+  // Final Look 2 & Look 3 have zero sweater-under-cardigan and zero leisure joggers!
+  for (const look of rescueRes.deck.outfits) {
+    assert.equal(detectLayeringOrOccasionDefect(look.items, { occasion: 'Date night' }), null, `final look "${look.concept.title}" must have 0 layering/lounge defects`);
+  }
+
+  // Phase 12b: daytime Work deprioritizes boxy oversized camp-collar shirts, and Editor prompt includes explicit "reviews" JSON keys
+  const oversizedShortSleeve = makeCatalogItem('top-archer-oversized', 'top', 'shirt', 'Archer Oversized Viscose Shirt', { color: 'navy', brand: 'AllSaints', price: 129 });
+  const workTopPools = curateShowroomSelection([...makeRichCatalog(), oversizedShortSleeve], {
+    context: { style: 'old_money', occasion: 'Work', weather: { temp: 16 } },
+    maxPerSlot: 6,
+  }).slotPools;
+  assert.equal(
+    workTopPools.top.slice(0, 4).some((x) => x.id === 'top-archer-oversized'),
+    false,
+    'boxy oversized shirt must not displace crisp dress shirts/fine knits on Work showroom rack',
+  );
+  const editorPrompt = buildAct2EditorPrompt({
+    context: { style: 'classic', occasion: 'Date night' },
+    looks: rescueRes.deck.outfits.map((o) => ({ items: o.items, autonomousMeta: { title: o.concept.title, stylingTips: o.stylingTips } })),
+  });
+  assert.match(editorPrompt, /"reviews":\[/, 'Act 2 prompt must embed explicit JSON keys for Kimi/Gemma json_object mode');
+
+  // Phase 12c: zip/quarter-zip cashmere knit sweater under cardigan is also caught cleanly
+  const zipKnitUnderCardigan = detectLayeringOrOccasionDefect([
+    makeCatalogItem('t-zip-knit', 'top', 'fine-knit', 'Air force blue cashmere zippered sweater'),
+    makeCatalogItem('l-card-zip', 'outerwear', 'cardigan', 'Knitted cardigan'),
+    makeCatalogItem('b-trou-2', 'bottom', 'tailored-trouser', 'Navy Tailored Trousers'),
+    makeCatalogItem('s-loaf-2', 'shoes', 'loafer', 'Velasca Luteer Loafers', { color: 'black' }),
+  ], { occasion: 'Date night' });
+  assert.equal(zipKnitUnderCardigan?.code, 'sweater_under_cardigan');
+});
+
+test('Act 2 Editor recovers numeric editorScores with crossLabVerified:false when cross-lab Kimi fails over to same-lab Nemotron', async () => {
+  const jpegBytes = await makeTestJpeg(56, 62, 72);
+  let callCount = 0;
+  const fetchImpl = async (url, init = {}) => {
+    const u = new URL(String(url));
+    if (u.hostname === 'media.frgroup.uz') {
+      return new Response(jpegBytes, { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+    }
+    const payload = JSON.parse(init.body);
+    callCount += 1;
+    if (callCount === 1) {
+      // Act 1 on Nemotron
+      const data = JSON.parse(payload.messages[0].content[0].text.split('\n').reverse().find((l) => l.trim().startsWith('{')));
+      const t = data.showroomRacks.top.map((x) => x.token);
+      const l = data.showroomRacks.outerwear.map((x) => x.token);
+      const b = data.showroomRacks.bottom.map((x) => x.token);
+      const s = data.showroomRacks.shoes.map((x) => x.token);
+      return new Response(JSON.stringify({
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            content: JSON.stringify({
+              outfits: [
+                { title: 'Navy Wool Contrast', top: t[0], outerwear: l[0], bottom: b[0], shoes: s[0], stylistNote: 'Tailored contrast layers for the office.', whyItFlattersYou: '', stylingTips: ['Wear jacket open.'] },
+                { title: 'Espresso Work Suede', top: t[1], outerwear: l[1], bottom: b[1], shoes: s[1], stylistNote: 'Warm suede texture paired cleanly.', whyItFlattersYou: '', stylingTips: ['Clean trouser hem.'] },
+                { title: 'Charcoal Soft Balance', top: t[2], outerwear: l[2], bottom: b[2], shoes: s[2], stylistNote: 'Restrained tonal workwear.', whyItFlattersYou: '', stylingTips: ['Keep collar crisp.'] },
+              ],
+            }),
+          },
+        }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (payload.model === 'moonshotai/kimi-k3.1-pro') {
+      return new Response('upstream error', { status: 503 });
+    }
+    // Same-lab Nemotron fallback rescues Act 2 cleanly
+    return new Response(JSON.stringify({
+      choices: [{
+        finish_reason: 'stop',
+        message: {
+          content: JSON.stringify({
+            reviews: [
+              { lookToken: 'L00', score: 8.9, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'white', outerwear: 'navy', bottom: 'charcoal', shoes: 'navy' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Clean office tailoring.' },
+              { lookToken: 'L01', score: 8.6, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'cream', outerwear: 'brown', bottom: 'navy', shoes: 'brown' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Warm suede texture.' },
+              { lookToken: 'L02', score: 8.5, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'blue', outerwear: 'charcoal', bottom: 'beige', shoes: 'black' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Distinct silhouette.' },
+            ],
+            portfolioNote: 'Recovered via same-lab fallback.',
+          }),
+        },
+      }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  const res = await runAutonomousVisualStylist({
+    request: { style: 'old_money', occasion: 'Work', weather: { temp: 16 } },
+    catalog: makeRichCatalog(),
+    nvidiaApiKey: 'nvapi-test-failover-0123456789abcdef',
+    fetchImpl,
+  });
+  assert.equal(res.status, 'applied');
+  assert.equal(res.diagnostics.crossLabVerified, false, 'same-lab Nemotron rescue must report crossLabVerified:false honestly');
+  assert.deepEqual(res.diagnostics.editorScores, [8.9, 8.6, 8.5]);
+});
+
+test('Phase 13 parallel swaps keep candidates disjoint and recover single-slot duplicate into 3 unique verified looks', async () => {
+  const jpegBytes = await makeTestJpeg(74, 82, 90);
+  const swapBoardsSent = [];
+  const fetchImpl = async (url, init = {}) => {
+    const u = new URL(String(url));
+    if (u.hostname === 'media.frgroup.uz') {
+      return new Response(jpegBytes, { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+    }
+    const payload = JSON.parse(init.body);
+    const promptText = payload.messages[0].content[0].text;
+    const jsonLine = promptText.split('\n').reverse().find((l) => l.trim().startsWith('{'));
+    const data = jsonLine ? JSON.parse(jsonLine) : {};
+
+    if (data.showroomRacks) {
+      const t = data.showroomRacks.top.map((x) => x.token);
+      const l = data.showroomRacks.outerwear.map((x) => x.token);
+      const b = data.showroomRacks.bottom.map((x) => x.token);
+      const s = data.showroomRacks.shoes.map((x) => x.token);
+      return new Response(JSON.stringify({
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            content: JSON.stringify({
+              outfits: [
+                { title: 'Classic Work Navy', top: t[0], outerwear: l[0], bottom: b[0], shoes: s[0], stylistNote: 'Sharp navy blazer pairing for work.', whyItFlattersYou: '', stylingTips: ['Wear open.'] },
+                { title: 'Warm Taupe Meeting', top: t[1], outerwear: l[1], bottom: b[1], shoes: s[1], stylistNote: 'Soft neutral tailoring.', whyItFlattersYou: '', stylingTips: ['Clean trouser drape.'] },
+                // Look 3 accidentally reuses shoes s[0] from Look 1 -> single-slot duplicate rescue!
+                { title: 'Structured Ivory Look', top: t[2], outerwear: l[2], bottom: b[2], shoes: s[0], stylistNote: 'Ivory and grey layering.', whyItFlattersYou: '', stylingTips: ['Keep collar neat.'] },
+              ],
+            }),
+          },
+        }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (promptText.includes('1400x900')) {
+      swapBoardsSent.push(data.candidates || []);
+      return new Response(JSON.stringify({
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            content: JSON.stringify({
+              selectedToken: data.candidates[0].token,
+              updatedTitle: 'Complete Tailored Quartet',
+              updatedStylistNote: 'Refined four-piece work tailoring with balanced contrast.',
+              updatedWhyItFlattersYou: '',
+              updatedStylingTips: ['Keep blazer open over crisp collar.'],
+              swapRationale: 'Upgraded footwear for distinctness.',
+            }),
+          },
+        }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (data.looks?.length === 3) {
+      // Flag BOTH Look 1 and Look 2 on shoes, while Look 3 was flagged needsDuplicateSlotSwap
+      return new Response(JSON.stringify({
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            content: JSON.stringify({
+              reviews: [
+                { lookToken: 'L00', score: 7.4, approved: false, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'white', outerwear: 'navy', bottom: 'charcoal', shoes: 'brown' }, weakestSlot: 'shoes', repairBrief: 'Upgrade shoes on L00.', critiqueSummary: 'Needs stronger footwear.' },
+                { lookToken: 'L01', score: 7.5, approved: false, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'cream', outerwear: 'brown', bottom: 'navy', shoes: 'black' }, weakestSlot: 'shoes', repairBrief: 'Upgrade shoes on L01.', critiqueSummary: 'Needs distinct loafers.' },
+                { lookToken: 'L02', score: 8.6, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'blue', outerwear: 'beige', bottom: 'grey', shoes: 'burgundy' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Distinct look.' },
+              ],
+              portfolioNote: 'Two looks need footwear upgrade plus duplicate rescue.',
+            }),
+          },
+        }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({
+      choices: [{
+        finish_reason: 'stop',
+        message: {
+          content: JSON.stringify({
+            reviews: [
+              { lookToken: 'L00', score: 8.8, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'white', outerwear: 'navy', bottom: 'charcoal', shoes: 'black' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Elevated.' },
+            ],
+            portfolioNote: 'Approved.',
+          }),
+        },
+      }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  const catalog = [
+    ...makeRichCatalog(),
+    makeCatalogItem('shoe-tan-monk', 'shoes', 'monk', 'Tan Burnished Single Monk Straps', { color: 'tan', brand: 'Carmina', price: 340 }),
+    makeCatalogItem('shoe-cognac-loafer', 'shoes', 'loafer', 'Cognac Calf Penny Loafers', { color: 'brown', brand: 'Meermin', price: 220 }),
+    makeCatalogItem('shoe-navy-oxford', 'shoes', 'oxford', 'Midnight Museum Calf Oxfords', { color: 'navy', brand: 'Carlos Santos', price: 310 }),
+  ];
+
+  const res = await runAutonomousVisualStylist({
+    request: { style: 'old_money', occasion: 'Work', weather: { temp: 16 } },
+    catalog,
+    nvidiaApiKey: 'nvapi-test-parallel-0123456789abcdef',
+    timeoutMs: 45_000,
+    fetchImpl,
+  });
+  assert.equal(res.status, 'applied');
+  assert.equal(res.deck.outfits.length, 3, 'single-slot duplicate must recover into all 3 verified looks');
+  assert.equal(res.diagnostics.surgicalSwapsAttempted, 3);
+  assert.equal(res.diagnostics.surgicalSwapsAccepted, 3);
+  assert.equal(new Set(res.deck.outfits.flatMap((o) => o.items.map((it) => it.id))).size, 12, 'parallel swaps must maintain 12 distinct SKUs');
 });

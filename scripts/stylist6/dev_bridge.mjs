@@ -61,7 +61,7 @@ import { createStylistCache } from '../../backend/stylist6/distributed_cache.mjs
 import { swapSingleSlot } from '../../backend/stylist6/surgical_refiner.mjs';
 import { analyzeUserAppearance } from '../../backend/stylist6/user_appearance_analyzer.mjs';
 import { buildStylistNotes } from '../../backend/stylist6/deck_editorial_copy.mjs';
-import { createProviderRouter } from '../../backend/stylist6/ai_provider_router.mjs';
+import { createProviderRouter, getSharedProviderRouter } from '../../backend/stylist6/ai_provider_router.mjs';
 import { renderEditorialLookBoard, createPhotoByteCache } from '../../backend/stylist6/editorial_board_renderer.mjs';
 import { runAutonomousVisualStylist, AUTONOMOUS_STYLIST_VERSION } from '../../backend/stylist6/autonomous_stylist.mjs';
 import { HOST_ALLOWLIST } from './image_access.mjs';
@@ -1510,10 +1510,10 @@ export async function generateStylist6Deck(payload, options = {}) {
   if (canRunAutonomousVisual) {
     const resolveProduct = (product, sig) => resolveProductAsset(product, fetchImpl, photoByteCache, sig);
     const authorizePhoto = (url) => HOST_ALLOWLIST.has(hostOf(url));
-    providerRouter = createProviderRouter({
+    providerRouter = getSharedProviderRouter({
       nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
       openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
-      ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+      ...(typeof options.fetchImpl === 'function' ? { fetchImpl: options.fetchImpl } : {}),
     });
     const debugBoardDir = String(options.debugBoardDir || process.env.STYLIST6_DEBUG_BOARD_DIR || '').trim();
     const debugSlug = String(
@@ -1539,7 +1539,7 @@ export async function generateStylist6Deck(payload, options = {}) {
         resolvePhoto: resolveProduct,
         authorizePhoto,
         ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
-        timeoutMs: Math.min(50_000, Math.max(12_000, remainingMs() - 4_000)),
+        timeoutMs: Math.min(62_000, Math.max(12_000, remainingMs() - 4_000)),
         hygieneAlreadyApplied: true,
         qualityMap,
         photoProvenance: 'host_allowlisted_staging',

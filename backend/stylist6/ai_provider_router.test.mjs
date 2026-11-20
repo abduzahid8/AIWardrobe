@@ -9,6 +9,7 @@ import {
   DEFAULT_GEMMA_VISION_MODEL,
   PROVIDER_ENDPOINTS,
   createProviderRouter,
+  getSharedProviderRouter,
   createCircuitBreaker,
   createAdaptiveSemaphore,
   normalizeProviderPayload,
@@ -239,6 +240,11 @@ test('selectCrossLabModel chooses a different lab/family than the generator and 
   const pick3 = nvidiaOnly.selectCrossLabModel('nvidia/nemotron-3.5-super-vl-120b-a12b', { capability: 'vision' });
   assert.equal(pick3.model, DEFAULT_KIMI_VISION_MODEL);
   assert.ok(pick3.fallbacks.some((f) => f.model === DEFAULT_GEMMA_VISION_MODEL));
+
+  // With allowSameLabFallback: true, cross-lab models stay first and same-lab Nemotron is appended at tail
+  const pickWithTail = nvidiaOnly.selectCrossLabModel(DEFAULT_NVIDIA_VISION_MODEL, { capability: 'vision', allowSameLabFallback: true });
+  assert.equal(pickWithTail.model, DEFAULT_KIMI_VISION_MODEL);
+  assert.equal(pickWithTail.fallbacks[pickWithTail.fallbacks.length - 1]?.model, DEFAULT_NVIDIA_VISION_MODEL);
 });
 
 test('router rejects oversized response bodies and honors abort signal cleanly', async () => {
@@ -342,4 +348,67 @@ test('preferCrossLabFastVision routes primary vision to OpenRouter Gemini 2.5 Fl
     openrouterCallsBefore,
     'open circuit must not hit OpenRouter HTTP endpoint',
   );
+});
+
+test('per-model fast-probe timeout cools down Kimi without tripping NVIDIA breaker, and getSharedProviderRouter isolates overrides', async () => {
+  let now = 100_000;
+  const seenModels = [];
+  const router = createProviderRouter({
+    nvidiaApiKey: NVIDIA_KEY,
+    openrouterApiKey: '',
+    nowFn: () => now,
+    circuitFailureThreshold: 2,
+    modelCooldownMs: 60_000,
+    fetchImpl: async (_url, init) => {
+      const body = JSON.parse(init.body);
+      seenModels.push(body.model);
+      if (body.model === DEFAULT_KIMI_VISION_MODEL) {
+        return new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+        });
+      }
+      return okJson({ score: 8.6, model: body.model });
+    },
+  });
+
+  // 1. First call probes Kimi with primaryTimeoutMs (< Kimi defaultTimeoutMs 14_000), fails over cleanly to Nemotron
+  const first = await router.callVisionModel({
+    model: DEFAULT_KIMI_VISION_MODEL,
+    provider: 'nvidia',
+    fallbacks: [{ model: DEFAULT_NVIDIA_VISION_MODEL, provider: 'nvidia' }],
+    prompt: 'Inspect portfolio',
+    primaryTimeoutMs: 40,
+    providerTimeoutMs: 500,
+    timeoutMs: 1_500,
+    maxTransientRetries: 0,
+    parseJson: true,
+  });
+  assert.equal(first.ok, true);
+  assert.equal(first.model, DEFAULT_NVIDIA_VISION_MODEL);
+  assert.equal(router.getProviderHealth().providers.nvidia.state, 'closed', 'fast-probe timeout must not trip provider breaker');
+
+  // 2. Second call immediately skips cooled-down Kimi and goes straight to Nemotron with zero Kimi stall
+  seenModels.length = 0;
+  const second = await router.callVisionModel({
+    model: DEFAULT_KIMI_VISION_MODEL,
+    provider: 'nvidia',
+    fallbacks: [{ model: DEFAULT_NVIDIA_VISION_MODEL, provider: 'nvidia' }],
+    prompt: 'Inspect portfolio again',
+    primaryTimeoutMs: 40,
+    providerTimeoutMs: 500,
+    timeoutMs: 1_500,
+    maxTransientRetries: 0,
+    parseJson: true,
+  });
+  assert.equal(second.ok, true);
+  assert.deepEqual(seenModels, [DEFAULT_NVIDIA_VISION_MODEL], 'cooled-down Kimi must move behind healthy Nemotron');
+
+  // 3. getSharedProviderRouter reuses per-key instances without overrides, and isolates custom fetchImpl instances
+  resetDefaultProviderRouter();
+  const sharedA = getSharedProviderRouter({ nvidiaApiKey: NVIDIA_KEY, openrouterApiKey: '' });
+  const sharedB = getSharedProviderRouter({ nvidiaApiKey: NVIDIA_KEY, openrouterApiKey: '' });
+  const isolated = getSharedProviderRouter({ nvidiaApiKey: NVIDIA_KEY, openrouterApiKey: '', fetchImpl: async () => okJson({ ok: true }) });
+  assert.equal(sharedA, sharedB);
+  assert.notEqual(sharedA, isolated);
+  resetDefaultProviderRouter();
 });
