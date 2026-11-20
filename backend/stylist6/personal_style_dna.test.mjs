@@ -237,7 +237,7 @@ test('normalizePersonalStyleDna respects opt-in consent and builds injection-saf
   assert.doesNotMatch(block, /https?:\/\/|evil\.example|owner@example\.com|ignore previous|82\s*kg|\b82\b/i);
 });
 
-test('opt-in Cool Winter (cool undertone + high contrast) auto-includes brown in appearance.avoidColors unless user favors brown', () => {
+test('opt-in Cool Winter preserves explicit avoidColors without auto-banning brown, keeping undertone/contrast as prompt guidance', () => {
   const coolWinter = normalizePersonalStyleDna({
     appearance: {
       consentGranted: true,
@@ -251,22 +251,12 @@ test('opt-in Cool Winter (cool undertone + high contrast) auto-includes brown in
       favoriteColors: ['navy', 'white'],
     },
   });
-  assert.ok(coolWinter.appearance.avoidColors.includes('brown'), 'Cool Winter auto-derives brown in avoidColors');
-  assert.ok(buildStyleDnaPromptBlock(coolWinter).includes('brown'));
-
-  const brownLover = normalizePersonalStyleDna({
-    appearance: {
-      consentGranted: true,
-      skinUndertone: 'cool',
-      contrastLevel: 'high',
-      colorSeason: 'cool_winter',
-      avoidColors: ['orange'],
-    },
-    preferences: {
-      favoriteColors: ['brown', 'navy'],
-    },
-  });
-  assert.equal(brownLover.appearance.avoidColors.includes('brown'), false, 'explicit favoriteColors brown overrides auto-avoid');
+  assert.equal(coolWinter.appearance.avoidColors.includes('brown'), false, 'Cool Winter must not auto-ban brown as a hard avoidColor');
+  assert.deepEqual(coolWinter.appearance.avoidColors, ['orange', 'yellow']);
+  const promptBlock = buildStyleDnaPromptBlock(coolWinter);
+  assert.match(promptBlock, /undertone=cool/);
+  assert.match(promptBlock, /contrast=high/);
+  assert.match(promptBlock, /season=cool_winter/);
 
   const unconsented = normalizePersonalStyleDna({
     appearance: {

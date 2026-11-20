@@ -156,6 +156,7 @@ export async function POST(request: Request, runtime?: { renderCanary?: boolean 
     // silently disabled despite being enabled in the compute environment.
     ...stylist6CreativeServerConfig(),
     STYLIST6_FAST_VISUAL_MODE: envOf('STYLIST6_FAST_VISUAL_MODE') || (fastVisualMode ? 'true' : ''),
+    STYLIST6_AUTONOMOUS_VISUAL_ENABLED: envOf('STYLIST6_AUTONOMOUS_VISUAL_ENABLED'),
     STYLIST6_PHOTO_FIRST_COMPOSER_ENABLED: envOf('STYLIST6_PHOTO_FIRST_COMPOSER_ENABLED'),
     STYLIST6_PHOTO_ASSETS_READY: envOf('STYLIST6_PHOTO_ASSETS_READY'),
     STYLIST6_REFERENCE_BUCKET: envOf('STYLIST6_REFERENCE_BUCKET'),

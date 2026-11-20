@@ -63,6 +63,7 @@ import { analyzeUserAppearance } from '../../backend/stylist6/user_appearance_an
 import { buildStylistNotes } from '../../backend/stylist6/deck_editorial_copy.mjs';
 import { createProviderRouter } from '../../backend/stylist6/ai_provider_router.mjs';
 import { renderEditorialLookBoard, createPhotoByteCache } from '../../backend/stylist6/editorial_board_renderer.mjs';
+import { runAutonomousVisualStylist, AUTONOMOUS_STYLIST_VERSION } from '../../backend/stylist6/autonomous_stylist.mjs';
 import { HOST_ALLOWLIST } from './image_access.mjs';
 import {
   createHostedVisualCritic,
@@ -1480,7 +1481,98 @@ export async function generateStylist6Deck(payload, options = {}) {
     referenceFileFor(reference.referenceId));
 
   let creativePlan = { status: 'disabled', briefs: [], providerCalls: 0 };
-  if (visualAsked && hasVisionKeys && !isWorkoutOccasion(occasion) && options.disableCreativeDirector !== true) {
+  let visualCritic, canJudgeOutfit, studioBoardRenderer, prewarmCandidatePhotos;
+  let selectDirectorFinalists = null;
+  let selectCatalogCompositions = null;
+  let selectCatalogRescueCompositions = null;
+  let selectPhotoApprovedPortfolio = null;
+  let visualAtelierCompose = typeof options.visualAtelierCompose === 'function' ? options.visualAtelierCompose : null;
+  let visualReplacementSelector = typeof options.visualReplacementSelector === 'function' ? options.visualReplacementSelector : null;
+  let providerRouter = null;
+  let visualCriticActiveModel = hasOpenrouterKey ? OPENROUTER_VISION_MODEL : NVIDIA_VISION_MODEL;
+  const visualEvents = [];
+  let autonomousApplied = false;
+  let computedDeck = null;
+
+  // ── PRIMARY PATH (Phase 11 — Parity with Cloud Handler): Unified Autonomous Visual Stylist ──
+  const autonomousKillSwitchOff = /^(0|false)$/i.test(String(process.env.STYLIST6_AUTONOMOUS_VISUAL_ENABLED || '').trim())
+    || options.disableAutonomousStylist === true;
+  const legacyAtelierSeamOverride = typeof options.visualAtelierCompose === 'function'
+    && typeof options.autonomousStylist !== 'function';
+  const canRunAutonomousVisual = Boolean(
+    !autonomousKillSwitchOff &&
+    !legacyAtelierSeamOverride &&
+    visualAsked &&
+    hasVisionKeys &&
+    sourceMode === 'catalog',
+  );
+
+  if (canRunAutonomousVisual) {
+    const resolveProduct = (product, sig) => resolveProductAsset(product, fetchImpl, photoByteCache, sig);
+    const authorizePhoto = (url) => HOST_ALLOWLIST.has(hostOf(url));
+    providerRouter = createProviderRouter({
+      nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
+      openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
+      ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+    });
+    const debugBoardDir = String(options.debugBoardDir || process.env.STYLIST6_DEBUG_BOARD_DIR || '').trim();
+    const debugSlug = String(
+      request.debugScenarioTag || payload?.debugScenarioTag || `${style}_${occasion}`
+    ).toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+    const autonomousRunner = typeof options.autonomousStylist === 'function'
+      ? options.autonomousStylist
+      : runAutonomousVisualStylist;
+    let autonomousRes = null;
+    try {
+      autonomousRes = await autonomousRunner({
+        request: input,
+        catalog: budgetFeasible,
+        personalStyleDna,
+        styleDnaPromptBlock,
+        tasteProfile,
+        priceToBudgetCurrency,
+        hardGate: async (lookItems) => devLookFeasibility(lookItems),
+        providerRouter,
+        nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
+        openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
+        photoCache: photoByteCache,
+        resolvePhoto: resolveProduct,
+        authorizePhoto,
+        ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+        timeoutMs: Math.min(50_000, Math.max(12_000, remainingMs() - 4_000)),
+        hygieneAlreadyApplied: true,
+        qualityMap,
+        photoProvenance: 'host_allowlisted_staging',
+        merchantRightsVerified: false,
+        captureDebugBoards: Boolean(debugBoardDir),
+      });
+    } catch {
+      autonomousRes = { status: 'fallback', reason: 'autonomous_error' };
+    }
+    if (debugBoardDir && autonomousRes?.debugBoards) {
+      try {
+        fs.mkdirSync(debugBoardDir, { recursive: true });
+        for (const [key, buf] of Object.entries(autonomousRes.debugBoards)) {
+          if (Buffer.isBuffer(buf)) {
+            fs.writeFileSync(path.join(debugBoardDir, `${key}_${debugSlug}.jpg`), buf);
+          }
+        }
+      } catch { /* non-fatal debug dump */ }
+    }
+    if (autonomousRes?.status === 'applied' && Array.isArray(autonomousRes?.deck?.outfits) && autonomousRes.deck.outfits.length > 0) {
+      autonomousApplied = true;
+      computedDeck = autonomousRes.deck;
+      if (Array.isArray(autonomousRes.visualEvents)) {
+        visualEvents.push(...autonomousRes.visualEvents);
+      }
+      visualCriticActiveModel = autonomousRes.diagnostics?.editorModel
+        || autonomousRes.diagnostics?.composerModel
+        || visualCriticActiveModel;
+      creativePlan = { status: 'autonomous_visual', briefs: [], providerCalls: 0 };
+    }
+  }
+
+  if (!autonomousApplied && visualAsked && hasVisionKeys && !isWorkoutOccasion(occasion) && options.disableCreativeDirector !== true) {
     creativePlan = await designCreativeBriefsWithFallback({
       catalog: pool,
       request: input,
@@ -1501,18 +1593,7 @@ export async function generateStylist6Deck(payload, options = {}) {
     });
   }
 
-  let visualCritic, canJudgeOutfit, studioBoardRenderer, prewarmCandidatePhotos;
-  let selectDirectorFinalists = null;
-  let selectCatalogCompositions = null;
-  let selectCatalogRescueCompositions = null;
-  let selectPhotoApprovedPortfolio = null;
-  let visualAtelierCompose = typeof options.visualAtelierCompose === 'function' ? options.visualAtelierCompose : null;
-  let visualReplacementSelector = typeof options.visualReplacementSelector === 'function' ? options.visualReplacementSelector : null;
-  let providerRouter = null;
-  let visualCriticActiveModel = hasNvidiaKey ? NVIDIA_VISION_MODEL : OPENROUTER_VISION_MODEL;
-  const visualEvents = [];
-
-  if (visualAsked && hasVisionKeys) {
+  if (!autonomousApplied && visualAsked && hasVisionKeys) {
     const resolveProduct = (product, sig) => resolveProductAsset(product, fetchImpl, photoByteCache, sig);
     const authorizePhoto = (url) => HOST_ALLOWLIST.has(hostOf(url));
     providerRouter = createProviderRouter({
@@ -1745,41 +1826,43 @@ export async function generateStylist6Deck(payload, options = {}) {
       }
     : null;
 
-  const computedDeck = await recommendFashionDeck({
-    request: input,
-    catalog: pool,
-    referenceBriefs: refs,
-    aiCreativeBriefs: creativePlan.briefs,
-    hardGate: async (lookItems) => devLookFeasibility(lookItems),
-    priceToBudgetCurrency,
-    ...(fxSnapshot ? { fxSnapshot } : {}),
-    valueFxRates: sourceMode === 'catalog' && !budget ? fxSnapshot?.uzsPerUnit : null,
-    feedbackTaste,
-    personalStyleDna,
-    styleDnaPromptBlock,
-    tasteProfile,
-    qualityFlywheel: devQualityFlywheel,
-    qualityMap,
-    fastVisualMode,
-    ...(studioBoardRenderer ? { boardRenderer: studioBoardRenderer } : {}),
-    photoByteCache,
-    ...(prewarmCandidatePhotos ? { prewarmPhotos: prewarmCandidatePhotos } : {}),
-    visualDeckReview: true,
-    visualCandidateLimit: 8,
-    allowUnreviewedVisualFill: false,
-    photoRescueRemainingMs: visualCritic ? remainingMs : null,
-    ...(visualAtelierCompose ? { visualAtelierCompose } : {}),
-    visualAtelierAllowed: Boolean(allowLocalShowroomVisualComposition && visualAsked && hasVisionKeys),
-    visualAtelierConfigured,
-    ...(visualAtelierOptions ? { visualAtelierOptions } : {}),
-    ...(visualReplacementSelector ? { visualReplacementSelector } : {}),
-    ...(providerRouter ? { providerRouter } : {}),
-    ...(selectDirectorFinalists ? { selectDirectorFinalists } : {}),
-    ...(selectCatalogCompositions ? { selectCatalogCompositions } : {}),
-    ...(selectCatalogRescueCompositions ? { selectCatalogRescueCompositions } : {}),
-    ...(selectPhotoApprovedPortfolio ? { selectPhotoApprovedPortfolio } : {}),
-    ...(visualCritic ? { visualCritic, canJudgeOutfit } : {}),
-  });
+  if (!autonomousApplied) {
+    computedDeck = await recommendFashionDeck({
+      request: input,
+      catalog: pool,
+      referenceBriefs: refs,
+      aiCreativeBriefs: creativePlan.briefs,
+      hardGate: async (lookItems) => devLookFeasibility(lookItems),
+      priceToBudgetCurrency,
+      ...(fxSnapshot ? { fxSnapshot } : {}),
+      valueFxRates: sourceMode === 'catalog' && !budget ? fxSnapshot?.uzsPerUnit : null,
+      feedbackTaste,
+      personalStyleDna,
+      styleDnaPromptBlock,
+      tasteProfile,
+      qualityFlywheel: devQualityFlywheel,
+      qualityMap,
+      fastVisualMode,
+      ...(studioBoardRenderer ? { boardRenderer: studioBoardRenderer } : {}),
+      photoByteCache,
+      ...(prewarmCandidatePhotos ? { prewarmPhotos: prewarmCandidatePhotos } : {}),
+      visualDeckReview: true,
+      visualCandidateLimit: 8,
+      allowUnreviewedVisualFill: false,
+      photoRescueRemainingMs: visualCritic ? remainingMs : null,
+      ...(visualAtelierCompose ? { visualAtelierCompose } : {}),
+      visualAtelierAllowed: Boolean(allowLocalShowroomVisualComposition && visualAsked && hasVisionKeys),
+      visualAtelierConfigured,
+      ...(visualAtelierOptions ? { visualAtelierOptions } : {}),
+      ...(visualReplacementSelector ? { visualReplacementSelector } : {}),
+      ...(providerRouter ? { providerRouter } : {}),
+      ...(selectDirectorFinalists ? { selectDirectorFinalists } : {}),
+      ...(selectCatalogCompositions ? { selectCatalogCompositions } : {}),
+      ...(selectCatalogRescueCompositions ? { selectCatalogRescueCompositions } : {}),
+      ...(selectPhotoApprovedPortfolio ? { selectPhotoApprovedPortfolio } : {}),
+      ...(visualCritic ? { visualCritic, canJudgeOutfit } : {}),
+    });
+  }
 
   // Enforce exact 4 authentic shoppable items per look in catalog mode.
   const deck = enforceCatalogFourItemDeck(computedDeck, sourceMode);
@@ -1788,13 +1871,14 @@ export async function generateStylist6Deck(payload, options = {}) {
   const displayedLooks = deck.outfits.length;
   const displayedJudged = deck.outfits.filter((look) => Array.isArray(look.visualEvidence)).length;
   const visualApproval = !visualAsked ? 'not_requested'
-    : !visualCritic ? 'unavailable'
+    : !(visualCritic || autonomousApplied) ? 'unavailable'
       : displayedLooks === 3 && displayedJudged === 3 ? 'full_three_verified'
         : displayedLooks > 0 && displayedJudged === displayedLooks ? 'verified_partial'
           : 'unverified_fallback';
   const visualReceipt = {
     model: visualAsked ? visualCriticActiveModel : null,
     ...(fastVisualMode ? { fastVisualMode: true } : {}),
+    ...(autonomousApplied ? { autonomousVersion: AUTONOMOUS_STYLIST_VERSION } : {}),
     requested: visualAsked,
     referenceMediaConfigured: hasLocalReference,
     providerCalls,
@@ -2007,11 +2091,14 @@ export function createDevBridgeServer(serverOptions = {}) {
           ok: true,
           engine: STYLIST6_DEV_ENGINE_VERSION,
           engineVersion: STYLIST6_DEV_ENGINE_VERSION,
-          pipeline: 'stylist6-v3-world-class',
+          pipeline: 'stylist6-phase11-autonomous-visual',
+          autonomousStylist: hasNvidiaKey || hasOpenrouterKey,
+          autonomousStylistVersion: AUTONOMOUS_STYLIST_VERSION,
           visualAtelier: visualAtelierReady,
           references: index.images.length,
           endpoints: ['/health', '/generate', '/swap-slot', '/analyze-appearance'],
           capabilities: {
+            autonomousStylist: hasNvidiaKey || hasOpenrouterKey,
             visualAtelier: visualAtelierReady,
             liveCatalogConfigured: Boolean(url && readKey),
             cbuFxConfigured: true,

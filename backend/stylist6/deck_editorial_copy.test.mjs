@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { editorialDeckCopy, DECK_COPY_VERSION, STYLIST_NOTES_VERSION, groundedNativeHeadline, buildStylistNotes } from './deck_editorial_copy.mjs';
+import {
+  editorialDeckCopy,
+  DECK_COPY_VERSION,
+  STYLIST_NOTES_VERSION,
+  groundedNativeHeadline,
+  buildStylistNotes,
+  sanitizeStylistProse,
+} from './deck_editorial_copy.mjs';
 import { stylingContext } from '../../src/domain/stylingContext.ts';
 import { prepareGarment, describeGarment } from '../../src/domain/garmentDescriptor.ts';
 import { lookConcept } from '../../src/domain/outfitConcepts.ts';
@@ -447,4 +454,73 @@ test('Phase 10 Defects C & D: Date Night never emits "office" headlines and mixe
   };
   const earthNotes = buildStylistNotes(trueEarthLook, { style: 'old_money', occasion: 'Work', language: 'en' }, { id: 'signature' });
   assert.match(earthNotes.colorStory, /warm earth harmony|crisp light-dark contrast/i);
+});
+
+test('Phase 11 editorial voice: preserves bespoke VLM titles & warm notes, strips leaked rule jargon, and corrects misdescribed garment colors', () => {
+  const navyLoaferItems = [
+    { id: 't1', macroCategory: 'top', subtype: 'dress-shirt', color: 'white', name: 'White Poplin Dress Shirt' },
+    { id: 'o1', macroCategory: 'outerwear', subtype: 'blazer', color: 'navy', name: 'Navy Wool Soft Blazer' },
+    { id: 'b1', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'charcoal', name: 'Charcoal Flannel Tailored Trousers' },
+    { id: 's1', macroCategory: 'shoes', subtype: 'loafer', color: 'navy', name: 'Navy Suede Penny Loafers' },
+  ];
+
+  // 1. Exact real-world regression from ios_sim_v4_work_notes.png:
+  const leaked = 'Clean navy-to-white-to-charcoal progression with black loafers matching the cool charcoal trousers per shoe-to-palette temperature rules (S2, SKU tier 1 heuristic rubric).';
+  const cleaned = sanitizeStylistProse(leaked, navyLoaferItems);
+  assert.doesNotMatch(cleaned, /shoe-to-palette|temperature rules|heuristic|rubric|SKU|tier 1|\bS2\b/i, `jargon must be stripped: ${cleaned}`);
+  assert.match(cleaned, /\bnavy loafers\b/i, `misdescribed black loafers must be corrected to navy loafers: ${cleaned}`);
+  assert.doesNotMatch(cleaned, /\bblack loafers\b/i);
+
+  // 2. Preserves rich natural color synonyms without breaking human voice:
+  const warmItems = [
+    { id: 't2', macroCategory: 'top', subtype: 'fine-knit', color: 'cream', name: 'Cream Merino Turtleneck' },
+    { id: 'o2', macroCategory: 'outerwear', subtype: 'jacket', color: 'brown', name: 'Brown Suede Blouson Jacket' },
+    { id: 'b2', macroCategory: 'bottom', subtype: 'tailored-trouser', color: 'charcoal', name: 'Charcoal Wool Trousers' },
+    { id: 's2', macroCategory: 'shoes', subtype: 'loafer', color: 'brown', name: 'Brown Suede Loafers' },
+  ];
+  const richProse = 'An ivory turtleneck softens the espresso suede jacket while chocolate loafers anchor the charcoal trousers.';
+  assert.equal(sanitizeStylistProse(richProse, warmItems), richProse);
+
+  // 3. Preserves bespoke evocative titles & human Stylist Notes instead of "Clean separates"
+  const autonomousLook = {
+    id: 'auto-1',
+    items: navyLoaferItems,
+    autonomousMeta: {
+      title: 'Midnight Soft Tailoring',
+      stylistNote: 'An unstructured navy wool blazer over a crisp white shirt brings quiet confidence to evening plans, anchored by navy suede loafers and charcoal flannel trousers.',
+      whyItFlattersYou: 'The open blazer front creates an elongated vertical line while keeping the silhouette relaxed yet sharp.',
+      stylingTips: [
+        'Leave the top shirt button undone for effortless evening polish.',
+        'Keep the blazer unfastened in motion so the crisp white collar leads.',
+      ],
+    },
+  };
+  const cards = editorialDeckCopy(
+    [autonomousLook],
+    { style: 'classic', occasion: 'Date night', language: 'en' },
+    [{ id: 'signature', qualified: true }],
+  );
+  assert.equal(cards[0].concept.title, 'Midnight Soft Tailoring');
+  assert.doesNotMatch(cards[0].concept.title, /Clean separates/i);
+  assert.match(cards[0].stylistNote, /unstructured navy wool blazer/i);
+  assert.match(cards[0].whyItFlattersYou, /elongated vertical line/i);
+  assert.equal(cards[0].stylingTips.length, 2);
+  assert.match(cards[0].stylingTips[0], /top shirt button undone/i);
+
+  // 4. Rejects unconsented undertone fabrication in bespoke whyItFlattersYou
+  const unconsentedLook = {
+    id: 'auto-2',
+    items: navyLoaferItems,
+    autonomousMeta: {
+      title: 'Evening Navy Depth',
+      stylistNote: 'Refined navy tailoring paired with crisp white shirting and charcoal trousers.',
+      whyItFlattersYou: 'These deep tones flatter your warm skin undertone and complexion.',
+    },
+  };
+  const unconsentedNotes = buildStylistNotes(
+    unconsentedLook,
+    { style: 'classic', occasion: 'Date night', language: 'en' },
+    { id: 'signature' },
+  );
+  assert.equal(unconsentedNotes.whyItFlattersYou, null, 'must never allow unconsented undertone claims');
 });

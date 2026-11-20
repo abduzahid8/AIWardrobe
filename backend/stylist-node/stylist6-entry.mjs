@@ -13,5 +13,6 @@ export {
   mapCloudVisualStatus,
   projectWardrobeItem,
   fitVisualBytesCloud,
+  resolveCloudVisualAsset,
   STYLIST6_CLOUD_VERSION,
 } from '../stylist6/cloud_handler.mjs';

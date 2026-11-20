@@ -244,4 +244,19 @@ test('scoreOutfitColorTheory catches near-miss dark clashes, cognac-vs-icy-black
   );
   assert.ok(!brownShoesWarmTrousers.flaws.includes('stark_black_shoes_clash_with_warm_earth_trousers'));
   assert.ok(brownShoesWarmTrousers.score > blackShoesWarmTrousers.score + 0.15);
+
+  // Modern pairings: sleek black loafers/boots with dark olive or rich espresso/chocolate trousers are NOT discordant
+  const blackOnDarkOlive = scoreOutfitColorTheory(
+    { top: 'cream', outerwear: 'charcoal', bottom: 'dark_olive', shoes: 'black' },
+    null,
+  );
+  assert.equal(blackOnDarkOlive.flaws.includes('stark_black_shoes_clash_with_warm_earth_trousers'), false);
+  assert.notEqual(blackOnDarkOlive.harmonyMode, 'discordant');
+
+  const blackOnEspresso = scoreOutfitColorTheory(
+    { top: 'ivory', outerwear: 'black', bottom: 'espresso', shoes: 'black' },
+    null,
+  );
+  assert.equal(blackOnEspresso.flaws.includes('stark_black_shoes_clash_with_warm_earth_trousers'), false);
+  assert.notEqual(blackOnEspresso.harmonyMode, 'discordant');
 });

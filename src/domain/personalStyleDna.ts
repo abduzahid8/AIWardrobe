@@ -1025,17 +1025,9 @@ function normalizeAppearance(
   const flatteringColors = canonicalizeColorList(raw.flatteringColors, 12);
   const powerNeutrals = canonicalizeColorList(raw.powerNeutrals, 8);
   const avoidColors = canonicalizeColorList(raw.avoidColors, 12);
-  // Opt-in Cool Winter (cool undertone + high contrast) avoids warm earthy brown
-  // unless the user explicitly listed brown in favoriteColors.
-  if (
-    skinUndertone === 'cool' &&
-    contrastLevel === 'high' &&
-    !favoriteColors.includes('brown') &&
-    !avoidColors.includes('brown') &&
-    avoidColors.length < 12
-  ) {
-    avoidColors.push('brown');
-  }
+  // Reserve hard avoidColors strictly for explicit avoidances; undertone and
+  // contrast stay soft aesthetic guidance in the stylist prompt rather than
+  // auto-banning broad neutrals like brown.
   const confNum = typeof raw.confidence === 'number' && Number.isFinite(raw.confidence)
     ? Math.max(0, Math.min(1, Math.round(raw.confidence * 1000) / 1000))
     : null;

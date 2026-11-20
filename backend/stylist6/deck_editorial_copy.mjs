@@ -724,6 +724,168 @@ const COOL_TONES = new Set(['navy', 'blue', 'grey', 'charcoal', 'black', 'white'
 const LIGHT_TONES = new Set(['white', 'cream', 'beige', 'stone', 'light']);
 const DARK_TONES = new Set(['black', 'navy', 'charcoal', 'brown', 'burgundy', 'dark', 'dark-neutral', 'cool-dark']);
 
+const PROMPT_JARGON_CLAUSE_RE = /(?:,\s*|\s+)\b(?:per|according\s+to|following)(?:\s+the)?\s+[^.,;]{1,55}?\b(?:rules?|guidelines?|heuristics?|rubrics?|constraints?|protocols?|directives?|tiers?|criteria)\b/gi;
+const PROMPT_JARGON_PHRASE_RE = /\b(?:shoe[- ]to[- ]palette\s+temperature\s+rules?|under[- ]layer\s+formality\s+(?:coherence|rules?)|visual\s+atelier|showroom\s+board|swap\s+board|portfolio\s+sheet|micro[- ]?scorers?|heuristics?|SKUs?|rubrics?|tier\s*\d+|slot\s+(?:top|outerwear|bottom|shoes|assignment|constraint)|token\s+[TLBSR]\d+)\b/gi;
+const BOARD_TOKEN_PAREN_RE = /\s*\(\s*[TLBSR]\d{1,2}\s*\)/g;
+const BOARD_TOKEN_BARE_RE = /\b[TLBSR][1-8]\b/g;
+
+const COLOR_FAMILY_SYNONYMS = {
+  navy: new Set(['navy', 'midnight', 'dark-blue', 'deep-blue', 'indigo', 'marine', 'ink', 'blue']),
+  blue: new Set(['blue', 'sky-blue', 'light-blue', 'powder-blue', 'chambray', 'denim', 'cobalt', 'slate-blue', 'ice-blue', 'navy', 'indigo']),
+  black: new Set(['black', 'jet-black', 'onyx', 'obsidian', 'noir']),
+  charcoal: new Set(['charcoal', 'anthracite', 'graphite', 'dark-grey', 'dark-gray', 'slate', 'grey', 'gray']),
+  grey: new Set(['grey', 'gray', 'heather-grey', 'heather-gray', 'mid-grey', 'light-grey', 'silver', 'pewter', 'ash', 'charcoal', 'slate', 'dove']),
+  white: new Set(['white', 'crisp-white', 'bright-white', 'chalk', 'off-white', 'ivory']),
+  cream: new Set(['cream', 'ivory', 'ecru', 'off-white', 'bone', 'alabaster', 'oatmeal', 'chalk', 'white']),
+  beige: new Set(['beige', 'sand', 'stone', 'taupe', 'oatmeal', 'khaki', 'greige', 'mushroom', 'camel', 'tan', 'cream', 'ecru']),
+  camel: new Set(['camel', 'tan', 'caramel', 'honey', 'sand', 'beige', 'biscuit', 'tobacco', 'brown']),
+  tan: new Set(['tan', 'camel', 'caramel', 'cognac', 'sand', 'beige', 'chestnut', 'brown']),
+  brown: new Set(['brown', 'dark-brown', 'espresso', 'chocolate', 'chestnut', 'cognac', 'tobacco', 'walnut', 'mahogany', 'mocha', 'tan', 'bronze', 'cinnamon', 'rust', 'caramel', 'taupe', 'camel']),
+  olive: new Set(['olive', 'dark-olive', 'moss', 'army-green', 'khaki', 'sage', 'loden', 'green']),
+  green: new Set(['green', 'forest-green', 'hunter-green', 'pine', 'emerald', 'sage', 'olive', 'dark-olive', 'teal', 'petrol']),
+  burgundy: new Set(['burgundy', 'oxblood', 'bordeaux', 'wine', 'maroon', 'merlot', 'claret', 'plum', 'deep-red', 'red']),
+  red: new Set(['red', 'crimson', 'scarlet', 'brick', 'rust', 'terracotta', 'burgundy', 'oxblood']),
+  stone: new Set(['stone', 'beige', 'sand', 'taupe', 'greige', 'oatmeal', 'cream', 'light-grey']),
+  orange: new Set(['orange', 'terracotta', 'rust', 'caramel', 'amber', 'burnt-orange', 'cognac']),
+  yellow: new Set(['yellow', 'mustard', 'ochre', 'gold', 'amber', 'butter']),
+  pink: new Set(['pink', 'blush', 'rose', 'dusty-rose', 'coral', 'mauve']),
+  purple: new Set(['purple', 'plum', 'aubergine', 'violet', 'lavender', 'lilac']),
+};
+
+const MENTIONED_COLOR_TERMS = [
+  'jet-black', 'jet black', 'dark brown', 'dark-brown', 'dark blue', 'dark-blue',
+  'dark grey', 'dark gray', 'light grey', 'light gray', 'light blue', 'sky blue',
+  'off-white', 'off white', 'crisp white', 'forest green', 'dark olive', 'burnt orange',
+  'charcoal', 'anthracite', 'graphite', 'obsidian', 'midnight', 'burgundy', 'oxblood',
+  'bordeaux', 'espresso', 'chocolate', 'chestnut', 'terracotta', 'mahogany', 'oatmeal',
+  'chambray', 'emerald', 'crimson', 'mustard', 'cognac', 'caramel', 'tobacco',
+  'indigo', 'marine', 'pewter', 'silver', 'camel', 'beige', 'cream', 'ivory',
+  'ecru', 'taupe', 'stone', 'khaki', 'olive', 'brown', 'black', 'white', 'navy',
+  'slate', 'grey', 'gray', 'blue', 'green', 'sage', 'teal', 'wine', 'plum',
+  'rust', 'sand', 'bone', 'tan', 'red', 'pink', 'orange', 'yellow',
+];
+const MENTIONED_COLOR_ALT = MENTIONED_COLOR_TERMS.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+
+const SLOT_GARMENT_NOUN_RES = [
+  {
+    slot: 'shoes',
+    re: new RegExp(`\\b(${MENTIONED_COLOR_ALT})\\b((?:\\s+(?:suede|calfskin|calf|leather|patent|pebbled|burnished|sleek|polished|minimal|woven|penny|tassel|dress|cap-toe|lace-up)){0,2}\\s+(?:loafers?|oxfords?|derb(?:y|ies)|chelsea\\s+boots?|dress\\s+boots?|ankle\\s+boots?|boots?|monk\\s*straps?|sneakers?|trainers?|shoes?|footwear))\\b`, 'gi'),
+  },
+  {
+    slot: 'bottom',
+    re: new RegExp(`\\b(${MENTIONED_COLOR_ALT})\\b((?:\\s+(?:wool|flannel|cotton|linen|pleated|tailored|straight|slim|relaxed|wide-leg|draped|twill|gabardine|dress|suit|moleskin|corduroy|selvedge|raw|dark)){0,2}\\s+(?:trousers?|pants?|chinos?|jeans|slacks?))\\b`, 'gi'),
+  },
+  {
+    slot: 'outerwear',
+    re: new RegExp(`\\b(${MENTIONED_COLOR_ALT})\\b((?:\\s+(?:wool|cashmere|merino|suede|leather|linen|cotton|twill|flannel|knitted|knit|tailored|unstructured|structured|double-breasted|single-breasted|cropped|relaxed|soft)){0,2}\\s+(?:blazers?|jackets?|overcoats?|trench\\s+coats?|coats?|cardigans?|overshirts?|bombers?|blousons?))\\b`, 'gi'),
+  },
+  {
+    slot: 'top',
+    re: new RegExp(`\\b(${MENTIONED_COLOR_ALT})\\b((?:\\s+(?:cotton|poplin|oxford|linen|merino|cashmere|silk|viscose|fine-gauge|fine|knitted|knit|crisp|striped|dress|collared|short-sleeve|long-sleeve)){0,2}\\s+(?:dress\\s+shirts?|oxford\\s+shirts?|poplin\\s+shirts?|shirts?|turtlenecks?|mocknecks?|crewnecks?|sweaters?|knit\\s+polos?|polos?|tees?|t-shirts?))\\b`, 'gi'),
+  },
+];
+
+function extractVerifiedSlotColors(items, observedSlotColors = null) {
+  const bySlot = {};
+  for (const slot of slotOrder) {
+    const item = (items || []).find(it => String(it?.macroCategory || '').toLowerCase() === slot);
+    if (!item) continue;
+    const accepted = new Set();
+    let primary = null;
+
+    const addColor = (raw) => {
+      const canon = canonicalNoteColor(raw);
+      if (!canon || ['dark', 'dark-neutral', 'cool-dark', 'cool-mid', 'mid', 'earth', 'light', 'warm'].includes(canon)) {
+        return;
+      }
+      if (!primary) primary = canon;
+      accepted.add(canon);
+      const fam = COLOR_FAMILY_SYNONYMS[canon];
+      if (fam) for (const s of fam) accepted.add(s);
+    };
+
+    if (observedSlotColors && typeof observedSlotColors[slot] === 'string') {
+      addColor(observedSlotColors[slot]);
+    }
+    const vf = currentVisual(item);
+    const vCol = vf?.attributes?.color;
+    // Trust model-verified visual color, catalog color, and item name;
+    // never let naive `image-pixels` RGB heuristics overwrite real VLM-observed shades
+    // (pixel hue frequently mislabels camel coats as 'orange' and burgundy knits as 'pink').
+    const isPixelOnly = vCol?.evidence === 'image-pixels';
+    if (confidentVisual(vCol) && typeof vCol.value === 'string' && !isPixelOnly) addColor(vCol.value);
+    if (typeof item.color === 'string') addColor(item.color);
+    const nameLower = String(item.name || '').toLowerCase();
+    for (const term of ['navy', 'charcoal', 'cream', 'ivory', 'ecru', 'beige', 'camel', 'stone', 'olive', 'burgundy', 'oxblood', 'bordeaux', 'espresso', 'chocolate', 'chestnut', 'cognac', 'brown', 'black', 'white', 'grey', 'gray', 'blue', 'green', 'tan', 'rust', 'sand', 'khaki']) {
+      if (new RegExp(`\\b${term}\\b`, 'i').test(nameLower)) addColor(term);
+    }
+    if (primary) {
+      bySlot[slot] = { primary, accepted };
+    }
+  }
+  return bySlot;
+}
+
+function preserveCaseColor(original, replacement) {
+  if (!original) return replacement;
+  if (original[0] === original[0].toUpperCase() && original[0] !== original[0].toLowerCase()) {
+    return replacement.charAt(0).toUpperCase() + replacement.slice(1);
+  }
+  return replacement;
+}
+
+/**
+ * Strip leaked prompt/system meta-language (rules, heuristics, SKUs, slots,
+ * rubrics, board tokens) and reconcile any misdescribed garment colors against
+ * the actual selected items' verified colors (e.g. never call navy loafers "black loafers").
+ */
+export function sanitizeStylistProse(raw, items = [], { maxLen = 340, observedSlotColors = null } = {}) {
+  if (typeof raw !== 'string' || !raw.trim()) return '';
+  let text = raw
+    .replace(/https?:\/\/[^\s]+|\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi, '')
+    .replace(/[<>{}\u0000-\u001f]/g, ' ')
+    .replace(BOARD_TOKEN_PAREN_RE, '')
+    .replace(PROMPT_JARGON_CLAUSE_RE, '')
+    .replace(PROMPT_JARGON_PHRASE_RE, '')
+    .replace(BOARD_TOKEN_BARE_RE, '')
+    .replace(/\s+,/g, ',')
+    .replace(/,\s*\./g, '.')
+    .replace(/\s+\./g, '.')
+    .replace(/,{2,}/g, ',')
+    .replace(/\.{2,}/g, '.')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (Array.isArray(items) && items.length > 0) {
+    const slotColors = extractVerifiedSlotColors(items, observedSlotColors);
+    for (const { slot, re } of SLOT_GARMENT_NOUN_RES) {
+      const verified = slotColors[slot];
+      if (!verified) continue;
+      re.lastIndex = 0;
+      text = text.replace(re, (full, mentionedColor, tail) => {
+        const normMention = String(mentionedColor || '').trim().toLowerCase().replace(/\s+/g, '-');
+        const canonMention = canonicalNoteColor(normMention) || normMention;
+        if (verified.accepted.has(normMention) || verified.accepted.has(canonMention)) {
+          return full;
+        }
+        return `${preserveCaseColor(mentionedColor, verified.primary)}${tail}`;
+      });
+    }
+  }
+
+  text = text
+    .replace(/\s+,/g, ',')
+    .replace(/,\s*\./g, '.')
+    .replace(/\s+\./g, '.')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (text && /^[a-z]/.test(text)) {
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+  }
+  return cleanEditorialText(text, maxLen);
+}
+
 function cleanEditorialText(raw, max = 260) {
   if (typeof raw !== 'string') return '';
   const cleaned = raw
@@ -749,10 +911,20 @@ function canonicalNoteColor(raw) {
   return cleaned;
 }
 
-function verifiedItemColor(item, descriptor) {
+function verifiedItemColor(item, descriptor, observedSlotColor = null) {
+  if (typeof observedSlotColor === 'string' && observedSlotColor.trim()) {
+    const obsCanon = canonicalNoteColor(observedSlotColor);
+    if (obsCanon && !['dark', 'dark-neutral', 'cool-dark', 'cool-mid', 'mid', 'earth', 'light', 'warm'].includes(obsCanon)) {
+      return obsCanon;
+    }
+  }
   const vf = item ? currentVisual(item) : null;
   const vCol = vf?.attributes?.color;
-  if (confidentVisual(vCol) && typeof vCol.value === 'string') {
+  // Never trust naive `image-pixels` RGB heuristics for chromatic colors (commonly
+  // mislabels camel/tan wool as 'orange' and deep burgundy/wine as 'pink').
+  const isNoisyPixelColor = vCol?.evidence === 'image-pixels' &&
+    ['orange', 'pink', 'yellow', 'red', 'purple'].includes(String(vCol?.value || '').toLowerCase());
+  if (confidentVisual(vCol) && typeof vCol.value === 'string' && !isNoisyPixelColor) {
     const canon = canonicalNoteColor(vCol.value);
     if (canon) return canon;
   }
@@ -838,10 +1010,12 @@ function isGroundedAgainstLook(sentence, part, verifiedMaterials) {
 function extractVisualCriticInsights(look, options, part, verifiedMaterials) {
   const verdict = options?.visualVerdict || look?.visualCritique || look?.visualVerdict || look?.visualReview || null;
   if (!verdict || typeof verdict !== 'object') return [];
+  const items = Array.isArray(look?.items) ? look.items : [];
+  const observedSlotColors = verdict?.slotColors || verdict?.observedSlotColors || null;
   const insights = [];
   if (Array.isArray(verdict.relationships)) {
     for (const rel of verdict.relationships.slice(0, 3)) {
-      const obs = cleanEditorialText(rel?.observation || rel?.note || '', 180);
+      const obs = sanitizeStylistProse(rel?.observation || rel?.note || '', items, { maxLen: 180, observedSlotColors });
       if (obs && !/\b(clash|mismatch|reject|veto|poor|bad|wrong|fail|incoherent)\b/i.test(obs) &&
           isGroundedAgainstLook(obs, part, verifiedMaterials)) {
         insights.push(obs);
@@ -850,7 +1024,7 @@ function extractVisualCriticInsights(look, options, part, verifiedMaterials) {
   }
   if (Array.isArray(verdict.strengths)) {
     for (const st of verdict.strengths.slice(0, 2)) {
-      const text = cleanEditorialText(typeof st === 'string' ? st : st?.observation || '', 160);
+      const text = sanitizeStylistProse(typeof st === 'string' ? st : st?.observation || '', items, { maxLen: 160, observedSlotColors });
       if (text && isGroundedAgainstLook(text, part, verifiedMaterials)) {
         insights.push(text);
       }
@@ -858,7 +1032,7 @@ function extractVisualCriticInsights(look, options, part, verifiedMaterials) {
   }
   if (!insights.length && verdict.observations && typeof verdict.observations === 'object') {
     for (const slot of ['outerwear', 'top', 'bottom', 'shoes']) {
-      const text = cleanEditorialText(verdict.observations[slot], 150);
+      const text = sanitizeStylistProse(verdict.observations[slot], items, { maxLen: 150, observedSlotColors });
       if (text && !/\b(clash|mismatch|reject|veto|poor|bad|wrong|fail)\b/i.test(text) &&
           isGroundedAgainstLook(text, part, verifiedMaterials)) {
         insights.push(text);
@@ -910,13 +1084,13 @@ function buildSilhouetteFormula(lang, part, items) {
   return cap(pieces.join(' + '));
 }
 
-function buildColorStory(lang, part, items) {
+function buildColorStory(lang, part, items, observedSlotColors = null) {
   const verifiedColors = [];
   for (const slot of slotOrder) {
     const item = (items || []).find(it => String(it?.macroCategory || '').toLowerCase() === slot);
     const d = part?.[slot];
     if (!item && !d) continue;
-    const col = verifiedItemColor(item, d);
+    const col = verifiedItemColor(item, d, observedSlotColors?.[slot] || null);
     if (col && !verifiedColors.includes(col)) verifiedColors.push(col);
   }
   if (!verifiedColors.length) {
@@ -971,7 +1145,7 @@ function buildColorStory(lang, part, items) {
       : toneMode === 'warm' ? 'warm earth harmony'
         : toneMode === 'cool' ? 'cool tailored balance'
           : toneMode === 'mixed' ? 'high-contrast warm-and-cool interplay' : 'grounded neutral balance';
-  return `${listStr} create ${mood}.`;
+  return `${listStr} ${names.length === 1 ? 'creates' : 'create'} ${mood}.`;
 }
 
 function buildWhyItFlattersYou(lang, part, items, context, options) {
@@ -1162,27 +1336,106 @@ function buildStylingTips(lang, part, context) {
   return tips.slice(0, 3);
 }
 
+const GENERIC_ROBOTIC_TITLE_RE = /^(?:clean\s+separates|editorial\s+direction\s*\d*|direction\s*\d+|option\s*\d+|outfit\s*\d+|look\s*\d+)$/i;
+const UNCONSENTED_APPEARANCE_CLAIM_RE = /\b(?:skin\s+(?:tone|undertone)|your\s+(?:warm|cool|neutral|olive)\s+undertone|complexion|color\s+season|eye\s+color|hair\s+color)\b/i;
+const UNPROVIDED_BODY_CLAIM_RE = /\b(?:your\s+(?:height|shoulders|waist|torso|legs|hips|build|frame))\b/i;
+
+function bespokeMetaOf(look) {
+  return look?.autonomousMeta || look?.visualAtelierMeta || look?.visualAtelierCopy || null;
+}
+
+function extractBespokeTitle(look, context, part, lang) {
+  const meta = bespokeMetaOf(look);
+  const rawTitle = meta?.title || look?.bespokeTitle || '';
+  if (typeof rawTitle !== 'string' || !rawTitle.trim()) return '';
+  const items = Array.isArray(look?.items) ? look.items : [];
+  const observedSlotColors = meta?.observedSlotColors || null;
+  let title = sanitizeStylistProse(rawTitle, items, { maxLen: 54, observedSlotColors });
+  title = title.replace(/[.!?:;]+$/, '').trim();
+  if (!title || title.length < 3 || title.length > 54) return '';
+  if (GENERIC_ROBOTIC_TITLE_RE.test(title) || UNSAFE_CLAIMS_RE.test(title)) return '';
+  title = sanitizeOccasionHeadline(title, context?.occasion);
+  if (!part?.outerwear && /\blayer(?:s|ing)?\b/i.test(title)) return '';
+  if (part?.outerwear?.subtype) {
+    const actualOuter = part.outerwear.subtype;
+    if (actualOuter !== 'cardigan' && /\bcardigans?\b/i.test(title)) return '';
+    if (actualOuter !== 'blazer' && /\bblazers?\b/i.test(title)) return '';
+  }
+  if (lang === 'ru' && /[A-Za-z]/.test(title)) return '';
+  if (lang === 'uz' && /[А-Яа-яёЁ]/.test(title)) return '';
+  return title;
+}
+
+function resolveBespokeWhyItFlatters(meta, items, context, options, observedSlotColors) {
+  const raw = meta?.whyItFlattersYou;
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const cleaned = sanitizeStylistProse(raw, items, { maxLen: 240, observedSlotColors });
+  if (!cleaned || cleaned.length < 18 || UNSAFE_CLAIMS_RE.test(cleaned)) return null;
+  const dna = options?.personalStyleDna || context?.personalStyleDna || null;
+  const appearance = dna?.appearance || context?.appearanceProfile || null;
+  const hasConsentedAppearance = Boolean(
+    appearance && typeof appearance === 'object' && appearance.consentGranted !== false &&
+    appearance.provenance !== 'none' &&
+    (appearance.skinUndertone && appearance.skinUndertone !== 'unknown' ||
+      (Array.isArray(appearance.flatteringColors) && appearance.flatteringColors.length > 0)),
+  );
+  if (!hasConsentedAppearance && UNCONSENTED_APPEARANCE_CLAIM_RE.test(cleaned)) {
+    return null;
+  }
+  const body = dna?.body || context?.bodyProfile || null;
+  const hasExplicitBody = Boolean(
+    body && typeof body === 'object' && (
+      body.hasExplicitBodyEvidence === true ||
+      (body.bodyType && body.bodyType !== 'unknown') ||
+      Number.isFinite(Number(body.heightCm))
+    ),
+  );
+  if (!hasExplicitBody && UNPROVIDED_BODY_CLAIM_RE.test(cleaned)) {
+    return null;
+  }
+  return cleaned.endsWith('.') ? cleaned : `${cleaned}.`;
+}
+
+function resolveBespokeStylingTips(meta, items, part, verifiedMaterials, observedSlotColors) {
+  if (!Array.isArray(meta?.stylingTips) || meta.stylingTips.length === 0) return [];
+  const out = [];
+  for (const rawTip of meta.stylingTips.slice(0, 4)) {
+    const cleaned = sanitizeStylistProse(String(rawTip || ''), items, { maxLen: 150, observedSlotColors });
+    if (cleaned && cleaned.length >= 14 && !UNSAFE_CLAIMS_RE.test(cleaned) &&
+        isGroundedAgainstLook(cleaned, part, verifiedMaterials)) {
+      out.push(cleaned.endsWith('.') ? cleaned : `${cleaned}.`);
+    }
+  }
+  return out.slice(0, 3);
+}
+
 /**
  * Build personalized, editorial-caliber Stylist's Notes strictly grounded in
- * verified SKU facts, Creative Director `artDirection`, Visual Critic real
- * visual observations, and explicit user `PersonalStyleDna`.
+ * verified SKU facts, Autonomous Visual Stylist commentary, Creative Director
+ * `artDirection`, Visual Critic real visual observations, and explicit user
+ * `PersonalStyleDna` — always stripped of system jargon and color-verified.
  */
 export function buildStylistNotes(look, context, direction, options = {}) {
   const lang = options.language || normalizeStylistLanguage(context?.language);
   const items = Array.isArray(look?.items) ? look.items : [];
   const part = options.part || details(items);
   const verifiedMaterials = verifiedLookMaterials(items, part);
+  const meta = bespokeMetaOf(look);
+  const verdict = options?.visualVerdict || look?.visualCritique || look?.visualVerdict || look?.visualReview || null;
+  const observedSlotColors = meta?.observedSlotColors || verdict?.slotColors || verdict?.observedSlotColors || null;
 
-  const rawArtDirection = cleanEditorialText(
-    look?.visualAtelierMeta?.stylingNote ||
-    look?.visualAtelierCopy?.stylingNote ||
-    look?.visualAtelierMeta?.visualHarmonyRationale ||
+  const isAutonomousBespoke = Boolean(meta?.stylistNote || meta?.stylingNote);
+  const rawArtDirection = sanitizeStylistProse(
+    meta?.stylistNote ||
+    meta?.stylingNote ||
+    meta?.visualHarmonyRationale ||
     options.artDirection ||
     look?.brief?.artDirection ||
     look?.artDirection ||
     direction?.artDirection ||
     '',
-    235,
+    items,
+    { maxLen: isAutonomousBespoke ? 320 : 235, observedSlotColors },
   );
   const groundedArtDirection = lang === 'en' && isGroundedAgainstLook(rawArtDirection, part, verifiedMaterials)
     ? rawArtDirection
@@ -1198,12 +1451,14 @@ export function buildStylistNotes(look, context, direction, options = {}) {
     if (groundedArtDirection) {
       parts.push(groundedArtDirection.endsWith('.') ? groundedArtDirection : `${groundedArtDirection}.`);
     }
-    if (criticInsights.length) {
+    if (!isAutonomousBespoke && criticInsights.length) {
       const leadCritic = criticInsights[0];
       // Avoid duplicating near-identical phrasing if artDirection already covers it.
       if (!groundedArtDirection || !groundedArtDirection.toLowerCase().includes(leadCritic.slice(0, 32).toLowerCase())) {
         parts.push(leadCritic.endsWith('.') ? leadCritic : `${leadCritic}.`);
       }
+    } else if (!groundedArtDirection && criticInsights.length) {
+      parts.push(criticInsights[0].endsWith('.') ? criticInsights[0] : `${criticInsights[0]}.`);
     }
     if (!parts.length) {
       const rel = actualRelationship(part);
@@ -1218,17 +1473,25 @@ export function buildStylistNotes(look, context, direction, options = {}) {
     stylistNote = rel ? `${formula}. ${rel}` : `${formula}.`;
   }
 
+  const bespokeWhy = lang === 'en'
+    ? resolveBespokeWhyItFlatters(meta, items, context, options, observedSlotColors)
+    : null;
+  const bespokeTips = lang === 'en'
+    ? resolveBespokeStylingTips(meta, items, part, verifiedMaterials, observedSlotColors)
+    : [];
+
   return {
     stylistNote,
-    whyItFlattersYou: buildWhyItFlattersYou(lang, part, items, context, options),
-    stylingTips: buildStylingTips(lang, part, context),
-    colorStory: buildColorStory(lang, part, items),
+    whyItFlattersYou: bespokeWhy || buildWhyItFlattersYou(lang, part, items, context, options),
+    stylingTips: bespokeTips.length > 0 ? bespokeTips : buildStylingTips(lang, part, context),
+    colorStory: buildColorStory(lang, part, items, observedSlotColors),
     silhouetteFormula: buildSilhouetteFormula(lang, part, items),
   };
 }
 
 /** Assign each actual selected look a title + explanation + Stylist's Notes,
- * preserving order and keeping a unique headline even when all native concept IDs are equal.
+ * preserving bespoke Autonomous Visual Stylist titles and keeping unique
+ * grounded headlines even when native concept IDs are equal.
  * The display language comes from context.language ('en' | 'ru' | 'uz'). */
 export function editorialDeckCopy(looks, context, directions, options = {}) {
   const lang = normalizeStylistLanguage(context?.language);
@@ -1242,25 +1505,35 @@ export function editorialDeckCopy(looks, context, directions, options = {}) {
       artDirection: options?.creativeBriefs?.[index]?.artDirection || look?.brief?.artDirection || look?.artDirection || direction?.artDirection,
       visualVerdict: options?.visualVerdicts?.[index] || look?.visualCritique || look?.visualVerdict || look?.visualReview,
     };
+    const part = details(look.items);
+    const bespokeTitle = extractBespokeTitle(look, context, part, lang);
+
     if (lang !== 'en') {
       const card = localizedCard(lang, seen, index, look, basePart, context, direction, native);
+      const finalTitle = bespokeTitle && !seen.has(bespokeTitle.toLowerCase()) ? bespokeTitle : card.concept.title;
+      seen.add(finalTitle.toLowerCase());
       return {
         ...card,
-        ...buildStylistNotes(look, context, direction, { ...cardOptions, language: lang }),
+        concept: { ...card.concept, title: finalTitle },
+        ...buildStylistNotes(look, context, direction, { ...cardOptions, part, language: lang }),
       };
     }
-    const part = details(look.items);
+
     const truthfulNative = groundedNativeHeadline(native.title, part, 'en', context?.occasion);
-    const headlineOpts = index === 0
-      ? [truthfulNative]
-      : [...headlineCandidates(part, direction), truthfulNative];
+    const headlineOpts = bespokeTitle
+      ? [bespokeTitle, ...headlineCandidates(part, direction), truthfulNative]
+      : index === 0
+        ? [truthfulNative]
+        : [...headlineCandidates(part, direction), truthfulNative];
     let title = headlineOpts.find(s => s && !seen.has(s.toLowerCase()));
     if (!title) title = `${truthfulNative} · Option ${index + 1}`;
     seen.add(title.toLowerCase());
+    const notes = buildStylistNotes(look, context, direction, { ...cardOptions, part, language: 'en' });
+    const hasBespokeVoice = Boolean(bespokeMetaOf(look)?.stylistNote || bespokeMetaOf(look)?.stylingNote);
     return {
       concept: { id: native.id, title, referenceId: look.referenceId ?? null },
-      description: shortCopy(basePart, part, context, direction),
-      ...buildStylistNotes(look, context, direction, { ...cardOptions, part, language: 'en' }),
+      description: hasBespokeVoice && notes.stylistNote ? notes.stylistNote : shortCopy(basePart, part, context, direction),
+      ...notes,
     };
   });
 }

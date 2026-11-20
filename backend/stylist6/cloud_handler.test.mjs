@@ -2832,3 +2832,144 @@ test('Vercel Fluid Compute config sets maxDuration: 300 on Stylist 6 routes whil
   assert.equal(vercelConfig.functions['api/stylist6-generate-outfits.ts'].maxDuration, 300);
   assert.equal(vercelConfig.functions['api/stylist6-vision-test.ts'].maxDuration, 300);
 });
+
+test('Phase 11 deployed cloud parity: handleStylist6CloudGenerate runs Autonomous Visual Stylist by default with honest photoProvenance & kill-switch', async () => {
+  const studioJpeg = await sharp({
+    create: { width: 256, height: 256, channels: 3, background: { r: 44, g: 58, b: 84 } },
+  }).jpeg({ quality: 88 }).toBuffer();
+
+  const img = (id) => `https://media.frgroup.uz/images/${id}.jpg`;
+  const shopRows = [
+    { ...shopRow('auto-t1', 'top', 450000), name: 'Ivory Merino Turtleneck', fashion_slot: 'top', fashion_subtype: 'fine-knit', color: 'cream', brand: 'Loro Piana', image_url: img('auto-t1') },
+    { ...shopRow('auto-t2', 'top', 420000), name: 'Crisp White Poplin Dress Shirt', fashion_slot: 'top', fashion_subtype: 'dress-shirt', color: 'white', brand: 'Canali', image_url: img('auto-t2') },
+    { ...shopRow('auto-t3', 'top', 410000), name: 'Midnight Merino Knit Polo', fashion_slot: 'top', fashion_subtype: 'knit-polo', color: 'navy', brand: 'Aurelien', image_url: img('auto-t3') },
+    { ...shopRow('auto-o1', 'outerwear', 950000), name: 'Midnight Soft Wool Blazer', fashion_slot: 'outerwear', fashion_subtype: 'blazer', color: 'navy', brand: 'Canali', image_url: img('auto-o1') },
+    { ...shopRow('auto-o2', 'outerwear', 920000), name: 'Espresso Suede Blouson Jacket', fashion_slot: 'outerwear', fashion_subtype: 'jacket', color: 'brown', brand: 'Aurelien', image_url: img('auto-o2') },
+    { ...shopRow('auto-o3', 'outerwear', 780000), name: 'Charcoal Merino Tailored Cardigan', fashion_slot: 'outerwear', fashion_subtype: 'cardigan', color: 'charcoal', brand: 'Massimo Dutti', image_url: img('auto-o3') },
+    { ...shopRow('auto-b1', 'bottom', 540000), name: 'Charcoal Flannel Tailored Trousers', fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser', color: 'charcoal', brand: 'Canali', image_url: img('auto-b1') },
+    { ...shopRow('auto-b2', 'bottom', 490000), name: 'Navy Pleated Wool Trousers', fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser', color: 'navy', brand: 'Massimo Dutti', image_url: img('auto-b2') },
+    { ...shopRow('auto-b3', 'bottom', 510000), name: 'Stone Wool Dress Trousers', fashion_slot: 'bottom', fashion_subtype: 'tailored-trouser', color: 'beige', brand: 'Aurelien', image_url: img('auto-b3') },
+    { ...shopRow('auto-s1', 'shoes', 640000), name: 'Espresso Suede Penny Loafers', fashion_slot: 'shoes', fashion_subtype: 'loafer', color: 'brown', brand: 'Aurelien', image_url: img('auto-s1') },
+    { ...shopRow('auto-s2', 'shoes', 680000), name: 'Black Calfskin Chelsea Boots', fashion_slot: 'shoes', fashion_subtype: 'chelsea', color: 'black', brand: 'Beckett Simonon', image_url: img('auto-s2') },
+    { ...shopRow('auto-s3', 'shoes', 690000), name: 'Oxblood Leather Derbies', fashion_slot: 'shoes', fashion_subtype: 'derby', color: 'burgundy', brand: 'TLB Mallorca', image_url: img('auto-s3') },
+  ];
+
+  let vlmCalls = 0;
+  const seenHosts = [];
+  const fetchStub = async (url, options = {}) => {
+    const u = new URL(String(url));
+    if (u.hostname === 'media.frgroup.uz') {
+      return new Response(studioJpeg, { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+    }
+    vlmCalls += 1;
+    seenHosts.push(u.hostname);
+    const payload = JSON.parse(options.body);
+    const promptText = payload.messages?.[0]?.content?.[0]?.text || '';
+    if (promptText.includes('PRIVATE SHOWROOM') || promptText.includes('showroomRacks')) {
+      const data = JSON.parse(promptText.split('\n').reverse().find((l) => l.trim().startsWith('{')));
+      const t = data.showroomRacks.top.map((x) => x.token);
+      const l = data.showroomRacks.outerwear.map((x) => x.token);
+      const b = data.showroomRacks.bottom.map((x) => x.token);
+      const s = data.showroomRacks.shoes.map((x) => x.token);
+      return new Response(JSON.stringify({
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            content: JSON.stringify({
+              outfits: [
+                { title: 'Midnight Soft Tailoring', top: t[0], outerwear: l[0], bottom: b[0], shoes: s[0], stylistNote: 'Midnight tailoring over ivory knitwear brings effortless evening polish.', whyItFlattersYou: 'The open lapel elongates the torso cleanly.', stylingTips: ['Wear the blazer unfastened in motion.'] },
+                { title: 'Warm Espresso & Crisp White', top: t[1], outerwear: l[1], bottom: b[1], shoes: s[1], stylistNote: 'Rich espresso suede warms the crisp white shirt and navy wool trousers.', whyItFlattersYou: 'Balanced shoulder-to-hem proportions keep the frame sharp.', stylingTips: ['Leave the top collar button open for dinner ease.'] },
+                { title: 'Quiet Charcoal Evening', top: t[2], outerwear: l[2], bottom: b[2], shoes: s[2], stylistNote: 'Fine-gauge charcoal layers soften stone wool trousers with oxblood depth.', whyItFlattersYou: 'Tonal depth keeps the silhouette modern and poised.', stylingTips: ['Keep a clean break at the trouser hem.'] },
+              ],
+            }),
+          },
+        }],
+        usage: { prompt_tokens: 820, completion_tokens: 260, total_tokens: 1080 },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({
+      choices: [{
+        finish_reason: 'stop',
+        message: {
+          content: JSON.stringify({
+            reviews: [
+              { lookToken: 'L00', score: 9.2, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'cream', outerwear: 'navy', bottom: 'charcoal', shoes: 'brown' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Refined evening tailoring.' },
+              { lookToken: 'L01', score: 8.9, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'white', outerwear: 'brown', bottom: 'navy', shoes: 'black' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Modern suede and crisp shirt contrast.' },
+              { lookToken: 'L02', score: 8.7, approved: true, occasionFit: true, distinctFromOthers: true, photoClean: true, observedColors: { top: 'navy', outerwear: 'charcoal', bottom: 'beige', shoes: 'burgundy' }, weakestSlot: 'none', repairBrief: '', critiqueSummary: 'Distinct soft knit evening silhouette.' },
+            ],
+            portfolioNote: 'All three looks are genuinely distinct and evening-ready.',
+          }),
+        },
+      }],
+      usage: { prompt_tokens: 740, completion_tokens: 210, total_tokens: 950 },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  // 1. Default deployed cloud (ZERO local-only flags, 0 catalog_photo_cache_v1 rows):
+  const body1 = JSON.stringify({
+    request: { style: 'classic', occasion: 'Date night', weather: { temp: 18 }, enableVisual: true, sourceMode: 'catalog', generationRequestId: 'phase11-cloud-parity-1' },
+  });
+  const sig1 = await signStylistTransport({ secret: SECRET, body: body1, authorization: `Bearer ${JWT}` });
+  const { io: io1 } = makeIo({ shopRows });
+  const res1 = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization: `Bearer ${JWT}`, ...sig1 },
+    bodyText: body1,
+    env: {
+      ...env,
+      OPENROUTER_API_KEY: 'sk-or-v1-cloud-parity-0123456789abcdef',
+      NVIDIA_API_KEY: 'nvapi-cloud-parity-0123456789abcdef',
+    },
+    io: io1,
+    fetchImpl: fetchStub,
+    timeoutMs: 75000,
+  });
+
+  assert.equal(res1.status, 200);
+  assert.equal(vlmCalls, 2, 'deployed cloud must run lean 2-call Autonomous Visual Stylist by default');
+  assert.deepEqual(seenHosts, ['openrouter.ai', 'integrate.api.nvidia.com'], 'cross-lab OpenRouter + NVIDIA verification in cloud');
+  assert.equal(res1.body.diagnostics.engine, 'autonomous_visual_stylist');
+  assert.equal(res1.body.diagnostics.photoProvenance, 'host_allowlisted_staging');
+  assert.equal(res1.body.diagnostics.merchantRightsVerified, false);
+  assert.equal(res1.body.visualStatus, 'NVIDIA_APPLIED');
+  assert.equal(res1.body.visualReceipt.visualApproval, 'full_three_verified');
+  assert.equal(res1.body.outfits.length, 3);
+  assert.deepEqual(
+    res1.body.outfits.map((o) => o.concept.title),
+    ['Midnight Soft Tailoring', 'Warm Espresso & Crisp White', 'Quiet Charcoal Evening'],
+  );
+  assert.ok(res1.body.outfits.every((o) => o.items.length === 4));
+
+  // 2. Kill-switch STYLIST6_AUTONOMOUS_VISUAL_ENABLED=false bypasses autonomous path cleanly:
+  let autonomousCalledUnderKillSwitch = 0;
+  const body2 = JSON.stringify({
+    request: { style: 'classic', occasion: 'Date night', weather: { temp: 18 }, enableVisual: true, sourceMode: 'catalog', generationRequestId: 'phase11-cloud-killswitch-2' },
+  });
+  const sig2 = await signStylistTransport({ secret: SECRET, body: body2, authorization: `Bearer ${JWT}` });
+  const { io: io2 } = makeIo({ shopRows });
+  const res2 = await handleStylist6CloudGenerate({
+    method: 'POST',
+    headers: { authorization: `Bearer ${JWT}`, ...sig2 },
+    bodyText: body2,
+    env: {
+      ...env,
+      OPENROUTER_API_KEY: 'sk-or-v1-cloud-parity-0123456789abcdef',
+      STYLIST6_AUTONOMOUS_VISUAL_ENABLED: 'false',
+    },
+    io: {
+      ...io2,
+      autonomousStylist: async () => {
+        autonomousCalledUnderKillSwitch += 1;
+        return { status: 'fallback' };
+      },
+    },
+    fetchImpl: async (url) => {
+      const u = new URL(String(url));
+      if (u.hostname === 'media.frgroup.uz') return new Response(studioJpeg, { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+      return new Response(JSON.stringify({ error: 'fallback_test' }), { status: 503 });
+    },
+    timeoutMs: 75000,
+  });
+  assert.equal(autonomousCalledUnderKillSwitch, 0, 'STYLIST6_AUTONOMOUS_VISUAL_ENABLED=false must skip Autonomous Visual Stylist');
+  assert.equal(res2.status, 200);
+});

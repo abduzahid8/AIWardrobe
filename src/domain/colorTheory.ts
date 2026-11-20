@@ -948,8 +948,8 @@ const WARM_LEATHER_SHOE_HUES = new Set([
 ]);
 
 const WARM_EARTH_TROUSER_HUES = new Set([
-  'camel', 'tan', 'caramel', 'cognac', 'saddle', 'chestnut', 'cinnamon', 'terracotta',
-  'rust', 'burnt_orange', 'orange', 'ochre', 'honey', 'tobacco', 'brown', 'olive', 'dark_olive', 'khaki',
+  'camel', 'tan', 'caramel', 'cognac', 'saddle', 'cinnamon', 'terracotta',
+  'rust', 'burnt_orange', 'orange', 'ochre', 'honey',
 ]);
 
 const STARK_COOL_ANCHORS = new Set([
@@ -1039,7 +1039,14 @@ export function scoreOutfitColorTheory(
         (DARK_NAVY_FAMILY.has(a.metrics.canonical) && DARK_BLACK_FAMILY.has(b.metrics.canonical)) ||
         (DARK_BLACK_FAMILY.has(a.metrics.canonical) && DARK_NAVY_FAMILY.has(b.metrics.canonical));
 
+      const intentionalBlackAndRichDark =
+        (DARK_BLACK_FAMILY.has(a.metrics.canonical) &&
+          ['espresso', 'chocolate', 'brown', 'dark_olive', 'olive', 'forest_green', 'burgundy', 'oxblood'].includes(b.metrics.canonical)) ||
+        (DARK_BLACK_FAMILY.has(b.metrics.canonical) &&
+          ['espresso', 'chocolate', 'brown', 'dark_olive', 'olive', 'forest_green', 'burgundy', 'oxblood'].includes(a.metrics.canonical));
+
       const sameFamilyNearMiss =
+        !intentionalBlackAndRichDark &&
         a.metrics.hex !== b.metrics.hex &&
         bothDeep &&
         dE >= 4.0 &&
@@ -1093,8 +1100,9 @@ export function scoreOutfitColorTheory(
     flaws.push('warm_cognac_leather_clashes_with_icy_cool_palette');
   }
 
-  // Symmetric menswear footwear temperature rule: stark jet-black shoes clash with warm
-  // caramel/camel/rust/orange/brown/olive trousers unless intentionally anchored by an all-black upper.
+  // Narrow footwear temperature clash guard: stark black shoes only clash harshly with
+  // bright warm orange/caramel/rust/terracotta/camel trousers (modern black loafers/boots
+  // with dark olive, espresso, chocolate, or deep brown trousers are chic and NOT discordant).
   const upperItems = items.filter((it) => it.slot === 'top' || it.slot === 'outerwear');
   const allUpperBlack = upperItems.length > 0 && upperItems.every((it) => DARK_BLACK_FAMILY.has(it.metrics.canonical));
   if (

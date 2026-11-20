@@ -62,6 +62,7 @@ import { analyzeUserAppearance } from './user_appearance_analyzer.mjs';
 import { buildStylistNotes } from './deck_editorial_copy.mjs';
 import { createProviderRouter } from './ai_provider_router.mjs';
 import { renderEditorialLookBoard, createPhotoByteCache } from './editorial_board_renderer.mjs';
+import { runAutonomousVisualStylist, AUTONOMOUS_STYLIST_VERSION } from './autonomous_stylist.mjs';
 import referenceIndex from '../../benchmarks/stylist6/references/image_teaste_46.json' with { type: 'json' };
 
 const defaultQualityFlywheel = createQualityFlywheel();
@@ -1360,6 +1361,66 @@ export async function resolveProductAsset(imageUrl, cache, fetchFn) {
   return task;
 }
 
+/**
+ * Unified ephemeral in-memory visual asset resolver shared across deployed
+ * cloud (`cloud_handler.mjs`) and autonomous visual styling:
+ *   1. Prefers source-hash-verified first-party `catalog_photo_cache_v1` rows
+ *      when populated (`photoProvenance: 'licensed_cache'`).
+ *   2. Otherwise fetches ephemeral in-memory bytes via `resolveProductAsset`
+ *      (`HOST_ALLOWLIST` + SSRF + bounded streaming read + resize, zero
+ *      third-party disk/bucket persistence; `photoProvenance: 'host_allowlisted_staging'`).
+ */
+export function resolveCloudVisualAsset(product, {
+  verifiedPhotoRows = null,
+  verifiedPhotoTasks = null,
+  photoCache = null,
+  photoByteCache = null,
+  supabaseOrigin = '',
+  fetchImpl = null,
+} = {}) {
+  const url = String(product?.imageUrl || product?.image_url || '');
+  const reqCache = photoCache instanceof Map ? photoCache : new Map();
+  const originalResolver = () => resolveProductAsset(
+    url,
+    reqCache,
+    fetchImpl ? (prodUrl, options) => fetchImpl(prodUrl, options) : undefined,
+  ).then((asset) => {
+    if (asset?.bytes && url && photoByteCache) photoByteCache.set(url, asset.bytes);
+    return asset;
+  });
+  const record = verifiedPhotoRows instanceof Map ? verifiedPhotoRows.get(String(product?.id || '')) : null;
+  if (!record || record.source_image_url !== url) return originalResolver();
+  const taskKey = `${String(product.id)}|${url}`;
+  if (verifiedPhotoTasks instanceof Map) {
+    if (!verifiedPhotoTasks.has(taskKey)) {
+      const task = resolveCatalogCachedPhoto({
+        item: product,
+        record,
+        supabaseOrigin,
+        fetchImpl: fetchImpl || fetch,
+        decodeImage: prepareCloudVisualMedia,
+        originalResolver,
+      }).then((asset) => {
+        if (asset?.bytes && url && photoByteCache) photoByteCache.set(url, asset.bytes);
+        return asset;
+      });
+      verifiedPhotoTasks.set(taskKey, task);
+    }
+    return verifiedPhotoTasks.get(taskKey);
+  }
+  return resolveCatalogCachedPhoto({
+    item: product,
+    record,
+    supabaseOrigin,
+    fetchImpl: fetchImpl || fetch,
+    decodeImage: prepareCloudVisualMedia,
+    originalResolver,
+  }).then((asset) => {
+    if (asset?.bytes && url && photoByteCache) photoByteCache.set(url, asset.bytes);
+    return asset;
+  });
+}
+
 /** Start every independent permitted source-photo fetch in one bounded
  * wave. Eight real outfits can contain 32 distinct merchant images; awaiting
  * six-image waves serially took 4-6 CDN timeout windows (up to 48s), leaving
@@ -1736,9 +1797,8 @@ async function handleSwapSlotAction({ payload, userId, env, io, fetchImpl, timeo
     ...(Array.isArray(ctxReq.excludeItemIds) ? ctxReq.excludeItemIds : []),
   ].map((id) => String(id || '').trim()).filter(Boolean);
 
-  const allowLocalShowroomSwap =
-    /^(1|true)$/i.test(String(env?.STYLIST6_ALLOW_LOCAL_SHOWROOM_VISUAL || '').trim()) ||
-    io?.allowLocalShowroomVisualComposition === true;
+  const swapAutonomousDisabled = /^(0|false)$/i.test(String(env?.STYLIST6_AUTONOMOUS_VISUAL_ENABLED || '').trim());
+  const swapVisualDisabled = ['1', 'true'].includes(String(env?.STYLIST6_VISUAL_DISABLED || '').trim().toLowerCase());
   const swapNvidiaKey = String(env?.NVIDIA_API_KEY || '').trim();
   const swapOpenrouterKey = String(env?.OPENROUTER_API_KEY || '').trim();
   const hasSwapVisionKeys = swapNvidiaKey.startsWith('nvapi-') || swapOpenrouterKey.length >= 16;
@@ -1747,7 +1807,7 @@ async function handleSwapSlotAction({ payload, userId, env, io, fetchImpl, timeo
     ? io.visualReplacementSelector
     : null;
   let swapProviderRouter = null;
-  if (allowLocalShowroomSwap && hasSwapVisionKeys) {
+  if (!swapAutonomousDisabled && !swapVisualDisabled && hasSwapVisionKeys) {
     swapProviderRouter = createProviderRouter({
       nvidiaApiKey: swapNvidiaKey.startsWith('nvapi-') ? swapNvidiaKey : '',
       openrouterApiKey: swapOpenrouterKey.length >= 16 ? swapOpenrouterKey : '',
@@ -2432,11 +2492,123 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       || hasOpenrouterKey
       || request.fastVisualMode === true
     );
+    const visualAsked = request.enableVisual === true;
+    const visualDisabled = ['1', 'true'].includes(String(env.STYLIST6_VISUAL_DISABLED || '').trim().toLowerCase());
+    const explicitVisualFlag = payload?.enableVisual !== undefined
+      || payload?.visualEvaluation !== undefined
+      || payload?.request?.enableVisual !== undefined
+      || payload?.request?.visualEvaluation !== undefined;
+    const visualPolicy = visualDisabled
+      ? 'server_killswitch'
+      : explicitVisualFlag
+        ? (visualAsked ? 'explicit_client' : 'default_off')
+        : (/^(1|true)$/i.test(String(env.STYLIST6_DEFAULT_VISUAL_EVAL || '').trim()) ? 'server_default' : 'default_off');
+    const photoCache = new Map();
+    const photoByteCache = createPhotoByteCache({ maxEntries: 128, maxBytes: 32 * 1024 * 1024 });
+    const verifiedPhotoTasks = new Map();
+    const verifiedPhotoCounts = new Map([
+      ['top', 0], ['outerwear', 0], ['bottom', 0], ['shoes', 0],
+    ]);
+    for (const item of feasible) if (item.isShopItem === true &&
+      verifiedPhotoRows.has(String(item.id)) &&
+      verifiedPhotoCounts.has(item.macroCategory)) {
+      verifiedPhotoCounts.set(item.macroCategory, verifiedPhotoCounts.get(item.macroCategory) + 1);
+    }
+    const photoFirstCatalogReady = photoCacheOptIn &&
+      [...verifiedPhotoCounts.values()].every((n) => n >= 3);
+    const cloudPhotoProvenance = photoFirstCatalogReady ? 'licensed_cache' : 'host_allowlisted_staging';
+    const cloudMerchantRightsVerified = photoFirstCatalogReady === true;
+    const resolveProduct = (product) => resolveCloudVisualAsset(product, {
+      verifiedPhotoRows,
+      verifiedPhotoTasks,
+      photoCache,
+      photoByteCache,
+      supabaseOrigin: env.SUPABASE_URL,
+      fetchImpl,
+    });
+
+    // ── PRIMARY PATH (Phase 11 — Deployed Cloud Parity): Unified Autonomous Visual Stylist ──
+    // Runs by default in deployed cloud whenever vision is requested & configured
+    // (disableable via STYLIST6_AUTONOMOUS_VISUAL_ENABLED=false), using ephemeral
+    // in-memory resolveCloudVisualAsset (preferring catalog_photo_cache_v1 first,
+    // zero third-party disk/bucket persistence) with honest photoProvenance &
+    // merchantRightsVerified diagnostics. Falls back gracefully to recommendFashionDeck
+    // ONLY when vision providers/media fail or a legacy seam override is active.
+    const autonomousKillSwitchOff = /^(0|false)$/i.test(String(env.STYLIST6_AUTONOMOUS_VISUAL_ENABLED || '').trim());
+    const legacyAtelierSeamOverride = typeof io?.visualAtelierCompose === 'function' && typeof io?.autonomousStylist !== 'function';
+    const canRunAutonomousVisual = Boolean(
+      !autonomousKillSwitchOff &&
+      !legacyAtelierSeamOverride &&
+      visualAsked &&
+      !visualDisabled &&
+      (hasNvidiaKey || hasOpenrouterKey) &&
+      sourceMode === 'catalog' &&
+      remainingMs() >= 15_000,
+    );
+    const visualEvents = [];
+    let visualCriticActiveModel = hasOpenrouterKey ? OPENROUTER_VISION_MODEL : NVIDIA_VISION_MODEL;
+    let autonomousApplied = false;
+    let computedDeck = null;
+    let creativePlan = { status: 'disabled_or_deadline', briefs: [], providerCalls: 0 };
+    let visualCritic, canJudgeOutfit, canDisplayOutfit;
+    let modelSlateEnabled = false;
+
+    if (canRunAutonomousVisual) {
+      nextPhase('autonomous_visual_stylist');
+      const autonomousRunner = typeof io?.autonomousStylist === 'function'
+        ? io.autonomousStylist
+        : runAutonomousVisualStylist;
+      const autonomousRouter = createProviderRouter({
+        nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
+        openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
+        ...(fetchImpl ? { fetchImpl } : {}),
+      });
+      let autonomousRes = null;
+      try {
+        autonomousRes = await runWithinRemainingDeadline(() => autonomousRunner({
+          request: input,
+          catalog: feasible,
+          personalStyleDna,
+          styleDnaPromptBlock,
+          tasteProfile,
+          priceToBudgetCurrency,
+          hardGate: async (items) => devLookFeasibility(items),
+          providerRouter: autonomousRouter,
+          nvidiaApiKey: hasNvidiaKey ? nvidiaKey : '',
+          openrouterApiKey: hasOpenrouterKey ? openrouterKey : '',
+          photoCache: photoByteCache,
+          resolvePhoto: resolveProduct,
+          authorizePhoto: isInferenceAuthorized,
+          ...(fetchImpl ? { fetchImpl } : {}),
+          signal: deadlineController.signal,
+          timeoutMs: Math.min(48_000, Math.max(12_000, remainingMs() - 4_000)),
+          hygieneAlreadyApplied: true,
+          qualityMap,
+          photoProvenance: cloudPhotoProvenance,
+          merchantRightsVerified: cloudMerchantRightsVerified,
+        }));
+      } catch {
+        autonomousRes = { status: 'fallback', reason: 'autonomous_error' };
+      }
+      if (autonomousRes?.status === 'applied' && Array.isArray(autonomousRes?.deck?.outfits) && autonomousRes.deck.outfits.length > 0) {
+        autonomousApplied = true;
+        computedDeck = autonomousRes.deck;
+        if (Array.isArray(autonomousRes.visualEvents)) {
+          visualEvents.push(...autonomousRes.visualEvents);
+        }
+        visualCriticActiveModel = autonomousRes.diagnostics?.editorModel
+          || autonomousRes.diagnostics?.composerModel
+          || visualCriticActiveModel;
+        creativePlan = { status: 'autonomous_visual', briefs: [], providerCalls: 0 };
+      }
+    }
+
+    if (!autonomousApplied) {
     const creativeDirectorEnabled =
       /^(1|true)$/i.test(String(env.STYLIST6_CREATIVE_DIRECTOR_ENABLED || '').trim()) &&
       !isWorkoutOccasion(occasion) && remainingMs() >= 12000;
     nextPhase('creative_architecture');
-    const creativePlan = creativeDirectorEnabled
+    creativePlan = creativeDirectorEnabled
       ? await designCreativeBriefsWithFallback({
           catalog: feasible, request: input,feedbackTaste,
           tasteProfile,
@@ -2460,62 +2632,14 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           highTaste: budgetMs>=70000,
         })
       : { status: 'disabled_or_deadline', briefs: [], providerCalls: 0 };
-    // Hosted NVIDIA review: strictly opt-in, server-side key only, bounded
-    // to the critic's own batch limits. Reference-guided judging needs
-    // staged reference bytes; without them admission fails honestly and the
-    // deck completes deterministically as NOT_RUN. Looks without a matching
-    // reference are judged purely on product images (reference-optional).
-    // STYLIST6_VISUAL_DISABLED=1 (or true) is the owner kill-switch: it
-    // forces an honest NOT_RUN even when the client asks for review.
-    let visualCritic, canJudgeOutfit;
-    let canDisplayOutfit;
-    const visualEvents = [];
-    const visualAsked = request.enableVisual === true;
-    const visualDisabled = ['1', 'true'].includes(String(env.STYLIST6_VISUAL_DISABLED || '').trim().toLowerCase());
-    const explicitVisualFlag = payload?.enableVisual !== undefined
-      || payload?.visualEvaluation !== undefined
-      || payload?.request?.enableVisual !== undefined
-      || payload?.request?.visualEvaluation !== undefined;
-    const visualPolicy = visualDisabled
-      ? 'server_killswitch'
-      : explicitVisualFlag
-        ? (visualAsked ? 'explicit_client' : 'default_off')
-        : (/^(1|true)$/i.test(String(env.STYLIST6_DEFAULT_VISUAL_EVAL || '').trim()) ? 'server_default' : 'default_off');
-    const photoCache = new Map();
-    const photoByteCache = createPhotoByteCache({ maxEntries: 128, maxBytes: 32 * 1024 * 1024 });
-    const verifiedPhotoTasks=new Map();
     // Exact image bytes are shared with the independent photo-critic cache and
     // proportion-aware studio look boards / portfolio sheets.
     let photoPortfolioResolver=null;
     let photoComposerCachedOnlyResolver=null;
     let studioBoardRenderer=null;
     let prewarmCandidatePhotos=null;
-    let visualCriticActiveModel = NVIDIA_VISION_MODEL;
+    visualCriticActiveModel = NVIDIA_VISION_MODEL;
     if (visualAsked && !visualDisabled && (hasNvidiaKey || hasOpenrouterKey)) {
-      const resolveProduct=(product)=>{
-        const url=product.imageUrl||product.image_url;
-        const originalResolver=()=>resolveProductAsset(url,photoCache,
-          fetchImpl?(prodUrl,options)=>fetchImpl(prodUrl,options):undefined)
-          .then((asset)=>{
-            if(asset?.bytes&&url)photoByteCache.set(url,asset.bytes);
-            return asset;
-          });
-        const record=verifiedPhotoRows.get(String(product?.id||''));
-        if(!record||record.source_image_url!==url)return originalResolver();
-        const taskKey=String(product.id)+'|'+url;
-        if(!verifiedPhotoTasks.has(taskKey)){
-          const task=resolveCatalogCachedPhoto({
-            item:product,record,supabaseOrigin:env.SUPABASE_URL,
-            fetchImpl:fetchImpl||fetch,decodeImage:prepareCloudVisualMedia,
-            originalResolver,
-          }).then((asset)=>{
-            if(asset?.bytes&&url)photoByteCache.set(url,asset.bytes);
-            return asset;
-          });
-          verifiedPhotoTasks.set(taskKey,task);
-        }
-        return verifiedPhotoTasks.get(taskKey);
-      };
       photoPortfolioResolver=resolveProduct;
       studioBoardRenderer=(items, opts = {})=>renderEditorialLookBoard(items, {
         resolvePhoto: resolveProduct,
@@ -2656,36 +2780,11 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
     // planner, which is deliberately disabled for workouts. That coupling
     // stranded Sport on eight overlapping deterministic finalists: four
     // independently photo-approved sets but only two SKU-disjoint cards.
-    const modelSlateEnabled=serverFashionSlateEnabled(env,{
+    modelSlateEnabled=serverFashionSlateEnabled(env,{
       visualAsked,visualCriticAvailable:!!visualCritic,
     });
-    // REAL native iOS fashion QA on dbefcdd/6ae1c2c/45428a8 showed
-    // merchant photo-board TIMEOUT and only 1/6 approved looks. Do not
-    // impose unreliable multi-CDN downloads on end users by default.
-    // Reenable PHOTO-FIRST only after a source-hash-verified, explicitly
-    // authorized original-photo cache can provide all four garment roles.
-    // TEXT AI-first and the proven independent final PHOTO editor remain on.
-    // Server-owned license/cache gate AND actual >=3 bound source images
-    // PER garment role. Never start 48 live merchant CDN downloads to
-    // discover during a paying user's request that media is unavailable.
-    const verifiedPhotoCounts=new Map([
-      ['top',0],['outerwear',0],['bottom',0],['shoes',0],
-    ]);
-    // Count only products still eligible for this exact catalog request.
-    // A license for an out-of-currency, unavailable or filtered SKU cannot
-    // satisfy the required FOUR-role source PHOTO quorum.
-    for(const item of feasible)if(item.isShopItem===true&&
-      verifiedPhotoRows.has(String(item.id))&&
-      verifiedPhotoCounts.has(item.macroCategory))
-      verifiedPhotoCounts.set(item.macroCategory,
-        verifiedPhotoCounts.get(item.macroCategory)+1);
-    const photoFirstCatalogReady=photoCacheOptIn &&
-      [...verifiedPhotoCounts.values()].every(n=>n>=3);
     // Strictly preserve merchant photo-rights honesty per AGENTS.md &
-    // STYLIST6_NORTH_STAR.md: in cloud staging/production, Visual Showroom
-    // Composition runs ONLY when licensed `catalog_photo_cache_v1`
-    // (`photoFirstCatalogReady`) is ready OR explicit dev/QA flag
-    // `allowLocalShowroomVisualComposition === true` is set server-side.
+    // STYLIST6_NORTH_STAR.md for the legacy visualAtelierCompose seam:
     const allowLocalShowroomVisualComposition =
       /^(1|true)$/i.test(String(env?.STYLIST6_ALLOW_LOCAL_SHOWROOM_VISUAL || '').trim()) ||
       io?.allowLocalShowroomVisualComposition === true;
@@ -2844,7 +2943,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
               :Math.min(9600,Math.max(500,left-3300)),
           });
         } : null;
-    const computedDeck = await runWithinRemainingDeadline(() => recommendFashionDeck({
+    computedDeck = await runWithinRemainingDeadline(() => recommendFashionDeck({
       request: input,
       catalog: feasible,
       referenceBriefs: refs,
@@ -2895,9 +2994,10 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
       ...(selectPhotoApprovedPortfolio?{selectPhotoApprovedPortfolio}:{}),
       ...(visualCritic ? { visualCritic, canJudgeOutfit, canDisplayOutfit } : {}),
     }));
+    }
     // Enforce the complete four-SKU contract at the FINAL cloud boundary.
     // No client-side card can silently lose the outerwear and claim an outfit.
-    const deck=budgetMs>=70000
+    const deck=(budgetMs>=70000 || autonomousApplied)
       ?enforceCatalogFourItemDeck(computedDeck,sourceMode)
       :computedDeck;
     nextPhase('result_mapping');
@@ -3076,8 +3176,9 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
         visualReceipt: {
           // Cost metering is tokens-based only: no per-call pricing table
           // exists in this codebase, so no currency estimate is invented.
-          model: visualCritic ? visualCriticActiveModel : null,
+          model: (visualCritic || autonomousApplied) ? visualCriticActiveModel : null,
           ...(fastVisualMode ? { fastVisualMode: true } : {}),
+          ...(autonomousApplied ? { autonomousVersion: AUTONOMOUS_STYLIST_VERSION } : {}),
           policy: visualPolicy,
           requested: visualAsked,
           serverDisabled: visualAsked && visualDisabled,
@@ -3099,7 +3200,7 @@ export async function handleStylist6CloudGenerate({ method, headers, bodyText, e
           // and full 3-card proof from merely having at least one verdict.
           visualApproval: !visualAsked ? 'not_requested'
             : visualDisabled ? 'disabled'
-              : !visualCritic ? 'unavailable'
+              : !(visualCritic || autonomousApplied) ? 'unavailable'
             : deck.outfits.length === 3 &&
                 deck.outfits.every((look) => Array.isArray(look.visualEvidence))
               ? 'full_three_verified'
